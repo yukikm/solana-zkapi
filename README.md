@@ -10,6 +10,8 @@ Ethereum zkAPIの現行機能を、Solanaで本番運用できる形に移植す
 
 OpenAI・Claudeの利用を優先し、Ollama互換は初期対象外。既存の直接接続方式と、第三者が既存APIを中継するproxy方式の両方を初回productionの必須機能とする。proxyはOpenAI Chat Completions/Responses、Anthropic Messagesに対応する設計。モデル対応、API互換、直接接続の可否は個別に確認する。
 
-状態は**設計完了・実装着手可**。Solanaプログラムの実装、性能実測、本番デプロイはまだ行っていない。I01→I02から開始し、暗号/SVM・復旧・実provider・公開準備の4 gateを満たしてからリリースする。
+状態は**I01/I02実装中**。固定upstream、Rust/TS workspace・CI、binding/整数会計、実proofのnative互換性検証を追加した。結果と未完了項目は [I01 evidence](docs/evidence/I01.md)、[I02 evidence](docs/evidence/I02.md) を参照。Solanaプログラム、SBF/SVM/CU計測、本番デプロイは未実施。暗号/SVM・復旧・実provider・公開準備の4 gateを満たしてからリリースする。
+
+開発開始：`git submodule update --init --recursive` → `python3 scripts/check_upstream.py` → `cargo test --locked --workspace`。TypeScriptは固定Node/npmで `npm ci --ignore-scripts && npm run typecheck && npm test`。Rust toolchainは `rust-toolchain.toml` に固定。
 
 設計の構造チェック：`python3 scripts/check_design.py`。これはOpenAPI参照、document links、schemaとテストベクトルの整合性の確認であり、実proof検証やDB migration試験ではない。

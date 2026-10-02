@@ -69,7 +69,7 @@ toolchain、Anchor、Agave、groth16-solana、TypeScript SDKはI01/I02で実際�
 
 | Gate | 合格条件 | 現在 |
 |---|---|---|
-| G1 暗号・SVM | 元実proof、12/14 public inputsの各改変拒否、H2F/Poseidon一致、worst CU/bytes、wallet/buffer経路 | 未実施 |
+| G1 暗号・SVM | 元実proof、12/14 public inputsの各改変拒否、H2F/Poseidon一致、worst CU/bytes、wallet/buffer経路 | native互換性のみ検証済み、SVM/CU等未実施・未合格（[I02](../evidence/I02.md)） |
 | G2 会計・復旧 | 並列予算予約、全crash point、client復旧、出金競合、DB failoverで二重署名/課金なし | 未実施 |
 | G3 実provider | OA-org、OpenRouter direct、OpenAI/Anthropic/OpenRouter proxyの実credential・usage・streaming試験 | 未実施 |
 | G4 公開準備 | setup検証、鍵/multisig、第三者review/audit、restore演習、監視当番、正しいmanifest | 未実施 |

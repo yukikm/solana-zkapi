@@ -210,7 +210,7 @@ def vector(name,label,parts):
     data=frame(label,parts); digest=hashlib.sha256(data).digest()
     return {'name':name,'label':label,'parts_hex':[p.hex() for p in parts],
         'frame_hex':data.hex(),'sha256':digest.hex(),'field':'0x'+(int.from_bytes(digest,'big')%R).to_bytes(32,'big').hex()}
-vectors=[vector('vault_synthetic','solana-zkapi-vault-v1',[bytes([n])*32 for n in range(6)]+[bytes([6])]),
+vectors=[vector('vault_synthetic','solana-zkapi-vault-v1',[bytes([n])*32 for n in range(5)]+[bytes([6])]),
     vector('destination_synthetic','solana-zkapi-destination-v1',[bytes(range(32))]),
     vector('destination_changed','solana-zkapi-destination-v1',[bytes(range(31))+b'\x20'])]
 auth={'version':'1','deployment_id':'fixture-only','pool':'11111111111111111111111111111111',

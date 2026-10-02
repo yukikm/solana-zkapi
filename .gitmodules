@@ -1,0 +1,3 @@
+[submodule "vendor/ethereum-zkapi"]
+	path = vendor/ethereum-zkapi
+	url = https://github.com/ethereum/zkapi.git

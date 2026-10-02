@@ -96,7 +96,7 @@ tests/{fixtures,svm,e2e,faults}/
 deploy/                    # image digest、manifest、runbook
 ```
 
-本ターンで作成するのは設計書・契約schema・テストベクトル・タスクであり、上記runtimeディレクトリに未検証の雛形を置いて実装済みとはしない。
+この仕様の初版作成時点では設計書・契約schema・テストベクトル・タスクのみを作成した。2026-10-03 JSTからI01/I02に着手し、現在の実装・検証範囲は [I01](evidence/I01.md)、[I02](evidence/I02.md) に記録する。runtimeディレクトリの存在だけで実装済みとはしない。
 
 ## 5. 実装開始と本番公開の境界
 

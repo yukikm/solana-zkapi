@@ -1,0 +1,122 @@
+{
+  "date_jst": "2026-10-03",
+  "scope": "I01_baseline_and_I02_native_compatibility_not_release",
+  "toolchain": {
+    "rust": "1.90.0",
+    "go": "1.25.0",
+    "node": "24.19.0",
+    "npm": "11.9.0",
+    "typescript": "5.9.3",
+    "python_observed": "3.12.14",
+    "groth16-solana": "0.2.0",
+    "solana-bn254": "2.2.2"
+  },
+  "artifact_sha256": {
+    "Cargo.lock": "697d93746dee94cf22f8c117ade1ae9e94d3c7cc3c7b9b359ffadfa816493b2e",
+    "package-lock.json": "66fd09223e08493b7ccc32863cb5f50fcc3136bd49d8996ec5bf86e439b6892f",
+    "rust-toolchain.toml": "ef994db2f5b4d597d6641f1c9d1a39224b2a3cd2476de2723680394e010bf2be",
+    ".node-version": "7e8a2fa94951112b894a3dbe3d05efef5e9263741fa49125f0a70f40fedab4cc",
+    ".go-version": "32112436a82effc1d958644a972f2a81e829e5ff08beb71305473cf6d41ca956",
+    "vendor/upstream-lock.json": "b9e2033baf11181a6f75148587ec73fcedbdccd6ad2a07e16e9f0b1d3787d3b2",
+    "docs/contracts/binding-vectors.json": "03b3cb94ad8b7adacb60162920d90729dae6d2dde9dbb5ccc0c3162a7ad807f2",
+    "tests/fixtures/crypto/escape-genesis.json": "d39260f3f5493d7a6c8baa373919704d9997fc70b4e69ba93720f9fd8188422b",
+    "tests/fixtures/crypto/escape-signed.json": "7a0209e3c7b059cf88e729d45fa7529a1433d24715637ad334ee0fb63203a6b7",
+    "tests/fixtures/crypto/request-genesis.json": "5c76fc6805dab2c656535ebbf70098e4caa09c4e9d939e1a426b5a43270ba12f",
+    "tests/fixtures/crypto/request-signed.json": "0032c47bc9677a6273c7ae12d559b96368b41b97d21d77ea1b2c1fe8cec72c2b",
+    "tests/fixtures/crypto/withdrawal-genesis.json": "38947aaa9b8a6790d67fe8d539fa4f99aec25a609d8853c4d70fa2d57b6ab3ce",
+    "tests/fixtures/crypto/withdrawal-signed.json": "82e6fb1dafaa0f06271e1f564d3763aa15837bf1471b454719db40810892b809",
+    ".github/workflows/ci.yml": "a88d0606464db15d6eedeeb6b0209f03724d3669b670fd4a167f6810ad61fcf3",
+    "crates/zkapi-solana-crypto/src/lib.rs": "819c1297a43105068855533b508aac977b03f304bb2f7ab4bbe326d6a62f1a3a",
+    "crates/zkapi-solana-crypto/tests/compatibility.rs": "e0a35e67590396177ae330adc723c7de095792f7dda71c4212f294a1e55885df",
+    "crates/zkapi-solana-types/src/amount.rs": "c74eba2dec3f0d3795819e95c926067a2bdd8d7263710e26abf9cba8a6a92d21",
+    "crates/zkapi-solana-types/src/binding.rs": "58841380ae531a146c42e2ae2ecac37c7e0fb1b39874e015577add992166aa7d",
+    "crates/zkapi-solana-types/src/field.rs": "15c8015ec5f0af639aefc9877cdc8af8ae7d463f7b0a4a36b01c139690fc8f61",
+    "packages/sdk/src/encoding.ts": "e58649404a951392f121c3c5ec7289c3f3ab73fe48f757d4478a08f41e19a08b"
+  },
+  "local_logs": {
+    "I01-rust-protocol.log": {
+      "sha256": "68812095d827c7f36e83710d7584efd95da20caf38a926956cc6290780a9a149",
+      "test_results": [
+        "test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 12.96s",
+        "test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s",
+        "test result: ok. 12 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.04s",
+        "test result: ok. 15 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 9.87s",
+        "test result: ok. 10 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s",
+        "test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s",
+        "test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s",
+        "test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s",
+        "test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s",
+        "test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s"
+      ]
+    },
+    "I01-rust-services.log": {
+      "sha256": "7782e2abb193962b3b412d2f6803c992412fbb023113feab61a442931c1bbaa4",
+      "test_results": [
+        "test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s",
+        "test result: ok. 12 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.04s",
+        "test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s",
+        "test result: ok. 83 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 21.68s",
+        "test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s",
+        "test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s",
+        "test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s",
+        "test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s"
+      ]
+    },
+    "I01-sdk.log": {
+      "sha256": "55359daf7ce5908d7e4d9fe3afbca4af79af3eb1abe23b433392b2bce9643622",
+      "test_results": [
+        "\u2139 tests 309",
+        "\u2139 pass 309",
+        "\u2139 fail 0",
+        "\u2139 skipped 0"
+      ]
+    },
+    "I02-clippy.log": {
+      "sha256": "ef441e28bf5fbe4398071f9f0ec804ed3df6075b471d6648c70e70b045e43432",
+      "test_results": []
+    },
+    "I02-wasm.log": {
+      "sha256": "f71a3eebeb0d2b76e920d8007609bee6fb2489932251ea8b7790701673afee8d",
+      "test_results": []
+    },
+    "I02-workspace.log": {
+      "sha256": "4321187b527006d71ea7554f0ee3250929bd43201d6f62001e670d8e44c0d470",
+      "test_results": [
+        "test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s",
+        "test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 17.13s",
+        "test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s",
+        "test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s",
+        "test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s",
+        "test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s"
+      ]
+    },
+    "I02-typescript.log": {
+      "sha256": "136c80ac569e8d379c796018219c749cca41380c6df9f2f91319b1967ea6414c",
+      "test_results": [
+        "\u2139 tests 4",
+        "\u2139 pass 4",
+        "\u2139 fail 0",
+        "\u2139 skipped 0"
+      ]
+    }
+  },
+  "limitations": [
+    "Go baseline dependency download blocked by storage.googleapis.com policy",
+    "GitHub Actions workflow not remotely executed",
+    "No SBF/SVM/CU/full transaction size or token CPI measurement",
+    "Tree backend remains undecided; I03 dependency not met",
+    "WASM types compiled only; WASM proof/vector execution not run",
+    "G1/G2/G3/G4 not passed"
+  ],
+  "go_baseline": {
+    "status": "blocked_dependency_download",
+    "blocked_host": "storage.googleapis.com",
+    "passed_packages": [
+      "internal/config",
+      "internal/relay",
+      "internal/server"
+    ],
+    "umask": "022",
+    "full_suite_passed": false
+  }
+}

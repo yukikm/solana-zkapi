@@ -1,0 +1,21 @@
+{
+  "commit": "045b444ea1b52538d1b40273c7cb6ed09468a052",
+  "url": "https://github.com/ethereum/zkapi.git",
+  "setup_scope": "upstream_single_party_compatibility_only",
+  "sha256": {
+    "Cargo.lock": "efd66e30f0abea2da56ae61210d2e55539ae7083d400f2e1cc21ba3065301d79",
+    "Cargo.toml": "ed8c33045de5ab832e4546bf8deaf4c14c5e31d12776c6fffe08be393aba2f4d",
+    "protocol/rust/Cargo.lock": "ffdddc0080613649566f0f8bc90bacfa4f1e03105499b42d1639329ba3a1fec0",
+    "protocol/rust/Cargo.toml": "0505e0536e65fec09f2bad31662ef8347ebe00e22f430ac3ec0e0f107725b02f",
+    "package-lock.json": "790b039a8a05dcc42bbef9495c7d0a8d1991a3880147708f8b10bcf850efb964",
+    "package.json": "f7ebc50b607a71cd791e0fd3a61003e0ea6b199fe44fd8199fdeec289f6f40b5",
+    "zkapi-clientd/go.mod": "c5e7700e929c2997be02af828d3844e1dec55a310edf97435ade7849a9583af3",
+    "zkapi-clientd/go.sum": "67bec3c6ac80e51c4e6d9cfb0e5144311c21bb9fb2465ed531aa5909c846a664",
+    "zkapi-clientd/LICENSE": "93f998678a6b27b6d536cdcfdce49c5839b9f8f157d2245359fc98b69fade90c",
+    "protocol/setup/v2/request.pk": "c894b261a13f571d0df36be29734aabf2a8cd7162baddc5e08a50341aa076584",
+    "protocol/setup/v2/request.vk": "8011244c99fa1a8524870906462d430fc86366b8ad821736c5fa726b479e6d97",
+    "protocol/setup/v2/withdrawal.pk": "8e41398092fdd02b9ff86c6ccbecbd7ce2402e6f22ec162e6124d1d04fe0a668",
+    "protocol/setup/v2/withdrawal.vk": "2a8ea7f07176e369a93d1d816124192a798d1466c99fd6dc47850ba82094b679",
+    "protocol/setup/v2/README.md": "df3fad81c1be174ab43c61447a304ff70ef440a1f9120e8261b77e868240fa05"
+  }
+}

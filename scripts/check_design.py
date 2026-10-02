@@ -67,6 +67,9 @@ vectors = documents['docs/contracts/binding-vectors.json']
 r=int(vectors['fr_modulus'])
 for v in vectors['vectors']:
     label=v['label'].encode('ascii'); parts=[bytes.fromhex(x) for x in v['parts_hex']]
+    if v['label']=='solana-zkapi-vault-v1':
+        check([len(p) for p in parts]==[32,32,32,32,32,1], 'Vault binding part arity')
+        check(parts[-1]==bytes([6]), 'USDC binding decimals')
     framed=len(label).to_bytes(2,'big')+label+len(parts).to_bytes(2,'big')
     for part in parts: framed+=len(part).to_bytes(4,'big')+part
     digest=hashlib.sha256(framed).digest()
@@ -86,7 +89,10 @@ check(target['billing_asset']=='circle_usdc_on_solana','USDC target')
 check(target['proxy_mode']=='required_initial_production','Proxy must be required')
 check(reference['observed_mainnet_sdk_config']['trusted_deployment']['billing_asset']=='native_eth','Upstream evidence changed')
 check({x['id'] for x in reference['work_items']}=={f'I{i:02}' for i in range(1,13)},'Task IDs')
-check(all(x['status']=='not_started' for x in reference['work_items']),'Runtime work marked complete')
+for item in reference['work_items']:
+    check(item['status'] in ('not_started','in_progress','completed','blocked'), 'Unknown implementation status')
+    if item['status']!='not_started':
+        check((ROOT/'docs/evidence'/f'{item["id"]}.md').is_file(), 'Missing implementation evidence '+item['id'])
 
 parity=(ROOT/'docs/production-parity.md').read_text()
 features=re.findall(r'^\| (P\d\d) \|',parity,re.M)
@@ -111,4 +117,4 @@ if errors:
     raise SystemExit(1)
 print(f'PASS: {len(documents)} JSON documents; {len(api["paths"])} API paths; {refs} schema references; {link_count} local links.')
 print(f'PASS: {len(features)} required features; {len(tests)} acceptance scenarios; {len(vectors["vectors"])} binding vectors; {len(vectors["rounding"])} rounding vectors.')
-print('NOT RUN: real proofs, SVM/CU, PostgreSQL migration, provider integration, independent audit.')
+print('NOT CHECKED BY THIS SCRIPT: real proofs, SVM/CU, PostgreSQL migration, provider integration, independent audit.')
