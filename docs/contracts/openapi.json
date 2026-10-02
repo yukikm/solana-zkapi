@@ -1,0 +1,2799 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Solana zkAPI USDC + Proxy",
+    "version": "1.0.0-design",
+    "description": "Implementation contract, not a deployed service. JSON amounts are decimal strings. Public control objects reject unknown fields; provider nested payloads require adapter validation."
+  },
+  "servers": [
+    {
+      "url": "https://zkapi.example.invalid"
+    }
+  ],
+  "paths": {
+    "/health": {
+      "get": {
+        "operationId": "health",
+        "description": "",
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Health"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error; see error contract.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/zkapi/v1/config": {
+      "get": {
+        "operationId": "config",
+        "description": "",
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Manifest"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error; see error contract.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/zkapi/v1/catalog": {
+      "get": {
+        "operationId": "catalog",
+        "description": "",
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Catalog"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error; see error contract.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/zkapi/v1/attestation": {
+      "get": {
+        "operationId": "attestation",
+        "description": "",
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Attestation"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error; see error contract.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/zkapi/v1/tariffs/{tariff_hash}": {
+      "get": {
+        "operationId": "tariff",
+        "description": "",
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Tariff"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error; see error contract.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "tariff_hash",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{64}$"
+            }
+          }
+        ]
+      }
+    },
+    "/zkapi/v1/quotes": {
+      "post": {
+        "operationId": "quote",
+        "description": "",
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Quote"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error; see error contract.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/QuoteRequest"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/zkapi/v1/sessions": {
+      "post": {
+        "operationId": "createSession",
+        "description": "Exact body retry only. First direct creation may contain provider_key. It is never replayed. Control token hash must match proof-bound authorization.",
+        "security": [
+          {
+            "ControlToken": []
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionCreated"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error; see error contract.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "Idempotent existing result, no provider key",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionStatus"
+                }
+              }
+            }
+          },
+          "202": {
+            "description": "Reserved; issuance in progress or unknown",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionStatus"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SessionCreate"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/zkapi/v1/sessions/{request_id}": {
+      "get": {
+        "operationId": "sessionStatus",
+        "description": "",
+        "security": [
+          {
+            "ControlToken": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionStatus"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error; see error contract.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "request_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+            }
+          }
+        ]
+      }
+    },
+    "/zkapi/v1/sessions/{request_id}/close": {
+      "post": {
+        "operationId": "closeSession",
+        "description": "",
+        "security": [
+          {
+            "ControlToken": []
+          }
+        ],
+        "responses": {
+          "202": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionStatus"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error; see error contract.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "request_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+            }
+          }
+        ]
+      }
+    },
+    "/zkapi/v1/sessions/{request_id}/operations/{operation_id}": {
+      "get": {
+        "operationId": "operationStatus",
+        "description": "",
+        "security": [
+          {
+            "ControlToken": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OperationStatus"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error; see error contract.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "request_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+            }
+          },
+          {
+            "name": "operation_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+            }
+          }
+        ]
+      }
+    },
+    "/zkapi/v1/withdraw/clearance": {
+      "post": {
+        "operationId": "clearance",
+        "description": "Nullifier capability; atomic exclusion with AUTH reservation. Rate limited, no wallet identity.",
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ClearanceResponse"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error; see error contract.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ClearanceRequest"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/zkapi/v1/nullifiers/{nullifier}": {
+      "get": {
+        "operationId": "nullifierStatus",
+        "description": "",
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NullifierStatus"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error; see error contract.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "nullifier",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^0x[0-9a-f]{64}$",
+              "description": "Canonical BN254 Fr; reject >= r."
+            }
+          }
+        ]
+      }
+    },
+    "/admin/v1/dashboard/summary": {
+      "get": {
+        "operationId": "dashboardSummary",
+        "description": "Private listener only, network ACL + admin credential. Never exposes prompts, IPs or keys.",
+        "security": [
+          {
+            "AdminToken": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DashboardSummary"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error; see error contract.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "servers": [
+          {
+            "url": "https://admin.example.invalid"
+          }
+        ]
+      }
+    },
+    "/admin/v1/dashboard/recent": {
+      "get": {
+        "operationId": "dashboardRecent",
+        "description": "Private listener only, network ACL + admin credential. Never exposes prompts, IPs or keys.",
+        "security": [
+          {
+            "AdminToken": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DashboardEvents"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error; see error contract.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "servers": [
+          {
+            "url": "https://admin.example.invalid"
+          }
+        ]
+      }
+    },
+    "/admin/v1/dashboard/events": {
+      "get": {
+        "operationId": "dashboardEvents",
+        "description": "Private listener only, network ACL + admin credential. Never exposes prompts, IPs or keys.",
+        "security": [
+          {
+            "AdminToken": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DashboardEvents"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error; see error contract.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "servers": [
+          {
+            "url": "https://admin.example.invalid"
+          }
+        ]
+      }
+    },
+    "/zkapi/v1/tree/root": {
+      "get": {
+        "operationId": "treeRoot",
+        "description": "",
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Root"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error; see error contract.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/zkapi/v1/tree/snapshot": {
+      "get": {
+        "operationId": "treeSnapshot",
+        "description": "",
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Snapshot"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error; see error contract.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/zkapi/v1/tree/notes/{note_id}/path": {
+      "get": {
+        "operationId": "notePath",
+        "description": "Finalized snapshot; zero-path only for empty leaf.",
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Path"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error; see error contract.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "note_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^(0|[1-9][0-9]*)$",
+              "description": "Unsigned integer decimal string; enforce semantic bounds in specs."
+            }
+          }
+        ]
+      }
+    },
+    "/zkapi/v1/tree/notes/{note_id}/zero-path": {
+      "get": {
+        "operationId": "noteZeropath",
+        "description": "Finalized snapshot; zero-path only for empty leaf.",
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Path"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error; see error contract.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "note_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^(0|[1-9][0-9]*)$",
+              "description": "Unsigned integer decimal string; enforce semantic bounds in specs."
+            }
+          }
+        ]
+      }
+    },
+    "/v1/chat/completions": {
+      "post": {
+        "operationId": "chatCompletions",
+        "security": [
+          {
+            "ProxyToken": []
+          },
+          {
+            "AnthropicProxyKey": []
+          }
+        ],
+        "description": "Proxy only; validate provider-native nested fields against pinned adapter schema. Reject unsupported modalities/tools before dispatch. Idempotency retry returns status, never reruns inference.",
+        "parameters": [
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChatRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Provider-native JSON or SSE (count_tokens: JSON only).",
+            "headers": {
+              "X-Zkapi-Operation-Id": {
+                "schema": {
+                  "type": "string",
+                  "format": "uuid",
+                  "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {},
+                  "required": [],
+                  "additionalProperties": true
+                }
+              },
+              "text/event-stream": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Provider-compatible error; X-Zkapi-Error-Code header. No raw provider secrets."
+          }
+        }
+      }
+    },
+    "/v1/responses": {
+      "post": {
+        "operationId": "responses",
+        "security": [
+          {
+            "ProxyToken": []
+          },
+          {
+            "AnthropicProxyKey": []
+          }
+        ],
+        "description": "Proxy only; validate provider-native nested fields against pinned adapter schema. Reject unsupported modalities/tools before dispatch. Idempotency retry returns status, never reruns inference.",
+        "parameters": [
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ResponsesRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Provider-native JSON or SSE (count_tokens: JSON only).",
+            "headers": {
+              "X-Zkapi-Operation-Id": {
+                "schema": {
+                  "type": "string",
+                  "format": "uuid",
+                  "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {},
+                  "required": [],
+                  "additionalProperties": true
+                }
+              },
+              "text/event-stream": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Provider-compatible error; X-Zkapi-Error-Code header. No raw provider secrets."
+          }
+        }
+      }
+    },
+    "/v1/messages": {
+      "post": {
+        "operationId": "messages",
+        "security": [
+          {
+            "ProxyToken": []
+          },
+          {
+            "AnthropicProxyKey": []
+          }
+        ],
+        "description": "Proxy only; validate provider-native nested fields against pinned adapter schema. Reject unsupported modalities/tools before dispatch. Idempotency retry returns status, never reruns inference.",
+        "parameters": [
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+            }
+          },
+          {
+            "name": "anthropic-version",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MessagesRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Provider-native JSON or SSE (count_tokens: JSON only).",
+            "headers": {
+              "X-Zkapi-Operation-Id": {
+                "schema": {
+                  "type": "string",
+                  "format": "uuid",
+                  "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {},
+                  "required": [],
+                  "additionalProperties": true
+                }
+              },
+              "text/event-stream": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Provider-compatible error; X-Zkapi-Error-Code header. No raw provider secrets."
+          }
+        }
+      }
+    },
+    "/v1/messages/count_tokens": {
+      "post": {
+        "operationId": "countTokens",
+        "security": [
+          {
+            "ProxyToken": []
+          },
+          {
+            "AnthropicProxyKey": []
+          }
+        ],
+        "description": "Proxy only; validate provider-native nested fields against pinned adapter schema. Reject unsupported modalities/tools before dispatch. Idempotency retry returns status, never reruns inference.",
+        "parameters": [
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+            }
+          },
+          {
+            "name": "anthropic-version",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CountTokensRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Provider-native JSON or SSE (count_tokens: JSON only).",
+            "headers": {
+              "X-Zkapi-Operation-Id": {
+                "schema": {
+                  "type": "string",
+                  "format": "uuid",
+                  "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {},
+                  "required": [],
+                  "additionalProperties": true
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Provider-compatible error; X-Zkapi-Error-Code header. No raw provider secrets."
+          }
+        }
+      }
+    },
+    "/v1/models": {
+      "get": {
+        "operationId": "models",
+        "security": [
+          {
+            "ProxyToken": []
+          },
+          {
+            "AnthropicProxyKey": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Provider-compatible allowlisted model list.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {},
+                  "required": [],
+                  "additionalProperties": true
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "UInt": {
+        "type": "string",
+        "pattern": "^(0|[1-9][0-9]*)$",
+        "description": "Unsigned integer decimal string; enforce semantic bounds in specs."
+      },
+      "Hash": {
+        "type": "string",
+        "pattern": "^[0-9a-f]{64}$"
+      },
+      "Field": {
+        "type": "string",
+        "pattern": "^0x[0-9a-f]{64}$",
+        "description": "Canonical BN254 Fr; reject >= r."
+      },
+      "Pubkey": {
+        "type": "string",
+        "pattern": "^[1-9A-HJ-NP-Za-km-z]{32,44}$",
+        "description": "Base58 decoding must yield exactly 32 bytes."
+      },
+      "RequestId": {
+        "type": "string",
+        "format": "uuid",
+        "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+      },
+      "Mode": {
+        "type": "string",
+        "enum": [
+          "proxy",
+          "direct_openrouter",
+          "direct_oa"
+        ]
+      },
+      "Provider": {
+        "type": "string",
+        "enum": [
+          "openai",
+          "anthropic",
+          "openrouter",
+          "oa"
+        ]
+      },
+      "Point": {
+        "type": "object",
+        "properties": {
+          "x": {
+            "type": "string",
+            "pattern": "^0x[0-9a-f]{64}$",
+            "description": "Canonical BN254 Fr; reject >= r."
+          },
+          "y": {
+            "type": "string",
+            "pattern": "^0x[0-9a-f]{64}$",
+            "description": "Canonical BN254 Fr; reject >= r."
+          }
+        },
+        "required": [
+          "x",
+          "y"
+        ],
+        "additionalProperties": false
+      },
+      "SchnorrSignature": {
+        "type": "object",
+        "properties": {
+          "r_x": {
+            "type": "string",
+            "pattern": "^0x[0-9a-f]{64}$",
+            "description": "Canonical BN254 Fr; reject >= r."
+          },
+          "r_y": {
+            "type": "string",
+            "pattern": "^0x[0-9a-f]{64}$",
+            "description": "Canonical BN254 Fr; reject >= r."
+          },
+          "s": {
+            "type": "string",
+            "pattern": "^0x[0-9a-f]{64}$",
+            "description": "Canonical BN254 Fr; reject >= r."
+          }
+        },
+        "required": [
+          "r_x",
+          "r_y",
+          "s"
+        ],
+        "additionalProperties": false
+      },
+      "Proof": {
+        "type": "object",
+        "properties": {
+          "backend": {
+            "const": "groth16_bn254",
+            "type": "string"
+          },
+          "proof": {
+            "type": "string",
+            "contentEncoding": "base64",
+            "minLength": 344,
+            "maxLength": 344,
+            "description": "Strict RFC4648 base64, exactly 256 decoded bytes."
+          }
+        },
+        "required": [
+          "backend",
+          "proof"
+        ],
+        "additionalProperties": false
+      },
+      "RequestInputs": {
+        "type": "array",
+        "items": {
+          "type": "string",
+          "pattern": "^0x[0-9a-f]{64}$",
+          "description": "Canonical BN254 Fr; reject >= r."
+        },
+        "minItems": 12,
+        "maxItems": 12
+      },
+      "Error": {
+        "type": "object",
+        "properties": {
+          "error": {
+            "type": "object",
+            "properties": {
+              "code": {
+                "type": "string"
+              },
+              "message": {
+                "type": "string"
+              },
+              "retriable": {
+                "type": "boolean"
+              },
+              "request_id": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "retry_after_seconds": {
+                "type": "string",
+                "pattern": "^(0|[1-9][0-9]*)$",
+                "description": "Unsigned integer decimal string; enforce semantic bounds in specs."
+              },
+              "latest_root": {
+                "type": "string",
+                "pattern": "^0x[0-9a-f]{64}$",
+                "description": "Canonical BN254 Fr; reject >= r."
+              }
+            },
+            "required": [
+              "code",
+              "message",
+              "retriable"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "error"
+        ],
+        "additionalProperties": false
+      },
+      "QuoteRequest": {
+        "type": "object",
+        "properties": {
+          "mode": {
+            "type": "string",
+            "enum": [
+              "proxy",
+              "direct_openrouter",
+              "direct_oa"
+            ]
+          },
+          "provider": {
+            "type": "string",
+            "enum": [
+              "openai",
+              "anthropic",
+              "openrouter",
+              "oa"
+            ]
+          },
+          "models": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "minItems": 1,
+            "maxItems": 32,
+            "uniqueItems": true
+          },
+          "session_ttl_seconds": {
+            "type": "string",
+            "pattern": "^(0|[1-9][0-9]*)$",
+            "description": "Unsigned integer decimal string; enforce semantic bounds in specs."
+          }
+        },
+        "required": [
+          "mode",
+          "provider",
+          "models"
+        ],
+        "additionalProperties": false
+      },
+      "QuoteBody": {
+        "type": "object",
+        "properties": {
+          "quote_id": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+          },
+          "deployment_id": {
+            "type": "string"
+          },
+          "pool": {
+            "type": "string",
+            "pattern": "^[1-9A-HJ-NP-Za-km-z]{32,44}$",
+            "description": "Base58 decoding must yield exactly 32 bytes."
+          },
+          "mode": {
+            "type": "string",
+            "enum": [
+              "proxy",
+              "direct_openrouter",
+              "direct_oa"
+            ]
+          },
+          "provider": {
+            "type": "string",
+            "enum": [
+              "openai",
+              "anthropic",
+              "openrouter",
+              "oa"
+            ]
+          },
+          "models": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "minItems": 1,
+            "uniqueItems": true
+          },
+          "tariff_hash": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          },
+          "cap_micro_usdc": {
+            "type": "string",
+            "pattern": "^(0|[1-9][0-9]*)$",
+            "description": "Unsigned integer decimal string; enforce semantic bounds in specs."
+          },
+          "issued_at": {
+            "type": "string",
+            "pattern": "^(0|[1-9][0-9]*)$",
+            "description": "Unsigned integer decimal string; enforce semantic bounds in specs."
+          },
+          "expires_at": {
+            "type": "string",
+            "pattern": "^(0|[1-9][0-9]*)$",
+            "description": "Unsigned integer decimal string; enforce semantic bounds in specs."
+          },
+          "session_ttl_seconds": {
+            "type": "string",
+            "pattern": "^(0|[1-9][0-9]*)$",
+            "description": "Unsigned integer decimal string; enforce semantic bounds in specs."
+          },
+          "max_concurrency": {
+            "type": "string",
+            "pattern": "^(0|[1-9][0-9]*)$",
+            "description": "Unsigned integer decimal string; enforce semantic bounds in specs."
+          },
+          "control_api_origin": {
+            "type": "string",
+            "format": "uri"
+          },
+          "inference_api_origin": {
+            "type": "string",
+            "format": "uri"
+          }
+        },
+        "required": [
+          "quote_id",
+          "deployment_id",
+          "pool",
+          "mode",
+          "provider",
+          "models",
+          "tariff_hash",
+          "cap_micro_usdc",
+          "issued_at",
+          "expires_at",
+          "session_ttl_seconds",
+          "max_concurrency",
+          "control_api_origin",
+          "inference_api_origin"
+        ],
+        "additionalProperties": false
+      },
+      "Quote": {
+        "type": "object",
+        "properties": {
+          "body": {
+            "$ref": "#/components/schemas/QuoteBody"
+          },
+          "quote_hash": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          },
+          "signature": {
+            "type": "string",
+            "contentEncoding": "base64",
+            "description": "64-byte Ed25519 signature over raw quote hash."
+          }
+        },
+        "required": [
+          "body",
+          "quote_hash",
+          "signature"
+        ],
+        "additionalProperties": false
+      },
+      "Authorization": {
+        "type": "object",
+        "properties": {
+          "version": {
+            "type": "string",
+            "const": "1"
+          },
+          "deployment_id": {
+            "type": "string"
+          },
+          "pool": {
+            "type": "string",
+            "pattern": "^[1-9A-HJ-NP-Za-km-z]{32,44}$",
+            "description": "Base58 decoding must yield exactly 32 bytes."
+          },
+          "request_id": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+          },
+          "quote_hash": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          },
+          "mode": {
+            "type": "string",
+            "enum": [
+              "proxy",
+              "direct_openrouter",
+              "direct_oa"
+            ]
+          },
+          "control_secret_hash": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          },
+          "proxy_secret_hash": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^[0-9a-f]{64}$"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "version",
+          "deployment_id",
+          "pool",
+          "request_id",
+          "quote_hash",
+          "mode",
+          "control_secret_hash",
+          "proxy_secret_hash"
+        ],
+        "additionalProperties": false
+      },
+      "SessionCreate": {
+        "type": "object",
+        "properties": {
+          "authorization": {
+            "$ref": "#/components/schemas/Authorization"
+          },
+          "quote": {
+            "$ref": "#/components/schemas/Quote"
+          },
+          "public_inputs": {
+            "$ref": "#/components/schemas/RequestInputs"
+          },
+          "proof": {
+            "$ref": "#/components/schemas/Proof"
+          }
+        },
+        "required": [
+          "authorization",
+          "quote",
+          "public_inputs",
+          "proof"
+        ],
+        "additionalProperties": false
+      },
+      "Settlement": {
+        "type": "object",
+        "properties": {
+          "charge_micro_usdc": {
+            "type": "string",
+            "pattern": "^(0|[1-9][0-9]*)$",
+            "description": "Unsigned integer decimal string; enforce semantic bounds in specs."
+          },
+          "next_commitment": {
+            "$ref": "#/components/schemas/Point"
+          },
+          "next_anchor": {
+            "type": "string",
+            "pattern": "^0x[0-9a-f]{64}$",
+            "description": "Canonical BN254 Fr; reject >= r."
+          },
+          "blind_delta_srv": {
+            "type": "string",
+            "pattern": "^0x[0-9a-f]{64}$",
+            "description": "Canonical BN254 Fr; reject >= r."
+          },
+          "next_state_signature": {
+            "$ref": "#/components/schemas/SchnorrSignature"
+          }
+        },
+        "required": [
+          "charge_micro_usdc",
+          "next_commitment",
+          "next_anchor",
+          "blind_delta_srv",
+          "next_state_signature"
+        ],
+        "additionalProperties": false
+      },
+      "SessionCreated": {
+        "type": "object",
+        "properties": {
+          "request_id": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+          },
+          "mode": {
+            "type": "string",
+            "enum": [
+              "proxy",
+              "direct_openrouter",
+              "direct_oa"
+            ]
+          },
+          "state": {
+            "type": "string",
+            "enum": [
+              "RESERVED",
+              "ISSUING",
+              "ISSUANCE_UNKNOWN",
+              "ACTIVE",
+              "DRAINING",
+              "RECONCILING",
+              "SIGN_PENDING",
+              "SETTLED"
+            ]
+          },
+          "cap_micro_usdc": {
+            "type": "string",
+            "pattern": "^(0|[1-9][0-9]*)$",
+            "description": "Unsigned integer decimal string; enforce semantic bounds in specs."
+          },
+          "issued_at": {
+            "type": "string",
+            "pattern": "^(0|[1-9][0-9]*)$",
+            "description": "Unsigned integer decimal string; enforce semantic bounds in specs."
+          },
+          "expires_at": {
+            "type": "string",
+            "pattern": "^(0|[1-9][0-9]*)$",
+            "description": "Unsigned integer decimal string; enforce semantic bounds in specs."
+          },
+          "settlement": {
+            "$ref": "#/components/schemas/Settlement"
+          },
+          "provider_key": {
+            "type": "string"
+          },
+          "provider_api_origin": {
+            "type": "string"
+          },
+          "last_error_code": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "request_id",
+          "mode",
+          "state",
+          "cap_micro_usdc"
+        ],
+        "additionalProperties": false
+      },
+      "SessionStatus": {
+        "type": "object",
+        "properties": {
+          "request_id": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+          },
+          "mode": {
+            "type": "string",
+            "enum": [
+              "proxy",
+              "direct_openrouter",
+              "direct_oa"
+            ]
+          },
+          "state": {
+            "type": "string",
+            "enum": [
+              "RESERVED",
+              "ISSUING",
+              "ISSUANCE_UNKNOWN",
+              "ACTIVE",
+              "DRAINING",
+              "RECONCILING",
+              "SIGN_PENDING",
+              "SETTLED"
+            ]
+          },
+          "cap_micro_usdc": {
+            "type": "string",
+            "pattern": "^(0|[1-9][0-9]*)$",
+            "description": "Unsigned integer decimal string; enforce semantic bounds in specs."
+          },
+          "issued_at": {
+            "type": "string",
+            "pattern": "^(0|[1-9][0-9]*)$",
+            "description": "Unsigned integer decimal string; enforce semantic bounds in specs."
+          },
+          "expires_at": {
+            "type": "string",
+            "pattern": "^(0|[1-9][0-9]*)$",
+            "description": "Unsigned integer decimal string; enforce semantic bounds in specs."
+          },
+          "settlement": {
+            "$ref": "#/components/schemas/Settlement"
+          },
+          "provider_api_origin": {
+            "type": "string"
+          },
+          "last_error_code": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "request_id",
+          "mode",
+          "state",
+          "cap_micro_usdc"
+        ],
+        "additionalProperties": false
+      },
+      "OperationStatus": {
+        "type": "object",
+        "properties": {
+          "operation_id": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+          },
+          "request_id": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+          },
+          "state": {
+            "type": "string",
+            "enum": [
+              "RESERVED",
+              "DISPATCHING",
+              "STREAMING",
+              "USAGE_UNKNOWN",
+              "METERED",
+              "DONE",
+              "WAIVED_OPERATOR_LOSS"
+            ]
+          },
+          "charged_nano_usdc": {
+            "type": "string",
+            "pattern": "^(0|[1-9][0-9]*)$",
+            "description": "Unsigned integer decimal string; enforce semantic bounds in specs."
+          },
+          "usage": {
+            "type": "object",
+            "properties": {},
+            "required": [],
+            "additionalProperties": true
+          },
+          "tariff_hash": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          },
+          "response_replayable": {
+            "type": "boolean",
+            "const": false
+          }
+        },
+        "required": [
+          "operation_id",
+          "request_id",
+          "state",
+          "response_replayable"
+        ],
+        "additionalProperties": false
+      },
+      "ClearanceRequest": {
+        "type": "object",
+        "properties": {
+          "nullifier": {
+            "type": "string",
+            "pattern": "^0x[0-9a-f]{64}$",
+            "description": "Canonical BN254 Fr; reject >= r."
+          }
+        },
+        "required": [
+          "nullifier"
+        ],
+        "additionalProperties": false
+      },
+      "ClearanceResponse": {
+        "type": "object",
+        "properties": {
+          "nullifier": {
+            "type": "string",
+            "pattern": "^0x[0-9a-f]{64}$",
+            "description": "Canonical BN254 Fr; reject >= r."
+          },
+          "signature": {
+            "$ref": "#/components/schemas/SchnorrSignature"
+          }
+        },
+        "required": [
+          "nullifier",
+          "signature"
+        ],
+        "additionalProperties": false
+      },
+      "Health": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "ok",
+              "degraded"
+            ]
+          },
+          "accepting": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "status",
+          "accepting"
+        ],
+        "additionalProperties": false
+      },
+      "NullifierStatus": {
+        "type": "object",
+        "properties": {
+          "nullifier": {
+            "type": "string",
+            "pattern": "^0x[0-9a-f]{64}$",
+            "description": "Canonical BN254 Fr; reject >= r."
+          },
+          "state": {
+            "type": "string",
+            "enum": [
+              "unused",
+              "authorized",
+              "cleared",
+              "exit_consumed",
+              "unknown"
+            ]
+          }
+        },
+        "required": [
+          "nullifier",
+          "state"
+        ],
+        "additionalProperties": false
+      },
+      "DashboardSummary": {
+        "type": "object",
+        "properties": {
+          "active_sessions": {
+            "type": "string",
+            "pattern": "^(0|[1-9][0-9]*)$",
+            "description": "Unsigned integer decimal string; enforce semantic bounds in specs."
+          },
+          "pending_settlements": {
+            "type": "string",
+            "pattern": "^(0|[1-9][0-9]*)$",
+            "description": "Unsigned integer decimal string; enforce semantic bounds in specs."
+          },
+          "charged_micro_usdc": {
+            "type": "string",
+            "pattern": "^(0|[1-9][0-9]*)$",
+            "description": "Unsigned integer decimal string; enforce semantic bounds in specs."
+          },
+          "root_lag_slots": {
+            "type": "string",
+            "pattern": "^(0|[1-9][0-9]*)$",
+            "description": "Unsigned integer decimal string; enforce semantic bounds in specs."
+          },
+          "unknown_operations": {
+            "type": "string",
+            "pattern": "^(0|[1-9][0-9]*)$",
+            "description": "Unsigned integer decimal string; enforce semantic bounds in specs."
+          }
+        },
+        "required": [
+          "active_sessions",
+          "pending_settlements",
+          "charged_micro_usdc",
+          "root_lag_slots",
+          "unknown_operations"
+        ],
+        "additionalProperties": false
+      },
+      "DashboardEvent": {
+        "type": "object",
+        "properties": {
+          "timestamp": {
+            "type": "string",
+            "pattern": "^(0|[1-9][0-9]*)$",
+            "description": "Unsigned integer decimal string; enforce semantic bounds in specs."
+          },
+          "kind": {
+            "type": "string"
+          },
+          "request_id": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+          },
+          "state": {
+            "type": "string"
+          },
+          "charge_micro_usdc": {
+            "type": "string",
+            "pattern": "^(0|[1-9][0-9]*)$",
+            "description": "Unsigned integer decimal string; enforce semantic bounds in specs."
+          }
+        },
+        "required": [
+          "timestamp",
+          "kind",
+          "state"
+        ],
+        "additionalProperties": false
+      },
+      "DashboardEvents": {
+        "type": "object",
+        "properties": {
+          "events": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DashboardEvent"
+            }
+          },
+          "next_cursor": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "events",
+          "next_cursor"
+        ],
+        "additionalProperties": false
+      },
+      "Manifest": {
+        "type": "object",
+        "properties": {
+          "deployment_id": {
+            "type": "string"
+          },
+          "manifest_hash": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          },
+          "genesis_hash": {
+            "type": "string",
+            "pattern": "^[1-9A-HJ-NP-Za-km-z]{32,44}$",
+            "description": "Base58 decoding must yield exactly 32 bytes."
+          },
+          "program_id": {
+            "type": "string",
+            "pattern": "^[1-9A-HJ-NP-Za-km-z]{32,44}$",
+            "description": "Base58 decoding must yield exactly 32 bytes."
+          },
+          "pool": {
+            "type": "string",
+            "pattern": "^[1-9A-HJ-NP-Za-km-z]{32,44}$",
+            "description": "Base58 decoding must yield exactly 32 bytes."
+          },
+          "mint": {
+            "type": "string",
+            "pattern": "^[1-9A-HJ-NP-Za-km-z]{32,44}$",
+            "description": "Base58 decoding must yield exactly 32 bytes."
+          },
+          "token_program": {
+            "type": "string",
+            "pattern": "^[1-9A-HJ-NP-Za-km-z]{32,44}$",
+            "description": "Base58 decoding must yield exactly 32 bytes."
+          },
+          "decimals": {
+            "type": "integer",
+            "const": 6
+          },
+          "vault_binding": {
+            "type": "string",
+            "pattern": "^0x[0-9a-f]{64}$",
+            "description": "Canonical BN254 Fr; reject >= r."
+          },
+          "state_key": {
+            "$ref": "#/components/schemas/Point"
+          },
+          "clearance_key": {
+            "$ref": "#/components/schemas/Point"
+          },
+          "quote_public_key": {
+            "type": "string",
+            "pattern": "^[1-9A-HJ-NP-Za-km-z]{32,44}$",
+            "description": "Base58 decoding must yield exactly 32 bytes."
+          },
+          "circuit_id": {
+            "type": "string"
+          },
+          "tree_backend": {
+            "type": "string",
+            "enum": [
+              "sbf_poseidon",
+              "transition_proof"
+            ]
+          },
+          "request_pk_hash": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          },
+          "request_vk_hash": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          },
+          "withdrawal_pk_hash": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          },
+          "withdrawal_vk_hash": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          },
+          "cap_micro_usdc": {
+            "type": "string",
+            "pattern": "^(0|[1-9][0-9]*)$",
+            "description": "Unsigned integer decimal string; enforce semantic bounds in specs."
+          },
+          "note_ttl_seconds": {
+            "type": "string",
+            "pattern": "^(0|[1-9][0-9]*)$",
+            "description": "Unsigned integer decimal string; enforce semantic bounds in specs."
+          },
+          "challenge_seconds": {
+            "type": "string",
+            "pattern": "^(0|[1-9][0-9]*)$",
+            "description": "Unsigned integer decimal string; enforce semantic bounds in specs."
+          },
+          "control_api_origin": {
+            "type": "string"
+          },
+          "inference_api_origin": {
+            "type": "string"
+          },
+          "manifest_signature": {
+            "type": "string"
+          },
+          "idl_hash": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          },
+          "api_endpoints": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "tariff_hashes": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{64}$"
+            }
+          },
+          "artifact_digests": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{64}$"
+            }
+          },
+          "db_schema_version": {
+            "type": "string",
+            "pattern": "^(0|[1-9][0-9]*)$",
+            "description": "Unsigned integer decimal string; enforce semantic bounds in specs."
+          },
+          "proving_keys_base_url": {
+            "type": "string",
+            "format": "uri"
+          },
+          "tree_proof_artifacts": {
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "pk_hash": {
+                    "type": "string",
+                    "pattern": "^[0-9a-f]{64}$"
+                  },
+                  "vk_hash": {
+                    "type": "string",
+                    "pattern": "^[0-9a-f]{64}$"
+                  }
+                },
+                "required": [
+                  "pk_hash",
+                  "vk_hash"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "deployment_id",
+          "manifest_hash",
+          "genesis_hash",
+          "program_id",
+          "pool",
+          "mint",
+          "token_program",
+          "decimals",
+          "vault_binding",
+          "state_key",
+          "clearance_key",
+          "quote_public_key",
+          "circuit_id",
+          "tree_backend",
+          "request_pk_hash",
+          "request_vk_hash",
+          "withdrawal_pk_hash",
+          "withdrawal_vk_hash",
+          "cap_micro_usdc",
+          "note_ttl_seconds",
+          "challenge_seconds",
+          "control_api_origin",
+          "inference_api_origin",
+          "manifest_signature",
+          "idl_hash",
+          "api_endpoints",
+          "tariff_hashes",
+          "artifact_digests",
+          "db_schema_version",
+          "proving_keys_base_url",
+          "tree_proof_artifacts"
+        ],
+        "additionalProperties": false
+      },
+      "CatalogEntry": {
+        "type": "object",
+        "properties": {
+          "model": {
+            "type": "string"
+          },
+          "provider": {
+            "type": "string",
+            "enum": [
+              "openai",
+              "anthropic",
+              "openrouter",
+              "oa"
+            ]
+          },
+          "modes": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "proxy",
+                "direct_openrouter",
+                "direct_oa"
+              ]
+            }
+          },
+          "endpoints": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "modalities": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "tariff_hash": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          }
+        },
+        "required": [
+          "model",
+          "provider",
+          "modes",
+          "endpoints",
+          "modalities",
+          "tariff_hash"
+        ],
+        "additionalProperties": false
+      },
+      "Catalog": {
+        "type": "object",
+        "properties": {
+          "models": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CatalogEntry"
+            }
+          }
+        },
+        "required": [
+          "models"
+        ],
+        "additionalProperties": false
+      },
+      "TariffRate": {
+        "type": "object",
+        "properties": {
+          "unit": {
+            "type": "string"
+          },
+          "nano_usdc_numerator": {
+            "type": "string",
+            "pattern": "^(0|[1-9][0-9]*)$",
+            "description": "Unsigned integer decimal string; enforce semantic bounds in specs."
+          },
+          "unit_denominator": {
+            "type": "string",
+            "pattern": "^(0|[1-9][0-9]*)$",
+            "description": "Unsigned integer decimal string; enforce semantic bounds in specs."
+          }
+        },
+        "required": [
+          "unit",
+          "nano_usdc_numerator",
+          "unit_denominator"
+        ],
+        "additionalProperties": false
+      },
+      "Tariff": {
+        "type": "object",
+        "properties": {
+          "tariff_hash": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          },
+          "version": {
+            "type": "string",
+            "pattern": "^(0|[1-9][0-9]*)$",
+            "description": "Unsigned integer decimal string; enforce semantic bounds in specs."
+          },
+          "provider": {
+            "type": "string",
+            "enum": [
+              "openai",
+              "anthropic",
+              "openrouter",
+              "oa"
+            ]
+          },
+          "model": {
+            "type": "string"
+          },
+          "pricing_basis": {
+            "type": "string",
+            "enum": [
+              "provider_reported_usd",
+              "fixed_usage_rates"
+            ]
+          },
+          "valid_from": {
+            "type": "string",
+            "pattern": "^(0|[1-9][0-9]*)$",
+            "description": "Unsigned integer decimal string; enforce semantic bounds in specs."
+          },
+          "valid_until": {
+            "type": "string",
+            "pattern": "^(0|[1-9][0-9]*)$",
+            "description": "Unsigned integer decimal string; enforce semantic bounds in specs."
+          },
+          "rates": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TariffRate"
+            }
+          },
+          "operator_fee_micro_usdc": {
+            "type": "string",
+            "const": "0"
+          }
+        },
+        "required": [
+          "tariff_hash",
+          "version",
+          "provider",
+          "model",
+          "pricing_basis",
+          "valid_from",
+          "valid_until",
+          "rates",
+          "operator_fee_micro_usdc"
+        ],
+        "additionalProperties": false
+      },
+      "Root": {
+        "type": "object",
+        "properties": {
+          "pool": {
+            "type": "string",
+            "pattern": "^[1-9A-HJ-NP-Za-km-z]{32,44}$",
+            "description": "Base58 decoding must yield exactly 32 bytes."
+          },
+          "root": {
+            "type": "string",
+            "pattern": "^0x[0-9a-f]{64}$",
+            "description": "Canonical BN254 Fr; reject >= r."
+          },
+          "slot": {
+            "type": "string",
+            "pattern": "^(0|[1-9][0-9]*)$",
+            "description": "Unsigned integer decimal string; enforce semantic bounds in specs."
+          },
+          "blockhash": {
+            "type": "string",
+            "pattern": "^[1-9A-HJ-NP-Za-km-z]{32,44}$",
+            "description": "Base58 decoding must yield exactly 32 bytes."
+          },
+          "sequence": {
+            "type": "string",
+            "pattern": "^(0|[1-9][0-9]*)$",
+            "description": "Unsigned integer decimal string; enforce semantic bounds in specs."
+          },
+          "next_note_id": {
+            "type": "string",
+            "pattern": "^(0|[1-9][0-9]*)$",
+            "description": "Unsigned integer decimal string; enforce semantic bounds in specs."
+          }
+        },
+        "required": [
+          "pool",
+          "root",
+          "slot",
+          "blockhash",
+          "sequence",
+          "next_note_id"
+        ],
+        "additionalProperties": false
+      },
+      "Path": {
+        "type": "object",
+        "properties": {
+          "snapshot": {
+            "$ref": "#/components/schemas/Root"
+          },
+          "note_id": {
+            "type": "string",
+            "pattern": "^(0|[1-9][0-9]*)$",
+            "description": "Unsigned integer decimal string; enforce semantic bounds in specs."
+          },
+          "leaf": {
+            "type": "string",
+            "pattern": "^0x[0-9a-f]{64}$",
+            "description": "Canonical BN254 Fr; reject >= r."
+          },
+          "siblings": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "^0x[0-9a-f]{64}$",
+              "description": "Canonical BN254 Fr; reject >= r."
+            },
+            "minItems": 32,
+            "maxItems": 32
+          }
+        },
+        "required": [
+          "snapshot",
+          "note_id",
+          "leaf",
+          "siblings"
+        ],
+        "additionalProperties": false
+      },
+      "Snapshot": {
+        "type": "object",
+        "properties": {
+          "snapshot": {
+            "$ref": "#/components/schemas/Root"
+          },
+          "sha256": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          },
+          "download_url": {
+            "type": "string",
+            "format": "uri"
+          }
+        },
+        "required": [
+          "snapshot",
+          "sha256",
+          "download_url"
+        ],
+        "additionalProperties": false
+      },
+      "Attestation": {
+        "type": "object",
+        "properties": {
+          "deployment_id": {
+            "type": "string"
+          },
+          "manifest_hash": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          },
+          "direct_oa_enabled": {
+            "type": "boolean"
+          },
+          "issuer": {
+            "type": "string"
+          },
+          "verifier": {
+            "type": "string"
+          },
+          "evidence": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "deployment_id",
+          "manifest_hash",
+          "direct_oa_enabled"
+        ],
+        "additionalProperties": false
+      },
+      "ChatRequest": {
+        "type": "object",
+        "properties": {
+          "model": {
+            "type": "string"
+          },
+          "messages": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "role": {
+                  "type": "string",
+                  "enum": [
+                    "system",
+                    "developer",
+                    "user",
+                    "assistant",
+                    "tool"
+                  ]
+                },
+                "content": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "name": {
+                  "type": "string"
+                },
+                "tool_call_id": {
+                  "type": "string"
+                },
+                "tool_calls": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "id": {
+                        "type": "string"
+                      },
+                      "type": {
+                        "type": "string",
+                        "const": "function"
+                      },
+                      "function": {
+                        "type": "object",
+                        "properties": {
+                          "name": {
+                            "type": "string"
+                          },
+                          "arguments": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "name",
+                          "arguments"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "required": [
+                      "id",
+                      "type",
+                      "function"
+                    ],
+                    "additionalProperties": false
+                  }
+                }
+              },
+              "required": [
+                "role"
+              ],
+              "additionalProperties": false
+            },
+            "minItems": 1
+          },
+          "max_completion_tokens": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "max_tokens": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "stream": {
+            "type": "boolean"
+          },
+          "temperature": {
+            "type": "number"
+          },
+          "top_p": {
+            "type": "number"
+          },
+          "tools": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "type": {
+                  "type": "string",
+                  "const": "function"
+                },
+                "function": {
+                  "type": "object",
+                  "properties": {
+                    "name": {
+                      "type": "string"
+                    },
+                    "description": {
+                      "type": "string"
+                    },
+                    "parameters": {
+                      "type": "object",
+                      "properties": {},
+                      "required": [],
+                      "additionalProperties": true
+                    },
+                    "strict": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "name",
+                    "parameters"
+                  ],
+                  "additionalProperties": false
+                }
+              },
+              "required": [
+                "type",
+                "function"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "tool_choice": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "object",
+                "properties": {},
+                "required": [],
+                "additionalProperties": true
+              }
+            ]
+          },
+          "stream_options": {
+            "type": "object",
+            "properties": {
+              "include_usage": {
+                "type": "boolean"
+              }
+            },
+            "required": [],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "model",
+          "messages"
+        ],
+        "additionalProperties": false
+      },
+      "ResponsesRequest": {
+        "type": "object",
+        "properties": {
+          "model": {
+            "type": "string"
+          },
+          "input": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {},
+                  "required": [],
+                  "additionalProperties": true
+                }
+              }
+            ]
+          },
+          "instructions": {
+            "type": "string"
+          },
+          "max_output_tokens": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "stream": {
+            "type": "boolean"
+          },
+          "store": {
+            "type": "boolean",
+            "const": false,
+            "default": false
+          },
+          "tools": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {},
+              "required": [],
+              "additionalProperties": true
+            }
+          },
+          "tool_choice": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "object",
+                "properties": {},
+                "required": [],
+                "additionalProperties": true
+              }
+            ]
+          }
+        },
+        "required": [
+          "model",
+          "input",
+          "max_output_tokens"
+        ],
+        "additionalProperties": false
+      },
+      "MessagesRequest": {
+        "type": "object",
+        "properties": {
+          "model": {
+            "type": "string"
+          },
+          "messages": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "role": {
+                  "type": "string",
+                  "enum": [
+                    "user",
+                    "assistant"
+                  ]
+                },
+                "content": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {},
+                        "required": [],
+                        "additionalProperties": true
+                      }
+                    }
+                  ]
+                }
+              },
+              "required": [
+                "role",
+                "content"
+              ],
+              "additionalProperties": false
+            },
+            "minItems": 1
+          },
+          "max_tokens": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "system": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {},
+                  "required": [],
+                  "additionalProperties": true
+                }
+              }
+            ]
+          },
+          "stream": {
+            "type": "boolean"
+          },
+          "temperature": {
+            "type": "number"
+          },
+          "top_p": {
+            "type": "number"
+          },
+          "tools": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {},
+              "required": [],
+              "additionalProperties": true
+            }
+          },
+          "tool_choice": {
+            "type": "object",
+            "properties": {},
+            "required": [],
+            "additionalProperties": true
+          }
+        },
+        "required": [
+          "model",
+          "messages",
+          "max_tokens"
+        ],
+        "additionalProperties": false
+      },
+      "CountTokensRequest": {
+        "type": "object",
+        "properties": {
+          "model": {
+            "type": "string"
+          },
+          "messages": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "role": {
+                  "type": "string",
+                  "enum": [
+                    "user",
+                    "assistant"
+                  ]
+                },
+                "content": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {},
+                        "required": [],
+                        "additionalProperties": true
+                      }
+                    }
+                  ]
+                }
+              },
+              "required": [
+                "role",
+                "content"
+              ],
+              "additionalProperties": false
+            },
+            "minItems": 1
+          },
+          "system": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {},
+                  "required": [],
+                  "additionalProperties": true
+                }
+              }
+            ]
+          },
+          "tools": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {},
+              "required": [],
+              "additionalProperties": true
+            }
+          },
+          "tool_choice": {
+            "type": "object",
+            "properties": {},
+            "required": [],
+            "additionalProperties": true
+          }
+        },
+        "required": [
+          "model",
+          "messages"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "securitySchemes": {
+      "ControlToken": {
+        "type": "http",
+        "scheme": "bearer",
+        "description": "zkc1.<uuid>.<32-byte-secret-base64url>"
+      },
+      "ProxyToken": {
+        "type": "http",
+        "scheme": "bearer",
+        "description": "zkp1.<uuid>.<32-byte-secret-base64url>"
+      },
+      "AdminToken": {
+        "type": "http",
+        "scheme": "bearer",
+        "description": "Admin-only credential on private listener; not a user token."
+      },
+      "AnthropicProxyKey": {
+        "type": "apiKey",
+        "in": "header",
+        "name": "x-api-key",
+        "description": "Same proxy token, never an upstream API key."
+      }
+    }
+  }
+}
