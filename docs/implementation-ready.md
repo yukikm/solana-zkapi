@@ -1,6 +1,6 @@
 # Solana zkAPI — 実装開始仕様 v1
 
-状態：**設計・インターフェース確定、実装着手可**。更新日：2026-10-02 JST。
+状態：**設計・インターフェース確定、実装着手可**。更新日：2026-10-03 JST。設計レビューの指摘と修正は[レビュー記録](evidence/design-review-2026-10-03.md)に残す。
 
 これはUSDC決済、Ethereum zkAPIの直接接続機能、第三者運営のproxyを含む本番向け仕様である。コード完成・性能検証・監査・mainnet配備の完了を意味しない。暗号互換性などの実測項目は、担当・判定基準・不合格時の処理を実装計画に固定した。
 
@@ -46,10 +46,10 @@ Ollama互換、native SOLでの利用料決済、任意URLへ中継する汎用H
 | D10 | Rust/Axum/Tokioを継続。DBはPostgreSQL、poolごとに単一の認可・署名writer。SQLiteのupstreamテストを移植する |
 | D11 | セッション・制御操作の秘密は利用者が生成。再送時に同じ値を使う。plaintextをDB・ログへ保存しない |
 | D12 | quoteの認可内容をバイト単位で固定。provider・model・料金表・mode・回復credentialを証明へ結合 |
-| D13 | proxyの上流応答が不明なら再実行しない。計測不能分を利用者に推定請求せず、期限後は運営損失として確定 |
+| D13 | proxyの上流応答が不明なら再実行しない。計測不能分を利用者に推定請求せず、送信ownerの終了/fencing後に運営損失として確定 |
 | D14 | ZKは残高と利用権限を証明する。API応答の正しさ、proxyの計測値、IP/本文の匿名性は保証しない |
 | D15 | 入金の有効化はfinalized。認可時は独立RPCでも使用済みexit nullifierを確認。不明なら新規発行を停止 |
-| D16 | root変更・状態変更・USDC転送は同一transaction。legacy/v0 walletには署名者に結合した一時bufferで対応 |
+| D16 | root変更・状態変更・USDC転送は同一transaction。legacy/v0 walletには署名者とexpected_digestに結合した一時bufferで対応 |
 | D17 | TTL 30日・日単位切上げ、challenge 24時間。原pause/expiry/逃避処理の条件を維持 |
 | D18 | SDKがexpiryを明示し、期限7日前・1日前に警告。原方式ではexpiry後のActive元本全額がtreasuryへ行く |
 | D19 | proxy利用時にはproxyが内容を読めることを接続前に表示。直接接続はprompt-free認可のみ |
@@ -96,7 +96,7 @@ tests/{fixtures,svm,e2e,faults}/
 deploy/                    # image digest、manifest、runbook
 ```
 
-本ターンで作成するのは設計書・契約schema・テストベクトル・タスクであり、上記runtimeディレクトリに未検証の雛形を置いて実装済みとはしない。
+この設計段階で作成するのは設計書・契約schema・テストベクトル・タスクであり、上記runtimeディレクトリに未検証の雛形を置いて実装済みとはしない。
 
 ## 5. 実装開始と本番公開の境界
 

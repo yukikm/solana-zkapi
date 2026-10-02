@@ -10,6 +10,10 @@ Ethereum zkAPIの現行機能を、Solanaで本番運用できる形に移植す
 
 OpenAI・Claudeの利用を優先し、Ollama互換は初期対象外。既存の直接接続方式と、第三者が既存APIを中継するproxy方式の両方を初回productionの必須機能とする。proxyはOpenAI Chat Completions/Responses、Anthropic Messagesに対応する設計。モデル対応、API互換、直接接続の可否は個別に確認する。
 
-状態は**設計完了・実装着手可**。Solanaプログラムの実装、性能実測、本番デプロイはまだ行っていない。I01→I02から開始し、暗号/SVM・復旧・実provider・公開準備の4 gateを満たしてからリリースする。
+状態は**設計レビュー反映済み・I01から実装着手可**（[2026-10-03レビュー](docs/evidence/design-review-2026-10-03.md)）。Solanaプログラムの実装、性能実測、本番デプロイはまだ行っていない。I01→I02から開始し、暗号/SVM・復旧・実provider・公開準備の4 gateを満たしてからリリースする。
 
 設計の構造チェック：`python3 scripts/check_design.py`。これはOpenAPI参照、document links、schemaとテストベクトルの整合性の確認であり、実proof検証やDB migration試験ではない。
+
+追加の設計契約検証：`python3 work/design/generate_contracts.py --check`（生成物一致）、`python3 scripts/check_ledger_contract.py`（ローカルPostgreSQLの使い捨てDBだけでDDL/制約を確認）。後者はinitdb/pg_ctl/psqlが必要。runtimeのG1〜G4とは別の検証。
+
+OpenAPIの追加検証は `python3 scripts/check_openapi_contract.py`。検証専用環境にopenapi-spec-validator==0.7.2が必要（今回のjsonschemaは4.26.0）。provider互換試験の代替ではない。

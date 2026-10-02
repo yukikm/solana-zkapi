@@ -1,3 +1,4 @@
+import argparse
 import base64
 import hashlib
 import json
@@ -5,6 +6,18 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 OUT = ROOT / 'docs/contracts'
+parser = argparse.ArgumentParser()
+parser.add_argument('--check', action='store_true', help='Compare generated contracts without writing')
+CHECK = parser.parse_args().check
+def emit(name, value):
+    data = json.dumps(value, ensure_ascii=False, indent=2)+'\n'
+    path = OUT/name
+    if CHECK:
+        if not path.exists() or path.read_text() != data:
+            raise SystemExit('Generated contract differs: '+name)
+    else:
+        OUT.mkdir(parents=True, exist_ok=True)
+        path.write_text(data)
 def ref(name): return {'$ref': '#/components/schemas/' + name}
 def obj(properties, required=None, extra=False):
     return {'type': 'object', 'properties': properties,
@@ -16,14 +29,17 @@ B = {'type': 'boolean'}
 U = {'type': 'string', 'pattern': '^(0|[1-9][0-9]*)$', 'description': 'Unsigned integer decimal string; enforce semantic bounds in specs.'}
 H = {'type': 'string', 'pattern': '^[0-9a-f]{64}$'}
 F = {'type': 'string', 'pattern': '^0x[0-9a-f]{64}$', 'description': 'Canonical BN254 Fr; reject >= r.'}
+SCALAR = {'type':'string','pattern':'^0x[0-9a-f]{64}$','description':'Canonical Baby-JubJub scalar: 0 <= s < 2736030358979909402780800718157159386076813972158567259200215660948447373041, not BN254 Fr.'}
+POS = {'type':'string','pattern':'^[1-9][0-9]*$'}
+UNITS = ['cache_read_tokens','cache_write_1h_tokens','cache_write_5m_tokens','cache_write_tokens','input_tokens','output_tokens']
 P = {'type': 'string', 'pattern': '^[1-9A-HJ-NP-Za-km-z]{32,44}$', 'description': 'Base58 decoding must yield exactly 32 bytes.'}
 ID = {'type': 'string', 'format': 'uuid', 'pattern': '^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$'}
 MODE = {'type': 'string', 'enum': ['proxy', 'direct_openrouter', 'direct_oa']}
 PROVIDER = {'type': 'string', 'enum': ['openai', 'anthropic', 'openrouter', 'oa']}
 sch = {'UInt': U, 'Hash': H, 'Field': F, 'Pubkey': P, 'RequestId': ID,
-       'Mode': MODE, 'Provider': PROVIDER}
+       'Mode': MODE, 'Provider': PROVIDER, 'Scalar': SCALAR}
 sch['Point'] = obj({'x': F, 'y': F})
-sch['SchnorrSignature'] = obj({'r_x': F, 'r_y': F, 's': F})
+sch['SchnorrSignature'] = obj({'r_x': F, 'r_y': F, 's': ref('Scalar')})
 sch['Proof'] = obj({'backend': {'const': 'groth16_bn254', 'type': 'string'},
     'proof': {'type': 'string', 'contentEncoding': 'base64', 'minLength': 344,
               'maxLength': 344, 'description': 'Strict RFC4648 base64, exactly 256 decoded bytes.'}})
@@ -41,13 +57,24 @@ sch['QuoteBody'] = obj({'quote_id': ID, 'deployment_id': S, 'pool': P, 'mode': M
     'inference_api_origin': {'type':'string','format':'uri'}})
 sch['Quote'] = obj({'body': ref('QuoteBody'), 'quote_hash': H,
     'signature': {'type':'string','contentEncoding':'base64','description':'64-byte Ed25519 signature over raw quote hash.'}})
+for name in ('QuoteRequest','QuoteBody'):
+    sch[name]['oneOf'] = [
+        {'properties': {'mode': {'const':'direct_oa'}, 'provider': {'const':'oa'}, 'models': {'const':['*']}}},
+        {'properties': {'mode': {'const':'direct_openrouter'}, 'provider': {'const':'openrouter'}, 'models': {'const':['*']}}},
+        {'properties': {'mode': {'const':'proxy'}, 'provider': {'enum':['openai','anthropic','openrouter']},
+            'models': {'minItems':1,'maxItems':1,'items':{'type':'string','minLength':1,'not':{'const':'*'}}}}}
+    ]
 sch['Authorization'] = obj({'version': {'type':'string','const':'1'},
     'deployment_id': S, 'pool': P, 'request_id': ID, 'quote_hash': H, 'mode': MODE,
     'control_secret_hash': H, 'proxy_secret_hash': {'anyOf':[H,{'type':'null'}]}})
+sch['Authorization']['oneOf'] = [
+    {'properties': {'mode': {'const':'proxy'}, 'proxy_secret_hash': H}},
+    {'properties': {'mode': {'enum':['direct_oa','direct_openrouter']}, 'proxy_secret_hash': {'type':'null'}}}
+]
 sch['SessionCreate'] = obj({'authorization': ref('Authorization'), 'quote': ref('Quote'),
     'public_inputs': ref('RequestInputs'), 'proof': ref('Proof')})
 sch['Settlement'] = obj({'charge_micro_usdc': U, 'next_commitment': ref('Point'),
-    'next_anchor': F, 'blind_delta_srv': F, 'next_state_signature': ref('SchnorrSignature')})
+    'next_anchor': F, 'blind_delta_srv': ref('Scalar'), 'next_state_signature': ref('SchnorrSignature')})
 session_props = {'request_id': ID, 'mode': MODE,
     'state': {'type':'string','enum':['RESERVED','ISSUING','ISSUANCE_UNKNOWN','ACTIVE',
         'DRAINING','RECONCILING','SIGN_PENDING','SETTLED']},
@@ -62,6 +89,32 @@ sch['OperationStatus'] = obj({'operation_id': ID, 'request_id': ID,
         'METERED','DONE','WAIVED_OPERATOR_LOSS']}, 'charged_nano_usdc': U,
     'usage': obj({},[],True), 'tariff_hash': H, 'response_replayable': {'type':'boolean','const':False}},
     ['operation_id','request_id','state','response_replayable'])
+sch['NormalizedUsage'] = array(obj({'unit':{'type':'string','enum':UNITS},'count':U}), maxItems=6)
+sch['ReceiptBody'] = obj({'version':{'type':'string','const':'1'},'receipt_id':ID,
+    'deployment_id':S,'pool':P,'request_id':ID,'operation_id':{'anyOf':[ID,{'type':'null'}]},
+    'billing_effect':{'type':'string','enum':['charge','late_loss_observation']},
+    'related_receipt_hash':{'anyOf':[H,{'type':'null'}]},'observed_at':U,
+    'evidence_kind':{'type':'string','enum':['OA_SIGNED_RECEIPT','OPENROUTER_USAGE','PROXY_USAGE','UNKNOWN_OPERATOR_LOSS','NOT_DISPATCHED']},
+    'provider_request_id':{'type':['string','null']},'provider_evidence_digest':{'anyOf':[H,{'type':'null'}]},
+    'tariff_hash':H,'usage':ref('NormalizedUsage'),
+    'provider_reported_usd':{'anyOf':[{'type':'string','pattern':r'^(0|[1-9][0-9]*)(\.[0-9]*[1-9])?$','maxLength':128},{'type':'null'}]},
+    'reservation_nano_usdc':U,'observed_nano_usdc':{'anyOf':[U,{'type':'null'}]},'charged_nano_usdc':U,
+    'operator_loss_nano_usdc':{'anyOf':[U,{'type':'null'}]},
+    'reason':{'type':'string','enum':['metered','not_dispatched','waived_unknown','late_usage']}})
+sch['ReceiptBody']['allOf'] = [
+    {'if':{'properties':{'evidence_kind':{'enum':['OA_SIGNED_RECEIPT','OPENROUTER_USAGE']},'reason':{'const':'metered'}},
+           'required':['evidence_kind','reason']},
+     'then':{'properties':{'provider_reported_usd':{'type':'string'},'operation_id':{'type':'null'},'usage':{'maxItems':0}}}},
+    {'if':{'properties':{'operation_id':{'type':'string'}},'required':['operation_id']},
+     'then':{'properties':{'provider_reported_usd':{'type':'null'}}}}
+]
+sch['Receipt'] = obj({'body':ref('ReceiptBody'),'receipt_hash':H,
+    'signature':{'type':'string','contentEncoding':'base64','description':'Exactly 64 Ed25519 signature bytes over raw receipt hash.'}})
+sch['ReceiptPage'] = obj({'receipts':array(ref('Receipt')),'next_cursor':{'type':['string','null']}})
+sch['OperationStatus']['properties']['usage'] = ref('NormalizedUsage')
+sch['OperationStatus']['properties'].update({'provider_request_id':{'type':['string','null']},'receipt':ref('Receipt')})
+sch['OperationStatus']['allOf'] = [{'if':{'properties':{'state':{'enum':['DONE','WAIVED_OPERATOR_LOSS']}},'required':['state']},
+    'then':{'required':['receipt','charged_nano_usdc','tariff_hash']}}]
 sch['ClearanceRequest'] = obj({'nullifier': F})
 sch['ClearanceResponse'] = obj({'nullifier': F, 'signature': ref('SchnorrSignature')})
 sch['Health'] = obj({'status': {'type':'string','enum':['ok','degraded']}, 'accepting':B})
@@ -83,19 +136,39 @@ sch['Manifest'] = obj({'deployment_id':S,'manifest_hash':H,'genesis_hash':P,'pro
     'artifact_digests':{'type':'object','additionalProperties':H},'db_schema_version':U,
     'proving_keys_base_url':{'type':'string','format':'uri'},
     'tree_proof_artifacts':{'anyOf':[obj({'pk_hash':H,'vk_hash':H}),{'type':'null'}]}})
+sch['MultisigAuthority'] = obj({'authority':P,'program_id':P,'config_hash':H,
+    'threshold':{'type':'integer','const':2},'members':array(P,minItems=3,maxItems=3,uniqueItems=True)})
+sch['Manifest']['properties'].update({'receipt_public_key':P,
+    'authorities':obj({'admin':ref('MultisigAuthority'),'upgrade':ref('MultisigAuthority')})})
+sch['Manifest']['required'] += ['receipt_public_key','authorities']
+sch['Manifest']['oneOf'] = [
+    {'properties':{'tree_backend':{'const':'sbf_poseidon'},'tree_proof_artifacts':{'type':'null'}}},
+    {'properties':{'tree_backend':{'const':'transition_proof'},'tree_proof_artifacts':{'type':'object'}}}
+]
 sch['CatalogEntry'] = obj({'model':S,'provider':PROVIDER,'modes':array(MODE),
     'endpoints':array(S),'modalities':array(S),'tariff_hash':H})
 sch['Catalog'] = obj({'models':array(ref('CatalogEntry'))})
-sch['TariffRate'] = obj({'unit':S,'nano_usdc_numerator':U,'unit_denominator':U})
+sch['TariffRate'] = obj({'unit':{'type':'string','enum':UNITS},'nano_usdc_numerator':U,'unit_denominator':POS})
 sch['Tariff'] = obj({'tariff_hash':H,'version':U,'provider':PROVIDER,'model':S,
     'pricing_basis':{'type':'string','enum':['provider_reported_usd','fixed_usage_rates']},
-    'valid_from':U,'valid_until':U,'rates':array(ref('TariffRate')),
+    'valid_from':U,'valid_until':U,'rates':array(ref('TariffRate'),maxItems=6),
     'operator_fee_micro_usdc':{'type':'string','const':'0'}})
+sch['Tariff']['description'] = 'SHA256 of JCS object excluding tariff_hash; rates sorted by unique unit. See api-proxy section 8 for exact bounds and arithmetic.'
+sch['Tariff']['oneOf'] = [
+    {'properties':{'pricing_basis':{'const':'provider_reported_usd'},'provider':{'enum':['oa','openrouter']},'model':{'const':'*'},'rates':{'maxItems':0}}},
+    {'properties':{'pricing_basis':{'const':'fixed_usage_rates'},'provider':{'enum':['openai','anthropic','openrouter']},'model':{'not':{'const':'*'}},'rates':{'minItems':2}}}
+]
 sch['Root'] = obj({'pool':P,'root':F,'slot':U,'blockhash':P,'sequence':U,'next_note_id':U})
 sch['Path'] = obj({'snapshot':ref('Root'),'note_id':U,'leaf':F,
     'siblings':array(F,minItems=32,maxItems=32)})
 sch['Snapshot'] = obj({'snapshot':ref('Root'),'sha256':H,
     'download_url':{'type':'string','format':'uri'}})
+sch['SnapshotNote'] = obj({'note_id':U,'commitment':F,'deposit_micro_usdc':U,'expiry':U})
+sch['SnapshotPending'] = obj({**sch['SnapshotNote']['properties'],'nullifier':F,
+    'balance_micro_usdc':U,'destination_owner':P,'deadline':U,'old_root':F})
+sch['TreeSnapshotFile'] = obj({'schema_version':{'type':'string','const':'1'},'snapshot':ref('Root'),
+    'active_notes':array(ref('SnapshotNote')),'pending_withdrawals':array(ref('SnapshotPending'))})
+sch['Snapshot']['description'] = 'Download is JCS UTF-8 TreeSnapshotFile without BOM/newline; SHA256 covers exact bytes. Finalized end-of-slot cut.'
 sch['Attestation'] = obj({'deployment_id':S,'manifest_hash':H,
     'direct_oa_enabled':B,'issuer':S,'verifier':S,'evidence':S},
     ['deployment_id','manifest_hash','direct_oa_enabled'])
@@ -112,6 +185,7 @@ sch['ChatRequest'] = obj({'model':S,'messages':array(message,minItems=1),
     'stream':B,'temperature':{'type':'number'},'top_p':{'type':'number'},
     'tools':array(function_tool),'tool_choice':{'anyOf':[S,obj({},[],True)]},
     'stream_options':obj({'include_usage':B},[])},['model','messages'])
+sch['ChatRequest']['not'] = {'required':['max_tokens','max_completion_tokens']}
 sch['ResponsesRequest'] = obj({'model':S,
     'input':{'anyOf':[S,array(obj({},[],True))]},'instructions':S,
     'max_output_tokens':{'type':'integer','minimum':1},'stream':B,
@@ -150,11 +224,13 @@ add('/zkapi/v1/quotes','post','quote','Quote','QuoteRequest')
 created = add('/zkapi/v1/sessions','post','createSession','SessionCreated','SessionCreate','ControlToken',code='201',
     description='Exact body retry only. First direct creation may contain provider_key. It is never replayed. Control token hash must match proof-bound authorization.')
 created['responses']['200'] = response('SessionStatus','Idempotent existing result, no provider key')
-created['responses']['202'] = response('SessionStatus','Reserved; issuance in progress or unknown')
+created['responses']['202'] = response('SessionStatus','Proxy may become ACTIVE; direct closes delivery channel, persists close_requested and drains any late key.')
 add('/zkapi/v1/sessions/{request_id}','get','sessionStatus','SessionStatus',auth='ControlToken',params=[request_param])
 add('/zkapi/v1/sessions/{request_id}/close','post','closeSession','SessionStatus',auth='ControlToken',params=[request_param],code='202')
 add('/zkapi/v1/sessions/{request_id}/operations/{operation_id}','get','operationStatus','OperationStatus',
     auth='ControlToken',params=[request_param,parameter('operation_id',ID)])
+add('/zkapi/v1/sessions/{request_id}/receipts','get','sessionReceipts','ReceiptPage',
+    auth='ControlToken',params=[request_param,parameter('cursor',S,'query',False)])
 add('/zkapi/v1/withdraw/clearance','post','clearance','ClearanceResponse','ClearanceRequest',
     description='Nullifier capability; atomic exclusion with AUTH reservation. Rate limited, no wallet identity.')
 add('/zkapi/v1/nullifiers/{nullifier}','get','nullifierStatus','NullifierStatus',params=[parameter('nullifier',F)])
@@ -179,9 +255,11 @@ for path,body,operation in compat:
         'parameters':[parameter('Idempotency-Key',ID,'header')],
         'requestBody':{'required':True,'content':{'application/json':{'schema':ref(body)}}},
         'responses':{'200':{'description':'Provider-native JSON or SSE (count_tokens: JSON only).',
-            'headers':{'X-Zkapi-Operation-Id':{'schema':ID}},
+            'headers':{'X-Zkapi-Operation-Id':{'schema':ID},'X-Zkapi-Status-Url':{'schema':S,'description':'Relative control operation status URL.'}},
             'content':{'application/json':{'schema':obj({},[],True)}}},
             'default':{'description':'Provider-compatible error; X-Zkapi-Error-Code header. No raw provider secrets.'}}}
+    item['responses']['409'] = {'description':'Operation in progress, response not replayable, or conflicting identity. Never redispatch.',
+        'headers':{'X-Zkapi-Operation-Id':{'schema':ID},'X-Zkapi-Status-Url':{'schema':S},'X-Zkapi-Error-Code':{'schema':S}}}
     if operation != 'countTokens':
         item['responses']['200']['content']['text/event-stream']={'schema':S}
     if operation in ('messages','countTokens'):
@@ -199,8 +277,7 @@ doc = {'openapi':'3.1.0','info':{'title':'Solana zkAPI USDC + Proxy','version':'
         'ProxyToken':{'type':'http','scheme':'bearer','description':'zkp1.<uuid>.<32-byte-secret-base64url>'},
         'AdminToken':{'type':'http','scheme':'bearer','description':'Admin-only credential on private listener; not a user token.'},
         'AnthropicProxyKey':{'type':'apiKey','in':'header','name':'x-api-key','description':'Same proxy token, never an upstream API key.'}}}}
-OUT.mkdir(parents=True,exist_ok=True)
-(OUT/'openapi.json').write_text(json.dumps(doc,ensure_ascii=False,indent=2)+'\n')
+emit('openapi.json', doc)
 
 R=21888242871839275222246405745257275088548364400416034343698204186575808495617
 def frame(label,parts):
@@ -210,7 +287,7 @@ def vector(name,label,parts):
     data=frame(label,parts); digest=hashlib.sha256(data).digest()
     return {'name':name,'label':label,'parts_hex':[p.hex() for p in parts],
         'frame_hex':data.hex(),'sha256':digest.hex(),'field':'0x'+(int.from_bytes(digest,'big')%R).to_bytes(32,'big').hex()}
-vectors=[vector('vault_synthetic','solana-zkapi-vault-v1',[bytes([n])*32 for n in range(6)]+[bytes([6])]),
+vectors=[vector('vault_synthetic','solana-zkapi-vault-v1',[bytes([n])*32 for n in range(5)]+[bytes([6])]),
     vector('destination_synthetic','solana-zkapi-destination-v1',[bytes(range(32))]),
     vector('destination_changed','solana-zkapi-destination-v1',[bytes(range(31))+b'\x20'])]
 auth={'version':'1','deployment_id':'fixture-only','pool':'11111111111111111111111111111111',
@@ -225,5 +302,21 @@ vecdoc={'status':'synthetic_encoding_vectors_not_zk_proofs','fr_modulus':str(R),
         for vals in ([0],[1],[999],[1000],[1001],[400,400],[999,1],[1000000000])],
     'proof_wire':{'decoded_length':256,'coordinate_order':['A.x','A.y','B.x.c0','B.x.c1','B.y.c0','B.y.c1','C.x','C.y'],
         'byte_order':'big_endian','real_proofs':'must_be_generated_in_I02'}}
-(OUT/'binding-vectors.json').write_text(json.dumps(vecdoc,ensure_ascii=False,indent=2)+'\n')
+tariff={'version':'1','provider':'openai','model':'fixture-only','pricing_basis':'fixed_usage_rates',
+    'valid_from':'0','valid_until':'2000000000','rates':[
+        {'unit':'input_tokens','nano_usdc_numerator':'1','unit_denominator':'3'},
+        {'unit':'output_tokens','nano_usdc_numerator':'1','unit_denominator':'3'}],
+    'operator_fee_micro_usdc':'0'}
+tariff_bytes=json.dumps(tariff,sort_keys=True,separators=(',',':')).encode()
+vecdoc['tariff_fixture']={'body':tariff,'jcs_utf8':tariff_bytes.decode(),'tariff_hash':hashlib.sha256(tariff_bytes).hexdigest()}
+vecdoc['rate_rounding']=[
+    {'terms':[['1','1','3'],['1','1','3']],'expected_nano':'1'},
+    {'terms':[['1','1','3'],['2','1','3']],'expected_nano':'1'},
+    {'terms':[['1','1','3'],['3','1','3']],'expected_nano':'2'},
+    {'terms':[['9223372036854775807','9223372036854775807','9223372036854775807']],'expected_nano':'9223372036854775807'}]
+vecdoc['direct_usd_rounding']=[
+    {'usd':['0.0000000001'],'cap_micro':'1000000','expected_nano':'1','expected_micro':'1'},
+    {'usd':['0.0000004','0.0000004'],'cap_micro':'1000000','expected_nano':'800','expected_micro':'1'},
+    {'usd':['1.000000001'],'cap_micro':'1000000','expected_nano':'1000000000','expected_micro':'1000000'}]
+emit('binding-vectors.json', vecdoc)
 print(f'Generated {len(paths)} API paths, {len(sch)} schemas, {len(vectors)} encoding vectors.')

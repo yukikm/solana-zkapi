@@ -3,6 +3,9 @@
 import hashlib
 import json
 import re
+import subprocess
+import sys
+from fractions import Fraction
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -56,6 +59,16 @@ for route, methods in api['paths'].items():
             check(set(alternatives) <= set(api['components']['securitySchemes']), 'Security scheme '+route)
 check(len(operation_ids)==len(set(operation_ids)), 'Duplicate operationId')
 schemas=api['components']['schemas']
+check(schemas['SchnorrSignature']['properties']['s'] == {'$ref':'#/components/schemas/Scalar'}, 'Schnorr scalar type')
+check(schemas['Settlement']['properties']['blind_delta_srv'] == {'$ref':'#/components/schemas/Scalar'}, 'Blind scalar type')
+check('receipt' in schemas['OperationStatus']['properties'], 'Missing operation receipt')
+check({'provider_reported_usd','reservation_nano_usdc'} <= set(schemas['ReceiptBody']['required']), 'Receipt recomputation inputs')
+check('allOf' in schemas['OperationStatus'], 'Terminal receipt requirement')
+check({'receipt_public_key','authorities'} <= set(schemas['Manifest']['required']), 'Manifest trust fields')
+check(schemas['TariffRate']['properties']['unit_denominator']['pattern'] == '^[1-9][0-9]*$', 'Rate denominator permits zero')
+check(len(schemas['QuoteRequest']['oneOf']) == 3, 'Mode/provider constraints')
+check('TreeSnapshotFile' in schemas, 'Snapshot download contract')
+check('/zkapi/v1/sessions/{request_id}/receipts' in api['paths'], 'Receipt recovery path')
 check(schemas['RequestInputs']['minItems']==schemas['RequestInputs']['maxItems']==12,'Request inputs')
 check('provider_key' not in schemas['SessionStatus']['properties'],'Recovery leaks provider key')
 check(schemas['SessionCreate']['additionalProperties'] is False,'Prompt-free authorization must be strict')
@@ -78,6 +91,24 @@ for row in vectors['rounding']:
     # Independent divmod form, including exact-divisibility boundaries.
     whole,remainder=divmod(total,1000)
     check(whole+bool(remainder)==int(row['expected_micro']),'Rounding vector')
+vault=vectors['vectors'][0]
+check(vault['label']=='solana-zkapi-vault-v1', 'Vault vector label')
+check(vault['parts_hex']==[bytes([n]).hex()*32 for n in range(5)]+['06'], 'Vault vector must have five raw32 identities then one decimal byte')
+canonical=json.dumps(vectors['authorization_fixture'],sort_keys=True,separators=(',',':'))
+check(canonical==vectors['authorization_jcs_utf8'], 'Authorization JCS')
+check(vectors['vectors'][3]['parts_hex']==[canonical.encode().hex()], 'Authorization binding fixture')
+tariff=vectors['tariff_fixture']
+canonical=json.dumps(tariff['body'],sort_keys=True,separators=(',',':'))
+check(canonical==tariff['jcs_utf8'], 'Tariff JCS')
+check(hashlib.sha256(canonical.encode()).hexdigest()==tariff['tariff_hash'], 'Tariff hash')
+for row in vectors['rate_rounding']:
+    value=sum((Fraction(int(c)*int(n),int(d)) for c,n,d in row['terms']), Fraction())
+    check(-(-value.numerator//value.denominator)==int(row['expected_nano']), 'Rate sum rounding')
+for row in vectors['direct_usd_rounding']:
+    value=sum((Fraction(x) for x in row['usd']),Fraction())*10**9
+    nano=min(-(-value.numerator//value.denominator),int(row['cap_micro'])*1000)
+    check(nano==int(row['expected_nano']), 'Direct exact USD')
+    check((nano+999)//1000==int(row['expected_micro']), 'Direct micro rounding')
 check(vectors['vectors'][1]['field']!=vectors['vectors'][2]['field'],'Destination mutation vector')
 
 reference=documents['docs/ethereum-reference.json']
@@ -106,9 +137,11 @@ for path in [ROOT/'README.md', *sorted((ROOT/'docs').rglob('*.md'))]:
         link_count+=1
         check((path.parent/link).exists(),f'Broken local link {path.name}: {link}')
 
+generated=subprocess.run([sys.executable,str(ROOT/'work/design/generate_contracts.py'),'--check'],capture_output=True,text=True)
+check(generated.returncode==0, generated.stdout+generated.stderr)
 if errors:
     for error in errors: print('FAIL:',error)
     raise SystemExit(1)
 print(f'PASS: {len(documents)} JSON documents; {len(api["paths"])} API paths; {refs} schema references; {link_count} local links.')
 print(f'PASS: {len(features)} required features; {len(tests)} acceptance scenarios; {len(vectors["vectors"])} binding vectors; {len(vectors["rounding"])} rounding vectors.')
-print('NOT RUN: real proofs, SVM/CU, PostgreSQL migration, provider integration, independent audit.')
+print('NOT RUN: real proofs, SVM/CU, service migration/concurrency, provider integration, independent audit.')

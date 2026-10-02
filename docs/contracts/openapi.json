@@ -247,7 +247,7 @@
             }
           },
           "202": {
-            "description": "Reserved; issuance in progress or unknown",
+            "description": "Proxy may become ACTIVE; direct closes delivery channel, persists close_requested and drains any late key.",
             "content": {
               "application/json": {
                 "schema": {
@@ -409,6 +409,59 @@
               "type": "string",
               "format": "uuid",
               "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+            }
+          }
+        ]
+      }
+    },
+    "/zkapi/v1/sessions/{request_id}/receipts": {
+      "get": {
+        "operationId": "sessionReceipts",
+        "description": "",
+        "security": [
+          {
+            "ControlToken": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReceiptPage"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error; see error contract.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "request_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
             }
           }
         ]
@@ -812,6 +865,12 @@
                   "format": "uuid",
                   "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
                 }
+              },
+              "X-Zkapi-Status-Url": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "Relative control operation status URL."
               }
             },
             "content": {
@@ -832,6 +891,28 @@
           },
           "default": {
             "description": "Provider-compatible error; X-Zkapi-Error-Code header. No raw provider secrets."
+          },
+          "409": {
+            "description": "Operation in progress, response not replayable, or conflicting identity. Never redispatch.",
+            "headers": {
+              "X-Zkapi-Operation-Id": {
+                "schema": {
+                  "type": "string",
+                  "format": "uuid",
+                  "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                }
+              },
+              "X-Zkapi-Status-Url": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "X-Zkapi-Error-Code": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
           }
         }
       }
@@ -880,6 +961,12 @@
                   "format": "uuid",
                   "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
                 }
+              },
+              "X-Zkapi-Status-Url": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "Relative control operation status URL."
               }
             },
             "content": {
@@ -900,6 +987,28 @@
           },
           "default": {
             "description": "Provider-compatible error; X-Zkapi-Error-Code header. No raw provider secrets."
+          },
+          "409": {
+            "description": "Operation in progress, response not replayable, or conflicting identity. Never redispatch.",
+            "headers": {
+              "X-Zkapi-Operation-Id": {
+                "schema": {
+                  "type": "string",
+                  "format": "uuid",
+                  "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                }
+              },
+              "X-Zkapi-Status-Url": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "X-Zkapi-Error-Code": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
           }
         }
       }
@@ -956,6 +1065,12 @@
                   "format": "uuid",
                   "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
                 }
+              },
+              "X-Zkapi-Status-Url": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "Relative control operation status URL."
               }
             },
             "content": {
@@ -976,6 +1091,28 @@
           },
           "default": {
             "description": "Provider-compatible error; X-Zkapi-Error-Code header. No raw provider secrets."
+          },
+          "409": {
+            "description": "Operation in progress, response not replayable, or conflicting identity. Never redispatch.",
+            "headers": {
+              "X-Zkapi-Operation-Id": {
+                "schema": {
+                  "type": "string",
+                  "format": "uuid",
+                  "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                }
+              },
+              "X-Zkapi-Status-Url": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "X-Zkapi-Error-Code": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
           }
         }
       }
@@ -1032,6 +1169,12 @@
                   "format": "uuid",
                   "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
                 }
+              },
+              "X-Zkapi-Status-Url": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "Relative control operation status URL."
               }
             },
             "content": {
@@ -1047,6 +1190,28 @@
           },
           "default": {
             "description": "Provider-compatible error; X-Zkapi-Error-Code header. No raw provider secrets."
+          },
+          "409": {
+            "description": "Operation in progress, response not replayable, or conflicting identity. Never redispatch.",
+            "headers": {
+              "X-Zkapi-Operation-Id": {
+                "schema": {
+                  "type": "string",
+                  "format": "uuid",
+                  "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                }
+              },
+              "X-Zkapi-Status-Url": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "X-Zkapi-Error-Code": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
           }
         }
       }
@@ -1123,6 +1288,11 @@
           "oa"
         ]
       },
+      "Scalar": {
+        "type": "string",
+        "pattern": "^0x[0-9a-f]{64}$",
+        "description": "Canonical Baby-JubJub scalar: 0 <= s < 2736030358979909402780800718157159386076813972158567259200215660948447373041, not BN254 Fr."
+      },
       "Point": {
         "type": "object",
         "properties": {
@@ -1157,9 +1327,7 @@
             "description": "Canonical BN254 Fr; reject >= r."
           },
           "s": {
-            "type": "string",
-            "pattern": "^0x[0-9a-f]{64}$",
-            "description": "Canonical BN254 Fr; reject >= r."
+            "$ref": "#/components/schemas/Scalar"
           }
         },
         "required": [
@@ -1285,7 +1453,64 @@
           "provider",
           "models"
         ],
-        "additionalProperties": false
+        "additionalProperties": false,
+        "oneOf": [
+          {
+            "properties": {
+              "mode": {
+                "const": "direct_oa"
+              },
+              "provider": {
+                "const": "oa"
+              },
+              "models": {
+                "const": [
+                  "*"
+                ]
+              }
+            }
+          },
+          {
+            "properties": {
+              "mode": {
+                "const": "direct_openrouter"
+              },
+              "provider": {
+                "const": "openrouter"
+              },
+              "models": {
+                "const": [
+                  "*"
+                ]
+              }
+            }
+          },
+          {
+            "properties": {
+              "mode": {
+                "const": "proxy"
+              },
+              "provider": {
+                "enum": [
+                  "openai",
+                  "anthropic",
+                  "openrouter"
+                ]
+              },
+              "models": {
+                "minItems": 1,
+                "maxItems": 1,
+                "items": {
+                  "type": "string",
+                  "minLength": 1,
+                  "not": {
+                    "const": "*"
+                  }
+                }
+              }
+            }
+          }
+        ]
       },
       "QuoteBody": {
         "type": "object",
@@ -1382,7 +1607,64 @@
           "control_api_origin",
           "inference_api_origin"
         ],
-        "additionalProperties": false
+        "additionalProperties": false,
+        "oneOf": [
+          {
+            "properties": {
+              "mode": {
+                "const": "direct_oa"
+              },
+              "provider": {
+                "const": "oa"
+              },
+              "models": {
+                "const": [
+                  "*"
+                ]
+              }
+            }
+          },
+          {
+            "properties": {
+              "mode": {
+                "const": "direct_openrouter"
+              },
+              "provider": {
+                "const": "openrouter"
+              },
+              "models": {
+                "const": [
+                  "*"
+                ]
+              }
+            }
+          },
+          {
+            "properties": {
+              "mode": {
+                "const": "proxy"
+              },
+              "provider": {
+                "enum": [
+                  "openai",
+                  "anthropic",
+                  "openrouter"
+                ]
+              },
+              "models": {
+                "minItems": 1,
+                "maxItems": 1,
+                "items": {
+                  "type": "string",
+                  "minLength": 1,
+                  "not": {
+                    "const": "*"
+                  }
+                }
+              }
+            }
+          }
+        ]
       },
       "Quote": {
         "type": "object",
@@ -1465,7 +1747,33 @@
           "control_secret_hash",
           "proxy_secret_hash"
         ],
-        "additionalProperties": false
+        "additionalProperties": false,
+        "oneOf": [
+          {
+            "properties": {
+              "mode": {
+                "const": "proxy"
+              },
+              "proxy_secret_hash": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{64}$"
+              }
+            }
+          },
+          {
+            "properties": {
+              "mode": {
+                "enum": [
+                  "direct_oa",
+                  "direct_openrouter"
+                ]
+              },
+              "proxy_secret_hash": {
+                "type": "null"
+              }
+            }
+          }
+        ]
       },
       "SessionCreate": {
         "type": "object",
@@ -1508,9 +1816,7 @@
             "description": "Canonical BN254 Fr; reject >= r."
           },
           "blind_delta_srv": {
-            "type": "string",
-            "pattern": "^0x[0-9a-f]{64}$",
-            "description": "Canonical BN254 Fr; reject >= r."
+            "$ref": "#/components/schemas/Scalar"
           },
           "next_state_signature": {
             "$ref": "#/components/schemas/SchnorrSignature"
@@ -1683,10 +1989,7 @@
             "description": "Unsigned integer decimal string; enforce semantic bounds in specs."
           },
           "usage": {
-            "type": "object",
-            "properties": {},
-            "required": [],
-            "additionalProperties": true
+            "$ref": "#/components/schemas/NormalizedUsage"
           },
           "tariff_hash": {
             "type": "string",
@@ -1695,6 +1998,15 @@
           "response_replayable": {
             "type": "boolean",
             "const": false
+          },
+          "provider_request_id": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "receipt": {
+            "$ref": "#/components/schemas/Receipt"
           }
         },
         "required": [
@@ -1702,6 +2014,332 @@
           "request_id",
           "state",
           "response_replayable"
+        ],
+        "additionalProperties": false,
+        "allOf": [
+          {
+            "if": {
+              "properties": {
+                "state": {
+                  "enum": [
+                    "DONE",
+                    "WAIVED_OPERATOR_LOSS"
+                  ]
+                }
+              },
+              "required": [
+                "state"
+              ]
+            },
+            "then": {
+              "required": [
+                "receipt",
+                "charged_nano_usdc",
+                "tariff_hash"
+              ]
+            }
+          }
+        ]
+      },
+      "NormalizedUsage": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "unit": {
+              "type": "string",
+              "enum": [
+                "cache_read_tokens",
+                "cache_write_1h_tokens",
+                "cache_write_5m_tokens",
+                "cache_write_tokens",
+                "input_tokens",
+                "output_tokens"
+              ]
+            },
+            "count": {
+              "type": "string",
+              "pattern": "^(0|[1-9][0-9]*)$",
+              "description": "Unsigned integer decimal string; enforce semantic bounds in specs."
+            }
+          },
+          "required": [
+            "unit",
+            "count"
+          ],
+          "additionalProperties": false
+        },
+        "maxItems": 6
+      },
+      "ReceiptBody": {
+        "type": "object",
+        "properties": {
+          "version": {
+            "type": "string",
+            "const": "1"
+          },
+          "receipt_id": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+          },
+          "deployment_id": {
+            "type": "string"
+          },
+          "pool": {
+            "type": "string",
+            "pattern": "^[1-9A-HJ-NP-Za-km-z]{32,44}$",
+            "description": "Base58 decoding must yield exactly 32 bytes."
+          },
+          "request_id": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+          },
+          "operation_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid",
+                "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "billing_effect": {
+            "type": "string",
+            "enum": [
+              "charge",
+              "late_loss_observation"
+            ]
+          },
+          "related_receipt_hash": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^[0-9a-f]{64}$"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "observed_at": {
+            "type": "string",
+            "pattern": "^(0|[1-9][0-9]*)$",
+            "description": "Unsigned integer decimal string; enforce semantic bounds in specs."
+          },
+          "evidence_kind": {
+            "type": "string",
+            "enum": [
+              "OA_SIGNED_RECEIPT",
+              "OPENROUTER_USAGE",
+              "PROXY_USAGE",
+              "UNKNOWN_OPERATOR_LOSS",
+              "NOT_DISPATCHED"
+            ]
+          },
+          "provider_request_id": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "provider_evidence_digest": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^[0-9a-f]{64}$"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "tariff_hash": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          },
+          "usage": {
+            "$ref": "#/components/schemas/NormalizedUsage"
+          },
+          "provider_reported_usd": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^(0|[1-9][0-9]*)(\\.[0-9]*[1-9])?$",
+                "maxLength": 128
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "reservation_nano_usdc": {
+            "type": "string",
+            "pattern": "^(0|[1-9][0-9]*)$",
+            "description": "Unsigned integer decimal string; enforce semantic bounds in specs."
+          },
+          "observed_nano_usdc": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^(0|[1-9][0-9]*)$",
+                "description": "Unsigned integer decimal string; enforce semantic bounds in specs."
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "charged_nano_usdc": {
+            "type": "string",
+            "pattern": "^(0|[1-9][0-9]*)$",
+            "description": "Unsigned integer decimal string; enforce semantic bounds in specs."
+          },
+          "operator_loss_nano_usdc": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^(0|[1-9][0-9]*)$",
+                "description": "Unsigned integer decimal string; enforce semantic bounds in specs."
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "reason": {
+            "type": "string",
+            "enum": [
+              "metered",
+              "not_dispatched",
+              "waived_unknown",
+              "late_usage"
+            ]
+          }
+        },
+        "required": [
+          "version",
+          "receipt_id",
+          "deployment_id",
+          "pool",
+          "request_id",
+          "operation_id",
+          "billing_effect",
+          "related_receipt_hash",
+          "observed_at",
+          "evidence_kind",
+          "provider_request_id",
+          "provider_evidence_digest",
+          "tariff_hash",
+          "usage",
+          "provider_reported_usd",
+          "reservation_nano_usdc",
+          "observed_nano_usdc",
+          "charged_nano_usdc",
+          "operator_loss_nano_usdc",
+          "reason"
+        ],
+        "additionalProperties": false,
+        "allOf": [
+          {
+            "if": {
+              "properties": {
+                "evidence_kind": {
+                  "enum": [
+                    "OA_SIGNED_RECEIPT",
+                    "OPENROUTER_USAGE"
+                  ]
+                },
+                "reason": {
+                  "const": "metered"
+                }
+              },
+              "required": [
+                "evidence_kind",
+                "reason"
+              ]
+            },
+            "then": {
+              "properties": {
+                "provider_reported_usd": {
+                  "type": "string"
+                },
+                "operation_id": {
+                  "type": "null"
+                },
+                "usage": {
+                  "maxItems": 0
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "operation_id": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "operation_id"
+              ]
+            },
+            "then": {
+              "properties": {
+                "provider_reported_usd": {
+                  "type": "null"
+                }
+              }
+            }
+          }
+        ]
+      },
+      "Receipt": {
+        "type": "object",
+        "properties": {
+          "body": {
+            "$ref": "#/components/schemas/ReceiptBody"
+          },
+          "receipt_hash": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          },
+          "signature": {
+            "type": "string",
+            "contentEncoding": "base64",
+            "description": "Exactly 64 Ed25519 signature bytes over raw receipt hash."
+          }
+        },
+        "required": [
+          "body",
+          "receipt_hash",
+          "signature"
+        ],
+        "additionalProperties": false
+      },
+      "ReceiptPage": {
+        "type": "object",
+        "properties": {
+          "receipts": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Receipt"
+            }
+          },
+          "next_cursor": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "receipts",
+          "next_cursor"
         ],
         "additionalProperties": false
       },
@@ -2036,6 +2674,27 @@
                 "type": "null"
               }
             ]
+          },
+          "receipt_public_key": {
+            "type": "string",
+            "pattern": "^[1-9A-HJ-NP-Za-km-z]{32,44}$",
+            "description": "Base58 decoding must yield exactly 32 bytes."
+          },
+          "authorities": {
+            "type": "object",
+            "properties": {
+              "admin": {
+                "$ref": "#/components/schemas/MultisigAuthority"
+              },
+              "upgrade": {
+                "$ref": "#/components/schemas/MultisigAuthority"
+              }
+            },
+            "required": [
+              "admin",
+              "upgrade"
+            ],
+            "additionalProperties": false
           }
         },
         "required": [
@@ -2069,7 +2728,73 @@
           "artifact_digests",
           "db_schema_version",
           "proving_keys_base_url",
-          "tree_proof_artifacts"
+          "tree_proof_artifacts",
+          "receipt_public_key",
+          "authorities"
+        ],
+        "additionalProperties": false,
+        "oneOf": [
+          {
+            "properties": {
+              "tree_backend": {
+                "const": "sbf_poseidon"
+              },
+              "tree_proof_artifacts": {
+                "type": "null"
+              }
+            }
+          },
+          {
+            "properties": {
+              "tree_backend": {
+                "const": "transition_proof"
+              },
+              "tree_proof_artifacts": {
+                "type": "object"
+              }
+            }
+          }
+        ]
+      },
+      "MultisigAuthority": {
+        "type": "object",
+        "properties": {
+          "authority": {
+            "type": "string",
+            "pattern": "^[1-9A-HJ-NP-Za-km-z]{32,44}$",
+            "description": "Base58 decoding must yield exactly 32 bytes."
+          },
+          "program_id": {
+            "type": "string",
+            "pattern": "^[1-9A-HJ-NP-Za-km-z]{32,44}$",
+            "description": "Base58 decoding must yield exactly 32 bytes."
+          },
+          "config_hash": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          },
+          "threshold": {
+            "type": "integer",
+            "const": 2
+          },
+          "members": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "^[1-9A-HJ-NP-Za-km-z]{32,44}$",
+              "description": "Base58 decoding must yield exactly 32 bytes."
+            },
+            "minItems": 3,
+            "maxItems": 3,
+            "uniqueItems": true
+          }
+        },
+        "required": [
+          "authority",
+          "program_id",
+          "config_hash",
+          "threshold",
+          "members"
         ],
         "additionalProperties": false
       },
@@ -2145,7 +2870,15 @@
         "type": "object",
         "properties": {
           "unit": {
-            "type": "string"
+            "type": "string",
+            "enum": [
+              "cache_read_tokens",
+              "cache_write_1h_tokens",
+              "cache_write_5m_tokens",
+              "cache_write_tokens",
+              "input_tokens",
+              "output_tokens"
+            ]
           },
           "nano_usdc_numerator": {
             "type": "string",
@@ -2154,8 +2887,7 @@
           },
           "unit_denominator": {
             "type": "string",
-            "pattern": "^(0|[1-9][0-9]*)$",
-            "description": "Unsigned integer decimal string; enforce semantic bounds in specs."
+            "pattern": "^[1-9][0-9]*$"
           }
         },
         "required": [
@@ -2210,7 +2942,8 @@
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/TariffRate"
-            }
+            },
+            "maxItems": 6
           },
           "operator_fee_micro_usdc": {
             "type": "string",
@@ -2228,7 +2961,51 @@
           "rates",
           "operator_fee_micro_usdc"
         ],
-        "additionalProperties": false
+        "additionalProperties": false,
+        "description": "SHA256 of JCS object excluding tariff_hash; rates sorted by unique unit. See api-proxy section 8 for exact bounds and arithmetic.",
+        "oneOf": [
+          {
+            "properties": {
+              "pricing_basis": {
+                "const": "provider_reported_usd"
+              },
+              "provider": {
+                "enum": [
+                  "oa",
+                  "openrouter"
+                ]
+              },
+              "model": {
+                "const": "*"
+              },
+              "rates": {
+                "maxItems": 0
+              }
+            }
+          },
+          {
+            "properties": {
+              "pricing_basis": {
+                "const": "fixed_usage_rates"
+              },
+              "provider": {
+                "enum": [
+                  "openai",
+                  "anthropic",
+                  "openrouter"
+                ]
+              },
+              "model": {
+                "not": {
+                  "const": "*"
+                }
+              },
+              "rates": {
+                "minItems": 2
+              }
+            }
+          }
+        ]
       },
       "Root": {
         "type": "object",
@@ -2328,6 +3105,132 @@
           "snapshot",
           "sha256",
           "download_url"
+        ],
+        "additionalProperties": false,
+        "description": "Download is JCS UTF-8 TreeSnapshotFile without BOM/newline; SHA256 covers exact bytes. Finalized end-of-slot cut."
+      },
+      "SnapshotNote": {
+        "type": "object",
+        "properties": {
+          "note_id": {
+            "type": "string",
+            "pattern": "^(0|[1-9][0-9]*)$",
+            "description": "Unsigned integer decimal string; enforce semantic bounds in specs."
+          },
+          "commitment": {
+            "type": "string",
+            "pattern": "^0x[0-9a-f]{64}$",
+            "description": "Canonical BN254 Fr; reject >= r."
+          },
+          "deposit_micro_usdc": {
+            "type": "string",
+            "pattern": "^(0|[1-9][0-9]*)$",
+            "description": "Unsigned integer decimal string; enforce semantic bounds in specs."
+          },
+          "expiry": {
+            "type": "string",
+            "pattern": "^(0|[1-9][0-9]*)$",
+            "description": "Unsigned integer decimal string; enforce semantic bounds in specs."
+          }
+        },
+        "required": [
+          "note_id",
+          "commitment",
+          "deposit_micro_usdc",
+          "expiry"
+        ],
+        "additionalProperties": false
+      },
+      "SnapshotPending": {
+        "type": "object",
+        "properties": {
+          "note_id": {
+            "type": "string",
+            "pattern": "^(0|[1-9][0-9]*)$",
+            "description": "Unsigned integer decimal string; enforce semantic bounds in specs."
+          },
+          "commitment": {
+            "type": "string",
+            "pattern": "^0x[0-9a-f]{64}$",
+            "description": "Canonical BN254 Fr; reject >= r."
+          },
+          "deposit_micro_usdc": {
+            "type": "string",
+            "pattern": "^(0|[1-9][0-9]*)$",
+            "description": "Unsigned integer decimal string; enforce semantic bounds in specs."
+          },
+          "expiry": {
+            "type": "string",
+            "pattern": "^(0|[1-9][0-9]*)$",
+            "description": "Unsigned integer decimal string; enforce semantic bounds in specs."
+          },
+          "nullifier": {
+            "type": "string",
+            "pattern": "^0x[0-9a-f]{64}$",
+            "description": "Canonical BN254 Fr; reject >= r."
+          },
+          "balance_micro_usdc": {
+            "type": "string",
+            "pattern": "^(0|[1-9][0-9]*)$",
+            "description": "Unsigned integer decimal string; enforce semantic bounds in specs."
+          },
+          "destination_owner": {
+            "type": "string",
+            "pattern": "^[1-9A-HJ-NP-Za-km-z]{32,44}$",
+            "description": "Base58 decoding must yield exactly 32 bytes."
+          },
+          "deadline": {
+            "type": "string",
+            "pattern": "^(0|[1-9][0-9]*)$",
+            "description": "Unsigned integer decimal string; enforce semantic bounds in specs."
+          },
+          "old_root": {
+            "type": "string",
+            "pattern": "^0x[0-9a-f]{64}$",
+            "description": "Canonical BN254 Fr; reject >= r."
+          }
+        },
+        "required": [
+          "note_id",
+          "commitment",
+          "deposit_micro_usdc",
+          "expiry",
+          "nullifier",
+          "balance_micro_usdc",
+          "destination_owner",
+          "deadline",
+          "old_root"
+        ],
+        "additionalProperties": false
+      },
+      "TreeSnapshotFile": {
+        "type": "object",
+        "properties": {
+          "schema_version": {
+            "type": "string",
+            "const": "1"
+          },
+          "snapshot": {
+            "$ref": "#/components/schemas/Root"
+          },
+          "active_notes": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SnapshotNote"
+            }
+          },
+          "pending_withdrawals": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SnapshotPending"
+            }
+          }
+        },
+        "required": [
+          "schema_version",
+          "snapshot",
+          "active_notes",
+          "pending_withdrawals"
         ],
         "additionalProperties": false
       },
@@ -2526,7 +3429,13 @@
           "model",
           "messages"
         ],
-        "additionalProperties": false
+        "additionalProperties": false,
+        "not": {
+          "required": [
+            "max_tokens",
+            "max_completion_tokens"
+          ]
+        }
       },
       "ResponsesRequest": {
         "type": "object",

@@ -5,7 +5,7 @@ BEGIN;
 
 CREATE DOMAIN bytes32 AS bytea CHECK (octet_length(VALUE) = 32);
 CREATE DOMAIN amount_micro AS bigint CHECK (VALUE BETWEEN 0 AND 9007199254740991);
-CREATE DOMAIN amount_nano AS numeric(38,0) CHECK (VALUE >= 0);
+CREATE DOMAIN amount_nano AS numeric(38,0) CHECK (VALUE >= 0 AND VALUE <> 'NaN'::numeric);
 
 CREATE TABLE pools (
     pool bytes32 PRIMARY KEY,
@@ -66,7 +66,7 @@ CREATE TABLE sessions (
     activated_at bigint,
     expires_at bigint,
     provider_key_ref text, -- upstream management identifier, never plaintext key
-    writer_epoch bigint NOT NULL,
+    writer_epoch bigint NOT NULL CHECK (writer_epoch >= 0),
     created_at timestamptz NOT NULL DEFAULT now(),
     updated_at timestamptz NOT NULL DEFAULT now(),
     PRIMARY KEY (pool, request_id),
@@ -78,7 +78,8 @@ CREATE TABLE sessions (
     CHECK ((mode = 'proxy') = (proxy_secret_hash IS NOT NULL)),
     CHECK (charged_nano + reserved_nano <= cap_micro::numeric * 1000),
     CHECK (active_operations <= max_concurrency),
-    CHECK (expires_at IS NULL OR expires_at >= activated_at)
+    CHECK ((activated_at IS NULL AND expires_at IS NULL) OR
+           (activated_at IS NOT NULL AND expires_at IS NOT NULL AND activated_at >= 0 AND expires_at >= activated_at))
 );
 
 CREATE TABLE operations (
@@ -104,6 +105,31 @@ CREATE TABLE operations (
     CHECK (charged_nano <= reservation_nano),
     CHECK (state <> 'WAIVED_OPERATOR_LOSS' OR charged_nano = 0)
 );
+
+-- Immutable ownership: never reassign an uncertain external call to another owner.
+CREATE TABLE dispatch_attempts (
+    attempt_id uuid PRIMARY KEY,
+    pool bytes32 NOT NULL,
+    request_id uuid NOT NULL,
+    operation_id uuid,
+    kind text NOT NULL CHECK (kind IN ('DIRECT_ISSUANCE','PROXY_INFERENCE')),
+    writer_epoch bigint NOT NULL CHECK (writer_epoch >= 0),
+    owner_instance uuid NOT NULL,
+    committed_at timestamptz NOT NULL DEFAULT now(),
+    finished_at timestamptz,
+    fenced_at timestamptz,
+    fence_evidence_digest bytes32,
+    FOREIGN KEY (pool, request_id) REFERENCES sessions,
+    FOREIGN KEY (pool, request_id, operation_id) REFERENCES operations,
+    CHECK ((kind = 'DIRECT_ISSUANCE') = (operation_id IS NULL)),
+    CHECK ((fenced_at IS NULL) = (fence_evidence_digest IS NULL)),
+    CHECK (finished_at IS NULL OR finished_at >= committed_at),
+    CHECK (fenced_at IS NULL OR fenced_at >= committed_at)
+);
+CREATE UNIQUE INDEX one_direct_attempt ON dispatch_attempts(pool,request_id)
+    WHERE kind = 'DIRECT_ISSUANCE';
+CREATE UNIQUE INDEX one_proxy_attempt ON dispatch_attempts(pool,request_id,operation_id)
+    WHERE kind = 'PROXY_INFERENCE';
 
 CREATE TABLE settlements (
     pool bytes32 NOT NULL,
@@ -145,6 +171,25 @@ CREATE TABLE provider_evidence (
     observed_at timestamptz NOT NULL DEFAULT now(),
     FOREIGN KEY (pool, request_id) REFERENCES sessions
 );
+
+-- Public, prompt-free receipt bytes. Hash/signature verification is a service obligation.
+CREATE TABLE receipts (
+    sequence bigint GENERATED ALWAYS AS IDENTITY UNIQUE,
+    receipt_id uuid PRIMARY KEY,
+    pool bytes32 NOT NULL,
+    request_id uuid NOT NULL,
+    operation_id uuid,
+    billing_effect text NOT NULL CHECK (billing_effect IN ('charge','late_loss_observation')),
+    canonical_body bytea NOT NULL,
+    receipt_hash bytes32 NOT NULL UNIQUE,
+    signature bytea CHECK (octet_length(signature) = 64),
+    FOREIGN KEY (pool, request_id) REFERENCES sessions,
+    FOREIGN KEY (pool, request_id, operation_id) REFERENCES operations
+);
+CREATE UNIQUE INDEX one_operation_charge_receipt ON receipts(pool,request_id,operation_id)
+    WHERE billing_effect = 'charge' AND operation_id IS NOT NULL;
+CREATE UNIQUE INDEX one_direct_charge_receipt ON receipts(pool,request_id)
+    WHERE billing_effect = 'charge' AND operation_id IS NULL;
 
 CREATE TABLE chain_checkpoints (
     pool bytes32 PRIMARY KEY REFERENCES pools,
@@ -196,6 +241,20 @@ CREATE INDEX unpublished_outbox ON outbox(id) WHERE completed_at IS NULL;
 CREATE FUNCTION protect_settlement() RETURNS trigger LANGUAGE plpgsql AS $$
 BEGIN
     IF TG_OP = 'DELETE' THEN RAISE EXCEPTION 'settlement deletion forbidden'; END IF;
+    IF TG_OP = 'INSERT' THEN
+        PERFORM 1 FROM sessions s WHERE s.pool = NEW.pool AND s.request_id = NEW.request_id
+            AND s.state = 'RECONCILING' AND s.reserved_nano = 0 AND s.active_operations = 0
+            AND NEW.charge_micro = ceil(s.charged_nano / 1000) AND NEW.charge_micro <= s.cap_micro
+            FOR UPDATE;
+        IF NOT FOUND THEN RAISE EXCEPTION 'session is not ready for settlement'; END IF;
+        IF EXISTS (SELECT 1 FROM operations o WHERE o.pool = NEW.pool AND o.request_id = NEW.request_id
+                   AND o.state NOT IN ('DONE','WAIVED_OPERATOR_LOSS')) OR
+           EXISTS (SELECT 1 FROM dispatch_attempts d WHERE d.pool = NEW.pool AND d.request_id = NEW.request_id
+                   AND d.finished_at IS NULL AND d.fenced_at IS NULL) THEN
+            RAISE EXCEPTION 'outstanding operation or unfenced dispatch';
+        END IF;
+        RETURN NEW;
+    END IF;
     IF ROW(NEW.pool,NEW.request_id,NEW.charge_micro,NEW.next_anchor,
            NEW.next_commitment_x,NEW.next_commitment_y,NEW.blind_delta,
            NEW.signature_message,NEW.message_digest)
@@ -211,10 +270,51 @@ BEGIN
     RETURN NEW;
 END;
 $$;
-CREATE TRIGGER settlement_immutable BEFORE UPDATE OR DELETE ON settlements
+CREATE TRIGGER settlement_immutable BEFORE INSERT OR UPDATE OR DELETE ON settlements
     FOR EACH ROW EXECUTE FUNCTION protect_settlement();
+
+CREATE FUNCTION protect_dispatch_attempt() RETURNS trigger LANGUAGE plpgsql AS $$
+BEGIN
+    IF TG_OP = 'DELETE' THEN RAISE EXCEPTION 'dispatch attempt deletion forbidden'; END IF;
+    IF ROW(NEW.attempt_id,NEW.pool,NEW.request_id,NEW.operation_id,NEW.kind,
+           NEW.writer_epoch,NEW.owner_instance,NEW.committed_at) IS DISTINCT FROM
+       ROW(OLD.attempt_id,OLD.pool,OLD.request_id,OLD.operation_id,OLD.kind,
+           OLD.writer_epoch,OLD.owner_instance,OLD.committed_at) THEN
+        RAISE EXCEPTION 'dispatch ownership is immutable';
+    END IF;
+    IF (OLD.finished_at IS NOT NULL AND NEW.finished_at IS DISTINCT FROM OLD.finished_at) OR
+       (OLD.fenced_at IS NOT NULL AND ROW(NEW.fenced_at,NEW.fence_evidence_digest) IS DISTINCT FROM
+                                      ROW(OLD.fenced_at,OLD.fence_evidence_digest)) THEN
+        RAISE EXCEPTION 'dispatch completion evidence is immutable';
+    END IF;
+    RETURN NEW;
+END;
+$$;
+CREATE TRIGGER dispatch_immutable BEFORE UPDATE OR DELETE ON dispatch_attempts
+    FOR EACH ROW EXECUTE FUNCTION protect_dispatch_attempt();
+
+-- Canonical receipt content never changes; signature may only be filled once.
+CREATE FUNCTION protect_receipt() RETURNS trigger LANGUAGE plpgsql AS $$
+BEGIN
+    IF TG_OP = 'DELETE' THEN RAISE EXCEPTION 'receipt deletion forbidden'; END IF;
+    IF ROW(NEW.sequence,NEW.receipt_id,NEW.pool,NEW.request_id,NEW.operation_id,
+           NEW.billing_effect,NEW.canonical_body,NEW.receipt_hash) IS DISTINCT FROM
+       ROW(OLD.sequence,OLD.receipt_id,OLD.pool,OLD.request_id,OLD.operation_id,
+           OLD.billing_effect,OLD.canonical_body,OLD.receipt_hash) THEN
+        RAISE EXCEPTION 'receipt content is immutable';
+    END IF;
+    IF OLD.signature IS NOT NULL AND NEW.signature IS DISTINCT FROM OLD.signature THEN
+        RAISE EXCEPTION 'receipt signature is immutable';
+    END IF;
+    RETURN NEW;
+END;
+$$;
+CREATE TRIGGER receipt_immutable BEFORE UPDATE OR DELETE ON receipts
+    FOR EACH ROW EXECUTE FUNCTION protect_receipt();
 
 -- Runtime roles must not DELETE/TRUNCATE reservations, sessions or sign journals.
 -- Migration role is separate. This schema alone does not enforce every transition:
--- worker fencing, state CAS, credential checks and row-lock operations are mandatory.
+-- worker/egress fencing, immutable attempt ownership, state CAS, credential checks and row-lock operations are mandatory.
+-- Signer rechecks quiesced attempts, terminal operations, signed receipt totals and immutable settlement bytes.
+-- A database timestamp alone is not evidence of external egress fencing.
 COMMIT;

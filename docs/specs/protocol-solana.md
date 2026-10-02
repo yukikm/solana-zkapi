@@ -5,10 +5,10 @@
 ## 1. 数値と符号化
 
 - USDC量：内部u64、演算中u128以上、上限 `9_007_199_254_740_991`。HTTPは小数点なしの10進文字列、先頭ゼロなし（0は許容）。
-- note ID：u32、0から単調増加。加算overflowを拒否し、再使用しない。
+- note ID：u32、0から単調増加し再使用しない。割当counterのnext_note_idだけはu64で0〜2^32（満杯sentinel）を表す。next_note_id=2^32ならTreeFull、それ以外はu32へchecked変換して割当後に1増やす。最大note ID 2^32−1も一度だけ利用可能。
 - timestamp：非負u64 Unix秒。Solana Clockの負値・加算overflowを拒否。
 - Fr：32 bytes big-endian、`0 <= x < r`。HTTPは `0x` + 64桁小文字hex。外部入力を剰余で正規化しない。
-- Schnorrのsとblind deltaも同じ32-byte hex形式だが、Baby-JubJub scalar fieldの法でcanonical検査する。Frの範囲検査だけで済ませない。
+- Schnorrのsとblind deltaも同じ32-byte hex形式だが、Baby-JubJub scalar fieldの法でcanonical検査する。Frの範囲検査だけで済ませない。Baby-JubJub scalarの法は2736030358979909402780800718157159386076813972158567259200215660948447373041（[固定Arkworks 0.5.0](https://docs.rs/ark-ed-on-bn254/0.5.0/src/ark_ed_on_bn254/fields/fr.rs.html)）。
 - r（BN254 scalar field）：`21888242871839275222246405745257275088548364400416034343698204186575808495617`。
 - Fq（proof座標）の法はFrと異なる。元のcompact decoderとverifier規約でcanonical・曲線・部分群を検査する。
 - Pubkey/hash：32 bytes。HTTPのPubkeyはbase58、SHA-256 digestは64桁小文字hex（0xなし）。UUIDはcanonical小文字UUIDv4。
@@ -60,7 +60,7 @@ PDA seedは下表。整数seedは指定サイズのLE。Anchorのaccount discrim
 | 型 | seed（prefixはASCII） | 主要field |
 |---|---|---|
 | PoolConfig | `["pool", pool_id_32]` | bump, genesis_hash, mint, token_program, decimals=6, vault_binding, admin, treasury_owner, state/clearance pubkey各64B, TTL:u64, challenge:u64, cap:u64, paused:bool |
-| TreeState | `["tree", pool]` | bump, root:Fr32, next_note_id:u32, sequence:u64, outstanding_deposits:u64 |
+| TreeState | `["tree", pool]` | bump, root:Fr32, next_note_id:u64, sequence:u64, outstanding_deposits:u64 |
 | VaultAuthority | `["vault", pool]` | PDA signerのみ。USDC ATAのauthority |
 | Note | `["note", pool, note_id_u32le]` | bump, note_id:u32, commitment:Fr32, deposit:u64, expiry:u64, status:u8 |
 | PendingWithdrawal | `["pending", pool, note_id_u32le]` | bump, exists:bool, old_root:Fr32, nullifier:Fr32, balance:u64, destination_owner:Pubkey, deadline:u64 |
@@ -86,33 +86,42 @@ Anchor命令discriminatorは `sha256("global:"+snake_case_name)[0..8]`。各命�
 | initialize_pool(pool_id32, genesis32, state_key64, clearance_key64, ttl:u64, challenge:u64, cap:u64, admin, treasury) | deployment authority, admin, payer | pool, tree, vault ATA | build時に固定したdeployment authority署名、固定mint、正しい空tree root、鍵の曲線/部分群/非単位点、値域。登録済みpoolは拒否 |
 | deposit(expected_id:u32, expected_root:F, expiry:u64, commitment:F, amount:u64, siblings:Path) | token owner, payer | tree,note,source ATA,vault ATA | !paused、次ID・root一致、0<amount<=MAX、C!=0、expiry=ceil((Clock+TTL)/86400)*86400。zero→L、TransferChecked |
 | mutual_close(public:WP,proof:Proof,siblings:Path) | payer | tree,note,exit,vault ATA,destination ATA,treasury ATA | !paused、has_clearance=1、current root、固定binding/keys、実proof。Active、B<=D、N未使用。L→0、Closed、N消費、B/D−B転送 |
-| initiate_escape(public:WP,proof:Proof,siblings:Path) | payer | tree,note,exit,pending | !paused、has_clearance=0、current root、実proof、Active、B<=D、N未使用。L→0、Pending、deadline=Clock+challenge |
+| initiate_escape(public:WP,proof:Proof,siblings:Path) | payer | tree,note,exit,pending | !paused、has_clearance=0、current root、実proof、Active、B<=D、N未使用。L→0、Pending、N消費、deadline=Clock+challenge |
 | challenge_escape(note_id:u32,public:RP,proof:Proof,siblings:Path) | payer | tree,note,pending | Pending、Clock<deadline、N=保存済みN、固定binding/keys、過去の実request proof。current rootのzero→L、Active。exitは維持 |
 | finalize_escape(note_id:u32) | payer | note,pending,tree,vault ATA,destination ATA,treasury ATA | Pending、Clock>=deadline。root不変、Closed、保存B/D−B転送 |
 | claim_expired(note_id:u32,siblings:Path) | payer | tree,note,vault ATA,treasury ATA | Active、Clock>=expiry。L→0、Closed、D全額をtreasuryへ |
 | set_treasury(new_owner:Pubkey) | admin | pool | new_owner!=default、既存Pendingにも将来の支払時に適用 |
 | pause() / unpause() | admin | pool | paused変更。challenge/finalize/expiryはpause非対象 |
 
-各命令は上表に加えてpool（read-only、管理命令はwritable）、必要なSystem/Token/ATA program、Clockを検証する。close/escapeのdestination_owner accountはWPのbindingと一致必須。Pendingは成功後exists=falseとし再利用可能、NoteはClosed tombstoneを残す。nullifierはclearanceとrequestの共通namespace。withdrawalに元実装にないexpiry制約を足さない。
+各命令は上表に加えてpool（read-only、管理命令はwritable）、必要なSystem/Token/ATA program、Clockを検証する。close/escapeのdestination_owner accountはWPのbindingと一致必須。Pendingはchallenge/finalize成功後exists=falseとし再利用可能、NoteはClosed tombstoneを残す。nullifierはclearanceとrequestの共通namespace。withdrawalに元実装にないexpiry制約を足さない。
 
 challengeのRP.active_rootをcurrent rootへ書き換えてはいけない。提出されたRPとproofを当時のまま検証し、treeを復元するpathだけcurrent rootで検査する。API側のquote freshnessやrequest_time鮮度をon-chain challengeへ適用しない。
 
-すべてのtoken transferとtree更新は同じinstruction内で行う。CPI失敗・口座凍結・残高不足・不正proofでは全状態をrollback。tree.sequenceは成功したdeposit/close/escape/challenge/finalize/expiryごとに1増加する。finalizeではroot不変でもsequenceを進める。イベントは `pool, sequence, note_id, status, old_root, new_root, amount, expiry` の必要fieldを含める。公開イベントにnote secret・prompt・runtime keyを含めない。
+すべてのtoken transferとtree更新は同じinstruction内で行う。CPI失敗・口座凍結・残高不足・不正proofでは全状態をrollback。tree.sequenceは成功したdeposit/close/escape/challenge/finalize/expiryごとに1増加する。finalizeではroot不変でもsequenceを進める。イベントは後述のVaultTransitionV1を使い、曖昧なamount fieldを設けない。公開イベントにnote secret・prompt・runtime keyを含めない。
 
 error名：`Paused`, `InvalidBinding`, `InvalidMint`, `InvalidTokenAccount`, `InvalidField`, `InvalidProof`, `StaleRoot`, `StaleNoteId`, `InvalidExpiry`, `TreeFull`, `InvalidBalance`, `ReplayedNullifier`, `NoteNotActive`, `NotPending`, `ChallengeExpired`, `ChallengeNotExpired`, `NotExpired`, `InvalidBuffer`, `ArithmeticOverflow`。Anchorの6000番台へ順序固定で割当て、IDLに記録。
 
+
+### Indexerが再現するイベントと履歴
+
+各成功遷移はAnchor event `VaultTransitionV1` を1件emitする。Borsh field順は `event_version:u8=1, pool:Pubkey, sequence:u64, op:u8, note_id:u32, status:u8, old_root:F, new_root:F, commitment:F, deposit:u64, expiry:u64, exit_nullifier:Option<F>, final_balance:Option<u64>, destination_owner:Option<Pubkey>, deadline:Option<u64>`。OptionはBorshの0/1 tag。opはdeposit=0、mutual_close=1、initiate_escape=2、challenge_escape=3、finalize_escape=4、claim_expired=5で、buffer/tree opとは別enum。
+
+deposit/expiryではOptionを全てNone。mutual_closeはN/B/ownerがSome、deadlineだけNone。initiate_escapeは作成済みPending、challenge/finalizeは消去前のPendingに対応するN/B/owner/deadlineがすべてSome。C/D/expiryは常に元Noteの値。initialize_poolの初期sequenceは0、資金遷移以外の管理・buffer操作はsequenceを増やさない。
+
+indexerはmeta.err=nullの成功transactionだけを、block内transaction順・CPIを含む実行順で適用し、program IDとinvocation stackを検証する。sequenceの欠落・重複内容不一致を拒否する。ログ欠落時はinline args、またはbufferのcreate/append/seal/execute/closeの成功履歴からpayloadを復元する。bufferはPDAだけでなく作成transactionを世代識別子にし、digest・offset・executeのexpected_digestを照合する。実行後にcloseされたaccountをRPCで読めるとは仮定しない。archiveが必要履歴を提供できなければpath配信を止める。
+
 ## 5. Transactionサイズと一時buffer
 
-v1は4096 bytes、legacy/v0は1232 bytesを前提に実transactionをserializeして判定する。v1はCU/data limitをmessage configへ設定し、walletのv1対応を確認する。indexer/RPC読取は `maxSupportedTransactionVersion:1`。[Solana v1資料](https://solana.com/upgrades/larger-transaction-sizes)
+v1は4096 bytes、legacy/v0は1232 bytesを前提に実transactionをserializeして判定する。v1はCU/data limitをmessage configへ明示設定し、priority feeは総lamportsとして扱う。1232 bytesを超える送信はbase64 encodingを使う。walletの使用する署名featureと対象cluster/RPCのv1対応を確認し、未対応ならbufferへ進む。indexer/RPC読取は `maxSupportedTransactionVersion:1`。[Solana v1資料](https://solana.com/upgrades/larger-transaction-sizes)
 
-buffer方式を初版の必須fallbackとする。`create_payload(op,len,digest,nonce,expires)` → `append_payload(offset,bytes)` → `seal_payload()` → `execute_payload()` → `close_payload()`。
+buffer方式を初版の必須fallbackとする。`create_payload(op,len,digest,nonce,expires)` → `append_payload(offset,bytes)` → `seal_payload()` → `execute_payload(expected_digest:[u8;32])` → `close_payload()`。
 
-buffer op:u8はdeposit=0、mutual_close=1、initiate_escape=2、challenge_escape=3、claim_expired=4。他の値は拒否（tree-transition回路のopとは別enum）。create argsは順にu8/u32/[u8;32]/[u8;32]/u64、appendはu32 offsetとBorsh Vec<u8>、seal/execute/closeはargsなしでbuffer accountから読む。
+buffer op:u8はdeposit=0、mutual_close=1、initiate_escape=2、challenge_escape=3、claim_expired=4。他の値は拒否（tree-transition回路のopとは別enum）。create argsは順にu8/u32/[u8;32]/[u8;32]/u64、appendはu32 offsetとBorsh Vec<u8>、seal/closeはargsなし。executeはexpected_digest:[u8;32]を署名対象instruction dataに含める。
 
 - len<=4096、expires<=作成時+3600秒。opはdeposit/close/escape/challenge/expiryだけ。
 - appendはuploader署名、offset=next_offset、範囲内。既存byteの書換え不可。sealは全byte受領とSHA256一致を確認。
-- executeはuploader署名、pool・op・seal・期限を検査。payloadは対象inline命令のargsそのもの、余分な末尾byteを拒否。account条件はinlineと同じ。depositでは元token owner署名も必須。
-- 署名はbuffer accountと固定digestを参照するため、第三者が差し替えられない。封印だけでは資金・root・noteを変更しない。
+- executeはuploader署名、expected_digest=buffer.digest、pool・op・seal・期限を検査。payloadは対象inline命令のargsそのもの、余分な末尾byteを拒否。account条件はinlineと同じ。depositでは元token owner署名も必須。
+- 署名はbuffer accountとinstruction data内のexpected_digestに結合する。同じPDAをclose後に再作成して別内容をsealしても、以前のexecute署名はInvalidBufferで拒否する。封印だけでは資金・root・noteを変更しない。
 - 成功でbufferを消費、rentは保存済みrent_payerへ返す。失敗なら封印状態を保つ。uploaderは中止close可能、期限後は誰でも同じrent_payerへ回収可能。
 - 同じpayloadの別buffer再実行は、note ID/root/status/nullifierで拒否。stale rootは新path/proofで新bufferを作り、古いbufferをcloseする。
 

@@ -6,7 +6,16 @@
 
 DBは同期replicaを別障害区画へ置き、認可・clearance・DISPATCHING・署名対象のcommitは同期replicaへの永続化後にackする。primaryだけにackしてRPO=0を名乗らない。promote時は旧writerと旧primaryを停止・fenceしてから新writerを起動。split brain試験を必須にする。
 
-公開設定manifestはdeployment ID、Solana genesis/program/pool/mint/token program、keys、VK/PK hash、回路ID、tree backend、IDL hash、quote key、HTTPS origins、API対応表、料金表hash、TTL/cap、binary/image digest、DB schema versionを持つ。manifest_hashはmanifest_hashとmanifest_signatureを除いたJCS objectのSHA256、署名はそのraw32 bytesに対する配布用Ed25519署名。clientは配布物にpinされた鍵または信頼済みmanifest hashから起動し、manifest自身の公開鍵だけを信頼の根拠にしない。サーバーが返す別のpoolや鍵を自動承認しない。各provider credentialはsecret managerの参照名だけを配備設定に置く。
+公開設定manifestはdeployment ID、Solana genesis/program/pool/mint/token program、keys、VK/PK hash、回路ID、tree backend、IDL hash、quote/receipt key、admin/upgrade multisigのauthority・program ID・members・threshold・config hash、HTTPS origins、API対応表、料金表hash、TTL/cap、binary/image digest、DB schema versionを持つ。manifest_hashはmanifest_hashとmanifest_signatureを除いたJCS objectのSHA256、署名はそのraw32 bytesに対する配布用Ed25519署名。clientは配布物にpinされた鍵または信頼済みmanifest hashから起動し、manifest自身の公開鍵だけを信頼の根拠にしない。サーバーが返す別のpoolや鍵を自動承認しない。各provider credentialはsecret managerの参照名だけを配備設定に置く。
+
+
+### 外部送信のfencing
+
+writerのadvisory lockだけでは停止したproxy processの送信を防げない。provider credentialと外部送信能力を専用dispatcherへ限定し、frontendが直接上流へ接続できないnetwork ACLにする。ISSUING/DISPATCHINGへのCASと同じtransactionで、attempt ID、writer epoch、owner instance、対象session/operationをdispatch_attemptsへ記録する。directキー発行、推論、count_tokensを同じ規則で扱い、不確実なattemptを別ownerへ再割当てしない。
+
+finished_atは元ownerの呼出しが終端して以後送信/再送しない確認、fenced_atは独立したegress遮断またはprocess停止と再起動禁止を確認した時刻。fence_evidence_digestに制御基盤の証拠を結合する。タイムアウトやDBフラグだけをfence完了にしない。failover時は旧writer/DBに加えて旧dispatcherもfenceする。全attemptがfinishedまたはfencedになるまでSIGN_PENDING/後継公開は禁止し、signerも照合する。directはこの条件に加えて発行済みkeyの停止・最終usage・削除の確認が必要。
+
+proxyの900秒waiverはfencing成功時の目標。遮断できなければ新規受付停止・精算保留を表示し、運営へ通知する。送信権限の復活を伴う復旧を自動で行わない。T11/T18でcommit直後に停止したownerを精算後に再開するケースを検査する。
 
 ## 2. セキュリティ境界
 
@@ -24,7 +33,7 @@ DBは同期replicaを別障害区画へ置き、認可・clearance・DISPATCHING
 | 悪意あるserverの署名保留 | 元escape/challenge条件を継承。無条件退出保証と説明しない |
 | 期限切れ | expiry前の明示・警告・出金導線。元仕様ではActive元本全額がtreasuryへ移る |
 
-Baby-JubJub署名は一般のEd25519用KMS signing APIに差し替えない。初版はisolated Rust signerを使い、鍵seedをKMS envelope encryptionで保管し、起動時に限定メモリーへ展開する。swap/core dump/debug endpointを無効化し、RPCは相互TLS、署名要求はprimary ledgerから再照合する。state/clearance/quote/program admin/provider keyは別の鍵。
+Baby-JubJub署名は一般のEd25519用KMS signing APIに差し替えない。初版はisolated Rust signerを使い、鍵seedをKMS envelope encryptionで保管し、起動時に限定メモリーへ展開する。swap/core dump/debug endpointを無効化し、RPCは相互TLS、署名要求はprimary ledgerから再照合する。state/clearance/quote/receipt/program admin/provider keyは別の鍵。
 
 program upgrade authorityとadminは別の2-of-3 multisigで運用する。実装時に選定したmultisigのprogram IDと構成をmanifestへ固定。任意upgradeが可能である信頼条件を利用者に表示する。既存poolのimmutable鍵/VKをupgradeで差し替える運用は禁止し、新poolへ移行する。
 
@@ -34,7 +43,7 @@ program upgrade authorityとadminは別の2-of-3 multisigで運用する。実�
 
 checkとoff-chain発行はchainと原子的にはできない。この競合は保存済みrequest proofとchallengeで処理する。challengerはconfirmedで早期準備し、finalized状態でcanonical evidenceとcurrent zero pathを検証して送る。deadlineの残りに応じて再送・priority feeを上げる。24時間challengeに対し5分以内の検出・送信を運用目標とし、遅延60秒で警告、5分で当番通知、deadline残り1時間で緊急扱い。
 
-checkpointはslot、blockhash、transaction signature、instruction index、tree sequence。indexerはarchive RPCから再走査可能。rootをsequence順に再構築し、program TreeStateと照合する。provider receiptはrequest transcriptと結合し、challengeに必要なRP/proofを精算後も保持する。
+checkpointはslot、blockhash、transaction signature、outer instruction indexとCPI実行順index、tree sequence。indexerはarchive RPCから再走査可能。rootをsequence順に再構築し、program TreeStateと照合する。provider receiptはrequest transcriptと結合し、challengeに必要なRP/proofを精算後も保持する。
 
 ## 4. 保存期間・復旧
 
@@ -46,9 +55,9 @@ raw IPはアクセスログに残さず、rate limit用salted keyは24時間で�
 |---|---|
 | client応答喪失 | 同じrequest ID/secret/proofで照会。同じNで別認可を作らない |
 | direct発行timeout | ISSUANCE_UNKNOWNを保存。キー存在/usageを照会し、失効・精算。新規キー再発行しない |
-| proxy送信後crash | DISPATCHINGをUNKNOWNへ。再dispatchなし。usage照会または900秒後運営損失 |
+| proxy送信後crash | DISPATCHINGをUNKNOWNへ。再dispatchなし。送信ownerを終了/fence後、usage照会または900秒目標で運営損失。不明なら精算保留 |
 | 署名後DB応答喪失 | signer journalの同一messageを照合・再取得。charge/anchorを再計算しない |
-| DB failover | 旧primary/writerをfence、同期済みLSNを確認、未精算状態とsigner journal照合後再開 |
+| DB failover | 旧primary/writer/dispatcherをfence、同期済みLSNを確認、未精算状態とsigner journal照合後再開 |
 | snapshotからの災害復旧 | WALを最後のackまで再生。ack済み予約を復元できない場合は新規認可を再開しない。chainだけでオフチェーンNは復元できない |
 | root競合・blockhash期限 | chain結果を先に照会。未成立ならcurrent root/path/proofで再作成。depositはnext IDも照合 |
 | RPC/indexer不一致 | 新規認可/path配信停止、別RPCで再構築。確実なPending finalize/challengeを優先 |
@@ -91,3 +100,11 @@ devnet/localでG1/G2を先に満たす。実provider試験は利用料金を発�
 - [OpenRouter key管理](https://openrouter.ai/docs/guides/overview/auth/management-api-keys)
 
 外部APIのschema/pricingは実装時に再取得してsnapshotを残す。本仕様は対応機能と失敗時の契約を固定するもので、providerの全API schemaを複製していない。
+
+## 8. Snapshot wireと再構築
+
+snapshot downloadはOpenAPIのTreeSnapshotFileをJCS UTF-8（BOM/改行なし）にしたbytes。sha256はその全bytesのdigestで、HTTPS取得後に必ず検査する。schema_version="1"、snapshotはRoot、active_notesとpending_withdrawalsをそれぞれnote_id昇順で格納し、重複・集合間の重なりを禁止。IDはすべてnext_note_id未満、next_note_id<=2^32。Closed noteは省略するがIDを再利用しない。
+
+cutはfinalized slotの末尾。blockhashとそのslotに対応する信頼済みchain履歴を検証し、active_notesのC/D/expiryから元H_leafで32段treeを再構築してrootと照合する。Pendingはzero leafであり、Pending情報もchain履歴と検証する。単にsnapshot自身のsha256一致をchain正当性と扱わない。slotより後の成功transactionをprotocolの順序でreplayし、最新TreeStateのroot/sequence/next IDおよびNote/Pendingと照合してからpath配信する。RPCがhistorical account読取を提供しない場合はinitializeからの履歴replayを使う。
+
+buffer close/reuseやログ欠落はprotocolの履歴復元規則を使う。履歴不足なら配信停止。snapshotにExitNullifier全件を含めないため、nullifierの未使用判定は引き続き独立RPC照合を必須とする。

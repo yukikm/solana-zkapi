@@ -90,7 +90,9 @@
       "responses_stateless_text_tools_sse"
     ],
     "ledger_database": "postgresql_single_fenced_writer_per_pool",
-    "design_status": "implementation_ready_runtime_gates_not_run"
+    "design_status": "implementation_ready_runtime_gates_not_run",
+    "design_review_date_jst": "2026-10-03",
+    "design_review_evidence": "evidence/design-review-2026-10-03.md"
   },
   "work_items": [
     {
