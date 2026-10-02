@@ -1,0 +1,233 @@
+{
+  "date_jst": "2026-10-03",
+  "scope": "I01_baseline_complete_I02_native_foundation_reviewed_ready_for_svm_implementation_not_I03",
+  "toolchain": {
+    "rust": "1.90.0",
+    "go": "1.25.0",
+    "node": "24.19.0",
+    "npm": "11.9.0",
+    "typescript": "5.9.3",
+    "python_observed": "3.12.14",
+    "groth16-solana": "0.2.0",
+    "solana-bn254": "2.2.2"
+  },
+  "artifact_sha256": {
+    "Cargo.lock": "697d93746dee94cf22f8c117ade1ae9e94d3c7cc3c7b9b359ffadfa816493b2e",
+    "package-lock.json": "66fd09223e08493b7ccc32863cb5f50fcc3136bd49d8996ec5bf86e439b6892f",
+    "rust-toolchain.toml": "ef994db2f5b4d597d6641f1c9d1a39224b2a3cd2476de2723680394e010bf2be",
+    ".node-version": "7e8a2fa94951112b894a3dbe3d05efef5e9263741fa49125f0a70f40fedab4cc",
+    ".go-version": "32112436a82effc1d958644a972f2a81e829e5ff08beb71305473cf6d41ca956",
+    "vendor/upstream-lock.json": "b9e2033baf11181a6f75148587ec73fcedbdccd6ad2a07e16e9f0b1d3787d3b2",
+    "docs/contracts/binding-vectors.json": "aa7439da78767d07755d332239ae022105adc4ba5643d868259f00650d996286",
+    "tests/fixtures/crypto/escape-genesis.json": "d39260f3f5493d7a6c8baa373919704d9997fc70b4e69ba93720f9fd8188422b",
+    "tests/fixtures/crypto/escape-signed.json": "7a0209e3c7b059cf88e729d45fa7529a1433d24715637ad334ee0fb63203a6b7",
+    "tests/fixtures/crypto/request-genesis.json": "5c76fc6805dab2c656535ebbf70098e4caa09c4e9d939e1a426b5a43270ba12f",
+    "tests/fixtures/crypto/request-signed.json": "0032c47bc9677a6273c7ae12d559b96368b41b97d21d77ea1b2c1fe8cec72c2b",
+    "tests/fixtures/crypto/withdrawal-genesis.json": "38947aaa9b8a6790d67fe8d539fa4f99aec25a609d8853c4d70fa2d57b6ab3ce",
+    "tests/fixtures/crypto/withdrawal-signed.json": "82e6fb1dafaa0f06271e1f564d3763aa15837bf1471b454719db40810892b809",
+    ".github/workflows/ci.yml": "6bf68f2fec8746b3281be889afdebb9f134b249ed05da02f5195295363d84430",
+    "crates/zkapi-solana-crypto/src/lib.rs": "a40bf7016a5ef8808e0c180dccfd3f582d98124926f1cfe11fc28f25a99d103e",
+    "crates/zkapi-solana-crypto/tests/compatibility.rs": "c9b3f896e5be521abd3288413505e8f4761bd5f90d869a46aab9c61149759184",
+    "crates/zkapi-solana-types/src/amount.rs": "c74eba2dec3f0d3795819e95c926067a2bdd8d7263710e26abf9cba8a6a92d21",
+    "crates/zkapi-solana-types/src/binding.rs": "1ea4bee84bc0c27585ac41112c00d7846ec3e75a091960680c25c2946d5752c4",
+    "crates/zkapi-solana-types/src/field.rs": "15c8015ec5f0af639aefc9877cdc8af8ae7d463f7b0a4a36b01c139690fc8f61",
+    "packages/sdk/src/encoding.ts": "7301ea7c7f93dcd4ae02f760d07829d342bc2c0d042ace67bc5a41a8d68aeee4",
+    "scripts/check_evidence.py": "eb16e7d34863a251e0c63f543889351360f44d53d06e1442f6b4a1a3838b1fda",
+    "scripts/check_design.py": "b755f0b7dad52e4e707eb568c9adc530f3472fb70d13b92c05d4e4a20382244b",
+    "scripts/check_upstream.py": "95d38e416a245059848019356634f42a81770cd1ec54eb2e160399689e9c0343",
+    "scripts/check_openapi_contract.py": "a8cfea742569c2a20a847454c85972517aebb4babe6eab75df15aa1bab94fa4e",
+    "scripts/check_ledger_contract.py": "0dddd0b639a4f28be656652135ccbd3b5f0a3049a9c860a84fcf5f411301a2dc",
+    "scripts/ledger_contract_checks.sql": "dbc7eaa143acb820b2668cf0244eb05dbcfa07c6ebed7a17c547e37fb50edc9c",
+    "docs/contracts/openapi.json": "bcf9edba8fdb482f976933083b87b46500004cc293699e6249355e8bb1d368d7",
+    "docs/contracts/ledger.sql": "d37de7668298c8bb8a719966fa5943dfcd118d0bf182d13e516a2d593feb0b77",
+    "docs/evidence/ci-baseline.json": "6d24c5387804fe16e067102ad442b6a41047f2d758d31604f2d4babbd64d88ad",
+    "tests/fixtures/encoding.json": "1e8069460006622137c054a3c00efe2d7a610e8a71b7b345eddab7271092579b",
+    "crates/zkapi-solana-types/tests/contracts.rs": "a1839e0dba16cf6bb9d4c8fe398c1c992eeee2446ebe15d8c9576591d00c714a",
+    "packages/sdk/test/encoding.test.ts": "6ad5f94b9d8581c8c6e9d71793c061c1b50ed9ebc95bdbfd3d6cb3291534d73a",
+    "work/design/generate_contracts.py": "a97eadd1a596fb4f70d00744c474224159a3e8d203783b316c7d6e9230e2587d"
+  },
+  "limitations": [
+    "Review changes and new contracts CI job not remotely executed yet",
+    "Local Go dependency download blocked by storage.googleapis.com policy; original pinned baseline passed remotely",
+    "Local PostgreSQL contract not rerun: initdb unavailable; added CI job awaits execution",
+    "No SBF/SVM/CU/full transaction size or token CPI measurement",
+    "Tree backend remains undecided; I03 and I05 dependencies not met",
+    "WASM types compiled only; WASM proof/vector execution not run",
+    "G1/G2/G3/G4 not passed"
+  ],
+  "review": {
+    "date_jst": "2026-10-03",
+    "implementation_commit": "b7961bc6239a371e4deb8ea36aa420eb50d65ea5",
+    "design_commit": "88116e3b89e4d5911639af8419eb5e217a22bcd4",
+    "next_task": "I02 SBF/SVM harness, CU and transaction size measurement, tree backend decision",
+    "i03_ready": false,
+    "current_changes_remote_ci": "not_run",
+    "local_postgresql_contract": "not_run_missing_initdb"
+  },
+  "initial_implementation_logs": {
+    "I01-rust-protocol.log": {
+      "sha256": "68812095d827c7f36e83710d7584efd95da20caf38a926956cc6290780a9a149",
+      "test_results": [
+        "test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 12.96s",
+        "test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s",
+        "test result: ok. 12 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.04s",
+        "test result: ok. 15 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 9.87s",
+        "test result: ok. 10 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s",
+        "test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s",
+        "test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s",
+        "test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s",
+        "test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s",
+        "test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s"
+      ]
+    },
+    "I01-rust-services.log": {
+      "sha256": "7782e2abb193962b3b412d2f6803c992412fbb023113feab61a442931c1bbaa4",
+      "test_results": [
+        "test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s",
+        "test result: ok. 12 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.04s",
+        "test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s",
+        "test result: ok. 83 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 21.68s",
+        "test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s",
+        "test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s",
+        "test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s",
+        "test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s"
+      ]
+    },
+    "I01-sdk.log": {
+      "sha256": "55359daf7ce5908d7e4d9fe3afbca4af79af3eb1abe23b433392b2bce9643622",
+      "test_results": [
+        "\u2139 tests 309",
+        "\u2139 pass 309",
+        "\u2139 fail 0",
+        "\u2139 skipped 0"
+      ]
+    },
+    "I02-clippy.log": {
+      "sha256": "ef441e28bf5fbe4398071f9f0ec804ed3df6075b471d6648c70e70b045e43432",
+      "test_results": []
+    },
+    "I02-wasm.log": {
+      "sha256": "f71a3eebeb0d2b76e920d8007609bee6fb2489932251ea8b7790701673afee8d",
+      "test_results": []
+    },
+    "I02-workspace.log": {
+      "sha256": "4321187b527006d71ea7554f0ee3250929bd43201d6f62001e670d8e44c0d470",
+      "test_results": [
+        "test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s",
+        "test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 17.13s",
+        "test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s",
+        "test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s",
+        "test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s",
+        "test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s"
+      ]
+    },
+    "I02-typescript.log": {
+      "sha256": "136c80ac569e8d379c796018219c749cca41380c6df9f2f91319b1967ea6414c",
+      "test_results": [
+        "\u2139 tests 4",
+        "\u2139 pass 4",
+        "\u2139 fail 0",
+        "\u2139 skipped 0"
+      ]
+    }
+  },
+  "local_logs": {
+    "review-clippy.log": {
+      "sha256": "ebd15b870bf125fb4ec80207ad7bc5797f2eba1057640d241c45802f01a82451",
+      "test_results": []
+    },
+    "review-openapi.log": {
+      "sha256": "e95d6eee7bb70dab11ab25522dcb8ba27e88bf29893202dd43df480ba24eca91",
+      "test_results": [
+        "PASS: OpenAPI 3.1, 50 schemas, 16 positive/negative examples."
+      ]
+    },
+    "review-rust.log": {
+      "sha256": "9908d9f8eabeb6a9a594e5b16587fbe38c91d34e75b251aa88784ac0139eff76",
+      "test_results": [
+        "test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s",
+        "test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 29.09s",
+        "test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s",
+        "test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s",
+        "test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s",
+        "test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s"
+      ]
+    },
+    "review-typescript.log": {
+      "sha256": "f0ef028a107957c41d0b51ca85907a90b49f71fd34b19ae088dc76487cbc2a5e",
+      "test_results": [
+        "\u2139 tests 6",
+        "\u2139 pass 6",
+        "\u2139 fail 0",
+        "\u2139 skipped 0"
+      ]
+    },
+    "review-upstream-protocol.log": {
+      "sha256": "1eba09e0338243256be1b47ee3d69cea6dafdcfc336868317b20f4ed8d2eeffa",
+      "test_results": [
+        "test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 7.99s",
+        "test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s",
+        "test result: ok. 12 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s",
+        "test result: ok. 15 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 4.38s",
+        "test result: ok. 10 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s",
+        "test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s",
+        "test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s",
+        "test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s",
+        "test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s",
+        "test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s"
+      ]
+    },
+    "review-upstream-sdk.log": {
+      "sha256": "e43e57f5c721d9dee8204292fb4c6052f2e9d08047b5dd4169f2c77b2b332120",
+      "test_results": [
+        "\u2139 tests 309",
+        "\u2139 pass 309",
+        "\u2139 fail 0",
+        "\u2139 skipped 0"
+      ]
+    },
+    "review-upstream-services.log": {
+      "sha256": "acb005f2e50c75b972faab83b16bd3d93795e54b2af8d010954fffc4ba29022e",
+      "test_results": [
+        "test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s",
+        "test result: ok. 12 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.03s",
+        "test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s",
+        "test result: ok. 83 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 22.77s",
+        "test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s",
+        "test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s",
+        "test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s",
+        "test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s"
+      ]
+    },
+    "review-wasm.log": {
+      "sha256": "6b0a84ff0dc775d07c3afbd518e605ca3491458ea38cfce77b04cba6538f833a",
+      "test_results": []
+    },
+    "review-evidence-check.log": {
+      "sha256": "146765922734f44add3be231c0f46af57cdbe6e18068a6c37cbce5dcff8046a0",
+      "test_results": [
+        "PASS: evidence checker accepts matching bytes and rejects modified/missing artifacts"
+      ]
+    }
+  },
+  "local_go_baseline": {
+    "status": "blocked_dependency_download",
+    "blocked_host": "storage.googleapis.com",
+    "passed_packages": [
+      "internal/config",
+      "internal/relay",
+      "internal/server"
+    ],
+    "umask": "022",
+    "full_suite_passed": false
+  },
+  "go_baseline": {
+    "status": "passed_remote",
+    "commit": "b7961bc6239a371e4deb8ea36aa420eb50d65ea5",
+    "run_url": "https://github.com/yukikm/solana-zkapi/actions/runs/37039077611",
+    "job_id": 110944444062,
+    "go": "1.25.0",
+    "full_suite_passed": true,
+    "evidence": "docs/evidence/ci-baseline.json"
+  }
+}

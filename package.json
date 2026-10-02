@@ -1,0 +1,12 @@
+{
+  "name": "solana-zkapi",
+  "private": true,
+  "type": "module",
+  "engines": { "node": "24.19.0", "npm": "11.9.0" },
+  "workspaces": ["packages/sdk"],
+  "scripts": {
+    "typecheck": "tsc --noEmit -p packages/sdk/tsconfig.json",
+    "test": "node --test packages/sdk/test/*.test.ts"
+  },
+  "devDependencies": { "typescript": "5.9.3", "@types/node": "24.10.0" }
+}

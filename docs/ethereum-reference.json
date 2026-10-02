@@ -51,7 +51,7 @@
     "article_vault_address": "matches_source_manifest",
     "live_api": "not_verified_fetch_failed",
     "deployed_bytecode_matches_source": "not_verified",
-    "solana_implementation": "not_started"
+    "solana_implementation": "I01_completed_I02_native_foundation_reviewed_svm_pending"
   },
   "source_file_sha256": {
     "protocol/contracts/src/ZkApiVault.sol": "f11e0d85fe5ffecac1a7f7bb7925ce04cf02146191c73a08c4ce2fab8804d5ba",
@@ -97,11 +97,11 @@
   "work_items": [
     {
       "id": "I01",
-      "status": "not_started"
+      "status": "completed"
     },
     {
       "id": "I02",
-      "status": "not_started"
+      "status": "in_progress"
     },
     {
       "id": "I03",
@@ -179,7 +179,7 @@
     }
   ],
   "release_gates": {
-    "G1": "not_run",
+    "G1": "in_progress_native_only",
     "G2": "not_run",
     "G3": "not_run",
     "G4": "not_run"

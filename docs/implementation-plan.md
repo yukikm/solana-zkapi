@@ -1,6 +1,6 @@
 # 実装タスクと受入条件
 
-すべて未実装。I01から順に進める。担当は作業componentを示し、外部の人員を割り当てたことは意味しない。各完了時に `docs/evidence/Ixx.md` へ実行command、version、artifact hash、結果、未解決事項を残す。mock結果と実proof/provider結果を区別する。
+[I01](evidence/I01.md) baseline完了、[I02](evidence/I02.md) 基盤レビュー修正済み（2026-10-03 JST）。次の実装はI02のSBF/SVM/CU・tree backend決定。I03/I05の依存条件はまだ未達で、I03以降は未着手。担当は作業componentを示し、外部の人員を割り当てたことは意味しない。各完了時に `docs/evidence/Ixx.md` へ実行command、version、artifact hash、結果、未解決事項を残す。mock結果と実proof/provider結果を区別する。
 
 ## 1. タスク
 

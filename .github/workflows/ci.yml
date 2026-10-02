@@ -1,0 +1,83 @@
+name: implementation
+on: [push, pull_request]
+permissions:
+  contents: read
+jobs:
+  rust:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          submodules: recursive
+      - name: Check source and design pins
+        run: |
+          python3 scripts/check_upstream.py
+          python3 scripts/check_design.py
+          python3 scripts/check_evidence.py
+      - name: Install pinned Rust
+        run: rustup show
+      - name: Rust checks and real proof compatibility (host)
+        env:
+          ZKAPI_TEST_ARTIFACT_DIR: target/i02-fixtures
+        run: |
+          cargo fmt --all -- --check
+          cargo clippy --locked --workspace --all-targets -- -D warnings
+          cargo test --locked --workspace -- --nocapture
+          cargo check --locked -p zkapi-solana-types --target wasm32-unknown-unknown
+      - name: Upstream baseline
+        run: |
+          cargo test --locked --release --manifest-path vendor/ethereum-zkapi/protocol/rust/Cargo.toml
+          cargo test --locked --release --workspace --manifest-path vendor/ethereum-zkapi/Cargo.toml
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: native-real-proof-fixtures-not-svm
+          path: target/i02-fixtures
+          if-no-files-found: error
+  contracts:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - name: Install contract validation tools
+        run: |
+          python3 -m venv /tmp/zkapi-contract-venv
+          /tmp/zkapi-contract-venv/bin/pip install openapi-spec-validator==0.7.2 jsonschema==4.26.0
+          sudo apt-get update
+          sudo apt-get install --yes postgresql-16
+      - name: Validate schemas and disposable PostgreSQL constraints
+        run: |
+          python3 work/design/generate_contracts.py --check
+          /tmp/zkapi-contract-venv/bin/python scripts/check_openapi_contract.py
+          PATH="/usr/lib/postgresql/16/bin:$PATH" python3 scripts/check_ledger_contract.py
+  node:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          submodules: recursive
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version-file: .node-version
+      - name: Pinned npm
+        run: npm install --global npm@11.9.0
+      - run: npm ci --ignore-scripts
+      - run: npm run typecheck && npm test
+      - name: Upstream SDK baseline
+        working-directory: vendor/ethereum-zkapi
+        run: npm ci --ignore-scripts && npm run test:sdk
+  go:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          submodules: recursive
+      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5
+        with:
+          go-version: '1.25.0'
+          cache-dependency-path: vendor/ethereum-zkapi/zkapi-clientd/go.sum
+      - name: Upstream Go baseline
+        working-directory: vendor/ethereum-zkapi/zkapi-clientd
+        env:
+          GOTOOLCHAIN: local
+        run: |
+          umask 022
+          go test -mod=readonly ./...
