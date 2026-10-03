@@ -1,8 +1,10 @@
 # Solana zkAPI — 実装開始仕様（layout 2）
 
-状態：**設計・インターフェース確定、実装着手可**。更新日：2026-10-03 JST。[今回のlayout 2設計確認](evidence/layout2-design-ready.md)と[従来の設計レビュー](evidence/design-review-2026-10-03.md)を参照。
+状態：**設計・インターフェース確定、実装着手可**。更新日：2026-10-04 JST。[layout 2設計確認](evidence/layout2-design-ready.md)と[従来の設計レビュー](evidence/design-review-2026-10-03.md)を参照。
 
 現在地：**I01〜I04 local実装・検証完了、次はI05 Postgres ledger・quote・signer**。[I04完了記録](evidence/I04.md)にbuffer全5操作、SDK署名v0、finalized indexer、復旧試験を記録した。実SBFはbuffer 161取引＋SDK統合53取引、既存I03回帰366取引も成功。最大426,830 CU / 1,232 bytes。実wallet端末・公開RPC・hosted CI・G1〜G4公開gateは未完了。元回路/profileと[署名公開鍵のビルド固定](adr/0002-build-validated-signing-keys.md)を維持する。
+
+I04レビューでSDKの非同期署名/復旧時の入力固定、indexerのRPC欠落後の再取得とready失効を修正。[I05実装引き継ぎ](i05-implementation-ready.md)に再利用先、PoolConfig/RPC境界、DB排他、署名journal、実装順序と完了証拠を固定した。I05サービス自体は未実装。
 
 これはUSDC決済、Ethereum zkAPIの直接接続機能、第三者運営のproxyを含む本番向け仕様である。コード完成・性能検証・監査・mainnet配備の完了を意味しない。暗号互換性などの実測項目は、担当・判定基準・不合格時の処理を実装計画に固定した。
 
@@ -15,6 +17,7 @@
 5. [運用・リリース仕様](specs/operations.md)：復旧、秘密管理、受入条件。
 6. [実装タスク](implementation-plan.md)：依存順序、変更箇所、完了の証拠。
 7. [OpenAPI](contracts/openapi.json)、[DBスキーマ](contracts/ledger.sql)、[決定論的テストベクトル](contracts/binding-vectors.json)、[layout 2 wire契約](contracts/tree-transition.json)。
+8. [I05実装引き継ぎ](i05-implementation-ready.md)：次工程の成果物・transaction境界・検証順序。
 
 新規Solanaインターフェースについては上記の仕様を正本とする。[従来の比較設計](production-parity.md)はEthereum版との対応表、[参照元記録](ethereum-reference.json)は観測事実である。参照元の実装詳細は固定commitを優先し、記事の説明から未実装機能を推測しない。仕様と固定コードの差が見つかったら差分を記録して修正し、無言で独自方式に変更しない。
 

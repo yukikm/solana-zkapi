@@ -1,4 +1,5 @@
--- Design contract, PostgreSQL. Not applied to a database in this design task.
+-- PostgreSQL design contract; exercised in a disposable DB, not a deployed migration.
+-- I05 must add versioned migrations, runtime roles and the separate signer journal.
 -- Only the fenced pool writer may mutate financial tables.
 -- Session FOR UPDATE + transaction is required for admission/reservation/settlement.
 BEGIN;
@@ -141,7 +142,7 @@ CREATE TABLE settlements (
     blind_delta bytes32 NOT NULL,
     signature_message bytea NOT NULL,
     message_digest bytes32 NOT NULL,
-    state_signature bytea,
+    state_signature bytea CHECK (octet_length(state_signature) = 96), -- R.x || R.y || s
     created_at timestamptz NOT NULL DEFAULT now(),
     signed_at timestamptz,
     PRIMARY KEY (pool, request_id),
@@ -153,7 +154,7 @@ CREATE TABLE clearances (
     nullifier bytes32 NOT NULL,
     reservation_kind text NOT NULL DEFAULT 'CLEARANCE' CHECK (reservation_kind = 'CLEARANCE'),
     message_digest bytes32 NOT NULL,
-    signature bytea,
+    signature bytea CHECK (octet_length(signature) = 96), -- R.x || R.y || s
     PRIMARY KEY (pool, nullifier),
     FOREIGN KEY (pool, nullifier, reservation_kind)
         REFERENCES nullifier_reservations(pool, nullifier, kind)
@@ -272,6 +273,25 @@ END;
 $$;
 CREATE TRIGGER settlement_immutable BEFORE INSERT OR UPDATE OR DELETE ON settlements
     FOR EACH ROW EXECUTE FUNCTION protect_settlement();
+
+-- Clearance retries must return the same reserved message and stored signature.
+-- The message is reconstructed from the pinned pool/version/namespace and N.
+CREATE FUNCTION protect_clearance() RETURNS trigger LANGUAGE plpgsql AS $$
+BEGIN
+    IF TG_OP = 'DELETE' THEN RAISE EXCEPTION 'clearance deletion forbidden'; END IF;
+    IF ROW(NEW.pool,NEW.nullifier,NEW.reservation_kind,NEW.message_digest)
+       IS DISTINCT FROM
+       ROW(OLD.pool,OLD.nullifier,OLD.reservation_kind,OLD.message_digest) THEN
+        RAISE EXCEPTION 'clearance content is immutable';
+    END IF;
+    IF OLD.signature IS NOT NULL AND NEW.signature IS DISTINCT FROM OLD.signature THEN
+        RAISE EXCEPTION 'clearance signature is immutable';
+    END IF;
+    RETURN NEW;
+END;
+$$;
+CREATE TRIGGER clearance_immutable BEFORE UPDATE OR DELETE ON clearances
+    FOR EACH ROW EXECUTE FUNCTION protect_clearance();
 
 CREATE FUNCTION protect_dispatch_attempt() RETURNS trigger LANGUAGE plpgsql AS $$
 BEGIN

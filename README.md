@@ -12,6 +12,8 @@ OpenAI・Claudeの利用を優先し、Ollama互換は初期対象外。既存�
 
 **I04までlocal実装・検証完了、次はI05 Postgres ledger・quote・signer**。buffer全5操作、SDK署名v0、finalized indexerとsnapshot・復旧を実装。実SBFのbuffer 161取引・SDK統合53取引・既存I03回帰366取引が成功し、最大426,830 CU / 1,232 bytes。[I04完了記録](docs/evidence/I04.md)を参照。元回路・Poseidon・固定profileを維持。実wallet・公開RPC・hosted CI・G1〜G4公開gateは未完了。
 
+I04レビューの修正と回帰検証は同完了記録に追記。[I05実装引き継ぎ](docs/i05-implementation-ready.md)からDB・quote・signerの実装に着手できる。
+
 開発開始：`git submodule update --init --recursive` → `python3 scripts/check_upstream.py` → `cargo test --locked --workspace`。TypeScriptは固定Node/npmで `npm ci --ignore-scripts && npm run typecheck && npm test`。Rust toolchainは `rust-toolchain.toml` に固定。
 
 検証記録のartifact hash照合：`python3 scripts/check_evidence.py`。回路ソースとprofileの再現性：`python3 scripts/check_i02_reproducibility.py`。ファイル権限・mtime・作成順が異なる3条件で同じarchiveを確認する。baselineのremote CI成功とレビュー変更のローカル成功は証跡で区別し、push後にremote CIを確認する。

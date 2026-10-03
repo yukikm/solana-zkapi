@@ -70,6 +70,10 @@ BEGIN
         UPDATE settlements SET charge_micro=1 WHERE pool=p AND request_id=rid;
         RAISE EXCEPTION 'mutable settlement' USING ERRCODE='ZX001';
     EXCEPTION WHEN raise_exception THEN NULL; END;
+    BEGIN
+        UPDATE settlements SET state_signature=decode(repeat('00',64),'hex') WHERE pool=p AND request_id=rid;
+        RAISE EXCEPTION 'invalid state signature length allowed' USING ERRCODE='ZX001';
+    EXCEPTION WHEN check_violation THEN NULL; END;
     UPDATE settlements SET state_signature=decode(repeat('00',96),'hex') WHERE pool=p AND request_id=rid;
     BEGIN
         UPDATE settlements SET state_signature=decode(repeat('01',96),'hex') WHERE pool=p AND request_id=rid;
@@ -87,7 +91,32 @@ BEGIN
             VALUES(oid,p,rid,oid,'charge','{}',n);
         RAISE EXCEPTION 'duplicate charge receipt allowed' USING ERRCODE='ZX001';
     EXCEPTION WHEN unique_violation THEN NULL; END;
+    INSERT INTO nullifier_reservations(pool,nullifier,kind) VALUES(p,h,'CLEARANCE');
+    INSERT INTO clearances(pool,nullifier,message_digest) VALUES(p,h,h);
+    BEGIN
+        UPDATE clearances SET signature=decode(repeat('00',64),'hex') WHERE pool=p AND nullifier=h;
+        RAISE EXCEPTION 'invalid clearance signature length allowed' USING ERRCODE='ZX001';
+    EXCEPTION WHEN check_violation THEN NULL; END;
+    BEGIN
+        UPDATE clearances SET message_digest=n WHERE pool=p AND nullifier=h;
+        RAISE EXCEPTION 'mutable clearance message' USING ERRCODE='ZX001';
+    EXCEPTION WHEN raise_exception THEN NULL; END;
+    BEGIN
+        UPDATE clearances SET nullifier=n WHERE pool=p AND nullifier=h;
+        RAISE EXCEPTION 'mutable clearance identity' USING ERRCODE='ZX001';
+    EXCEPTION WHEN raise_exception THEN NULL; END;
+    UPDATE clearances SET signature=decode(repeat('00',96),'hex') WHERE pool=p AND nullifier=h;
+    -- A retry may write exactly the saved value, but may not replace or erase it.
+    UPDATE clearances SET signature=decode(repeat('00',96),'hex') WHERE pool=p AND nullifier=h;
+    BEGIN
+        UPDATE clearances SET signature=NULL WHERE pool=p AND nullifier=h;
+        RAISE EXCEPTION 'mutable clearance signature' USING ERRCODE='ZX001';
+    EXCEPTION WHEN raise_exception THEN NULL; END;
+    BEGIN
+        DELETE FROM clearances WHERE pool=p AND nullifier=h;
+        RAISE EXCEPTION 'clearance deletion allowed' USING ERRCODE='ZX001';
+    EXCEPTION WHEN raise_exception THEN NULL; END;
 END;
 $$;
 ROLLBACK;
-SELECT 'PASS: 12 negative constraint cases and valid settlement/receipt path';
+SELECT 'PASS: 18 negative constraint cases and valid settlement/receipt/clearance paths';

@@ -135,6 +135,19 @@ test('wallet rejection, unsupported version, message mutation and dropped signat
   await assert.rejects(signV0(tx, [wallets[0], { ...wallets[1], signTransaction: async tx => { tx.signatures.forEach(signature => signature.fill(0)); return tx; } }]), /existing signature/);
 });
 
+test('verified transactions are detached from references retained by wallets', async () => {
+  const plan = await planFor(), step = plan.steps[0], wallets = requiredWallets(step);
+  let retained: VersionedTransaction | undefined;
+  const last = wallets.at(-1)!;
+  wallets[wallets.length - 1] = { ...last, signTransaction: async tx => { retained = await last.signTransaction(tx); return retained; } };
+  const signed = await signV0(compileV0(step.instruction, plan.feePayer, blockhash.blockhash), wallets);
+  const reviewed = signed.serialize();
+  retained!.message.recentBlockhash = freshHash.blockhash;
+  retained!.signatures[0].fill(0);
+  assert.deepEqual(signed.serialize(), reviewed);
+  await verifySignatures(signed);
+});
+
 test('durable journal contains exact payload, snapshot, signature and expiry before any send', async () => {
   const plan = await planFor(), attempt = await attemptFor(plan, 'create');
   assert.equal(attempt.plan.payloadHex, hex(plan.payload)); assert.equal(attempt.plan.snapshotSlot, 27); assert.equal(attempt.plan.snapshotSequence, '3');
@@ -142,6 +155,31 @@ test('durable journal contains exact payload, snapshot, signature and expiry bef
   const restored = await restorePlan(JSON.parse(JSON.stringify(attempt.plan)));
   assert.deepEqual(restored.payload, plan.payload); assert.ok(restored.buffer.equals(plan.buffer));
   await assert.rejects(prepareAttempt(plan, plan.steps[0], blockhash, requiredWallets(plan.steps[0]), { save: async () => { throw new Error('disk unavailable'); } }), /disk unavailable/);
+});
+
+test('wallet prompt edits cannot change the upload transaction or its persisted recovery context', async () => {
+  const plan = await planFor(), step = plan.steps.at(-1)!, wallets = requiredWallets(step), hash = { ...blockhash };
+  const expectedPayload = hex(plan.payload), expectedDigest = hex(plan.digest), expectedNonce = hex(plan.nonce);
+  const expectedMessage = compileV0(step.instruction, plan.feePayer, hash.blockhash).message.serialize();
+  const first = wallets[0];
+  wallets[0] = { ...first, signTransaction: async tx => {
+    plan.payload[0] ^= 1; plan.digest[0] ^= 1; plan.nonce[0] ^= 1;
+    plan.financial.destinationOwner = payer.publicKey; plan.feePayer = owner.publicKey;
+    plan.snapshot.slot = 999; plan.snapshot.sequence = 999n;
+    step.kind = 'close'; step.instruction.data[8] ^= 1;
+    Object.assign(hash, freshHash);
+    return first.signTransaction(tx);
+  } };
+  let saved: Attempt | undefined;
+  const attempt = await prepareAttempt(plan, step, hash, wallets, { save: async record => { saved = structuredClone(record); } });
+  assert.deepEqual(saved, attempt);
+  assert.equal(attempt.kind, 'execute'); assert.equal(attempt.plan.payloadHex, expectedPayload);
+  assert.equal(attempt.planDigest, expectedDigest); assert.equal(attempt.plan.nonceHex, expectedNonce);
+  assert.equal(attempt.plan.snapshotSlot, 27); assert.equal(attempt.plan.snapshotSequence, '3');
+  assert.equal(attempt.blockhash, blockhash.blockhash); assert.equal(attempt.lastValidBlockHeight, blockhash.lastValidBlockHeight);
+  assert.deepEqual(receipt(attempt).message, expectedMessage);
+  const rpc = new Rpc(); rpc.receipt = receipt(attempt);
+  assert.deepEqual(await recoverAttempt(saved!, rpc), { state: 'finalized', slot: 80 });
 });
 
 test('lost send response resends only the identical wire and recognizes finalized receipt', async () => {
@@ -153,6 +191,16 @@ test('lost send response resends only the identical wire and recognizes finalize
   assert.equal(rpc.sent.length, 2); assert.deepEqual(rpc.sent[0], rpc.sent[1]);
   rpc.receipt = receipt(attempt);
   assert.deepEqual(await recoverAttempt(attempt, rpc, true), { state: 'finalized', slot: 80 }); assert.equal(rpc.sent.length, 2);
+});
+
+test('RPC waits cannot substitute a different signed upload after journal validation', async () => {
+  const attempt = await attemptFor(await planFor('deposit', 1), 'create');
+  const replacement = await attemptFor(await planFor('deposit', 2), 'create');
+  const expected = fromHex(attempt.wireHex, attempt.wireHex.length / 2), rpc = new Rpc();
+  assert.notEqual(attempt.signature, replacement.signature);
+  rpc.signatureStatus = async () => { Object.assign(attempt, replacement); return null; };
+  assert.deepEqual(await recoverAttempt(attempt, rpc, true), { state: 'pending' });
+  assert.deepEqual(rpc.sent, [expected]);
 });
 
 test('pending/unknown RPC state and missing buffer never become execute success or authorize new transaction', async () => {
@@ -269,6 +317,42 @@ test('standalone finalize has durable signed recovery, note/account binding and 
   const changedDestination = structuredClone(attempt); changedDestination.finalization.financial.destinationOwner = payer.publicKey.toBase58();
   await assert.rejects(recoverFinalizationAttempt(changedDestination, rpc), /journal/);
   await assert.rejects(prepareFinalizationAttempt(plan, blockhash, requiredWallets(step), { save: async () => { throw new Error('fsync failed'); } }), /fsync/);
+});
+
+test('wallet prompt edits cannot change a finalization journal after the message is signed', async () => {
+  const upload = await planFor('initiate_escape');
+  const financial = vaultAccounts({ programId: upload.programId, pool: upload.pool, mint: upload.financial.mint, noteId: 0, payer: payer.publicKey, operation: 'finalize_escape',
+    destinationOwner: key(fixture.destination_owner), treasuryOwner: new PublicKey(new Uint8Array(32).fill(8)) });
+  const plan = { programId: upload.programId, pool: upload.pool, noteId: 0, feePayer: feePayer.publicKey, financial, snapshot: { ...upload.snapshot } };
+  const hash = { ...blockhash }, step = await finalizeEscape(plan.programId, financial, plan.noteId), wallets = requiredWallets(step);
+  const first = wallets[0];
+  wallets[0] = { ...first, signTransaction: async tx => {
+    plan.noteId = 1; plan.feePayer = owner.publicKey; plan.financial.destinationOwner = owner.publicKey;
+    plan.snapshot.slot = 999; plan.snapshot.sequence = 999n; Object.assign(hash, freshHash);
+    return first.signTransaction(tx);
+  } };
+  let saved: FinalizationAttempt | undefined;
+  const attempt = await prepareFinalizationAttempt(plan, hash, wallets, { save: async record => { saved = structuredClone(record); } });
+  assert.deepEqual(saved, attempt); assert.equal(attempt.finalization.noteId, 0);
+  assert.equal(attempt.finalization.financial.destinationOwner, key(fixture.destination_owner).toBase58());
+  assert.equal(attempt.finalization.snapshotSlot, 27); assert.equal(attempt.finalization.snapshotSequence, '3');
+  assert.equal(attempt.blockhash, blockhash.blockhash); assert.equal(attempt.lastValidBlockHeight, blockhash.lastValidBlockHeight);
+  const rpc = new Rpc(); rpc.receipt = receipt(attempt);
+  assert.deepEqual(await recoverFinalizationAttempt(saved!, rpc), { state: 'finalized', slot: 80 });
+});
+
+test('RPC waits cannot change a finalization attempt after journal validation', async () => {
+  const upload = await planFor('initiate_escape');
+  const financial = vaultAccounts({ programId: upload.programId, pool: upload.pool, mint: upload.financial.mint, noteId: 0, payer: payer.publicKey, operation: 'finalize_escape',
+    destinationOwner: key(fixture.destination_owner), treasuryOwner: new PublicKey(new Uint8Array(32).fill(8)) });
+  const plan = { programId: upload.programId, pool: upload.pool, noteId: 0, feePayer: feePayer.publicKey, financial, snapshot: upload.snapshot };
+  const step = await finalizeEscape(plan.programId, financial, plan.noteId);
+  const attempt = await prepareFinalizationAttempt(plan, blockhash, requiredWallets(step), { save: async () => {} });
+  const replacement = await prepareFinalizationAttempt(plan, freshHash, requiredWallets(step), { save: async () => {} });
+  const expected = fromHex(attempt.wireHex, attempt.wireHex.length / 2), rpc = new Rpc();
+  rpc.signatureStatus = async () => { Object.assign(attempt, replacement); return null; };
+  assert.deepEqual(await recoverFinalizationAttempt(attempt, rpc, true), { state: 'pending' });
+  assert.deepEqual(rpc.sent, [expected]);
 });
 
 test('permissionless expired close records actual closer and never treats absence as success', async () => {

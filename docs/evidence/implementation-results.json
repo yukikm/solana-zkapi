@@ -22,10 +22,10 @@
     ".github/workflows/ci.yml": "7397333e31879a10289c84244932dcef32c15cdfd2a2e224e9415ac2dfd594cd",
     ".go-version": "32112436a82effc1d958644a972f2a81e829e5ff08beb71305473cf6d41ca956",
     ".node-version": "7e8a2fa94951112b894a3dbe3d05efef5e9263741fa49125f0a70f40fedab4cc",
-    "AGENTS.md": "498790e9d78b941d9840220165935d7320e7568c28a26ec975ee9716135c7dfe",
+    "AGENTS.md": "0a94cc10e8f7221ce694ab9ae304c9110050e747b5d7b64943b4146844feeaa5",
     "Cargo.lock": "e4489876e3ee37a9a67647a272729444535aa3d6279ae15807d5ae0535113291",
     "Cargo.toml": "051013c25855f1fa7eae9b0149dc35cf962bf0dc5e7f780f5583d93f7dd65873",
-    "README.md": "533ae30d9451d16f84a7f5acfe6069ef992d46bb5e2c124f5a541955e12363f4",
+    "README.md": "69bb4b611221775a3f47faa783cfd492a5ca46624161a25c4920f5b386acc599",
     "crates/zkapi-layout2/Cargo.toml": "710f242bc6e5392bea1a352b58b8e8cb605111581d8c6bfefe37a00a452f5b7b",
     "crates/zkapi-layout2/src/binding.rs": "6181541842c911632f0e60de4fe196725b187709221acc89e84ef1340b81dc1f",
     "crates/zkapi-layout2/src/framing.rs": "a55d6c30c4281a7f6d3bb7debb93bc64645fc8b35627aa7d7333d3dc39e267cc",
@@ -56,11 +56,11 @@
     "docs/adr/0001-proof-bound-tree-transition.md": "69419fd3fd9e3d7ddec32123e1c9585f3f8cf239ed0fc0462945aa6b2fd1bc8a",
     "docs/adr/0002-build-validated-signing-keys.md": "362411d2086f947fe13959edc6884728a6f9d1591061f3f2202ee733d6f7e4dc",
     "docs/contracts/binding-vectors.json": "aa7439da78767d07755d332239ae022105adc4ba5643d868259f00650d996286",
-    "docs/contracts/ledger.sql": "d37de7668298c8bb8a719966fa5943dfcd118d0bf182d13e516a2d593feb0b77",
+    "docs/contracts/ledger.sql": "d69205326f32dee5a63d0f8a8d7010225c3d9b3c5892a20c53ca6394050c6ce1",
     "docs/contracts/openapi.json": "09a1bc288506ca610949b229b675fbc708bd0f73234e50bede16be1547cc7695",
     "docs/contracts/tree-transition.json": "8622d5114902a83b280f9920d7d4dd950335331e6c79336cfeeeb5a3bf2cdbdf",
     "docs/contracts/zkapi_vault.json": "73b6fa42aeba639589d59d1c2264653c8cda6a4c4ac0ca67a96653a8db9fb594",
-    "docs/ethereum-reference.json": "de667846412893bccddee6a96f9255a9302cfb4194cc7aedd09e57defb1b717b",
+    "docs/ethereum-reference.json": "3f9353c51e413fc6dab5cd317e8d7a3c82a072771674e6a8d43635ffe4691a8e",
     "docs/evidence/I02-ethereum-comparison.json": "241a737a8a08a42b98062aea8065a539ef2ed9177876fc17189f9cf8bab920e2",
     "docs/evidence/I02-optimization-results.json": "54452d699f720bd3a3c08b5140653d66d415666371b054c78523f34e205e4872",
     "docs/evidence/I02-svm-results.json": "0448a8b59de1aabfaf4c39bb7788e2957ec0fed61b68f96276202e2df9777197",
@@ -82,25 +82,26 @@
     "docs/evidence/I03.md": "c916c99c781281ef7f3070e48de118ebbabd54a0582c6703cddc09e207971c1e",
     "docs/evidence/I04-buffer-svm-results.json": "5c0ad4e9724154941f8237c5c892a4a41aeb8bc6fe50ba4200382489d80531bf",
     "docs/evidence/I04-summary.json": "7519a2bd40e4e6df652a74d947f1e1235b4b30ec8a7d053ec400971071dd084d",
-    "docs/evidence/I04.md": "703b6dca26bfc05e5a392a0a8583b95f2e05cfda44ad32cf5a238558105bcd36",
+    "docs/evidence/I04.md": "3f6cab58a5ed3ee3aca7f60c76473199510014dcfc99b5b733093a22cda3f380",
     "docs/evidence/ci-baseline.json": "6d24c5387804fe16e067102ad442b6a41047f2d758d31604f2d4babbd64d88ad",
     "docs/evidence/layout2-design-ready.md": "43a69bb6d5989cad23001598342e25b43687b5d62f6d0df228e3cdda8d08657f",
-    "docs/implementation-plan.md": "5a3a7d71d00e0540f8b2f58788ab1a1b8b11894cb737f38d92a9c6bfff4036a6",
-    "docs/implementation-ready.md": "1643fbaa47bfa3afa51626aff36594918e99eee41d6aa88b8856f25e53c6ee2e",
+    "docs/i05-implementation-ready.md": "f0b62766c1a5da4808fa8385dc0dc8def2a68bf5ace40b187beca77420f39481",
+    "docs/implementation-plan.md": "681d45eb4b3cfd786e73fcead054b607f8db2cd1e34ed483ee8b1141dfd61724",
+    "docs/implementation-ready.md": "e11d3b2229061e295cc88597c7b76f98b6334d1f7fa5f601f376b2aad408b1c8",
     "docs/production-parity.md": "3dc4065f2950a1a9fadfa87efe790d6cb5a257290a1ae4f442b903945f38ad6f",
-    "docs/specs/api-proxy.md": "0a6e9a425c1eb4ea51e80ccc183da6052b260689da0b5d6db021982c51d71bf2",
-    "docs/specs/operations.md": "af689f64ce9031d6a5597da13e01c7de6f8324e41b62af6eac407169f03e35cc",
+    "docs/specs/api-proxy.md": "77a7b925a7332af7bd2a008f34fd52779fd7be597dab806c4cc3375493c233cc",
+    "docs/specs/operations.md": "f05631f7c9d81daf3cb7cac8f2702d1beaa61a19ea570f3193cf1d1b65485253",
     "docs/specs/protocol-solana.md": "f583496de4c363722c0cb03fe862468c5e726bb8430c9fe2424f26acce1b5adc",
     "docs/specs/tree-transition.md": "eafe562109ff41dd977c07d2b4c605647b420d8e2e74b170c208746a5291803d",
     "package-lock.json": "f20927b629c1a7700b90999783e052c8ef683c28d648415eb13d05caebecb2aa",
-    "packages/sdk/README.md": "c5d42301b87bfc8cb3f0735ab39b630a416d2bafa34ecac01b7a4a24dcca6421",
+    "packages/sdk/README.md": "24f25fc019b33166ba7b812624f282b208952b967b95088418edbe6fb2c7fce0",
     "packages/sdk/package.json": "3fc6c6fa4f74494bed3386fbd724edd897edd99971e561b17e24b8846eb56518",
     "packages/sdk/src/encoding.ts": "7301ea7c7f93dcd4ae02f760d07829d342bc2c0d042ace67bc5a41a8d68aeee4",
     "packages/sdk/src/layout2.ts": "b6f6c1208f315327fed01b531a883a68676ebc0680f0d178cead59610906c91e",
-    "packages/sdk/src/transport.ts": "9c8de33e50124d15ee8eb518b99cd9eec128b225596647b84582fd98eee48fbe",
+    "packages/sdk/src/transport.ts": "dbf78794df4f8a514aff72aac47a4e05c1cbad23e5bbdbdfdc28695ca2b06bd4",
     "packages/sdk/test/encoding.test.ts": "6ad5f94b9d8581c8c6e9d71793c061c1b50ed9ebc95bdbfd3d6cb3291534d73a",
     "packages/sdk/test/sbf-transactions.ts": "b97b06d90865a12b708960bda5386913246b7ba75dc09f8a3df9cfde4c24d59d",
-    "packages/sdk/test/transport.test.ts": "53c4b9518325c6b882027d7d0ef559c23ca973e48144f1ecd7bbc022bb32b569",
+    "packages/sdk/test/transport.test.ts": "9c55856df93811da1cd36427fa68f7d6d5ac73f2f915f10928a88709e509890b",
     "programs/i02-harness/Cargo.lock": "a6afe1069fd46559e61f4fc021433c9256b3abe2e9c8bc0c8e6c747eaaf1b382",
     "programs/i02-harness/Cargo.toml": "44c6b2c5148d99afb3b2a08f03de4b30f2817a2444f1f7766f38b51b2da98ae6",
     "programs/i02-harness/src/lib.rs": "ce4ef5e6ab07deeb94f7abca4505882a36fdff543f04bfe29e96958f378f097e",
@@ -142,7 +143,7 @@
     "scripts/collect_i02_optimization.py": "049f403849aa19a6aa3b4623fecafff4a4af8ee9fc6508e45a0b4b887129e14d",
     "scripts/install_i02_evm_tools.sh": "d744d10f53a3df1b3c7d0e9ccb87ebb068bd38ed66e2f972a5f550133abc4398",
     "scripts/install_sbf_tools.sh": "935aa398336360f3a5eed42e6c35a69dce80e8809a2a5a5df7915fa4cde46082",
-    "scripts/ledger_contract_checks.sql": "dbc7eaa143acb820b2668cf0244eb05dbcfa07c6ebed7a17c547e37fb50edc9c",
+    "scripts/ledger_contract_checks.sql": "28cf24e6fd5ae2a5ef58e891ee255bcfd415b84c496b5f81cd1872128ffacb2e",
     "scripts/run_i02_layout2.sh": "1a64a25db3995f115bb6e759fb3524a2408dfb3204771b45e536df642cdbb915",
     "scripts/run_i02_optimization.sh": "d4e5c99487d41e638b7c287f142b25f9c1d9cea0c288e818c5c6959625a34d8e",
     "scripts/run_i02_svm.sh": "7fdb44ac3e5d497ecab2af4249a99124c59de3240bf634a6e6928f9d8d92e850",
@@ -151,17 +152,17 @@
     "scripts/test_check_vault_idl.py": "d78a9a286f3f75321444cc1eca0e9450b85dbac3576df59a42d24c6b27c4a183",
     "services/indexer/Cargo.lock": "4d81b30548aacce6b472fd54c7fe1575853976ae11786d87d90ef1c4b56b9708",
     "services/indexer/Cargo.toml": "44937cfb4cbeff3a77816017304f297d902dfaa70a31579549e09c68e954bc91",
-    "services/indexer/README.md": "17c54f0494c5151c296a73a03c11c7fdff36c606d7846716d8ba0eaea1f2ad3e",
+    "services/indexer/README.md": "f60875a1babf371fe145da208ecef3b5692c292136f890721dc0793bbfe7d733",
     "services/indexer/examples/verify_history.rs": "d25c33c9411cf115622a1649cf1bc75e65ee3e1588a8f83c93c6f53228f0daa7",
     "services/indexer/src/bin/indexerd.rs": "df9070ca3ae3a929f4569f38b14820296aefc918e98b7ff988c0647214419a6c",
     "services/indexer/src/lib.rs": "9cb157a0b818c439669fdc772bea7e90c8a774e2cc58e04b69bdade002faa422",
     "services/indexer/src/replay.rs": "38da049badab5184d89f3078a6452c55f16969edf6f3afc0d431a513d683b0fb",
     "services/indexer/src/rpc.rs": "db2a7c2d626b510555ea13ff3c6ab9fb3f5620a155feef4eafeb54b330b9d310",
-    "services/indexer/src/runtime.rs": "99ad25c5eb893b3a50f97f25857927b6e1cffb788453b8525a661cb0c62ba9f6",
+    "services/indexer/src/runtime.rs": "aa02dd92359fea56c0e7dd3fa8f2ba8ed7616abe8f38e7cb3910f2189a005b57",
     "services/indexer/src/snapshot.rs": "e77f70b969327948f1a1de41577f4a88b07b392596dfc2a96ee516dc01a955f9",
     "services/indexer/src/tree.rs": "bfb9b75a177f9d4a26e6d07de2d70a3f979567f7083d49e3ce433b1d332d1e66",
     "services/indexer/tests/replay.rs": "72904e26b2385e1e43ac4fd9438ed6babd8967c5ca9f45f66d30343802075a6b",
-    "services/indexer/tests/runtime.rs": "2e891ebaf85f5e8051985ab5c2442c2b0c8b42ab6335a8c28da426c700720cf4",
+    "services/indexer/tests/runtime.rs": "9710973e27f668d81144cac0aec046a991a1d1b3ba7aec17db013619f62f5efe",
     "tests/evm-layout2/EmptyRoot.t.sol": "f60e97b89085b2e725b837d89afc898df2465610c831fbbab29cab37ecc41556",
     "tests/evm-layout2/foundry.toml": "1f2f1d70a45a6b6cb7766cf49d332abbec5f4075d96d089e47423e0bc543ebfb",
     "tests/evm-vault/README.md": "b5eaa233ad9042ab6263bd700b225f4cedbf0272c1b2872368b69ef836adfb56",
@@ -234,7 +235,6 @@
   "limitations": [
     "Review changes and new contracts CI job not remotely executed yet",
     "Local Go dependency download blocked by storage.googleapis.com policy; original pinned baseline passed remotely",
-    "Local PostgreSQL contract not rerun: initdb unavailable; added CI job awaits execution",
     "WASM types compiled only; WASM proof/vector execution not run",
     "G1/G2/G3/G4 not passed",
     "SPL Token 3.5.0 bundled SBF and all-enabled Agave 2.2.0 features; not target cluster CU certification",
@@ -245,7 +245,8 @@
     "I04 v0 transport and indexer passed local real-SBF integration; live wallet/cluster/RPC and hosted CI remain unverified",
     "Indexer requires coherent finalized account cuts and archive replay from initialization; large/live availability and recovery SLO are not established",
     "SDK durable storage encryption and end-user note journal integration remain I08 work; unknown financial sends require finalized history",
-    "npm indirect dependency audit: moderate 4, high/critical 0; reachability notes in packages/sdk/README.md"
+    "npm indirect dependency audit: moderate 4, high/critical 0; reachability notes in packages/sdk/README.md",
+    "I04 review PostgreSQL DDL contract passed on local 18.6; PostgreSQL 16 CI and I05 runtime migration/concurrency/signer/fencing remain unverified"
   ],
   "review": {
     "date_jst": "2026-10-03",
@@ -288,10 +289,10 @@
     "I01-sdk.log": {
       "sha256": "55359daf7ce5908d7e4d9fe3afbca4af79af3eb1abe23b433392b2bce9643622",
       "test_results": [
-        "\u2139 tests 309",
-        "\u2139 pass 309",
-        "\u2139 fail 0",
-        "\u2139 skipped 0"
+        "ℹ tests 309",
+        "ℹ pass 309",
+        "ℹ fail 0",
+        "ℹ skipped 0"
       ]
     },
     "I02-clippy.log": {
@@ -316,10 +317,10 @@
     "I02-typescript.log": {
       "sha256": "136c80ac569e8d379c796018219c749cca41380c6df9f2f91319b1967ea6414c",
       "test_results": [
-        "\u2139 tests 4",
-        "\u2139 pass 4",
-        "\u2139 fail 0",
-        "\u2139 skipped 0"
+        "ℹ tests 4",
+        "ℹ pass 4",
+        "ℹ fail 0",
+        "ℹ skipped 0"
       ]
     }
   },
@@ -348,10 +349,10 @@
     "review-typescript.log": {
       "sha256": "f0ef028a107957c41d0b51ca85907a90b49f71fd34b19ae088dc76487cbc2a5e",
       "test_results": [
-        "\u2139 tests 6",
-        "\u2139 pass 6",
-        "\u2139 fail 0",
-        "\u2139 skipped 0"
+        "ℹ tests 6",
+        "ℹ pass 6",
+        "ℹ fail 0",
+        "ℹ skipped 0"
       ]
     },
     "review-upstream-protocol.log": {
@@ -372,10 +373,10 @@
     "review-upstream-sdk.log": {
       "sha256": "e43e57f5c721d9dee8204292fb4c6052f2e9d08047b5dd4169f2c77b2b332120",
       "test_results": [
-        "\u2139 tests 309",
-        "\u2139 pass 309",
-        "\u2139 fail 0",
-        "\u2139 skipped 0"
+        "ℹ tests 309",
+        "ℹ pass 309",
+        "ℹ fail 0",
+        "ℹ skipped 0"
       ]
     },
     "review-upstream-services.log": {
@@ -1033,8 +1034,8 @@
     "base_commit": "03866a48fd0bc751527e584d2c0356f10b1bb807",
     "evidence": "docs/evidence/I04.md",
     "next_task": "I05 Postgres ledger, quote and signer",
-    "indexer_tests": 24,
-    "sdk_tests": 21,
+    "indexer_tests": 26,
+    "sdk_tests": 26,
     "vault_host_tests": 7,
     "idl_contract_tests": 6,
     "commands": [
@@ -1043,7 +1044,88 @@
         "exit_code": 0,
         "local_log": "target/i04/run.log",
         "local_log_sha256": "6f387520ae0910fb804012407b3d160427474ae234eea10ba452a7a3b3432871"
+      },
+      {
+        "command": "PATH=\"$PWD/target/toolchains/sbf/bin:/Users/yukikimura/.nvm/versions/node/v24.19.0/bin:/opt/homebrew/opt/gnu-tar/libexec/gnubin:$PATH\" bash scripts/run_i04.sh",
+        "exit_code": 0,
+        "local_log": "target/i04-review/run.log",
+        "local_log_sha256": "6550a967c02771ad8b5ef9193d3cbd32d04003ed072d44001ad1719630a2025c"
       }
     ]
+  },
+  "i04_review": {
+    "date_jst": "2026-10-04",
+    "reviewed_commit": "ceb8bedca82f8e06736078092ab6b3374c303960",
+    "status": "ready_for_I05",
+    "evidence": "docs/evidence/I04.md",
+    "handoff": "docs/i05-implementation-ready.md",
+    "unresolved_I04_blockers": [],
+    "i05_runtime_implemented": false,
+    "vault_circuit_keys_wire_changed": false,
+    "sdk_tests": 26,
+    "indexer_tests": 26,
+    "vault_host_tests": 7,
+    "idl_contract_tests": 6,
+    "new_sdk_regressions": 5,
+    "new_sdk_regressions_failed_on_reviewed_commit": 5,
+    "new_indexer_regressions": 2,
+    "indexer_regressions_executed_before_fix": false,
+    "postgres_contract": {
+      "version": "18.6 (Homebrew)",
+      "negative_cases": 18,
+      "scope": "disposable socket-only DDL contract test; not I05 runtime migration/concurrency/fencing"
+    },
+    "changes": [
+      "Snapshot SDK plan, instructions, blockhash and recovery records before asynchronous wallet/RPC work",
+      "Detach wallet transaction references before validation and return",
+      "Retry omitted finalized range tails and revoke library readiness during refresh",
+      "Protect clearance content/signature from mutation/deletion and require 96-byte Schnorr storage",
+      "Specify I05 reuse boundaries, commit-time freshness, writer lock connection and phase-aware independent signer journal keyed by pool/nullifier"
+    ],
+    "real_sbf_transactions": {
+      "buffer": 161,
+      "sdk": 53,
+      "i03_regression": 366
+    },
+    "max_cu": 426830,
+    "max_transaction_bytes": 1232,
+    "elf_sha256": "f8e57adeee417ca58c27324999d3e46013800fd7d8892880ea8ee1becefc2334",
+    "runtime_summary": "docs/evidence/I04-summary.json",
+    "commands": [
+      {
+        "command": "PATH=\"$PWD/target/toolchains/sbf/bin:/Users/yukikimura/.nvm/versions/node/v24.19.0/bin:/opt/homebrew/opt/gnu-tar/libexec/gnubin:$PATH\" bash scripts/run_i04.sh",
+        "exit_code": 0,
+        "local_log": "target/i04-review/run.log",
+        "local_log_sha256": "6550a967c02771ad8b5ef9193d3cbd32d04003ed072d44001ad1719630a2025c"
+      },
+      {
+        "command": "PATH=\"/opt/homebrew/opt/postgresql@18/bin:$PATH\" python3 scripts/check_ledger_contract.py",
+        "exit_code": 0,
+        "local_log": "target/i04-review/ledger.log",
+        "local_log_sha256": "41017e8cce5cd3cc7e0dc22a0c0bca80b9dd0adbb8268167888fca94be1b4829"
+      },
+      {
+        "command": "PATH=\"/opt/homebrew/opt/gnu-tar/libexec/gnubin:$PATH\" python3 scripts/check_vault_fixtures.py",
+        "exit_code": 0,
+        "local_log": "target/i04-review/fixtures.log",
+        "local_log_sha256": "9375d31ce60d53856b77566a9c27606affca953351964f6c42e03e5efd770e67"
+      }
+    ],
+    "baseline_sdk_regression_log": {
+      "path": "target/i04-review-sdk-baseline/regression.log",
+      "sha256": "2dcf78c241badbab30e85a1c328b988665b610578e4ad4cd97fa81db2406f6df",
+      "result": "expected failure: all five new regressions fail against reviewed source",
+      "command": "/Users/yukikimura/.nvm/versions/node/v24.19.0/bin/node --test --test-name-pattern='wallet prompt edits|verified transactions are detached|RPC waits cannot' target/i04-review-sdk-baseline/packages/sdk/test/transport.test.ts",
+      "exit_code": 1
+    },
+    "python_observed": "3.13.14",
+    "live_wallet_verified": false,
+    "live_rpc_finality_verified": false,
+    "hosted_ci_verified": false,
+    "g1_passed": false,
+    "g2_passed": false,
+    "g3_passed": false,
+    "g4_passed": false,
+    "production_eligible": false
   }
 }

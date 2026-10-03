@@ -222,23 +222,24 @@ impl ArchiveRpc {
         })
     }
     pub async fn catch_up(&self, index: &mut Indexer, next_slot: &mut u64) -> Result<()> {
+        // A failed refresh must not leave an earlier reconciled root available
+        // through the library API. Every refresh requires a fresh account cut.
+        index.ready = false;
         let tip = self
             .call("getSlot", json!([{"commitment":"finalized"}]))
             .await?
             .as_u64()
             .ok_or("invalid finalized slot")?;
-        while *next_slot <= tip {
-            let end = next_slot.saturating_add(999).min(tip);
+        let mut scan = *next_slot;
+        while scan <= tip {
+            let end = scan.saturating_add(999).min(tip);
             let slots = self
-                .call(
-                    "getBlocks",
-                    json!([*next_slot,end,{"commitment":"finalized"}]),
-                )
+                .call("getBlocks", json!([scan,end,{"commitment":"finalized"}]))
                 .await?;
             let mut prior = None;
             for slot in slots.as_array().ok_or("invalid block range")? {
                 let slot = slot.as_u64().ok_or("invalid block slot")?;
-                if slot < *next_slot || slot > end || prior.is_some_and(|p| slot <= p) {
+                if slot < scan || slot > end || prior.is_some_and(|p| slot <= p) {
                     return Err("unordered block range".into());
                 }
                 let value=self.call("getBlock",json!([slot,{"commitment":"finalized","encoding":"json","transactionDetails":"full","maxSupportedTransactionVersion":0,"rewards":false}])).await?;
@@ -246,7 +247,10 @@ impl ArchiveRpc {
                 *next_slot = slot.checked_add(1).ok_or("slot overflow")?;
                 prior = Some(slot);
             }
-            *next_slot = end.checked_add(1).ok_or("slot overflow")?;
+            // Empty/skipped slots advance only this attempt's scan. Keep the
+            // retry cursor at the last applied block: an incomplete range can
+            // omit its tail, and that tail must be fetched again on retry.
+            scan = end.checked_add(1).ok_or("slot overflow")?;
         }
         if index.replay_state()?.slot != tip {
             return Err("finalized tip block is unavailable".into());

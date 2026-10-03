@@ -370,6 +370,56 @@ async fn catch_up_retries_transport_result_failure_and_requires_independent_reco
     assert!(index.is_ready());
 }
 #[tokio::test]
+async fn incomplete_range_tail_is_retried_without_skipping_the_missing_finalized_block() {
+    let f = Fixture::load(false);
+    let copy = f.clone();
+    let attempts = Arc::new(AtomicUsize::new(0));
+    let count = attempts.clone();
+    let server = mock(move |r| {
+        let mut response = copy.response(&r);
+        if r["method"] == "getBlocks" && count.fetch_add(1, Ordering::SeqCst) == 0 {
+            response["result"].as_array_mut().unwrap().pop();
+        }
+        response
+    })
+    .await;
+    let mut index = Indexer::new(key(&f.cfg.program_id), key(&f.cfg.pool));
+    let mut next = f.cfg.start_slot;
+    assert!(server.rpc.catch_up(&mut index, &mut next).await.is_err());
+    assert_eq!(next, f.expected.slot);
+    assert!(!index.is_ready());
+    server.rpc.catch_up(&mut index, &mut next).await.unwrap();
+    assert_eq!(next, f.expected.slot + 1);
+    assert_eq!(index.replay_state().unwrap(), f.expected);
+    let requests = server.calls.lock().unwrap();
+    let ranges: Vec<_> = requests
+        .iter()
+        .filter(|r| r["method"] == "getBlocks")
+        .collect();
+    assert_eq!(ranges.len(), 2);
+    assert_eq!(ranges[1]["params"][0], f.expected.slot);
+}
+#[tokio::test]
+async fn failed_refresh_revokes_previously_reconciled_paths() {
+    let f = Fixture::load(false);
+    let mut index = Indexer::new(key(&f.cfg.program_id), key(&f.cfg.pool));
+    for (slot, block) in &f.blocks {
+        index
+            .apply_block(&decode_finalized_block(*slot, block).unwrap())
+            .unwrap();
+    }
+    index.reconcile(&f.expected).unwrap();
+    assert!(index.root().is_ok());
+    let server = mock(|r| json!({"jsonrpc":"2.0","id":r["id"],"error":{"code":-32000}})).await;
+    let mut next = f.expected.slot + 1;
+    assert!(server.rpc.catch_up(&mut index, &mut next).await.is_err());
+    assert!(!index.is_ready());
+    assert!(index.root().is_err());
+    assert!(index
+        .path(*f.expected.active.keys().next().unwrap())
+        .is_err());
+}
+#[tokio::test]
 async fn incomplete_or_reordered_archive_never_becomes_ready() {
     for failure in ["unordered", "missing-block", "missing-tail"] {
         let f = Fixture::load(false);

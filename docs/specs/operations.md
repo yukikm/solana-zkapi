@@ -82,7 +82,7 @@ production build/release検査はsetup_profile=test_only、既知fixtureのPK/VK
 
 | Gate | 合格条件 | 現在 |
 |---|---|---|
-| G1 暗号・SVM | 元実proof、12/14 public inputsの各改変拒否、H2F/Poseidon一致、worst CU/bytes、wallet/buffer経路 | I02-BとI03完了。Vault実SBF 366取引、最大426,765 CU、863 bytes、元EVM比較一致。I04全buffer/wallet/transportが未完了のためG1未合格（[I03](../evidence/I03.md)） |
+| G1 暗号・SVM | 元実proof、12/14 public inputsの各改変拒否、H2F/Poseidon一致、worst CU/bytes、wallet/buffer経路 | I02-B〜I04のlocal検証完了。I04はbuffer 161・SDK統合53・I03回帰366取引、最大426,830 CU / 1,232 bytes。実wallet端末・target cluster/RPC・全機能E2Eが未検証のためG1未合格（[I04](../evidence/I04.md)） |
 | G2 会計・復旧 | 並列予算予約、全crash point、client復旧、出金競合、DB failoverで二重署名/課金なし | 未実施 |
 | G3 実provider | OA-org、OpenRouter direct、OpenAI/Anthropic/OpenRouter proxyの実credential・usage・streaming試験 | 未実施 |
 | G4 公開準備 | setup検証、鍵/multisig、第三者review/audit、restore演習、監視当番、正しいmanifest | 未実施 |

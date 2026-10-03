@@ -42,7 +42,7 @@ AuthorizationBody：`version:"1", deployment_id, pool, request_id, quote_hash, m
 2. `(pool,N)` と `(pool,request_id)` の既存予約を照会。同一body/proof/public inputs digestなら保存済み結果を返す。異なるdigestは409。受理済み再送ではquote期限/root鮮度を再適用しない。
 3. 新規のみ：quote未使用・期限内、RP.request_time=quote.issued_at、pool cap一致、RP.active_root=現在のfinalized root、state key一致、実proof検証。serverはroot不明なら503。stale rootは409で新quote/proofを作り直す。
 4. primary/secondary RPCでExitNullifierを確認。存在・未確定escape観測なら拒否、状態不明なら503。commitment差の扱いはoperations仕様。
-5. DB transactionでNをAUTHとして一度だけ予約し、request transcriptとquoteを保存。quote IDも一回だけ受理。同時処理が勝ったら2へ戻る。
+5. writerのDB transactionで既存予約を再照会し、新規のみ、ロック取得後の`clock_timestamp()`でquote期限（等号は期限切れ）、pool受付状態、quote未使用を再検査する。proof検証/RPC/ロック待ち中に期限を超えた要求を予約しない。finalized rootの観測が更新/失効していれば再照合し、不明なら503。NをAUTHとして一度だけ予約し、request transcriptとquoteの消費を同一transactionで保存。quote IDも一回だけ受理。同時処理が勝ったら2へ戻る。
 6. upstream発行またはproxy有効化の直前にexitを再確認。upstream keyを返す直前にも確認。escapeが見えたら新規使用を止め、challenge workerへ予約済み証拠を渡す。
 
 digestはSHA256(JCS(SessionCreate))。再送は全フィールドとproofを完全一致させる。受理前の再proveには新request ID/credential/quoteを使い、同じNの受理状態を先に確認する。
@@ -77,7 +77,11 @@ DB上のN予約は解放しない。発行されなかったと確定した場�
 
 writerはpoolごとのPostgreSQL advisory lockを専用connectionで保持。すべての変異操作はwriterへ集約し、DB transactionでsession行を `FOR UPDATE` する。DB connection/lockを失ったwriterは直ちに認可と署名を停止する。read replicaや復元途中DBから署名しない。
 
+初版では財務transactionもそのadvisory lockを保持するconnectionで実行する。別のpool connectionからの書込みを許可して、lock接続の死活監視だけで排他を保証しない。lock取得後にwriter_epochを増やし、pool受付再開前に復旧照合する。quote/session/operation/settlement/clearance/明細の更新はこのwriter経由とし、signerやdispatcherが独自に財務行を書き換えない。外部送信の停止は別途operations仕様のfencingで検証する。
+
 RECONCILING行をロックしたtransactionでsettlementsへINSERTし、その後同じtransaction内でSIGN_PENDINGへCASする。charge、fresh anchor、blind delta、E_nextと署名対象bytesを一度だけ保存する。state signerは別サービスで、署名対象をprimary DBから読み、同じrequestに異なるmessageを拒否する永続journalを持つ。署名者も全operation終端・予約0・dispatch attempt終了/fencingをprimaryで再確認する。署名応答はDB保存後に公開。署名直後のcrashでも同じmessageだけを再署名・取得する。署名鍵を持った複数workerを無制御に起動しない。
+
+signer journalはledgerのrestoreと独立して保持し、`(pool,N)`を一意キーとしてAUTH/CLEARANCEの役割、AUTHのrequest ID、役割別公開鍵、署名対象bytes/digestを署名前に永続化する。request IDだけで一意化すると、古いDBへのrestore後に同じNを別request IDで二重署名できるため不可。同じキーの役割・request・message変更は拒否し、署名を保存してから返す。journalに対応するledger対象がない/異なる、または署名済みledgerにjournalがない場合は受付/署名を停止して照合する。未署名の準備済み対象にjournalがまだないことは正常で、初回intentを原子的に記録できる。既存intentに署名がなければ同じ対象だけを再署名し、journalに保存済みの署名はledgerへ回復する。消失したjournalを空で自動再作成しない。clearanceにも同じ手順を適用する。
 
 clearance：`POST /zkapi/v1/withdraw/clearance {nullifier}`。同じ `(pool,N)` のロックでAUTHとCLEARANCEを排他化する。AUTH存在時は409、CLEARANCE済みなら同じ署名を返す。未使用NをCLEARANCEとして永久予約してから元のclearance_messageへ署名する。nullifierは秘密から導出される能力として扱い、wallet identityを要求しない。rate limitし、nullifierをアクセスログへ残さない。これは元の方式を維持するもので、別の「無条件返金」方式ではない。
 

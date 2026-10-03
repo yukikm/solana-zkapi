@@ -68,7 +68,7 @@ export async function buildUploadPlan(input: BufferPlanInput): Promise<UploadPla
   if (!input.pool.equals(input.financial.pool)) throw new Error('pool mismatch');
   const [buffer, bump] = PublicKey.findProgramAddressSync([Buffer.from('payload'), input.pool.toBuffer(), input.uploader.toBuffer(), input.nonce], input.programId);
   if (buffer.equals(input.rentPayer)) throw new Error('rent payer cannot be buffer');
-  const plan: UploadPlan = { ...input, nonce: input.nonce.slice(), payload: input.payload.slice(), financial: { ...input.financial }, buffer, bump, digest: await sha256(input.payload), steps: [] };
+  const plan: UploadPlan = { ...input, nonce: input.nonce.slice(), payload: input.payload.slice(), financial: { ...input.financial }, snapshot: { ...input.snapshot }, buffer, bump, digest: await sha256(input.payload), steps: [] };
   const common = [meta(buffer, true), meta(plan.pool), meta(plan.uploader, false, true)];
   plan.steps.push({ kind: 'create', instruction: await ix(plan.programId, 'create_payload', [...common, meta(plan.rentPayer, true, true), meta(SystemProgram.programId)],
     concat(Uint8Array.of(OPERATIONS[plan.operation].op), u32(plan.payload.length), plan.digest, plan.nonce, u64(plan.expires))) });
@@ -115,11 +115,13 @@ export async function signV0(transaction: VersionedTransaction, wallets: readonl
   const expected = transaction.message.serialize();
   let signed = VersionedTransaction.deserialize(transaction.serialize());
   const required = signed.message.staticAccountKeys.slice(0, signed.message.header.numRequiredSignatures);
-  for (const wallet of wallets) {
+  for (const wallet of [...wallets]) {
     if (!wallet.supportedTransactionVersions.has(0)) throw new Error('wallet does not advertise v0 signing');
     if (!required.some(key => key.equals(wallet.publicKey))) throw new Error('wallet is not a required signer');
     const previous = signed.signatures.map(signature => signature.slice());
-    signed = await wallet.signTransaction(signed);
+    // Wallets retain the transaction passed to them. Detach their output before any
+    // asynchronous signature checks so a retained reference cannot change our result.
+    signed = VersionedTransaction.deserialize((await wallet.signTransaction(signed)).serialize());
     if (signed.version !== 0 || !equal(signed.message.serialize(), expected)) throw new Error('wallet changed transaction message');
     for (let i = 0; i < previous.length; i++) if (previous[i].some(byte => byte !== 0) && !equal(previous[i], signed.signatures[i])) throw new Error('wallet changed an existing signature');
   }
@@ -184,14 +186,18 @@ export interface TransportRpc {
 export type Recovery = { state: 'finalized'; slot: number } | { state: 'rejected'; error: unknown; needsNewProof: boolean } | { state: 'pending' | 'unknown' | 'expired_reconcile_required' };
 export async function prepareAttempt(plan: UploadPlan, step: Step, blockhash: { blockhash: string; lastValidBlockHeight: number }, wallets: readonly V0Wallet[], journal: Journal): Promise<Attempt> {
   if (!Number.isSafeInteger(blockhash.lastValidBlockHeight) || blockhash.lastValidBlockHeight < 0) throw new Error('invalid last valid block height');
-  const checked = await restorePlan(planRecord(plan));
-  if (!equal(checked.digest, plan.digest) || !checked.buffer.equals(plan.buffer)) throw new Error('upload plan changed');
-  const transaction = compileV0(step.instruction, plan.feePayer, blockhash.blockhash);
-  const closer = step.kind === 'close' ? step.instruction.keys[2].pubkey.toBase58() : undefined;
-  await assertPlannedMessage(checked, step.kind, transaction, closer);
+  // Capture all caller-owned inputs before the first await. Wallet prompts may
+  // outlive UI edits to the plan, instruction or current blockhash.
+  const record = planRecord(plan), digest = hex(plan.digest), buffer = plan.buffer.toBase58(), kind = step.kind;
+  const { blockhash: recentBlockhash, lastValidBlockHeight } = blockhash;
+  const transaction = VersionedTransaction.deserialize(compileV0(step.instruction, plan.feePayer, recentBlockhash).serialize());
+  const closer = kind === 'close' ? step.instruction.keys[2].pubkey.toBase58() : undefined;
+  const checked = await restorePlan(record);
+  if (hex(checked.digest) !== digest || checked.buffer.toBase58() !== buffer) throw new Error('upload plan changed');
+  await assertPlannedMessage(checked, kind, transaction, closer);
   const signed = await signV0(transaction, wallets);
-  const attempt: Attempt = { schema: 1, kind: step.kind, signature: bs58.encode(signed.signatures[0]), wireHex: hex(signed.serialize()),
-    blockhash: blockhash.blockhash, lastValidBlockHeight: blockhash.lastValidBlockHeight, planDigest: hex(plan.digest), buffer: plan.buffer.toBase58(), plan: planRecord(plan), ...(closer ? { closer } : {}) };
+  const attempt: Attempt = { schema: 1, kind, signature: bs58.encode(signed.signatures[0]), wireHex: hex(signed.serialize()),
+    blockhash: recentBlockhash, lastValidBlockHeight, planDigest: digest, buffer, plan: record, ...(closer ? { closer } : {}) };
   await journal.save(attempt); return attempt;
 }
 async function assertPlannedMessage(plan: UploadPlan, kind: Step['kind'], tx: VersionedTransaction, closer?: string): Promise<void> {
@@ -231,6 +237,8 @@ async function observeSignedAttempt(attempt: SignedAttempt, transaction: Version
   } catch { return { state: 'unknown' }; }
 }
 export async function recoverAttempt(attempt: Attempt, rpc: TransportRpc, resendIdentical = false): Promise<Recovery> {
+  // RPC awaits must not allow a caller to substitute bytes after validation.
+  attempt = structuredClone(attempt);
   const transaction = await readSignedAttempt(attempt), restored = await restorePlan(attempt.plan);
   if (hex(restored.digest) !== attempt.planDigest || restored.buffer.toBase58() !== attempt.buffer) throw new Error('journal payload digest mismatch');
   await assertPlannedMessage(restored, attempt.kind, transaction, attempt.closer);
@@ -241,22 +249,29 @@ function validateFinalization(plan: FinalizationPlan): void {
   const note = PublicKey.findProgramAddressSync([Buffer.from('note'), plan.pool.toBuffer(), u32(plan.noteId)], plan.programId)[0];
   if (!Number.isSafeInteger(plan.snapshot.slot) || plan.snapshot.slot < 0 || !plan.pool.equals(plan.financial.pool) || !note.equals(plan.financial.note)) throw new Error('invalid finalization context');
 }
+function restoreFinalizationPlan(record: FinalizationAttempt['finalization']): FinalizationPlan {
+  return { programId: new PublicKey(record.programId), pool: new PublicKey(record.pool), noteId: record.noteId, feePayer: new PublicKey(record.feePayer),
+    financial: Object.fromEntries(FINANCIAL_ACCOUNT_ORDER.map(name => [name, new PublicKey(record.financial[name])])) as FinancialAccounts,
+    snapshot: { slot: record.snapshotSlot, sequence: BigInt(record.snapshotSequence) } };
+}
 export async function prepareFinalizationAttempt(plan: FinalizationPlan, blockhash: { blockhash: string; lastValidBlockHeight: number }, wallets: readonly V0Wallet[], journal: Journal<FinalizationAttempt>): Promise<FinalizationAttempt> {
   validateFinalization(plan);
   if (!Number.isSafeInteger(blockhash.lastValidBlockHeight) || blockhash.lastValidBlockHeight < 0) throw new Error('invalid last valid block height');
-  const step = await finalizeEscape(plan.programId, plan.financial, plan.noteId);
-  const signed = await signV0(compileV0(step.instruction, plan.feePayer, blockhash.blockhash), wallets);
-  const attempt: FinalizationAttempt = { schema: 1, kind: 'finalize', signature: bs58.encode(signed.signatures[0]), wireHex: hex(signed.serialize()), blockhash: blockhash.blockhash,
-    lastValidBlockHeight: blockhash.lastValidBlockHeight, finalization: { programId: plan.programId.toBase58(), pool: plan.pool.toBase58(), noteId: plan.noteId, feePayer: plan.feePayer.toBase58(),
-      financial: Object.fromEntries(FINANCIAL_ACCOUNT_ORDER.map(name => [name, plan.financial[name].toBase58()])) as Record<keyof FinancialAccounts, string>, snapshotSlot: plan.snapshot.slot, snapshotSequence: plan.snapshot.sequence.toString() } };
+  const record: FinalizationAttempt['finalization'] = { programId: plan.programId.toBase58(), pool: plan.pool.toBase58(), noteId: plan.noteId, feePayer: plan.feePayer.toBase58(),
+    financial: Object.fromEntries(FINANCIAL_ACCOUNT_ORDER.map(name => [name, plan.financial[name].toBase58()])) as Record<keyof FinancialAccounts, string>, snapshotSlot: plan.snapshot.slot, snapshotSequence: plan.snapshot.sequence.toString() };
+  const { blockhash: recentBlockhash, lastValidBlockHeight } = blockhash;
+  const checked = restoreFinalizationPlan(record);
+  const step = await finalizeEscape(checked.programId, checked.financial, checked.noteId);
+  const signed = await signV0(compileV0(step.instruction, checked.feePayer, recentBlockhash), wallets);
+  const attempt: FinalizationAttempt = { schema: 1, kind: 'finalize', signature: bs58.encode(signed.signatures[0]), wireHex: hex(signed.serialize()), blockhash: recentBlockhash,
+    lastValidBlockHeight, finalization: record };
   await journal.save(attempt); return attempt;
 }
 export async function recoverFinalizationAttempt(attempt: FinalizationAttempt, rpc: TransportRpc, resendIdentical = false): Promise<Recovery> {
+  attempt = structuredClone(attempt);
   const transaction = await readSignedAttempt(attempt), record = attempt.finalization;
   if (attempt.kind !== 'finalize') throw new Error('invalid finalization journal kind');
-  const plan: FinalizationPlan = { programId: new PublicKey(record.programId), pool: new PublicKey(record.pool), noteId: record.noteId, feePayer: new PublicKey(record.feePayer),
-    financial: Object.fromEntries(FINANCIAL_ACCOUNT_ORDER.map(name => [name, new PublicKey(record.financial[name])])) as FinancialAccounts,
-    snapshot: { slot: record.snapshotSlot, sequence: BigInt(record.snapshotSequence) } };
+  const plan = restoreFinalizationPlan(record);
   validateFinalization(plan);
   const step = await finalizeEscape(plan.programId, plan.financial, plan.noteId);
   if (!equal(compileV0(step.instruction, plan.feePayer, attempt.blockhash).message.serialize(), transaction.message.serialize())) throw new Error('signed message does not match finalization journal');
@@ -277,6 +292,8 @@ export async function nextUploadStep(plan: UploadPlan, account: BufferState | nu
  */
 export async function refreshExpiredUpload(attempt: Attempt, rpc: TransportRpc, account: BufferState | null,
   blockhash: { blockhash: string; lastValidBlockHeight: number }, wallets: readonly V0Wallet[], journal: Journal): Promise<Attempt | { next: Step }> {
+  attempt = structuredClone(attempt);
+  blockhash = { ...blockhash };
   if (attempt.kind === 'execute' || attempt.kind === 'close' || attempt.kind === 'finalize') throw new Error('financial or close attempt needs finalized history reconciliation');
   if ((await recoverAttempt(attempt, rpc)).state !== 'expired_reconcile_required') throw new Error('previous attempt is not finalized-expired');
   const plan = await restorePlan(attempt.plan);
