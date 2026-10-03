@@ -1,25 +1,38 @@
 # 実装タスクと受入条件
 
-[I01](evidence/I01.md) baseline完了、[I02](evidence/I02.md) 基盤レビュー修正済み（2026-10-03 JST）。次の実装はI02のSBF/SVM/CU・tree backend決定。I03/I05の依存条件はまだ未達で、I03以降は未着手。担当は作業componentを示し、外部の人員を割り当てたことは意味しない。各完了時に `docs/evidence/Ixx.md` へ実行command、version、artifact hash、結果、未解決事項を残す。mock結果と実proof/provider結果を区別する。
+[I01](evidence/I01.md)・[I02](evidence/I02B.md)完了。layout 2 / transition_proof / proof_boundの標準化と実SBF検証を終え、**次はI03 Vault→I04 buffer**。G1は全Vault/transport実装後に判定し、I03以降のruntime実装は未着手。担当は作業componentを示し、人員を割り当てた意味ではない。各完了時にevidenceへcommands/artifact/限界を残す。
 
 ## 1. タスク
 
 | ID | 担当component / 変更箇所 | 依存 | 完了条件 |
 |---|---|---|---|
 | I01 | workspace・vendor・CI | なし | 固定upstreamをlicense付き取得、manifest SHA再照合、元テストbaseline記録、exact toolchain lock、crate/Go/TS CI起動 |
-| I02 | crypto・SBF検証harness | I01 | H2Fのfield数/順序vectors、元Poseidon vectors、実request/withdrawal proof生成、Solana検証、全public inputの改変拒否、CU/bytes計測、tree backend確定。G1の暗号部分 |
-| I03 | Anchor Vault / USDC | I02 | 全命令、PDA/ATA/authorityチェック、元Vaultとの差分シナリオ、転送失敗rollback、イベント、IDL。P01/P02/P03/P16〜P21 |
-| I04 | buffer・SDK transaction・indexer | I03 | expected_digest署名結合付きv1/v0 buffer経路、wallet対応、finalized path、snapshot再構築、blockhash切れ/重複送信/競合試験。P22/P28 |
-| I05 | Postgres ledger・quote・signer | I02 | schema適用、N/clearance排他、quote/proof binding、row lock予算、署名対象一意、schema migration・dispatch attempt fencing・署名明細試験。P05〜P10/P14/P15 |
+| I02 | crypto・SBF検証harness | I01 | I02-Aの実測＋下記I02-B。採用tree回路/wire/profile、実状態とWP/RPのbinding、混合した有効proofの拒否、採用方式SBFの100万CU、proof生成/サイズ記録。全VaultのG1はI03/I04/I10で完了 |
+| I03 | Anchor Vault / USDC | I02-B（scaffold/IDLは並行可） | 全命令、PDA/ATA/authorityチェック、元Vaultとの差分シナリオ、転送失敗rollback、イベント、IDL。P01/P02/P03/P16〜P21 |
+| I04 | buffer・SDK transaction・indexer | I03 | expected_digest署名結合付きlayout 2/v0 buffer経路（v1は任意追加）、wallet対応、finalized path、snapshot再構築、blockhash切れ/重複送信/競合試験。P22/P28 |
+| I05 | Postgres ledger・quote・signer | I02-B | schema適用、N/clearance排他、quote/proof binding、row lock予算、署名対象一意、schema migration・dispatch attempt fencing・署名明細試験。P05〜P10/P14/P15 |
 | I06 | OA-org / OpenRouter direct adapters | I05,I04 | 元のissuer/verifier検証、key発行/disable/usage/delete、unknown recovery、実usage精算。P11〜P13 |
 | I07 | proxy / 3 provider adapters | I05,I04 | OpenAI Chat/Responses、Anthropic Messages、OpenRouter Chat、SSE、tool call、metering、cap、UNKNOWN waiver。P32〜P36 |
 | I08 | SDK/WASM・Go clientd | I04,I05 | 秘密storage、proof worker、note journal、local API、mode選択、expiry表示、Tor、native配布。P04/P23〜P27 |
-| I09 | challenger・ops・dashboard | I03,I04,I05 | 過去proof+現在zero path、期限再送、signer/DB復旧、secret redaction、監視、ダッシュボード。P29〜P31 |
+| I09 | challenger・ops・dashboard | I03,I04,I05 | 過去RP/proof+現在zero pathのtree proof、期限再送、signer/DB復旧、secret redaction、監視、ダッシュボード。P29〜P31 |
 | I10 | E2E・負荷・障害注入 | I06,I07,I08,I09 | G1全体/G2、全modeで入金→利用→精算→出金、実providerでG3。二重署名・二重課金・cap超過転嫁なし |
 | I11 | setup・review・release | I10 | ceremony/transcript、第三者review、実mint/manifest、multisig、restore演習、G4。配布物再現build |
 | I12 | mainnet配備手順の実行 | I11 | 別途配備作業として実アドレスとreceiptを記録。初回の設計作業では実行しない |
 
-I02のtree CUが不合格ならprotocol仕様のtree-transition回路をI02内で実装・setup・計測してからI03へ進む。仕様変更を必要とする失敗を隠して後続を本番完了にしない。I06とI07の実provider権限はG3の外部依存。コード実装は権限取得を待たずmock/test環境で進められる。
+backendは採用済み。I02-B完了を全Vault未実装のままG1合格とは呼ばない。I03/I04の完成後に全命令/transportの実測でG1を判定する。I06/I07の実provider権限とI11 production ceremonyは後続の公開条件であり、local実装はtest環境で進める。
+
+### I02-Bの完了範囲（B1〜B4完了）
+
+| 順序 | 成果物 | 完了条件 |
+|---|---|---|
+| B1 | host専用`crates/zkapi-tree-prover`へ回路/生成CLI、既存typesへTreeUpdate型を抽出 | 研究回路の制約/同じwitnessの意味を比較、元PK/VK互換は実検証、host用proverをSBFへリンクしない |
+| B2 | 固定VKのSBF検証部と共通public input binding | 11 inputs・op・canonical検査、WP/RPと実状態のTT01/TT02。元proofだけ成功して別Noteを操作できない |
+| B3 | layout 2 codec・profile/empty root生成・fixture | public→proof順、5命令payload長、domain不変、署名manifest/profileの一致、test/prod分離 |
+| B4 | 採用方式の実SBF測定と引継ぎ | TT01/TT02、normative wireでdeposit/close/escape/challenge/expiry相当、token失敗rollback、<=100万CU。実際に測ったaccount範囲を明記 |
+
+B1〜B4は既知test fixtureで完了した。[257ケース・CU・native CLI・EVM照合の記録](evidence/I02B.md)を参照。programs/i02-harnessの研究用opcode・proof-first payload・固定送金額・payer authorityをVaultの正本にしない。旧baseline/研究比較はそのまま再現可能に保持し、採用方式の結果を別reportへ保存する。
+
+I03の最初にAnchor/SDK/Agaveの依存を解決しexact version/Cargo.lockを記録、最小SBFをbuildしてからVaultへ広げる。I02で実証したv0を開始点とし、未検証v2/v3やv1を必須にしない。test setupからproduction setupへの切替でもSBF/CU/profile整合を再検証する。
 
 ## 2. 必須テスト
 
@@ -27,10 +40,10 @@ I02のtree CUが不合格ならprotocol仕様のtree-transition回路をI02内�
 |---|---|---|
 | T01 | crypto | upstream real proofをnativeとSVMで同じ結果。各public field、proof座標、VK、A符号、G2順を改変すると拒否 |
 | T02 | binding | cluster/program/pool/mint/token program/destinationの1byte差でbinding変化。quote/mode/credential差で認可拒否 |
-| T03 | tree | 32段path、zero挿入、除去・復元、最大ID 2^32−1とcounter=2^32のTreeFull、異なるroot/path、expiry日境界 |
+| T03 | tree | 追加tree証明の11 fields/同一32段path、zero挿入、除去・復元、最大ID 2^32−1とcounter=2^32のTreeFull、異なるroot/path、expiry日境界 |
 | T04 | token | 偽mint/Token-2022/別ATA/別authority/凍結/不足/overflow拒否。資金とroot/statusが同時rollback |
 | T05 | exits | 合意/escape/challenge/finalize/expiry/pause全遷移。deadline等号、historical root、N tombstone維持 |
-| T06 | transactions | v1の制限、v0のbuffer全段階crash、封印後改変・同PDA別digest再作成への旧署名・第三者実行・再実行拒否、rent返却、blockhash再送 |
+| T06 | transactions | layout 2固定wire、v0各送信1232 bytes、buffer全段階crash（v1はadvertise時のみ実証）、封印後改変・同PDA別digest再作成への旧署名・第三者実行・再実行拒否、rent返却、blockhash再送 |
 | T07 | authorization | 同じN同時100件は1予約、同じbody再送は同じ結果、異なるbody拒否、clearanceとの競合 |
 | T08 | quote | 期限切れ未受理拒否、受理済み期限切れ復旧、改ざん署名/未知field/重複key/float金額拒否 |
 | T09 | proxy cap | 4並列の予約で合計<=cap、5件目制限、上限超過usageは運営負担、cache項目重複なし、期限等号・row lock待ち中の期限超過/closeとの原子的受付競合 |
@@ -60,6 +73,8 @@ P01〜P31はproduction-parity.mdの定義を継承。P32〜P36も初回productio
 
 ## 4. 実装担当へ渡す開始指示
 
-> docs/implementation-ready.mdとspecs/、contracts/を読み、I01から実装する。最初にupstreamを固定commitで取得し、ライセンス・原テスト結果を残す。I02で実proofのSolana検証とtree更新CUを測るまで回路・hashを独自置換しない。USDCは固定mint、proxyを必須とし、金額は整数で扱う。失敗した推論を自動再実行しない。各タスクで意味のある正常系・異常系試験と証拠を保存し、G1〜G4の未検証項目を合格にしない。購入・provider契約・mainnet配備はこの開始指示に含まれない。
+> docs/implementation-ready.md、ADR-0001、specs/tree-transition.md、protocol-solana.md、evidence/I02B.mdを読み、I03のAnchor Vault実装へ進む。I02-Bのzkapi-layout2 codec/bindingとzkapi-tree-proverを再利用し、measurement用State/account layoutをVaultへコピーしない。固定test profileでlocal実装し、正しいPDA・全ExitNullifier tombstone・outstanding deposits・イベント・ATA作成を統合する。I04でbuffer全段階と最終account listによるv0サイズ/CUを測る。過去RPのrootを現在rootへ変更せず、元回路/Poseidonを維持する。G1〜G4を未検証のまま合格にしない。購入・provider契約・mainnet配備は開始指示に含めない。
+
+TT01〜TT08は[tree-transition仕様](specs/tree-transition.md)の追加必須条件。T01〜T20と合わせて実行する。
 
 実装開始前のユーザーへの追加質問は必須ではない。provider credential、production鍵、program ID等は後続の環境設定で入力する。設計上の選択と、配備時の秘密・実測値を区別する。

@@ -51,7 +51,7 @@
     "article_vault_address": "matches_source_manifest",
     "live_api": "not_verified_fetch_failed",
     "deployed_bytecode_matches_source": "not_verified",
-    "solana_implementation": "I01_completed_I02_native_foundation_reviewed_svm_pending"
+    "solana_implementation": "I01_I02_completed_I03_ready"
   },
   "source_file_sha256": {
     "protocol/contracts/src/ZkApiVault.sol": "f11e0d85fe5ffecac1a7f7bb7925ce04cf02146191c73a08c4ce2fab8804d5ba",
@@ -81,7 +81,7 @@
     ],
     "anthropic_api_compatibility": "messages_text_tools_sse_required_initial_production",
     "proxy_mode": "required_initial_production",
-    "preserve_original_circuit": "preferred_pending_adapter_verification",
+    "preserve_original_circuit": "request_withdrawal_preserved_tree_transition_added",
     "chain_namespace": 5459788,
     "chain_namespace_kind": "project_internal_not_official_chain_id",
     "baseline_document": "implementation-ready.md",
@@ -90,9 +90,14 @@
       "responses_stateless_text_tools_sse"
     ],
     "ledger_database": "postgresql_single_fenced_writer_per_pool",
-    "design_status": "implementation_ready_runtime_gates_not_run",
+    "design_status": "implementation_ready_layout2_adr_0001",
     "design_review_date_jst": "2026-10-03",
-    "design_review_evidence": "evidence/design-review-2026-10-03.md"
+    "design_review_evidence": "evidence/layout2-design-ready.md",
+    "tree_backend": "transition_proof",
+    "tree_tag_policy": "proof_bound",
+    "protocol_layout_version": 2,
+    "mandatory_transport": "v0_buffer",
+    "architecture_decision": "adr/0001-proof-bound-tree-transition.md"
   },
   "work_items": [
     {
@@ -101,7 +106,7 @@
     },
     {
       "id": "I02",
-      "status": "in_progress"
+      "status": "completed"
     },
     {
       "id": "I03",
@@ -179,7 +184,7 @@
     }
   ],
   "release_gates": {
-    "G1": "in_progress_native_only",
+    "G1": "not_passed_full_vault_transport_pending_I02_complete",
     "G2": "not_run",
     "G3": "not_run",
     "G4": "not_run"

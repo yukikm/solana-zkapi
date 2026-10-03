@@ -1,0 +1,11 @@
+{
+  "constraints": 33198,
+  "empty_root": "2bb43759c24665d98a33afa8d5094817d359d5e4c72a45b45a2a563176d37933",
+  "empty_root_sha256": "c4e08f72d0a77e2316a7c10b2823e300409e7be3d0b42d840b73fc200442b8f5",
+  "invalid_witnesses_rejected": 47,
+  "legacy_pk_identical": true,
+  "legacy_vk_identical": true,
+  "new_proofs_verified_by_old_vk": 15,
+  "old_proofs_verified": 6,
+  "production_eligible": false
+}

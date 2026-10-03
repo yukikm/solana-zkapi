@@ -10,7 +10,7 @@ Ethereum zkAPIの現行機能を、Solanaで本番運用できる形に移植す
 
 OpenAI・Claudeの利用を優先し、Ollama互換は初期対象外。既存の直接接続方式と、第三者が既存APIを中継するproxy方式の両方を初回productionの必須機能とする。proxyはOpenAI Chat Completions/Responses、Anthropic Messagesに対応する設計。モデル対応、API互換、直接接続の可否は個別に確認する。
 
-状態は**I01 baseline完了・I02基盤レビュー修正済み**（[設計レビュー](docs/evidence/design-review-2026-10-03.md)も統合済み）。次は**I02のSBF/SVM harness・CU計測に着手Ready**。I03開始はI02のtree backend確定後。結果と引き継ぎは [I01 evidence](docs/evidence/I01.md)、[I02 evidence](docs/evidence/I02.md) を参照。Solanaプログラム、SBF/SVM/CU計測、本番デプロイは未実施。暗号/SVM・復旧・実provider・公開準備の4 gateを満たしてからリリースする。
+**I02完了、I03 Vault実装へ着手Ready**。採用したlayout 2 / tree証明方式を実装し、実SBFの257ケース、実証明同士のbinding、Token CPI失敗rollbackを検証した。5経路は約15〜32万CUで100万CU以内。[I02-B完了記録](docs/evidence/I02B.md)と[実測結果](docs/evidence/I02B-summary.json)を参照。元Poseidon・認可回路を維持し、全Vault/I04 buffer lifecycleのG1、本番setup・配備は後続で確認する。
 
 開発開始：`git submodule update --init --recursive` → `python3 scripts/check_upstream.py` → `cargo test --locked --workspace`。TypeScriptは固定Node/npmで `npm ci --ignore-scripts && npm run typecheck && npm test`。Rust toolchainは `rust-toolchain.toml` に固定。
 

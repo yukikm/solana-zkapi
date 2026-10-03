@@ -1,0 +1,26 @@
+{
+  "circuit_id": "zkapi-v2-note-bound-v1",
+  "circuit_profile_hash": "37f90f026d5c20837aaa138af7f4c2aa64ede12195e762f33984446eaacc358d",
+  "protocol_layout_version": 2,
+  "request_pk_hash": "c894b261a13f571d0df36be29734aabf2a8cd7162baddc5e08a50341aa076584",
+  "request_vk_hash": "8011244c99fa1a8524870906462d430fc86366b8ad821736c5fa726b479e6d97",
+  "setup_profile": "test_only",
+  "setup_transcript_hashes": {
+    "request": null,
+    "tree": null,
+    "withdrawal": null
+  },
+  "tree_backend": "transition_proof",
+  "tree_proof_artifacts": {
+    "circuit_id": "solana.zkapi.tree.v1",
+    "pk_hash": "c01b31f6806ce59114fe8befa210967415e20229b0a998018d4955a726fd0f80",
+    "public_inputs": 11,
+    "setup_transcript_hash": null,
+    "source_bundle_hash": "026c34c14b05e77368da03665664773b675745b43384476eebb9318112b03ca3",
+    "verifier_constants_hash": "d4048c4b228fca9ef4342de8f89f96f90f606c9beb74cd3c6606db44925d1bf9",
+    "vk_hash": "9141a035fdba50b13a5776182be029bb23dd15e69cd579c5d6e310b7e2ee5fb7"
+  },
+  "tree_tag_policy": "proof_bound",
+  "withdrawal_pk_hash": "8e41398092fdd02b9ff86c6ccbecbd7ce2402e6f22ec162e6124d1d04fe0a668",
+  "withdrawal_vk_hash": "2a8ea7f07176e369a93d1d816124192a798d1466c99fd6dc47850ba82094b679"
+}

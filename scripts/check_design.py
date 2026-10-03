@@ -132,6 +132,37 @@ plan=(ROOT/'docs/implementation-plan.md').read_text()
 tests=re.findall(r'^\| (T\d\d) \|',plan,re.M)
 check(sorted(tests)==[f'T{i:02}' for i in range(1,21)],'Acceptance matrix')
 
+tree = documents['docs/contracts/tree-transition.json']
+check(tree['protocol_layout_version']==2 and tree['tree_backend']=='transition_proof'
+      and tree['tree_tag_policy']=='proof_bound','Selected layout 2 backend/policy')
+check([p['name'] for p in tree['public_inputs']] == [
+    'vault_binding','old_root','new_root','note_id','old_leaf','new_leaf',
+    'commitment','deposit','expiry','op','transition_tag'], 'Tree public input order')
+check([p['index'] for p in tree['public_inputs']]==list(range(11)), 'Tree input indices')
+check(tree['tree_update']=={'field_order':['public','proof'],'public_bytes':352,
+    'proof_bytes':256,'bytes':608}, 'TreeUpdate fixed wire')
+check(tree['buffer_payload_includes_discriminator'] is False, 'Buffer args only')
+check(tree['mandatory_transport']=='v0_buffer' and tree['compute_budget_target']==1000000
+      and tree['v0_transaction_max_bytes']==1232, 'CU/transport target')
+expected_ops = {'deposit':(0,0,692),'mutual_close':(1,1,1312),
+    'initiate_escape':(2,1,1312),'challenge_escape':(3,2,1252),
+    'claim_expired':(4,1,612),'finalize_escape':(None,None,4)}
+check({r['name'] for r in tree['instructions']}==set(expected_ops), 'Tree instruction set')
+for row in tree['instructions']:
+    check((row['buffer_op'],row['tree_op'],row['payload_bytes'])==expected_ops.get(row['name']),
+          'Tree instruction mapping '+row['name'])
+    check(row['instruction_data_bytes']==row['payload_bytes']+8, 'Anchor prefix '+row['name'])
+    check(sum(a['bytes'] for a in row['args'])==row['payload_bytes'], 'Args byte total '+row['name'])
+    check(row['discriminator_hex']==hashlib.sha256(('global:'+row['name']).encode()).digest()[:8].hex(),
+          'Anchor discriminator '+row['name'])
+manifest=schemas['Manifest']
+check(set(tree['circuit_profile_fields']) <= set(manifest['required']), 'Profile fields in Manifest')
+for key,value in [('protocol_layout_version',2),('tree_backend','transition_proof'),('tree_tag_policy','proof_bound')]:
+    check(manifest['properties'][key]['const']==value,'Manifest '+key)
+tree_spec=(ROOT/'docs/specs/tree-transition.md').read_text()
+check(re.findall(r'^\| (TT\d\d) \|',tree_spec,re.M)==[f'TT{i:02}' for i in range(1,9)],
+      'Tree transition acceptance matrix')
+
 link_count=0
 for path in [ROOT/'README.md', *sorted((ROOT/'docs').rglob('*.md'))]:
     text=path.read_text()
@@ -150,4 +181,5 @@ if errors:
     raise SystemExit(1)
 print(f'PASS: {len(documents)} JSON documents; {len(api["paths"])} API paths; {refs} schema references; {link_count} local links.')
 print(f'PASS: {len(features)} required features; {len(tests)} acceptance scenarios; {len(vectors["vectors"])} binding vectors; {len(vectors["rounding"])} rounding vectors.')
+print('PASS: layout 2 wire/op/profile contract and 8 tree-transition acceptance conditions.')
 print('NOT CHECKED BY THIS SCRIPT: real proofs, SVM/CU, PostgreSQL migration, provider integration, independent audit.')

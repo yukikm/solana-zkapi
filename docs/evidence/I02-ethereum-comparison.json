@@ -1,0 +1,49 @@
+{
+  "date_jst": "2026-10-03",
+  "upstream_commit": "045b444ea1b52538d1b40273c7cb6ed09468a052",
+  "scope": "local Foundry EVM tests; not mined transaction receipts",
+  "forge_version": "1.3.1-v1.3.1",
+  "forge_commit": "08d3a4ad4d78b62bcb897350803bf96fc2cf6cc9",
+  "solc": "0.8.28+commit.7893614a",
+  "optimizer": true,
+  "optimizer_runs": 10000,
+  "via_ir": true,
+  "passed_tests": 13,
+  "failed_tests": 0,
+  "test_contracts": {
+    "Bn254PoseidonTest": {
+      "passed": 1,
+      "scope": "upstream Rust hash vectors"
+    },
+    "ZkApiVaultGroth16Test": {
+      "passed": 3,
+      "scope": "actual upstream request/withdrawal proofs; historical root challenge and tamper rejection"
+    },
+    "NativeEthVaultTest": {
+      "passed": 9,
+      "scope": "actual Poseidon/tree/ETH transfers; proof adapter is a mock"
+    }
+  },
+  "native_deposit_gasleft_delta": 6102240,
+  "function_call_gas_max": {
+    "hash3PairPath32": 5756045,
+    "hash3": 93641,
+    "hash5": 138488,
+    "mutualClose": 6298816,
+    "initiateEscapeWithdrawal": 6400839,
+    "challengeEscapeWithdrawal": 6248091,
+    "assertValidRequest": 280965,
+    "assertValidWithdrawal": 296772
+  },
+  "sdk_transaction_gas_limit": 16777216,
+  "log_sha256": "9332fb63c466fb60a96c223cecc0312df2fba77af633108a040bfab06fbfaf6d",
+  "forge_archive_sha256": "baad3e1b06d6f310d210c93e95258a03d923fe610f8d0742138f2245f94abd7c",
+  "solc_binary_sha256": "9a0fb7e0db2c0641dbae1c5cc645dc686820c83af516226abb1c0a2f76636f25",
+  "limitations": [
+    "Function call gas and a gasleft delta, not complete signed transaction gas",
+    "Multiple calls per test can warm accounts/storage; not a worst-case cold transaction certification",
+    "Test function totals include multiple intended transactions and must not be compared to a per-transaction cap",
+    "No live mainnet receipt/bytecode or current gas price checked",
+    "Gas and Solana CU are different accounting units"
+  ]
+}

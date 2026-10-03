@@ -6,6 +6,7 @@ pub mod field;
 
 pub use amount::MicroUsdc;
 pub use field::{FieldElement, Scalar};
+pub use zkapi_layout2::{Operation as Layout2Operation, TreeUpdate};
 
 pub const CHAIN_NAMESPACE: u64 = 0x534f4c;
 pub const PROTOCOL_VERSION: u16 = 2;

@@ -47,5 +47,54 @@ case("ReceiptBody",{**body,"provider_reported_usd":None},False)
 case("ReceiptBody",{**body,"provider_reported_usd":"0.100"},False)
 case("ReceiptBody",{**body,"unexpected":"x"},False)
 case("ReceiptBody",{**body,"operation_id":"00000000-0000-4000-8000-000000000003"},False)
+
+# Schema-only manifest fixtures. Digests/signatures/transcripts below are not valid
+# deployment evidence; runtime must also perform the semantic checks in the spec.
+public_key = '11111111111111111111111111111111'
+digest = 'ab' * 32
+tree = {'circuit_id':'solana.zkapi.tree.v1','public_inputs':11,
+    'source_bundle_hash':digest,'pk_hash':digest,'vk_hash':digest,
+    'verifier_constants_hash':digest,'setup_transcript_hash':None}
+authority = {'authority':public_key,'program_id':public_key,'config_hash':digest,
+    'threshold':2,'members':[public_key,'TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA',
+    'ComputeBudget111111111111111111111111111111']}
+manifest = {
+    'deployment_id':'schema-only','manifest_hash':digest,
+    **{k:public_key for k in ['genesis_hash','program_id','pool','mint','token_program',
+        'quote_public_key','receipt_public_key']},
+    'decimals':6,'vault_binding':'0x'+'00'*32,
+    'state_key':{'x':'0x'+'00'*32,'y':'0x'+'00'*32},
+    'clearance_key':{'x':'0x'+'00'*32,'y':'0x'+'00'*32},
+    'circuit_id':'zkapi-v2-note-bound-v1','protocol_layout_version':2,
+    'tree_backend':'transition_proof','tree_tag_policy':'proof_bound',
+    'circuit_profile_hash':digest,'deployment_environment':'local','setup_profile':'test_only',
+    'setup_transcript_hashes':dict.fromkeys(['request','withdrawal','tree']),
+    'transaction_formats':['v0_buffer'],
+    **{k:digest for k in ['request_pk_hash','request_vk_hash','withdrawal_pk_hash',
+        'withdrawal_vk_hash','idl_hash']},
+    'cap_micro_usdc':'1000000','note_ttl_seconds':'2592000','challenge_seconds':'86400',
+    'control_api_origin':'https://example.invalid','inference_api_origin':'https://example.invalid',
+    'manifest_signature':'schema-only','api_endpoints':[],'tariff_hashes':[],
+    'artifact_digests':{},'db_schema_version':'1','proving_keys_base_url':'https://example.invalid/',
+    'tree_proof_artifacts':tree,'authorities':{'admin':authority,'upgrade':authority}}
+case('Manifest',manifest,True)
+for changes in [
+    {'tree_backend':'sbf_poseidon'}, {'tree_tag_policy':'recompute'},
+    {'protocol_layout_version':1}, {'tree_proof_artifacts':None},
+    {'tree_proof_artifacts':{**tree,'public_inputs':10}},
+    {'transaction_formats':['v1_inline']}, {'transaction_formats':['v0_buffer','v0_buffer']},
+    {'deployment_environment':'mainnet'}, {'setup_profile':'ceremony_verified'},
+]:
+    case('Manifest',{**manifest,**changes},False)
+production = deepcopy(manifest)
+production.update({'deployment_environment':'mainnet','setup_profile':'ceremony_verified',
+    'setup_transcript_hashes':dict.fromkeys(['request','withdrawal','tree'],digest),
+    'tree_proof_artifacts':{**tree,'setup_transcript_hash':digest}})
+case('Manifest',production,True)
+for name in ['request','withdrawal','tree']:
+    bad = deepcopy(production)
+    bad['setup_transcript_hashes'][name] = None
+    case('Manifest',bad,False)
+case('Manifest',{**production,'tree_proof_artifacts':tree},False)
 print(f"PASS: OpenAPI 3.1, {len(schemas)} schemas, {count} positive/negative examples.")
-print("NOT RUN: provider-native nested payload conformance and runtime semantic checks.")
+print("NOT RUN: provider-native nested payload conformance, manifest crypto/setup verification and runtime semantic checks.")

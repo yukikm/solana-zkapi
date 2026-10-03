@@ -33,6 +33,43 @@ jobs:
           name: native-real-proof-fixtures-not-svm
           path: target/i02-fixtures
           if-no-files-found: error
+  svm:
+    # Reproduce historical failures and require adopted I02-B success. Full Vault G1 is separate.
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          submodules: recursive
+      - name: Install fixed host and SBF toolchains
+        run: |
+          rustup show
+          scripts/install_sbf_tools.sh
+          scripts/install_i02_evm_tools.sh
+      - name: Build real SBF and reproduce crypto / CU measurements
+        run: |
+          scripts/run_i02_svm.sh
+          scripts/run_i02_layout2.sh
+          cargo clippy --locked --manifest-path tests/svm/Cargo.toml --all-targets -- -D warnings
+          cargo clippy --locked --manifest-path programs/i02-harness/Cargo.toml --all-targets -- -D warnings
+          cargo clippy --locked --manifest-path programs/i02-layout2/Cargo.toml --all-targets -- -D warnings
+          git diff --exit-code -- crates/zkapi-poseidon/src/constants.rs programs/i02-harness/src/vk.rs programs/i02-harness/src/tree_vk.rs tests/fixtures/tree
+          git diff --exit-code -- programs/i02-layout2/src/profile.rs tests/fixtures/layout2
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: sbf-I02-complete-full-Vault-G1-pending
+          path: |
+            docs/evidence/I02-svm-results.json
+            docs/evidence/I02-transaction-sizes.json
+            target/i02-sbf/*.so
+            target/i02-sbf-wrong/*.so
+            target/i02-transactions/*.bin
+            docs/evidence/I02B-svm-results.json
+            docs/evidence/I02B-summary.json
+            target/i02b/sbf/*.so
+            target/i02b/sbf-wrong/*.so
+            target/i02b/circuit-source.tar
+            target/i02b/evm-empty-root.json
+          if-no-files-found: error
   contracts:
     runs-on: ubuntu-24.04
     steps:

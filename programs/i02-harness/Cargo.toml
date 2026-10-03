@@ -1,0 +1,27 @@
+[workspace]
+[package]
+name = "zkapi-i02-harness"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.85"
+publish = false
+[lib]
+crate-type = ["cdylib", "lib"]
+[features]
+# A separately built negative-control binary, never a runtime VK selector.
+wrong-vk = []
+# Experimental alternatives only; neither is selected by the baseline build.
+research-dot-product = ["zkapi-poseidon/research-dot-product"]
+research-proof-bound-tag = []
+research-syscall = ["dep:solana-poseidon"]
+[dependencies]
+solana-program = "=2.2.1"
+groth16-solana = "=0.2.0"
+zkapi-poseidon = { path = "../../crates/zkapi-poseidon" }
+ark-bn254 = { version = "=0.5.0", default-features = false, features = ["scalar_field"] }
+ark-ff = { version = "=0.5.0", default-features = false }
+spl-token = { version = "=8.0.0", features = ["no-entrypoint"] }
+solana-poseidon = { version = "=2.2.0", optional = true }
+[profile.release]
+lto = "fat"
+codegen-units = 1

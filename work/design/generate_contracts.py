@@ -125,26 +125,49 @@ sch['DashboardSummary'] = obj({'active_sessions':U,'pending_settlements':U,
 sch['DashboardEvent'] = obj({'timestamp':U,'kind':S,'request_id':ID,
     'state':S,'charge_micro_usdc':U},['timestamp','kind','state'])
 sch['DashboardEvents'] = obj({'events':array(ref('DashboardEvent')),'next_cursor':{'type':['string','null']}})
+sch['TreeProofArtifacts'] = obj({
+    'circuit_id':{'type':'string','const':'solana.zkapi.tree.v1'},
+    'public_inputs':{'type':'integer','const':11},
+    'source_bundle_hash':H,'pk_hash':H,'vk_hash':H,'verifier_constants_hash':H,
+    'setup_transcript_hash':{'anyOf':[H,{'type':'null'}]}})
+sch['SetupTranscripts'] = obj({name:{'anyOf':[H,{'type':'null'}]}
+    for name in ['request','withdrawal','tree']})
 sch['Manifest'] = obj({'deployment_id':S,'manifest_hash':H,'genesis_hash':P,'program_id':P,
     'pool':P,'mint':P,'token_program':P,'decimals':{'type':'integer','const':6},
     'vault_binding':F,'state_key':ref('Point'),'clearance_key':ref('Point'),
-    'quote_public_key':P,'circuit_id':S,'tree_backend':{'type':'string','enum':['sbf_poseidon','transition_proof']},
+    'quote_public_key':P,'circuit_id':{'type':'string','const':'zkapi-v2-note-bound-v1'},
+    'protocol_layout_version':{'type':'integer','const':2},
+    'tree_backend':{'type':'string','const':'transition_proof'},
+    'tree_tag_policy':{'type':'string','const':'proof_bound'},'circuit_profile_hash':H,
+    'deployment_environment':{'type':'string','enum':['local','devnet','mainnet']},
+    'setup_profile':{'type':'string','enum':['test_only','ceremony_verified']},
+    'setup_transcript_hashes':ref('SetupTranscripts'),
+    'transaction_formats':array({'type':'string','enum':['v0_buffer','v0_inline','v1_inline']},
+        minItems=1,uniqueItems=True,contains={'const':'v0_buffer'}),
     'request_pk_hash':H,'request_vk_hash':H,'withdrawal_pk_hash':H,'withdrawal_vk_hash':H,
     'cap_micro_usdc':U,'note_ttl_seconds':U,'challenge_seconds':U,
     'control_api_origin':S,'inference_api_origin':S,'manifest_signature':S,
     'idl_hash':H,'api_endpoints':array(S),'tariff_hashes':array(H),
     'artifact_digests':{'type':'object','additionalProperties':H},'db_schema_version':U,
     'proving_keys_base_url':{'type':'string','format':'uri'},
-    'tree_proof_artifacts':{'anyOf':[obj({'pk_hash':H,'vk_hash':H}),{'type':'null'}]}})
+    'tree_proof_artifacts':ref('TreeProofArtifacts')})
 sch['MultisigAuthority'] = obj({'authority':P,'program_id':P,'config_hash':H,
     'threshold':{'type':'integer','const':2},'members':array(P,minItems=3,maxItems=3,uniqueItems=True)})
 sch['Manifest']['properties'].update({'receipt_public_key':P,
     'authorities':obj({'admin':ref('MultisigAuthority'),'upgrade':ref('MultisigAuthority')})})
 sch['Manifest']['required'] += ['receipt_public_key','authorities']
-sch['Manifest']['oneOf'] = [
-    {'properties':{'tree_backend':{'const':'sbf_poseidon'},'tree_proof_artifacts':{'type':'null'}}},
-    {'properties':{'tree_backend':{'const':'transition_proof'},'tree_proof_artifacts':{'type':'object'}}}
+sch['Manifest']['allOf'] = [
+    {'if':{'properties':{'deployment_environment':{'const':'mainnet'}}},
+     'then':{'properties':{'setup_profile':{'const':'ceremony_verified'}}}},
+    {'if':{'properties':{'setup_profile':{'const':'ceremony_verified'}}},
+     'then':{'properties':{
+         'tree_proof_artifacts':{'properties':{'setup_transcript_hash':H}},
+         'setup_transcript_hashes':{'properties':{name:H for name in ['request','withdrawal','tree']}}}},
+     'else':{'properties':{
+         'tree_proof_artifacts':{'properties':{'setup_transcript_hash':{'type':'null'}}},
+         'setup_transcript_hashes':{'properties':{name:{'type':'null'} for name in ['request','withdrawal','tree']}}}}}
 ]
+sch['Manifest']['description'] = 'Layout 2 only; profile digest and artifact hashes are verified semantically against the signed manifest and actual PoolConfig. Transcript presence does not establish ceremony validity. See tree-transition section 5.'
 sch['CatalogEntry'] = obj({'model':S,'provider':PROVIDER,'modes':array(MODE),
     'endpoints':array(S),'modalities':array(S),'tariff_hash':H})
 sch['Catalog'] = obj({'models':array(ref('CatalogEntry'))})
@@ -278,6 +301,36 @@ doc = {'openapi':'3.1.0','info':{'title':'Solana zkAPI USDC + Proxy','version':'
         'AdminToken':{'type':'http','scheme':'bearer','description':'Admin-only credential on private listener; not a user token.'},
         'AnthropicProxyKey':{'type':'apiKey','in':'header','name':'x-api-key','description':'Same proxy token, never an upstream API key.'}}}}
 emit('openapi.json', doc)
+
+# Design-time wire contract, not proof/test evidence. Values are fixed by ADR-0001.
+tree_fields = ['vault_binding','old_root','new_root','note_id','old_leaf','new_leaf',
+    'commitment','deposit','expiry','op','transition_tag']
+types = {'u32':4,'u64':8,'F':32,'Proof':256,'WP':14*32,'RP':12*32,'TreeUpdate':11*32+256}
+instructions = []
+for name, buffer_op, tree_op, args in [
+    ('deposit',0,0,[('expected_id','u32'),('expected_root','F'),('expiry','u64'),('commitment','F'),('amount','u64'),('tree','TreeUpdate')]),
+    ('mutual_close',1,1,[('public','WP'),('proof','Proof'),('tree','TreeUpdate')]),
+    ('initiate_escape',2,1,[('public','WP'),('proof','Proof'),('tree','TreeUpdate')]),
+    ('challenge_escape',3,2,[('note_id','u32'),('public','RP'),('proof','Proof'),('tree','TreeUpdate')]),
+    ('claim_expired',4,1,[('note_id','u32'),('tree','TreeUpdate')]),
+    ('finalize_escape',None,None,[('note_id','u32')]),
+]:
+    size=sum(types[t] for _,t in args)
+    instructions.append({'name':name,'buffer_op':buffer_op,'tree_op':tree_op,
+        'args':[{'name':n,'type':t,'bytes':types[t]} for n,t in args],
+        'payload_bytes':size,'instruction_data_bytes':8+size,
+        'discriminator_hex':hashlib.sha256(('global:'+name).encode('ascii')).digest()[:8].hex()})
+emit('tree-transition.json', {
+    'schema_version':1,'status':'implementation_contract_not_runtime_evidence',
+    'protocol_layout_version':2,'tree_backend':'transition_proof','tree_tag_policy':'proof_bound',
+    'circuit_id':'solana.zkapi.tree.v1','depth':32,
+    'public_inputs':[{'index':i,'name':n,'bytes':32,'encoding':'canonical_fr_big_endian'} for i,n in enumerate(tree_fields)],
+    'tree_update':{'field_order':['public','proof'],'public_bytes':352,'proof_bytes':256,'bytes':608},
+    'buffer_payload_includes_discriminator':False,'mandatory_transport':'v0_buffer',
+    'instructions':instructions,'compute_budget_target':1000000,'v0_transaction_max_bytes':1232,
+    'circuit_profile_fields':['protocol_layout_version','tree_backend','tree_tag_policy','circuit_id',
+        'request_pk_hash','request_vk_hash','withdrawal_pk_hash','withdrawal_vk_hash',
+        'tree_proof_artifacts','setup_profile','setup_transcript_hashes']})
 
 R=21888242871839275222246405745257275088548364400416034343698204186575808495617
 def frame(label,parts):

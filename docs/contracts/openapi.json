@@ -2512,6 +2512,100 @@
         ],
         "additionalProperties": false
       },
+      "TreeProofArtifacts": {
+        "type": "object",
+        "properties": {
+          "circuit_id": {
+            "type": "string",
+            "const": "solana.zkapi.tree.v1"
+          },
+          "public_inputs": {
+            "type": "integer",
+            "const": 11
+          },
+          "source_bundle_hash": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          },
+          "pk_hash": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          },
+          "vk_hash": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          },
+          "verifier_constants_hash": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          },
+          "setup_transcript_hash": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^[0-9a-f]{64}$"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "circuit_id",
+          "public_inputs",
+          "source_bundle_hash",
+          "pk_hash",
+          "vk_hash",
+          "verifier_constants_hash",
+          "setup_transcript_hash"
+        ],
+        "additionalProperties": false
+      },
+      "SetupTranscripts": {
+        "type": "object",
+        "properties": {
+          "request": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^[0-9a-f]{64}$"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "withdrawal": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^[0-9a-f]{64}$"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "tree": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^[0-9a-f]{64}$"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "request",
+          "withdrawal",
+          "tree"
+        ],
+        "additionalProperties": false
+      },
       "Manifest": {
         "type": "object",
         "properties": {
@@ -2568,14 +2662,58 @@
             "description": "Base58 decoding must yield exactly 32 bytes."
           },
           "circuit_id": {
-            "type": "string"
+            "type": "string",
+            "const": "zkapi-v2-note-bound-v1"
+          },
+          "protocol_layout_version": {
+            "type": "integer",
+            "const": 2
           },
           "tree_backend": {
             "type": "string",
+            "const": "transition_proof"
+          },
+          "tree_tag_policy": {
+            "type": "string",
+            "const": "proof_bound"
+          },
+          "circuit_profile_hash": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          },
+          "deployment_environment": {
+            "type": "string",
             "enum": [
-              "sbf_poseidon",
-              "transition_proof"
+              "local",
+              "devnet",
+              "mainnet"
             ]
+          },
+          "setup_profile": {
+            "type": "string",
+            "enum": [
+              "test_only",
+              "ceremony_verified"
+            ]
+          },
+          "setup_transcript_hashes": {
+            "$ref": "#/components/schemas/SetupTranscripts"
+          },
+          "transaction_formats": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "v0_buffer",
+                "v0_inline",
+                "v1_inline"
+              ]
+            },
+            "minItems": 1,
+            "uniqueItems": true,
+            "contains": {
+              "const": "v0_buffer"
+            }
           },
           "request_pk_hash": {
             "type": "string",
@@ -2651,29 +2789,7 @@
             "format": "uri"
           },
           "tree_proof_artifacts": {
-            "anyOf": [
-              {
-                "type": "object",
-                "properties": {
-                  "pk_hash": {
-                    "type": "string",
-                    "pattern": "^[0-9a-f]{64}$"
-                  },
-                  "vk_hash": {
-                    "type": "string",
-                    "pattern": "^[0-9a-f]{64}$"
-                  }
-                },
-                "required": [
-                  "pk_hash",
-                  "vk_hash"
-                ],
-                "additionalProperties": false
-              },
-              {
-                "type": "null"
-              }
-            ]
+            "$ref": "#/components/schemas/TreeProofArtifacts"
           },
           "receipt_public_key": {
             "type": "string",
@@ -2711,7 +2827,14 @@
           "clearance_key",
           "quote_public_key",
           "circuit_id",
+          "protocol_layout_version",
           "tree_backend",
+          "tree_tag_policy",
+          "circuit_profile_hash",
+          "deployment_environment",
+          "setup_profile",
+          "setup_transcript_hashes",
+          "transaction_formats",
           "request_pk_hash",
           "request_vk_hash",
           "withdrawal_pk_hash",
@@ -2733,28 +2856,86 @@
           "authorities"
         ],
         "additionalProperties": false,
-        "oneOf": [
+        "allOf": [
           {
-            "properties": {
-              "tree_backend": {
-                "const": "sbf_poseidon"
-              },
-              "tree_proof_artifacts": {
-                "type": "null"
+            "if": {
+              "properties": {
+                "deployment_environment": {
+                  "const": "mainnet"
+                }
+              }
+            },
+            "then": {
+              "properties": {
+                "setup_profile": {
+                  "const": "ceremony_verified"
+                }
               }
             }
           },
           {
-            "properties": {
-              "tree_backend": {
-                "const": "transition_proof"
-              },
-              "tree_proof_artifacts": {
-                "type": "object"
+            "if": {
+              "properties": {
+                "setup_profile": {
+                  "const": "ceremony_verified"
+                }
+              }
+            },
+            "then": {
+              "properties": {
+                "tree_proof_artifacts": {
+                  "properties": {
+                    "setup_transcript_hash": {
+                      "type": "string",
+                      "pattern": "^[0-9a-f]{64}$"
+                    }
+                  }
+                },
+                "setup_transcript_hashes": {
+                  "properties": {
+                    "request": {
+                      "type": "string",
+                      "pattern": "^[0-9a-f]{64}$"
+                    },
+                    "withdrawal": {
+                      "type": "string",
+                      "pattern": "^[0-9a-f]{64}$"
+                    },
+                    "tree": {
+                      "type": "string",
+                      "pattern": "^[0-9a-f]{64}$"
+                    }
+                  }
+                }
+              }
+            },
+            "else": {
+              "properties": {
+                "tree_proof_artifacts": {
+                  "properties": {
+                    "setup_transcript_hash": {
+                      "type": "null"
+                    }
+                  }
+                },
+                "setup_transcript_hashes": {
+                  "properties": {
+                    "request": {
+                      "type": "null"
+                    },
+                    "withdrawal": {
+                      "type": "null"
+                    },
+                    "tree": {
+                      "type": "null"
+                    }
+                  }
+                }
               }
             }
           }
-        ]
+        ],
+        "description": "Layout 2 only; profile digest and artifact hashes are verified semantically against the signed manifest and actual PoolConfig. Transcript presence does not establish ceremony validity. See tree-transition section 5."
       },
       "MultisigAuthority": {
         "type": "object",

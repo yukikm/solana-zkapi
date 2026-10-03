@@ -1,6 +1,6 @@
 {
   "date_jst": "2026-10-03",
-  "scope": "I01_baseline_complete_I02_native_foundation_reviewed_ready_for_svm_implementation_not_I03",
+  "scope": "I01_I02_completed_I03_ready_full_Vault_G1_pending",
   "toolchain": {
     "rust": "1.90.0",
     "go": "1.25.0",
@@ -12,7 +12,7 @@
     "solana-bn254": "2.2.2"
   },
   "artifact_sha256": {
-    "Cargo.lock": "697d93746dee94cf22f8c117ade1ae9e94d3c7cc3c7b9b359ffadfa816493b2e",
+    "Cargo.lock": "e4489876e3ee37a9a67647a272729444535aa3d6279ae15807d5ae0535113291",
     "package-lock.json": "66fd09223e08493b7ccc32863cb5f50fcc3136bd49d8996ec5bf86e439b6892f",
     "rust-toolchain.toml": "ef994db2f5b4d597d6641f1c9d1a39224b2a3cd2476de2723680394e010bf2be",
     ".node-version": "7e8a2fa94951112b894a3dbe3d05efef5e9263741fa49125f0a70f40fedab4cc",
@@ -25,7 +25,7 @@
     "tests/fixtures/crypto/request-signed.json": "0032c47bc9677a6273c7ae12d559b96368b41b97d21d77ea1b2c1fe8cec72c2b",
     "tests/fixtures/crypto/withdrawal-genesis.json": "38947aaa9b8a6790d67fe8d539fa4f99aec25a609d8853c4d70fa2d57b6ab3ce",
     "tests/fixtures/crypto/withdrawal-signed.json": "82e6fb1dafaa0f06271e1f564d3763aa15837bf1471b454719db40810892b809",
-    ".github/workflows/ci.yml": "6bf68f2fec8746b3281be889afdebb9f134b249ed05da02f5195295363d84430",
+    ".github/workflows/ci.yml": "0db915a17e9c64d034c7127e819e77abe13ebf1602ed05283780cdaf1315ab13",
     "crates/zkapi-solana-crypto/src/lib.rs": "a40bf7016a5ef8808e0c180dccfd3f582d98124926f1cfe11fc28f25a99d103e",
     "crates/zkapi-solana-crypto/tests/compatibility.rs": "c9b3f896e5be521abd3288413505e8f4761bd5f90d869a46aab9c61149759184",
     "crates/zkapi-solana-types/src/amount.rs": "c74eba2dec3f0d3795819e95c926067a2bdd8d7263710e26abf9cba8a6a92d21",
@@ -33,27 +33,119 @@
     "crates/zkapi-solana-types/src/field.rs": "15c8015ec5f0af639aefc9877cdc8af8ae7d463f7b0a4a36b01c139690fc8f61",
     "packages/sdk/src/encoding.ts": "7301ea7c7f93dcd4ae02f760d07829d342bc2c0d042ace67bc5a41a8d68aeee4",
     "scripts/check_evidence.py": "eb16e7d34863a251e0c63f543889351360f44d53d06e1442f6b4a1a3838b1fda",
-    "scripts/check_design.py": "b755f0b7dad52e4e707eb568c9adc530f3472fb70d13b92c05d4e4a20382244b",
+    "scripts/check_design.py": "41f9270e2b66396f24c1736fb1159e77287f60e79d835e493de9b121080abe94",
     "scripts/check_upstream.py": "95d38e416a245059848019356634f42a81770cd1ec54eb2e160399689e9c0343",
-    "scripts/check_openapi_contract.py": "a8cfea742569c2a20a847454c85972517aebb4babe6eab75df15aa1bab94fa4e",
+    "scripts/check_openapi_contract.py": "dfd8daea9d08f7cc558587f78e5a97b61b173b1f23bd44f12001448060c260f3",
     "scripts/check_ledger_contract.py": "0dddd0b639a4f28be656652135ccbd3b5f0a3049a9c860a84fcf5f411301a2dc",
     "scripts/ledger_contract_checks.sql": "dbc7eaa143acb820b2668cf0244eb05dbcfa07c6ebed7a17c547e37fb50edc9c",
-    "docs/contracts/openapi.json": "bcf9edba8fdb482f976933083b87b46500004cc293699e6249355e8bb1d368d7",
+    "docs/contracts/openapi.json": "09a1bc288506ca610949b229b675fbc708bd0f73234e50bede16be1547cc7695",
     "docs/contracts/ledger.sql": "d37de7668298c8bb8a719966fa5943dfcd118d0bf182d13e516a2d593feb0b77",
     "docs/evidence/ci-baseline.json": "6d24c5387804fe16e067102ad442b6a41047f2d758d31604f2d4babbd64d88ad",
     "tests/fixtures/encoding.json": "1e8069460006622137c054a3c00efe2d7a610e8a71b7b345eddab7271092579b",
     "crates/zkapi-solana-types/tests/contracts.rs": "a1839e0dba16cf6bb9d4c8fe398c1c992eeee2446ebe15d8c9576591d00c714a",
     "packages/sdk/test/encoding.test.ts": "6ad5f94b9d8581c8c6e9d71793c061c1b50ed9ebc95bdbfd3d6cb3291534d73a",
-    "work/design/generate_contracts.py": "a97eadd1a596fb4f70d00744c474224159a3e8d203783b316c7d6e9230e2587d"
+    "work/design/generate_contracts.py": "79918d4b5d949b23e343eb13d6005a52bf4055f0955c6f6c14ddb068ac5e0041",
+    "README.md": "6f1910e1b9c3f43a0c5e8e8af6ccab7d402df8fc769189e25e9dd6394750c879",
+    "Cargo.toml": "f070dec79937aad99184add06cfee916b3b330e8a125dc3bb1d05d943d24ddde",
+    "crates/zkapi-solana-crypto/Cargo.toml": "0309cf729b4862430c40bb890149e11bc9c5a4aea7e2d302de2c275d1a8018ee",
+    "docs/evidence/I02.md": "b4a8495bb5146c15cc34523e8291e038d4c00374b586b7fed0d379b22d18448d",
+    "docs/evidence/I02-toolchain.json": "1a6ff691cc69ccc3bacea4cc21d27c6e999276bf508d28d059cea4b925ef3fb9",
+    "docs/evidence/I02-svm-results.json": "0448a8b59de1aabfaf4c39bb7788e2957ec0fed61b68f96276202e2df9777197",
+    "docs/evidence/I02-transaction-sizes.json": "55745fd9093a4e4ad262cd5458840f78528523103d6625ea3ac1d7016bc2d3e1",
+    "docs/implementation-plan.md": "99b95a87335ec9b4c694fdad0424672f77f46b8940b176daa220176f71c55937",
+    "scripts/check_i02_results.py": "02beff2043537e8f49b8ee5214bbcda81cb60a9c3a1f8cee1462bca60e394795",
+    "scripts/install_sbf_tools.sh": "09f8a3e3ee0b75a11abe1c048d46219c16a3bfec5d5293d0787f2e6d96ee84eb",
+    "scripts/run_i02_svm.sh": "7fdb44ac3e5d497ecab2af4249a99124c59de3240bf634a6e6928f9d8d92e850",
+    "crates/zkapi-poseidon/Cargo.toml": "a4603d942120d1eceadf59c71f36fa56c4ad7f6697c2089a02f9658fdfabbb17",
+    "crates/zkapi-poseidon/src/constants.rs": "ed726ddf024c9fad8776eab057e31d6df88319035fc4197e7017961b3dbbff8c",
+    "crates/zkapi-poseidon/src/lib.rs": "5e2d12a576ef49c697032b1ba47af8a07e6299ddd8b342c1ed4a6cf2cd98cd83",
+    "crates/zkapi-solana-crypto/examples/tree_setup.rs": "0954e48a790a065b7d06217aec7200f6899ae44a619166b2e1a666bd062b388b",
+    "crates/zkapi-solana-crypto/examples/export_sbf.rs": "5c5707c0408c69b983f591d64644c7110dcbba75beec6363ff4f3094637b1a91",
+    "programs/i02-harness/Cargo.lock": "a6afe1069fd46559e61f4fc021433c9256b3abe2e9c8bc0c8e6c747eaaf1b382",
+    "programs/i02-harness/Cargo.toml": "44c6b2c5148d99afb3b2a08f03de4b30f2817a2444f1f7766f38b51b2da98ae6",
+    "programs/i02-harness/src/lib.rs": "ce4ef5e6ab07deeb94f7abca4505882a36fdff543f04bfe29e96958f378f097e",
+    "programs/i02-harness/src/vk.rs": "a6e1c275b1766b87d4151c8cd98ab54982fdbc0ef3039ebeb8ea826d62cce334",
+    "programs/i02-harness/src/tree_vk.rs": "907bdae8922583f5e8983033d8019ce573310879822ebe18d112a5ab3a88b702",
+    "tests/svm/Cargo.lock": "66f5d9550eb49ccb9aed55fd5c925b09f54c9781190bd480aff2af539609bfa1",
+    "tests/svm/Cargo.toml": "8f7571c2ce16b60417e2339ad0639eff997c8a545d2ef750fc32c8d6b56ae245",
+    "tests/svm/src/main.rs": "6a1dcc01bd11ba11e0c12830755c7a71a5febdebb57016a55424ee7d545852d6",
+    "tests/svm/src/sizes.rs": "2356a41dc774298407954815e7b4dec91f6acb876b60320368c395e939433557",
+    "tests/fixtures/tree/tree-4294967295-0.json": "35cb8d9586f7b25c2c678d6b02ee1a92a341c40f71fd84f3b72d889639503c72",
+    "tests/fixtures/tree/tree-0-2.json": "ffd860bde5b6a810a377f4a6dd37d8f1c21b42277801850a651dfd5761affaf0",
+    "tests/fixtures/tree/tree-4294967295-2.json": "18f397429eaab34aa0bb456b525bb895caf35e38479ff81017d797febd7e9392",
+    "tests/fixtures/tree/manifest.json": "d2423c9092741dd2b30f1d66de4e3fa9a6f633961943abbc207bc934ffc3cf4f",
+    "tests/fixtures/tree/tree-4294967295-1.json": "e9e100c97fda5eea677dd5b96836eea77f460f01fb671e537cec656b582fcd7d",
+    "tests/fixtures/tree/tree-0-1.json": "943e814e69c5aaf959a8b2b918280333e02e789669575b600e492b79737750b3",
+    "tests/fixtures/tree/test-tree.vk": "9141a035fdba50b13a5776182be029bb23dd15e69cd579c5d6e310b7e2ee5fb7",
+    "tests/fixtures/tree/tree-0-0.json": "2ed255ce10f511f2dc299f40cdc38d1f3b9c04347d02873d93b1acec1ef018b4",
+    "docs/evidence/I02-ethereum-comparison.json": "241a737a8a08a42b98062aea8065a539ef2ed9177876fc17189f9cf8bab920e2",
+    "scripts/run_i02_optimization.sh": "d4e5c99487d41e638b7c287f142b25f9c1d9cea0c288e818c5c6959625a34d8e",
+    "scripts/collect_i02_optimization.py": "049f403849aa19a6aa3b4623fecafff4a4af8ee9fc6508e45a0b4b887129e14d",
+    "tests/svm/src/runner.rs": "1558d2f6b87dd3f7393318b3a8ad288d5b74dcb2cba9bd8326eb31a8b73f2e24",
+    "tests/svm/src/bin/fallback_probe.rs": "d378b34863cb722139715e42ef3c0d23dc9a231b49127aeec23729848662d503",
+    "tests/svm/src/bin/poseidon_probe.rs": "047881b80474aaa5c32d8281750e47c2216e60ab83e988fb76e139fda3e3a1bc",
+    "docs/evidence/I02-optimization-results.json": "54452d699f720bd3a3c08b5140653d66d415666371b054c78523f34e205e4872",
+    "docs/specs/operations.md": "c7eba2ff6a500dfa1bd1b50bde272d7adb05b4f1b8f3c7d6eba4d8d1e95564f6",
+    "docs/implementation-ready.md": "c9d68ec30b395abae62ed743444f71c29b9b6c0d3690854cc9e7bd7d91e6f812",
+    "docs/contracts/tree-transition.json": "8622d5114902a83b280f9920d7d4dd950335331e6c79336cfeeeb5a3bf2cdbdf",
+    "docs/ethereum-reference.json": "de667846412893bccddee6a96f9255a9302cfb4194cc7aedd09e57defb1b717b",
+    "docs/specs/api-proxy.md": "0a6e9a425c1eb4ea51e80ccc183da6052b260689da0b5d6db021982c51d71bf2",
+    "docs/specs/protocol-solana.md": "b63fc803475990af169fb89f34c0078ebbf9f0a63d3ef3e4ac40c6a7367cf31d",
+    "AGENTS.md": "153e41f1f1c378bf709a3f7afd16515a1fdebfa37a36e38898bcabe0aa2f3001",
+    "docs/evidence/layout2-design-ready.md": "43a69bb6d5989cad23001598342e25b43687b5d62f6d0df228e3cdda8d08657f",
+    "docs/specs/tree-transition.md": "eafe562109ff41dd977c07d2b4c605647b420d8e2e74b170c208746a5291803d",
+    "docs/production-parity.md": "3dc4065f2950a1a9fadfa87efe790d6cb5a257290a1ae4f442b903945f38ad6f",
+    "docs/adr/0001-proof-bound-tree-transition.md": "69419fd3fd9e3d7ddec32123e1c9585f3f8cf239ed0fc0462945aa6b2fd1bc8a",
+    "crates/zkapi-layout2/Cargo.toml": "710f242bc6e5392bea1a352b58b8e8cb605111581d8c6bfefe37a00a452f5b7b",
+    "crates/zkapi-layout2/src/binding.rs": "6181541842c911632f0e60de4fe196725b187709221acc89e84ef1340b81dc1f",
+    "crates/zkapi-layout2/src/framing.rs": "a55d6c30c4281a7f6d3bb7debb93bc64645fc8b35627aa7d7333d3dc39e267cc",
+    "crates/zkapi-layout2/src/lib.rs": "7a66015ec54ec0362e85787270cd08371182fdad37755a23ffbd9cfe3830add6",
+    "crates/zkapi-tree-prover/Cargo.toml": "e38736470674b89f506589443672eb950974c86820ee2af06408429502daf2fb",
+    "crates/zkapi-tree-prover/src/lib.rs": "aefd4c54efd3468fb306a1201b7dfa5d1f69389502fca22531aa156f92b9790c",
+    "crates/zkapi-tree-prover/src/profile.rs": "cf2a12a0c4302caa27a40334e7734af322025716c9525ed8be783eb2c0ab12df",
+    "crates/zkapi-tree-prover/src/circuit.rs": "fca18a6002f7e1332585e5d2f92e66c5acdf7c516c5fbd301a97a12521846099",
+    "crates/zkapi-tree-prover/tests/layout2.rs": "bf44d5239413d39cfef8383aabd88eb301e1d0c31d77355700c587760473ddba",
+    "crates/zkapi-tree-prover/examples/fixtures.rs": "4adfc770d7e284b293b0c8fa3bcfe6293a32fe97eb6b1324f1e47f825d50ce3e",
+    "crates/zkapi-tree-prover/src/bin/tree-prover.rs": "b114178e0bc7946b5a9baa0a167a9a158c8845396107aca1453774e3e832d4cf",
+    "programs/i02-layout2/Cargo.lock": "315641ef3af31d25c8e82c793ec9b9df62b4bc8b15febf1ef02a209ef26a5f65",
+    "programs/i02-layout2/Cargo.toml": "fc1cc93b0287efebf8de819e7421543da15e45bd8788a1162d47fc34eade3cd7",
+    "programs/i02-layout2/src/verify.rs": "49e8b06697514c2f3bb9d3647ee1e3549b2d529c71e644b33959356286304c38",
+    "programs/i02-layout2/src/state.rs": "5feb2df46a7840bd5d115eac2f7b7fcb53903d57783a75d82712955754a54026",
+    "programs/i02-layout2/src/lib.rs": "d9b809b74b3bfe59c57b4d07951f05b3d8226b856454afd09c8ff70f2acb65f1",
+    "programs/i02-layout2/src/profile.rs": "1962f8ad18863086d0165480bb096747b6fe068f0a17bfacdc7bd8dcf3b64bad",
+    "tests/fixtures/layout2/other-vault.json": "9d65bcc0acc70a1957e31fc8595a3876fa643280b3c8140de15e6227d3d7ac22",
+    "tests/fixtures/layout2/extraction.json": "725283541df456227715ca4ee4e54febcda4d53356b9c87ad565e4c2296304ea",
+    "tests/fixtures/layout2/a-with-b.json": "5d511cc280944c58c8ecdc5d8e65d459371014dd8c44409229e0b8340829a455",
+    "tests/fixtures/layout2/b-with-a.json": "3d6e4de24d47f5acf1b12ab6602e4fd7563943de9072b7a2433bba9bc359531c",
+    "tests/fixtures/layout2/a.json": "87f2a542fdd52ad5f97ac5225279f38f5818e72fc003d0569bd2e6373eb187f5",
+    "tests/fixtures/layout2/profile.json": "ea599587cc166af008c90846e7b5a408681d1e31fcfcd52b011ccc21738cbcd3",
+    "tests/fixtures/layout2/test-tree.vk": "9141a035fdba50b13a5776182be029bb23dd15e69cd579c5d6e310b7e2ee5fb7",
+    "tests/fixtures/layout2/tree-vk-wire.bin": "d4048c4b228fca9ef4342de8f89f96f90f606c9beb74cd3c6606db44925d1bf9",
+    "tests/fixtures/layout2/max-id.json": "ec43d1a7635c407072a1e98ed5b462c142af0f8480f62c2ab53b58cca95ca544",
+    "tests/evm-layout2/foundry.toml": "1f2f1d70a45a6b6cb7766cf49d332abbec5f4075d96d089e47423e0bc543ebfb",
+    "tests/evm-layout2/EmptyRoot.t.sol": "f60e97b89085b2e725b837d89afc898df2465610c831fbbab29cab37ecc41556",
+    "crates/zkapi-solana-types/Cargo.toml": "b2935b95fd32539b3b77b7f73c87e43f9147430c16eb4085a90a21afe5d00847",
+    "crates/zkapi-solana-types/src/lib.rs": "8eee63f35148b0da90bcc91ce4a6a6d578f851ddd42d391d9decf78078cbdaf1",
+    "tests/svm/src/bin/layout2.rs": "575570095ea81d449c63ef6f54c3b1f64b3306c2f3a9e50af16baf31f806195f",
+    "scripts/check_i02_layout2.py": "82808f46fe73a74fcc3d1418d66ecda9b31c3450cb95fed2741393f98e8d4da4",
+    "scripts/run_i02_layout2.sh": "1652aecadffc466abef99b9239de06884ecd79bdd770d744293818db7aa3bd49",
+    "scripts/install_i02_evm_tools.sh": "d744d10f53a3df1b3c7d0e9ccb87ebb068bd38ed66e2f972a5f550133abc4398",
+    "docs/evidence/I02B.md": "6cf449c06207b5d86e7160f394f928c220077f60db361cf970db598719f00cd7",
+    "docs/evidence/I02B-svm-results.json": "7b80ced1b83ae1d0a53dc019ffe014dddacae4618ea9694442d36f333b467402",
+    "docs/evidence/I02B-summary.json": "43aae7a5f58366bf6cb5a006a26eb1473bbb20ee50c7041275d3e6a023aace1d"
   },
   "limitations": [
     "Review changes and new contracts CI job not remotely executed yet",
     "Local Go dependency download blocked by storage.googleapis.com policy; original pinned baseline passed remotely",
     "Local PostgreSQL contract not rerun: initdb unavailable; added CI job awaits execution",
-    "No SBF/SVM/CU/full transaction size or token CPI measurement",
-    "Tree backend remains undecided; I03 and I05 dependencies not met",
+    "Tree backend selected in ADR-0001; I02-B normative integration remains prerequisite for I03/I05 integration completion",
     "WASM types compiled only; WASM proof/vector execution not run",
-    "G1/G2/G3/G4 not passed"
+    "G1/G2/G3/G4 not passed",
+    "Historical direct/recomputed-tag baselines exceed budget. Proof-bound-tag design adopted after research measurement; full Vault and transport G1 remain unverified",
+    "I02 harness is not the full I03 Vault: final account/PDA/ATA/status/binding/creation/event checks not implemented",
+    "SPL Token 3.5.0 bundled SBF and all-enabled Agave 2.2.0 features; not target cluster CU certification",
+    "Tree setup uses known deterministic test entropy and is not production-eligible",
+    "v1 RPC/wallet and buffer lifecycle remain unverified; new SVM CI job not remotely executed"
   ],
   "review": {
     "date_jst": "2026-10-03",
@@ -96,10 +188,10 @@
     "I01-sdk.log": {
       "sha256": "55359daf7ce5908d7e4d9fe3afbca4af79af3eb1abe23b433392b2bce9643622",
       "test_results": [
-        "\u2139 tests 309",
-        "\u2139 pass 309",
-        "\u2139 fail 0",
-        "\u2139 skipped 0"
+        "ℹ tests 309",
+        "ℹ pass 309",
+        "ℹ fail 0",
+        "ℹ skipped 0"
       ]
     },
     "I02-clippy.log": {
@@ -124,10 +216,10 @@
     "I02-typescript.log": {
       "sha256": "136c80ac569e8d379c796018219c749cca41380c6df9f2f91319b1967ea6414c",
       "test_results": [
-        "\u2139 tests 4",
-        "\u2139 pass 4",
-        "\u2139 fail 0",
-        "\u2139 skipped 0"
+        "ℹ tests 4",
+        "ℹ pass 4",
+        "ℹ fail 0",
+        "ℹ skipped 0"
       ]
     }
   },
@@ -156,10 +248,10 @@
     "review-typescript.log": {
       "sha256": "f0ef028a107957c41d0b51ca85907a90b49f71fd34b19ae088dc76487cbc2a5e",
       "test_results": [
-        "\u2139 tests 6",
-        "\u2139 pass 6",
-        "\u2139 fail 0",
-        "\u2139 skipped 0"
+        "ℹ tests 6",
+        "ℹ pass 6",
+        "ℹ fail 0",
+        "ℹ skipped 0"
       ]
     },
     "review-upstream-protocol.log": {
@@ -180,10 +272,10 @@
     "review-upstream-sdk.log": {
       "sha256": "e43e57f5c721d9dee8204292fb4c6052f2e9d08047b5dd4169f2c77b2b332120",
       "test_results": [
-        "\u2139 tests 309",
-        "\u2139 pass 309",
-        "\u2139 fail 0",
-        "\u2139 skipped 0"
+        "ℹ tests 309",
+        "ℹ pass 309",
+        "ℹ fail 0",
+        "ℹ skipped 0"
       ]
     },
     "review-upstream-services.log": {
@@ -229,5 +321,202 @@
     "go": "1.25.0",
     "full_suite_passed": true,
     "evidence": "docs/evidence/ci-baseline.json"
+  },
+  "i02_svm": {
+    "base_commit": "6e6be186c1fe71205a65624c585b6abb93997345",
+    "normal_budget_cases": 383,
+    "wrong_vk_controls": 12,
+    "diagnostic_cases": 20,
+    "real_upstream_proofs": 6,
+    "real_tree_proofs": 6,
+    "host_tests": 12,
+    "g1": "not_passed_full_vault_transport_pending_I02_complete",
+    "tree_backend": "transition_proof/proof_bound selected by ADR-0001; normative integration pending",
+    "next_task": "I03 Vault, then I04 v0 buffer",
+    "results": "docs/evidence/I02-svm-results.json",
+    "sizes": "docs/evidence/I02-transaction-sizes.json",
+    "toolchain": "docs/evidence/I02-toolchain.json",
+    "logs": {
+      "I02-svm-run.log": {
+        "sha256": "a484da414f7e865aebfed856c4884df7bf98494b5df11c073a492aca0bf29060",
+        "test_results": [
+          "PASS: 383 release-budget cases, 12 wrong-VK controls, 20 diagnostic tree cases"
+        ]
+      },
+      "I02-tree-setup.log": {
+        "sha256": "42abe0f104946fe2d9614b9d6fecbbc78271734c471b96c99d7f77e7236c4765",
+        "test_results": [
+          "PASS: 33198 constraints; 6 real tree proofs; 66 public-input mutations; 16 unsatisfied-witness tests"
+        ]
+      },
+      "I02-clippy.log": {
+        "sha256": "d59181f921d3fa8fc5dd60d84156efd87e65448ff66eeb11fcf9d103b7d4e502",
+        "test_results": []
+      },
+      "I02-reproduce.log": {
+        "sha256": "6c5b20907211cff368284970f3c6d71393ea49eec9e77ad3c2accc806b3a28b5",
+        "test_results": [
+          "PASS: 33198 constraints; 6 real tree proofs; 66 public-input mutations; 16 unsatisfied-witness tests",
+          "PASS: 383 release-budget cases, 12 wrong-VK controls, 20 diagnostic tree cases",
+          "PASS: 383 SBF cases, 12 wrong-VK controls, 20 diagnostic cases, serialized sizes and ELF hashes",
+          "G1: FAIL / CU budget exceeded by BOTH tree backends; diagnostics are not cluster-admissible"
+        ]
+      },
+      "I02-harness-clippy.log": {
+        "sha256": "bd0ee9f750151050dd61d3f7fee1795d553e874c72696c529c9a8d0daa528c32",
+        "test_results": []
+      },
+      "I02-svm-clippy.log": {
+        "sha256": "1db305e14f3b3849e10526cbc676305556dad18f2565a676fc20d8679c66cabf",
+        "test_results": []
+      },
+      "I02-workspace.log": {
+        "sha256": "e73f8adb236593d35571f638fdf97d4a93238cdbe7ecf07c343b5cd14f3cf40c",
+        "test_results": [
+          "test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s",
+          "test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s",
+          "test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 17.51s",
+          "test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s",
+          "test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s",
+          "test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s",
+          "test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s",
+          "test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s"
+        ]
+      }
+    },
+    "baseline_gate": "blocked_tree_CU_exceeds_budget",
+    "historical_baseline": true
+  },
+  "i02_ethereum_comparison": {
+    "passed_tests": 13,
+    "real_proof_test_cases": 3,
+    "mainnet_receipts_checked": false,
+    "evidence": "docs/evidence/I02-ethereum-comparison.json"
+  },
+  "i02_optimization": {
+    "evidence": "docs/evidence/I02-optimization-results.json",
+    "research_only": true,
+    "g1_passed": false,
+    "same_hash_sbf_cases": 24,
+    "incompatible_syscall_cases": 5,
+    "proof_bound_tag_cases": 131,
+    "proof_bound_tag_cu_min": 365907,
+    "proof_bound_tag_cu_max": 671266,
+    "unchanged_tree_circuit_vk_fixtures": true,
+    "reproduction": "scripts/run_i02_optimization.sh",
+    "logs": {
+      "I02-optimization-reproduce.log": {
+        "sha256": "3859780069dd8c443eef4355c5a1ec824c2d649f2c670b3df38d124f539261b4"
+      },
+      "I02-research-baseline-final.log": {
+        "sha256": "5ce1f3c220ade204d9f0794280c317b1a727f82aed56fd3c0a93c481f7de0f5d"
+      },
+      "I02-research-proof-tag-final.log": {
+        "sha256": "ea6b2af786a15ec8fe6af86bd37698d9486741370ff1b3a4fd25a8de70904b84"
+      }
+    },
+    "design_decision": "ADR-0001 adopted proof-bound-tag; research harness remains nonproduction",
+    "normative_integration_complete": true,
+    "normative_integration_scope": "I02-B measurement harness completed; production Vault integration pending"
+  },
+  "layout2_design": {
+    "status": "implementation_design_ready",
+    "decision": "docs/adr/0001-proof-bound-tree-transition.md",
+    "contract": "docs/specs/tree-transition.md",
+    "wire": "docs/contracts/tree-transition.json",
+    "evidence": "docs/evidence/layout2-design-ready.md",
+    "next_task": "I03 Vault, then I04 buffer",
+    "new_runtime_tests_run": true,
+    "i02_complete": true,
+    "g1_passed": false,
+    "production_ready": false,
+    "verification": {
+      "openapi_schemas": 52,
+      "schema_positive_negative_cases": 31,
+      "tree_acceptance_conditions_defined": 8,
+      "tree_acceptance_conditions_executed": "TT01/TT02 I02 scope; full TT03-TT08 in I03/I04/I08/I09/I11 remain pending",
+      "generated_contracts_match": true,
+      "upstream_pin_unchanged": true,
+      "remote_ci_run": false
+    },
+    "logs": {
+      "layout2-design-check.log": {
+        "sha256": "acfbfe8d056ea634786032a006ac62cfeb8d51dee02fcce54ee2411381a994b0"
+      },
+      "layout2-openapi-check.log": {
+        "sha256": "86df3f4002b94a01aac35758b12e648bc7f16649a2055a8ac6ba0d58d4f6039d"
+      },
+      "layout2-upstream-check.log": {
+        "sha256": "1eb69b3804f857eec71be447a4abebbb3fc53f97d1ad22580d5afef00a1e3f6a"
+      }
+    }
+  },
+  "i02b": {
+    "status": "completed",
+    "evidence": "docs/evidence/I02B.md",
+    "results": "docs/evidence/I02B-svm-results.json",
+    "summary": "docs/evidence/I02B-summary.json",
+    "reproduction": "scripts/run_i02_layout2.sh",
+    "sbf_cases": 257,
+    "host_workspace_tests": 19,
+    "new_host_tests": 7,
+    "evm_empty_root_tests": 1,
+    "normal_cu": {
+      "Deposit": {
+        "min": 153774,
+        "max": 154938
+      },
+      "Close": {
+        "min": 316612,
+        "max": 317443
+      },
+      "Escape": {
+        "min": 300186,
+        "max": 301033
+      },
+      "Challenge": {
+        "min": 288612,
+        "max": 289451
+      },
+      "Expiry": {
+        "min": 153630,
+        "max": 154462
+      }
+    },
+    "buffer_execute_transaction_bytes": 516,
+    "tree_proof_generation_ms": {
+      "min": 1379,
+      "max": 2792,
+      "scope": "shared host release fixture measurement including constraint check, prove, verify; excludes prepare and PK load"
+    },
+    "source_archive_sha256": "026c34c14b05e77368da03665664773b675745b43384476eebb9318112b03ca3",
+    "profile_hash": "37f90f026d5c20837aaa138af7f4c2aa64ede12195e762f33984446eaacc358d",
+    "g1_passed": false,
+    "production_ready": false,
+    "remote_ci_run": false,
+    "next_task": "I03",
+    "logs": {
+      "target/i02b/reproduce-final.log": {
+        "sha256": "2729ba356fff7f63dccc07e837201414fdfdacd5dd57e8d6ec09994ee77a8873"
+      },
+      "target/i02b/svm-final.log": {
+        "sha256": "eaa5d3ba615e5c9ec3080724707de44d4a82ad661e7452a1184a7e4f85e3d47b"
+      },
+      "target/i02b/workspace-final.log": {
+        "sha256": "f6ee0214c0a04b96d35a45e6e4a2b891b91b0e78ad8c553260b24497275227f5"
+      },
+      "target/i02b/clippy-final.log": {
+        "sha256": "07a21dfe9e546c761093055a837398754503f10525bb3a34d7b0aeb505e8ba27"
+      },
+      "target/i02b/svm-clippy-final.log": {
+        "sha256": "6983b4d1b0045f5cf37f2ee40ef137b91636f1ee6d394a0d1d8ac1612457cdcb"
+      },
+      "target/i02b/program-clippy-final.log": {
+        "sha256": "c54b50ac3622a5e521ec929ca111320a4d3d079e0d50fc16a4f3beb79f32d2f0"
+      },
+      "target/i02b/wasm-final.log": {
+        "sha256": "271f2a9bfe761a40d9ddc5f9d51a545234c58efc653169c6e53912baa5026b76"
+      }
+    }
   }
 }

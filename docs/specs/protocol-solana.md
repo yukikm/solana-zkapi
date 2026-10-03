@@ -1,6 +1,6 @@
 # オンチェーン・暗号仕様
 
-規範語「必須」「拒否」は実装・受入試験の条件。元実装は `ethereum/zkapi@045b444ea1b52538d1b40273c7cb6ed09468a052`。この仕様の資産・binding・transport変更以外は元の状態機械を維持する。
+規範語「必須」「拒否」は実装・受入試験の条件。元実装は `ethereum/zkapi@045b444ea1b52538d1b40273c7cb6ed09468a052`。この仕様の資産・binding・transport変更以外は元の状態機械を維持する。初版は[ADR-0001](../adr/0001-proof-bound-tree-transition.md)のtree証明方式（layout 2）を採用し、[tree-transition実装契約](tree-transition.md)を併読する。
 
 ## 1. 数値と符号化
 
@@ -59,7 +59,7 @@ PDA seedは下表。整数seedは指定サイズのLE。Anchorのaccount discrim
 
 | 型 | seed（prefixはASCII） | 主要field |
 |---|---|---|
-| PoolConfig | `["pool", pool_id_32]` | bump, genesis_hash, mint, token_program, decimals=6, vault_binding, admin, treasury_owner, state/clearance pubkey各64B, TTL:u64, challenge:u64, cap:u64, paused:bool |
+| PoolConfig | `["pool", pool_id_32]` | bump, genesis_hash, mint, token_program, decimals=6, vault_binding, admin, treasury_owner, state/clearance pubkey各64B, TTL:u64, challenge:u64, cap:u64, paused:bool, tree_backend:u8=1, tree_tag_policy:u8=1, circuit_profile_hash:32B |
 | TreeState | `["tree", pool]` | bump, root:Fr32, next_note_id:u64, sequence:u64, outstanding_deposits:u64 |
 | VaultAuthority | `["vault", pool]` | PDA signerのみ。USDC ATAのauthority |
 | Note | `["note", pool, note_id_u32le]` | bump, note_id:u32, commitment:Fr32, deposit:u64, expiry:u64, status:u8 |
@@ -69,7 +69,7 @@ PDA seedは下表。整数seedは指定サイズのLE。Anchorのaccount discrim
 
 PoolConfigはmint・鍵・TTL等を初期化後変更しない。可変なのはadmin管理下のtreasury_ownerとpaused。admin自体の変更は初版に含めず、外部multisigの構成変更で運用する。Poolの異なるaccount混在、PDA bump/seed不一致、任意program accountへのCPI、token authority/delegateの差し替えを拒否。
 
-layout_version=1。Note.statusはActive=1、PendingWithdrawal=2、Closed=3（0は有効Noteに使わない）。initialize_poolはttl>0、challenge>0、0<cap<=MAX、admin/treasuryがdefault Pubkeyでないことを必須とする。初期profileはttl=2,592,000秒、challenge=86,400秒、cap=1,000,000 micro-USDC。
+layout_version=2。tree backend/tag policy/profile hashは埋込み定数と一致必須、初期化後変更不可。layout 1は研究用の旧形式であり初版poolでは受理しない。Note.statusはActive=1、PendingWithdrawal=2、Closed=3（0は有効Noteに使わない）。initialize_poolはttl>0、challenge>0、0<cap<=MAX、admin/treasuryがdefault Pubkeyでないことを必須とする。初期profileはttl=2,592,000秒、challenge=86,400秒、cap=1,000,000 micro-USDC。
 
 USDC mint：mainnet `EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v`、devnet `4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU`。原SPL Token Programを固定し、Token-2022や転送手数料tokenを初版で受理しない。release前に実mintのowner/decimals/freeze authorityを記録する。
 
@@ -79,23 +79,25 @@ USDC vaultはVaultAuthorityのATA、受取先は証明に結合したwallet owne
 
 ## 4. 命令契約
 
-Anchor命令discriminatorは `sha256("global:"+snake_case_name)[0..8]`。各命令のargsはBorsh。`F= [u8;32]`, `Proof=[u8;256]`, `Path=[F;32]`, `WP=[F;14]`, `RP=[F;12]`。配列長のprefixは付けない。下表のinline argsの順序を固定する。
+Anchor命令discriminatorは `sha256("global:"+snake_case_name)[0..8]`。各命令のargsはBorsh。`F= [u8;32]`, `Proof=[u8;256]`, `TP=[F;11]`, `TreeUpdate={public:TP, proof:Proof}`, `WP=[F;14]`, `RP=[F;12]`。配列長のprefixは付けない。下表のinline argsの順序を固定する。
 
 | 命令 / args | signer | writable account | 検査・結果 |
 |---|---|---|---|
-| initialize_pool(pool_id32, genesis32, state_key64, clearance_key64, ttl:u64, challenge:u64, cap:u64, admin, treasury) | deployment authority, admin, payer | pool, tree, vault ATA | build時に固定したdeployment authority署名、固定mint、正しい空tree root、鍵の曲線/部分群/非単位点、値域。登録済みpoolは拒否 |
-| deposit(expected_id:u32, expected_root:F, expiry:u64, commitment:F, amount:u64, siblings:Path) | token owner, payer | tree,note,source ATA,vault ATA | !paused、次ID・root一致、0<amount<=MAX、C!=0、expiry=ceil((Clock+TTL)/86400)*86400。zero→L、TransferChecked |
-| mutual_close(public:WP,proof:Proof,siblings:Path) | payer | tree,note,exit,vault ATA,destination ATA,treasury ATA | !paused、has_clearance=1、current root、固定binding/keys、実proof。Active、B<=D、N未使用。L→0、Closed、N消費、B/D−B転送 |
-| initiate_escape(public:WP,proof:Proof,siblings:Path) | payer | tree,note,exit,pending | !paused、has_clearance=0、current root、実proof、Active、B<=D、N未使用。L→0、Pending、N消費、deadline=Clock+challenge |
-| challenge_escape(note_id:u32,public:RP,proof:Proof,siblings:Path) | payer | tree,note,pending | Pending、Clock<deadline、N=保存済みN、固定binding/keys、過去の実request proof。current rootのzero→L、Active。exitは維持 |
+| initialize_pool(pool_id32, genesis32, state_key64, clearance_key64, ttl:u64, challenge:u64, cap:u64, admin, treasury) | deployment authority, admin, payer | pool, tree, vault ATA | build時に固定したdeployment authority署名、固定mint、元hashで検証済みの埋込み空tree root・circuit profile、鍵の曲線/部分群/非単位点、値域。登録済みpoolは拒否 |
+| deposit(expected_id:u32, expected_root:F, expiry:u64, commitment:F, amount:u64, tree:TreeUpdate) | token owner, payer | tree,note,source ATA,vault ATA | !paused、次ID・root一致、0<amount<=MAX、C!=0、expiry=ceil((Clock+TTL)/86400)*86400。zero→L、TransferChecked |
+| mutual_close(public:WP,proof:Proof,tree:TreeUpdate) | payer | tree,note,exit,vault ATA,destination ATA,treasury ATA | !paused、has_clearance=1、current root、固定binding/keys、実proof。Active、B<=D、N未使用。L→0、Closed、N消費、B/D−B転送 |
+| initiate_escape(public:WP,proof:Proof,tree:TreeUpdate) | payer | tree,note,exit,pending | !paused、has_clearance=0、current root、実proof、Active、B<=D、N未使用。L→0、Pending、N消費、deadline=Clock+challenge |
+| challenge_escape(note_id:u32,public:RP,proof:Proof,tree:TreeUpdate) | payer | tree,note,pending | Pending、Clock<deadline、N=保存済みN、固定binding/keys、過去の実request proof。current rootのzero→L、Active。exitは維持 |
 | finalize_escape(note_id:u32) | payer | note,pending,tree,vault ATA,destination ATA,treasury ATA | Pending、Clock>=deadline。root不変、Closed、保存B/D−B転送 |
-| claim_expired(note_id:u32,siblings:Path) | payer | tree,note,vault ATA,treasury ATA | Active、Clock>=expiry。L→0、Closed、D全額をtreasuryへ |
+| claim_expired(note_id:u32,tree:TreeUpdate) | payer | tree,note,vault ATA,treasury ATA | Active、Clock>=expiry。L→0、Closed、D全額をtreasuryへ |
 | set_treasury(new_owner:Pubkey) | admin | pool | new_owner!=default、既存Pendingにも将来の支払時に適用 |
 | pause() / unpause() | admin | pool | paused変更。challenge/finalize/expiryはpause非対象 |
 
+treeの11公開入力とWP/RP/Noteを結合する比較、op対応、固定wireは[tree-transition §2–3](tree-transition.md)を必須とする。leaf/path/tagをprogramで再計算しない。
+
 各命令は上表に加えてpool（read-only、管理命令はwritable）、必要なSystem/Token/ATA program、Clockを検証する。close/escapeのdestination_owner accountはWPのbindingと一致必須。Pendingはchallenge/finalize成功後exists=falseとし再利用可能、NoteはClosed tombstoneを残す。nullifierはclearanceとrequestの共通namespace。withdrawalに元実装にないexpiry制約を足さない。
 
-challengeのRP.active_rootをcurrent rootへ書き換えてはいけない。提出されたRPとproofを当時のまま検証し、treeを復元するpathだけcurrent rootで検査する。API側のquote freshnessやrequest_time鮮度をon-chain challengeへ適用しない。
+challengeのRP.active_rootをcurrent rootへ書き換えてはいけない。提出されたRPとproofを当時のまま検証し、treeを復元する追加証明のold_rootだけcurrent rootと照合する。RP.active_rootとPending.old_rootの一致も要求しない。API側のquote freshnessやrequest_time鮮度をon-chain challengeへ適用しない。
 
 すべてのtoken transferとtree更新は同じinstruction内で行う。CPI失敗・口座凍結・残高不足・不正proofでは全状態をrollback。tree.sequenceは成功したdeposit/close/escape/challenge/finalize/expiryごとに1増加する。finalizeではroot不変でもsequenceを進める。イベントは後述のVaultTransitionV1を使い、曖昧なamount fieldを設けない。公開イベントにnote secret・prompt・runtime keyを含めない。
 
@@ -112,25 +114,27 @@ indexerはmeta.err=nullの成功transactionだけを、block内transaction順・
 
 ## 5. Transactionサイズと一時buffer
 
-v1は4096 bytes、legacy/v0は1232 bytesを前提に実transactionをserializeして判定する。v1はCU/data limitをmessage configへ明示設定し、priority feeは総lamportsとして扱う。1232 bytesを超える送信はbase64 encodingを使う。walletの使用する署名featureと対象cluster/RPCのv1対応を確認し、未対応ならbufferへ進む。indexer/RPC読取は `maxSupportedTransactionVersion:1`。[Solana v1資料](https://solana.com/upgrades/larger-transaction-sizes)
+初版の必須・既定経路はv0 transaction＋payload buffer（各送信1232 bytes以内）。ALTなしでも成立させ、walletのv0署名を検証する。全proof・tree更新・転送は最後のexecute一命令で成立させる。inlineは最終IDLで実serializeして収まる場合のみ同じhandlerへ渡す。
 
-buffer方式を初版の必須fallbackとする。`create_payload(op,len,digest,nonce,expires)` → `append_payload(offset,bytes)` → `seal_payload()` → `execute_payload(expected_digest:[u8;32])` → `close_payload()`。
+v1 inlineは追加能力。対象cluster/RPC/SDK/walletと4096 bytes等の実limitを確認し、I04の実送信が成功したmanifestだけにadvertiseする。v1ではCU/data limitをmessage configへ設定しpriority feeは総lamportsとして扱う。未対応を推測で有効にせずv0_bufferを使用する。indexerのmaxSupportedTransactionVersionは対象deploymentで実証した値（初版は0）とする。[Solana v1資料](https://solana.com/upgrades/larger-transaction-sizes)
+
+buffer手順：`create_payload(op,len,digest,nonce,expires)` → `append_payload(offset,bytes)` → `seal_payload()` → `execute_payload(expected_digest:[u8;32])` → `close_payload()`。
 
 buffer op:u8はdeposit=0、mutual_close=1、initiate_escape=2、challenge_escape=3、claim_expired=4。他の値は拒否（tree-transition回路のopとは別enum）。create argsは順にu8/u32/[u8;32]/[u8;32]/u64、appendはu32 offsetとBorsh Vec<u8>、seal/closeはargsなし。executeはexpected_digest:[u8;32]を署名対象instruction dataに含める。
 
 - len<=4096、expires<=作成時+3600秒。opはdeposit/close/escape/challenge/expiryだけ。
 - appendはuploader署名、offset=next_offset、範囲内。既存byteの書換え不可。sealは全byte受領とSHA256一致を確認。
-- executeはuploader署名、expected_digest=buffer.digest、pool・op・seal・期限を検査。payloadは対象inline命令のargsそのもの、余分な末尾byteを拒否。account条件はinlineと同じ。depositでは元token owner署名も必須。
+- executeはuploader署名、expected_digest=buffer.digest、pool・op・seal・期限を検査。payloadはlayout 2の対象inline命令のargsそのもの（discriminatorを除く）、固定長はtree-transition §3どおり。opから命令を一意に選び、旧path形式・余分な末尾byteを拒否。account条件はinlineと同じ。depositでは元token owner署名も必須。
 - 署名はbuffer accountとinstruction data内のexpected_digestに結合する。同じPDAをclose後に再作成して別内容をsealしても、以前のexecute署名はInvalidBufferで拒否する。封印だけでは資金・root・noteを変更しない。
-- 成功でbufferを消費、rentは保存済みrent_payerへ返す。失敗なら封印状態を保つ。uploaderは中止close可能、期限後は誰でも同じrent_payerへ回収可能。
+- execute成功時にbuffer accountをcloseし、rentは保存済みrent_payerへ返す。失敗なら封印状態を保つ。close_payloadはuploaderによる中止または期限後の回収用。成功後に不要なcloseを送らない。account不在だけでexecute成功とは判断せずsignature/状態で確認する。
 - 同じpayloadの別buffer再実行は、note ID/root/status/nullifierで拒否。stale rootは新path/proofで新bufferを作り、古いbufferをcloseする。
 
-## 6. G1計算量判定とfallback
+## 6. 採用tree方式とG1計算量判定
 
-最初の実装は同一PoseidonのSBF計算。depositの32段更新、withdrawalのproof+更新、challengeのrequest proof+更新を、token CPIとaccount処理を含めて測る。release目標はworst-case <=1,000,000 CUかつ実transactionサイズが採用format内。計算量の実測値はまだない。
+[ADR-0001](../adr/0001-proof-bound-tree-transition.md)により追加tree Groth16証明（`transition_proof`）、`proof_bound` tag検証、layout 2を採用する。元のrequest/withdrawal回路・Poseidon・32段treeは維持する。tree回路がleaf、旧新root、同じpath、op、値域、transition_tagを制約し、programは固定VKで全11公開入力を検証する。programによるtag/leaf/pathのPoseidon再計算は要求しない。実状態・命令・認可proofとの照合は[tree-transition仕様](tree-transition.md)に定義する。
 
-不合格ならtree更新だけ追加Groth16回路へ移す。旧/新のleaf生成も含め、public inputsは `[vault_binding, old_root, new_root, note_id, old_leaf, new_leaf, commitment, deposit, expiry, op, transition_tag]` の11 Fr。witnessは32 siblings。opはdeposit=0、remove=1、restore=2。回路でL=元H_leaf(note_id,C,D,expiry)、各opのold/new leaf、32bit index、old/new rootを同じpathから制約する。transition_tagは元Poseidon spongeで `H_domain("solana.zkapi.tree.v1", 前の10 public fields)` とし、回路内で制約する。programも同じtagを再計算し、Noteまたはdeposit argsからC/D/expiryを再構築して全public inputを比較する。vault_bindingとopを未拘束inputにしない。更新proofとrequest/withdrawal proofの検証・転送は一つの命令で行う。
+[I02の実測](../evidence/I02.md)ではtag再計算を省く研究用案が365,907〜671,266 CU。現仕様への標準化と全Vault命令の実装はこれからで、G1は未合格。元tree直接計算・tag再計算付きfallbackのCU超過は比較用の履歴として保持する。
 
-tree証明には秘密情報がないため、利用者または独立workerが生成できる。workerを唯一の生成主体にせずSDK/CLIからも生成可能にする。fallbackはprotocol layout_version=2の新poolで、pathをtree public input+proofへ置換する。setup・VK・CUを再検証する。ハッシュそのものの変更はこのfallbackに含めず、別ADRと再設計が必要。
+release目標は**全命令のworst-case <=1,000,000 CU**、実transactionが採用format内。100万CUはprotocolの余裕を含む設計目標でありSolanaの絶対上限ではない。I03/I04では全PDA/ATA作成、proof binding、status/nullifier、Token CPI、event、buffer処理込みで測る。予算超過時に検査を省いたり目標を無断に引き上げたりしない。
 
-この切替条件をI02で解決し、その後のIDL/本番artifactを固定する。回路不変だから証明鍵のそのまま流用が安全だとは推測しない。
+追加回路のsource/constraints/VK/setupとclient証明生成・root競合の受入条件を固定し、backend選択待ちを解除してI02-Bから実装する。新poolのみlayout 2を使い、既存poolのVK/backendを上書きしない。production setup・target cluster・wallet/buffer・全機能同等性の未検証項目は実装/公開gateとして残す。

@@ -1,19 +1,20 @@
-# Solana zkAPI — 実装開始仕様 v1
+# Solana zkAPI — 実装開始仕様（layout 2）
 
-状態：**設計・インターフェース確定、実装着手可**。更新日：2026-10-03 JST。設計レビューの指摘と修正は[レビュー記録](evidence/design-review-2026-10-03.md)に残す。
+状態：**設計・インターフェース確定、実装着手可**。更新日：2026-10-03 JST。[今回のlayout 2設計確認](evidence/layout2-design-ready.md)と[従来の設計レビュー](evidence/design-review-2026-10-03.md)を参照。
 
-実装レビュー後の現在地：I01 baselineはremote CI確認済み、I02基盤は修正・native検証済み。**次に着手できるのはI02のSBF/SVM・CU測定**で、I03開始にはI02完了が必要。[I02の引き継ぎ](evidence/I02.md)を読む。これはG1合格や本番公開Readyの宣言ではない。
+現在地：**I01・I02完了、I03 Vault実装へ着手Ready**。layout 2 / transition_proof / proof_boundの共通codec・binding・native prover・固定profileを実装し、実SBF/SVMで257ケースを検証した。5経路の実測は約15〜32万CU。[I02-B完了記録](evidence/I02B.md)を読み、I03 VaultとI04 bufferへ進む。I03以降の全Vault/transport統合、G1とproduction公開は未完了。
 
 これはUSDC決済、Ethereum zkAPIの直接接続機能、第三者運営のproxyを含む本番向け仕様である。コード完成・性能検証・監査・mainnet配備の完了を意味しない。暗号互換性などの実測項目は、担当・判定基準・不合格時の処理を実装計画に固定した。
 
 ## 1. 読む順序と仕様の優先順位
 
 1. 本書：スコープ、採用判断、コンポーネント。
-2. [オンチェーン・暗号仕様](specs/protocol-solana.md)：PDA、命令、証明、USDC転送。
-3. [API・proxy・精算仕様](specs/api-proxy.md)：認可、課金、互換API、失敗時の状態遷移。
-4. [運用・リリース仕様](specs/operations.md)：復旧、秘密管理、受入条件。
-5. [実装タスク](implementation-plan.md)：依存順序、変更箇所、完了の証拠。
-6. [OpenAPI](contracts/openapi.json)、[DBスキーマ](contracts/ledger.sql)、[決定論的テストベクトル](contracts/binding-vectors.json)。
+2. [採用ADR](adr/0001-proof-bound-tree-transition.md)と[tree-transition実装契約](specs/tree-transition.md)：採用方式、11 inputs、proof/state結合、layout 2、prover、setup。
+3. [オンチェーン・暗号仕様](specs/protocol-solana.md)：PDA、命令、証明、USDC転送。
+4. [API・proxy・精算仕様](specs/api-proxy.md)：認可、課金、互換API、失敗時の状態遷移。
+5. [運用・リリース仕様](specs/operations.md)：復旧、秘密管理、受入条件。
+6. [実装タスク](implementation-plan.md)：依存順序、変更箇所、完了の証拠。
+7. [OpenAPI](contracts/openapi.json)、[DBスキーマ](contracts/ledger.sql)、[決定論的テストベクトル](contracts/binding-vectors.json)、[layout 2 wire契約](contracts/tree-transition.json)。
 
 新規Solanaインターフェースについては上記の仕様を正本とする。[従来の比較設計](production-parity.md)はEthereum版との対応表、[参照元記録](ethereum-reference.json)は観測事実である。参照元の実装詳細は固定commitを優先し、記事の説明から未実装機能を推測しない。仕様と固定コードの差が見つかったら差分を記録して修正し、無言で独自方式に変更しない。
 
@@ -40,7 +41,7 @@ Ollama互換、native SOLでの利用料決済、任意URLへ中継する汎用H
 | D02 | 通常料金はupstream 1 USD = 1 USDC。手数料0を初期profileとし、価格oracleを外す |
 | D03 | request/withdrawal回路はupstream Arkworks 0.5系列を維持。新規mainnetのsetup方針は運用仕様で固定 |
 | D04 | Groth16 BN254のSolana検証にLight Protocolのgroth16-solanaを採用する。byte変換は専用crate |
-| D05 | 32段treeと元のPoseidonを維持。まずSBF同一hash実装を計測し、G1不合格時は定義済みtree-transition回路へ切替 |
+| D05 | 32段treeと元のPoseidonを維持。追加Groth16 tree回路が更新とtagを拘束、programは全11 inputsと実状態を照合。layout 2固定（ADR-0001） |
 | D06 | 固定USDC mint・SPL Token Program・PDA authorityで保管。SOLはfee/rentだけ |
 | D07 | 直接接続とproxyは同じnoteを使える。1 noteにつき未精算認可は1つ。session内proxy並列数は初期4 |
 | D08 | proxyはOpenAI、Anthropic、OpenRouterの個別adapter。任意upstream URLと利用者からの上流credentialは受け付けない |
@@ -51,7 +52,7 @@ Ollama互換、native SOLでの利用料決済、任意URLへ中継する汎用H
 | D13 | proxyの上流応答が不明なら再実行しない。計測不能分を利用者に推定請求せず、送信ownerの終了/fencing後に運営損失として確定 |
 | D14 | ZKは残高と利用権限を証明する。API応答の正しさ、proxyの計測値、IP/本文の匿名性は保証しない |
 | D15 | 入金の有効化はfinalized。認可時は独立RPCでも使用済みexit nullifierを確認。不明なら新規発行を停止 |
-| D16 | root変更・状態変更・USDC転送は同一transaction。legacy/v0 walletには署名者とexpected_digestに結合した一時bufferで対応 |
+| D16 | root変更・状態変更・USDC転送は同一instruction。v0＋署名者/expected_digest付きbufferを必須・既定、v1は実証後の追加能力 |
 | D17 | TTL 30日・日単位切上げ、challenge 24時間。原pause/expiry/逃避処理の条件を維持 |
 | D18 | SDKがexpiryを明示し、期限7日前・1日前に警告。原方式ではexpiry後のActive元本全額がtreasuryへ行く |
 | D19 | proxy利用時にはproxyが内容を読めることを接続前に表示。直接接続はprompt-free認可のみ |
@@ -102,6 +103,17 @@ deploy/                    # image digest、manifest、runbook
 
 ## 5. 実装開始と本番公開の境界
 
-実装担当はI01→I02から着手できる。G1は元証明とSolana verifierの互換性・CU/transactionサイズ、G2は精算・障害回復、G3は実provider、G4はsetup・鍵・監査・復旧演習を確認する。未実測のCU、未取得のprovider権限、元回路の流用可否を「合格」と記載していない。
+実装担当はI02-Bから着手できる。I01と完了済みの比較研究を最初からやり直す必要はない。G1は元証明とSolana verifierの互換性・CU/transactionサイズ、G2は精算・障害回復、G3は実provider、G4はsetup・鍵・監査・復旧演習を確認する。未実測のCU、未取得のprovider権限、元回路の流用可否を「合格」と記載していない。
 
-G1失敗時も次の実装方式をprotocol仕様で定義済み。ただし新しい回路/VKを既存poolへ上書きしてはいけない。実装証拠が揃う前のmainnet配備は作業範囲に含まれない。
+追加tree証明方式は採用済み。I02-Bで本番と共有するwire/verifier/bindingを検証してI03へ進む。ただし新しい回路/VKを既存poolへ上書きしてはいけない。実装証拠が揃う前のmainnet配備は作業範囲に含まれない。
+
+
+## 6. 今回固定した実装開始条件
+
+- **選択済み**：元request/withdrawal/Poseidonを維持、tree Groth16追加、tagはproofで拘束、layout 2、新pool限定、v0_buffer必須。再度backend選択の確認を求めず実装する。
+- **既存の証拠**：元6 proofとtree6 proof、標準baseline415ケース、研究用軽量化131ケース。研究用全経路365,907〜671,266 CU。公開前の全Vault測定を代替しない。
+- **I02-Bで作るもの**：tree回路/proverの独立crate、TreeUpdate型と固定wire、固定VKのSBF verifier、実状態とWP/RPを結合する共通検査、正常なproof同士を取り違えた負のfixture、empty root/profile生成、採用方式の再測定。
+- **I03/I04で作るもの**：全Vault命令・PDA署名CPI・ATA/PDA作成・status/N/Pending管理、bufferと復旧、実wallet送信、同一EVM traceの差分試験。I03のscaffold/IDL設計はI02-Bと並行可、統合完了はI02-B合格に依存する。
+- **公開前に残るもの**：全命令100万CU/transaction1232 bytes、証明生成待ち時間と競合耐性、全機能E2E、実provider、3回路のproduction setup、第三者review。環境値/秘密の未発行はlocal実装の開始を止めない。
+
+採用方式の性能不足が本番account処理の追加後に判明した場合は、検査を省かず計測結果をI02へ戻す。今回はrelease目標を変更していない。既知entropyのテスト鍵をproductionに使わない。

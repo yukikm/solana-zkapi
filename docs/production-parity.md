@@ -6,7 +6,7 @@
 
 実装上の正本は [実装開始仕様](implementation-ready.md) とその参照先。本文は比較設計として残し、具体的なwire/DB/実装順序は実装開始仕様を優先する。
 
-本書は過去の限定MVP案およびnative SOLを必須とした設計に優先する。USDCを基本資産とし、本番向けの復旧・運用要件を維持する。変更は設計段階であり、プロダクション実装は未完了。
+本書は過去の限定MVP案およびnative SOLを必須とした設計に優先する。USDCを基本資産とし、本番向けの復旧・運用要件を維持する。変更は設計段階であり、プロダクション実装は未完了。2026-10-03 JSTの[ADR-0001](adr/0001-proof-bound-tree-transition.md)でlayout 2の追加tree証明方式を採用した。以下の方式比較は経緯として残し、採用済みのwire/条件は[tree-transition仕様](specs/tree-transition.md)を優先する。
 
 ## 1. 同等性の定義
 
@@ -139,7 +139,7 @@ destination_binding = H2F(
 - SolanaのEd25519をBaby-JubJub状態署名に置き換えない。
 - 原Poseidon spongeはSBFで同じ出力を得る実装を先に計測する。同名syscallへの置換で同一になると仮定しない。
 
-原Poseidonのtree更新がCUに収まらない場合は、以下の順で検討する。
+I02で以下を比較し、2の追加tree証明（tagはproof内で拘束、programでの再計算なし）を採用した。1/3は現在の実装選択肢ではない。
 
 1. 定数・有限体演算・メモリー配置を最適化し、同一test vectorを保つ。
 2. 同じhashによるtree更新を別のZK transition proofで検証する。旧root/new root、note index、旧leaf/new leafとNote内容を結合し、資金転送と原子的に適用する。この場合は追加回路・setupが必要だが、利用者残高の原回路は維持できる。
@@ -201,7 +201,7 @@ USDC escrowではtoken balanceを元本の正本とし、SOLのrent reserve・tr
 
 閉鎖後のPDA再初期化やID再利用でnullifier保護を失わない。共用escrowの会計不変条件は `vaultのUSDC残高 ≥ 未決済deposit総額`、各closeでは `利用者支払＋treasury支払=D` とする。すべてmicro-USDC整数で比較する。
 
-current root競合は原仕様に従ってpath/proofを更新してretryする。Solana v1とbufferのどちらを使っても、証明検証、leaf置換、状態更新、送金は一つの原子的遷移にする。
+current root競合は原仕様に従ってpath/proofを更新してretryする。必須のv0 bufferと実証後の追加inline経路のいずれでも、証明検証、leaf置換、状態更新、送金は一つの原子的遷移にする。
 
 出典：[Vault](https://github.com/ethereum/zkapi/blob/045b444ea1b52538d1b40273c7cb6ed09468a052/protocol/contracts/src/ZkApiVault.sol)、[Deploy script](https://github.com/ethereum/zkapi/blob/045b444ea1b52538d1b40273c7cb6ed09468a052/demo/contracts/script/Deploy.s.sol)
 

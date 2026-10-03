@@ -1,0 +1,348 @@
+{
+  "cases": [
+    {
+      "case": "layout1-deposit",
+      "instruction_accounts": 10,
+      "instruction_data_bytes": 1116,
+      "serialized": [
+        {
+          "bytes": 1688,
+          "fits_1232": false,
+          "format": "legacy"
+        },
+        {
+          "bytes": 1690,
+          "fits_1232": false,
+          "format": "v0-no-ALT"
+        }
+      ],
+      "signatures": 2
+    },
+    {
+      "case": "layout2-deposit",
+      "instruction_accounts": 10,
+      "instruction_data_bytes": 700,
+      "serialized": [
+        {
+          "bytes": 1272,
+          "fits_1232": false,
+          "format": "legacy"
+        },
+        {
+          "bytes": 1274,
+          "fits_1232": false,
+          "format": "v0-no-ALT"
+        }
+      ],
+      "signatures": 2
+    },
+    {
+      "case": "buffer-execute-deposit",
+      "instruction_accounts": 11,
+      "instruction_data_bytes": 40,
+      "serialized": [
+        {
+          "bytes": 644,
+          "fits_1232": true,
+          "format": "legacy"
+        },
+        {
+          "bytes": 646,
+          "fits_1232": true,
+          "format": "v0-no-ALT"
+        }
+      ],
+      "signatures": 2
+    },
+    {
+      "case": "layout1-mutual_close",
+      "instruction_accounts": 12,
+      "instruction_data_bytes": 1736,
+      "serialized": [
+        {
+          "bytes": 2310,
+          "fits_1232": false,
+          "format": "legacy"
+        },
+        {
+          "bytes": 2312,
+          "fits_1232": false,
+          "format": "v0-no-ALT"
+        }
+      ],
+      "signatures": 1
+    },
+    {
+      "case": "layout2-mutual_close",
+      "instruction_accounts": 12,
+      "instruction_data_bytes": 1320,
+      "serialized": [
+        {
+          "bytes": 1894,
+          "fits_1232": false,
+          "format": "legacy"
+        },
+        {
+          "bytes": 1896,
+          "fits_1232": false,
+          "format": "v0-no-ALT"
+        }
+      ],
+      "signatures": 1
+    },
+    {
+      "case": "buffer-execute-mutual_close",
+      "instruction_accounts": 13,
+      "instruction_data_bytes": 40,
+      "serialized": [
+        {
+          "bytes": 646,
+          "fits_1232": true,
+          "format": "legacy"
+        },
+        {
+          "bytes": 648,
+          "fits_1232": true,
+          "format": "v0-no-ALT"
+        }
+      ],
+      "signatures": 1
+    },
+    {
+      "case": "layout1-initiate_escape",
+      "instruction_accounts": 9,
+      "instruction_data_bytes": 1736,
+      "serialized": [
+        {
+          "bytes": 2211,
+          "fits_1232": false,
+          "format": "legacy"
+        },
+        {
+          "bytes": 2213,
+          "fits_1232": false,
+          "format": "v0-no-ALT"
+        }
+      ],
+      "signatures": 1
+    },
+    {
+      "case": "layout2-initiate_escape",
+      "instruction_accounts": 9,
+      "instruction_data_bytes": 1320,
+      "serialized": [
+        {
+          "bytes": 1795,
+          "fits_1232": false,
+          "format": "legacy"
+        },
+        {
+          "bytes": 1797,
+          "fits_1232": false,
+          "format": "v0-no-ALT"
+        }
+      ],
+      "signatures": 1
+    },
+    {
+      "case": "buffer-execute-initiate_escape",
+      "instruction_accounts": 10,
+      "instruction_data_bytes": 40,
+      "serialized": [
+        {
+          "bytes": 547,
+          "fits_1232": true,
+          "format": "legacy"
+        },
+        {
+          "bytes": 549,
+          "fits_1232": true,
+          "format": "v0-no-ALT"
+        }
+      ],
+      "signatures": 1
+    },
+    {
+      "case": "layout1-challenge_escape",
+      "instruction_accounts": 8,
+      "instruction_data_bytes": 1676,
+      "serialized": [
+        {
+          "bytes": 2118,
+          "fits_1232": false,
+          "format": "legacy"
+        },
+        {
+          "bytes": 2120,
+          "fits_1232": false,
+          "format": "v0-no-ALT"
+        }
+      ],
+      "signatures": 1
+    },
+    {
+      "case": "layout2-challenge_escape",
+      "instruction_accounts": 8,
+      "instruction_data_bytes": 1260,
+      "serialized": [
+        {
+          "bytes": 1702,
+          "fits_1232": false,
+          "format": "legacy"
+        },
+        {
+          "bytes": 1704,
+          "fits_1232": false,
+          "format": "v0-no-ALT"
+        }
+      ],
+      "signatures": 1
+    },
+    {
+      "case": "buffer-execute-challenge_escape",
+      "instruction_accounts": 9,
+      "instruction_data_bytes": 40,
+      "serialized": [
+        {
+          "bytes": 514,
+          "fits_1232": true,
+          "format": "legacy"
+        },
+        {
+          "bytes": 516,
+          "fits_1232": true,
+          "format": "v0-no-ALT"
+        }
+      ],
+      "signatures": 1
+    },
+    {
+      "case": "layout1-claim_expired",
+      "instruction_accounts": 9,
+      "instruction_data_bytes": 1036,
+      "serialized": [
+        {
+          "bytes": 1511,
+          "fits_1232": false,
+          "format": "legacy"
+        },
+        {
+          "bytes": 1513,
+          "fits_1232": false,
+          "format": "v0-no-ALT"
+        }
+      ],
+      "signatures": 1
+    },
+    {
+      "case": "layout2-claim_expired",
+      "instruction_accounts": 9,
+      "instruction_data_bytes": 620,
+      "serialized": [
+        {
+          "bytes": 1095,
+          "fits_1232": true,
+          "format": "legacy"
+        },
+        {
+          "bytes": 1097,
+          "fits_1232": true,
+          "format": "v0-no-ALT"
+        }
+      ],
+      "signatures": 1
+    },
+    {
+      "case": "buffer-execute-claim_expired",
+      "instruction_accounts": 10,
+      "instruction_data_bytes": 40,
+      "serialized": [
+        {
+          "bytes": 547,
+          "fits_1232": true,
+          "format": "legacy"
+        },
+        {
+          "bytes": 549,
+          "fits_1232": true,
+          "format": "v0-no-ALT"
+        }
+      ],
+      "signatures": 1
+    },
+    {
+      "case": "buffer-create",
+      "instruction_accounts": 4,
+      "instruction_data_bytes": 85,
+      "serialized": [
+        {
+          "bytes": 394,
+          "fits_1232": true,
+          "format": "legacy"
+        },
+        {
+          "bytes": 396,
+          "fits_1232": true,
+          "format": "v0-no-ALT"
+        }
+      ],
+      "signatures": 1
+    },
+    {
+      "case": "buffer-append-900",
+      "instruction_accounts": 3,
+      "instruction_data_bytes": 916,
+      "serialized": [
+        {
+          "bytes": 1193,
+          "fits_1232": true,
+          "format": "legacy"
+        },
+        {
+          "bytes": 1195,
+          "fits_1232": true,
+          "format": "v0-no-ALT"
+        }
+      ],
+      "signatures": 1
+    },
+    {
+      "case": "seal_payload",
+      "instruction_accounts": 4,
+      "instruction_data_bytes": 8,
+      "serialized": [
+        {
+          "bytes": 317,
+          "fits_1232": true,
+          "format": "legacy"
+        },
+        {
+          "bytes": 319,
+          "fits_1232": true,
+          "format": "v0-no-ALT"
+        }
+      ],
+      "signatures": 1
+    },
+    {
+      "case": "close_payload",
+      "instruction_accounts": 4,
+      "instruction_data_bytes": 8,
+      "serialized": [
+        {
+          "bytes": 317,
+          "fits_1232": true,
+          "format": "legacy"
+        },
+        {
+          "bytes": 319,
+          "fits_1232": true,
+          "format": "v0-no-ALT"
+        }
+      ],
+      "signatures": 1
+    }
+  ],
+  "scope": "real serialized single-instruction transactions; explicit proposed account inventory, synthetic argument values; no ALT, includes SetComputeUnitLimit(1_000_000); lifecycle not executed",
+  "v1": "not measured: selected runtime/SDK does not support v1; require I04 RPC/wallet validation"
+}

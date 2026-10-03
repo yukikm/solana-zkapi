@@ -1,7 +1,7 @@
 [workspace]
 resolver = "2"
-members = ["crates/zkapi-solana-types", "crates/zkapi-solana-crypto"]
-exclude = ["vendor/ethereum-zkapi"]
+members = ["crates/zkapi-solana-types", "crates/zkapi-solana-crypto", "crates/zkapi-poseidon", "crates/zkapi-layout2", "crates/zkapi-tree-prover"]
+exclude = ["vendor/ethereum-zkapi", "programs/i02-harness", "programs/i02-layout2", "tests/svm"]
 
 [workspace.package]
 version = "0.1.0"

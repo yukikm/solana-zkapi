@@ -1,0 +1,260 @@
+{
+  "schema_version": 1,
+  "status": "implementation_contract_not_runtime_evidence",
+  "protocol_layout_version": 2,
+  "tree_backend": "transition_proof",
+  "tree_tag_policy": "proof_bound",
+  "circuit_id": "solana.zkapi.tree.v1",
+  "depth": 32,
+  "public_inputs": [
+    {
+      "index": 0,
+      "name": "vault_binding",
+      "bytes": 32,
+      "encoding": "canonical_fr_big_endian"
+    },
+    {
+      "index": 1,
+      "name": "old_root",
+      "bytes": 32,
+      "encoding": "canonical_fr_big_endian"
+    },
+    {
+      "index": 2,
+      "name": "new_root",
+      "bytes": 32,
+      "encoding": "canonical_fr_big_endian"
+    },
+    {
+      "index": 3,
+      "name": "note_id",
+      "bytes": 32,
+      "encoding": "canonical_fr_big_endian"
+    },
+    {
+      "index": 4,
+      "name": "old_leaf",
+      "bytes": 32,
+      "encoding": "canonical_fr_big_endian"
+    },
+    {
+      "index": 5,
+      "name": "new_leaf",
+      "bytes": 32,
+      "encoding": "canonical_fr_big_endian"
+    },
+    {
+      "index": 6,
+      "name": "commitment",
+      "bytes": 32,
+      "encoding": "canonical_fr_big_endian"
+    },
+    {
+      "index": 7,
+      "name": "deposit",
+      "bytes": 32,
+      "encoding": "canonical_fr_big_endian"
+    },
+    {
+      "index": 8,
+      "name": "expiry",
+      "bytes": 32,
+      "encoding": "canonical_fr_big_endian"
+    },
+    {
+      "index": 9,
+      "name": "op",
+      "bytes": 32,
+      "encoding": "canonical_fr_big_endian"
+    },
+    {
+      "index": 10,
+      "name": "transition_tag",
+      "bytes": 32,
+      "encoding": "canonical_fr_big_endian"
+    }
+  ],
+  "tree_update": {
+    "field_order": [
+      "public",
+      "proof"
+    ],
+    "public_bytes": 352,
+    "proof_bytes": 256,
+    "bytes": 608
+  },
+  "buffer_payload_includes_discriminator": false,
+  "mandatory_transport": "v0_buffer",
+  "instructions": [
+    {
+      "name": "deposit",
+      "buffer_op": 0,
+      "tree_op": 0,
+      "args": [
+        {
+          "name": "expected_id",
+          "type": "u32",
+          "bytes": 4
+        },
+        {
+          "name": "expected_root",
+          "type": "F",
+          "bytes": 32
+        },
+        {
+          "name": "expiry",
+          "type": "u64",
+          "bytes": 8
+        },
+        {
+          "name": "commitment",
+          "type": "F",
+          "bytes": 32
+        },
+        {
+          "name": "amount",
+          "type": "u64",
+          "bytes": 8
+        },
+        {
+          "name": "tree",
+          "type": "TreeUpdate",
+          "bytes": 608
+        }
+      ],
+      "payload_bytes": 692,
+      "instruction_data_bytes": 700,
+      "discriminator_hex": "f223c68952e1f2b6"
+    },
+    {
+      "name": "mutual_close",
+      "buffer_op": 1,
+      "tree_op": 1,
+      "args": [
+        {
+          "name": "public",
+          "type": "WP",
+          "bytes": 448
+        },
+        {
+          "name": "proof",
+          "type": "Proof",
+          "bytes": 256
+        },
+        {
+          "name": "tree",
+          "type": "TreeUpdate",
+          "bytes": 608
+        }
+      ],
+      "payload_bytes": 1312,
+      "instruction_data_bytes": 1320,
+      "discriminator_hex": "1ac5ee9c06ed4542"
+    },
+    {
+      "name": "initiate_escape",
+      "buffer_op": 2,
+      "tree_op": 1,
+      "args": [
+        {
+          "name": "public",
+          "type": "WP",
+          "bytes": 448
+        },
+        {
+          "name": "proof",
+          "type": "Proof",
+          "bytes": 256
+        },
+        {
+          "name": "tree",
+          "type": "TreeUpdate",
+          "bytes": 608
+        }
+      ],
+      "payload_bytes": 1312,
+      "instruction_data_bytes": 1320,
+      "discriminator_hex": "e5b5a351815d540f"
+    },
+    {
+      "name": "challenge_escape",
+      "buffer_op": 3,
+      "tree_op": 2,
+      "args": [
+        {
+          "name": "note_id",
+          "type": "u32",
+          "bytes": 4
+        },
+        {
+          "name": "public",
+          "type": "RP",
+          "bytes": 384
+        },
+        {
+          "name": "proof",
+          "type": "Proof",
+          "bytes": 256
+        },
+        {
+          "name": "tree",
+          "type": "TreeUpdate",
+          "bytes": 608
+        }
+      ],
+      "payload_bytes": 1252,
+      "instruction_data_bytes": 1260,
+      "discriminator_hex": "d796e04bba128f13"
+    },
+    {
+      "name": "claim_expired",
+      "buffer_op": 4,
+      "tree_op": 1,
+      "args": [
+        {
+          "name": "note_id",
+          "type": "u32",
+          "bytes": 4
+        },
+        {
+          "name": "tree",
+          "type": "TreeUpdate",
+          "bytes": 608
+        }
+      ],
+      "payload_bytes": 612,
+      "instruction_data_bytes": 620,
+      "discriminator_hex": "7c4ec5bbd242ff01"
+    },
+    {
+      "name": "finalize_escape",
+      "buffer_op": null,
+      "tree_op": null,
+      "args": [
+        {
+          "name": "note_id",
+          "type": "u32",
+          "bytes": 4
+        }
+      ],
+      "payload_bytes": 4,
+      "instruction_data_bytes": 12,
+      "discriminator_hex": "5a607719285a1d5f"
+    }
+  ],
+  "compute_budget_target": 1000000,
+  "v0_transaction_max_bytes": 1232,
+  "circuit_profile_fields": [
+    "protocol_layout_version",
+    "tree_backend",
+    "tree_tag_policy",
+    "circuit_id",
+    "request_pk_hash",
+    "request_vk_hash",
+    "withdrawal_pk_hash",
+    "withdrawal_vk_hash",
+    "tree_proof_artifacts",
+    "setup_profile",
+    "setup_transcript_hashes"
+  ]
+}

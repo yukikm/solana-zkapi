@@ -1,0 +1,13 @@
+{
+  "circuit_id": "solana.zkapi.tree.v1/test-only-arkworks-0.5",
+  "circuit_source_sha256": "0954e48a790a065b7d06217aec7200f6899ae44a619166b2e1a666bd062b388b",
+  "constraints": 33198,
+  "layout_version_candidate": 2,
+  "pk_sha256": "c01b31f6806ce59114fe8befa210967415e20229b0a998018d4955a726fd0f80",
+  "private_siblings": 32,
+  "production_eligible": false,
+  "public_inputs": 11,
+  "rng_seed_hex": "49303254524545",
+  "setup": "known deterministic entropy; no ceremony",
+  "vk_sha256": "9141a035fdba50b13a5776182be029bb23dd15e69cd579c5d6e310b7e2ee5fb7"
+}

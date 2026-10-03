@@ -1,0 +1,32 @@
+{
+  "date_jst": "2026-10-03",
+  "host_rust": "1.90.0",
+  "cargo_build_sbf": "4.1.0",
+  "platform_tools": "v1.54",
+  "platform_archive_url": "https://github.com/anza-xyz/platform-tools/releases/download/v1.54/platform-tools-linux-x86_64.tar.bz2",
+  "platform_archive_sha256": "fcc41631c7f77561bf5412218bf297501dccf0305ea280f338f0ace2aab9f31e",
+  "sbf_rust": "1.89.0-dev",
+  "sbf_rust_commit": "daa3af4a1110ec3f10ce08083bb0b7855a88416f",
+  "sbf_arch": "v0",
+  "litesvm": "0.6.1",
+  "agave_program_runtime": "2.2.0",
+  "host_solana_sdk": "2.2.1",
+  "sbf_solana_program": "2.2.1",
+  "groth16_solana": "0.2.0",
+  "spl_token_interface": "8.0.0",
+  "spl_token_execution": "bundled spl_token-3.5.0.so in litesvm 0.6.1",
+  "locks_sha256": {
+    "Cargo.lock": "bf040227f89b4fccba842f28153a39c95e75ade994f81b86a2f7c09b81ad96a0",
+    "programs/i02-harness/Cargo.lock": "a6afe1069fd46559e61f4fc021433c9256b3abe2e9c8bc0c8e6c747eaaf1b382",
+    "tests/svm/Cargo.lock": "58e9ab3871588668b071b08783a9e8b11a14d605eeba6852e6cafa580f338250"
+  },
+  "vk_sources_sha256": {
+    "programs/i02-harness/src/vk.rs": "a6e1c275b1766b87d4151c8cd98ab54982fdbc0ef3039ebeb8ea826d62cce334",
+    "programs/i02-harness/src/tree_vk.rs": "907bdae8922583f5e8983033d8019ce573310879822ebe18d112a5ab3a88b702"
+  },
+  "production_eligible": false,
+  "v1": "unsupported by this measurement stack; not tested",
+  "g1": "blocked_tree_CU_exceeds_budget",
+  "svm_features": "LiteSVM default FeatureSet::all_enabled()",
+  "spl_token_elf_sha256": "18264f491c7e0ad056dd36f42f8de6d1fedf9f044d1f521e714b4dc6b61594b6"
+}

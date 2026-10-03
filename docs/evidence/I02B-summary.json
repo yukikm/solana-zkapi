@@ -1,0 +1,196 @@
+{
+  "scope": "I02-B completed; I03/I04 full Vault and buffer lifecycle not measured",
+  "sbf_cases": 257,
+  "source_and_profile_verified": true,
+  "cli_negative_cases": [
+    "test-profile-in-production",
+    "untrusted-profile-hash",
+    "tampered-proving-key",
+    "stale-or-wrong-path"
+  ],
+  "extraction": {
+    "constraints": 33198,
+    "empty_root": "2bb43759c24665d98a33afa8d5094817d359d5e4c72a45b45a2a563176d37933",
+    "empty_root_sha256": "c4e08f72d0a77e2316a7c10b2823e300409e7be3d0b42d840b73fc200442b8f5",
+    "invalid_witnesses_rejected": 47,
+    "legacy_pk_identical": true,
+    "legacy_vk_identical": true,
+    "new_proofs_verified_by_old_vk": 15,
+    "old_proofs_verified": 6,
+    "production_eligible": false
+  },
+  "profile_hash": "37f90f026d5c20837aaa138af7f4c2aa64ede12195e762f33984446eaacc358d",
+  "evm_empty_root": {
+    "result": "PASS",
+    "test_count": 1,
+    "forge": "1.3.1",
+    "solc": "0.8.28",
+    "result_sha256": "8d3ac21f3b659db14d746846cb08af1acfef25a94c7c833e903313c2097e5b5a"
+  },
+  "proving_times": {
+    "cases": [
+      {
+        "case": "a/request",
+        "ms": 869
+      },
+      {
+        "case": "a/withdrawal",
+        "ms": 1023
+      },
+      {
+        "case": "a/escape",
+        "ms": 1030
+      },
+      {
+        "case": "a/tree-0",
+        "ms": 1448
+      },
+      {
+        "case": "a/tree-1",
+        "ms": 1615
+      },
+      {
+        "case": "a/tree-2",
+        "ms": 1440
+      },
+      {
+        "case": "a-with-b/request",
+        "ms": 930
+      },
+      {
+        "case": "a-with-b/withdrawal",
+        "ms": 1285
+      },
+      {
+        "case": "a-with-b/escape",
+        "ms": 1125
+      },
+      {
+        "case": "a-with-b/tree-0",
+        "ms": 1600
+      },
+      {
+        "case": "a-with-b/tree-1",
+        "ms": 1379
+      },
+      {
+        "case": "a-with-b/tree-2",
+        "ms": 1736
+      },
+      {
+        "case": "b-with-a/request",
+        "ms": 1670
+      },
+      {
+        "case": "b-with-a/withdrawal",
+        "ms": 2196
+      },
+      {
+        "case": "b-with-a/escape",
+        "ms": 1772
+      },
+      {
+        "case": "b-with-a/tree-0",
+        "ms": 2388
+      },
+      {
+        "case": "b-with-a/tree-1",
+        "ms": 2412
+      },
+      {
+        "case": "b-with-a/tree-2",
+        "ms": 2706
+      },
+      {
+        "case": "other-vault/request",
+        "ms": 1898
+      },
+      {
+        "case": "other-vault/withdrawal",
+        "ms": 2516
+      },
+      {
+        "case": "other-vault/escape",
+        "ms": 2254
+      },
+      {
+        "case": "other-vault/tree-0",
+        "ms": 2792
+      },
+      {
+        "case": "other-vault/tree-1",
+        "ms": 2783
+      },
+      {
+        "case": "other-vault/tree-2",
+        "ms": 2465
+      },
+      {
+        "case": "max-id/request",
+        "ms": 1548
+      },
+      {
+        "case": "max-id/withdrawal",
+        "ms": 1373
+      },
+      {
+        "case": "max-id/escape",
+        "ms": 1853
+      },
+      {
+        "case": "max-id/tree-0",
+        "ms": 1480
+      },
+      {
+        "case": "max-id/tree-1",
+        "ms": 2561
+      },
+      {
+        "case": "max-id/tree-2",
+        "ms": 1583
+      }
+    ],
+    "scope": "native release test fixture generation; not browser/production latency"
+  },
+  "normal_cu": {
+    "Deposit": {
+      "min": 153774,
+      "max": 154938
+    },
+    "Close": {
+      "min": 316612,
+      "max": 317443
+    },
+    "Escape": {
+      "min": 300186,
+      "max": 301033
+    },
+    "Challenge": {
+      "min": 288612,
+      "max": 289451
+    },
+    "Expiry": {
+      "min": 153630,
+      "max": 154462
+    }
+  },
+  "toolchain": {
+    "cargo_build_sbf": "4.1.0",
+    "platform_tools": "v1.54",
+    "arch": "v0",
+    "litesvm": "0.6.1",
+    "agave": "2.2.0",
+    "spl_token_cpi_binary": "LiteSVM bundled SPL Token 3.5.0"
+  },
+  "artifact_sha256": {
+    "target/i02b/circuit-source.tar": "026c34c14b05e77368da03665664773b675745b43384476eebb9318112b03ca3",
+    "target/i02b/sbf/zkapi_i02_layout2.so": "180fde56aa504eccc54c54ab5f3f59ce881aec49ad0f7c70a019779612b1720d",
+    "target/i02b/sbf-wrong/zkapi_i02_layout2.so": "4c66ae1d854a357b0d793be49c34373eaca89d843e79074e8495cfbe03842e30",
+    "Cargo.lock": "e4489876e3ee37a9a67647a272729444535aa3d6279ae15807d5ae0535113291",
+    "programs/i02-layout2/Cargo.lock": "315641ef3af31d25c8e82c793ec9b9df62b4bc8b15febf1ef02a209ef26a5f65",
+    "tests/svm/Cargo.lock": "66f5d9550eb49ccb9aed55fd5c925b09f54c9781190bd480aff2af539609bfa1",
+    "tests/fixtures/layout2/profile.json": "ea599587cc166af008c90846e7b5a408681d1e31fcfcd52b011ccc21738cbcd3"
+  },
+  "g1_passed": false,
+  "production_eligible": false
+}

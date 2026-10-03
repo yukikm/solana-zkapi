@@ -1,0 +1,4389 @@
+{
+  "cases": [
+    {
+      "case": "native-cli/real-proof",
+      "cu": 137780,
+      "error": null,
+      "expected": "Ok",
+      "inner_instruction_count": 0,
+      "logs": [
+        "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+        "Program ComputeBudget111111111111111111111111111111 success",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh invoke [1]",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh consumed 137630 of 999850 compute units",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh success"
+      ],
+      "ok": true,
+      "transaction_bytes": 828
+    },
+    {
+      "case": "independent/a/request",
+      "cu": 143536,
+      "error": null,
+      "expected": "Ok",
+      "inner_instruction_count": 0,
+      "logs": [
+        "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+        "Program ComputeBudget111111111111111111111111111111 success",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh invoke [1]",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh consumed 143386 of 999850 compute units",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh success"
+      ],
+      "ok": true,
+      "transaction_bytes": 860
+    },
+    {
+      "case": "independent/a/withdrawal",
+      "cu": 154981,
+      "error": null,
+      "expected": "Ok",
+      "inner_instruction_count": 0,
+      "logs": [
+        "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+        "Program ComputeBudget111111111111111111111111111111 success",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh invoke [1]",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh consumed 154831 of 999850 compute units",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh success"
+      ],
+      "ok": true,
+      "transaction_bytes": 924
+    },
+    {
+      "case": "independent/a/escape",
+      "cu": 154977,
+      "error": null,
+      "expected": "Ok",
+      "inner_instruction_count": 0,
+      "logs": [
+        "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+        "Program ComputeBudget111111111111111111111111111111 success",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh invoke [1]",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh consumed 154827 of 999850 compute units",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh success"
+      ],
+      "ok": true,
+      "transaction_bytes": 924
+    },
+    {
+      "case": "independent/a/tree-0",
+      "cu": 137780,
+      "error": null,
+      "expected": "Ok",
+      "inner_instruction_count": 0,
+      "logs": [
+        "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+        "Program ComputeBudget111111111111111111111111111111 success",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh invoke [1]",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh consumed 137630 of 999850 compute units",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh success"
+      ],
+      "ok": true,
+      "transaction_bytes": 828
+    },
+    {
+      "case": "independent/a/tree-1",
+      "cu": 137784,
+      "error": null,
+      "expected": "Ok",
+      "inner_instruction_count": 0,
+      "logs": [
+        "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+        "Program ComputeBudget111111111111111111111111111111 success",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh invoke [1]",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh consumed 137634 of 999850 compute units",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh success"
+      ],
+      "ok": true,
+      "transaction_bytes": 828
+    },
+    {
+      "case": "independent/a/tree-2",
+      "cu": 137784,
+      "error": null,
+      "expected": "Ok",
+      "inner_instruction_count": 0,
+      "logs": [
+        "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+        "Program ComputeBudget111111111111111111111111111111 success",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh invoke [1]",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh consumed 137634 of 999850 compute units",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh success"
+      ],
+      "ok": true,
+      "transaction_bytes": 828
+    },
+    {
+      "case": "independent/a-with-b/request",
+      "cu": 143525,
+      "error": null,
+      "expected": "Ok",
+      "inner_instruction_count": 0,
+      "logs": [
+        "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+        "Program ComputeBudget111111111111111111111111111111 success",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh invoke [1]",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh consumed 143375 of 999850 compute units",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh success"
+      ],
+      "ok": true,
+      "transaction_bytes": 860
+    },
+    {
+      "case": "independent/a-with-b/withdrawal",
+      "cu": 154981,
+      "error": null,
+      "expected": "Ok",
+      "inner_instruction_count": 0,
+      "logs": [
+        "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+        "Program ComputeBudget111111111111111111111111111111 success",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh invoke [1]",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh consumed 154831 of 999850 compute units",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh success"
+      ],
+      "ok": true,
+      "transaction_bytes": 924
+    },
+    {
+      "case": "independent/a-with-b/escape",
+      "cu": 154977,
+      "error": null,
+      "expected": "Ok",
+      "inner_instruction_count": 0,
+      "logs": [
+        "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+        "Program ComputeBudget111111111111111111111111111111 success",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh invoke [1]",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh consumed 154827 of 999850 compute units",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh success"
+      ],
+      "ok": true,
+      "transaction_bytes": 924
+    },
+    {
+      "case": "independent/a-with-b/tree-0",
+      "cu": 137780,
+      "error": null,
+      "expected": "Ok",
+      "inner_instruction_count": 0,
+      "logs": [
+        "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+        "Program ComputeBudget111111111111111111111111111111 success",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh invoke [1]",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh consumed 137630 of 999850 compute units",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh success"
+      ],
+      "ok": true,
+      "transaction_bytes": 828
+    },
+    {
+      "case": "independent/a-with-b/tree-1",
+      "cu": 137784,
+      "error": null,
+      "expected": "Ok",
+      "inner_instruction_count": 0,
+      "logs": [
+        "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+        "Program ComputeBudget111111111111111111111111111111 success",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh invoke [1]",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh consumed 137634 of 999850 compute units",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh success"
+      ],
+      "ok": true,
+      "transaction_bytes": 828
+    },
+    {
+      "case": "independent/a-with-b/tree-2",
+      "cu": 137784,
+      "error": null,
+      "expected": "Ok",
+      "inner_instruction_count": 0,
+      "logs": [
+        "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+        "Program ComputeBudget111111111111111111111111111111 success",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh invoke [1]",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh consumed 137634 of 999850 compute units",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh success"
+      ],
+      "ok": true,
+      "transaction_bytes": 828
+    },
+    {
+      "case": "independent/b-with-a/request",
+      "cu": 143525,
+      "error": null,
+      "expected": "Ok",
+      "inner_instruction_count": 0,
+      "logs": [
+        "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+        "Program ComputeBudget111111111111111111111111111111 success",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh invoke [1]",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh consumed 143375 of 999850 compute units",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh success"
+      ],
+      "ok": true,
+      "transaction_bytes": 860
+    },
+    {
+      "case": "independent/b-with-a/withdrawal",
+      "cu": 154985,
+      "error": null,
+      "expected": "Ok",
+      "inner_instruction_count": 0,
+      "logs": [
+        "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+        "Program ComputeBudget111111111111111111111111111111 success",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh invoke [1]",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh consumed 154835 of 999850 compute units",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh success"
+      ],
+      "ok": true,
+      "transaction_bytes": 924
+    },
+    {
+      "case": "independent/b-with-a/escape",
+      "cu": 154992,
+      "error": null,
+      "expected": "Ok",
+      "inner_instruction_count": 0,
+      "logs": [
+        "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+        "Program ComputeBudget111111111111111111111111111111 success",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh invoke [1]",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh consumed 154842 of 999850 compute units",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh success"
+      ],
+      "ok": true,
+      "transaction_bytes": 924
+    },
+    {
+      "case": "independent/b-with-a/tree-0",
+      "cu": 137784,
+      "error": null,
+      "expected": "Ok",
+      "inner_instruction_count": 0,
+      "logs": [
+        "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+        "Program ComputeBudget111111111111111111111111111111 success",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh invoke [1]",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh consumed 137634 of 999850 compute units",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh success"
+      ],
+      "ok": true,
+      "transaction_bytes": 828
+    },
+    {
+      "case": "independent/b-with-a/tree-1",
+      "cu": 137788,
+      "error": null,
+      "expected": "Ok",
+      "inner_instruction_count": 0,
+      "logs": [
+        "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+        "Program ComputeBudget111111111111111111111111111111 success",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh invoke [1]",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh consumed 137638 of 999850 compute units",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh success"
+      ],
+      "ok": true,
+      "transaction_bytes": 828
+    },
+    {
+      "case": "independent/b-with-a/tree-2",
+      "cu": 137788,
+      "error": null,
+      "expected": "Ok",
+      "inner_instruction_count": 0,
+      "logs": [
+        "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+        "Program ComputeBudget111111111111111111111111111111 success",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh invoke [1]",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh consumed 137638 of 999850 compute units",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh success"
+      ],
+      "ok": true,
+      "transaction_bytes": 828
+    },
+    {
+      "case": "independent/other-vault/request",
+      "cu": 143525,
+      "error": null,
+      "expected": "Ok",
+      "inner_instruction_count": 0,
+      "logs": [
+        "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+        "Program ComputeBudget111111111111111111111111111111 success",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh invoke [1]",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh consumed 143375 of 999850 compute units",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh success"
+      ],
+      "ok": true,
+      "transaction_bytes": 860
+    },
+    {
+      "case": "independent/other-vault/withdrawal",
+      "cu": 154986,
+      "error": null,
+      "expected": "Ok",
+      "inner_instruction_count": 0,
+      "logs": [
+        "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+        "Program ComputeBudget111111111111111111111111111111 success",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh invoke [1]",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh consumed 154836 of 999850 compute units",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh success"
+      ],
+      "ok": true,
+      "transaction_bytes": 924
+    },
+    {
+      "case": "independent/other-vault/escape",
+      "cu": 154977,
+      "error": null,
+      "expected": "Ok",
+      "inner_instruction_count": 0,
+      "logs": [
+        "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+        "Program ComputeBudget111111111111111111111111111111 success",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh invoke [1]",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh consumed 154827 of 999850 compute units",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh success"
+      ],
+      "ok": true,
+      "transaction_bytes": 924
+    },
+    {
+      "case": "independent/other-vault/tree-0",
+      "cu": 137780,
+      "error": null,
+      "expected": "Ok",
+      "inner_instruction_count": 0,
+      "logs": [
+        "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+        "Program ComputeBudget111111111111111111111111111111 success",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh invoke [1]",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh consumed 137630 of 999850 compute units",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh success"
+      ],
+      "ok": true,
+      "transaction_bytes": 828
+    },
+    {
+      "case": "independent/other-vault/tree-1",
+      "cu": 137784,
+      "error": null,
+      "expected": "Ok",
+      "inner_instruction_count": 0,
+      "logs": [
+        "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+        "Program ComputeBudget111111111111111111111111111111 success",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh invoke [1]",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh consumed 137634 of 999850 compute units",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh success"
+      ],
+      "ok": true,
+      "transaction_bytes": 828
+    },
+    {
+      "case": "independent/other-vault/tree-2",
+      "cu": 137784,
+      "error": null,
+      "expected": "Ok",
+      "inner_instruction_count": 0,
+      "logs": [
+        "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+        "Program ComputeBudget111111111111111111111111111111 success",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh invoke [1]",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh consumed 137634 of 999850 compute units",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh success"
+      ],
+      "ok": true,
+      "transaction_bytes": 828
+    },
+    {
+      "case": "independent/max-id/request",
+      "cu": 143525,
+      "error": null,
+      "expected": "Ok",
+      "inner_instruction_count": 0,
+      "logs": [
+        "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+        "Program ComputeBudget111111111111111111111111111111 success",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh invoke [1]",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh consumed 143375 of 999850 compute units",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh success"
+      ],
+      "ok": true,
+      "transaction_bytes": 860
+    },
+    {
+      "case": "independent/max-id/withdrawal",
+      "cu": 154985,
+      "error": null,
+      "expected": "Ok",
+      "inner_instruction_count": 0,
+      "logs": [
+        "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+        "Program ComputeBudget111111111111111111111111111111 success",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh invoke [1]",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh consumed 154835 of 999850 compute units",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh success"
+      ],
+      "ok": true,
+      "transaction_bytes": 924
+    },
+    {
+      "case": "independent/max-id/escape",
+      "cu": 154981,
+      "error": null,
+      "expected": "Ok",
+      "inner_instruction_count": 0,
+      "logs": [
+        "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+        "Program ComputeBudget111111111111111111111111111111 success",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh invoke [1]",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh consumed 154831 of 999850 compute units",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh success"
+      ],
+      "ok": true,
+      "transaction_bytes": 924
+    },
+    {
+      "case": "independent/max-id/tree-0",
+      "cu": 137784,
+      "error": null,
+      "expected": "Ok",
+      "inner_instruction_count": 0,
+      "logs": [
+        "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+        "Program ComputeBudget111111111111111111111111111111 success",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh invoke [1]",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh consumed 137634 of 999850 compute units",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh success"
+      ],
+      "ok": true,
+      "transaction_bytes": 828
+    },
+    {
+      "case": "independent/max-id/tree-1",
+      "cu": 137788,
+      "error": null,
+      "expected": "Ok",
+      "inner_instruction_count": 0,
+      "logs": [
+        "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+        "Program ComputeBudget111111111111111111111111111111 success",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh invoke [1]",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh consumed 137638 of 999850 compute units",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh success"
+      ],
+      "ok": true,
+      "transaction_bytes": 828
+    },
+    {
+      "case": "independent/max-id/tree-2",
+      "cu": 137788,
+      "error": null,
+      "expected": "Ok",
+      "inner_instruction_count": 0,
+      "logs": [
+        "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+        "Program ComputeBudget111111111111111111111111111111 success",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh invoke [1]",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh consumed 137638 of 999850 compute units",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh success"
+      ],
+      "ok": true,
+      "transaction_bytes": 828
+    },
+    {
+      "case": "normal/a/Deposit",
+      "cu": 154938,
+      "error": null,
+      "expected": "Ok",
+      "inner_instruction_count": 1,
+      "logs": [
+        "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+        "Program ComputeBudget111111111111111111111111111111 success",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh invoke [1]",
+        "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA invoke [2]",
+        "Program log: Instruction: TransferChecked",
+        "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA consumed 6148 of 851815 compute units",
+        "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA success",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh consumed 154788 of 999850 compute units",
+        "Program return: 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh DQyU3wVn3Fpjq8x78zMPz0fAjrrsWxrsII9nkHbG76s=",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh success"
+      ],
+      "ok": true,
+      "transaction_bytes": 516
+    },
+    {
+      "case": "normal/a/Close",
+      "cu": 317435,
+      "error": null,
+      "expected": "Ok",
+      "inner_instruction_count": 2,
+      "logs": [
+        "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+        "Program ComputeBudget111111111111111111111111111111 success",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh invoke [1]",
+        "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA invoke [2]",
+        "Program log: Instruction: TransferChecked",
+        "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA consumed 6148 of 697555 compute units",
+        "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA success",
+        "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA invoke [2]",
+        "Program log: Instruction: TransferChecked",
+        "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA consumed 6148 of 689278 compute units",
+        "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA success",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh consumed 317285 of 999850 compute units",
+        "Program return: 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh K7Q3WcJGZdmKM6+o1QlIF9NZ1eTHKkW0WipWMXbTeTM=",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh success"
+      ],
+      "ok": true,
+      "transaction_bytes": 516
+    },
+    {
+      "case": "normal/a/Escape",
+      "cu": 301014,
+      "error": null,
+      "expected": "Ok",
+      "inner_instruction_count": 0,
+      "logs": [
+        "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+        "Program ComputeBudget111111111111111111111111111111 success",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh invoke [1]",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh consumed 300864 of 999850 compute units",
+        "Program return: 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh K7Q3WcJGZdmKM6+o1QlIF9NZ1eTHKkW0WipWMXbTeTM=",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh success"
+      ],
+      "ok": true,
+      "transaction_bytes": 516
+    },
+    {
+      "case": "normal/a/Challenge",
+      "cu": 289451,
+      "error": null,
+      "expected": "Ok",
+      "inner_instruction_count": 0,
+      "logs": [
+        "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+        "Program ComputeBudget111111111111111111111111111111 success",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh invoke [1]",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh consumed 289301 of 999850 compute units",
+        "Program return: 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh DQyU3wVn3Fpjq8x78zMPz0fAjrrsWxrsII9nkHbG76s=",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh success"
+      ],
+      "ok": true,
+      "transaction_bytes": 516
+    },
+    {
+      "case": "normal/a/Expiry",
+      "cu": 154458,
+      "error": null,
+      "expected": "Ok",
+      "inner_instruction_count": 1,
+      "logs": [
+        "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+        "Program ComputeBudget111111111111111111111111111111 success",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh invoke [1]",
+        "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA invoke [2]",
+        "Program log: Instruction: TransferChecked",
+        "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA consumed 6148 of 852255 compute units",
+        "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA success",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh consumed 154308 of 999850 compute units",
+        "Program return: 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh K7Q3WcJGZdmKM6+o1QlIF9NZ1eTHKkW0WipWMXbTeTM=",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh success"
+      ],
+      "ok": true,
+      "transaction_bytes": 516
+    },
+    {
+      "case": "normal/a-with-b/Close",
+      "cu": 317435,
+      "error": null,
+      "expected": "Ok",
+      "inner_instruction_count": 2,
+      "logs": [
+        "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+        "Program ComputeBudget111111111111111111111111111111 success",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh invoke [1]",
+        "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA invoke [2]",
+        "Program log: Instruction: TransferChecked",
+        "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA consumed 6148 of 697555 compute units",
+        "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA success",
+        "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA invoke [2]",
+        "Program log: Instruction: TransferChecked",
+        "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA consumed 6148 of 689278 compute units",
+        "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA success",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh consumed 317285 of 999850 compute units",
+        "Program return: 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh B62bqNVr+30EW/Z3cWafBHV0NlAoO96gZADdJzacfjA=",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh success"
+      ],
+      "ok": true,
+      "transaction_bytes": 516
+    },
+    {
+      "case": "normal/a-with-b/Escape",
+      "cu": 301014,
+      "error": null,
+      "expected": "Ok",
+      "inner_instruction_count": 0,
+      "logs": [
+        "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+        "Program ComputeBudget111111111111111111111111111111 success",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh invoke [1]",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh consumed 300864 of 999850 compute units",
+        "Program return: 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh B62bqNVr+30EW/Z3cWafBHV0NlAoO96gZADdJzacfjA=",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh success"
+      ],
+      "ok": true,
+      "transaction_bytes": 516
+    },
+    {
+      "case": "normal/a-with-b/Challenge",
+      "cu": 289440,
+      "error": null,
+      "expected": "Ok",
+      "inner_instruction_count": 0,
+      "logs": [
+        "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+        "Program ComputeBudget111111111111111111111111111111 success",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh invoke [1]",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh consumed 289290 of 999850 compute units",
+        "Program return: 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh HZ7Y6ZP1qoVo88t5aTWlKLmV/rM6RkPplarTM9AS4qI=",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh success"
+      ],
+      "ok": true,
+      "transaction_bytes": 516
+    },
+    {
+      "case": "normal/a-with-b/Expiry",
+      "cu": 154458,
+      "error": null,
+      "expected": "Ok",
+      "inner_instruction_count": 1,
+      "logs": [
+        "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+        "Program ComputeBudget111111111111111111111111111111 success",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh invoke [1]",
+        "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA invoke [2]",
+        "Program log: Instruction: TransferChecked",
+        "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA consumed 6148 of 852255 compute units",
+        "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA success",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh consumed 154308 of 999850 compute units",
+        "Program return: 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh B62bqNVr+30EW/Z3cWafBHV0NlAoO96gZADdJzacfjA=",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh success"
+      ],
+      "ok": true,
+      "transaction_bytes": 516
+    },
+    {
+      "case": "normal/b-with-a/Close",
+      "cu": 317443,
+      "error": null,
+      "expected": "Ok",
+      "inner_instruction_count": 2,
+      "logs": [
+        "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+        "Program ComputeBudget111111111111111111111111111111 success",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh invoke [1]",
+        "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA invoke [2]",
+        "Program log: Instruction: TransferChecked",
+        "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA consumed 6148 of 697547 compute units",
+        "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA success",
+        "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA invoke [2]",
+        "Program log: Instruction: TransferChecked",
+        "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA consumed 6148 of 689270 compute units",
+        "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA success",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh consumed 317293 of 999850 compute units",
+        "Program return: 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh DQyU3wVn3Fpjq8x78zMPz0fAjrrsWxrsII9nkHbG76s=",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh success"
+      ],
+      "ok": true,
+      "transaction_bytes": 516
+    },
+    {
+      "case": "normal/b-with-a/Escape",
+      "cu": 301033,
+      "error": null,
+      "expected": "Ok",
+      "inner_instruction_count": 0,
+      "logs": [
+        "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+        "Program ComputeBudget111111111111111111111111111111 success",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh invoke [1]",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh consumed 300883 of 999850 compute units",
+        "Program return: 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh DQyU3wVn3Fpjq8x78zMPz0fAjrrsWxrsII9nkHbG76s=",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh success"
+      ],
+      "ok": true,
+      "transaction_bytes": 516
+    },
+    {
+      "case": "normal/b-with-a/Challenge",
+      "cu": 289444,
+      "error": null,
+      "expected": "Ok",
+      "inner_instruction_count": 0,
+      "logs": [
+        "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+        "Program ComputeBudget111111111111111111111111111111 success",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh invoke [1]",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh consumed 289294 of 999850 compute units",
+        "Program return: 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh HZ7Y6ZP1qoVo88t5aTWlKLmV/rM6RkPplarTM9AS4qI=",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh success"
+      ],
+      "ok": true,
+      "transaction_bytes": 516
+    },
+    {
+      "case": "normal/b-with-a/Expiry",
+      "cu": 154462,
+      "error": null,
+      "expected": "Ok",
+      "inner_instruction_count": 1,
+      "logs": [
+        "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+        "Program ComputeBudget111111111111111111111111111111 success",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh invoke [1]",
+        "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA invoke [2]",
+        "Program log: Instruction: TransferChecked",
+        "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA consumed 6148 of 852251 compute units",
+        "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA success",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh consumed 154312 of 999850 compute units",
+        "Program return: 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh DQyU3wVn3Fpjq8x78zMPz0fAjrrsWxrsII9nkHbG76s=",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh success"
+      ],
+      "ok": true,
+      "transaction_bytes": 516
+    },
+    {
+      "case": "normal/other-vault/Deposit",
+      "cu": 153774,
+      "error": null,
+      "expected": "Ok",
+      "inner_instruction_count": 1,
+      "logs": [
+        "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+        "Program ComputeBudget111111111111111111111111111111 success",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh invoke [1]",
+        "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA invoke [2]",
+        "Program log: Instruction: TransferChecked",
+        "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA consumed 6148 of 852979 compute units",
+        "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA success",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh consumed 153624 of 999850 compute units",
+        "Program return: 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh DQyU3wVn3Fpjq8x78zMPz0fAjrrsWxrsII9nkHbG76s=",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh success"
+      ],
+      "ok": true,
+      "transaction_bytes": 516
+    },
+    {
+      "case": "normal/other-vault/Close",
+      "cu": 316612,
+      "error": null,
+      "expected": "Ok",
+      "inner_instruction_count": 2,
+      "logs": [
+        "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+        "Program ComputeBudget111111111111111111111111111111 success",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh invoke [1]",
+        "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA invoke [2]",
+        "Program log: Instruction: TransferChecked",
+        "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA consumed 6148 of 698378 compute units",
+        "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA success",
+        "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA invoke [2]",
+        "Program log: Instruction: TransferChecked",
+        "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA consumed 6148 of 690101 compute units",
+        "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA success",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh consumed 316462 of 999850 compute units",
+        "Program return: 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh K7Q3WcJGZdmKM6+o1QlIF9NZ1eTHKkW0WipWMXbTeTM=",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh success"
+      ],
+      "ok": true,
+      "transaction_bytes": 516
+    },
+    {
+      "case": "normal/other-vault/Escape",
+      "cu": 300186,
+      "error": null,
+      "expected": "Ok",
+      "inner_instruction_count": 0,
+      "logs": [
+        "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+        "Program ComputeBudget111111111111111111111111111111 success",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh invoke [1]",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh consumed 300036 of 999850 compute units",
+        "Program return: 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh K7Q3WcJGZdmKM6+o1QlIF9NZ1eTHKkW0WipWMXbTeTM=",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh success"
+      ],
+      "ok": true,
+      "transaction_bytes": 516
+    },
+    {
+      "case": "normal/other-vault/Challenge",
+      "cu": 288612,
+      "error": null,
+      "expected": "Ok",
+      "inner_instruction_count": 0,
+      "logs": [
+        "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+        "Program ComputeBudget111111111111111111111111111111 success",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh invoke [1]",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh consumed 288462 of 999850 compute units",
+        "Program return: 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh DQyU3wVn3Fpjq8x78zMPz0fAjrrsWxrsII9nkHbG76s=",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh success"
+      ],
+      "ok": true,
+      "transaction_bytes": 516
+    },
+    {
+      "case": "normal/other-vault/Expiry",
+      "cu": 153630,
+      "error": null,
+      "expected": "Ok",
+      "inner_instruction_count": 1,
+      "logs": [
+        "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+        "Program ComputeBudget111111111111111111111111111111 success",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh invoke [1]",
+        "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA invoke [2]",
+        "Program log: Instruction: TransferChecked",
+        "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA consumed 6148 of 853083 compute units",
+        "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA success",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh consumed 153480 of 999850 compute units",
+        "Program return: 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh K7Q3WcJGZdmKM6+o1QlIF9NZ1eTHKkW0WipWMXbTeTM=",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh success"
+      ],
+      "ok": true,
+      "transaction_bytes": 516
+    },
+    {
+      "case": "normal/max-id/Deposit",
+      "cu": 154928,
+      "error": null,
+      "expected": "Ok",
+      "inner_instruction_count": 1,
+      "logs": [
+        "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+        "Program ComputeBudget111111111111111111111111111111 success",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh invoke [1]",
+        "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA invoke [2]",
+        "Program log: Instruction: TransferChecked",
+        "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA consumed 6148 of 851825 compute units",
+        "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA success",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh consumed 154778 of 999850 compute units",
+        "Program return: 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh HmseIPgCxGapYafEw5g0xTCY6R2a67Ui8CfCy0se1+w=",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh success"
+      ],
+      "ok": true,
+      "transaction_bytes": 516
+    },
+    {
+      "case": "normal/max-id/Close",
+      "cu": 317443,
+      "error": null,
+      "expected": "Ok",
+      "inner_instruction_count": 2,
+      "logs": [
+        "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+        "Program ComputeBudget111111111111111111111111111111 success",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh invoke [1]",
+        "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA invoke [2]",
+        "Program log: Instruction: TransferChecked",
+        "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA consumed 6148 of 697547 compute units",
+        "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA success",
+        "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA invoke [2]",
+        "Program log: Instruction: TransferChecked",
+        "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA consumed 6148 of 689270 compute units",
+        "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA success",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh consumed 317293 of 999850 compute units",
+        "Program return: 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh K7Q3WcJGZdmKM6+o1QlIF9NZ1eTHKkW0WipWMXbTeTM=",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh success"
+      ],
+      "ok": true,
+      "transaction_bytes": 516
+    },
+    {
+      "case": "normal/max-id/Escape",
+      "cu": 301022,
+      "error": null,
+      "expected": "Ok",
+      "inner_instruction_count": 0,
+      "logs": [
+        "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+        "Program ComputeBudget111111111111111111111111111111 success",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh invoke [1]",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh consumed 300872 of 999850 compute units",
+        "Program return: 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh K7Q3WcJGZdmKM6+o1QlIF9NZ1eTHKkW0WipWMXbTeTM=",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh success"
+      ],
+      "ok": true,
+      "transaction_bytes": 516
+    },
+    {
+      "case": "normal/max-id/Challenge",
+      "cu": 289444,
+      "error": null,
+      "expected": "Ok",
+      "inner_instruction_count": 0,
+      "logs": [
+        "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+        "Program ComputeBudget111111111111111111111111111111 success",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh invoke [1]",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh consumed 289294 of 999850 compute units",
+        "Program return: 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh HmseIPgCxGapYafEw5g0xTCY6R2a67Ui8CfCy0se1+w=",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh success"
+      ],
+      "ok": true,
+      "transaction_bytes": 516
+    },
+    {
+      "case": "normal/max-id/Expiry",
+      "cu": 154462,
+      "error": null,
+      "expected": "Ok",
+      "inner_instruction_count": 1,
+      "logs": [
+        "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+        "Program ComputeBudget111111111111111111111111111111 success",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh invoke [1]",
+        "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA invoke [2]",
+        "Program log: Instruction: TransferChecked",
+        "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA consumed 6148 of 852251 compute units",
+        "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA success",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh consumed 154312 of 999850 compute units",
+        "Program return: 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh K7Q3WcJGZdmKM6+o1QlIF9NZ1eTHKkW0WipWMXbTeTM=",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh success"
+      ],
+      "ok": true,
+      "transaction_bytes": 516
+    },
+    {
+      "case": "mixed-valid/different-note-same-vault-root",
+      "cu": 9140,
+      "error": "InstructionError(1, Custom(22))",
+      "expected": "Custom(22)",
+      "inner_instruction_count": 0,
+      "logs": [
+        "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+        "Program ComputeBudget111111111111111111111111111111 success",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh invoke [1]",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh consumed 8990 of 999850 compute units",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh failed: custom program error: 0x16"
+      ],
+      "ok": false,
+      "transaction_bytes": 516
+    },
+    {
+      "case": "mixed-valid/different-root-same-note-vault",
+      "cu": 9122,
+      "error": "InstructionError(1, Custom(22))",
+      "expected": "Custom(22)",
+      "inner_instruction_count": 0,
+      "logs": [
+        "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+        "Program ComputeBudget111111111111111111111111111111 success",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh invoke [1]",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh consumed 8972 of 999850 compute units",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh failed: custom program error: 0x16"
+      ],
+      "ok": false,
+      "transaction_bytes": 516
+    },
+    {
+      "case": "mixed-valid/different-vault-same-note-root",
+      "cu": 9109,
+      "error": "InstructionError(1, Custom(22))",
+      "expected": "Custom(22)",
+      "inner_instruction_count": 0,
+      "logs": [
+        "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+        "Program ComputeBudget111111111111111111111111111111 success",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh invoke [1]",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh consumed 8959 of 999850 compute units",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh failed: custom program error: 0x16"
+      ],
+      "ok": false,
+      "transaction_bytes": 516
+    },
+    {
+      "case": "mixed-valid/request-other-pending",
+      "cu": 9118,
+      "error": "InstructionError(1, Custom(27))",
+      "expected": "Custom(27)",
+      "inner_instruction_count": 0,
+      "logs": [
+        "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+        "Program ComputeBudget111111111111111111111111111111 success",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh invoke [1]",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh consumed 8968 of 999850 compute units",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh failed: custom program error: 0x1b"
+      ],
+      "ok": false,
+      "transaction_bytes": 516
+    },
+    {
+      "case": "mixed-valid/request-other-vault",
+      "cu": 9078,
+      "error": "InstructionError(1, Custom(22))",
+      "expected": "Custom(22)",
+      "inner_instruction_count": 0,
+      "logs": [
+        "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+        "Program ComputeBudget111111111111111111111111111111 success",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh invoke [1]",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh consumed 8928 of 999850 compute units",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh failed: custom program error: 0x16"
+      ],
+      "ok": false,
+      "transaction_bytes": 516
+    },
+    {
+      "case": "historical-request/pause-challenge",
+      "cu": 289452,
+      "error": null,
+      "expected": "Ok",
+      "inner_instruction_count": 0,
+      "logs": [
+        "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+        "Program ComputeBudget111111111111111111111111111111 success",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh invoke [1]",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh consumed 289302 of 999850 compute units",
+        "Program return: 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh HZ7Y6ZP1qoVo88t5aTWlKLmV/rM6RkPplarTM9AS4qI=",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh success"
+      ],
+      "ok": true,
+      "transaction_bytes": 516
+    },
+    {
+      "case": "public-mutation/tree/0",
+      "cu": 137812,
+      "error": "InstructionError(1, Custom(1))",
+      "expected": "Crypto",
+      "inner_instruction_count": 0,
+      "logs": [
+        "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+        "Program ComputeBudget111111111111111111111111111111 success",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh invoke [1]",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh consumed 137662 of 999850 compute units",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh failed: custom program error: 0x1"
+      ],
+      "ok": false,
+      "transaction_bytes": 828
+    },
+    {
+      "case": "public-mutation/tree/1",
+      "cu": 137812,
+      "error": "InstructionError(1, Custom(1))",
+      "expected": "Crypto",
+      "inner_instruction_count": 0,
+      "logs": [
+        "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+        "Program ComputeBudget111111111111111111111111111111 success",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh invoke [1]",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh consumed 137662 of 999850 compute units",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh failed: custom program error: 0x1"
+      ],
+      "ok": false,
+      "transaction_bytes": 828
+    },
+    {
+      "case": "public-mutation/tree/2",
+      "cu": 137812,
+      "error": "InstructionError(1, Custom(1))",
+      "expected": "Crypto",
+      "inner_instruction_count": 0,
+      "logs": [
+        "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+        "Program ComputeBudget111111111111111111111111111111 success",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh invoke [1]",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh consumed 137662 of 999850 compute units",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh failed: custom program error: 0x1"
+      ],
+      "ok": false,
+      "transaction_bytes": 828
+    },
+    {
+      "case": "public-mutation/tree/3",
+      "cu": 137816,
+      "error": "InstructionError(1, Custom(1))",
+      "expected": "Crypto",
+      "inner_instruction_count": 0,
+      "logs": [
+        "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+        "Program ComputeBudget111111111111111111111111111111 success",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh invoke [1]",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh consumed 137666 of 999850 compute units",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh failed: custom program error: 0x1"
+      ],
+      "ok": false,
+      "transaction_bytes": 828
+    },
+    {
+      "case": "public-mutation/tree/4",
+      "cu": 137812,
+      "error": "InstructionError(1, Custom(1))",
+      "expected": "Crypto",
+      "inner_instruction_count": 0,
+      "logs": [
+        "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+        "Program ComputeBudget111111111111111111111111111111 success",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh invoke [1]",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh consumed 137662 of 999850 compute units",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh failed: custom program error: 0x1"
+      ],
+      "ok": false,
+      "transaction_bytes": 828
+    },
+    {
+      "case": "public-mutation/tree/5",
+      "cu": 137816,
+      "error": "InstructionError(1, Custom(1))",
+      "expected": "Crypto",
+      "inner_instruction_count": 0,
+      "logs": [
+        "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+        "Program ComputeBudget111111111111111111111111111111 success",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh invoke [1]",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh consumed 137666 of 999850 compute units",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh failed: custom program error: 0x1"
+      ],
+      "ok": false,
+      "transaction_bytes": 828
+    },
+    {
+      "case": "public-mutation/tree/6",
+      "cu": 137812,
+      "error": "InstructionError(1, Custom(1))",
+      "expected": "Crypto",
+      "inner_instruction_count": 0,
+      "logs": [
+        "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+        "Program ComputeBudget111111111111111111111111111111 success",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh invoke [1]",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh consumed 137662 of 999850 compute units",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh failed: custom program error: 0x1"
+      ],
+      "ok": false,
+      "transaction_bytes": 828
+    },
+    {
+      "case": "public-mutation/tree/7",
+      "cu": 137812,
+      "error": "InstructionError(1, Custom(1))",
+      "expected": "Crypto",
+      "inner_instruction_count": 0,
+      "logs": [
+        "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+        "Program ComputeBudget111111111111111111111111111111 success",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh invoke [1]",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh consumed 137662 of 999850 compute units",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh failed: custom program error: 0x1"
+      ],
+      "ok": false,
+      "transaction_bytes": 828
+    },
+    {
+      "case": "public-mutation/tree/8",
+      "cu": 137812,
+      "error": "InstructionError(1, Custom(1))",
+      "expected": "Crypto",
+      "inner_instruction_count": 0,
+      "logs": [
+        "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+        "Program ComputeBudget111111111111111111111111111111 success",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh invoke [1]",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh consumed 137662 of 999850 compute units",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh failed: custom program error: 0x1"
+      ],
+      "ok": false,
+      "transaction_bytes": 828
+    },
+    {
+      "case": "public-mutation/tree/9",
+      "cu": 137808,
+      "error": "InstructionError(1, Custom(1))",
+      "expected": "Crypto",
+      "inner_instruction_count": 0,
+      "logs": [
+        "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+        "Program ComputeBudget111111111111111111111111111111 success",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh invoke [1]",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh consumed 137658 of 999850 compute units",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh failed: custom program error: 0x1"
+      ],
+      "ok": false,
+      "transaction_bytes": 828
+    },
+    {
+      "case": "public-mutation/tree/10",
+      "cu": 137812,
+      "error": "InstructionError(1, Custom(1))",
+      "expected": "Crypto",
+      "inner_instruction_count": 0,
+      "logs": [
+        "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+        "Program ComputeBudget111111111111111111111111111111 success",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh invoke [1]",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh consumed 137662 of 999850 compute units",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh failed: custom program error: 0x1"
+      ],
+      "ok": false,
+      "transaction_bytes": 828
+    },
+    {
+      "case": "noncanonical/tree/0",
+      "cu": 598,
+      "error": "InstructionError(1, Custom(21))",
+      "expected": "Custom(21)",
+      "inner_instruction_count": 0,
+      "logs": [
+        "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+        "Program ComputeBudget111111111111111111111111111111 success",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh invoke [1]",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh consumed 448 of 999850 compute units",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh failed: custom program error: 0x15"
+      ],
+      "ok": false,
+      "transaction_bytes": 828
+    },
+    {
+      "case": "noncanonical/tree/1",
+      "cu": 607,
+      "error": "InstructionError(1, Custom(21))",
+      "expected": "Custom(21)",
+      "inner_instruction_count": 0,
+      "logs": [
+        "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+        "Program ComputeBudget111111111111111111111111111111 success",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh invoke [1]",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh consumed 457 of 999850 compute units",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh failed: custom program error: 0x15"
+      ],
+      "ok": false,
+      "transaction_bytes": 828
+    },
+    {
+      "case": "noncanonical/tree/2",
+      "cu": 616,
+      "error": "InstructionError(1, Custom(21))",
+      "expected": "Custom(21)",
+      "inner_instruction_count": 0,
+      "logs": [
+        "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+        "Program ComputeBudget111111111111111111111111111111 success",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh invoke [1]",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh consumed 466 of 999850 compute units",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh failed: custom program error: 0x15"
+      ],
+      "ok": false,
+      "transaction_bytes": 828
+    },
+    {
+      "case": "noncanonical/tree/3",
+      "cu": 625,
+      "error": "InstructionError(1, Custom(21))",
+      "expected": "Custom(21)",
+      "inner_instruction_count": 0,
+      "logs": [
+        "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+        "Program ComputeBudget111111111111111111111111111111 success",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh invoke [1]",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh consumed 475 of 999850 compute units",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh failed: custom program error: 0x15"
+      ],
+      "ok": false,
+      "transaction_bytes": 828
+    },
+    {
+      "case": "noncanonical/tree/4",
+      "cu": 634,
+      "error": "InstructionError(1, Custom(21))",
+      "expected": "Custom(21)",
+      "inner_instruction_count": 0,
+      "logs": [
+        "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+        "Program ComputeBudget111111111111111111111111111111 success",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh invoke [1]",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh consumed 484 of 999850 compute units",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh failed: custom program error: 0x15"
+      ],
+      "ok": false,
+      "transaction_bytes": 828
+    },
+    {
+      "case": "noncanonical/tree/5",
+      "cu": 643,
+      "error": "InstructionError(1, Custom(21))",
+      "expected": "Custom(21)",
+      "inner_instruction_count": 0,
+      "logs": [
+        "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+        "Program ComputeBudget111111111111111111111111111111 success",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh invoke [1]",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh consumed 493 of 999850 compute units",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh failed: custom program error: 0x15"
+      ],
+      "ok": false,
+      "transaction_bytes": 828
+    },
+    {
+      "case": "noncanonical/tree/6",
+      "cu": 652,
+      "error": "InstructionError(1, Custom(21))",
+      "expected": "Custom(21)",
+      "inner_instruction_count": 0,
+      "logs": [
+        "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+        "Program ComputeBudget111111111111111111111111111111 success",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh invoke [1]",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh consumed 502 of 999850 compute units",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh failed: custom program error: 0x15"
+      ],
+      "ok": false,
+      "transaction_bytes": 828
+    },
+    {
+      "case": "noncanonical/tree/7",
+      "cu": 661,
+      "error": "InstructionError(1, Custom(21))",
+      "expected": "Custom(21)",
+      "inner_instruction_count": 0,
+      "logs": [
+        "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+        "Program ComputeBudget111111111111111111111111111111 success",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh invoke [1]",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh consumed 511 of 999850 compute units",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh failed: custom program error: 0x15"
+      ],
+      "ok": false,
+      "transaction_bytes": 828
+    },
+    {
+      "case": "noncanonical/tree/8",
+      "cu": 670,
+      "error": "InstructionError(1, Custom(21))",
+      "expected": "Custom(21)",
+      "inner_instruction_count": 0,
+      "logs": [
+        "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+        "Program ComputeBudget111111111111111111111111111111 success",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh invoke [1]",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh consumed 520 of 999850 compute units",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh failed: custom program error: 0x15"
+      ],
+      "ok": false,
+      "transaction_bytes": 828
+    },
+    {
+      "case": "noncanonical/tree/9",
+      "cu": 679,
+      "error": "InstructionError(1, Custom(21))",
+      "expected": "Custom(21)",
+      "inner_instruction_count": 0,
+      "logs": [
+        "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+        "Program ComputeBudget111111111111111111111111111111 success",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh invoke [1]",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh consumed 529 of 999850 compute units",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh failed: custom program error: 0x15"
+      ],
+      "ok": false,
+      "transaction_bytes": 828
+    },
+    {
+      "case": "noncanonical/tree/10",
+      "cu": 688,
+      "error": "InstructionError(1, Custom(21))",
+      "expected": "Custom(21)",
+      "inner_instruction_count": 0,
+      "logs": [
+        "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+        "Program ComputeBudget111111111111111111111111111111 success",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh invoke [1]",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh consumed 538 of 999850 compute units",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh failed: custom program error: 0x15"
+      ],
+      "ok": false,
+      "transaction_bytes": 828
+    },
+    {
+      "case": "proof-mutation/tree/0",
+      "cu": 137761,
+      "error": "InstructionError(1, Custom(1))",
+      "expected": "Crypto",
+      "inner_instruction_count": 0,
+      "logs": [
+        "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+        "Program ComputeBudget111111111111111111111111111111 success",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh invoke [1]",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh consumed 137611 of 999850 compute units",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh failed: custom program error: 0x1"
+      ],
+      "ok": false,
+      "transaction_bytes": 828
+    },
+    {
+      "case": "noncanonical-coordinate/tree/0",
+      "cu": 704,
+      "error": "InstructionError(1, InvalidInstructionData)",
+      "expected": "Crypto",
+      "inner_instruction_count": 0,
+      "logs": [
+        "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+        "Program ComputeBudget111111111111111111111111111111 success",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh invoke [1]",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh consumed 554 of 999850 compute units",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh failed: invalid instruction data"
+      ],
+      "ok": false,
+      "transaction_bytes": 828
+    },
+    {
+      "case": "proof-mutation/tree/1",
+      "cu": 137761,
+      "error": "InstructionError(1, Custom(1))",
+      "expected": "Crypto",
+      "inner_instruction_count": 0,
+      "logs": [
+        "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+        "Program ComputeBudget111111111111111111111111111111 success",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh invoke [1]",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh consumed 137611 of 999850 compute units",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh failed: custom program error: 0x1"
+      ],
+      "ok": false,
+      "transaction_bytes": 828
+    },
+    {
+      "case": "noncanonical-coordinate/tree/1",
+      "cu": 710,
+      "error": "InstructionError(1, InvalidInstructionData)",
+      "expected": "Crypto",
+      "inner_instruction_count": 0,
+      "logs": [
+        "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+        "Program ComputeBudget111111111111111111111111111111 success",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh invoke [1]",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh consumed 560 of 999850 compute units",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh failed: invalid instruction data"
+      ],
+      "ok": false,
+      "transaction_bytes": 828
+    },
+    {
+      "case": "proof-mutation/tree/2",
+      "cu": 137761,
+      "error": "InstructionError(1, Custom(1))",
+      "expected": "Crypto",
+      "inner_instruction_count": 0,
+      "logs": [
+        "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+        "Program ComputeBudget111111111111111111111111111111 success",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh invoke [1]",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh consumed 137611 of 999850 compute units",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh failed: custom program error: 0x1"
+      ],
+      "ok": false,
+      "transaction_bytes": 828
+    },
+    {
+      "case": "noncanonical-coordinate/tree/2",
+      "cu": 716,
+      "error": "InstructionError(1, InvalidInstructionData)",
+      "expected": "Crypto",
+      "inner_instruction_count": 0,
+      "logs": [
+        "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+        "Program ComputeBudget111111111111111111111111111111 success",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh invoke [1]",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh consumed 566 of 999850 compute units",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh failed: invalid instruction data"
+      ],
+      "ok": false,
+      "transaction_bytes": 828
+    },
+    {
+      "case": "proof-mutation/tree/3",
+      "cu": 137761,
+      "error": "InstructionError(1, Custom(1))",
+      "expected": "Crypto",
+      "inner_instruction_count": 0,
+      "logs": [
+        "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+        "Program ComputeBudget111111111111111111111111111111 success",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh invoke [1]",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh consumed 137611 of 999850 compute units",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh failed: custom program error: 0x1"
+      ],
+      "ok": false,
+      "transaction_bytes": 828
+    },
+    {
+      "case": "noncanonical-coordinate/tree/3",
+      "cu": 722,
+      "error": "InstructionError(1, InvalidInstructionData)",
+      "expected": "Crypto",
+      "inner_instruction_count": 0,
+      "logs": [
+        "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+        "Program ComputeBudget111111111111111111111111111111 success",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh invoke [1]",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh consumed 572 of 999850 compute units",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh failed: invalid instruction data"
+      ],
+      "ok": false,
+      "transaction_bytes": 828
+    },
+    {
+      "case": "proof-mutation/tree/4",
+      "cu": 137761,
+      "error": "InstructionError(1, Custom(1))",
+      "expected": "Crypto",
+      "inner_instruction_count": 0,
+      "logs": [
+        "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+        "Program ComputeBudget111111111111111111111111111111 success",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh invoke [1]",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh consumed 137611 of 999850 compute units",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh failed: custom program error: 0x1"
+      ],
+      "ok": false,
+      "transaction_bytes": 828
+    },
+    {
+      "case": "noncanonical-coordinate/tree/4",
+      "cu": 729,
+      "error": "InstructionError(1, InvalidInstructionData)",
+      "expected": "Crypto",
+      "inner_instruction_count": 0,
+      "logs": [
+        "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+        "Program ComputeBudget111111111111111111111111111111 success",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh invoke [1]",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh consumed 579 of 999850 compute units",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh failed: invalid instruction data"
+      ],
+      "ok": false,
+      "transaction_bytes": 828
+    },
+    {
+      "case": "proof-mutation/tree/5",
+      "cu": 137761,
+      "error": "InstructionError(1, Custom(1))",
+      "expected": "Crypto",
+      "inner_instruction_count": 0,
+      "logs": [
+        "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+        "Program ComputeBudget111111111111111111111111111111 success",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh invoke [1]",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh consumed 137611 of 999850 compute units",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh failed: custom program error: 0x1"
+      ],
+      "ok": false,
+      "transaction_bytes": 828
+    },
+    {
+      "case": "noncanonical-coordinate/tree/5",
+      "cu": 736,
+      "error": "InstructionError(1, InvalidInstructionData)",
+      "expected": "Crypto",
+      "inner_instruction_count": 0,
+      "logs": [
+        "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+        "Program ComputeBudget111111111111111111111111111111 success",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh invoke [1]",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh consumed 586 of 999850 compute units",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh failed: invalid instruction data"
+      ],
+      "ok": false,
+      "transaction_bytes": 828
+    },
+    {
+      "case": "proof-mutation/tree/6",
+      "cu": 137761,
+      "error": "InstructionError(1, Custom(1))",
+      "expected": "Crypto",
+      "inner_instruction_count": 0,
+      "logs": [
+        "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+        "Program ComputeBudget111111111111111111111111111111 success",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh invoke [1]",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh consumed 137611 of 999850 compute units",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh failed: custom program error: 0x1"
+      ],
+      "ok": false,
+      "transaction_bytes": 828
+    },
+    {
+      "case": "noncanonical-coordinate/tree/6",
+      "cu": 743,
+      "error": "InstructionError(1, InvalidInstructionData)",
+      "expected": "Crypto",
+      "inner_instruction_count": 0,
+      "logs": [
+        "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+        "Program ComputeBudget111111111111111111111111111111 success",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh invoke [1]",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh consumed 593 of 999850 compute units",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh failed: invalid instruction data"
+      ],
+      "ok": false,
+      "transaction_bytes": 828
+    },
+    {
+      "case": "proof-mutation/tree/7",
+      "cu": 137761,
+      "error": "InstructionError(1, Custom(1))",
+      "expected": "Crypto",
+      "inner_instruction_count": 0,
+      "logs": [
+        "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+        "Program ComputeBudget111111111111111111111111111111 success",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh invoke [1]",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh consumed 137611 of 999850 compute units",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh failed: custom program error: 0x1"
+      ],
+      "ok": false,
+      "transaction_bytes": 828
+    },
+    {
+      "case": "noncanonical-coordinate/tree/7",
+      "cu": 750,
+      "error": "InstructionError(1, InvalidInstructionData)",
+      "expected": "Crypto",
+      "inner_instruction_count": 0,
+      "logs": [
+        "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+        "Program ComputeBudget111111111111111111111111111111 success",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh invoke [1]",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh consumed 600 of 999850 compute units",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh failed: invalid instruction data"
+      ],
+      "ok": false,
+      "transaction_bytes": 828
+    },
+    {
+      "case": "A-sign/tree",
+      "cu": 137812,
+      "error": "InstructionError(1, Custom(1))",
+      "expected": "Crypto",
+      "inner_instruction_count": 0,
+      "logs": [
+        "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+        "Program ComputeBudget111111111111111111111111111111 success",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh invoke [1]",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh consumed 137662 of 999850 compute units",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh failed: custom program error: 0x1"
+      ],
+      "ok": false,
+      "transaction_bytes": 828
+    },
+    {
+      "case": "G2-order/tree",
+      "cu": 137761,
+      "error": "InstructionError(1, Custom(1))",
+      "expected": "Crypto",
+      "inner_instruction_count": 0,
+      "logs": [
+        "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+        "Program ComputeBudget111111111111111111111111111111 success",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh invoke [1]",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh consumed 137611 of 999850 compute units",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh failed: custom program error: 0x1"
+      ],
+      "ok": false,
+      "transaction_bytes": 828
+    },
+    {
+      "case": "non-subgroup-G2/tree",
+      "cu": 138139,
+      "error": "InstructionError(1, Custom(1))",
+      "expected": "Crypto",
+      "inner_instruction_count": 0,
+      "logs": [
+        "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+        "Program ComputeBudget111111111111111111111111111111 success",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh invoke [1]",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh consumed 137989 of 999850 compute units",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh failed: custom program error: 0x1"
+      ],
+      "ok": false,
+      "transaction_bytes": 828
+    },
+    {
+      "case": "infinity-a/tree",
+      "cu": 1142,
+      "error": "InstructionError(1, InvalidInstructionData)",
+      "expected": "Crypto",
+      "inner_instruction_count": 0,
+      "logs": [
+        "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+        "Program ComputeBudget111111111111111111111111111111 success",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh invoke [1]",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh consumed 992 of 999850 compute units",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh failed: invalid instruction data"
+      ],
+      "ok": false,
+      "transaction_bytes": 828
+    },
+    {
+      "case": "infinity-b/tree",
+      "cu": 1533,
+      "error": "InstructionError(1, InvalidInstructionData)",
+      "expected": "Crypto",
+      "inner_instruction_count": 0,
+      "logs": [
+        "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+        "Program ComputeBudget111111111111111111111111111111 success",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh invoke [1]",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh consumed 1383 of 999850 compute units",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh failed: invalid instruction data"
+      ],
+      "ok": false,
+      "transaction_bytes": 828
+    },
+    {
+      "case": "infinity-c/tree",
+      "cu": 1156,
+      "error": "InstructionError(1, InvalidInstructionData)",
+      "expected": "Crypto",
+      "inner_instruction_count": 0,
+      "logs": [
+        "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+        "Program ComputeBudget111111111111111111111111111111 success",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh invoke [1]",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh consumed 1006 of 999850 compute units",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh failed: invalid instruction data"
+      ],
+      "ok": false,
+      "transaction_bytes": 828
+    },
+    {
+      "case": "public-mutation/request/0",
+      "cu": 143564,
+      "error": "InstructionError(1, Custom(1))",
+      "expected": "Crypto",
+      "inner_instruction_count": 0,
+      "logs": [
+        "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+        "Program ComputeBudget111111111111111111111111111111 success",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh invoke [1]",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh consumed 143414 of 999850 compute units",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh failed: custom program error: 0x1"
+      ],
+      "ok": false,
+      "transaction_bytes": 860
+    },
+    {
+      "case": "public-mutation/request/1",
+      "cu": 143564,
+      "error": "InstructionError(1, Custom(1))",
+      "expected": "Crypto",
+      "inner_instruction_count": 0,
+      "logs": [
+        "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+        "Program ComputeBudget111111111111111111111111111111 success",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh invoke [1]",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh consumed 143414 of 999850 compute units",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh failed: custom program error: 0x1"
+      ],
+      "ok": false,
+      "transaction_bytes": 860
+    },
+    {
+      "case": "public-mutation/request/2",
+      "cu": 143564,
+      "error": "InstructionError(1, Custom(1))",
+      "expected": "Crypto",
+      "inner_instruction_count": 0,
+      "logs": [
+        "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+        "Program ComputeBudget111111111111111111111111111111 success",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh invoke [1]",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh consumed 143414 of 999850 compute units",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh failed: custom program error: 0x1"
+      ],
+      "ok": false,
+      "transaction_bytes": 860
+    },
+    {
+      "case": "public-mutation/request/3",
+      "cu": 143564,
+      "error": "InstructionError(1, Custom(1))",
+      "expected": "Crypto",
+      "inner_instruction_count": 0,
+      "logs": [
+        "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+        "Program ComputeBudget111111111111111111111111111111 success",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh invoke [1]",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh consumed 143414 of 999850 compute units",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh failed: custom program error: 0x1"
+      ],
+      "ok": false,
+      "transaction_bytes": 860
+    },
+    {
+      "case": "public-mutation/request/4",
+      "cu": 143564,
+      "error": "InstructionError(1, Custom(1))",
+      "expected": "Crypto",
+      "inner_instruction_count": 0,
+      "logs": [
+        "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+        "Program ComputeBudget111111111111111111111111111111 success",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh invoke [1]",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh consumed 143414 of 999850 compute units",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh failed: custom program error: 0x1"
+      ],
+      "ok": false,
+      "transaction_bytes": 860
+    },
+    {
+      "case": "public-mutation/request/5",
+      "cu": 143564,
+      "error": "InstructionError(1, Custom(1))",
+      "expected": "Crypto",
+      "inner_instruction_count": 0,
+      "logs": [
+        "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+        "Program ComputeBudget111111111111111111111111111111 success",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh invoke [1]",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh consumed 143414 of 999850 compute units",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh failed: custom program error: 0x1"
+      ],
+      "ok": false,
+      "transaction_bytes": 860
+    },
+    {
+      "case": "public-mutation/request/6",
+      "cu": 143564,
+      "error": "InstructionError(1, Custom(1))",
+      "expected": "Crypto",
+      "inner_instruction_count": 0,
+      "logs": [
+        "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+        "Program ComputeBudget111111111111111111111111111111 success",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh invoke [1]",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh consumed 143414 of 999850 compute units",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh failed: custom program error: 0x1"
+      ],
+      "ok": false,
+      "transaction_bytes": 860
+    },
+    {
+      "case": "public-mutation/request/7",
+      "cu": 143564,
+      "error": "InstructionError(1, Custom(1))",
+      "expected": "Crypto",
+      "inner_instruction_count": 0,
+      "logs": [
+        "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+        "Program ComputeBudget111111111111111111111111111111 success",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh invoke [1]",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh consumed 143414 of 999850 compute units",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh failed: custom program error: 0x1"
+      ],
+      "ok": false,
+      "transaction_bytes": 860
+    },
+    {
+      "case": "public-mutation/request/8",
+      "cu": 143564,
+      "error": "InstructionError(1, Custom(1))",
+      "expected": "Crypto",
+      "inner_instruction_count": 0,
+      "logs": [
+        "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+        "Program ComputeBudget111111111111111111111111111111 success",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh invoke [1]",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh consumed 143414 of 999850 compute units",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh failed: custom program error: 0x1"
+      ],
+      "ok": false,
+      "transaction_bytes": 860
+    },
+    {
+      "case": "public-mutation/request/9",
+      "cu": 143564,
+      "error": "InstructionError(1, Custom(1))",
+      "expected": "Crypto",
+      "inner_instruction_count": 0,
+      "logs": [
+        "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+        "Program ComputeBudget111111111111111111111111111111 success",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh invoke [1]",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh consumed 143414 of 999850 compute units",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh failed: custom program error: 0x1"
+      ],
+      "ok": false,
+      "transaction_bytes": 860
+    },
+    {
+      "case": "public-mutation/request/10",
+      "cu": 143564,
+      "error": "InstructionError(1, Custom(1))",
+      "expected": "Crypto",
+      "inner_instruction_count": 0,
+      "logs": [
+        "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+        "Program ComputeBudget111111111111111111111111111111 success",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh invoke [1]",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh consumed 143414 of 999850 compute units",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh failed: custom program error: 0x1"
+      ],
+      "ok": false,
+      "transaction_bytes": 860
+    },
+    {
+      "case": "public-mutation/request/11",
+      "cu": 143564,
+      "error": "InstructionError(1, Custom(1))",
+      "expected": "Crypto",
+      "inner_instruction_count": 0,
+      "logs": [
+        "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+        "Program ComputeBudget111111111111111111111111111111 success",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh invoke [1]",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh consumed 143414 of 999850 compute units",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh failed: custom program error: 0x1"
+      ],
+      "ok": false,
+      "transaction_bytes": 860
+    },
+    {
+      "case": "noncanonical/request/0",
+      "cu": 724,
+      "error": "InstructionError(1, Custom(21))",
+      "expected": "Custom(21)",
+      "inner_instruction_count": 0,
+      "logs": [
+        "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+        "Program ComputeBudget111111111111111111111111111111 success",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh invoke [1]",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh consumed 574 of 999850 compute units",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh failed: custom program error: 0x15"
+      ],
+      "ok": false,
+      "transaction_bytes": 860
+    },
+    {
+      "case": "noncanonical/request/1",
+      "cu": 733,
+      "error": "InstructionError(1, Custom(21))",
+      "expected": "Custom(21)",
+      "inner_instruction_count": 0,
+      "logs": [
+        "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+        "Program ComputeBudget111111111111111111111111111111 success",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh invoke [1]",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh consumed 583 of 999850 compute units",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh failed: custom program error: 0x15"
+      ],
+      "ok": false,
+      "transaction_bytes": 860
+    },
+    {
+      "case": "noncanonical/request/2",
+      "cu": 742,
+      "error": "InstructionError(1, Custom(21))",
+      "expected": "Custom(21)",
+      "inner_instruction_count": 0,
+      "logs": [
+        "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+        "Program ComputeBudget111111111111111111111111111111 success",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh invoke [1]",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh consumed 592 of 999850 compute units",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh failed: custom program error: 0x15"
+      ],
+      "ok": false,
+      "transaction_bytes": 860
+    },
+    {
+      "case": "noncanonical/request/3",
+      "cu": 751,
+      "error": "InstructionError(1, Custom(21))",
+      "expected": "Custom(21)",
+      "inner_instruction_count": 0,
+      "logs": [
+        "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+        "Program ComputeBudget111111111111111111111111111111 success",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh invoke [1]",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh consumed 601 of 999850 compute units",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh failed: custom program error: 0x15"
+      ],
+      "ok": false,
+      "transaction_bytes": 860
+    },
+    {
+      "case": "noncanonical/request/4",
+      "cu": 760,
+      "error": "InstructionError(1, Custom(21))",
+      "expected": "Custom(21)",
+      "inner_instruction_count": 0,
+      "logs": [
+        "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+        "Program ComputeBudget111111111111111111111111111111 success",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh invoke [1]",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh consumed 610 of 999850 compute units",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh failed: custom program error: 0x15"
+      ],
+      "ok": false,
+      "transaction_bytes": 860
+    },
+    {
+      "case": "noncanonical/request/5",
+      "cu": 769,
+      "error": "InstructionError(1, Custom(21))",
+      "expected": "Custom(21)",
+      "inner_instruction_count": 0,
+      "logs": [
+        "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+        "Program ComputeBudget111111111111111111111111111111 success",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh invoke [1]",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh consumed 619 of 999850 compute units",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh failed: custom program error: 0x15"
+      ],
+      "ok": false,
+      "transaction_bytes": 860
+    },
+    {
+      "case": "noncanonical/request/6",
+      "cu": 778,
+      "error": "InstructionError(1, Custom(21))",
+      "expected": "Custom(21)",
+      "inner_instruction_count": 0,
+      "logs": [
+        "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+        "Program ComputeBudget111111111111111111111111111111 success",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh invoke [1]",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh consumed 628 of 999850 compute units",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh failed: custom program error: 0x15"
+      ],
+      "ok": false,
+      "transaction_bytes": 860
+    },
+    {
+      "case": "noncanonical/request/7",
+      "cu": 787,
+      "error": "InstructionError(1, Custom(21))",
+      "expected": "Custom(21)",
+      "inner_instruction_count": 0,
+      "logs": [
+        "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+        "Program ComputeBudget111111111111111111111111111111 success",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh invoke [1]",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh consumed 637 of 999850 compute units",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh failed: custom program error: 0x15"
+      ],
+      "ok": false,
+      "transaction_bytes": 860
+    },
+    {
+      "case": "noncanonical/request/8",
+      "cu": 796,
+      "error": "InstructionError(1, Custom(21))",
+      "expected": "Custom(21)",
+      "inner_instruction_count": 0,
+      "logs": [
+        "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+        "Program ComputeBudget111111111111111111111111111111 success",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh invoke [1]",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh consumed 646 of 999850 compute units",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh failed: custom program error: 0x15"
+      ],
+      "ok": false,
+      "transaction_bytes": 860
+    },
+    {
+      "case": "noncanonical/request/9",
+      "cu": 805,
+      "error": "InstructionError(1, Custom(21))",
+      "expected": "Custom(21)",
+      "inner_instruction_count": 0,
+      "logs": [
+        "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+        "Program ComputeBudget111111111111111111111111111111 success",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh invoke [1]",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh consumed 655 of 999850 compute units",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh failed: custom program error: 0x15"
+      ],
+      "ok": false,
+      "transaction_bytes": 860
+    },
+    {
+      "case": "noncanonical/request/10",
+      "cu": 814,
+      "error": "InstructionError(1, Custom(21))",
+      "expected": "Custom(21)",
+      "inner_instruction_count": 0,
+      "logs": [
+        "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+        "Program ComputeBudget111111111111111111111111111111 success",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh invoke [1]",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh consumed 664 of 999850 compute units",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh failed: custom program error: 0x15"
+      ],
+      "ok": false,
+      "transaction_bytes": 860
+    },
+    {
+      "case": "noncanonical/request/11",
+      "cu": 823,
+      "error": "InstructionError(1, Custom(21))",
+      "expected": "Custom(21)",
+      "inner_instruction_count": 0,
+      "logs": [
+        "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+        "Program ComputeBudget111111111111111111111111111111 success",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh invoke [1]",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh consumed 673 of 999850 compute units",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh failed: custom program error: 0x15"
+      ],
+      "ok": false,
+      "transaction_bytes": 860
+    },
+    {
+      "case": "proof-mutation/request/0",
+      "cu": 143513,
+      "error": "InstructionError(1, Custom(1))",
+      "expected": "Crypto",
+      "inner_instruction_count": 0,
+      "logs": [
+        "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+        "Program ComputeBudget111111111111111111111111111111 success",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh invoke [1]",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh consumed 143363 of 999850 compute units",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh failed: custom program error: 0x1"
+      ],
+      "ok": false,
+      "transaction_bytes": 860
+    },
+    {
+      "case": "noncanonical-coordinate/request/0",
+      "cu": 840,
+      "error": "InstructionError(1, InvalidInstructionData)",
+      "expected": "Crypto",
+      "inner_instruction_count": 0,
+      "logs": [
+        "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+        "Program ComputeBudget111111111111111111111111111111 success",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh invoke [1]",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh consumed 690 of 999850 compute units",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh failed: invalid instruction data"
+      ],
+      "ok": false,
+      "transaction_bytes": 860
+    },
+    {
+      "case": "proof-mutation/request/1",
+      "cu": 143513,
+      "error": "InstructionError(1, Custom(1))",
+      "expected": "Crypto",
+      "inner_instruction_count": 0,
+      "logs": [
+        "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+        "Program ComputeBudget111111111111111111111111111111 success",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh invoke [1]",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh consumed 143363 of 999850 compute units",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh failed: custom program error: 0x1"
+      ],
+      "ok": false,
+      "transaction_bytes": 860
+    },
+    {
+      "case": "noncanonical-coordinate/request/1",
+      "cu": 846,
+      "error": "InstructionError(1, InvalidInstructionData)",
+      "expected": "Crypto",
+      "inner_instruction_count": 0,
+      "logs": [
+        "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+        "Program ComputeBudget111111111111111111111111111111 success",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh invoke [1]",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh consumed 696 of 999850 compute units",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh failed: invalid instruction data"
+      ],
+      "ok": false,
+      "transaction_bytes": 860
+    },
+    {
+      "case": "proof-mutation/request/2",
+      "cu": 143513,
+      "error": "InstructionError(1, Custom(1))",
+      "expected": "Crypto",
+      "inner_instruction_count": 0,
+      "logs": [
+        "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+        "Program ComputeBudget111111111111111111111111111111 success",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh invoke [1]",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh consumed 143363 of 999850 compute units",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh failed: custom program error: 0x1"
+      ],
+      "ok": false,
+      "transaction_bytes": 860
+    },
+    {
+      "case": "noncanonical-coordinate/request/2",
+      "cu": 852,
+      "error": "InstructionError(1, InvalidInstructionData)",
+      "expected": "Crypto",
+      "inner_instruction_count": 0,
+      "logs": [
+        "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+        "Program ComputeBudget111111111111111111111111111111 success",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh invoke [1]",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh consumed 702 of 999850 compute units",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh failed: invalid instruction data"
+      ],
+      "ok": false,
+      "transaction_bytes": 860
+    },
+    {
+      "case": "proof-mutation/request/3",
+      "cu": 143513,
+      "error": "InstructionError(1, Custom(1))",
+      "expected": "Crypto",
+      "inner_instruction_count": 0,
+      "logs": [
+        "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+        "Program ComputeBudget111111111111111111111111111111 success",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh invoke [1]",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh consumed 143363 of 999850 compute units",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh failed: custom program error: 0x1"
+      ],
+      "ok": false,
+      "transaction_bytes": 860
+    },
+    {
+      "case": "noncanonical-coordinate/request/3",
+      "cu": 858,
+      "error": "InstructionError(1, InvalidInstructionData)",
+      "expected": "Crypto",
+      "inner_instruction_count": 0,
+      "logs": [
+        "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+        "Program ComputeBudget111111111111111111111111111111 success",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh invoke [1]",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh consumed 708 of 999850 compute units",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh failed: invalid instruction data"
+      ],
+      "ok": false,
+      "transaction_bytes": 860
+    },
+    {
+      "case": "proof-mutation/request/4",
+      "cu": 143513,
+      "error": "InstructionError(1, Custom(1))",
+      "expected": "Crypto",
+      "inner_instruction_count": 0,
+      "logs": [
+        "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+        "Program ComputeBudget111111111111111111111111111111 success",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh invoke [1]",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh consumed 143363 of 999850 compute units",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh failed: custom program error: 0x1"
+      ],
+      "ok": false,
+      "transaction_bytes": 860
+    },
+    {
+      "case": "noncanonical-coordinate/request/4",
+      "cu": 865,
+      "error": "InstructionError(1, InvalidInstructionData)",
+      "expected": "Crypto",
+      "inner_instruction_count": 0,
+      "logs": [
+        "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+        "Program ComputeBudget111111111111111111111111111111 success",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh invoke [1]",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh consumed 715 of 999850 compute units",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh failed: invalid instruction data"
+      ],
+      "ok": false,
+      "transaction_bytes": 860
+    },
+    {
+      "case": "proof-mutation/request/5",
+      "cu": 143513,
+      "error": "InstructionError(1, Custom(1))",
+      "expected": "Crypto",
+      "inner_instruction_count": 0,
+      "logs": [
+        "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+        "Program ComputeBudget111111111111111111111111111111 success",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh invoke [1]",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh consumed 143363 of 999850 compute units",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh failed: custom program error: 0x1"
+      ],
+      "ok": false,
+      "transaction_bytes": 860
+    },
+    {
+      "case": "noncanonical-coordinate/request/5",
+      "cu": 872,
+      "error": "InstructionError(1, InvalidInstructionData)",
+      "expected": "Crypto",
+      "inner_instruction_count": 0,
+      "logs": [
+        "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+        "Program ComputeBudget111111111111111111111111111111 success",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh invoke [1]",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh consumed 722 of 999850 compute units",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh failed: invalid instruction data"
+      ],
+      "ok": false,
+      "transaction_bytes": 860
+    },
+    {
+      "case": "proof-mutation/request/6",
+      "cu": 143513,
+      "error": "InstructionError(1, Custom(1))",
+      "expected": "Crypto",
+      "inner_instruction_count": 0,
+      "logs": [
+        "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+        "Program ComputeBudget111111111111111111111111111111 success",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh invoke [1]",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh consumed 143363 of 999850 compute units",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh failed: custom program error: 0x1"
+      ],
+      "ok": false,
+      "transaction_bytes": 860
+    },
+    {
+      "case": "noncanonical-coordinate/request/6",
+      "cu": 879,
+      "error": "InstructionError(1, InvalidInstructionData)",
+      "expected": "Crypto",
+      "inner_instruction_count": 0,
+      "logs": [
+        "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+        "Program ComputeBudget111111111111111111111111111111 success",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh invoke [1]",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh consumed 729 of 999850 compute units",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh failed: invalid instruction data"
+      ],
+      "ok": false,
+      "transaction_bytes": 860
+    },
+    {
+      "case": "proof-mutation/request/7",
+      "cu": 143513,
+      "error": "InstructionError(1, Custom(1))",
+      "expected": "Crypto",
+      "inner_instruction_count": 0,
+      "logs": [
+        "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+        "Program ComputeBudget111111111111111111111111111111 success",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh invoke [1]",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh consumed 143363 of 999850 compute units",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh failed: custom program error: 0x1"
+      ],
+      "ok": false,
+      "transaction_bytes": 860
+    },
+    {
+      "case": "noncanonical-coordinate/request/7",
+      "cu": 886,
+      "error": "InstructionError(1, InvalidInstructionData)",
+      "expected": "Crypto",
+      "inner_instruction_count": 0,
+      "logs": [
+        "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+        "Program ComputeBudget111111111111111111111111111111 success",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh invoke [1]",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh consumed 736 of 999850 compute units",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh failed: invalid instruction data"
+      ],
+      "ok": false,
+      "transaction_bytes": 860
+    },
+    {
+      "case": "A-sign/request",
+      "cu": 143559,
+      "error": "InstructionError(1, Custom(1))",
+      "expected": "Crypto",
+      "inner_instruction_count": 0,
+      "logs": [
+        "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+        "Program ComputeBudget111111111111111111111111111111 success",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh invoke [1]",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh consumed 143409 of 999850 compute units",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh failed: custom program error: 0x1"
+      ],
+      "ok": false,
+      "transaction_bytes": 860
+    },
+    {
+      "case": "G2-order/request",
+      "cu": 143507,
+      "error": "InstructionError(1, Custom(1))",
+      "expected": "Crypto",
+      "inner_instruction_count": 0,
+      "logs": [
+        "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+        "Program ComputeBudget111111111111111111111111111111 success",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh invoke [1]",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh consumed 143357 of 999850 compute units",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh failed: custom program error: 0x1"
+      ],
+      "ok": false,
+      "transaction_bytes": 860
+    },
+    {
+      "case": "non-subgroup-G2/request",
+      "cu": 143885,
+      "error": "InstructionError(1, Custom(1))",
+      "expected": "Crypto",
+      "inner_instruction_count": 0,
+      "logs": [
+        "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+        "Program ComputeBudget111111111111111111111111111111 success",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh invoke [1]",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh consumed 143735 of 999850 compute units",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh failed: custom program error: 0x1"
+      ],
+      "ok": false,
+      "transaction_bytes": 860
+    },
+    {
+      "case": "infinity-a/request",
+      "cu": 1278,
+      "error": "InstructionError(1, InvalidInstructionData)",
+      "expected": "Crypto",
+      "inner_instruction_count": 0,
+      "logs": [
+        "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+        "Program ComputeBudget111111111111111111111111111111 success",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh invoke [1]",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh consumed 1128 of 999850 compute units",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh failed: invalid instruction data"
+      ],
+      "ok": false,
+      "transaction_bytes": 860
+    },
+    {
+      "case": "infinity-b/request",
+      "cu": 1669,
+      "error": "InstructionError(1, InvalidInstructionData)",
+      "expected": "Crypto",
+      "inner_instruction_count": 0,
+      "logs": [
+        "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+        "Program ComputeBudget111111111111111111111111111111 success",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh invoke [1]",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh consumed 1519 of 999850 compute units",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh failed: invalid instruction data"
+      ],
+      "ok": false,
+      "transaction_bytes": 860
+    },
+    {
+      "case": "infinity-c/request",
+      "cu": 1298,
+      "error": "InstructionError(1, InvalidInstructionData)",
+      "expected": "Crypto",
+      "inner_instruction_count": 0,
+      "logs": [
+        "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+        "Program ComputeBudget111111111111111111111111111111 success",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh invoke [1]",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh consumed 1148 of 999850 compute units",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh failed: invalid instruction data"
+      ],
+      "ok": false,
+      "transaction_bytes": 860
+    },
+    {
+      "case": "public-mutation/withdrawal/0",
+      "cu": 155009,
+      "error": "InstructionError(1, Custom(1))",
+      "expected": "Crypto",
+      "inner_instruction_count": 0,
+      "logs": [
+        "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+        "Program ComputeBudget111111111111111111111111111111 success",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh invoke [1]",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh consumed 154859 of 999850 compute units",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh failed: custom program error: 0x1"
+      ],
+      "ok": false,
+      "transaction_bytes": 924
+    },
+    {
+      "case": "public-mutation/withdrawal/1",
+      "cu": 155009,
+      "error": "InstructionError(1, Custom(1))",
+      "expected": "Crypto",
+      "inner_instruction_count": 0,
+      "logs": [
+        "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+        "Program ComputeBudget111111111111111111111111111111 success",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh invoke [1]",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh consumed 154859 of 999850 compute units",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh failed: custom program error: 0x1"
+      ],
+      "ok": false,
+      "transaction_bytes": 924
+    },
+    {
+      "case": "public-mutation/withdrawal/2",
+      "cu": 155009,
+      "error": "InstructionError(1, Custom(1))",
+      "expected": "Crypto",
+      "inner_instruction_count": 0,
+      "logs": [
+        "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+        "Program ComputeBudget111111111111111111111111111111 success",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh invoke [1]",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh consumed 154859 of 999850 compute units",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh failed: custom program error: 0x1"
+      ],
+      "ok": false,
+      "transaction_bytes": 924
+    },
+    {
+      "case": "public-mutation/withdrawal/3",
+      "cu": 155009,
+      "error": "InstructionError(1, Custom(1))",
+      "expected": "Crypto",
+      "inner_instruction_count": 0,
+      "logs": [
+        "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+        "Program ComputeBudget111111111111111111111111111111 success",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh invoke [1]",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh consumed 154859 of 999850 compute units",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh failed: custom program error: 0x1"
+      ],
+      "ok": false,
+      "transaction_bytes": 924
+    },
+    {
+      "case": "public-mutation/withdrawal/4",
+      "cu": 155009,
+      "error": "InstructionError(1, Custom(1))",
+      "expected": "Crypto",
+      "inner_instruction_count": 0,
+      "logs": [
+        "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+        "Program ComputeBudget111111111111111111111111111111 success",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh invoke [1]",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh consumed 154859 of 999850 compute units",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh failed: custom program error: 0x1"
+      ],
+      "ok": false,
+      "transaction_bytes": 924
+    },
+    {
+      "case": "public-mutation/withdrawal/5",
+      "cu": 155009,
+      "error": "InstructionError(1, Custom(1))",
+      "expected": "Crypto",
+      "inner_instruction_count": 0,
+      "logs": [
+        "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+        "Program ComputeBudget111111111111111111111111111111 success",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh invoke [1]",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh consumed 154859 of 999850 compute units",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh failed: custom program error: 0x1"
+      ],
+      "ok": false,
+      "transaction_bytes": 924
+    },
+    {
+      "case": "public-mutation/withdrawal/6",
+      "cu": 155009,
+      "error": "InstructionError(1, Custom(1))",
+      "expected": "Crypto",
+      "inner_instruction_count": 0,
+      "logs": [
+        "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+        "Program ComputeBudget111111111111111111111111111111 success",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh invoke [1]",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh consumed 154859 of 999850 compute units",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh failed: custom program error: 0x1"
+      ],
+      "ok": false,
+      "transaction_bytes": 924
+    },
+    {
+      "case": "public-mutation/withdrawal/7",
+      "cu": 155009,
+      "error": "InstructionError(1, Custom(1))",
+      "expected": "Crypto",
+      "inner_instruction_count": 0,
+      "logs": [
+        "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+        "Program ComputeBudget111111111111111111111111111111 success",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh invoke [1]",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh consumed 154859 of 999850 compute units",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh failed: custom program error: 0x1"
+      ],
+      "ok": false,
+      "transaction_bytes": 924
+    },
+    {
+      "case": "public-mutation/withdrawal/8",
+      "cu": 155013,
+      "error": "InstructionError(1, Custom(1))",
+      "expected": "Crypto",
+      "inner_instruction_count": 0,
+      "logs": [
+        "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+        "Program ComputeBudget111111111111111111111111111111 success",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh invoke [1]",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh consumed 154863 of 999850 compute units",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh failed: custom program error: 0x1"
+      ],
+      "ok": false,
+      "transaction_bytes": 924
+    },
+    {
+      "case": "public-mutation/withdrawal/9",
+      "cu": 155009,
+      "error": "InstructionError(1, Custom(1))",
+      "expected": "Crypto",
+      "inner_instruction_count": 0,
+      "logs": [
+        "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+        "Program ComputeBudget111111111111111111111111111111 success",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh invoke [1]",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh consumed 154859 of 999850 compute units",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh failed: custom program error: 0x1"
+      ],
+      "ok": false,
+      "transaction_bytes": 924
+    },
+    {
+      "case": "public-mutation/withdrawal/10",
+      "cu": 155009,
+      "error": "InstructionError(1, Custom(1))",
+      "expected": "Crypto",
+      "inner_instruction_count": 0,
+      "logs": [
+        "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+        "Program ComputeBudget111111111111111111111111111111 success",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh invoke [1]",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh consumed 154859 of 999850 compute units",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh failed: custom program error: 0x1"
+      ],
+      "ok": false,
+      "transaction_bytes": 924
+    },
+    {
+      "case": "public-mutation/withdrawal/11",
+      "cu": 155009,
+      "error": "InstructionError(1, Custom(1))",
+      "expected": "Crypto",
+      "inner_instruction_count": 0,
+      "logs": [
+        "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+        "Program ComputeBudget111111111111111111111111111111 success",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh invoke [1]",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh consumed 154859 of 999850 compute units",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh failed: custom program error: 0x1"
+      ],
+      "ok": false,
+      "transaction_bytes": 924
+    },
+    {
+      "case": "public-mutation/withdrawal/12",
+      "cu": 155005,
+      "error": "InstructionError(1, Custom(1))",
+      "expected": "Crypto",
+      "inner_instruction_count": 0,
+      "logs": [
+        "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+        "Program ComputeBudget111111111111111111111111111111 success",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh invoke [1]",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh consumed 154855 of 999850 compute units",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh failed: custom program error: 0x1"
+      ],
+      "ok": false,
+      "transaction_bytes": 924
+    },
+    {
+      "case": "public-mutation/withdrawal/13",
+      "cu": 155009,
+      "error": "InstructionError(1, Custom(1))",
+      "expected": "Crypto",
+      "inner_instruction_count": 0,
+      "logs": [
+        "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+        "Program ComputeBudget111111111111111111111111111111 success",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh invoke [1]",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh consumed 154859 of 999850 compute units",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh failed: custom program error: 0x1"
+      ],
+      "ok": false,
+      "transaction_bytes": 924
+    },
+    {
+      "case": "noncanonical/withdrawal/0",
+      "cu": 851,
+      "error": "InstructionError(1, Custom(21))",
+      "expected": "Custom(21)",
+      "inner_instruction_count": 0,
+      "logs": [
+        "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+        "Program ComputeBudget111111111111111111111111111111 success",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh invoke [1]",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh consumed 701 of 999850 compute units",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh failed: custom program error: 0x15"
+      ],
+      "ok": false,
+      "transaction_bytes": 924
+    },
+    {
+      "case": "noncanonical/withdrawal/1",
+      "cu": 860,
+      "error": "InstructionError(1, Custom(21))",
+      "expected": "Custom(21)",
+      "inner_instruction_count": 0,
+      "logs": [
+        "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+        "Program ComputeBudget111111111111111111111111111111 success",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh invoke [1]",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh consumed 710 of 999850 compute units",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh failed: custom program error: 0x15"
+      ],
+      "ok": false,
+      "transaction_bytes": 924
+    },
+    {
+      "case": "noncanonical/withdrawal/2",
+      "cu": 869,
+      "error": "InstructionError(1, Custom(21))",
+      "expected": "Custom(21)",
+      "inner_instruction_count": 0,
+      "logs": [
+        "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+        "Program ComputeBudget111111111111111111111111111111 success",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh invoke [1]",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh consumed 719 of 999850 compute units",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh failed: custom program error: 0x15"
+      ],
+      "ok": false,
+      "transaction_bytes": 924
+    },
+    {
+      "case": "noncanonical/withdrawal/3",
+      "cu": 878,
+      "error": "InstructionError(1, Custom(21))",
+      "expected": "Custom(21)",
+      "inner_instruction_count": 0,
+      "logs": [
+        "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+        "Program ComputeBudget111111111111111111111111111111 success",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh invoke [1]",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh consumed 728 of 999850 compute units",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh failed: custom program error: 0x15"
+      ],
+      "ok": false,
+      "transaction_bytes": 924
+    },
+    {
+      "case": "noncanonical/withdrawal/4",
+      "cu": 887,
+      "error": "InstructionError(1, Custom(21))",
+      "expected": "Custom(21)",
+      "inner_instruction_count": 0,
+      "logs": [
+        "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+        "Program ComputeBudget111111111111111111111111111111 success",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh invoke [1]",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh consumed 737 of 999850 compute units",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh failed: custom program error: 0x15"
+      ],
+      "ok": false,
+      "transaction_bytes": 924
+    },
+    {
+      "case": "noncanonical/withdrawal/5",
+      "cu": 896,
+      "error": "InstructionError(1, Custom(21))",
+      "expected": "Custom(21)",
+      "inner_instruction_count": 0,
+      "logs": [
+        "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+        "Program ComputeBudget111111111111111111111111111111 success",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh invoke [1]",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh consumed 746 of 999850 compute units",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh failed: custom program error: 0x15"
+      ],
+      "ok": false,
+      "transaction_bytes": 924
+    },
+    {
+      "case": "noncanonical/withdrawal/6",
+      "cu": 905,
+      "error": "InstructionError(1, Custom(21))",
+      "expected": "Custom(21)",
+      "inner_instruction_count": 0,
+      "logs": [
+        "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+        "Program ComputeBudget111111111111111111111111111111 success",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh invoke [1]",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh consumed 755 of 999850 compute units",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh failed: custom program error: 0x15"
+      ],
+      "ok": false,
+      "transaction_bytes": 924
+    },
+    {
+      "case": "noncanonical/withdrawal/7",
+      "cu": 914,
+      "error": "InstructionError(1, Custom(21))",
+      "expected": "Custom(21)",
+      "inner_instruction_count": 0,
+      "logs": [
+        "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+        "Program ComputeBudget111111111111111111111111111111 success",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh invoke [1]",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh consumed 764 of 999850 compute units",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh failed: custom program error: 0x15"
+      ],
+      "ok": false,
+      "transaction_bytes": 924
+    },
+    {
+      "case": "noncanonical/withdrawal/8",
+      "cu": 923,
+      "error": "InstructionError(1, Custom(21))",
+      "expected": "Custom(21)",
+      "inner_instruction_count": 0,
+      "logs": [
+        "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+        "Program ComputeBudget111111111111111111111111111111 success",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh invoke [1]",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh consumed 773 of 999850 compute units",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh failed: custom program error: 0x15"
+      ],
+      "ok": false,
+      "transaction_bytes": 924
+    },
+    {
+      "case": "noncanonical/withdrawal/9",
+      "cu": 932,
+      "error": "InstructionError(1, Custom(21))",
+      "expected": "Custom(21)",
+      "inner_instruction_count": 0,
+      "logs": [
+        "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+        "Program ComputeBudget111111111111111111111111111111 success",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh invoke [1]",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh consumed 782 of 999850 compute units",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh failed: custom program error: 0x15"
+      ],
+      "ok": false,
+      "transaction_bytes": 924
+    },
+    {
+      "case": "noncanonical/withdrawal/10",
+      "cu": 941,
+      "error": "InstructionError(1, Custom(21))",
+      "expected": "Custom(21)",
+      "inner_instruction_count": 0,
+      "logs": [
+        "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+        "Program ComputeBudget111111111111111111111111111111 success",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh invoke [1]",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh consumed 791 of 999850 compute units",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh failed: custom program error: 0x15"
+      ],
+      "ok": false,
+      "transaction_bytes": 924
+    },
+    {
+      "case": "noncanonical/withdrawal/11",
+      "cu": 950,
+      "error": "InstructionError(1, Custom(21))",
+      "expected": "Custom(21)",
+      "inner_instruction_count": 0,
+      "logs": [
+        "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+        "Program ComputeBudget111111111111111111111111111111 success",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh invoke [1]",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh consumed 800 of 999850 compute units",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh failed: custom program error: 0x15"
+      ],
+      "ok": false,
+      "transaction_bytes": 924
+    },
+    {
+      "case": "noncanonical/withdrawal/12",
+      "cu": 959,
+      "error": "InstructionError(1, Custom(21))",
+      "expected": "Custom(21)",
+      "inner_instruction_count": 0,
+      "logs": [
+        "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+        "Program ComputeBudget111111111111111111111111111111 success",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh invoke [1]",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh consumed 809 of 999850 compute units",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh failed: custom program error: 0x15"
+      ],
+      "ok": false,
+      "transaction_bytes": 924
+    },
+    {
+      "case": "noncanonical/withdrawal/13",
+      "cu": 968,
+      "error": "InstructionError(1, Custom(21))",
+      "expected": "Custom(21)",
+      "inner_instruction_count": 0,
+      "logs": [
+        "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+        "Program ComputeBudget111111111111111111111111111111 success",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh invoke [1]",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh consumed 818 of 999850 compute units",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh failed: custom program error: 0x15"
+      ],
+      "ok": false,
+      "transaction_bytes": 924
+    },
+    {
+      "case": "proof-mutation/withdrawal/0",
+      "cu": 154958,
+      "error": "InstructionError(1, Custom(1))",
+      "expected": "Crypto",
+      "inner_instruction_count": 0,
+      "logs": [
+        "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+        "Program ComputeBudget111111111111111111111111111111 success",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh invoke [1]",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh consumed 154808 of 999850 compute units",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh failed: custom program error: 0x1"
+      ],
+      "ok": false,
+      "transaction_bytes": 924
+    },
+    {
+      "case": "noncanonical-coordinate/withdrawal/0",
+      "cu": 986,
+      "error": "InstructionError(1, InvalidInstructionData)",
+      "expected": "Crypto",
+      "inner_instruction_count": 0,
+      "logs": [
+        "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+        "Program ComputeBudget111111111111111111111111111111 success",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh invoke [1]",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh consumed 836 of 999850 compute units",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh failed: invalid instruction data"
+      ],
+      "ok": false,
+      "transaction_bytes": 924
+    },
+    {
+      "case": "proof-mutation/withdrawal/1",
+      "cu": 154958,
+      "error": "InstructionError(1, Custom(1))",
+      "expected": "Crypto",
+      "inner_instruction_count": 0,
+      "logs": [
+        "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+        "Program ComputeBudget111111111111111111111111111111 success",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh invoke [1]",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh consumed 154808 of 999850 compute units",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh failed: custom program error: 0x1"
+      ],
+      "ok": false,
+      "transaction_bytes": 924
+    },
+    {
+      "case": "noncanonical-coordinate/withdrawal/1",
+      "cu": 992,
+      "error": "InstructionError(1, InvalidInstructionData)",
+      "expected": "Crypto",
+      "inner_instruction_count": 0,
+      "logs": [
+        "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+        "Program ComputeBudget111111111111111111111111111111 success",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh invoke [1]",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh consumed 842 of 999850 compute units",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh failed: invalid instruction data"
+      ],
+      "ok": false,
+      "transaction_bytes": 924
+    },
+    {
+      "case": "proof-mutation/withdrawal/2",
+      "cu": 154958,
+      "error": "InstructionError(1, Custom(1))",
+      "expected": "Crypto",
+      "inner_instruction_count": 0,
+      "logs": [
+        "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+        "Program ComputeBudget111111111111111111111111111111 success",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh invoke [1]",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh consumed 154808 of 999850 compute units",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh failed: custom program error: 0x1"
+      ],
+      "ok": false,
+      "transaction_bytes": 924
+    },
+    {
+      "case": "noncanonical-coordinate/withdrawal/2",
+      "cu": 998,
+      "error": "InstructionError(1, InvalidInstructionData)",
+      "expected": "Crypto",
+      "inner_instruction_count": 0,
+      "logs": [
+        "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+        "Program ComputeBudget111111111111111111111111111111 success",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh invoke [1]",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh consumed 848 of 999850 compute units",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh failed: invalid instruction data"
+      ],
+      "ok": false,
+      "transaction_bytes": 924
+    },
+    {
+      "case": "proof-mutation/withdrawal/3",
+      "cu": 154958,
+      "error": "InstructionError(1, Custom(1))",
+      "expected": "Crypto",
+      "inner_instruction_count": 0,
+      "logs": [
+        "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+        "Program ComputeBudget111111111111111111111111111111 success",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh invoke [1]",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh consumed 154808 of 999850 compute units",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh failed: custom program error: 0x1"
+      ],
+      "ok": false,
+      "transaction_bytes": 924
+    },
+    {
+      "case": "noncanonical-coordinate/withdrawal/3",
+      "cu": 1004,
+      "error": "InstructionError(1, InvalidInstructionData)",
+      "expected": "Crypto",
+      "inner_instruction_count": 0,
+      "logs": [
+        "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+        "Program ComputeBudget111111111111111111111111111111 success",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh invoke [1]",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh consumed 854 of 999850 compute units",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh failed: invalid instruction data"
+      ],
+      "ok": false,
+      "transaction_bytes": 924
+    },
+    {
+      "case": "proof-mutation/withdrawal/4",
+      "cu": 154958,
+      "error": "InstructionError(1, Custom(1))",
+      "expected": "Crypto",
+      "inner_instruction_count": 0,
+      "logs": [
+        "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+        "Program ComputeBudget111111111111111111111111111111 success",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh invoke [1]",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh consumed 154808 of 999850 compute units",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh failed: custom program error: 0x1"
+      ],
+      "ok": false,
+      "transaction_bytes": 924
+    },
+    {
+      "case": "noncanonical-coordinate/withdrawal/4",
+      "cu": 1011,
+      "error": "InstructionError(1, InvalidInstructionData)",
+      "expected": "Crypto",
+      "inner_instruction_count": 0,
+      "logs": [
+        "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+        "Program ComputeBudget111111111111111111111111111111 success",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh invoke [1]",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh consumed 861 of 999850 compute units",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh failed: invalid instruction data"
+      ],
+      "ok": false,
+      "transaction_bytes": 924
+    },
+    {
+      "case": "proof-mutation/withdrawal/5",
+      "cu": 154958,
+      "error": "InstructionError(1, Custom(1))",
+      "expected": "Crypto",
+      "inner_instruction_count": 0,
+      "logs": [
+        "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+        "Program ComputeBudget111111111111111111111111111111 success",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh invoke [1]",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh consumed 154808 of 999850 compute units",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh failed: custom program error: 0x1"
+      ],
+      "ok": false,
+      "transaction_bytes": 924
+    },
+    {
+      "case": "noncanonical-coordinate/withdrawal/5",
+      "cu": 1018,
+      "error": "InstructionError(1, InvalidInstructionData)",
+      "expected": "Crypto",
+      "inner_instruction_count": 0,
+      "logs": [
+        "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+        "Program ComputeBudget111111111111111111111111111111 success",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh invoke [1]",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh consumed 868 of 999850 compute units",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh failed: invalid instruction data"
+      ],
+      "ok": false,
+      "transaction_bytes": 924
+    },
+    {
+      "case": "proof-mutation/withdrawal/6",
+      "cu": 154958,
+      "error": "InstructionError(1, Custom(1))",
+      "expected": "Crypto",
+      "inner_instruction_count": 0,
+      "logs": [
+        "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+        "Program ComputeBudget111111111111111111111111111111 success",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh invoke [1]",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh consumed 154808 of 999850 compute units",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh failed: custom program error: 0x1"
+      ],
+      "ok": false,
+      "transaction_bytes": 924
+    },
+    {
+      "case": "noncanonical-coordinate/withdrawal/6",
+      "cu": 1025,
+      "error": "InstructionError(1, InvalidInstructionData)",
+      "expected": "Crypto",
+      "inner_instruction_count": 0,
+      "logs": [
+        "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+        "Program ComputeBudget111111111111111111111111111111 success",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh invoke [1]",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh consumed 875 of 999850 compute units",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh failed: invalid instruction data"
+      ],
+      "ok": false,
+      "transaction_bytes": 924
+    },
+    {
+      "case": "proof-mutation/withdrawal/7",
+      "cu": 154958,
+      "error": "InstructionError(1, Custom(1))",
+      "expected": "Crypto",
+      "inner_instruction_count": 0,
+      "logs": [
+        "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+        "Program ComputeBudget111111111111111111111111111111 success",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh invoke [1]",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh consumed 154808 of 999850 compute units",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh failed: custom program error: 0x1"
+      ],
+      "ok": false,
+      "transaction_bytes": 924
+    },
+    {
+      "case": "noncanonical-coordinate/withdrawal/7",
+      "cu": 1032,
+      "error": "InstructionError(1, InvalidInstructionData)",
+      "expected": "Crypto",
+      "inner_instruction_count": 0,
+      "logs": [
+        "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+        "Program ComputeBudget111111111111111111111111111111 success",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh invoke [1]",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh consumed 882 of 999850 compute units",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh failed: invalid instruction data"
+      ],
+      "ok": false,
+      "transaction_bytes": 924
+    },
+    {
+      "case": "A-sign/withdrawal",
+      "cu": 155009,
+      "error": "InstructionError(1, Custom(1))",
+      "expected": "Crypto",
+      "inner_instruction_count": 0,
+      "logs": [
+        "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+        "Program ComputeBudget111111111111111111111111111111 success",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh invoke [1]",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh consumed 154859 of 999850 compute units",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh failed: custom program error: 0x1"
+      ],
+      "ok": false,
+      "transaction_bytes": 924
+    },
+    {
+      "case": "G2-order/withdrawal",
+      "cu": 154958,
+      "error": "InstructionError(1, Custom(1))",
+      "expected": "Crypto",
+      "inner_instruction_count": 0,
+      "logs": [
+        "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+        "Program ComputeBudget111111111111111111111111111111 success",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh invoke [1]",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh consumed 154808 of 999850 compute units",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh failed: custom program error: 0x1"
+      ],
+      "ok": false,
+      "transaction_bytes": 924
+    },
+    {
+      "case": "non-subgroup-G2/withdrawal",
+      "cu": 155336,
+      "error": "InstructionError(1, Custom(1))",
+      "expected": "Crypto",
+      "inner_instruction_count": 0,
+      "logs": [
+        "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+        "Program ComputeBudget111111111111111111111111111111 success",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh invoke [1]",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh consumed 155186 of 999850 compute units",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh failed: custom program error: 0x1"
+      ],
+      "ok": false,
+      "transaction_bytes": 924
+    },
+    {
+      "case": "infinity-a/withdrawal",
+      "cu": 1424,
+      "error": "InstructionError(1, InvalidInstructionData)",
+      "expected": "Crypto",
+      "inner_instruction_count": 0,
+      "logs": [
+        "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+        "Program ComputeBudget111111111111111111111111111111 success",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh invoke [1]",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh consumed 1274 of 999850 compute units",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh failed: invalid instruction data"
+      ],
+      "ok": false,
+      "transaction_bytes": 924
+    },
+    {
+      "case": "infinity-b/withdrawal",
+      "cu": 1815,
+      "error": "InstructionError(1, InvalidInstructionData)",
+      "expected": "Crypto",
+      "inner_instruction_count": 0,
+      "logs": [
+        "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+        "Program ComputeBudget111111111111111111111111111111 success",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh invoke [1]",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh consumed 1665 of 999850 compute units",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh failed: invalid instruction data"
+      ],
+      "ok": false,
+      "transaction_bytes": 924
+    },
+    {
+      "case": "infinity-c/withdrawal",
+      "cu": 1438,
+      "error": "InstructionError(1, InvalidInstructionData)",
+      "expected": "Crypto",
+      "inner_instruction_count": 0,
+      "logs": [
+        "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+        "Program ComputeBudget111111111111111111111111111111 success",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh invoke [1]",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh consumed 1288 of 999850 compute units",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh failed: invalid instruction data"
+      ],
+      "ok": false,
+      "transaction_bytes": 924
+    },
+    {
+      "case": "state/root",
+      "cu": 8950,
+      "error": "InstructionError(1, Custom(22))",
+      "expected": "Custom(22)",
+      "inner_instruction_count": 0,
+      "logs": [
+        "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+        "Program ComputeBudget111111111111111111111111111111 success",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh invoke [1]",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh consumed 8800 of 999850 compute units",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh failed: custom program error: 0x16"
+      ],
+      "ok": false,
+      "transaction_bytes": 516
+    },
+    {
+      "case": "state/id",
+      "cu": 9008,
+      "error": "InstructionError(1, Custom(22))",
+      "expected": "Custom(22)",
+      "inner_instruction_count": 0,
+      "logs": [
+        "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+        "Program ComputeBudget111111111111111111111111111111 success",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh invoke [1]",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh consumed 8858 of 999850 compute units",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh failed: custom program error: 0x16"
+      ],
+      "ok": false,
+      "transaction_bytes": 516
+    },
+    {
+      "case": "state/commitment",
+      "cu": 9023,
+      "error": "InstructionError(1, Custom(22))",
+      "expected": "Custom(22)",
+      "inner_instruction_count": 0,
+      "logs": [
+        "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+        "Program ComputeBudget111111111111111111111111111111 success",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh invoke [1]",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh consumed 8873 of 999850 compute units",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh failed: custom program error: 0x16"
+      ],
+      "ok": false,
+      "transaction_bytes": 516
+    },
+    {
+      "case": "state/deposit",
+      "cu": 9037,
+      "error": "InstructionError(1, Custom(22))",
+      "expected": "Custom(22)",
+      "inner_instruction_count": 0,
+      "logs": [
+        "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+        "Program ComputeBudget111111111111111111111111111111 success",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh invoke [1]",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh consumed 8887 of 999850 compute units",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh failed: custom program error: 0x16"
+      ],
+      "ok": false,
+      "transaction_bytes": 516
+    },
+    {
+      "case": "state/expiry",
+      "cu": 9051,
+      "error": "InstructionError(1, Custom(22))",
+      "expected": "Custom(22)",
+      "inner_instruction_count": 0,
+      "logs": [
+        "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+        "Program ComputeBudget111111111111111111111111111111 success",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh invoke [1]",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh consumed 8901 of 999850 compute units",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh failed: custom program error: 0x16"
+      ],
+      "ok": false,
+      "transaction_bytes": 516
+    },
+    {
+      "case": "state/state-key",
+      "cu": 9152,
+      "error": "InstructionError(1, Custom(22))",
+      "expected": "Custom(22)",
+      "inner_instruction_count": 0,
+      "logs": [
+        "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+        "Program ComputeBudget111111111111111111111111111111 success",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh invoke [1]",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh consumed 9002 of 999850 compute units",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh failed: custom program error: 0x16"
+      ],
+      "ok": false,
+      "transaction_bytes": 516
+    },
+    {
+      "case": "state/clearance-key",
+      "cu": 9176,
+      "error": "InstructionError(1, Custom(22))",
+      "expected": "Custom(22)",
+      "inner_instruction_count": 0,
+      "logs": [
+        "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+        "Program ComputeBudget111111111111111111111111111111 success",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh invoke [1]",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh consumed 9026 of 999850 compute units",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh failed: custom program error: 0x16"
+      ],
+      "ok": false,
+      "transaction_bytes": 516
+    },
+    {
+      "case": "state/paused",
+      "cu": 8975,
+      "error": "InstructionError(1, Custom(24))",
+      "expected": "Custom(24)",
+      "inner_instruction_count": 0,
+      "logs": [
+        "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+        "Program ComputeBudget111111111111111111111111111111 success",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh invoke [1]",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh consumed 8825 of 999850 compute units",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh failed: custom program error: 0x18"
+      ],
+      "ok": false,
+      "transaction_bytes": 516
+    },
+    {
+      "case": "state/closed",
+      "cu": 9078,
+      "error": "InstructionError(1, Custom(24))",
+      "expected": "Custom(24)",
+      "inner_instruction_count": 0,
+      "logs": [
+        "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+        "Program ComputeBudget111111111111111111111111111111 success",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh invoke [1]",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh consumed 8928 of 999850 compute units",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh failed: custom program error: 0x18"
+      ],
+      "ok": false,
+      "transaction_bytes": 516
+    },
+    {
+      "case": "state/nullifier",
+      "cu": 9115,
+      "error": "InstructionError(1, Custom(27))",
+      "expected": "Custom(27)",
+      "inner_instruction_count": 0,
+      "logs": [
+        "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+        "Program ComputeBudget111111111111111111111111111111 success",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh invoke [1]",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh consumed 8965 of 999850 compute units",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh failed: custom program error: 0x1b"
+      ],
+      "ok": false,
+      "transaction_bytes": 516
+    },
+    {
+      "case": "state/profile",
+      "cu": 2406,
+      "error": "InstructionError(1, Custom(32))",
+      "expected": "Custom(32)",
+      "inner_instruction_count": 0,
+      "logs": [
+        "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+        "Program ComputeBudget111111111111111111111111111111 success",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh invoke [1]",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh consumed 2256 of 999850 compute units",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh failed: custom program error: 0x20"
+      ],
+      "ok": false,
+      "transaction_bytes": 516
+    },
+    {
+      "case": "state/layout",
+      "cu": 2399,
+      "error": "InstructionError(1, Custom(32))",
+      "expected": "Custom(32)",
+      "inner_instruction_count": 0,
+      "logs": [
+        "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+        "Program ComputeBudget111111111111111111111111111111 success",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh invoke [1]",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh consumed 2249 of 999850 compute units",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh failed: custom program error: 0x20"
+      ],
+      "ok": false,
+      "transaction_bytes": 516
+    },
+    {
+      "case": "state/backend",
+      "cu": 2401,
+      "error": "InstructionError(1, Custom(32))",
+      "expected": "Custom(32)",
+      "inner_instruction_count": 0,
+      "logs": [
+        "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+        "Program ComputeBudget111111111111111111111111111111 success",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh invoke [1]",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh consumed 2251 of 999850 compute units",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh failed: custom program error: 0x20"
+      ],
+      "ok": false,
+      "transaction_bytes": 516
+    },
+    {
+      "case": "state/policy",
+      "cu": 2403,
+      "error": "InstructionError(1, Custom(32))",
+      "expected": "Custom(32)",
+      "inner_instruction_count": 0,
+      "logs": [
+        "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+        "Program ComputeBudget111111111111111111111111111111 success",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh invoke [1]",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh consumed 2253 of 999850 compute units",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh failed: custom program error: 0x20"
+      ],
+      "ok": false,
+      "transaction_bytes": 516
+    },
+    {
+      "case": "state/genesis",
+      "cu": 9258,
+      "error": "InstructionError(1, Custom(22))",
+      "expected": "Custom(22)",
+      "inner_instruction_count": 0,
+      "logs": [
+        "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+        "Program ComputeBudget111111111111111111111111111111 success",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh invoke [1]",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh consumed 9108 of 999850 compute units",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh failed: custom program error: 0x16"
+      ],
+      "ok": false,
+      "transaction_bytes": 516
+    },
+    {
+      "case": "clearance/close-proof-in-escape",
+      "cu": 9214,
+      "error": "InstructionError(1, Custom(22))",
+      "expected": "Custom(22)",
+      "inner_instruction_count": 0,
+      "logs": [
+        "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+        "Program ComputeBudget111111111111111111111111111111 success",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh invoke [1]",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh consumed 9064 of 999850 compute units",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh failed: custom program error: 0x16"
+      ],
+      "ok": false,
+      "transaction_bytes": 516
+    },
+    {
+      "case": "clearance/escape-proof-in-close",
+      "cu": 9213,
+      "error": "InstructionError(1, Custom(22))",
+      "expected": "Custom(22)",
+      "inner_instruction_count": 0,
+      "logs": [
+        "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+        "Program ComputeBudget111111111111111111111111111111 success",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh invoke [1]",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh consumed 9063 of 999850 compute units",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh failed: custom program error: 0x16"
+      ],
+      "ok": false,
+      "transaction_bytes": 516
+    },
+    {
+      "case": "wire/Deposit/0",
+      "cu": 7339,
+      "error": "InstructionError(1, Custom(20))",
+      "expected": "Custom(20)",
+      "inner_instruction_count": 0,
+      "logs": [
+        "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+        "Program ComputeBudget111111111111111111111111111111 success",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh invoke [1]",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh consumed 7189 of 999850 compute units",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh failed: custom program error: 0x14"
+      ],
+      "ok": false,
+      "transaction_bytes": 516
+    },
+    {
+      "case": "wire/Deposit/1",
+      "cu": 7340,
+      "error": "InstructionError(1, Custom(20))",
+      "expected": "Custom(20)",
+      "inner_instruction_count": 0,
+      "logs": [
+        "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+        "Program ComputeBudget111111111111111111111111111111 success",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh invoke [1]",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh consumed 7190 of 999850 compute units",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh failed: custom program error: 0x14"
+      ],
+      "ok": false,
+      "transaction_bytes": 516
+    },
+    {
+      "case": "wire/Deposit/2",
+      "cu": 8888,
+      "error": "InstructionError(1, Custom(22))",
+      "expected": "Custom(22)",
+      "inner_instruction_count": 0,
+      "logs": [
+        "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+        "Program ComputeBudget111111111111111111111111111111 success",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh invoke [1]",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh consumed 8738 of 999850 compute units",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh failed: custom program error: 0x16"
+      ],
+      "ok": false,
+      "transaction_bytes": 516
+    },
+    {
+      "case": "wire/Close/0",
+      "cu": 7635,
+      "error": "InstructionError(1, Custom(20))",
+      "expected": "Custom(20)",
+      "inner_instruction_count": 0,
+      "logs": [
+        "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+        "Program ComputeBudget111111111111111111111111111111 success",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh invoke [1]",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh consumed 7485 of 999850 compute units",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh failed: custom program error: 0x14"
+      ],
+      "ok": false,
+      "transaction_bytes": 516
+    },
+    {
+      "case": "wire/Close/1",
+      "cu": 7636,
+      "error": "InstructionError(1, Custom(20))",
+      "expected": "Custom(20)",
+      "inner_instruction_count": 0,
+      "logs": [
+        "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+        "Program ComputeBudget111111111111111111111111111111 success",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh invoke [1]",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh consumed 7486 of 999850 compute units",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh failed: custom program error: 0x14"
+      ],
+      "ok": false,
+      "transaction_bytes": 516
+    },
+    {
+      "case": "wire/Close/2",
+      "cu": 8922,
+      "error": "InstructionError(1, Custom(22))",
+      "expected": "Custom(22)",
+      "inner_instruction_count": 0,
+      "logs": [
+        "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+        "Program ComputeBudget111111111111111111111111111111 success",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh invoke [1]",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh consumed 8772 of 999850 compute units",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh failed: custom program error: 0x16"
+      ],
+      "ok": false,
+      "transaction_bytes": 516
+    },
+    {
+      "case": "wire/Escape/0",
+      "cu": 7635,
+      "error": "InstructionError(1, Custom(20))",
+      "expected": "Custom(20)",
+      "inner_instruction_count": 0,
+      "logs": [
+        "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+        "Program ComputeBudget111111111111111111111111111111 success",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh invoke [1]",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh consumed 7485 of 999850 compute units",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh failed: custom program error: 0x14"
+      ],
+      "ok": false,
+      "transaction_bytes": 516
+    },
+    {
+      "case": "wire/Escape/1",
+      "cu": 7636,
+      "error": "InstructionError(1, Custom(20))",
+      "expected": "Custom(20)",
+      "inner_instruction_count": 0,
+      "logs": [
+        "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+        "Program ComputeBudget111111111111111111111111111111 success",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh invoke [1]",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh consumed 7486 of 999850 compute units",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh failed: custom program error: 0x14"
+      ],
+      "ok": false,
+      "transaction_bytes": 516
+    },
+    {
+      "case": "wire/Escape/2",
+      "cu": 8922,
+      "error": "InstructionError(1, Custom(22))",
+      "expected": "Custom(22)",
+      "inner_instruction_count": 0,
+      "logs": [
+        "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+        "Program ComputeBudget111111111111111111111111111111 success",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh invoke [1]",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh consumed 8772 of 999850 compute units",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh failed: custom program error: 0x16"
+      ],
+      "ok": false,
+      "transaction_bytes": 516
+    },
+    {
+      "case": "wire/Challenge/0",
+      "cu": 7605,
+      "error": "InstructionError(1, Custom(20))",
+      "expected": "Custom(20)",
+      "inner_instruction_count": 0,
+      "logs": [
+        "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+        "Program ComputeBudget111111111111111111111111111111 success",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh invoke [1]",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh consumed 7455 of 999850 compute units",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh failed: custom program error: 0x14"
+      ],
+      "ok": false,
+      "transaction_bytes": 516
+    },
+    {
+      "case": "wire/Challenge/1",
+      "cu": 7606,
+      "error": "InstructionError(1, Custom(20))",
+      "expected": "Custom(20)",
+      "inner_instruction_count": 0,
+      "logs": [
+        "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+        "Program ComputeBudget111111111111111111111111111111 success",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh invoke [1]",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh consumed 7456 of 999850 compute units",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh failed: custom program error: 0x14"
+      ],
+      "ok": false,
+      "transaction_bytes": 516
+    },
+    {
+      "case": "wire/Challenge/2",
+      "cu": 8882,
+      "error": "InstructionError(1, Custom(22))",
+      "expected": "Custom(22)",
+      "inner_instruction_count": 0,
+      "logs": [
+        "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+        "Program ComputeBudget111111111111111111111111111111 success",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh invoke [1]",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh consumed 8732 of 999850 compute units",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh failed: custom program error: 0x16"
+      ],
+      "ok": false,
+      "transaction_bytes": 516
+    },
+    {
+      "case": "wire/Expiry/0",
+      "cu": 7285,
+      "error": "InstructionError(1, Custom(20))",
+      "expected": "Custom(20)",
+      "inner_instruction_count": 0,
+      "logs": [
+        "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+        "Program ComputeBudget111111111111111111111111111111 success",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh invoke [1]",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh consumed 7135 of 999850 compute units",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh failed: custom program error: 0x14"
+      ],
+      "ok": false,
+      "transaction_bytes": 516
+    },
+    {
+      "case": "wire/Expiry/1",
+      "cu": 7286,
+      "error": "InstructionError(1, Custom(20))",
+      "expected": "Custom(20)",
+      "inner_instruction_count": 0,
+      "logs": [
+        "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+        "Program ComputeBudget111111111111111111111111111111 success",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh invoke [1]",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh consumed 7136 of 999850 compute units",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh failed: custom program error: 0x14"
+      ],
+      "ok": false,
+      "transaction_bytes": 516
+    },
+    {
+      "case": "wire/Expiry/2",
+      "cu": 8460,
+      "error": "InstructionError(1, Custom(22))",
+      "expected": "Custom(22)",
+      "inner_instruction_count": 0,
+      "logs": [
+        "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+        "Program ComputeBudget111111111111111111111111111111 success",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh invoke [1]",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh consumed 8310 of 999850 compute units",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh failed: custom program error: 0x16"
+      ],
+      "ok": false,
+      "transaction_bytes": 516
+    },
+    {
+      "case": "boundary/tree-full",
+      "cu": 8931,
+      "error": "InstructionError(1, Custom(26))",
+      "expected": "Custom(26)",
+      "inner_instruction_count": 0,
+      "logs": [
+        "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+        "Program ComputeBudget111111111111111111111111111111 success",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh invoke [1]",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh consumed 8781 of 999850 compute units",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh failed: custom program error: 0x1a"
+      ],
+      "ok": false,
+      "transaction_bytes": 516
+    },
+    {
+      "case": "boundary/deposit-amount-0",
+      "cu": 8966,
+      "error": "InstructionError(1, Custom(23))",
+      "expected": "Custom(23)",
+      "inner_instruction_count": 0,
+      "logs": [
+        "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+        "Program ComputeBudget111111111111111111111111111111 success",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh invoke [1]",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh consumed 8816 of 999850 compute units",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh failed: custom program error: 0x17"
+      ],
+      "ok": false,
+      "transaction_bytes": 516
+    },
+    {
+      "case": "boundary/deposit-amount-9007199254740992",
+      "cu": 8966,
+      "error": "InstructionError(1, Custom(23))",
+      "expected": "Custom(23)",
+      "inner_instruction_count": 0,
+      "logs": [
+        "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+        "Program ComputeBudget111111111111111111111111111111 success",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh invoke [1]",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh consumed 8816 of 999850 compute units",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh failed: custom program error: 0x17"
+      ],
+      "ok": false,
+      "transaction_bytes": 516
+    },
+    {
+      "case": "boundary/zero-commitment",
+      "cu": 8983,
+      "error": "InstructionError(1, Custom(23))",
+      "expected": "Custom(23)",
+      "inner_instruction_count": 0,
+      "logs": [
+        "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+        "Program ComputeBudget111111111111111111111111111111 success",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh invoke [1]",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh consumed 8833 of 999850 compute units",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh failed: custom program error: 0x17"
+      ],
+      "ok": false,
+      "transaction_bytes": 516
+    },
+    {
+      "case": "mixed-valid/wrong-tree-op-Close",
+      "cu": 8938,
+      "error": "InstructionError(1, Custom(22))",
+      "expected": "Custom(22)",
+      "inner_instruction_count": 0,
+      "logs": [
+        "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+        "Program ComputeBudget111111111111111111111111111111 success",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh invoke [1]",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh consumed 8788 of 999850 compute units",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh failed: custom program error: 0x16"
+      ],
+      "ok": false,
+      "transaction_bytes": 516
+    },
+    {
+      "case": "mixed-valid/wrong-tree-op-Challenge",
+      "cu": 8925,
+      "error": "InstructionError(1, Custom(22))",
+      "expected": "Custom(22)",
+      "inner_instruction_count": 0,
+      "logs": [
+        "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+        "Program ComputeBudget111111111111111111111111111111 success",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh invoke [1]",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh consumed 8775 of 999850 compute units",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh failed: custom program error: 0x16"
+      ],
+      "ok": false,
+      "transaction_bytes": 516
+    },
+    {
+      "case": "boundary/deposit-day-rollover",
+      "cu": 9002,
+      "error": "InstructionError(1, Custom(25))",
+      "expected": "Custom(25)",
+      "inner_instruction_count": 0,
+      "logs": [
+        "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+        "Program ComputeBudget111111111111111111111111111111 success",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh invoke [1]",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh consumed 8852 of 999850 compute units",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh failed: custom program error: 0x19"
+      ],
+      "ok": false,
+      "transaction_bytes": 516
+    },
+    {
+      "case": "boundary/expiry-too-early",
+      "cu": 8630,
+      "error": "InstructionError(1, Custom(25))",
+      "expected": "Custom(25)",
+      "inner_instruction_count": 0,
+      "logs": [
+        "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+        "Program ComputeBudget111111111111111111111111111111 success",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh invoke [1]",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh consumed 8480 of 999850 compute units",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh failed: custom program error: 0x19"
+      ],
+      "ok": false,
+      "transaction_bytes": 516
+    },
+    {
+      "case": "boundary/expiry-at-deadline-paused",
+      "cu": 154459,
+      "error": null,
+      "expected": "Ok",
+      "inner_instruction_count": 1,
+      "logs": [
+        "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+        "Program ComputeBudget111111111111111111111111111111 success",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh invoke [1]",
+        "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA invoke [2]",
+        "Program log: Instruction: TransferChecked",
+        "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA consumed 6148 of 852254 compute units",
+        "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA success",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh consumed 154309 of 999850 compute units",
+        "Program return: 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh K7Q3WcJGZdmKM6+o1QlIF9NZ1eTHKkW0WipWMXbTeTM=",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh success"
+      ],
+      "ok": true,
+      "transaction_bytes": 516
+    },
+    {
+      "case": "boundary/challenge-at-deadline",
+      "cu": 9051,
+      "error": "InstructionError(1, Custom(25))",
+      "expected": "Custom(25)",
+      "inner_instruction_count": 0,
+      "logs": [
+        "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+        "Program ComputeBudget111111111111111111111111111111 success",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh invoke [1]",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh consumed 8901 of 999850 compute units",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh failed: custom program error: 0x19"
+      ],
+      "ok": false,
+      "transaction_bytes": 516
+    },
+    {
+      "case": "accounts-buffer/0",
+      "cu": 6810,
+      "error": "InstructionError(1, Custom(33))",
+      "expected": "Custom(33)",
+      "inner_instruction_count": 0,
+      "logs": [
+        "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+        "Program ComputeBudget111111111111111111111111111111 success",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh invoke [1]",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh consumed 6660 of 999850 compute units",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh failed: custom program error: 0x21"
+      ],
+      "ok": false,
+      "transaction_bytes": 516
+    },
+    {
+      "case": "accounts-buffer/1",
+      "cu": 6769,
+      "error": "InstructionError(1, Custom(33))",
+      "expected": "Custom(33)",
+      "inner_instruction_count": 0,
+      "logs": [
+        "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+        "Program ComputeBudget111111111111111111111111111111 success",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh invoke [1]",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh consumed 6619 of 999850 compute units",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh failed: custom program error: 0x21"
+      ],
+      "ok": false,
+      "transaction_bytes": 516
+    },
+    {
+      "case": "accounts-buffer/2",
+      "cu": 6773,
+      "error": "InstructionError(1, Custom(33))",
+      "expected": "Custom(33)",
+      "inner_instruction_count": 0,
+      "logs": [
+        "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+        "Program ComputeBudget111111111111111111111111111111 success",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh invoke [1]",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh consumed 6623 of 999850 compute units",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh failed: custom program error: 0x21"
+      ],
+      "ok": false,
+      "transaction_bytes": 516
+    },
+    {
+      "case": "accounts-buffer/3",
+      "cu": 6791,
+      "error": "InstructionError(1, Custom(33))",
+      "expected": "Custom(33)",
+      "inner_instruction_count": 0,
+      "logs": [
+        "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+        "Program ComputeBudget111111111111111111111111111111 success",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh invoke [1]",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh consumed 6641 of 999850 compute units",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh failed: custom program error: 0x21"
+      ],
+      "ok": false,
+      "transaction_bytes": 516
+    },
+    {
+      "case": "accounts-buffer/4",
+      "cu": 2060,
+      "error": "InstructionError(1, Custom(30))",
+      "expected": "Custom(30)",
+      "inner_instruction_count": 0,
+      "logs": [
+        "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+        "Program ComputeBudget111111111111111111111111111111 success",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh invoke [1]",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh consumed 1910 of 999850 compute units",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh failed: custom program error: 0x1e"
+      ],
+      "ok": false,
+      "transaction_bytes": 516
+    },
+    {
+      "case": "accounts-buffer/5",
+      "cu": 2048,
+      "error": "InstructionError(1, Custom(30))",
+      "expected": "Custom(30)",
+      "inner_instruction_count": 0,
+      "logs": [
+        "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+        "Program ComputeBudget111111111111111111111111111111 success",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh invoke [1]",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh consumed 1898 of 999850 compute units",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh failed: custom program error: 0x1e"
+      ],
+      "ok": false,
+      "transaction_bytes": 516
+    },
+    {
+      "case": "accounts-buffer/6",
+      "cu": 9696,
+      "error": "InstructionError(1, Custom(22))",
+      "expected": "Custom(22)",
+      "inner_instruction_count": 0,
+      "logs": [
+        "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+        "Program ComputeBudget111111111111111111111111111111 success",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh invoke [1]",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh consumed 9546 of 999850 compute units",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh failed: custom program error: 0x16"
+      ],
+      "ok": false,
+      "transaction_bytes": 516
+    },
+    {
+      "case": "accounts-buffer/7",
+      "cu": 6806,
+      "error": "InstructionError(1, Custom(33))",
+      "expected": "Custom(33)",
+      "inner_instruction_count": 0,
+      "logs": [
+        "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+        "Program ComputeBudget111111111111111111111111111111 success",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh invoke [1]",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh consumed 6656 of 999850 compute units",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh failed: custom program error: 0x21"
+      ],
+      "ok": false,
+      "transaction_bytes": 516
+    },
+    {
+      "case": "rollback/second-token-CPI",
+      "cu": 315204,
+      "error": "InstructionError(1, Custom(17))",
+      "expected": "Frozen",
+      "inner_instruction_count": 2,
+      "logs": [
+        "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+        "Program ComputeBudget111111111111111111111111111111 success",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh invoke [1]",
+        "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA invoke [2]",
+        "Program log: Instruction: TransferChecked",
+        "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA consumed 6148 of 697555 compute units",
+        "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA success",
+        "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA invoke [2]",
+        "Program log: Instruction: TransferChecked",
+        "Program log: Error: Account is frozen",
+        "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA consumed 4482 of 689278 compute units",
+        "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA failed: custom program error: 0x11",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh consumed 315054 of 999850 compute units",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh failed: custom program error: 0x11"
+      ],
+      "ok": false,
+      "transaction_bytes": 516
+    },
+    {
+      "case": "sequence/escape",
+      "cu": 301014,
+      "error": null,
+      "expected": "Ok",
+      "inner_instruction_count": 0,
+      "logs": [
+        "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+        "Program ComputeBudget111111111111111111111111111111 success",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh invoke [1]",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh consumed 300864 of 999850 compute units",
+        "Program return: 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh K7Q3WcJGZdmKM6+o1QlIF9NZ1eTHKkW0WipWMXbTeTM=",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh success"
+      ],
+      "ok": true,
+      "transaction_bytes": 516
+    },
+    {
+      "case": "sequence/challenge",
+      "cu": 289451,
+      "error": null,
+      "expected": "Ok",
+      "inner_instruction_count": 0,
+      "logs": [
+        "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+        "Program ComputeBudget111111111111111111111111111111 success",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh invoke [1]",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh consumed 289301 of 999850 compute units",
+        "Program return: 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh DQyU3wVn3Fpjq8x78zMPz0fAjrrsWxrsII9nkHbG76s=",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh success"
+      ],
+      "ok": true,
+      "transaction_bytes": 516
+    },
+    {
+      "case": "sequence/consumed-N-after-challenge",
+      "cu": 9115,
+      "error": "InstructionError(1, Custom(27))",
+      "expected": "Custom(27)",
+      "inner_instruction_count": 0,
+      "logs": [
+        "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+        "Program ComputeBudget111111111111111111111111111111 success",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh invoke [1]",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh consumed 8965 of 999850 compute units",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh failed: custom program error: 0x1b"
+      ],
+      "ok": false,
+      "transaction_bytes": 516
+    },
+    {
+      "case": "wrong-compiled-VK/tree",
+      "cu": 138519,
+      "error": "InstructionError(1, Custom(1))",
+      "expected": "Crypto",
+      "inner_instruction_count": 0,
+      "logs": [
+        "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+        "Program ComputeBudget111111111111111111111111111111 success",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh invoke [1]",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh consumed 138369 of 999850 compute units",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh failed: custom program error: 0x1"
+      ],
+      "ok": false,
+      "transaction_bytes": 828
+    },
+    {
+      "case": "wrong-compiled-VK/request",
+      "cu": 144271,
+      "error": "InstructionError(1, Custom(1))",
+      "expected": "Crypto",
+      "inner_instruction_count": 0,
+      "logs": [
+        "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+        "Program ComputeBudget111111111111111111111111111111 success",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh invoke [1]",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh consumed 144121 of 999850 compute units",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh failed: custom program error: 0x1"
+      ],
+      "ok": false,
+      "transaction_bytes": 860
+    },
+    {
+      "case": "wrong-compiled-VK/withdrawal",
+      "cu": 155719,
+      "error": "InstructionError(1, Custom(1))",
+      "expected": "Crypto",
+      "inner_instruction_count": 0,
+      "logs": [
+        "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+        "Program ComputeBudget111111111111111111111111111111 success",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh invoke [1]",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh consumed 155569 of 999850 compute units",
+        "Program 3qbR1eZRqXUWroWKKYhbDmR3FfqTHfqSU8zZSxtANzYh failed: custom program error: 0x1"
+      ],
+      "ok": false,
+      "transaction_bytes": 924
+    }
+  ],
+  "compute_budget": 1000000,
+  "elf_sha256": "180fde56aa504eccc54c54ab5f3f59ce881aec49ad0f7c70a019779612b1720d",
+  "packet_limit": 1232,
+  "production_eligible": false,
+  "profile_hash": "37f90f026d5c20837aaa138af7f4c2aa64ede12195e762f33984446eaacc358d",
+  "sbf_arch": "v0",
+  "scope": "I02-B; actual SBF v0 and v0 transactions; measurement snapshots, prefilled sealed buffers and existing token accounts; no Vault/PDA/ATA creation or upload lifecycle claim",
+  "sizes": [
+    {
+      "case": "normal/a/Deposit",
+      "inline_fits": true,
+      "inline_transaction_bytes_same_measurement_accounts": 1177,
+      "payload_bytes": 692
+    },
+    {
+      "case": "normal/a/Close",
+      "inline_fits": false,
+      "inline_transaction_bytes_same_measurement_accounts": 1797,
+      "payload_bytes": 1312
+    },
+    {
+      "case": "normal/a/Escape",
+      "inline_fits": false,
+      "inline_transaction_bytes_same_measurement_accounts": 1797,
+      "payload_bytes": 1312
+    },
+    {
+      "case": "normal/a/Challenge",
+      "inline_fits": false,
+      "inline_transaction_bytes_same_measurement_accounts": 1737,
+      "payload_bytes": 1252
+    },
+    {
+      "case": "normal/a/Expiry",
+      "inline_fits": true,
+      "inline_transaction_bytes_same_measurement_accounts": 1097,
+      "payload_bytes": 612
+    },
+    {
+      "case": "normal/a-with-b/Close",
+      "inline_fits": false,
+      "inline_transaction_bytes_same_measurement_accounts": 1797,
+      "payload_bytes": 1312
+    },
+    {
+      "case": "normal/a-with-b/Escape",
+      "inline_fits": false,
+      "inline_transaction_bytes_same_measurement_accounts": 1797,
+      "payload_bytes": 1312
+    },
+    {
+      "case": "normal/a-with-b/Challenge",
+      "inline_fits": false,
+      "inline_transaction_bytes_same_measurement_accounts": 1737,
+      "payload_bytes": 1252
+    },
+    {
+      "case": "normal/a-with-b/Expiry",
+      "inline_fits": true,
+      "inline_transaction_bytes_same_measurement_accounts": 1097,
+      "payload_bytes": 612
+    },
+    {
+      "case": "normal/b-with-a/Close",
+      "inline_fits": false,
+      "inline_transaction_bytes_same_measurement_accounts": 1797,
+      "payload_bytes": 1312
+    },
+    {
+      "case": "normal/b-with-a/Escape",
+      "inline_fits": false,
+      "inline_transaction_bytes_same_measurement_accounts": 1797,
+      "payload_bytes": 1312
+    },
+    {
+      "case": "normal/b-with-a/Challenge",
+      "inline_fits": false,
+      "inline_transaction_bytes_same_measurement_accounts": 1737,
+      "payload_bytes": 1252
+    },
+    {
+      "case": "normal/b-with-a/Expiry",
+      "inline_fits": true,
+      "inline_transaction_bytes_same_measurement_accounts": 1097,
+      "payload_bytes": 612
+    },
+    {
+      "case": "normal/other-vault/Deposit",
+      "inline_fits": true,
+      "inline_transaction_bytes_same_measurement_accounts": 1177,
+      "payload_bytes": 692
+    },
+    {
+      "case": "normal/other-vault/Close",
+      "inline_fits": false,
+      "inline_transaction_bytes_same_measurement_accounts": 1797,
+      "payload_bytes": 1312
+    },
+    {
+      "case": "normal/other-vault/Escape",
+      "inline_fits": false,
+      "inline_transaction_bytes_same_measurement_accounts": 1797,
+      "payload_bytes": 1312
+    },
+    {
+      "case": "normal/other-vault/Challenge",
+      "inline_fits": false,
+      "inline_transaction_bytes_same_measurement_accounts": 1737,
+      "payload_bytes": 1252
+    },
+    {
+      "case": "normal/other-vault/Expiry",
+      "inline_fits": true,
+      "inline_transaction_bytes_same_measurement_accounts": 1097,
+      "payload_bytes": 612
+    },
+    {
+      "case": "normal/max-id/Deposit",
+      "inline_fits": true,
+      "inline_transaction_bytes_same_measurement_accounts": 1177,
+      "payload_bytes": 692
+    },
+    {
+      "case": "normal/max-id/Close",
+      "inline_fits": false,
+      "inline_transaction_bytes_same_measurement_accounts": 1797,
+      "payload_bytes": 1312
+    },
+    {
+      "case": "normal/max-id/Escape",
+      "inline_fits": false,
+      "inline_transaction_bytes_same_measurement_accounts": 1797,
+      "payload_bytes": 1312
+    },
+    {
+      "case": "normal/max-id/Challenge",
+      "inline_fits": false,
+      "inline_transaction_bytes_same_measurement_accounts": 1737,
+      "payload_bytes": 1252
+    },
+    {
+      "case": "normal/max-id/Expiry",
+      "inline_fits": true,
+      "inline_transaction_bytes_same_measurement_accounts": 1097,
+      "payload_bytes": 612
+    },
+    {
+      "case": "historical-request/pause-challenge",
+      "inline_fits": false,
+      "inline_transaction_bytes_same_measurement_accounts": 1737,
+      "payload_bytes": 1252
+    },
+    {
+      "case": "boundary/expiry-at-deadline-paused",
+      "inline_fits": true,
+      "inline_transaction_bytes_same_measurement_accounts": 1097,
+      "payload_bytes": 612
+    }
+  ],
+  "svm": "LiteSVM 0.6.1 / Agave 2.2.0",
+  "wrong_elf_sha256": "4c66ae1d854a357b0d793be49c34373eaca89d843e79074e8495cfbe03842e30"
+}

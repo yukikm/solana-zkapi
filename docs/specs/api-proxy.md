@@ -4,7 +4,7 @@
 
 ## 1. クライアントから見た処理
 
-1. walletからUSDCを入金。finalizedのrootとnote pathを取得。
+1. 最新root/next ID/expiryに対するtree証明を生成し、walletからv0 buffer経路でUSDCを入金。finalizedのrootとnote pathを取得。
 2. provider、mode、モデル集合、料金表を指定してquoteを取得。
 3. request ID、control secret、proxy secretを端末CSPRNGで生成しjournalへ保存。proxy secretはproxy modeのみ。
 4. quoteとcredential hashに結合したrequest proofを生成。秘密noteやwalletアドレスを制御APIへ送らない。
@@ -152,6 +152,12 @@ count_tokensの初期利用者料金は0、予約額も0とし、呼出回数の
 rate limitは匿名session/cap/IP単位。IPは短期のsalted rate-limit keyにだけ使用し、入金walletとの照合DBは作らない。IP・本文・時刻による相関可能性は残る。
 
 ## 6. SDK・clientd・Indexer
+
+layout 2のtree更新契約は[tree-transition仕様](tree-transition.md)を正本とする。SDKはprepare/prove/verify/encodeのローカルAPIを提供し、通常のSessionCreate/request proofへtree proofやnote IDを追加しない。tree proof生成は入金・合意出金・escape開始・challenge・expiryのchain操作だけ。finalizeには不要。
+
+config Manifestはlayout/backend/tag policy/profileと3回路のartifactを固定する。署名manifest、PK/VK hash、PoolConfig.circuit_profile_hashを照合してから利用する。必須transaction formatはv0_buffer、v1_inlineは実証済みdeploymentのみ。TreeUpdateのpublic→proof順とbuffer payload（discriminatorなし）はmachine-readableな[wire契約](../contracts/tree-transition.json)とも一致させる。
+
+native prover/CLIを必須とし、browser workerの時間・メモリーを測る。任意のリモートworkerから受け取ったtree proofもローカルで固定VK/期待inputsを検証する。リモートworkerへ秘密noteや認可session情報を渡す必要はない。初版の必須HTTP endpointを増やして中央proverへの依存を作らない。proof生成中も状態は予約されないため、journal/競合再生成/送信不明の扱いはtree-transition §4に従う。
 
 - SDK：createNote/deposit/awaitFinality/getQuote/authorize/openProxySession/openDirectSession/closeSession/recover/withdraw/escape/challenge-statusを提供。秘密保存は暗号化storage adapter。browser proofはworkerで実行。
 - clientd：既定127.0.0.1:8787、localhost推論API、wallet管理は別credential。upstream API keyとproxy tokenを混同しない。configでmodeを明示し、暗黙にdirectからproxyへ切り替えない。
