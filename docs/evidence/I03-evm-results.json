@@ -1,0 +1,60 @@
+{
+  "failed": 0,
+  "fixture_sha256": "d4d27619db1193510c347ef44a673c34db7ca8ffcd3869ee54d86ff1f3fe8ced",
+  "forge_version": "1.3.1",
+  "limitations": [
+    "Gas shown is the whole Forge test, not per-transaction settlement gas.",
+    "Test setup only; no production setup or live chain deployment attested."
+  ],
+  "mock_adapter": false,
+  "passed": 11,
+  "real_proofs": true,
+  "solc_version": "0.8.28",
+  "test_results": {
+    "test_activeExpiryAtBoundary()": {
+      "gas": 16083805,
+      "status": "Success"
+    },
+    "test_documentedMaximumNoteIdDifference()": {
+      "gas": 7610690,
+      "status": "Success"
+    },
+    "test_escapeFinalizesExactlyAtDeadline()": {
+      "gas": 16974512,
+      "status": "Success"
+    },
+    "test_historicalRequestChallengePreservesConsumedNullifier()": {
+      "gas": 33389778,
+      "status": "Success"
+    },
+    "test_pauseBlocksNewDepositCloseAndEscape()": {
+      "gas": 8014874,
+      "status": "Success"
+    },
+    "test_pausedExpiryStillPays()": {
+      "gas": 16089828,
+      "status": "Success"
+    },
+    "test_pausedFinalizeStillPays()": {
+      "gas": 16980755,
+      "status": "Success"
+    },
+    "test_pausedHistoricalChallengeStillRestores()": {
+      "gas": 33393921,
+      "status": "Success"
+    },
+    "test_signedUseSettlementMutualClose()": {
+      "gas": 16839938,
+      "status": "Success"
+    },
+    "test_validProofStaleRootRejected()": {
+      "gas": 14834097,
+      "status": "Success"
+    },
+    "test_validProofWrongClearanceRouteRejected()": {
+      "gas": 7990946,
+      "status": "Success"
+    }
+  },
+  "upstream_commit": "045b444ea1b52538d1b40273c7cb6ed09468a052"
+}

@@ -1,0 +1,132 @@
+{
+  "scope": "I03 signing-key validation deployment specialization; generic arithmetic measurement is diagnostic only and FAILED the 1,000,000 CU gate",
+  "runtime": "LiteSVM 0.6.1 / Agave 2.2.0, real SBF ELF; no native processor",
+  "toolchain": "cargo-build-sbf 4.1.0 / platform-tools v1.54 / SBF v0",
+  "diagnostic_program_sha256": "1a0c2c3df9c8384da20211600cb6a83db596b3c857bed10e571c51edb2351166",
+  "diagnostic_generic_key_source_sha256": "e4d99d5818cc5b74c434dc76094de09d58c263c2e33098484cad2350e99c1129",
+  "diagnostic_program_cargo_lock_sha256": "904350da8d59f85fa01e8ac268d2fa3262a7c423406f89061c5ef6f076177619",
+  "diagnostic_host_cargo_lock_sha256": "81fd800775b7a57caf14bd8e7728abeaa6a3fb6a68c1a0514e627da5c16f630c",
+  "diagnostic_output_sha256": "b552a5dba2dfed257e19f613b0405c1f18e4c95e9f271d14de5b38b15625f164",
+  "input_keys_fixture": "tests/fixtures/layout2/a.json auth.escape.public_inputs[4..8]",
+  "measurements": [
+    {
+      "keys": 1,
+      "compute_units": 6369418,
+      "diagnostic_compute_budget": 100000000,
+      "release_gate_passed": false
+    },
+    {
+      "keys": 2,
+      "compute_units": 12737948,
+      "diagnostic_compute_budget": 100000000,
+      "release_gate_passed": false
+    },
+    {
+      "keys": 1,
+      "compute_units": 1000000,
+      "actual_compute_budget": 1000000,
+      "success": false,
+      "error": "ProgramFailedToComplete: exceeded CUs meter at BPF instruction"
+    },
+    {
+      "keys": 2,
+      "compute_units": 1000000,
+      "actual_compute_budget": 1000000,
+      "success": false,
+      "error": "ProgramFailedToComplete: exceeded CUs meter at BPF instruction"
+    }
+  ],
+  "decision": {
+    "selection": "role-specific build-pinned signing-key pair for the initial single-pool deployment",
+    "validation": "build.rs executes original Arkworks 0.5 canonical coordinate, on-curve, prime-order subgroup and nonidentity checks for both public keys",
+    "runtime": "canonical coordinate checks plus exact state/clearance byte equality; swapping roles or selecting another otherwise-valid key rejects",
+    "key_changes": "new deployment build and new pool; this is not arbitrary runtime-selected key support",
+    "production_eligible": false,
+    "full_initialize_cu_evidence": "I03-svm-results.json (includes PDA/ATA creation and exact pair checks)"
+  },
+  "source_files": [
+    "programs/zkapi-vault/build.rs",
+    "programs/zkapi-vault/src/deployment_keys.rs",
+    "programs/zkapi-vault/src/key_validation.rs",
+    "programs/zkapi-vault/src/keys.rs"
+  ],
+  "host_checks": [
+    "generator multiples and negations",
+    "noncanonical Fq coordinates",
+    "identity and offcurve points",
+    "order-2 torsion, mixed-order point, full 8-torsion component",
+    "pinned keys valid; swapped roles and other valid points rejected"
+  ],
+  "commands": [
+    "cargo build-sbf --manifest-path tests/key-validation-diagnostic/program/Cargo.toml --tools-version v1.54 --arch v0 --sbf-out-dir target/i03-key-diagnostic-sbf -- --locked",
+    "cargo run --locked --manifest-path tests/key-validation-diagnostic/host/Cargo.toml -- target/i03-key-diagnostic-sbf/zkapi_bjj_probe.so",
+    "python3 tests/key-validation-diagnostic/check_build_rejection.py",
+    "cargo test --locked --manifest-path programs/zkapi-vault/Cargo.toml --lib keys::tests",
+    "cargo clippy --locked --manifest-path programs/zkapi-vault/Cargo.toml --all-targets -- -D warnings"
+  ],
+  "limitations": [
+    "Standalone generic-key diagnostic excludes Vault account handling and is not a successful admissible transaction.",
+    "The preserved standalone diagnostic source is excluded from normal CI and is not a supported deployment program.",
+    "Production setup, independent review and production deployment pins remain I11."
+  ],
+  "host_test_result": {
+    "passed": 4,
+    "failed": 0,
+    "log_sha256": "c44486272dc867cab21c6a87058790981a9ad02685f47a1ca8b795b15c267873",
+    "clippy_passed": true
+  },
+  "source_sha256": {
+    "programs/zkapi-vault/build.rs": "775146478e957d3eda7e707c2eddf72185803e739c8e15bb5ab2015322b139ea",
+    "programs/zkapi-vault/src/deployment_keys.rs": "69b46ef274a6bdd80ce1f8c7bbd7b4bbaf9b208ed655de59ef84530b343b4acd",
+    "programs/zkapi-vault/src/key_validation.rs": "4902f78b213b32f2b9e18014d9e7b18fa9d81fb3f8ff80527724e8856c0544a6",
+    "programs/zkapi-vault/src/keys.rs": "2270aca63df1c926377ab01a9a7c7f738ff743fc8ea696ab9828468836d51a46"
+  },
+  "build_negative_controls": {
+    "build_rs_sha256": "775146478e957d3eda7e707c2eddf72185803e739c8e15bb5ab2015322b139ea",
+    "source_is_exact_copy": true,
+    "cases": [
+      {
+        "role": "state",
+        "invalid_key": "64 zero bytes",
+        "exit_code": 101,
+        "observed_build_error": "invalid state deployment signing key: InvalidPoint",
+        "log_sha256": "bf0b71e3d809ae7f79d43e133c8e76a2f68eb4ca08af350126978da114ebba13"
+      },
+      {
+        "role": "clearance",
+        "invalid_key": "64 zero bytes",
+        "exit_code": 101,
+        "observed_build_error": "invalid clearance deployment signing key: InvalidPoint",
+        "log_sha256": "753401d5ce7a1368c64821232fb458bfa0d7ae178030566ae9e32b5120327ab5"
+      }
+    ],
+    "reproduction_output_file": "tests/key-validation-diagnostic/build-rejection-output.json",
+    "reproduction_output_sha256": "a5ff1dfb05b63d9b5b0075a02a72ed8305e869209547d1dfe0d08de1ea01692d"
+  },
+  "original_temporary_probe_program_sha256": "93cbe83678e6ffe17f3eb795f1fb45d22fece5e715889c6103b2deda980c5410",
+  "diagnostic_output_file": "tests/key-validation-diagnostic/output.txt",
+  "diagnostic_source_directory": "tests/key-validation-diagnostic",
+  "reproduction_matches_initial_measurements": true,
+  "diagnostic_sources_sha256": {
+    "tests/key-validation-diagnostic/README.md": "e37558128e68646ec39a6ccbf94f59db96f57881c00f28a2c2a0554b2eda8b6b",
+    "tests/key-validation-diagnostic/build-rejection-output.json": "a5ff1dfb05b63d9b5b0075a02a72ed8305e869209547d1dfe0d08de1ea01692d",
+    "tests/key-validation-diagnostic/check_build_rejection.py": "cff70da80932e47fc7bbad0c2c0dbea81a9fa035292d0bb3399511b841686761",
+    "tests/key-validation-diagnostic/host/Cargo.lock": "81fd800775b7a57caf14bd8e7728abeaa6a3fb6a68c1a0514e627da5c16f630c",
+    "tests/key-validation-diagnostic/host/Cargo.toml": "94b81ca66e7a57b0dd780b7a9bc7fb2c65f8eeca53b63367f1fdad11a9fb3bee",
+    "tests/key-validation-diagnostic/host/src/main.rs": "4970b9d762407d6c8fd07d3fdce65f9856959eb405ac9528a7113d17fbb8036c",
+    "tests/key-validation-diagnostic/output.txt": "b552a5dba2dfed257e19f613b0405c1f18e4c95e9f271d14de5b38b15625f164",
+    "tests/key-validation-diagnostic/program/Cargo.lock": "904350da8d59f85fa01e8ac268d2fa3262a7c423406f89061c5ef6f076177619",
+    "tests/key-validation-diagnostic/program/Cargo.toml": "202dec9549d707424f9cc868c82ec02052fb456371e7d93663abb58d8b8ee616",
+    "tests/key-validation-diagnostic/program/src/keys_generic.rs": "e4d99d5818cc5b74c434dc76094de09d58c263c2e33098484cad2350e99c1129",
+    "tests/key-validation-diagnostic/program/src/lib.rs": "f6be592de2680b8fbc341e58e81427ac93b89a52b0bd7aa4efc4d8a984b00bc9"
+  },
+  "pinned_initialize_measurement": {
+    "source": "docs/evidence/I03-svm-results.json",
+    "elf_sha256": "7a027d652fdfe1429e41d16240923250d66f51650fe30715d1d93162b3c0d8ac",
+    "successful_cu_min": 51225,
+    "successful_cu_max": 58110,
+    "actual_transaction_budget": 1000000,
+    "includes": "Vault account validation, Pool/Tree PDA creation, USDC vault ATA creation, role-specific pinned key checks",
+    "production_eligible": false
+  }
+}

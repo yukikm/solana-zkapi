@@ -1,0 +1,12 @@
+[profile.default]
+src = "src"
+test = "."
+out = "../../target/i03/evm-out"
+cache_path = "../../target/i03/evm-cache"
+allow_paths = ["../.."]
+remappings = ["upstream/=../../vendor/ethereum-zkapi/protocol/contracts/src/", "forge-std/=../../vendor/ethereum-zkapi/protocol/contracts/lib/forge-std/src/", "@openzeppelin/contracts/=../../vendor/ethereum-zkapi/protocol/contracts/lib/openzeppelin-contracts/contracts/"]
+optimizer = true
+optimizer_runs = 200
+via_ir = true
+evm_version = "cancun"
+fs_permissions = [{ access = "read", path = "./" }, { access = "write", path = "../../target/i03/evm-traces" }]

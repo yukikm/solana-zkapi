@@ -77,6 +77,10 @@ USDC vaultはVaultAuthorityのATA、受取先は証明に結合したwallet owne
 
 `vault.amount >= outstanding_deposits` を各資金遷移後に確認する。depositで+D、close/finalize/expiryで−D、escape開始/challengeは不変。直接送られた余剰USDCにnoteを発行せず、初版には余剰引出命令を設けない。checked arithmeticを使用する。
 
+### ビルドに固定する署名公開鍵
+
+[ADR-0002](../adr/0002-build-validated-signing-keys.md)により、初期の単一pool profileはstate/clearance公開鍵をprogram buildへ固定する。build時に元Arkworksでcanonical座標・曲線・部分群・非単位点を検査し、initialize_poolは同じ役割の検証済み公開鍵との完全一致を必須とする。各命令でもPoolConfigの鍵をビルド設定と照合する。任意の別鍵は受理しない。鍵を変える場合は対応buildと新poolが必要で、既存poolの鍵は変更しない。manifestの公開鍵、実PoolConfig、program buildのpinも一致させる。この固定比較はSBFで約1,274万CUを要した2鍵の汎用部分群計算を置き換えるが、accepted keyの暗号条件は維持する。
+
 ## 4. 命令契約
 
 Anchor命令discriminatorは `sha256("global:"+snake_case_name)[0..8]`。各命令のargsはBorsh。`F= [u8;32]`, `Proof=[u8;256]`, `TP=[F;11]`, `TreeUpdate={public:TP, proof:Proof}`, `WP=[F;14]`, `RP=[F;12]`。配列長のprefixは付けない。下表のinline argsの順序を固定する。
@@ -133,8 +137,8 @@ buffer op:u8はdeposit=0、mutual_close=1、initiate_escape=2、challenge_escape
 
 [ADR-0001](../adr/0001-proof-bound-tree-transition.md)により追加tree Groth16証明（`transition_proof`）、`proof_bound` tag検証、layout 2を採用する。元のrequest/withdrawal回路・Poseidon・32段treeは維持する。tree回路がleaf、旧新root、同じpath、op、値域、transition_tagを制約し、programは固定VKで全11公開入力を検証する。programによるtag/leaf/pathのPoseidon再計算は要求しない。実状態・命令・認可proofとの照合は[tree-transition仕様](tree-transition.md)に定義する。
 
-[I02の実測](../evidence/I02.md)ではtag再計算を省く研究用案が365,907〜671,266 CU。その後[I02-B](../evidence/I02B.md)で現仕様へ標準化し、実SBFの257ケース、最大317,443 CUを確認した。全Vault命令とtransportの実装・測定はI03/I04以降に残り、G1は未合格。元tree直接計算・tag再計算付きfallbackのCU超過は比較用の履歴として保持する。
+[I02の実測](../evidence/I02.md)ではtag再計算を省く研究用案が365,907〜671,266 CU。その後[I02-B](../evidence/I02B.md)で現仕様へ標準化し、実SBFの257ケース、最大317,443 CUを確認した。[I03](../evidence/I03.md)ではVault account/ATA/PDA/CPI/eventを統合して最大426,765 CUを確認。I04の全transportは未完了でG1は未合格。元tree直接計算・tag再計算付きfallbackのCU超過は比較用の履歴として保持する。
 
 release目標は**全命令のworst-case <=1,000,000 CU**、実transactionが採用format内。100万CUはprotocolの余裕を含む設計目標でありSolanaの絶対上限ではない。I03/I04では全PDA/ATA作成、proof binding、status/nullifier、Token CPI、event、buffer処理込みで測る。予算超過時に検査を省いたり目標を無断に引き上げたりしない。
 
-追加回路のsource/constraints/VK/setupとclient証明生成・root競合の受入条件は固定済み。I02-Bの共通codec/binding/proverを再利用し、I03のVault実装へ進む。新poolのみlayout 2を使い、既存poolのVK/backendを上書きしない。production setup・target cluster・wallet/buffer・全機能同等性の未検証項目は実装/公開gateとして残す。
+追加回路のsource/constraints/VK/setupとclient証明生成・root競合の受入条件は固定済み。I03は共通codec/binding/proverを統合し、全Vaultの実SBF 366取引、最大426,765 CU、863 bytesと元EVMの7シナリオ比較を完了した。I04の全upload/wallet/buffer経路とtarget clusterは未検証で、G1は未合格。新poolのみlayout 2を使い、既存poolのVK/backend/署名公開鍵を上書きしない。production setup・全機能同等性の未検証項目も公開gateとして残す。

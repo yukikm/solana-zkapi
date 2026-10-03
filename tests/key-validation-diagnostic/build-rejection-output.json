@@ -1,0 +1,15 @@
+{
+  "build_rs_sha256": "775146478e957d3eda7e707c2eddf72185803e739c8e15bb5ab2015322b139ea",
+  "cases": [
+    {
+      "role": "state",
+      "exit_code": 101,
+      "error": "invalid state deployment signing key: InvalidPoint"
+    },
+    {
+      "role": "clearance",
+      "exit_code": 101,
+      "error": "invalid clearance deployment signing key: InvalidPoint"
+    }
+  ]
+}

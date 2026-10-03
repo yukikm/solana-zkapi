@@ -1,6 +1,6 @@
 # 実装タスクと受入条件
 
-[I01](evidence/I01.md)・[I02](evidence/I02B.md)完了。layout 2 / transition_proof / proof_boundの標準化と実SBF検証を終え、**次はI03 Vault→I04 buffer**。G1は全Vault/transport実装後に判定し、I03以降のruntime実装は未着手。担当は作業componentを示し、人員を割り当てた意味ではない。各完了時にevidenceへcommands/artifact/限界を残す。
+[I01](evidence/I01.md)・[I02](evidence/I02B.md)・[I03](evidence/I03.md)完了。Anchor Vaultの実SBF 366取引、元Ethereumとの状態・拒否条件の比較、IDLを確認し、**次はI04 buffer・SDK transaction・indexer**。I03はsealed bufferを事前投入したexecuteまで。G1は全transportも実装してから判定する。署名公開鍵のビルド固定は[ADR-0002](adr/0002-build-validated-signing-keys.md)を参照。担当は作業componentを示し、人員を割り当てた意味ではない。各完了時にevidenceへcommands/artifact/限界を残す。
 
 ## 1. タスク
 
@@ -73,7 +73,7 @@ P01〜P31はproduction-parity.mdの定義を継承。P32〜P36も初回productio
 
 ## 4. 実装担当へ渡す開始指示
 
-> docs/implementation-ready.md、ADR-0001、specs/tree-transition.md、protocol-solana.md、evidence/I02B.mdを読み、I03のAnchor Vault実装へ進む。I02-Bのzkapi-layout2 codec/bindingとzkapi-tree-proverを再利用し、measurement用State/account layoutをVaultへコピーしない。固定test profileでlocal実装し、正しいPDA・全ExitNullifier tombstone・outstanding deposits・イベント・ATA作成を統合する。I04でbuffer全段階と最終account listによるv0サイズ/CUを測る。過去RPのrootを現在rootへ変更せず、元回路/Poseidonを維持する。G1〜G4を未検証のまま合格にしない。購入・provider契約・mainnet配備は開始指示に含めない。
+> docs/implementation-ready.md、ADR-0001/0002、specs/tree-transition.md、protocol-solana.md、evidence/I03.mdを読み、I04へ進む。完成したAnchor Vaultと生成IDL、zkapi-layout2 codec/binding、zkapi-tree-proverを再利用する。sealed bufferの事前投入を実際のcreate/append/seal/execute/closeへ置き換え、wallet・indexer・復旧と最終account listのv0サイズ/CUを測る。過去RPのrootを現在rootへ変更せず、元回路/Poseidonと固定公開鍵profileを維持する。G1〜G4を未検証のまま合格にしない。購入・provider契約・mainnet配備は開始指示に含めない。
 
 TT01〜TT08は[tree-transition仕様](specs/tree-transition.md)の追加必須条件。T01〜T20と合わせて実行する。
 

@@ -73,6 +73,38 @@ jobs:
             target/i02b/circuit-source.tar
             target/i02b/evm-empty-root.json
           if-no-files-found: error
+  vault:
+    # I03 real Anchor ELF and EVM parity. I04 wallet/upload lifecycle remains separate.
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          submodules: recursive
+      - name: Install pinned Vault toolchains
+        run: |
+          rustup show
+          scripts/install_sbf_tools.sh
+          scripts/install_i02_evm_tools.sh
+      - name: Reproduce I03 Vault evidence
+        env:
+          RAYON_NUM_THREADS: '4'
+        run: |
+          bash scripts/run_i03.sh
+          cargo clippy --locked --manifest-path programs/zkapi-vault/Cargo.toml --all-targets -- -D warnings
+          cargo clippy --locked --manifest-path tests/svm/Cargo.toml --all-targets -- -D warnings
+          cargo clippy --locked --manifest-path tools/vault-idl/Cargo.toml -- -D warnings
+          git diff --exit-code -- tests/fixtures/vault tests/evm-vault/fixtures.json docs/contracts/zkapi_vault.json
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: I03-Anchor-Vault-test-profile
+          path: |
+            target/i03-sbf/*.so
+            target/i03-sbf-wrong/*.so
+            target/i03/*traces*.json
+            target/i03/*evm*.json
+            docs/contracts/zkapi_vault.json
+            docs/evidence/I03*.json
+          if-no-files-found: error
   contracts:
     runs-on: ubuntu-24.04
     steps:

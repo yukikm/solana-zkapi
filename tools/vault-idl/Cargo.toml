@@ -1,0 +1,13 @@
+[workspace]
+
+[package]
+name = "zkapi-vault-idl"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+[dependencies]
+anchor-lang-idl = { version = "=0.1.4", features = ["build"] }
+anchor-lang = "=0.31.1"
+zkapi-vault = { path = "../../programs/zkapi-vault", features = ["no-entrypoint", "idl-build"] }
+serde_json = "=1.0.149"

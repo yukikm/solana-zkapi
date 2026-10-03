@@ -1,0 +1,62 @@
+{
+  "all_proofs_verified_against_pinned_vks": true,
+  "circuit_profile_hash": "ba688d8a2be7647499c98d52c335c381b86f0471f39fa6539f7d451b76dafca1",
+  "files": [
+    {
+      "file": "a.json",
+      "sha256": "fa84086effd14b23e346208c06857a5b61229cac49c23d64a21387af946cf5af"
+    },
+    {
+      "file": "a-with-b.json",
+      "sha256": "7f3f68354f7edd0f46fe6844ae60df1aabc9bff6777aef59ebf993e80ee74078"
+    },
+    {
+      "file": "b-with-a.json",
+      "sha256": "dce130506483e27d6a38a427dd4cb029ff46914056f03882c68482b8ce06890d"
+    },
+    {
+      "file": "other-vault.json",
+      "sha256": "f39387b1050d960af2e01d97f2f3cdbcb815c99ae902c0298635e76d4cc898fd"
+    },
+    {
+      "file": "max-id.json",
+      "sha256": "3c8d5ebc4b64201024059b177bcb70266643e2f25d040341d2436bf303fa3573"
+    },
+    {
+      "file": "genesis-a.json",
+      "sha256": "495a322bf4e05eb1e15d9750dbbb11f0782982752ec45efbcd096d5b77c17c96"
+    }
+  ],
+  "generator_sha256": "9cce2f2fdfd8d6b1b8fc7e1edf8607aea4bcfa391bc9b6796c63af18b9520ade",
+  "program_id": "2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b",
+  "real_tree_proofs": 18,
+  "real_upstream_proofs": 18,
+  "scope": "TEST ONLY; public secrets and deterministic public entropy; not production eligible",
+  "trace_contract": {
+    "active_expiry": [
+      "a.trees[0]",
+      "a.trees[1] at expiry"
+    ],
+    "genesis_finalize": [
+      "genesis-a.trees[0]",
+      "genesis-a.auth.escape + genesis-a.trees[1]",
+      "finalize at now + challenge"
+    ],
+    "historical_challenge": [
+      "a.trees[0]",
+      "save a.auth.request",
+      "b-with-a.trees[0]",
+      "a-with-b.auth.escape + a-with-b.trees[1]",
+      "a.auth.request + a-with-b.trees[2]"
+    ],
+    "maximum_id": [
+      "max-id.trees[0] with next_note_id = 4294967295",
+      "counter becomes 4294967296; next deposit rejected"
+    ],
+    "mutual_close": [
+      "a.trees[0]",
+      "a.auth.request",
+      "a.auth.withdrawal + a.trees[1]"
+    ]
+  }
+}

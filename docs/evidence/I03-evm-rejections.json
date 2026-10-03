@@ -1,0 +1,58 @@
+{
+  "challenge_at_deadline": {
+    "error": "ChallengeExpired",
+    "unchanged": true
+  },
+  "close_proof_for_escape": {
+    "error": "InvalidDeploymentBinding",
+    "unchanged": true
+  },
+  "escape_consumed_nullifier": {
+    "error": "ReplayedNullifier",
+    "unchanged": true
+  },
+  "escape_proof_for_close": {
+    "error": "InvalidDeploymentBinding",
+    "unchanged": true
+  },
+  "expiry_before_deadline": {
+    "error": "NoteNotExpired",
+    "unchanged": true
+  },
+  "finalize_before_deadline": {
+    "error": "ChallengeNotExpired",
+    "unchanged": true
+  },
+  "paused_close": {
+    "error": "Paused",
+    "unchanged": true
+  },
+  "paused_deposit": {
+    "error": "Paused",
+    "unchanged": true
+  },
+  "paused_escape": {
+    "error": "Paused",
+    "unchanged": true
+  },
+  "repeated_challenge": {
+    "error": "NotPendingWithdrawal",
+    "unchanged": true
+  },
+  "repeated_expiry": {
+    "error": "NoteNotActive",
+    "unchanged": true
+  },
+  "repeated_finalize": {
+    "error": "NotPendingWithdrawal",
+    "unchanged": true
+  },
+  "rewritten_historical_root": {
+    "error": "InvalidProof",
+    "unchanged": true
+  },
+  "stale_root_escape": {
+    "error": "StaleRoot",
+    "unchanged": true
+  }
+}

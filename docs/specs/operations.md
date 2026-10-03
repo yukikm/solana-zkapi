@@ -76,11 +76,13 @@ production build/release検査はsetup_profile=test_only、既知fixtureのPK/VK
 
 全配布物にhashと署名、SBOM、license、upstream commit、circuit/VK/PK manifestを含める。ブラウザproving keyは取得後hash照合。CIはnative/wasm/SBFで同じtest vectorを検証する。
 
+署名公開鍵は[ADR-0002](../adr/0002-build-validated-signing-keys.md)に従い役割別のビルド設定とする。build時のcurve/subgroup/canonical/非単位点検査、programの固定値、manifestのkeys、実PoolConfigを照合する。別鍵には対応buildと新poolが必要で、既存poolをupgradeで別鍵に変更しない。
+
 ## 6. Release gate
 
 | Gate | 合格条件 | 現在 |
 |---|---|---|
-| G1 暗号・SVM | 元実proof、12/14 public inputsの各改変拒否、H2F/Poseidon一致、worst CU/bytes、wallet/buffer経路 | I02-B標準化と採用方式の実SBF 257ケース完了、最大317,443 CU。全Vault/transportはI03/I04以降に残りG1未合格（[I02-B](../evidence/I02B.md)） |
+| G1 暗号・SVM | 元実proof、12/14 public inputsの各改変拒否、H2F/Poseidon一致、worst CU/bytes、wallet/buffer経路 | I02-BとI03完了。Vault実SBF 366取引、最大426,765 CU、863 bytes、元EVM比較一致。I04全buffer/wallet/transportが未完了のためG1未合格（[I03](../evidence/I03.md)） |
 | G2 会計・復旧 | 並列予算予約、全crash point、client復旧、出金競合、DB failoverで二重署名/課金なし | 未実施 |
 | G3 実provider | OA-org、OpenRouter direct、OpenAI/Anthropic/OpenRouter proxyの実credential・usage・streaming試験 | 未実施 |
 | G4 公開準備 | setup検証、鍵/multisig、第三者review/audit、restore演習、監視当番、正しいmanifest | 未実施 |
