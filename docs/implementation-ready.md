@@ -2,7 +2,7 @@
 
 状態：**設計・インターフェース確定、実装着手可**。更新日：2026-10-03 JST。[今回のlayout 2設計確認](evidence/layout2-design-ready.md)と[従来の設計レビュー](evidence/design-review-2026-10-03.md)を参照。
 
-現在地：**I01〜I03完了、次はI04**。layout 2 / transition_proof / proof_boundのAnchor Vaultを実装し、実SBF 366取引、最大426,765 CU、863 bytesを確認。固定Ethereum版との7シナリオ・27状態・14拒否条件が一致した。[I03完了記録](evidence/I03.md)と[署名公開鍵のビルド固定](adr/0002-build-validated-signing-keys.md)を読み、I04 buffer・SDK transaction・indexerへ進む。I04の全transport、G1全体とproduction公開は未完了。
+現在地：**I01〜I03完了・I03再レビュー済み、I04着手Ready**。layout 2 / transition_proof / proof_boundのAnchor Vaultを実装し、実SBF 366取引、最大426,765 CU、863 bytesを新規環境でも再現した。固定Ethereum版との7シナリオ・27状態・14拒否条件も一致。I04向けaccount/buffer/event契約を明文化し、IDLのaccount権限・順序を検査する回帰テストを追加した。[I03完了・再レビュー記録](evidence/I03.md)と[署名公開鍵のビルド固定](adr/0002-build-validated-signing-keys.md)を読み、I04 buffer・SDK transaction・indexerへ進む。I04の全transport、G1全体とproduction公開は未完了。
 
 これはUSDC決済、Ethereum zkAPIの直接接続機能、第三者運営のproxyを含む本番向け仕様である。コード完成・性能検証・監査・mainnet配備の完了を意味しない。暗号互換性などの実測項目は、担当・判定基準・不合格時の処理を実装計画に固定した。
 

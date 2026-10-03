@@ -79,15 +79,15 @@
     "docs/evidence/I03-svm-rejections.json": "f980c6d45b668ec427b07a8b1dbeb3879c8a79e01ac0a3b8a0f648ef2cdd0104",
     "docs/evidence/I03-svm-results.json": "8fc7821dd559207ea5311f75f5c262e32dbe4f3c7a00e80860f4c0ac83ba822d",
     "docs/evidence/I03-svm-traces.json": "3651ab83ecdc6735bdf5d32d6c22231ca23de094779567f58bab6ad9ca144d4c",
-    "docs/evidence/I03.md": "34899a849fabbe8a5e40e79c7c5d5a38a3aba57d523dd9f06c823d981a33568e",
+    "docs/evidence/I03.md": "c916c99c781281ef7f3070e48de118ebbabd54a0582c6703cddc09e207971c1e",
     "docs/evidence/ci-baseline.json": "6d24c5387804fe16e067102ad442b6a41047f2d758d31604f2d4babbd64d88ad",
     "docs/evidence/layout2-design-ready.md": "43a69bb6d5989cad23001598342e25b43687b5d62f6d0df228e3cdda8d08657f",
     "docs/implementation-plan.md": "a2e8d39162d76ba86bc07ee889b1acd81b7d3198dbd0c8b9c6537d781613ee41",
-    "docs/implementation-ready.md": "a87d20b729eb00f5979fbbed9d762e5619ba050c6dfc5e0aced271c239a0ad43",
+    "docs/implementation-ready.md": "ee7b9bfcbec03d128dfe987f5210f09313c12782e4cc7dcf28e506ef339170ab",
     "docs/production-parity.md": "3dc4065f2950a1a9fadfa87efe790d6cb5a257290a1ae4f442b903945f38ad6f",
     "docs/specs/api-proxy.md": "0a6e9a425c1eb4ea51e80ccc183da6052b260689da0b5d6db021982c51d71bf2",
     "docs/specs/operations.md": "af689f64ce9031d6a5597da13e01c7de6f8324e41b62af6eac407169f03e35cc",
-    "docs/specs/protocol-solana.md": "95cecf92f4e682c413cbdec7cfb93751ba7169de960987fafe8de03dbca5502d",
+    "docs/specs/protocol-solana.md": "1e76346175cb40b6781e0213bcb5a7c8999dcf52cbeb57b9d4b1fc27a3ad9d67",
     "docs/specs/tree-transition.md": "eafe562109ff41dd977c07d2b4c605647b420d8e2e74b170c208746a5291803d",
     "package-lock.json": "66fd09223e08493b7ccc32863cb5f50fcc3136bd49d8996ec5bf86e439b6892f",
     "packages/sdk/src/encoding.ts": "7301ea7c7f93dcd4ae02f760d07829d342bc2c0d042ace67bc5a41a8d68aeee4",
@@ -127,7 +127,7 @@
     "scripts/check_openapi_contract.py": "dfd8daea9d08f7cc558587f78e5a97b61b173b1f23bd44f12001448060c260f3",
     "scripts/check_upstream.py": "95d38e416a245059848019356634f42a81770cd1ec54eb2e160399689e9c0343",
     "scripts/check_vault_fixtures.py": "7f0b227a971607912711380e12fefb04240c6fcd89ddfddf09adc0eb8c6d9f86",
-    "scripts/check_vault_idl.py": "8e04ecdb841fc66ea54c003cc2bc577daf93fb2e1fecff65b0e18261f46f6688",
+    "scripts/check_vault_idl.py": "d4449995f677970720100ac990352921220572ffe3cbece99de2bfc071425149",
     "scripts/collect_i02_optimization.py": "049f403849aa19a6aa3b4623fecafff4a4af8ee9fc6508e45a0b4b887129e14d",
     "scripts/install_i02_evm_tools.sh": "d744d10f53a3df1b3c7d0e9ccb87ebb068bd38ed66e2f972a5f550133abc4398",
     "scripts/install_sbf_tools.sh": "09f8a3e3ee0b75a11abe1c048d46219c16a3bfec5d5293d0787f2e6d96ee84eb",
@@ -135,7 +135,8 @@
     "scripts/run_i02_layout2.sh": "1a64a25db3995f115bb6e759fb3524a2408dfb3204771b45e536df642cdbb915",
     "scripts/run_i02_optimization.sh": "d4e5c99487d41e638b7c287f142b25f9c1d9cea0c288e818c5c6959625a34d8e",
     "scripts/run_i02_svm.sh": "7fdb44ac3e5d497ecab2af4249a99124c59de3240bf634a6e6928f9d8d92e850",
-    "scripts/run_i03.sh": "a3b32709dd72a3a779236c43af8f1fd9e84db0decfc62ea0d22929ea2761b215",
+    "scripts/run_i03.sh": "96eb839cbbe4125b33e80536596f212cb13f75b1bedd96b640c2f3715cc3f296",
+    "scripts/test_check_vault_idl.py": "00a66e6f4f8d2a1fa8fd01f78b92060957b2e222e73d1deac28e21bd7423a71f",
     "tests/evm-layout2/EmptyRoot.t.sol": "f60e97b89085b2e725b837d89afc898df2465610c831fbbab29cab37ecc41556",
     "tests/evm-layout2/foundry.toml": "1f2f1d70a45a6b6cb7766cf49d332abbec5f4075d96d089e47423e0bc543ebfb",
     "tests/evm-vault/README.md": "b5eaa233ad9042ab6263bd700b225f4cedbf0272c1b2872368b69ef836adfb56",
@@ -851,6 +852,77 @@
         "command": "cargo check --locked --manifest-path programs/zkapi-vault/Cargo.toml --no-default-features --features devnet",
         "exit_code": 0,
         "local_log_sha256": "40671b3ca5dcb50339eeb0b246fd1aa05ae33475aebbb053c1af1930ba70747f"
+      }
+    ]
+  },
+  "i03_review": {
+    "status": "ready_for_I04",
+    "date_jst": "2026-10-03",
+    "reviewed_commit": "674af6d7c0c26b1295a1af59672ef98ce5235dfe",
+    "evidence": "docs/evidence/I03.md",
+    "unresolved_I03_blockers": [],
+    "runtime_source_changed": false,
+    "circuit_keys_and_wire_changed": false,
+    "changes": [
+      "Explicit I04 Financial remaining-account order and conditional token-owner signature",
+      "Persisted PDA seeds and exact PayloadBuffer Borsh offsets",
+      "Finalized event/history and buffer-generation handoff",
+      "All 11 IDL account contracts checked with 421 rejected mutations in 5 regression tests"
+    ],
+    "real_sbf_transactions": 366,
+    "successful_transactions": 203,
+    "rejected_transactions": 163,
+    "max_cu": 426765,
+    "max_transaction_bytes": 863,
+    "elf_sha256": "7a027d652fdfe1429e41d16240923250d66f51650fe30715d1d93162b3c0d8ac",
+    "wrong_vk_elf_sha256": "e40a22bb426274c098be3ba3dc70698f2dc5ec59f3f10a8c4876ad376938b9a8",
+    "evm_tests": 11,
+    "parity_scenarios": 7,
+    "parity_states": 27,
+    "parity_rejections": 14,
+    "workspace_tests": 19,
+    "vault_host_tests": 5,
+    "idl_contract_tests": 5,
+    "idl_rejected_mutations": 421,
+    "fixtures_idl_runtime_evidence_byte_identical_to_reviewed_commit": true,
+    "production_eligible": false,
+    "i04_lifecycle_verified": false,
+    "hosted_ci_verified": false,
+    "commands": [
+      {
+        "command": "CARGO_BUILD_JOBS=2 RAYON_NUM_THREADS=4 bash scripts/run_i03.sh",
+        "exit_code": 0,
+        "local_log_sha256": "b629ddbef316c434e89117cb96b0dbb4e123fa5710db68d76a1c52fe5a4b0e43"
+      },
+      {
+        "command": "cargo test --locked --workspace",
+        "exit_code": 0,
+        "local_log_sha256": "333b7f572270486c95ecba93f56741d891d12586c8947a4c47851d42c94839ee"
+      },
+      {
+        "command": "cargo clippy --locked --workspace --all-targets -- -D warnings",
+        "exit_code": 0,
+        "local_log_sha256": "64c628b4dbff2228e14bb0d98204ad31f4ff31697dc57e83cd0f8ba1a554518b"
+      },
+      {
+        "command": "cargo clippy --locked --manifest-path programs/zkapi-vault/Cargo.toml --all-targets -- -D warnings",
+        "exit_code": 0,
+        "local_log_sha256": "437e5a1e219e55a89591459a4b76492cb805d9fb3b64e54193953623861abf4e"
+      },
+      {
+        "command": "cargo clippy --locked --manifest-path tests/svm/Cargo.toml --all-targets -- -D warnings",
+        "exit_code": 0,
+        "local_log_sha256": "ab181de7f73f325b91e6a9c24947919162e93fbc8f2ea936bcffb37fe75ebe22"
+      },
+      {
+        "command": "cargo clippy --locked --manifest-path tools/vault-idl/Cargo.toml -- -D warnings",
+        "exit_code": 0,
+        "local_log_sha256": "5a0a2a627af44a77372136ec33d15df741fb0d27cc68297cdd1d966348209933"
+      },
+      {
+        "command": "cargo check --locked -p zkapi-solana-types --target wasm32-unknown-unknown",
+        "exit_code": 0,
+        "local_log_sha256": "11787fd6109457716d9f074aea84b6dcb4f26f8f19ff13a83bd91d7ff2aa0157"
       }
     ]
   }

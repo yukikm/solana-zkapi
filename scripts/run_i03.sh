@@ -26,6 +26,7 @@ build_vault sbf-entrypoint,wrong-vk target/i03-sbf-wrong target/i03/sbf-wrong-bu
 cargo run --locked --manifest-path tests/svm/Cargo.toml --bin vault
 cargo run --locked --manifest-path tools/vault-idl/Cargo.toml
 python3 scripts/check_vault_idl.py
+python3 scripts/test_check_vault_idl.py
 bash tests/evm-vault/run.sh --generate
 python3 tests/evm-vault/compare.py
 python3 scripts/check_i03_results.py

@@ -59,13 +59,15 @@ PDA seedは下表。整数seedは指定サイズのLE。Anchorのaccount discrim
 
 | 型 | seed（prefixはASCII） | 主要field |
 |---|---|---|
-| PoolConfig | `["pool", pool_id_32]` | bump, genesis_hash, mint, token_program, decimals=6, vault_binding, admin, treasury_owner, state/clearance pubkey各64B, TTL:u64, challenge:u64, cap:u64, paused:bool, tree_backend:u8=1, tree_tag_policy:u8=1, circuit_profile_hash:32B |
+| PoolConfig | `["pool", pool_id_32]` | bump, genesis_hash, mint, token_program, decimals=6, vault_binding, admin, treasury_owner, state/clearance pubkey各64B, TTL:u64, challenge:u64, cap:u64, paused:bool, tree_backend:u8=1, tree_tag_policy:u8=1, circuit_profile_hash:32B, pool_id:32B |
 | TreeState | `["tree", pool]` | bump, root:Fr32, next_note_id:u64, sequence:u64, outstanding_deposits:u64 |
 | VaultAuthority | `["vault", pool]` | PDA signerのみ。USDC ATAのauthority |
 | Note | `["note", pool, note_id_u32le]` | bump, note_id:u32, commitment:Fr32, deposit:u64, expiry:u64, status:u8 |
 | PendingWithdrawal | `["pending", pool, note_id_u32le]` | bump, exists:bool, old_root:Fr32, nullifier:Fr32, balance:u64, destination_owner:Pubkey, deadline:u64 |
 | ExitNullifier | `["exit", pool, nullifier_32be]` | bump, consumed:bool。永久tombstone、closeしない |
-| PayloadBuffer | `["payload", pool, uploader, nonce_32]` | bump, uploader, op:u8, payload_len:u32, digest32, next_offset:u32, sealed:bool, expires:u64, rent_payer, payload bytes |
+| PayloadBuffer | `["payload", pool, uploader, nonce_32]` | bump, uploader, op:u8, payload_len:u32, digest32, next_offset:u32, sealed:bool, expires:u64, rent_payer, payload:Vec<u8>, nonce:32B |
+
+正確なBorsh field順・discriminatorは[生成IDL](../contracts/zkapi_vault.json)と[実Account型](../../programs/zkapi-vault/src/state.rs)で固定する。PoolConfigのpool_idとPayloadBufferのnonceは保存済みseedとして毎回PDA検証に使う。nonceは可変長payloadの**後ろ**にあり、固定header内のfieldではない。詳細なbuffer長は§5を参照する。
 
 PoolConfigはmint・鍵・TTL等を初期化後変更しない。可変なのはadmin管理下のtreasury_ownerとpaused。admin自体の変更は初版に含めず、外部multisigの構成変更で運用する。Poolの異なるaccount混在、PDA bump/seed不一致、任意program accountへのCPI、token authority/delegateの差し替えを拒否。
 
@@ -107,6 +109,36 @@ challengeのRP.active_rootをcurrent rootへ書き換えてはいけない。提
 
 error名：`Paused`, `InvalidBinding`, `InvalidMint`, `InvalidTokenAccount`, `InvalidField`, `InvalidProof`, `StaleRoot`, `StaleNoteId`, `InvalidExpiry`, `TreeFull`, `InvalidBalance`, `ReplayedNullifier`, `NoteNotActive`, `NotPending`, `ChallengeExpired`, `ChallengeNotExpired`, `NotExpired`, `InvalidBuffer`, `ArithmeticOverflow`。Anchorの6000番台へ順序固定で割当て、IDLに記録。
 
+### I04が引き継ぐ実account列
+
+I03の`execute_payload`はIDLにある`payload`（writable）、`uploader`（signer）、`rent_payer`（writable）の3 accountに続け、次の`Financial` 18 accountを**この順序でremaining accountsへ追加**する。番号はFinancial内の0始まり。IDLのexecute account列だけでは命令は成立しない。以下の順序と属性は[実context](../../programs/zkapi-vault/src/accounts.rs)、使用例は[実SBF harness](../../tests/svm/src/vault_support.rs)に対応する。
+
+| 番号 | account | writable | signer | 実accountが必要な操作 |
+|---|---|---|---|---|
+| 0 | pool | — | — | 全操作 |
+| 1 | tree | 必須 | — | 全操作 |
+| 2 | note | 必須 | — | 全操作 |
+| 3 | pending | 必須 | — | escape、challenge、finalize |
+| 4 | exit | 必須 | — | close、escape |
+| 5 | vault_authority | — | — | 全操作 |
+| 6 | mint | — | — | 全操作 |
+| 7 | source | 必須 | — | deposit |
+| 8 | vault | 必須 | — | 全操作 |
+| 9 | destination_owner | — | — | close、escape、finalize |
+| 10 | destination | 必須 | — | close、finalize |
+| 11 | treasury_owner | — | — | close、finalize、expiry |
+| 12 | treasury | 必須 | — | close、finalize、expiry |
+| 13 | token_owner | — | deposit時必須 | deposit |
+| 14 | payer | 必須 | 必須 | 全操作 |
+| 15 | token_program | — | — | 全操作 |
+| 16 | associated_token_program | — | — | 全操作 |
+| 17 | system_program | — | — | 全操作 |
+
+未使用slotも省略せず、writable payerをplaceholderとして指定する。contextのwritable検査は未使用slotにも適用されるため、System Program等の実行可能accountをplaceholderにしない。Clockは`Clock::get()`で取得し、account列に追加しない。executeは余分なremaining accountも拒否する。
+
+共通contextの`token_owner`はIDL上UncheckedAccountだが、depositのhandlerは署名を必須とする。buffer depositではslot 13の`isSigner=true`をSDKが設定し、そのownerの署名を集める。uploader・payer・token ownerは同一である必要はない。inline depositはFinancialの後ろにIDLの`token_owner_signer`を追加し、slot 13と同じpubkeyを指定する。buffer executeへこの追加slotを持ち込まない。ほかのinline資金命令はFinancialだけを使い、finalizeはbufferを使わない。上表の18 slotはinstruction account列であり、transaction message内の同一pubkeyの集約とは別である。
+
+この列はI03実装の契約であり、I04では独立したuploader/payer/token ownerとrent返却先を含む署名済みv0を実serializeしてサイズ/CUを再測定する。I03の863 bytesという最大値を全wallet構成の保証として使わない。
 
 ### Indexerが再現するイベントと履歴
 
@@ -114,7 +146,9 @@ error名：`Paused`, `InvalidBinding`, `InvalidMint`, `InvalidTokenAccount`, `In
 
 deposit/expiryではOptionを全てNone。mutual_closeはN/B/ownerがSome、deadlineだけNone。initiate_escapeは作成済みPending、challenge/finalizeは消去前のPendingに対応するN/B/owner/deadlineがすべてSome。C/D/expiryは常に元Noteの値。initialize_poolの初期sequenceは0、資金遷移以外の管理・buffer操作はsequenceを増やさない。
 
-indexerはmeta.err=nullの成功transactionだけを、block内transaction順・CPIを含む実行順で適用し、program IDとinvocation stackを検証する。sequenceの欠落・重複内容不一致を拒否する。ログ欠落時はinline args、またはbufferのcreate/append/seal/execute/closeの成功履歴からpayloadを復元する。bufferはPDAだけでなく作成transactionを世代識別子にし、digest・offset・executeのexpected_digestを照合する。実行後にcloseされたaccountをRPCで読めるとは仮定しない。archiveが必要履歴を提供できなければpath配信を止める。
+indexerはfinalizedかつmeta.err=nullの成功transactionだけを、block内transaction順・CPIを含む実行順で適用し、program IDとinvocation stackを検証する。後続処理で失敗したtransactionにもemit済みログは残り得るため、イベントの存在だけで適用しない。I04ではVault成功後に後続instructionが失敗するtransactionのログを除外できることも検査する。
+
+sequenceの欠落・重複内容不一致を拒否する。finalizeはroot不変でもsequenceが増えるため、rootだけで重複排除しない。eventのop=4はfinalize、bufferのop=4はexpiryであり、enum間を直接castしない。ログ欠落時はinline args、またはbufferのcreate/append/seal/execute/closeの成功履歴からpayloadを復元する。この履歴にも同じtransaction・invocation成功条件を適用する。bufferはPDAだけでなく作成transactionとその実行位置を世代識別子にし、digest・offset・executeのexpected_digestを照合する。実行後にcloseされたaccountをRPCで読めるとは仮定しない。archiveが必要履歴を提供できなければpath配信を止める。
 
 ## 5. Transactionサイズと一時buffer
 
@@ -125,6 +159,8 @@ v1 inlineは追加能力。対象cluster/RPC/SDK/walletと4096 bytes等の実lim
 buffer手順：`create_payload(op,len,digest,nonce,expires)` → `append_payload(offset,bytes)` → `seal_payload()` → `execute_payload(expected_digest:[u8;32])` → `close_payload()`。
 
 buffer op:u8はdeposit=0、mutual_close=1、initiate_escape=2、challenge_escape=3、claim_expired=4。他の値は拒否（tree-transition回路のopとは別enum）。create argsは順にu8/u32/[u8;32]/[u8;32]/u64、appendはu32 offsetとBorsh Vec<u8>、seal/closeはargsなし。executeはexpected_digest:[u8;32]を署名対象instruction dataに含める。
+
+I03のPayloadBufferをそのまま使用する。account先頭をoffset 0とすると、Vecの長さprefixはoffset 124のu32le、payload bytesはoffset 128から、nonceは`128 + payload.len()`から32 bytes。全serialized長は`160 + payload.len()` bytes（8-byte discriminatorを含む）。`HEADER_SPACE=160`はnonceを含めた固定部分の合計で、payloadの開始offsetではない。seal/execute時には`payload.len() == payload_len == next_offset`が必要となる。I04のcreate/appendはこのBorsh配置を維持し、確保する最終account容量を`160 + payload_len`としてrentを計算する。digestはpayload bytesだけのSHA-256で、Vec長prefix・nonce・Anchor命令discriminatorを含めない。
 
 - len<=4096、expires<=作成時+3600秒。opはdeposit/close/escape/challenge/expiryだけ。
 - appendはuploader署名、offset=next_offset、範囲内。既存byteの書換え不可。sealは全byte受領とSHA256一致を確認。
