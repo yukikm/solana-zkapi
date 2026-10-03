@@ -19,135 +19,135 @@
     "old_proofs_verified": 6,
     "production_eligible": false
   },
-  "profile_hash": "37f90f026d5c20837aaa138af7f4c2aa64ede12195e762f33984446eaacc358d",
+  "profile_hash": "ba688d8a2be7647499c98d52c335c381b86f0471f39fa6539f7d451b76dafca1",
   "evm_empty_root": {
     "result": "PASS",
     "test_count": 1,
     "forge": "1.3.1",
     "solc": "0.8.28",
-    "result_sha256": "8d3ac21f3b659db14d746846cb08af1acfef25a94c7c833e903313c2097e5b5a"
+    "result_sha256": "168a40018a2af8bdfb4dd5eee2969835324fab1b6e0d513f24528282a582985f"
   },
   "proving_times": {
     "cases": [
       {
         "case": "a/request",
-        "ms": 869
+        "ms": 852
       },
       {
         "case": "a/withdrawal",
-        "ms": 1023
+        "ms": 976
       },
       {
         "case": "a/escape",
-        "ms": 1030
+        "ms": 974
       },
       {
         "case": "a/tree-0",
-        "ms": 1448
+        "ms": 1272
       },
       {
         "case": "a/tree-1",
-        "ms": 1615
+        "ms": 1276
       },
       {
         "case": "a/tree-2",
-        "ms": 1440
+        "ms": 1323
       },
       {
         "case": "a-with-b/request",
-        "ms": 930
+        "ms": 836
       },
       {
         "case": "a-with-b/withdrawal",
-        "ms": 1285
+        "ms": 974
       },
       {
         "case": "a-with-b/escape",
-        "ms": 1125
+        "ms": 956
       },
       {
         "case": "a-with-b/tree-0",
-        "ms": 1600
+        "ms": 1283
       },
       {
         "case": "a-with-b/tree-1",
-        "ms": 1379
+        "ms": 1287
       },
       {
         "case": "a-with-b/tree-2",
-        "ms": 1736
+        "ms": 1269
       },
       {
         "case": "b-with-a/request",
-        "ms": 1670
+        "ms": 840
       },
       {
         "case": "b-with-a/withdrawal",
-        "ms": 2196
+        "ms": 957
       },
       {
         "case": "b-with-a/escape",
-        "ms": 1772
+        "ms": 1001
       },
       {
         "case": "b-with-a/tree-0",
-        "ms": 2388
+        "ms": 1293
       },
       {
         "case": "b-with-a/tree-1",
-        "ms": 2412
+        "ms": 1334
       },
       {
         "case": "b-with-a/tree-2",
-        "ms": 2706
+        "ms": 1316
       },
       {
         "case": "other-vault/request",
-        "ms": 1898
+        "ms": 846
       },
       {
         "case": "other-vault/withdrawal",
-        "ms": 2516
+        "ms": 978
       },
       {
         "case": "other-vault/escape",
-        "ms": 2254
+        "ms": 958
       },
       {
         "case": "other-vault/tree-0",
-        "ms": 2792
+        "ms": 1275
       },
       {
         "case": "other-vault/tree-1",
-        "ms": 2783
+        "ms": 1287
       },
       {
         "case": "other-vault/tree-2",
-        "ms": 2465
+        "ms": 1244
       },
       {
         "case": "max-id/request",
-        "ms": 1548
+        "ms": 815
       },
       {
         "case": "max-id/withdrawal",
-        "ms": 1373
+        "ms": 956
       },
       {
         "case": "max-id/escape",
-        "ms": 1853
+        "ms": 974
       },
       {
         "case": "max-id/tree-0",
-        "ms": 1480
+        "ms": 1268
       },
       {
         "case": "max-id/tree-1",
-        "ms": 2561
+        "ms": 1293
       },
       {
         "case": "max-id/tree-2",
-        "ms": 1583
+        "ms": 1293
       }
     ],
     "scope": "native release test fixture generation; not browser/production latency"
@@ -183,13 +183,13 @@
     "spl_token_cpi_binary": "LiteSVM bundled SPL Token 3.5.0"
   },
   "artifact_sha256": {
-    "target/i02b/circuit-source.tar": "026c34c14b05e77368da03665664773b675745b43384476eebb9318112b03ca3",
-    "target/i02b/sbf/zkapi_i02_layout2.so": "180fde56aa504eccc54c54ab5f3f59ce881aec49ad0f7c70a019779612b1720d",
-    "target/i02b/sbf-wrong/zkapi_i02_layout2.so": "4c66ae1d854a357b0d793be49c34373eaca89d843e79074e8495cfbe03842e30",
+    "target/i02b/circuit-source.tar": "49659e9933a61d05051ed4377ce95d915840f484f3f7f8ce4c6c1b7ca07fa56e",
+    "target/i02b/sbf/zkapi_i02_layout2.so": "50bb2a3cf80361c8807d599c75359f3b9a07262cf21e584256c77d55c8703295",
+    "target/i02b/sbf-wrong/zkapi_i02_layout2.so": "fe2cb8ba4f52285a64c8752028b5e0d92450b0bc8d0fb1c2a71e61246913f1b0",
     "Cargo.lock": "e4489876e3ee37a9a67647a272729444535aa3d6279ae15807d5ae0535113291",
     "programs/i02-layout2/Cargo.lock": "315641ef3af31d25c8e82c793ec9b9df62b4bc8b15febf1ef02a209ef26a5f65",
     "tests/svm/Cargo.lock": "66f5d9550eb49ccb9aed55fd5c925b09f54c9781190bd480aff2af539609bfa1",
-    "tests/fixtures/layout2/profile.json": "ea599587cc166af008c90846e7b5a408681d1e31fcfcd52b011ccc21738cbcd3"
+    "tests/fixtures/layout2/profile.json": "ca70edc3436420ee937656385a171faf1b041063b0f87c997706c87df11d3aef"
   },
   "g1_passed": false,
   "production_eligible": false

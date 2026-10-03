@@ -103,17 +103,17 @@ deploy/                    # image digest、manifest、runbook
 
 ## 5. 実装開始と本番公開の境界
 
-実装担当はI02-Bから着手できる。I01と完了済みの比較研究を最初からやり直す必要はない。G1は元証明とSolana verifierの互換性・CU/transactionサイズ、G2は精算・障害回復、G3は実provider、G4はsetup・鍵・監査・復旧演習を確認する。未実測のCU、未取得のprovider権限、元回路の流用可否を「合格」と記載していない。
+実装担当はI03のAnchor Vaultから着手できる。I01とI02-A/Bは完了しており、比較研究やbackend選択を最初からやり直す必要はない。G1は全Vault/transportのCU・transactionサイズと統合動作、G2は精算・障害回復、G3は実provider、G4はsetup・鍵・監査・復旧演習を確認する。I02の暗号・測定harnessの成功だけでこれらのgateを合格にしない。
 
-追加tree証明方式は採用済み。I02-Bで本番と共有するwire/verifier/bindingを検証してI03へ進む。ただし新しい回路/VKを既存poolへ上書きしてはいけない。実装証拠が揃う前のmainnet配備は作業範囲に含まれない。
+追加tree証明方式は採用済み。I02-Bで検証済みのwire/verifier/bindingをI03へ組み込む。ソースアーカイブの権限差によるprofile不一致は修正し、再生成・実SBF再実行とチェックアウト条件を変えた回帰検査を[I02-B完了記録](evidence/I02B.md)に残した。新しい回路/VKを既存poolへ上書きしてはいけない。実装証拠が揃う前のmainnet配備は作業範囲に含まれない。
 
 
 ## 6. 今回固定した実装開始条件
 
 - **選択済み**：元request/withdrawal/Poseidonを維持、tree Groth16追加、tagはproofで拘束、layout 2、新pool限定、v0_buffer必須。再度backend選択の確認を求めず実装する。
-- **既存の証拠**：元6 proofとtree6 proof、標準baseline415ケース、研究用軽量化131ケース。研究用全経路365,907〜671,266 CU。公開前の全Vault測定を代替しない。
-- **I02-Bで作るもの**：tree回路/proverの独立crate、TreeUpdate型と固定wire、固定VKのSBF verifier、実状態とWP/RPを結合する共通検査、正常なproof同士を取り違えた負のfixture、empty root/profile生成、採用方式の再測定。
-- **I03/I04で作るもの**：全Vault命令・PDA署名CPI・ATA/PDA作成・status/N/Pending管理、bufferと復旧、実wallet送信、同一EVM traceの差分試験。I03のscaffold/IDL設計はI02-Bと並行可、統合完了はI02-B合格に依存する。
+- **既存の証拠**：元6 proofとtree6 proof、標準baseline415ケース、研究用軽量化131ケースに加え、採用方式の257ケースを実SBFで検証済み。採用方式の最大317,443 CUは測定用account範囲の値で、公開前の全Vault測定を代替しない。
+- **I02-Bで完成したもの**：tree回路/proverの独立crate、TreeUpdate型と固定wire、固定VKのSBF verifier、実状態とWP/RPを結合する共通検査、正常なproof同士を取り違えた負のfixture、empty root/profile生成、採用方式の再測定。固定profileの再現性は`python3 scripts/check_i02_reproducibility.py`で確認する。
+- **I03/I04で作るもの**：全Vault命令・PDA署名CPI・ATA/PDA作成・status/N/Pending管理、bufferと復旧、実wallet送信、同一EVM traceの差分試験。I03の依存条件は解消済み。最初にAnchor/SDK/Agaveのexact versionを解決・lockし、最小SBF buildを記録してから全命令へ広げる。
 - **公開前に残るもの**：全命令100万CU/transaction1232 bytes、証明生成待ち時間と競合耐性、全機能E2E、実provider、3回路のproduction setup、第三者review。環境値/秘密の未発行はlocal実装の開始を止めない。
 
 採用方式の性能不足が本番account処理の追加後に判明した場合は、検査を省かず計測結果をI02へ戻す。今回はrelease目標を変更していない。既知entropyのテスト鍵をproductionに使わない。

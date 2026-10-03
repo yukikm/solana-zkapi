@@ -5,10 +5,7 @@ cd "$(dirname "$0")/.."
 [[ "$(cargo-build-sbf --version | sed -n '1p')" == 'cargo-build-sbf 4.1.0' ]]
 mkdir -p target/i02b
 cargo fmt --all -- --check
-# Exact portable archive bytes, not a hash of a directory listing.
-tar --sort=name --mtime=@0 --owner=0 --group=0 --numeric-owner -cf target/i02b/circuit-source.tar \
-  Cargo.lock crates/zkapi-tree-prover/src/circuit.rs crates/zkapi-tree-prover/Cargo.toml \
-  crates/zkapi-poseidon/src vendor/ethereum-zkapi/protocol/rust/crates/zkapi-proof/src/groth16.rs
+bash scripts/build_i02_source.sh
 cargo run --release --locked -p zkapi-tree-prover --example fixtures
 cargo fmt --manifest-path programs/i02-layout2/Cargo.toml
 cargo test --locked -p zkapi-tree-prover --test layout2
@@ -29,3 +26,4 @@ zkapi_evm_dir="${ZKAPI_EVM_TOOLS:-$HOME/.cache/zkapi/evm-1.3.1}"
 "${ZKAPI_FORGE:-$zkapi_evm_dir/forge}" test --root tests/evm-layout2 --offline \
   --use "${ZKAPI_SOLC:-$zkapi_evm_dir/solc-0.8.28}" --json > target/i02b/evm-empty-root.json
 python3 scripts/check_i02_layout2.py
+python3 scripts/check_i02_reproducibility.py

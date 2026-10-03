@@ -25,7 +25,7 @@
     "tests/fixtures/crypto/request-signed.json": "0032c47bc9677a6273c7ae12d559b96368b41b97d21d77ea1b2c1fe8cec72c2b",
     "tests/fixtures/crypto/withdrawal-genesis.json": "38947aaa9b8a6790d67fe8d539fa4f99aec25a609d8853c4d70fa2d57b6ab3ce",
     "tests/fixtures/crypto/withdrawal-signed.json": "82e6fb1dafaa0f06271e1f564d3763aa15837bf1471b454719db40810892b809",
-    ".github/workflows/ci.yml": "0db915a17e9c64d034c7127e819e77abe13ebf1602ed05283780cdaf1315ab13",
+    ".github/workflows/ci.yml": "3fb63d26b3d95bc8d528d52fc413dec62e1103b37abdd4711cc63530de64e3fc",
     "crates/zkapi-solana-crypto/src/lib.rs": "a40bf7016a5ef8808e0c180dccfd3f582d98124926f1cfe11fc28f25a99d103e",
     "crates/zkapi-solana-crypto/tests/compatibility.rs": "c9b3f896e5be521abd3288413505e8f4761bd5f90d869a46aab9c61149759184",
     "crates/zkapi-solana-types/src/amount.rs": "c74eba2dec3f0d3795819e95c926067a2bdd8d7263710e26abf9cba8a6a92d21",
@@ -45,7 +45,7 @@
     "crates/zkapi-solana-types/tests/contracts.rs": "a1839e0dba16cf6bb9d4c8fe398c1c992eeee2446ebe15d8c9576591d00c714a",
     "packages/sdk/test/encoding.test.ts": "6ad5f94b9d8581c8c6e9d71793c061c1b50ed9ebc95bdbfd3d6cb3291534d73a",
     "work/design/generate_contracts.py": "79918d4b5d949b23e343eb13d6005a52bf4055f0955c6f6c14ddb068ac5e0041",
-    "README.md": "6f1910e1b9c3f43a0c5e8e8af6ccab7d402df8fc769189e25e9dd6394750c879",
+    "README.md": "e6cf3bc68717dd2ae0ec98d2486e74c7cc9f26fb6f62bd1a05b211c5933e883b",
     "Cargo.toml": "f070dec79937aad99184add06cfee916b3b330e8a125dc3bb1d05d943d24ddde",
     "crates/zkapi-solana-crypto/Cargo.toml": "0309cf729b4862430c40bb890149e11bc9c5a4aea7e2d302de2c275d1a8018ee",
     "docs/evidence/I02.md": "b4a8495bb5146c15cc34523e8291e038d4c00374b586b7fed0d379b22d18448d",
@@ -85,12 +85,12 @@
     "tests/svm/src/bin/fallback_probe.rs": "d378b34863cb722139715e42ef3c0d23dc9a231b49127aeec23729848662d503",
     "tests/svm/src/bin/poseidon_probe.rs": "047881b80474aaa5c32d8281750e47c2216e60ab83e988fb76e139fda3e3a1bc",
     "docs/evidence/I02-optimization-results.json": "54452d699f720bd3a3c08b5140653d66d415666371b054c78523f34e205e4872",
-    "docs/specs/operations.md": "c7eba2ff6a500dfa1bd1b50bde272d7adb05b4f1b8f3c7d6eba4d8d1e95564f6",
-    "docs/implementation-ready.md": "c9d68ec30b395abae62ed743444f71c29b9b6c0d3690854cc9e7bd7d91e6f812",
+    "docs/specs/operations.md": "fb9add024324a4178f5aa4b26b63bbee9e5adc1c16487dbf2fc7e196e183e583",
+    "docs/implementation-ready.md": "6e626af4073b7fe6db3df22aaf49bb911ac5ff55f5d5988f4ee0600b366cc254",
     "docs/contracts/tree-transition.json": "8622d5114902a83b280f9920d7d4dd950335331e6c79336cfeeeb5a3bf2cdbdf",
     "docs/ethereum-reference.json": "de667846412893bccddee6a96f9255a9302cfb4194cc7aedd09e57defb1b717b",
     "docs/specs/api-proxy.md": "0a6e9a425c1eb4ea51e80ccc183da6052b260689da0b5d6db021982c51d71bf2",
-    "docs/specs/protocol-solana.md": "b63fc803475990af169fb89f34c0078ebbf9f0a63d3ef3e4ac40c6a7367cf31d",
+    "docs/specs/protocol-solana.md": "797823d449fc7efc59871643f8c0b487e7371ad8b07ad7d69d02534b2c000479",
     "AGENTS.md": "153e41f1f1c378bf709a3f7afd16515a1fdebfa37a36e38898bcabe0aa2f3001",
     "docs/evidence/layout2-design-ready.md": "43a69bb6d5989cad23001598342e25b43687b5d62f6d0df228e3cdda8d08657f",
     "docs/specs/tree-transition.md": "eafe562109ff41dd977c07d2b4c605647b420d8e2e74b170c208746a5291803d",
@@ -112,13 +112,13 @@
     "programs/i02-layout2/src/verify.rs": "49e8b06697514c2f3bb9d3647ee1e3549b2d529c71e644b33959356286304c38",
     "programs/i02-layout2/src/state.rs": "5feb2df46a7840bd5d115eac2f7b7fcb53903d57783a75d82712955754a54026",
     "programs/i02-layout2/src/lib.rs": "d9b809b74b3bfe59c57b4d07951f05b3d8226b856454afd09c8ff70f2acb65f1",
-    "programs/i02-layout2/src/profile.rs": "1962f8ad18863086d0165480bb096747b6fe068f0a17bfacdc7bd8dcf3b64bad",
+    "programs/i02-layout2/src/profile.rs": "2d13c302ada75e8ca608f52abbf15de6fbd5e5f936c79e528ef192caac900231",
     "tests/fixtures/layout2/other-vault.json": "9d65bcc0acc70a1957e31fc8595a3876fa643280b3c8140de15e6227d3d7ac22",
     "tests/fixtures/layout2/extraction.json": "725283541df456227715ca4ee4e54febcda4d53356b9c87ad565e4c2296304ea",
     "tests/fixtures/layout2/a-with-b.json": "5d511cc280944c58c8ecdc5d8e65d459371014dd8c44409229e0b8340829a455",
     "tests/fixtures/layout2/b-with-a.json": "3d6e4de24d47f5acf1b12ab6602e4fd7563943de9072b7a2433bba9bc359531c",
     "tests/fixtures/layout2/a.json": "87f2a542fdd52ad5f97ac5225279f38f5818e72fc003d0569bd2e6373eb187f5",
-    "tests/fixtures/layout2/profile.json": "ea599587cc166af008c90846e7b5a408681d1e31fcfcd52b011ccc21738cbcd3",
+    "tests/fixtures/layout2/profile.json": "ca70edc3436420ee937656385a171faf1b041063b0f87c997706c87df11d3aef",
     "tests/fixtures/layout2/test-tree.vk": "9141a035fdba50b13a5776182be029bb23dd15e69cd579c5d6e310b7e2ee5fb7",
     "tests/fixtures/layout2/tree-vk-wire.bin": "d4048c4b228fca9ef4342de8f89f96f90f606c9beb74cd3c6606db44925d1bf9",
     "tests/fixtures/layout2/max-id.json": "ec43d1a7635c407072a1e98ed5b462c142af0f8480f62c2ab53b58cca95ca544",
@@ -128,17 +128,20 @@
     "crates/zkapi-solana-types/src/lib.rs": "8eee63f35148b0da90bcc91ce4a6a6d578f851ddd42d391d9decf78078cbdaf1",
     "tests/svm/src/bin/layout2.rs": "575570095ea81d449c63ef6f54c3b1f64b3306c2f3a9e50af16baf31f806195f",
     "scripts/check_i02_layout2.py": "82808f46fe73a74fcc3d1418d66ecda9b31c3450cb95fed2741393f98e8d4da4",
-    "scripts/run_i02_layout2.sh": "1652aecadffc466abef99b9239de06884ecd79bdd770d744293818db7aa3bd49",
+    "scripts/run_i02_layout2.sh": "1a64a25db3995f115bb6e759fb3524a2408dfb3204771b45e536df642cdbb915",
     "scripts/install_i02_evm_tools.sh": "d744d10f53a3df1b3c7d0e9ccb87ebb068bd38ed66e2f972a5f550133abc4398",
-    "docs/evidence/I02B.md": "6cf449c06207b5d86e7160f394f928c220077f60db361cf970db598719f00cd7",
-    "docs/evidence/I02B-svm-results.json": "7b80ced1b83ae1d0a53dc019ffe014dddacae4618ea9694442d36f333b467402",
-    "docs/evidence/I02B-summary.json": "43aae7a5f58366bf6cb5a006a26eb1473bbb20ee50c7041275d3e6a023aace1d"
+    "docs/evidence/I02B.md": "a075eaedbbf243bcd7560e4573c3375ba302b8df526316ecca17752e9055d1b1",
+    "docs/evidence/I02B-svm-results.json": "1f7c3c07bd9b2d604c3731945e939be1c993ad85786e0c1a5c297ec1c5170b0f",
+    "docs/evidence/I02B-summary.json": "db81c6754ef275644864b48bb1043372bad822b96d582c7e7687c2b1cc5304df",
+    "scripts/build_i02_source.sh": "fb7512f23173f86dc039360292847317cc396f54db2af4395d555a75455352d2",
+    "scripts/check_i02_reproducibility.py": "67af4600c13f7c21731a072fe94a33c02646de7fe7c702c8826753298bedf794",
+    "docs/evidence/I02B-reproducibility.json": "48bc2272ae2a1f3907f48db8577190b1a78a9ad119bf808a69b6310cba3a0ec8"
   },
   "limitations": [
     "Review changes and new contracts CI job not remotely executed yet",
     "Local Go dependency download blocked by storage.googleapis.com policy; original pinned baseline passed remotely",
     "Local PostgreSQL contract not rerun: initdb unavailable; added CI job awaits execution",
-    "Tree backend selected in ADR-0001; I02-B normative integration remains prerequisite for I03/I05 integration completion",
+    "I02-B normative integration complete; full I03 Vault and I04 transport remain unverified",
     "WASM types compiled only; WASM proof/vector execution not run",
     "G1/G2/G3/G4 not passed",
     "Historical direct/recomputed-tag baselines exceed budget. Proof-bound-tag design adopted after research measurement; full Vault and transport G1 remain unverified",
@@ -149,12 +152,12 @@
   ],
   "review": {
     "date_jst": "2026-10-03",
-    "implementation_commit": "b7961bc6239a371e4deb8ea36aa420eb50d65ea5",
-    "design_commit": "88116e3b89e4d5911639af8419eb5e217a22bcd4",
-    "next_task": "I02 SBF/SVM harness, CU and transaction size measurement, tree backend decision",
-    "i03_ready": false,
-    "current_changes_remote_ci": "not_run",
-    "local_postgresql_contract": "not_run_missing_initdb"
+    "implementation_commit": "697faa3ef90da03a77e17698007531da65673eeb",
+    "status": "I02_reproducibility_finding_fixed_and_locally_verified",
+    "next_task": "I03 Anchor Vault, then I04 v0 buffer",
+    "i03_ready": true,
+    "current_changes_remote_ci": "not_run; previous GitHub Actions API access returned Forbidden",
+    "evidence": "docs/evidence/I02B.md"
   },
   "initial_implementation_logs": {
     "I01-rust-protocol.log": {
@@ -331,7 +334,7 @@
     "real_tree_proofs": 6,
     "host_tests": 12,
     "g1": "not_passed_full_vault_transport_pending_I02_complete",
-    "tree_backend": "transition_proof/proof_bound selected by ADR-0001; normative integration pending",
+    "tree_backend": "Historical comparison baseline; transition_proof/proof_bound selected by ADR-0001 and normative I02-B integration complete",
     "next_task": "I03 Vault, then I04 v0 buffer",
     "results": "docs/evidence/I02-svm-results.json",
     "sizes": "docs/evidence/I02-transaction-sizes.json",
@@ -485,17 +488,84 @@
     },
     "buffer_execute_transaction_bytes": 516,
     "tree_proof_generation_ms": {
-      "min": 1379,
-      "max": 2792,
+      "min": 1244,
+      "max": 1334,
       "scope": "shared host release fixture measurement including constraint check, prove, verify; excludes prepare and PK load"
     },
-    "source_archive_sha256": "026c34c14b05e77368da03665664773b675745b43384476eebb9318112b03ca3",
-    "profile_hash": "37f90f026d5c20837aaa138af7f4c2aa64ede12195e762f33984446eaacc358d",
+    "source_archive_sha256": "49659e9933a61d05051ed4377ce95d915840f484f3f7f8ce4c6c1b7ca07fa56e",
+    "profile_hash": "ba688d8a2be7647499c98d52c335c381b86f0471f39fa6539f7d451b76dafca1",
     "g1_passed": false,
     "production_ready": false,
     "remote_ci_run": false,
     "next_task": "I03",
     "logs": {
+      "target/i03-ready/layout2.log": {
+        "command": "scripts/run_i02_layout2.sh",
+        "exit_code": 0,
+        "sha256": "79bd55eb6982497307ef99dcbcab5ee6ba23f3af4859024b0e1abcfe05088e50"
+      },
+      "target/i03-ready/reproducibility.log": {
+        "command": "python3 scripts/check_i02_reproducibility.py",
+        "exit_code": 0,
+        "sha256": "42a28c59accc6f171fa90d297f0f693f8665682776ce1f0dc181183a20d79a1f"
+      },
+      "target/i03-ready/clippy.log": {
+        "command": "cargo clippy --locked --workspace --all-targets -- -D warnings",
+        "exit_code": 0,
+        "sha256": "dd6cb61abfd7b9acb7acaea30991c263cb3e30d14b021d354f2b79560d04593f"
+      },
+      "target/i03-ready/workspace-tests.log": {
+        "command": "cargo test --locked --workspace",
+        "exit_code": 0,
+        "sha256": "2015eed90ab0f3b592ff54baf43527c241d8edac6783e9420567b4a00a46aa21"
+      },
+      "target/i03-ready/wasm.log": {
+        "command": "cargo check --locked -p zkapi-solana-types --target wasm32-unknown-unknown",
+        "exit_code": 0,
+        "sha256": "02db5a66fa0c60ca8618bd08aac556eac4f3ec863e8630a0d353dba6a0f6e126"
+      },
+      "target/i03-ready/svm-clippy.log": {
+        "command": "cargo clippy --locked --manifest-path tests/svm/Cargo.toml --all-targets -- -D warnings",
+        "exit_code": 0,
+        "sha256": "18fe14c6e3eaa2d35ab9e4a54aa9f06544bb3c84e1ef220bb8220631fdfb2bae"
+      },
+      "target/i03-ready/program-clippy.log": {
+        "command": "cargo clippy --locked --manifest-path programs/i02-layout2/Cargo.toml --all-targets -- -D warnings",
+        "exit_code": 0,
+        "sha256": "39c9d9b58d3d4f67eb2cea4b4d13279ec60b04531bcaa2850f75ba2a509f8e3b"
+      },
+      "target/i03-ready/historical-svm.log": {
+        "command": "scripts/run_i02_svm.sh",
+        "exit_code": 0,
+        "sha256": "3c3f4d65661b5de5bb7106f69b50f6edc9613fe7df4d852480700842a1257272"
+      },
+      "target/i03-ready/harness-clippy.log": {
+        "command": "cargo clippy --locked --manifest-path programs/i02-harness/Cargo.toml --all-targets -- -D warnings",
+        "exit_code": 0,
+        "sha256": "ed18e15f16ea1a2ad66a15f006353a803e80262f85b6c5eab2d834e9e5912620"
+      },
+      "target/i03-ready/upstream.log": {
+        "command": "python3 scripts/check_upstream.py",
+        "exit_code": 0,
+        "sha256": "1eb69b3804f857eec71be447a4abebbb3fc53f97d1ad22580d5afef00a1e3f6a"
+      },
+      "target/i03-ready/design.log": {
+        "command": "python3 scripts/check_design.py",
+        "exit_code": 0,
+        "sha256": "6c7024ece66d2df9e3d6a9902ed62091ae247cfb695fc7f357eb30c747acf31c"
+      },
+      "target/i03-ready/generated-contracts.log": {
+        "command": "python3 work/design/generate_contracts.py --check",
+        "exit_code": 0,
+        "sha256": "042d96ab0388e649e844fe5fa694f4b3032758163741764088a83a542f3cc788"
+      },
+      "target/i03-ready/openapi.log": {
+        "command": "python3 scripts/check_openapi_contract.py (validation venv; openapi-spec-validator 0.7.2, jsonschema 4.26.0)",
+        "exit_code": 0,
+        "sha256": "86df3f4002b94a01aac35758b12e648bc7f16649a2055a8ac6ba0d58d4f6039d"
+      }
+    },
+    "initial_logs": {
       "target/i02b/reproduce-final.log": {
         "sha256": "2729ba356fff7f63dccc07e837201414fdfdacd5dd57e8d6ec09994ee77a8873"
       },
@@ -517,6 +587,120 @@
       "target/i02b/wasm-final.log": {
         "sha256": "271f2a9bfe761a40d9ddc5f9d51a545234c58efc653169c6e53912baa5026b76"
       }
-    }
+    },
+    "reproducibility": "docs/evidence/I02B-reproducibility.json"
+  },
+  "foundation_review": {
+    "date_jst": "2026-10-03",
+    "implementation_commit": "b7961bc6239a371e4deb8ea36aa420eb50d65ea5",
+    "design_commit": "88116e3b89e4d5911639af8419eb5e217a22bcd4",
+    "next_task": "I02 SBF/SVM harness, CU and transaction size measurement, tree backend decision",
+    "i03_ready": false,
+    "current_changes_remote_ci": "not_run",
+    "local_postgresql_contract": "not_run_missing_initdb"
+  },
+  "i03_readiness_review": {
+    "date_jst": "2026-10-03",
+    "base_commit": "697faa3ef90da03a77e17698007531da65673eeb",
+    "i03_ready": true,
+    "finding": "archive file modes depended on checkout umask and changed the pinned circuit profile",
+    "fix": "canonical GNU tar headers, 0644 files and 0755 directories; one shared builder; CI regression check",
+    "previous_archive_sha256": "026c34c14b05e77368da03665664773b675745b43384476eebb9318112b03ca3",
+    "archive_sha256": "49659e9933a61d05051ed4377ce95d915840f484f3f7f8ce4c6c1b7ca07fa56e",
+    "previous_profile_hash": "37f90f026d5c20837aaa138af7f4c2aa64ede12195e762f33984446eaacc358d",
+    "profile_hash": "ba688d8a2be7647499c98d52c335c381b86f0471f39fa6539f7d451b76dafca1",
+    "pk_vk_and_proof_fixtures_unchanged": true,
+    "svm_results_cu_and_sizes_unchanged": true,
+    "validation": {
+      "checkout_metadata_variants": 3,
+      "removed_normalization_detected": true,
+      "sbf_cases": 257,
+      "historical_svm_cases": 415,
+      "historical_over_budget_failures_reproduced": true,
+      "host_workspace_tests": 19,
+      "evm_empty_root_tests": 1,
+      "openapi_examples": 31,
+      "max_cu": 317443,
+      "max_v0_transaction_bytes": 924,
+      "buffer_execute_transaction_bytes": 516,
+      "clippy_workspace_svm_programs": "passed",
+      "wasm_types": "passed"
+    },
+    "logs": {
+      "target/i03-ready/layout2.log": {
+        "command": "scripts/run_i02_layout2.sh",
+        "exit_code": 0,
+        "sha256": "79bd55eb6982497307ef99dcbcab5ee6ba23f3af4859024b0e1abcfe05088e50"
+      },
+      "target/i03-ready/reproducibility.log": {
+        "command": "python3 scripts/check_i02_reproducibility.py",
+        "exit_code": 0,
+        "sha256": "42a28c59accc6f171fa90d297f0f693f8665682776ce1f0dc181183a20d79a1f"
+      },
+      "target/i03-ready/clippy.log": {
+        "command": "cargo clippy --locked --workspace --all-targets -- -D warnings",
+        "exit_code": 0,
+        "sha256": "dd6cb61abfd7b9acb7acaea30991c263cb3e30d14b021d354f2b79560d04593f"
+      },
+      "target/i03-ready/workspace-tests.log": {
+        "command": "cargo test --locked --workspace",
+        "exit_code": 0,
+        "sha256": "2015eed90ab0f3b592ff54baf43527c241d8edac6783e9420567b4a00a46aa21"
+      },
+      "target/i03-ready/wasm.log": {
+        "command": "cargo check --locked -p zkapi-solana-types --target wasm32-unknown-unknown",
+        "exit_code": 0,
+        "sha256": "02db5a66fa0c60ca8618bd08aac556eac4f3ec863e8630a0d353dba6a0f6e126"
+      },
+      "target/i03-ready/svm-clippy.log": {
+        "command": "cargo clippy --locked --manifest-path tests/svm/Cargo.toml --all-targets -- -D warnings",
+        "exit_code": 0,
+        "sha256": "18fe14c6e3eaa2d35ab9e4a54aa9f06544bb3c84e1ef220bb8220631fdfb2bae"
+      },
+      "target/i03-ready/program-clippy.log": {
+        "command": "cargo clippy --locked --manifest-path programs/i02-layout2/Cargo.toml --all-targets -- -D warnings",
+        "exit_code": 0,
+        "sha256": "39c9d9b58d3d4f67eb2cea4b4d13279ec60b04531bcaa2850f75ba2a509f8e3b"
+      },
+      "target/i03-ready/historical-svm.log": {
+        "command": "scripts/run_i02_svm.sh",
+        "exit_code": 0,
+        "sha256": "3c3f4d65661b5de5bb7106f69b50f6edc9613fe7df4d852480700842a1257272"
+      },
+      "target/i03-ready/harness-clippy.log": {
+        "command": "cargo clippy --locked --manifest-path programs/i02-harness/Cargo.toml --all-targets -- -D warnings",
+        "exit_code": 0,
+        "sha256": "ed18e15f16ea1a2ad66a15f006353a803e80262f85b6c5eab2d834e9e5912620"
+      },
+      "target/i03-ready/upstream.log": {
+        "command": "python3 scripts/check_upstream.py",
+        "exit_code": 0,
+        "sha256": "1eb69b3804f857eec71be447a4abebbb3fc53f97d1ad22580d5afef00a1e3f6a"
+      },
+      "target/i03-ready/design.log": {
+        "command": "python3 scripts/check_design.py",
+        "exit_code": 0,
+        "sha256": "6c7024ece66d2df9e3d6a9902ed62091ae247cfb695fc7f357eb30c747acf31c"
+      },
+      "target/i03-ready/generated-contracts.log": {
+        "command": "python3 work/design/generate_contracts.py --check",
+        "exit_code": 0,
+        "sha256": "042d96ab0388e649e844fe5fa694f4b3032758163741764088a83a542f3cc788"
+      },
+      "target/i03-ready/openapi.log": {
+        "command": "python3 scripts/check_openapi_contract.py (validation venv; openapi-spec-validator 0.7.2, jsonschema 4.26.0)",
+        "exit_code": 0,
+        "sha256": "86df3f4002b94a01aac35758b12e648bc7f16649a2055a8ac6ba0d58d4f6039d"
+      }
+    },
+    "negative_control": {
+      "path": "target/i03-ready/regression-negative-control.json",
+      "sha256": "c99dac2c5df0a68c15e104d3f36df29f112ece9f5ae339e89bdb01b6583f9e0e"
+    },
+    "remote_ci_run": false,
+    "remote_ci_limitation": "Hosted run not executed for local changes; GitHub Actions API returned Forbidden during review. Verify hosted workflow after push.",
+    "g1_passed": false,
+    "production_ready": false,
+    "next_task": "I03 Anchor dependency lock and minimal SBF build, then Vault implementation"
   }
 }

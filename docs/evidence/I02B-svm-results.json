@@ -4226,10 +4226,10 @@
     }
   ],
   "compute_budget": 1000000,
-  "elf_sha256": "180fde56aa504eccc54c54ab5f3f59ce881aec49ad0f7c70a019779612b1720d",
+  "elf_sha256": "50bb2a3cf80361c8807d599c75359f3b9a07262cf21e584256c77d55c8703295",
   "packet_limit": 1232,
   "production_eligible": false,
-  "profile_hash": "37f90f026d5c20837aaa138af7f4c2aa64ede12195e762f33984446eaacc358d",
+  "profile_hash": "ba688d8a2be7647499c98d52c335c381b86f0471f39fa6539f7d451b76dafca1",
   "sbf_arch": "v0",
   "scope": "I02-B; actual SBF v0 and v0 transactions; measurement snapshots, prefilled sealed buffers and existing token accounts; no Vault/PDA/ATA creation or upload lifecycle claim",
   "sizes": [
@@ -4385,5 +4385,5 @@
     }
   ],
   "svm": "LiteSVM 0.6.1 / Agave 2.2.0",
-  "wrong_elf_sha256": "4c66ae1d854a357b0d793be49c34373eaca89d843e79074e8495cfbe03842e30"
+  "wrong_elf_sha256": "fe2cb8ba4f52285a64c8752028b5e0d92450b0bc8d0fb1c2a71e61246913f1b0"
 }

@@ -14,7 +14,7 @@ OpenAI・Claudeの利用を優先し、Ollama互換は初期対象外。既存�
 
 開発開始：`git submodule update --init --recursive` → `python3 scripts/check_upstream.py` → `cargo test --locked --workspace`。TypeScriptは固定Node/npmで `npm ci --ignore-scripts && npm run typecheck && npm test`。Rust toolchainは `rust-toolchain.toml` に固定。
 
-検証記録のartifact hash照合：`python3 scripts/check_evidence.py`。baselineのremote CI成功とレビュー変更のローカル成功は証跡で区別している。レビュー変更・追加contracts jobはpush後にremote CIを再確認する。
+検証記録のartifact hash照合：`python3 scripts/check_evidence.py`。回路ソースとprofileの再現性：`python3 scripts/check_i02_reproducibility.py`。ファイル権限・mtime・作成順が異なる3条件で同じarchiveを確認する。baselineのremote CI成功とレビュー変更のローカル成功は証跡で区別し、push後にremote CIを確認する。
 
 設計の構造チェック：`python3 scripts/check_design.py`。これはOpenAPI参照、document links、schemaとテストベクトルの整合性の確認であり、実proof検証やDB migration試験ではない。
 
