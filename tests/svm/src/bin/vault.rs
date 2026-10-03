@@ -92,8 +92,26 @@ fn semantic_rejects(rows: &[Value]) -> Value {
 }
 fn main() {
     let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
-    let elf =
-        fs::read(root.join("target/i03-sbf/zkapi_vault.so")).expect("build actual SBF ELF first");
+    // Optional locations let I04 run these assertions without overwriting I03 evidence.
+    let args: Vec<_> = std::env::args().skip(1).collect();
+    assert!(
+        args.is_empty() || args.len() == 3,
+        "optional args: ELF WRONG_VK_ELF OUTPUT_DIRECTORY"
+    );
+    let elf_path = args
+        .first()
+        .map(|x| root.join(x))
+        .unwrap_or_else(|| root.join("target/i03-sbf/zkapi_vault.so"));
+    let wrong_path = args
+        .get(1)
+        .map(|x| root.join(x))
+        .unwrap_or_else(|| root.join("target/i03-sbf-wrong/zkapi_vault.so"));
+    let output = args
+        .get(2)
+        .map(|x| root.join(x))
+        .unwrap_or_else(|| root.join("docs/evidence"));
+    fs::create_dir_all(&output).unwrap();
+    let elf = fs::read(elf_path).expect("build actual SBF ELF first");
     let fixtures = root.join("tests/fixtures/vault");
     let a = read(fixtures.join("a.json"));
     let ab = read(fixtures.join("a-with-b.json"));
@@ -103,8 +121,7 @@ fn main() {
     let genesis = read(fixtures.join("genesis-a.json"));
     let mut rows = vec![];
     let mut traces = BTreeMap::new();
-    let wrong_elf = fs::read(root.join("target/i03-sbf-wrong/zkapi_vault.so"))
-        .expect("build wrong-VK SBF ELF fixture");
+    let wrong_elf = fs::read(wrong_path).expect("build wrong-VK SBF ELF fixture");
     {
         let mut w = fresh(&wrong_elf, &a);
         w.execute(
@@ -1196,17 +1213,17 @@ fn main() {
         "cases":rows.len(),"successful_transactions":successes,"rejected_transactions":failures,"max_cu":max_cu,"max_transaction_bytes":max_bytes,
         "production_eligible":false,"i04_buffer_lifecycle_verified":false,"rows":rows});
     fs::write(
-        root.join("docs/evidence/I03-svm-rejections.json"),
+        output.join("I03-svm-rejections.json"),
         serde_json::to_vec_pretty(&semantic_rejects(report["rows"].as_array().unwrap())).unwrap(),
     )
     .unwrap();
     fs::write(
-        root.join("docs/evidence/I03-svm-traces.json"),
+        output.join("I03-svm-traces.json"),
         serde_json::to_vec_pretty(&traces).unwrap(),
     )
     .unwrap();
     fs::write(
-        root.join("docs/evidence/I03-svm-results.json"),
+        output.join("I03-svm-results.json"),
         serde_json::to_vec_pretty(&report).unwrap(),
     )
     .unwrap();

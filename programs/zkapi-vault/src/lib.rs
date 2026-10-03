@@ -14,6 +14,7 @@ compile_error!("SBF builds require --features sbf-entrypoint for strict wire dec
 
 use anchor_lang::prelude::*;
 use zkapi_layout2::Operation;
+mod buffers;
 #[path = "accounts.rs"]
 pub mod contexts;
 pub mod deployment_keys;
@@ -152,6 +153,25 @@ pub mod zkapi_vault {
     pub fn unpause(ctx: Context<Admin>) -> Result<()> {
         handlers::admin(ctx.accounts, None, Some(false))
     }
+    pub fn create_payload(
+        ctx: Context<CreatePayload>,
+        op: u8,
+        len: u32,
+        digest: [u8; 32],
+        nonce: [u8; 32],
+        expires: u64,
+    ) -> Result<()> {
+        buffers::create(ctx.accounts, op, len, digest, nonce, expires)
+    }
+    pub fn append_payload(ctx: Context<UploadPayload>, offset: u32, bytes: Vec<u8>) -> Result<()> {
+        buffers::append(ctx.accounts, offset, &bytes)
+    }
+    pub fn seal_payload(ctx: Context<UploadPayload>) -> Result<()> {
+        buffers::seal(ctx.accounts)
+    }
+    pub fn close_payload(ctx: Context<ClosePayload>) -> Result<()> {
+        buffers::close(ctx.accounts)
+    }
     pub fn execute_payload<'info>(
         ctx: Context<'_, '_, 'info, 'info, ExecutePayload<'info>>,
         expected_digest: [u8; 32],
@@ -160,16 +180,10 @@ pub mod zkapi_vault {
     }
 }
 
-// Anchor's Borsh dispatcher permits trailing arguments. The SBF build wraps it
-// to enforce the published fixed wire lengths before decoding any account.
-#[cfg(feature = "sbf-entrypoint")]
-solana_program::entrypoint!(checked_entry);
-#[cfg(feature = "sbf-entrypoint")]
-fn checked_entry<'info>(
-    program_id: &Pubkey,
-    accounts: &'info [AccountInfo<'info>],
-    data: &[u8],
-) -> solana_program::entrypoint::ProgramResult {
+// Anchor's dispatcher permits trailing bytes and decodes Vec lengths before
+// handler entry. Bound and exactly match append length before deserialization.
+#[cfg(any(feature = "sbf-entrypoint", test))]
+fn validate_instruction_length(data: &[u8]) -> Result<()> {
     use anchor_lang::Discriminator;
     let lengths: &[(&[u8], usize)] = &[
         (instruction::InitializePool::DISCRIMINATOR, 280),
@@ -183,11 +197,79 @@ fn checked_entry<'info>(
         (instruction::Pause::DISCRIMINATOR, 0),
         (instruction::Unpause::DISCRIMINATOR, 0),
         (instruction::ExecutePayload::DISCRIMINATOR, 32),
+        (instruction::CreatePayload::DISCRIMINATOR, 77),
+        (instruction::SealPayload::DISCRIMINATOR, 0),
+        (instruction::ClosePayload::DISCRIMINATOR, 0),
     ];
     for (discriminator, len) in lengths {
-        if data.starts_with(discriminator) && data.len() != 8 + len {
-            return Err(error!(VaultError::InvalidBuffer).into());
+        if data.starts_with(discriminator) {
+            require!(data.len() == 8 + len, VaultError::InvalidBuffer);
         }
     }
+    if data.starts_with(instruction::AppendPayload::DISCRIMINATOR) {
+        let prefix = data
+            .get(12..16)
+            .ok_or_else(|| error!(VaultError::InvalidBuffer))?;
+        let len = u32::from_le_bytes(prefix.try_into().unwrap()) as usize;
+        require!(
+            len <= buffers::MAX_PAYLOAD && data.len() == 16 + len,
+            VaultError::InvalidBuffer
+        );
+    }
+    Ok(())
+}
+#[cfg(feature = "sbf-entrypoint")]
+solana_program::entrypoint!(checked_entry);
+#[cfg(feature = "sbf-entrypoint")]
+fn checked_entry<'info>(
+    program_id: &Pubkey,
+    accounts: &'info [AccountInfo<'info>],
+    data: &[u8],
+) -> solana_program::entrypoint::ProgramResult {
+    validate_instruction_length(data)?;
     entry(program_id, accounts, data)
+}
+
+#[cfg(test)]
+mod transport_wire_tests {
+    use super::*;
+    use anchor_lang::InstructionData;
+    #[test]
+    fn append_rejects_unbounded_truncated_and_trailing_vec_before_decode() {
+        let valid = instruction::AppendPayload {
+            offset: 0,
+            bytes: vec![1, 2, 3],
+        }
+        .data();
+        assert!(validate_instruction_length(&valid).is_ok());
+        for cut in 8..valid.len() {
+            assert!(validate_instruction_length(&valid[..cut]).is_err());
+        }
+        let mut trailing = valid.clone();
+        trailing.push(0);
+        assert!(validate_instruction_length(&trailing).is_err());
+        let mut forged = valid;
+        forged[12..16].copy_from_slice(&u32::MAX.to_le_bytes());
+        assert!(validate_instruction_length(&forged).is_err());
+    }
+    #[test]
+    fn creation_and_empty_instructions_have_exact_wire_lengths() {
+        let commands = [
+            instruction::CreatePayload {
+                op: 0,
+                len: 692,
+                digest: [0; 32],
+                nonce: [0; 32],
+                expires: 1,
+            }
+            .data(),
+            instruction::SealPayload {}.data(),
+            instruction::ClosePayload {}.data(),
+        ];
+        for mut data in commands {
+            assert!(validate_instruction_length(&data).is_ok());
+            data.push(0);
+            assert!(validate_instruction_length(&data).is_err());
+        }
+    }
 }

@@ -105,6 +105,34 @@ jobs:
             docs/contracts/zkapi_vault.json
             docs/evidence/I03*.json
           if-no-files-found: error
+  transport:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          submodules: recursive
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version-file: .node-version
+      - name: Install pinned tools and SDK dependencies
+        run: |
+          rustup show
+          scripts/install_sbf_tools.sh
+          npm install --global npm@11.9.0
+          npm ci --ignore-scripts
+      - name: Reproduce I04 real transport and indexer evidence
+        run: |
+          bash scripts/run_i04.sh
+          git diff --exit-code -- docs/contracts/zkapi_vault.json
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: I04-local-real-SBF-transport-not-production
+          path: |
+            target/i04/**
+            target/i04-sbf/*.so
+            target/i04-sbf-wrong/*.so
+            docs/evidence/I04*.json
+          if-no-files-found: error
   contracts:
     runs-on: ubuntu-24.04
     steps:

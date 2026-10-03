@@ -92,3 +92,39 @@ pub struct DepositAccounts<'info> {
     pub financial: Financial<'info>,
     pub token_owner_signer: Signer<'info>,
 }
+
+/// Buffer allocation is paid by the independently signed rent payer.
+#[derive(Accounts)]
+pub struct CreatePayload<'info> {
+    /// CHECK: PDA/owner/freshness checked by buffer handler before allocation.
+    #[account(mut)]
+    pub payload: UncheckedAccount<'info>,
+    /// CHECK: immutable pool profile and PDA checked by shared handler.
+    pub pool: UncheckedAccount<'info>,
+    pub uploader: Signer<'info>,
+    #[account(mut)]
+    pub rent_payer: Signer<'info>,
+    pub system_program: Program<'info, System>,
+}
+#[derive(Accounts)]
+pub struct UploadPayload<'info> {
+    /// CHECK: owner/layout/PDA/pool/uploader/length checked by buffer handler.
+    #[account(mut)]
+    pub payload: UncheckedAccount<'info>,
+    /// CHECK: immutable pool profile and PDA checked by shared handler.
+    pub pool: UncheckedAccount<'info>,
+    pub uploader: Signer<'info>,
+}
+#[derive(Accounts)]
+pub struct ClosePayload<'info> {
+    /// CHECK: owner/layout/PDA/pool checked by buffer handler.
+    #[account(mut)]
+    pub payload: UncheckedAccount<'info>,
+    /// CHECK: immutable pool profile and PDA checked by shared handler.
+    pub pool: UncheckedAccount<'info>,
+    /// Uploader until expiry; any signer from expiry onward.
+    pub closer: Signer<'info>,
+    /// CHECK: must equal the saved payer; receives all buffer lamports.
+    #[account(mut)]
+    pub rent_payer: UncheckedAccount<'info>,
+}

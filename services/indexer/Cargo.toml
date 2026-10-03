@@ -1,0 +1,30 @@
+[package]
+name = "zkapi-indexer"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.90"
+publish = false
+
+[workspace]
+
+[dependencies]
+ark-bn254 = "=0.5.0"
+ark-ff = "=0.5.0"
+serde = { version = "=1.0.228", features = ["derive"] }
+serde_json = "=1.0.151"
+serde_jcs = "=0.1.0"
+sha2 = "=0.10.9"
+hex = "=0.4.3"
+base64 = "=0.22.1"
+bs58 = "=0.5.1"
+thiserror = "=2.0.18"
+zkapi-poseidon = { path = "../../crates/zkapi-poseidon" }
+zkapi-layout2 = { path = "../../crates/zkapi-layout2" }
+
+axum = "=0.8.9"
+tokio = { version = "=1.52.0", features = ["macros", "rt-multi-thread", "net", "sync", "time", "signal"] }
+reqwest = { version = "=0.12.28", default-features = false, features = ["json", "rustls-tls"] }
+solana-pubkey = { version = "=2.2.1", features = ["curve25519"] }
+
+[profile.test]
+opt-level = 2

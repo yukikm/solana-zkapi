@@ -7,6 +7,42 @@
   },
   "instructions": [
     {
+      "name": "append_payload",
+      "discriminator": [
+        254,
+        65,
+        54,
+        181,
+        187,
+        35,
+        12,
+        83
+      ],
+      "accounts": [
+        {
+          "name": "payload",
+          "writable": true
+        },
+        {
+          "name": "pool"
+        },
+        {
+          "name": "uploader",
+          "signer": true
+        }
+      ],
+      "args": [
+        {
+          "name": "offset",
+          "type": "u32"
+        },
+        {
+          "name": "bytes",
+          "type": "bytes"
+        }
+      ]
+    },
+    {
       "name": "challenge_escape",
       "discriminator": [
         215,
@@ -218,6 +254,107 @@
               "name": "TreeUpdate"
             }
           }
+        }
+      ]
+    },
+    {
+      "name": "close_payload",
+      "discriminator": [
+        7,
+        12,
+        232,
+        26,
+        198,
+        243,
+        59,
+        136
+      ],
+      "accounts": [
+        {
+          "name": "payload",
+          "writable": true
+        },
+        {
+          "name": "pool"
+        },
+        {
+          "name": "closer",
+          "docs": [
+            "Uploader until expiry; any signer from expiry onward."
+          ],
+          "signer": true
+        },
+        {
+          "name": "rent_payer",
+          "writable": true
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "create_payload",
+      "discriminator": [
+        144,
+        198,
+        8,
+        231,
+        176,
+        85,
+        206,
+        217
+      ],
+      "accounts": [
+        {
+          "name": "payload",
+          "writable": true
+        },
+        {
+          "name": "pool"
+        },
+        {
+          "name": "uploader",
+          "signer": true
+        },
+        {
+          "name": "rent_payer",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "op",
+          "type": "u8"
+        },
+        {
+          "name": "len",
+          "type": "u32"
+        },
+        {
+          "name": "digest",
+          "type": {
+            "array": [
+              "u8",
+              32
+            ]
+          }
+        },
+        {
+          "name": "nonce",
+          "type": {
+            "array": [
+              "u8",
+              32
+            ]
+          }
+        },
+        {
+          "name": "expires",
+          "type": "u64"
         }
       ]
     },
@@ -849,6 +986,33 @@
       "args": []
     },
     {
+      "name": "seal_payload",
+      "discriminator": [
+        0,
+        206,
+        194,
+        34,
+        150,
+        215,
+        190,
+        144
+      ],
+      "accounts": [
+        {
+          "name": "payload",
+          "writable": true
+        },
+        {
+          "name": "pool"
+        },
+        {
+          "name": "uploader",
+          "signer": true
+        }
+      ],
+      "args": []
+    },
+    {
       "name": "set_treasury",
       "discriminator": [
         57,
@@ -1140,7 +1304,8 @@
     {
       "name": "PayloadBuffer",
       "docs": [
-        "I04 creates/appends/seals this account. I03 executes authenticated sealed buffers."
+        "Fixed-size upload allocation. Only bytes before next_offset are received;",
+        "the remaining payload bytes are zero-filled until appended."
       ],
       "type": {
         "kind": "struct",

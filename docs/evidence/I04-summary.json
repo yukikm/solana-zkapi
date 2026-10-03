@@ -1,0 +1,75 @@
+{
+  "date_jst": "2026-10-04",
+  "scope": "local test-key/mint real SBF and signed-v0 transport, synthetic finalized envelopes, indexer replay",
+  "buffer_transactions": 161,
+  "buffer_rejected": 53,
+  "i03_regression_transactions": 366,
+  "i03_state_traces_unchanged": true,
+  "sdk_transactions": 53,
+  "sdk_scenarios": 4,
+  "max_cu": 426830,
+  "max_transaction_bytes": 1232,
+  "indexer": {
+    "scenarios": [
+      {
+        "blocks": 11,
+        "failed_transactions_ignored": 1,
+        "missing_logs_replay_equal": true,
+        "name": "close",
+        "next_note_id": 1,
+        "paths_checked": 5,
+        "root": "0x2bb43759c24665d98a33afa8d5094817d359d5e4c72a45b45a2a563176d37933",
+        "sequence": 2,
+        "snapshot_roundtrips": 11
+      },
+      {
+        "blocks": 20,
+        "failed_transactions_ignored": 1,
+        "missing_logs_replay_equal": true,
+        "name": "challenge",
+        "next_note_id": 2,
+        "paths_checked": 26,
+        "root": "0x1d9ed8e993f5aa8568f3cb796935a528b995feb33a4643e995aad333d012e2a2",
+        "sequence": 4,
+        "snapshot_roundtrips": 20
+      },
+      {
+        "blocks": 12,
+        "failed_transactions_ignored": 1,
+        "missing_logs_replay_equal": true,
+        "name": "finalize",
+        "next_note_id": 1,
+        "paths_checked": 6,
+        "root": "0x2bb43759c24665d98a33afa8d5094817d359d5e4c72a45b45a2a563176d37933",
+        "sequence": 3,
+        "snapshot_roundtrips": 12
+      },
+      {
+        "blocks": 10,
+        "failed_transactions_ignored": 1,
+        "missing_logs_replay_equal": true,
+        "name": "expiry",
+        "next_note_id": 1,
+        "paths_checked": 4,
+        "root": "0x2bb43759c24665d98a33afa8d5094817d359d5e4c72a45b45a2a563176d37933",
+        "sequence": 2,
+        "snapshot_roundtrips": 10
+      }
+    ],
+    "scope": "real SDK-signed v0 / local SBF history replay; missing-log replay and API snapshot/path checks; no live RPC finality or live wallet claim",
+    "source_sha256": "cc57562c1be8716ed1d870887479e868c89242bf69ee495f2c7b6d085a3af21c"
+  },
+  "elf_sha256": "f8e57adeee417ca58c27324999d3e46013800fd7d8892880ea8ee1becefc2334",
+  "wrong_vk_elf_sha256": "d57ff4cc133ddf88d283d38d51683b2ba04789a828b81a0650def25b300e297f",
+  "source_artifacts": {
+    "docs/evidence/I04-buffer-svm-results.json": "5c0ad4e9724154941f8237c5c892a4a41aeb8bc6fe50ba4200382489d80531bf",
+    "target/i04/sdk-svm-history.json": "cc57562c1be8716ed1d870887479e868c89242bf69ee495f2c7b6d085a3af21c",
+    "target/i04/indexer-results.json": "c3da667880269f172f31e162c22ac55b30cf1234a5411ceee42d26b9970ace7a",
+    "target/i04/i03-regression/I03-svm-results.json": "2b900307aebcb50ac908cad0aa4a606277f25a46fc09cd31c6dcb52aee9cab52"
+  },
+  "live_wallet_verified": false,
+  "live_rpc_finality_verified": false,
+  "hosted_ci_verified": false,
+  "g1_passed": false,
+  "production_eligible": false
+}

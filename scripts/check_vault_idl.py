@@ -61,6 +61,14 @@ INSTRUCTION_ACCOUNTS = {
     "unpause": ADMIN_ACCOUNTS,
     # Financial follows this prefix as remaining_accounts. I04 must append that
     # list and set token_owner's signer bit for buffered deposits explicitly.
+    "create_payload": [
+        account("payload", writable=True), account("pool"),
+        account("uploader", signer=True), account("rent_payer", writable=True, signer=True),
+        account("system_program", address="11111111111111111111111111111111"),
+    ],
+    "append_payload": [account("payload", writable=True), account("pool"), account("uploader", signer=True)],
+    "seal_payload": [account("payload", writable=True), account("pool"), account("uploader", signer=True)],
+    "close_payload": [account("payload", writable=True), account("pool"), account("closer", signer=True), account("rent_payer", writable=True)],
     "execute_payload": [
         account("payload", writable=True),
         account("uploader", signer=True),
@@ -100,6 +108,16 @@ def validate(idl):
             return sum(size(field["type"]) for field in item["fields"])
         raise AssertionError(f"Variable or unknown wire type: {kind}")
 
+    buffer_args = {
+        "create_payload": [{"name": "op", "type": "u8"}, {"name": "len", "type": "u32"},
+            {"name": "digest", "type": {"array": ["u8", 32]}}, {"name": "nonce", "type": {"array": ["u8", 32]}},
+            {"name": "expires", "type": "u64"}],
+        "append_payload": [{"name": "offset", "type": "u32"}, {"name": "bytes", "type": "bytes"}],
+        "seal_payload": [], "close_payload": [],
+        "execute_payload": [{"name": "expected_digest", "type": {"array": ["u8", 32]}}],
+    }
+    for name, args in buffer_args.items():
+        assert instructions[name]["args"] == args, f"{name}: buffer wire differs"
     # Fixed args only; Anchor adds the eight-byte discriminator.
     lengths = {
         "initialize_pool": 280,
@@ -113,6 +131,10 @@ def validate(idl):
         "pause": 0,
         "unpause": 0,
         "execute_payload": 32,
+        "create_payload": 77,
+        "seal_payload": 0,
+        "close_payload": 0,
+        "append_payload": None,
     }
     assert instructions.keys() == lengths.keys(), instructions.keys()
     assert instructions.keys() == INSTRUCTION_ACCOUNTS.keys()
@@ -122,6 +144,9 @@ def validate(idl):
         assert bytes(instruction["discriminator"]) == hashlib.sha256(
             f"global:{name}".encode()
         ).digest()[:8], name
+        if name == "append_payload":
+            assert instruction["args"] == [{"name": "offset", "type": "u32"}, {"name": "bytes", "type": "bytes"}], "append wire differs"
+            continue
         actual = sum(size(arg["type"]) for arg in instruction["args"])
         assert actual == expected, (name, actual, expected)
 

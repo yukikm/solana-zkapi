@@ -1,6 +1,6 @@
 # 実装タスクと受入条件
 
-[I01](evidence/I01.md)・[I02](evidence/I02B.md)・[I03](evidence/I03.md)完了。Anchor Vaultの実SBF 366取引、元Ethereumとの状態・拒否条件の比較、IDLを確認し、**次はI04 buffer・SDK transaction・indexer**。I03はsealed bufferを事前投入したexecuteまで。G1は全transportも実装してから判定する。署名公開鍵のビルド固定は[ADR-0002](adr/0002-build-validated-signing-keys.md)を参照。担当は作業componentを示し、人員を割り当てた意味ではない。各完了時にevidenceへcommands/artifact/限界を残す。
+[I01](evidence/I01.md)・[I02](evidence/I02B.md)・[I03](evidence/I03.md)・[I04](evidence/I04.md)のlocal実装・検証を完了。**次はI05 Postgres ledger・quote・signer**。I04は実buffer upload、SDK署名v0、finalized replay/snapshot、障害復旧まで検証済み。実wallet・公開cluster/RPC・hosted CI・G1〜G4公開gateは未完了。署名公開鍵のビルド固定は[ADR-0002](adr/0002-build-validated-signing-keys.md)を参照。各完了時にevidenceへcommands/artifact/限界を残す。
 
 ## 1. タスク
 
@@ -73,8 +73,4 @@ P01〜P31はproduction-parity.mdの定義を継承。P32〜P36も初回productio
 
 ## 4. 実装担当へ渡す開始指示
 
-> docs/implementation-ready.md、ADR-0001/0002、specs/tree-transition.md、protocol-solana.md、evidence/I03.mdを読み、I04へ進む。完成したAnchor Vaultと生成IDL、zkapi-layout2 codec/binding、zkapi-tree-proverを再利用する。sealed bufferの事前投入を実際のcreate/append/seal/execute/closeへ置き換え、wallet・indexer・復旧と最終account listのv0サイズ/CUを測る。過去RPのrootを現在rootへ変更せず、元回路/Poseidonと固定公開鍵profileを維持する。G1〜G4を未検証のまま合格にしない。購入・provider契約・mainnet配備は開始指示に含めない。
-
-TT01〜TT08は[tree-transition仕様](specs/tree-transition.md)の追加必須条件。T01〜T20と合わせて実行する。
-
-実装開始前のユーザーへの追加質問は必須ではない。provider credential、production鍵、program ID等は後続の環境設定で入力する。設計上の選択と、配備時の秘密・実測値を区別する。
+> docs/implementation-ready.md、ADR-0001/0002、evidence/I03.md・I04.mdとledger/API仕様を読み、I05 Postgres ledger・quote・signerへ進む。I04のbuffer・SDK transaction・indexerを再実装せず利用する。N/clearance排他、整数予算予約、idempotency、sign-once settlement、dispatch attempt fencingとschema migrationをruntimeで検証する。元回路/Poseidonと固定profileを維持する。G1〜G4を未検証のまま合格にしない。購入・provider契約・mainnet配備は開始指示に含めない。

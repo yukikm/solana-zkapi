@@ -162,7 +162,11 @@ buffer op:u8はdeposit=0、mutual_close=1、initiate_escape=2、challenge_escape
 
 I03のPayloadBufferをそのまま使用する。account先頭をoffset 0とすると、Vecの長さprefixはoffset 124のu32le、payload bytesはoffset 128から、nonceは`128 + payload.len()`から32 bytes。全serialized長は`160 + payload.len()` bytes（8-byte discriminatorを含む）。`HEADER_SPACE=160`はnonceを含めた固定部分の合計で、payloadの開始offsetではない。seal/execute時には`payload.len() == payload_len == next_offset`が必要となる。I04のcreate/appendはこのBorsh配置を維持し、確保する最終account容量を`160 + payload_len`としてrentを計算する。digestはpayload bytesだけのSHA-256で、Vec長prefix・nonce・Anchor命令discriminatorを含めない。
 
-- len<=4096、expires<=作成時+3600秒。opはdeposit/close/escape/challenge/expiryだけ。
+I04で固定したaccount list（順序、w=writable、s=signer）：createは `[payload(w), pool, uploader(s), rent_payer(ws), system_program]`、append/sealは `[payload(w), pool, uploader(s)]`、closeは `[payload(w), pool, closer(s), rent_payer(w)]`。executeは前節の3 prefix＋Financialとする。生成IDLで順序・権限・wireを検査する。
+
+createでVecを最終payload_lenまでゼロ埋めし、nonce位置を固定する。next_offsetだけが受信済み範囲を表す。空appendはno-opとして受理し、sealはpayloadのlength/hashのみ検査する（proofの構造・有効性はexecuteが検査）。indexerはこれらの成功履歴も受理する。closeは `now >= expires` なら任意の署名者、それより前はuploaderのみ。rentは常に保存済みrent_payerへ返す。
+
+- len<=4096かつ各opの固定payload長、作成時<expires<=作成時+3600秒。opはdeposit/close/escape/challenge/expiryだけ。
 - appendはuploader署名、offset=next_offset、範囲内。既存byteの書換え不可。sealは全byte受領とSHA256一致を確認。
 - executeはuploader署名、expected_digest=buffer.digest、pool・op・seal・期限を検査。payloadはlayout 2の対象inline命令のargsそのもの（discriminatorを除く）、固定長はtree-transition §3どおり。opから命令を一意に選び、旧path形式・余分な末尾byteを拒否。account条件はinlineと同じ。depositでは元token owner署名も必須。
 - 署名はbuffer accountとinstruction data内のexpected_digestに結合する。同じPDAをclose後に再作成して別内容をsealしても、以前のexecute署名はInvalidBufferで拒否する。封印だけでは資金・root・noteを変更しない。
@@ -173,8 +177,8 @@ I03のPayloadBufferをそのまま使用する。account先頭をoffset 0とす�
 
 [ADR-0001](../adr/0001-proof-bound-tree-transition.md)により追加tree Groth16証明（`transition_proof`）、`proof_bound` tag検証、layout 2を採用する。元のrequest/withdrawal回路・Poseidon・32段treeは維持する。tree回路がleaf、旧新root、同じpath、op、値域、transition_tagを制約し、programは固定VKで全11公開入力を検証する。programによるtag/leaf/pathのPoseidon再計算は要求しない。実状態・命令・認可proofとの照合は[tree-transition仕様](tree-transition.md)に定義する。
 
-[I02の実測](../evidence/I02.md)ではtag再計算を省く研究用案が365,907〜671,266 CU。その後[I02-B](../evidence/I02B.md)で現仕様へ標準化し、実SBFの257ケース、最大317,443 CUを確認した。[I03](../evidence/I03.md)ではVault account/ATA/PDA/CPI/eventを統合して最大426,765 CUを確認。I04の全transportは未完了でG1は未合格。元tree直接計算・tag再計算付きfallbackのCU超過は比較用の履歴として保持する。
+[I02の実測](../evidence/I02.md)ではtag再計算を省く研究用案が365,907〜671,266 CU。その後[I02-B](../evidence/I02B.md)で現仕様へ標準化し、実SBFの257ケース、最大317,443 CUを確認した。[I03](../evidence/I03.md)ではVault account/ATA/PDA/CPI/eventを統合して最大426,765 CUを確認。[I04](../evidence/I04.md)でv0 buffer・SDK署名・indexerをlocal検証し最大426,830 CU / 1,232 bytes。target cluster/walletを含むG1は未合格。元tree直接計算・tag再計算付きfallbackのCU超過は比較用の履歴として保持する。
 
 release目標は**全命令のworst-case <=1,000,000 CU**、実transactionが採用format内。100万CUはprotocolの余裕を含む設計目標でありSolanaの絶対上限ではない。I03/I04では全PDA/ATA作成、proof binding、status/nullifier、Token CPI、event、buffer処理込みで測る。予算超過時に検査を省いたり目標を無断に引き上げたりしない。
 
-追加回路のsource/constraints/VK/setupとclient証明生成・root競合の受入条件は固定済み。I03は共通codec/binding/proverを統合し、全Vaultの実SBF 366取引、最大426,765 CU、863 bytesと元EVMの7シナリオ比較を完了した。I04の全upload/wallet/buffer経路とtarget clusterは未検証で、G1は未合格。新poolのみlayout 2を使い、既存poolのVK/backend/署名公開鍵を上書きしない。production setup・全機能同等性の未検証項目も公開gateとして残す。
+追加回路のsource/constraints/VK/setupとclient証明生成・root競合の受入条件は固定済み。I03は共通codec/binding/proverを統合し、全Vaultの実SBF 366取引、最大426,765 CU、863 bytesと元EVMの7シナリオ比較を完了した。I04の全upload/buffer経路・SDK v0署名はlocal検証済みだが、実wallet端末・target clusterは未検証でG1は未合格。新poolのみlayout 2を使い、既存poolのVK/backend/署名公開鍵を上書きしない。production setup・全機能同等性の未検証項目も公開gateとして残す。

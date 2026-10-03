@@ -1,6 +1,6 @@
 {
-  "date_jst": "2026-10-03",
-  "scope": "I01_I02_I03_completed_I04_transport_and_full_G1_pending",
+  "date_jst": "2026-10-04",
+  "scope": "I01_I02_I03_I04_local_implementation_completed_I05_next_release_gates_pending",
   "toolchain": {
     "rust": "1.90.0",
     "go": "1.25.0",
@@ -19,13 +19,13 @@
     "svm_litesvm": "0.6.1"
   },
   "artifact_sha256": {
-    ".github/workflows/ci.yml": "37ca15a08127b8949ad02008423b5bab65590984980de1065d64ec0a9421c26f",
+    ".github/workflows/ci.yml": "7397333e31879a10289c84244932dcef32c15cdfd2a2e224e9415ac2dfd594cd",
     ".go-version": "32112436a82effc1d958644a972f2a81e829e5ff08beb71305473cf6d41ca956",
     ".node-version": "7e8a2fa94951112b894a3dbe3d05efef5e9263741fa49125f0a70f40fedab4cc",
-    "AGENTS.md": "384360c08f3e90e935b82aabca29eaf7c6068259e0fc539e909c5418a4e2fb03",
+    "AGENTS.md": "498790e9d78b941d9840220165935d7320e7568c28a26ec975ee9716135c7dfe",
     "Cargo.lock": "e4489876e3ee37a9a67647a272729444535aa3d6279ae15807d5ae0535113291",
-    "Cargo.toml": "f070dec79937aad99184add06cfee916b3b330e8a125dc3bb1d05d943d24ddde",
-    "README.md": "a523a42df5e0174e0d71c84b4a8871e9f89fe4cd80b37d51e2a3d0795e210f47",
+    "Cargo.toml": "051013c25855f1fa7eae9b0149dc35cf962bf0dc5e7f780f5583d93f7dd65873",
+    "README.md": "533ae30d9451d16f84a7f5acfe6069ef992d46bb5e2c124f5a541955e12363f4",
     "crates/zkapi-layout2/Cargo.toml": "710f242bc6e5392bea1a352b58b8e8cb605111581d8c6bfefe37a00a452f5b7b",
     "crates/zkapi-layout2/src/binding.rs": "6181541842c911632f0e60de4fe196725b187709221acc89e84ef1340b81dc1f",
     "crates/zkapi-layout2/src/framing.rs": "a55d6c30c4281a7f6d3bb7debb93bc64645fc8b35627aa7d7333d3dc39e267cc",
@@ -59,7 +59,7 @@
     "docs/contracts/ledger.sql": "d37de7668298c8bb8a719966fa5943dfcd118d0bf182d13e516a2d593feb0b77",
     "docs/contracts/openapi.json": "09a1bc288506ca610949b229b675fbc708bd0f73234e50bede16be1547cc7695",
     "docs/contracts/tree-transition.json": "8622d5114902a83b280f9920d7d4dd950335331e6c79336cfeeeb5a3bf2cdbdf",
-    "docs/contracts/zkapi_vault.json": "cd5c097fb1c41987a676f51d936f433134ff6e2cd536c56121595be00f927920",
+    "docs/contracts/zkapi_vault.json": "73b6fa42aeba639589d59d1c2264653c8cda6a4c4ac0ca67a96653a8db9fb594",
     "docs/ethereum-reference.json": "de667846412893bccddee6a96f9255a9302cfb4194cc7aedd09e57defb1b717b",
     "docs/evidence/I02-ethereum-comparison.json": "241a737a8a08a42b98062aea8065a539ef2ed9177876fc17189f9cf8bab920e2",
     "docs/evidence/I02-optimization-results.json": "54452d699f720bd3a3c08b5140653d66d415666371b054c78523f34e205e4872",
@@ -80,18 +80,27 @@
     "docs/evidence/I03-svm-results.json": "8fc7821dd559207ea5311f75f5c262e32dbe4f3c7a00e80860f4c0ac83ba822d",
     "docs/evidence/I03-svm-traces.json": "3651ab83ecdc6735bdf5d32d6c22231ca23de094779567f58bab6ad9ca144d4c",
     "docs/evidence/I03.md": "c916c99c781281ef7f3070e48de118ebbabd54a0582c6703cddc09e207971c1e",
+    "docs/evidence/I04-buffer-svm-results.json": "5c0ad4e9724154941f8237c5c892a4a41aeb8bc6fe50ba4200382489d80531bf",
+    "docs/evidence/I04-summary.json": "7519a2bd40e4e6df652a74d947f1e1235b4b30ec8a7d053ec400971071dd084d",
+    "docs/evidence/I04.md": "703b6dca26bfc05e5a392a0a8583b95f2e05cfda44ad32cf5a238558105bcd36",
     "docs/evidence/ci-baseline.json": "6d24c5387804fe16e067102ad442b6a41047f2d758d31604f2d4babbd64d88ad",
     "docs/evidence/layout2-design-ready.md": "43a69bb6d5989cad23001598342e25b43687b5d62f6d0df228e3cdda8d08657f",
-    "docs/implementation-plan.md": "a2e8d39162d76ba86bc07ee889b1acd81b7d3198dbd0c8b9c6537d781613ee41",
-    "docs/implementation-ready.md": "ee7b9bfcbec03d128dfe987f5210f09313c12782e4cc7dcf28e506ef339170ab",
+    "docs/implementation-plan.md": "5a3a7d71d00e0540f8b2f58788ab1a1b8b11894cb737f38d92a9c6bfff4036a6",
+    "docs/implementation-ready.md": "1643fbaa47bfa3afa51626aff36594918e99eee41d6aa88b8856f25e53c6ee2e",
     "docs/production-parity.md": "3dc4065f2950a1a9fadfa87efe790d6cb5a257290a1ae4f442b903945f38ad6f",
     "docs/specs/api-proxy.md": "0a6e9a425c1eb4ea51e80ccc183da6052b260689da0b5d6db021982c51d71bf2",
     "docs/specs/operations.md": "af689f64ce9031d6a5597da13e01c7de6f8324e41b62af6eac407169f03e35cc",
-    "docs/specs/protocol-solana.md": "1e76346175cb40b6781e0213bcb5a7c8999dcf52cbeb57b9d4b1fc27a3ad9d67",
+    "docs/specs/protocol-solana.md": "f583496de4c363722c0cb03fe862468c5e726bb8430c9fe2424f26acce1b5adc",
     "docs/specs/tree-transition.md": "eafe562109ff41dd977c07d2b4c605647b420d8e2e74b170c208746a5291803d",
-    "package-lock.json": "66fd09223e08493b7ccc32863cb5f50fcc3136bd49d8996ec5bf86e439b6892f",
+    "package-lock.json": "f20927b629c1a7700b90999783e052c8ef683c28d648415eb13d05caebecb2aa",
+    "packages/sdk/README.md": "c5d42301b87bfc8cb3f0735ab39b630a416d2bafa34ecac01b7a4a24dcca6421",
+    "packages/sdk/package.json": "3fc6c6fa4f74494bed3386fbd724edd897edd99971e561b17e24b8846eb56518",
     "packages/sdk/src/encoding.ts": "7301ea7c7f93dcd4ae02f760d07829d342bc2c0d042ace67bc5a41a8d68aeee4",
+    "packages/sdk/src/layout2.ts": "b6f6c1208f315327fed01b531a883a68676ebc0680f0d178cead59610906c91e",
+    "packages/sdk/src/transport.ts": "9c8de33e50124d15ee8eb518b99cd9eec128b225596647b84582fd98eee48fbe",
     "packages/sdk/test/encoding.test.ts": "6ad5f94b9d8581c8c6e9d71793c061c1b50ed9ebc95bdbfd3d6cb3291534d73a",
+    "packages/sdk/test/sbf-transactions.ts": "b97b06d90865a12b708960bda5386913246b7ba75dc09f8a3df9cfde4c24d59d",
+    "packages/sdk/test/transport.test.ts": "53c4b9518325c6b882027d7d0ef559c23ca973e48144f1ecd7bbc022bb32b569",
     "programs/i02-harness/Cargo.lock": "a6afe1069fd46559e61f4fc021433c9256b3abe2e9c8bc0c8e6c747eaaf1b382",
     "programs/i02-harness/Cargo.toml": "44c6b2c5148d99afb3b2a08f03de4b30f2817a2444f1f7766f38b51b2da98ae6",
     "programs/i02-harness/src/lib.rs": "ce4ef5e6ab07deeb94f7abca4505882a36fdff543f04bfe29e96958f378f097e",
@@ -106,14 +115,15 @@
     "programs/zkapi-vault/Cargo.lock": "c3abb9f8c0424e0b3e9ad0ffd7416b011217dfdd6ab6a9ea5e61701f16d972ef",
     "programs/zkapi-vault/Cargo.toml": "ee88d90aecf4e7d174565719428599a9c6e7071f05ecf8d609ab839080d7fd4e",
     "programs/zkapi-vault/build.rs": "775146478e957d3eda7e707c2eddf72185803e739c8e15bb5ab2015322b139ea",
-    "programs/zkapi-vault/src/accounts.rs": "5151000b2a34bd97b1172d63134f13dbeb71b19321f2b91db0e4fc4dadbbf52b",
+    "programs/zkapi-vault/src/accounts.rs": "f07919f9b23a5a0ca6719911a79dbcc067038763b256f5267fe67772388cf547",
+    "programs/zkapi-vault/src/buffers.rs": "7980458c80e33a4952eb19bc7835ac5b2145909e10b3ed516e80303b412ee7b9",
     "programs/zkapi-vault/src/deployment_keys.rs": "69b46ef274a6bdd80ce1f8c7bbd7b4bbaf9b208ed655de59ef84530b343b4acd",
-    "programs/zkapi-vault/src/handlers.rs": "c5c6585980c4893c569eb3b6995a3f457dcaf3f4b03b9bd78bbb55abc90c0f60",
+    "programs/zkapi-vault/src/handlers.rs": "ccd508487cc5cdbd440fa4809a9bc44f36737f5290727348e5e2d4dd59e6a9f4",
     "programs/zkapi-vault/src/key_validation.rs": "4902f78b213b32f2b9e18014d9e7b18fa9d81fb3f8ff80527724e8856c0544a6",
     "programs/zkapi-vault/src/keys.rs": "2270aca63df1c926377ab01a9a7c7f738ff743fc8ea696ab9828468836d51a46",
-    "programs/zkapi-vault/src/lib.rs": "57a7a7b4e27e6f943258d12f478133a6d59f0baa01f24bf614b8e96b2a50924b",
+    "programs/zkapi-vault/src/lib.rs": "1b2cf1e5e14b680c82d5f0780e8f71416fe64e06e96ebffaceab721b8b67c4f6",
     "programs/zkapi-vault/src/profile.rs": "2d13c302ada75e8ca608f52abbf15de6fbd5e5f936c79e528ef192caac900231",
-    "programs/zkapi-vault/src/state.rs": "76bd4e618509cfb1122679d21d226e46dab8b357b6bdb7ac1ce2e5b9c149928f",
+    "programs/zkapi-vault/src/state.rs": "494cfbb1ae94929ca054f9ef729267eddf5ecb9ea815f4b07743aec2b12c6581",
     "programs/zkapi-vault/src/verify.rs": "49e8b06697514c2f3bb9d3647ee1e3549b2d529c71e644b33959356286304c38",
     "rust-toolchain.toml": "ef994db2f5b4d597d6641f1c9d1a39224b2a3cd2476de2723680394e010bf2be",
     "scripts/build_i02_source.sh": "fb7512f23173f86dc039360292847317cc396f54db2af4395d555a75455352d2",
@@ -123,20 +133,35 @@
     "scripts/check_i02_reproducibility.py": "67af4600c13f7c21731a072fe94a33c02646de7fe7c702c8826753298bedf794",
     "scripts/check_i02_results.py": "02beff2043537e8f49b8ee5214bbcda81cb60a9c3a1f8cee1462bca60e394795",
     "scripts/check_i03_results.py": "7aabcf9380d134e29ff52878a64ed7056a9723b22cf1a7d7221e503e3859fc6a",
+    "scripts/check_i04_results.py": "8b9142bddc0ca8e05a07558f0ec17e9d300caf927a8dd29392865e45340c5d41",
     "scripts/check_ledger_contract.py": "0dddd0b639a4f28be656652135ccbd3b5f0a3049a9c860a84fcf5f411301a2dc",
     "scripts/check_openapi_contract.py": "dfd8daea9d08f7cc558587f78e5a97b61b173b1f23bd44f12001448060c260f3",
     "scripts/check_upstream.py": "95d38e416a245059848019356634f42a81770cd1ec54eb2e160399689e9c0343",
     "scripts/check_vault_fixtures.py": "7f0b227a971607912711380e12fefb04240c6fcd89ddfddf09adc0eb8c6d9f86",
-    "scripts/check_vault_idl.py": "d4449995f677970720100ac990352921220572ffe3cbece99de2bfc071425149",
+    "scripts/check_vault_idl.py": "c36256fc403a40bbd36c3af3f127f22620f13f30f471350f7942f5c71d0f47eb",
     "scripts/collect_i02_optimization.py": "049f403849aa19a6aa3b4623fecafff4a4af8ee9fc6508e45a0b4b887129e14d",
     "scripts/install_i02_evm_tools.sh": "d744d10f53a3df1b3c7d0e9ccb87ebb068bd38ed66e2f972a5f550133abc4398",
-    "scripts/install_sbf_tools.sh": "09f8a3e3ee0b75a11abe1c048d46219c16a3bfec5d5293d0787f2e6d96ee84eb",
+    "scripts/install_sbf_tools.sh": "935aa398336360f3a5eed42e6c35a69dce80e8809a2a5a5df7915fa4cde46082",
     "scripts/ledger_contract_checks.sql": "dbc7eaa143acb820b2668cf0244eb05dbcfa07c6ebed7a17c547e37fb50edc9c",
     "scripts/run_i02_layout2.sh": "1a64a25db3995f115bb6e759fb3524a2408dfb3204771b45e536df642cdbb915",
     "scripts/run_i02_optimization.sh": "d4e5c99487d41e638b7c287f142b25f9c1d9cea0c288e818c5c6959625a34d8e",
     "scripts/run_i02_svm.sh": "7fdb44ac3e5d497ecab2af4249a99124c59de3240bf634a6e6928f9d8d92e850",
     "scripts/run_i03.sh": "96eb839cbbe4125b33e80536596f212cb13f75b1bedd96b640c2f3715cc3f296",
-    "scripts/test_check_vault_idl.py": "00a66e6f4f8d2a1fa8fd01f78b92060957b2e222e73d1deac28e21bd7423a71f",
+    "scripts/run_i04.sh": "719fddeade32c3cf304caffc4f0eddc6fc964dd10f1d2481273bce5cb8812225",
+    "scripts/test_check_vault_idl.py": "d78a9a286f3f75321444cc1eca0e9450b85dbac3576df59a42d24c6b27c4a183",
+    "services/indexer/Cargo.lock": "4d81b30548aacce6b472fd54c7fe1575853976ae11786d87d90ef1c4b56b9708",
+    "services/indexer/Cargo.toml": "44937cfb4cbeff3a77816017304f297d902dfaa70a31579549e09c68e954bc91",
+    "services/indexer/README.md": "17c54f0494c5151c296a73a03c11c7fdff36c606d7846716d8ba0eaea1f2ad3e",
+    "services/indexer/examples/verify_history.rs": "d25c33c9411cf115622a1649cf1bc75e65ee3e1588a8f83c93c6f53228f0daa7",
+    "services/indexer/src/bin/indexerd.rs": "df9070ca3ae3a929f4569f38b14820296aefc918e98b7ff988c0647214419a6c",
+    "services/indexer/src/lib.rs": "9cb157a0b818c439669fdc772bea7e90c8a774e2cc58e04b69bdade002faa422",
+    "services/indexer/src/replay.rs": "38da049badab5184d89f3078a6452c55f16969edf6f3afc0d431a513d683b0fb",
+    "services/indexer/src/rpc.rs": "db2a7c2d626b510555ea13ff3c6ab9fb3f5620a155feef4eafeb54b330b9d310",
+    "services/indexer/src/runtime.rs": "99ad25c5eb893b3a50f97f25857927b6e1cffb788453b8525a661cb0c62ba9f6",
+    "services/indexer/src/snapshot.rs": "e77f70b969327948f1a1de41577f4a88b07b392596dfc2a96ee516dc01a955f9",
+    "services/indexer/src/tree.rs": "bfb9b75a177f9d4a26e6d07de2d70a3f979567f7083d49e3ce433b1d332d1e66",
+    "services/indexer/tests/replay.rs": "72904e26b2385e1e43ac4fd9438ed6babd8967c5ca9f45f66d30343802075a6b",
+    "services/indexer/tests/runtime.rs": "2e891ebaf85f5e8051985ab5c2442c2b0c8b42ab6335a8c28da426c700720cf4",
     "tests/evm-layout2/EmptyRoot.t.sol": "f60e97b89085b2e725b837d89afc898df2465610c831fbbab29cab37ecc41556",
     "tests/evm-layout2/foundry.toml": "1f2f1d70a45a6b6cb7766cf49d332abbec5f4075d96d089e47423e0bc543ebfb",
     "tests/evm-vault/README.md": "b5eaa233ad9042ab6263bd700b225f4cedbf0272c1b2872368b69ef836adfb56",
@@ -188,12 +213,14 @@
     "tests/key-validation-diagnostic/program/Cargo.toml": "202dec9549d707424f9cc868c82ec02052fb456371e7d93663abb58d8b8ee616",
     "tests/key-validation-diagnostic/program/src/keys_generic.rs": "e4d99d5818cc5b74c434dc76094de09d58c263c2e33098484cad2350e99c1129",
     "tests/key-validation-diagnostic/program/src/lib.rs": "f6be592de2680b8fbc341e58e81427ac93b89a52b0bd7aa4efc4d8a984b00bc9",
-    "tests/svm/Cargo.lock": "eb443a9a23e171feaac6f7ffa65ca2f09bbc49971201e7626da0e2b6c0e84f7a",
-    "tests/svm/Cargo.toml": "7f05d8f1439f789e173e6664c6085888eb5596238792b58600f6aa463276755a",
+    "tests/svm/Cargo.lock": "e98d71f3e793816ce0f0627d3b84008ce77ac6b733100e5371b75434ec088c9e",
+    "tests/svm/Cargo.toml": "3ad70f37a1c678b4ccb1b4124e205c1ae8b6271ac009c52eca8babaa4cd2a711",
+    "tests/svm/src/bin/buffer.rs": "bb98796af26b9f53935186850aef8bf33b824f686bcac2f6f9f77689ebe947bd",
     "tests/svm/src/bin/fallback_probe.rs": "d378b34863cb722139715e42ef3c0d23dc9a231b49127aeec23729848662d503",
     "tests/svm/src/bin/layout2.rs": "575570095ea81d449c63ef6f54c3b1f64b3306c2f3a9e50af16baf31f806195f",
     "tests/svm/src/bin/poseidon_probe.rs": "047881b80474aaa5c32d8281750e47c2216e60ab83e988fb76e139fda3e3a1bc",
-    "tests/svm/src/bin/vault.rs": "5688586e6dd1e3337cb0cb2a602f373f131219866aa19927a5e0c52fc9919b79",
+    "tests/svm/src/bin/sdk_transport.rs": "f67a3f3c6f1618222868a645cd98649e4c92fd5f83afca6801952fd3466a5a50",
+    "tests/svm/src/bin/vault.rs": "31bd59db402a7fc874752028a197caf9c0a5368911fff06d61875063fa45d39f",
     "tests/svm/src/main.rs": "6a1dcc01bd11ba11e0c12830755c7a71a5febdebb57016a55424ee7d545852d6",
     "tests/svm/src/runner.rs": "1558d2f6b87dd3f7393318b3a8ad288d5b74dcb2cba9bd8326eb31a8b73f2e24",
     "tests/svm/src/sizes.rs": "2356a41dc774298407954815e7b4dec91f6acb876b60320368c395e939433557",
@@ -212,11 +239,13 @@
     "G1/G2/G3/G4 not passed",
     "SPL Token 3.5.0 bundled SBF and all-enabled Agave 2.2.0 features; not target cluster CU certification",
     "Tree setup uses known deterministic test entropy and is not production-eligible",
-    "v1 RPC/wallet and buffer lifecycle remain unverified; new SVM CI job not remotely executed",
-    "I03 Vault real SBF/real-proof EVM parity passed locally; I04 create/append/seal/close/wallet/indexer and full G1 remain unverified",
     "ADR-0002 fixes role-specific public signing keys per build; changing keys requires a corresponding build and new pool",
     "I03 uses seeded sealed buffers and synthetic six-decimal SPL tokens, not live Circle USDC or production setup",
-    "I03 hosted GitHub Actions run not executed; local run_i03.sh reproduction passed"
+    "I03 hosted GitHub Actions run not executed; local run_i03.sh reproduction passed",
+    "I04 v0 transport and indexer passed local real-SBF integration; live wallet/cluster/RPC and hosted CI remain unverified",
+    "Indexer requires coherent finalized account cuts and archive replay from initialization; large/live availability and recovery SLO are not established",
+    "SDK durable storage encryption and end-user note journal integration remain I08 work; unknown financial sends require finalized history",
+    "npm indirect dependency audit: moderate 4, high/critical 0; reachability notes in packages/sdk/README.md"
   ],
   "review": {
     "date_jst": "2026-10-03",
@@ -259,10 +288,10 @@
     "I01-sdk.log": {
       "sha256": "55359daf7ce5908d7e4d9fe3afbca4af79af3eb1abe23b433392b2bce9643622",
       "test_results": [
-        "ℹ tests 309",
-        "ℹ pass 309",
-        "ℹ fail 0",
-        "ℹ skipped 0"
+        "\u2139 tests 309",
+        "\u2139 pass 309",
+        "\u2139 fail 0",
+        "\u2139 skipped 0"
       ]
     },
     "I02-clippy.log": {
@@ -287,10 +316,10 @@
     "I02-typescript.log": {
       "sha256": "136c80ac569e8d379c796018219c749cca41380c6df9f2f91319b1967ea6414c",
       "test_results": [
-        "ℹ tests 4",
-        "ℹ pass 4",
-        "ℹ fail 0",
-        "ℹ skipped 0"
+        "\u2139 tests 4",
+        "\u2139 pass 4",
+        "\u2139 fail 0",
+        "\u2139 skipped 0"
       ]
     }
   },
@@ -319,10 +348,10 @@
     "review-typescript.log": {
       "sha256": "f0ef028a107957c41d0b51ca85907a90b49f71fd34b19ae088dc76487cbc2a5e",
       "test_results": [
-        "ℹ tests 6",
-        "ℹ pass 6",
-        "ℹ fail 0",
-        "ℹ skipped 0"
+        "\u2139 tests 6",
+        "\u2139 pass 6",
+        "\u2139 fail 0",
+        "\u2139 skipped 0"
       ]
     },
     "review-upstream-protocol.log": {
@@ -343,10 +372,10 @@
     "review-upstream-sdk.log": {
       "sha256": "e43e57f5c721d9dee8204292fb4c6052f2e9d08047b5dd4169f2c77b2b332120",
       "test_results": [
-        "ℹ tests 309",
-        "ℹ pass 309",
-        "ℹ fail 0",
-        "ℹ skipped 0"
+        "\u2139 tests 309",
+        "\u2139 pass 309",
+        "\u2139 fail 0",
+        "\u2139 skipped 0"
       ]
     },
     "review-upstream-services.log": {
@@ -923,6 +952,97 @@
         "command": "cargo check --locked -p zkapi-solana-types --target wasm32-unknown-unknown",
         "exit_code": 0,
         "local_log_sha256": "11787fd6109457716d9f074aea84b6dcb4f26f8f19ff13a83bd91d7ff2aa0157"
+      }
+    ]
+  },
+  "i04": {
+    "date_jst": "2026-10-04",
+    "scope": "local test-key/mint real SBF and signed-v0 transport, synthetic finalized envelopes, indexer replay",
+    "buffer_transactions": 161,
+    "buffer_rejected": 53,
+    "i03_regression_transactions": 366,
+    "i03_state_traces_unchanged": true,
+    "sdk_transactions": 53,
+    "sdk_scenarios": 4,
+    "max_cu": 426830,
+    "max_transaction_bytes": 1232,
+    "indexer": {
+      "scenarios": [
+        {
+          "blocks": 11,
+          "failed_transactions_ignored": 1,
+          "missing_logs_replay_equal": true,
+          "name": "close",
+          "next_note_id": 1,
+          "paths_checked": 5,
+          "root": "0x2bb43759c24665d98a33afa8d5094817d359d5e4c72a45b45a2a563176d37933",
+          "sequence": 2,
+          "snapshot_roundtrips": 11
+        },
+        {
+          "blocks": 20,
+          "failed_transactions_ignored": 1,
+          "missing_logs_replay_equal": true,
+          "name": "challenge",
+          "next_note_id": 2,
+          "paths_checked": 26,
+          "root": "0x1d9ed8e993f5aa8568f3cb796935a528b995feb33a4643e995aad333d012e2a2",
+          "sequence": 4,
+          "snapshot_roundtrips": 20
+        },
+        {
+          "blocks": 12,
+          "failed_transactions_ignored": 1,
+          "missing_logs_replay_equal": true,
+          "name": "finalize",
+          "next_note_id": 1,
+          "paths_checked": 6,
+          "root": "0x2bb43759c24665d98a33afa8d5094817d359d5e4c72a45b45a2a563176d37933",
+          "sequence": 3,
+          "snapshot_roundtrips": 12
+        },
+        {
+          "blocks": 10,
+          "failed_transactions_ignored": 1,
+          "missing_logs_replay_equal": true,
+          "name": "expiry",
+          "next_note_id": 1,
+          "paths_checked": 4,
+          "root": "0x2bb43759c24665d98a33afa8d5094817d359d5e4c72a45b45a2a563176d37933",
+          "sequence": 2,
+          "snapshot_roundtrips": 10
+        }
+      ],
+      "scope": "real SDK-signed v0 / local SBF history replay; missing-log replay and API snapshot/path checks; no live RPC finality or live wallet claim",
+      "source_sha256": "cc57562c1be8716ed1d870887479e868c89242bf69ee495f2c7b6d085a3af21c"
+    },
+    "elf_sha256": "f8e57adeee417ca58c27324999d3e46013800fd7d8892880ea8ee1becefc2334",
+    "wrong_vk_elf_sha256": "d57ff4cc133ddf88d283d38d51683b2ba04789a828b81a0650def25b300e297f",
+    "source_artifacts": {
+      "docs/evidence/I04-buffer-svm-results.json": "5c0ad4e9724154941f8237c5c892a4a41aeb8bc6fe50ba4200382489d80531bf",
+      "target/i04/sdk-svm-history.json": "cc57562c1be8716ed1d870887479e868c89242bf69ee495f2c7b6d085a3af21c",
+      "target/i04/indexer-results.json": "c3da667880269f172f31e162c22ac55b30cf1234a5411ceee42d26b9970ace7a",
+      "target/i04/i03-regression/I03-svm-results.json": "2b900307aebcb50ac908cad0aa4a606277f25a46fc09cd31c6dcb52aee9cab52"
+    },
+    "live_wallet_verified": false,
+    "live_rpc_finality_verified": false,
+    "hosted_ci_verified": false,
+    "g1_passed": false,
+    "production_eligible": false,
+    "status": "complete_local_implementation_I05_next",
+    "base_commit": "03866a48fd0bc751527e584d2c0356f10b1bb807",
+    "evidence": "docs/evidence/I04.md",
+    "next_task": "I05 Postgres ledger, quote and signer",
+    "indexer_tests": 24,
+    "sdk_tests": 21,
+    "vault_host_tests": 7,
+    "idl_contract_tests": 6,
+    "commands": [
+      {
+        "command": "PATH=\"$PWD/target/toolchains/sbf/bin:/Users/yukikimura/.nvm/versions/node/v24.19.0/bin:/opt/homebrew/opt/gnu-tar/libexec/gnubin:$PATH\" bash scripts/run_i04.sh",
+        "exit_code": 0,
+        "local_log": "target/i04/run.log",
+        "local_log_sha256": "6f387520ae0910fb804012407b3d160427474ae234eea10ba452a7a3b3432871"
       }
     ]
   }

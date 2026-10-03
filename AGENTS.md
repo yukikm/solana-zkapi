@@ -1,7 +1,7 @@
 # Implementation handoff
 
 - Start with `docs/implementation-ready.md`, then its referenced specifications and `docs/implementation-plan.md`.
-- ADR-0001 selects layout 2 / transition_proof / proof_bound with mandatory v0_buffer. I03 is complete (docs/evidence/I03.md); resume at I04. Read `docs/specs/tree-transition.md` and ADR-0002's build-validated role-specific signing-key pins. Reuse the actual Anchor Vault and its generated IDL, zkapi-layout2 bindings/codec, and the host tree prover. I03 seeds sealed buffers only; complete create/append/seal/close, wallet/indexer and transport recovery in I04. Measurement state/accounts in programs/i02-layout2 are not the Vault.
+- ADR-0001 selects layout 2 / transition_proof / proof_bound with mandatory v0_buffer. I01–I04 local implementation is complete (docs/evidence/I04.md); resume at I05 Postgres ledger, quote and signer. Reuse the actual Anchor Vault, generated IDL, SDK transport/recovery, finalized indexer, zkapi-layout2 codec and host tree prover. Read ADR-0002 for build-validated role-specific signing keys. Live wallet/RPC, hosted CI and G1–G4 release gates remain unverified. Measurement accounts in programs/i02-layout2 are not the Vault.
 - Required scope: USDC on Solana, upstream direct modes, third-party proxy. Ollama and native SOL billing are outside the initial release.
 - Upstream baseline: `ethereum/zkapi@045b444ea1b52538d1b40273c7cb6ed09468a052`. Keep its license and record intentional differences.
 - Execute I01 onward. Do not mark real-proof, SVM, provider, recovery or release gates passed from mock-only results.

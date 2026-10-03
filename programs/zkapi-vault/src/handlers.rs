@@ -8,12 +8,12 @@ use solana_program::{
 };
 use zkapi_layout2::{binding, framing, Command, Operation, MAX_AMOUNT};
 
-fn decode<T: AccountDeserialize>(a: &AccountInfo) -> Result<T> {
+pub(crate) fn decode<T: AccountDeserialize>(a: &AccountInfo) -> Result<T> {
     require_keys_eq!(*a.owner, crate::ID, VaultError::InvalidBinding);
     T::try_deserialize(&mut &a.try_borrow_data()?[..])
         .map_err(|_| error!(VaultError::InvalidBinding))
 }
-fn save<T: AccountSerialize>(a: &AccountInfo, value: &T) -> Result<()> {
+pub(crate) fn save<T: AccountSerialize>(a: &AccountInfo, value: &T) -> Result<()> {
     require!(a.is_writable, VaultError::InvalidBinding);
     value.try_serialize(&mut &mut a.try_borrow_mut_data()?[..])
 }
@@ -26,13 +26,13 @@ fn layout(version: u8) -> Result<()> {
     require!(version == 2, VaultError::InvalidBinding);
     Ok(())
 }
-fn now() -> Result<u64> {
+pub(crate) fn now() -> Result<u64> {
     Clock::get()?
         .unix_timestamp
         .try_into()
         .map_err(|_| error!(VaultError::ArithmeticOverflow))
 }
-fn add(a: u64, b: u64) -> Result<u64> {
+pub(crate) fn add(a: u64, b: u64) -> Result<u64> {
     u64::try_from(u128::from(a) + u128::from(b)).map_err(|_| error!(VaultError::ArithmeticOverflow))
 }
 fn sub(a: u64, b: u64) -> Result<u64> {
@@ -45,7 +45,7 @@ fn fresh(a: &AccountInfo) -> bool {
     a.owner == &System::id() && a.data_is_empty()
 }
 #[inline(never)]
-fn create<'info>(
+pub(crate) fn create<'info>(
     a: &AccountInfo<'info>,
     payer: &AccountInfo<'info>,
     system: &AccountInfo<'info>,
@@ -146,7 +146,7 @@ fn ata<'info>(
     token(account, owner.key, mint.key)?;
     Ok(())
 }
-fn pool(a: &AccountInfo) -> Result<PoolConfig> {
+pub(crate) fn pool(a: &AccountInfo) -> Result<PoolConfig> {
     let p: PoolConfig = decode(a)?;
     layout(p.layout_version)?;
     require!(

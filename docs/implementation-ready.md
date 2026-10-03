@@ -2,7 +2,7 @@
 
 状態：**設計・インターフェース確定、実装着手可**。更新日：2026-10-03 JST。[今回のlayout 2設計確認](evidence/layout2-design-ready.md)と[従来の設計レビュー](evidence/design-review-2026-10-03.md)を参照。
 
-現在地：**I01〜I03完了・I03再レビュー済み、I04着手Ready**。layout 2 / transition_proof / proof_boundのAnchor Vaultを実装し、実SBF 366取引、最大426,765 CU、863 bytesを新規環境でも再現した。固定Ethereum版との7シナリオ・27状態・14拒否条件も一致。I04向けaccount/buffer/event契約を明文化し、IDLのaccount権限・順序を検査する回帰テストを追加した。[I03完了・再レビュー記録](evidence/I03.md)と[署名公開鍵のビルド固定](adr/0002-build-validated-signing-keys.md)を読み、I04 buffer・SDK transaction・indexerへ進む。I04の全transport、G1全体とproduction公開は未完了。
+現在地：**I01〜I04 local実装・検証完了、次はI05 Postgres ledger・quote・signer**。[I04完了記録](evidence/I04.md)にbuffer全5操作、SDK署名v0、finalized indexer、復旧試験を記録した。実SBFはbuffer 161取引＋SDK統合53取引、既存I03回帰366取引も成功。最大426,830 CU / 1,232 bytes。実wallet端末・公開RPC・hosted CI・G1〜G4公開gateは未完了。元回路/profileと[署名公開鍵のビルド固定](adr/0002-build-validated-signing-keys.md)を維持する。
 
 これはUSDC決済、Ethereum zkAPIの直接接続機能、第三者運営のproxyを含む本番向け仕様である。コード完成・性能検証・監査・mainnet配備の完了を意味しない。暗号互換性などの実測項目は、担当・判定基準・不合格時の処理を実装計画に固定した。
 
@@ -99,11 +99,11 @@ tests/{fixtures,svm,e2e,faults}/
 deploy/                    # image digest、manifest、runbook
 ```
 
-この仕様の初版作成時点では設計書・契約schema・テストベクトル・タスクのみを作成した。現在の実装・検証範囲は [I01](evidence/I01.md)、[I02](evidence/I02.md)、[I03](evidence/I03.md) に記録する。runtimeディレクトリの存在だけで実装済みとはしない。
+この仕様の初版作成時点では設計書・契約schema・テストベクトル・タスクのみを作成した。現在の実装・検証範囲は [I01](evidence/I01.md)、[I02](evidence/I02.md)、[I03](evidence/I03.md)、[I04](evidence/I04.md) に記録する。runtimeディレクトリの存在だけで実装済みとはしない。
 
 ## 5. 実装開始と本番公開の境界
 
-実装担当はI04から再開する。I01〜I03は完了しており、比較研究やbackend選択を最初からやり直す必要はない。G1は全Vault/transportのCU・transactionサイズと統合動作、G2は精算・障害回復、G3は実provider、G4はsetup・鍵・監査・復旧演習を確認する。I03のsealed buffer事前投入による試験だけで全transportを合格にしない。
+実装担当はI05から再開する。I01〜I04のlocal実装・検証は完了しており、比較研究やbackend選択を最初からやり直す必要はない。G1は全Vault/transportのCU・transactionサイズと統合動作、G2は精算・障害回復、G3は実provider、G4はsetup・鍵・監査・復旧演習を確認する。I04の実upload・署名・SBF・replay検証は完了したが、実wallet/clusterの検証は別途必要。
 
 追加tree証明方式は採用済み。I02-Bのwire/verifier/bindingはI03へ統合済み。ソースアーカイブの権限差によるprofile不一致は修正し、再生成・実SBF再実行とチェックアウト条件を変えた回帰検査を[I02-B完了記録](evidence/I02B.md)に残した。新しい回路/VKを既存poolへ上書きしてはいけない。実装証拠が揃う前のmainnet配備は作業範囲に含まれない。
 
@@ -114,7 +114,7 @@ deploy/                    # image digest、manifest、runbook
 - **既存の証拠**：元6 proofとtree6 proof、標準baseline415ケース、研究用軽量化131ケースに加え、採用方式の257ケースを実SBFで検証済み。採用方式の最大317,443 CUは測定用account範囲の値で、公開前の全Vault測定を代替しない。
 - **I02-Bで完成したもの**：tree回路/proverの独立crate、TreeUpdate型と固定wire、固定VKのSBF verifier、実状態とWP/RPを結合する共通検査、正常なproof同士を取り違えた負のfixture、empty root/profile生成、採用方式の再測定。固定profileの再現性は`python3 scripts/check_i02_reproducibility.py`で確認する。
 - **I03で完成したもの**：全Vault命令・PDA署名CPI・ATA/PDA作成・status/N/Pending管理・イベント・IDL・同一EVM traceの差分試験。Anchor/SDK/Agaveをlockし実SBFで検証済み。公開鍵はADR-0002に従い役割別に固定する。
-- **I04で作るもの**：buffer作成/追記/封印/中止、wallet送信とblockhash/競合/復旧、finalized indexer、最終account listと全送信単位のCU/bytes検証。
-- **公開前に残るもの**：全命令100万CU/transaction1232 bytes、証明生成待ち時間と競合耐性、全機能E2E、実provider、3回路のproduction setup、第三者review。環境値/秘密の未発行はlocal実装の開始を止めない。
+- **I04で完成したもの（local検証）**：buffer作成/追記/封印/中止、wallet送信とblockhash/競合/復旧、finalized indexer、最終account listと全送信単位のCU/bytes検証。
+- **公開前に残るもの**：target cluster/walletでの全命令100万CU/transaction1232 bytes再確認、証明生成待ち時間と競合耐性、全機能E2E、実provider、3回路のproduction setup、第三者review。環境値/秘密の未発行はlocal実装の開始を止めない。
 
 採用方式の性能不足が本番account処理の追加後に判明した場合は、検査を省かず計測結果をI02へ戻す。今回はrelease目標を変更していない。既知entropyのテスト鍵をproductionに使わない。

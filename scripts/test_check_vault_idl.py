@@ -27,6 +27,17 @@ class AccountContractTests(unittest.TestCase):
             group = group[nested]["accounts"]
         return idl, group
 
+    def test_buffer_wire_mutations_are_rejected(self):
+        for name in ("create_payload", "append_payload", "seal_payload", "close_payload", "execute_payload"):
+            idl = copy.deepcopy(self.idl)
+            instruction = next(i for i in idl["instructions"] if i["name"] == name)
+            if instruction["args"]:
+                instruction["args"][0]["type"] = "u64" if name == "append_payload" else "u16"
+            else:
+                instruction["args"].append({"name": "unexpected", "type": "u8"})
+            with self.subTest(name=name), self.assertRaisesRegex(AssertionError, "buffer wire differs"):
+                validate(idl)
+
     def test_generated_idl_passes(self):
         validate(self.idl)
 

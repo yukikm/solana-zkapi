@@ -79,7 +79,8 @@ pub struct ExitNullifier {
 impl ExitNullifier {
     pub const SPACE: usize = 8 + 3;
 }
-/// I04 creates/appends/seals this account. I03 executes authenticated sealed buffers.
+/// Fixed-size upload allocation. Only bytes before next_offset are received;
+/// the remaining payload bytes are zero-filled until appended.
 #[account]
 #[derive(Debug)]
 pub struct PayloadBuffer {
