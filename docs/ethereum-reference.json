@@ -51,7 +51,7 @@
     "article_vault_address": "matches_source_manifest",
     "live_api": "not_verified_fetch_failed",
     "deployed_bytecode_matches_source": "not_verified",
-    "solana_implementation": "I01_I02_completed_I03_ready"
+    "solana_implementation": "I01_I05_local_completed_I06_I07_next_release_gates_unverified"
   },
   "source_file_sha256": {
     "protocol/contracts/src/ZkApiVault.sol": "f11e0d85fe5ffecac1a7f7bb7925ce04cf02146191c73a08c4ce2fab8804d5ba",
@@ -118,7 +118,7 @@
     },
     {
       "id": "I05",
-      "status": "not_started"
+      "status": "completed"
     },
     {
       "id": "I06",
@@ -184,9 +184,10 @@
     }
   ],
   "release_gates": {
-    "G1": "not_passed_full_vault_transport_pending_I02_complete",
-    "G2": "not_run",
+    "G1": "not_passed_local_vault_transport_verified_public_cluster_wallet_pending",
+    "G2": "not_passed_I05_local_ledger_recovery_verified_full_e2e_pending",
     "G3": "not_run",
     "G4": "not_run"
-  }
+  },
+  "implementation_status_updated_date_jst": "2026-10-04"
 }

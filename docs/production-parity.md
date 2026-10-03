@@ -6,7 +6,7 @@
 
 実装上の正本は [実装開始仕様](implementation-ready.md) とその参照先。本文は比較設計として残し、具体的なwire/DB/実装順序は実装開始仕様を優先する。
 
-本書は過去の限定MVP案およびnative SOLを必須とした設計に優先する。USDCを基本資産とし、本番向けの復旧・運用要件を維持する。変更は設計段階であり、プロダクション実装は未完了。2026-10-03 JSTの[ADR-0001](adr/0001-proof-bound-tree-transition.md)でlayout 2の追加tree証明方式を採用した。以下の方式比較は経緯として残し、採用済みのwire/条件は[tree-transition仕様](specs/tree-transition.md)を優先する。
+本書は過去の限定MVP案およびnative SOLを必須とした設計に優先する。USDCを基本資産とし、本番向けの復旧・運用要件を維持する。I01〜I05のlocal実装・検証は完了し、次はI06 direct・I07 proxyのprovider adapters。現在地と証拠は[I05完了記録](evidence/I05.md)を参照する。実provider・実wallet・公開RPC・hosted CI・G1〜G4公開gateを含むプロダクション実装は未完了。2026-10-03 JSTの[ADR-0001](adr/0001-proof-bound-tree-transition.md)でlayout 2の追加tree証明方式を採用した。以下の方式比較は経緯として残し、採用済みのwire/条件は[tree-transition仕様](specs/tree-transition.md)を優先する。
 
 ## 1. 同等性の定義
 

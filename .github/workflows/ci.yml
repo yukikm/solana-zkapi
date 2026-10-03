@@ -133,6 +133,44 @@ jobs:
             target/i04-sbf-wrong/*.so
             docs/evidence/I04*.json
           if-no-files-found: error
+  control:
+    # I05 local runtime acceptance. Hosted execution and release gates are separate evidence.
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          submodules: recursive
+      - name: Install pinned Rust, SBF tools, and PostgreSQL 16
+        run: |
+          rustup show
+          scripts/install_sbf_tools.sh
+          sudo apt-get update
+          sudo apt-get install --yes postgresql-16
+      - name: Validate source pins and build the real test Vault
+        env:
+          RAYON_NUM_THREADS: '4'
+        run: |
+          python3 scripts/check_upstream.py
+          python3 scripts/check_i02_reproducibility.py
+          mkdir -p target/i04-sbf target/i05
+          cargo build-sbf --manifest-path programs/zkapi-vault/Cargo.toml \
+            --tools-version v1.54 --arch v0 --features sbf-entrypoint \
+            --sbf-out-dir target/i04-sbf -- --locked 2>&1 | tee target/i05/sbf-build.log
+          if grep -Ei 'stack offset .*exceeded|stack frame size.*exceed' target/i05/sbf-build.log; then
+            exit 1
+          fi
+      - name: Reproduce I05 PostgreSQL, HTTP, process recovery, and SBF acceptance
+        run: PATH="/usr/lib/postgresql/16/bin:$PATH" bash scripts/run_i05.sh
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        if: always()
+        with:
+          name: I05-local-Postgres-control-signer-SBF-not-production
+          path: |
+            target/i05/**
+            target/i04-sbf/*.so
+            services/control/Cargo.lock
+          if-no-files-found: error
   contracts:
     runs-on: ubuntu-24.04
     steps:

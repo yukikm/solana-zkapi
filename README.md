@@ -10,9 +10,9 @@ Ethereum zkAPIの現行機能を、Solanaで本番運用できる形に移植す
 
 OpenAI・Claudeの利用を優先し、Ollama互換は初期対象外。既存の直接接続方式と、第三者が既存APIを中継するproxy方式の両方を初回productionの必須機能とする。proxyはOpenAI Chat Completions/Responses、Anthropic Messagesに対応する設計。モデル対応、API互換、直接接続の可否は個別に確認する。
 
-**I04までlocal実装・検証完了、次はI05 Postgres ledger・quote・signer**。buffer全5操作、SDK署名v0、finalized indexerとsnapshot・復旧を実装。実SBFのbuffer 161取引・SDK統合53取引・既存I03回帰366取引が成功し、最大426,830 CU / 1,232 bytes。[I04完了記録](docs/evidence/I04.md)を参照。元回路・Poseidon・固定profileを維持。実wallet・公開RPC・hosted CI・G1〜G4公開gateは未完了。
+**I05までlocal実装・検証完了、次はI06 direct・I07 proxyのprovider adapters**。Postgres単一writer、quote/proof結合、整数予算、署名明細、独立signer journalと復旧を実装。I05の26テストと実Vault SBF 10取引が成功し、最新SBF実行の最大422,429 CU / 1,091 bytes。新signerの後継署名から実証明を生成し、利用者へ4,999,998 micro-USDC、treasuryへ2 micro-USDCの出金を確認した。[I05完了記録](docs/evidence/I05.md)を参照。実provider・実wallet・公開RPC・hosted CI・G1〜G4公開gateは未完了。
 
-I04レビューの修正と回帰検証は同完了記録に追記。[I05実装引き継ぎ](docs/i05-implementation-ready.md)からDB・quote・signerの実装に着手できる。
+I04のbuffer全5操作、SDK署名v0、finalized indexerとsnapshot・復旧は再利用する。I04の実SBFのbuffer 161取引・SDK統合53取引・既存I03回帰366取引、最大426,830 CU / 1,232 bytesは[I04完了記録](docs/evidence/I04.md)に保持する。元回路・Poseidon・固定profileを維持。[I05実装契約](docs/i05-implementation-ready.md)と[controlの実行手順](services/control/README.md)を参照し、I05 runtime検証は `bash scripts/run_i05.sh` で再現する。
 
 開発開始：`git submodule update --init --recursive` → `python3 scripts/check_upstream.py` → `cargo test --locked --workspace`。TypeScriptは固定Node/npmで `npm ci --ignore-scripts && npm run typecheck && npm test`。Rust toolchainは `rust-toolchain.toml` に固定。
 

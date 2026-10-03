@@ -1,6 +1,8 @@
 # I05 — Postgres ledger・quote・signer 実装引き継ぎ
 
-2026-10-04 JST。**I05は実装着手Ready、実装・完了判定は未実施**。[I04レビュー記録](evidence/I04.md)の修正を前提にする。正本は[API・精算仕様](specs/api-proxy.md)、[運用仕様](specs/operations.md)、[protocol](specs/protocol-solana.md)、[OpenAPI](contracts/openapi.json)、[ledger DDL](contracts/ledger.sql)。本書は着手順序、再利用先、統合境界と完了証拠を具体化する。
+2026-10-04 JST。**I05はlocal実装・検証完了**。[完了記録](evidence/I05.md)に実行コマンド・artifact・制限を記録した。本書はI05の実装契約を保持し、I06 direct・I07 proxyのprovider adaptersへの引き継ぎにも用いる。26テストと実Vault SBF 10取引（最大422,429 CU / 1,091 bytes）が成功し、新signer署名から利用者4,999,998 micro-USDC・treasury 2 micro-USDCの出金まで確認した。実provider・wallet・公開RPC・hosted CI・G1〜G4は未完了。[I04レビュー記録](evidence/I04.md)の修正を前提にする。正本は[API・精算仕様](specs/api-proxy.md)、[運用仕様](specs/operations.md)、[protocol](specs/protocol-solana.md)、[OpenAPI](contracts/openapi.json)、[ledger DDL](contracts/ledger.sql)。以下の着手順序・統合境界・完了条件は受入契約として維持する。実装の現在地と実行結果は完了記録を正本とする。
+
+2026-10-04のレビューで、最終dispatch claim、direct key管理参照の永続化、signerのquote/料金表結合、journal破損判定、障害中の復旧、RPC origin重複、料金表の有効期間の7件を修正した。[レビュー証跡](evidence/I05.md#2026-10-04-レビューとi06i07への引き継ぎ)の26テストと実Vault SBF再実行を根拠に、**I06/I07実装着手Ready**とする。
 
 ## 1. 成果物と範囲
 
@@ -14,7 +16,7 @@ I05はdirect/proxyの共通台帳・状態遷移・dispatch契約まで担当す
 
 | 再利用先 | I05での用途・制約 |
 |---|---|
-| [整数/H2F型](../crates/zkapi-solana-types/src/lib.rs) | `MicroUsdc`、canonical Fr/Scalar、binding、予約・session丸め。料金の有理数集計/JCS/strict HTTP parserは未実装なので追加する |
+| [整数/H2F型](../crates/zkapi-solana-types/src/lib.rs) | `MicroUsdc`、canonical Fr/Scalar、binding、予約・session丸め。料金の有理数集計/JCS/strict HTTP parserはI05の`services/control`へ追加済み |
 | [crypto adapter](../crates/zkapi-solana-crypto/src/lib.rs) | 元proofのcanonical decodeと固定VK検証。requestは12 public inputs。ユーザー指定VKを受け付けない |
 | [固定upstream v2](../vendor/ethereum-zkapi/protocol/rust/crates/zkapi-core/src/v2.rs) / [compact署名・commitment](../vendor/ethereum-zkapi/protocol/rust/crates/zkapi-proof/src/compact.rs) | 元authorization_tag、state/clearance_message、server_update、next_anchor。既存Ethereum processorの「署名後に保存」やSQLite lockを移植せず、Solanaの永続化順序を実装する |
 | [Vault](../programs/zkapi-vault/src/accounts.rs) / [生成IDL](contracts/zkapi_vault.json) / [ADR-0002](adr/0002-build-validated-signing-keys.md) | 実PoolConfigのbinding・cap・state/clearance鍵・profile、ExitNullifier/PendingのPDA/owner/layoutを照合。measurement accountを読まない |
@@ -48,9 +50,11 @@ I04の`observe_chain`はtree復元に必要なaccount検査であり、PoolConfi
 
 - 財務更新はpool advisory lockを保持した同じ専用connectionで直列に実行する。HTTP handlerごとのconnectionやin-memory mutexだけに依存しない。pool受付/epoch、session行、operation行の順で必要なlockを取得し、同じ順を全writer操作で守る。
 - 存在しないN行の`SELECT FOR UPDATE`は排他を作らない。`nullifier_reservations`の主キーとAUTH/CLEARANCEの外部キーを使い、INSERT競合をtransactionごとrollback/再読込する。予約は署名が未完でも削除しない。
-- 受理後のsessionのpool/request/N/quote/digest/transcript/credential hashes/mode/provider/capと、quote/tariffのcanonical bytesは固定する。現在のDDLはこれらすべてのUPDATEを防がないため、migration/role/repositoryで強制し、書換え拒否を試験する。signerはtranscriptと固定poolからmessageを再導出し、保存digestだけを信頼しない。
+- 受理後のsessionのpool/request/N/quote/digest/transcript/credential hashes/mode/provider/capと、quote/tariffのcanonical bytesは固定する。契約DDLだけではこれらすべてのUPDATEを防がないため、I05追加migration/role/repositoryで強制し、書換え拒否を試験する。signerはtranscriptと固定poolからmessageを再導出し、保存digestだけを信頼しない。
 - 予算受付とdispatch直前のCASで、row lock取得後の実時刻・ACTIVE・close_requested・並列枠・capを検査する。DISPATCHINGとimmutable attemptを一括commitしてから送る。commit結果不明なら再照会し、再dispatchしない。
 - dispatcherは保存したattempt/owner/epochを検査し、外部送信能力を単一ownerへ限定する。`finished_at`/`fenced_at`は実停止の証拠を必要とする。期限・DBフラグだけでfence完了としない。
+- 最終send claimでもpool受付とsession/operation状態を照合し、停止済みpool・UNKNOWN operationへ送信許可を出さない。directで判明した管理参照は最終chain確認をawaitする前にcommitし、確認失敗・キャンセル後も失効/最終usage取得へ利用する。保存済み参照の再試行ではkey返却のための再activateをしない。
+- RPC/indexer障害では新規受付を停止し、保存済みsettlement/clearanceの復旧は継続する。観測したgenesis/PoolConfig不一致は起動拒否。2 RPCは正規化したoriginも分離する。quote/catalogは現在有効な料金表だけを選び、受理済みquoteの旧料金表を保持する。
 - [DDL](contracts/ledger.sql)のCHECK/triggerは金額域・一意性・署名対象不変性の一部を守る契約。全状態遷移、receipt合計、role権限、egress fencing、migration/version、独立signer journalはI05で追加・検証する。DDL smoke testだけでは完了しない。
 
 ### 署名対象と復旧
@@ -73,4 +77,4 @@ signer RPCへは対象IDを渡し、任意messageを直接署名するAPIを設�
 - 実crypto連結：quote結合RPで認可→使用料確定→署名保存→後継stateを使う次のRPとclearance付きWPを生成・検証し、WPとtree proofを実Vault SBFへ送って整数残高を照合する。既存I03の固定署名fixtureだけで新signer合格にしない。
 - migrationsの適用・再実行・version/checksum不一致・runtime role権限を実Postgresで検証し、起動不能時に新規受付/署名を始めない。
 
-既存の確認コマンドは`python3 scripts/check_design.py`、`python3 scripts/check_ledger_contract.py`、`bash scripts/run_i04.sh`。最初の2つは仕様/DDL検査でありI05 runtime試験ではない。I05で新しい再現scriptとCI jobを追加し、未存在のserviceや未実行のコマンドを合格にしない。live provider・wallet/RPC、production setup、hosted CIとG1〜G4はそれぞれ実証されるまで未合格を維持する。
+I05のruntime再現コマンドは`bash scripts/run_i05.sh`。実Postgres・独立signer/dispatcher process・実Vault SBFを用いる。local実行手順は[control README](../services/control/README.md)、完了証拠は[I05](evidence/I05.md)を参照。`python3 scripts/check_design.py`と`python3 scripts/check_ledger_contract.py`は仕様/DDL検査でありI05 runtime試験の代替ではない。既存I04回帰は`bash scripts/run_i04.sh`で再現する。I05 CI jobは追加済みだが、hostedで未実行の結果を合格にしない。live provider・wallet/RPC、production setup、hosted CIとG1〜G4はそれぞれ実証されるまで未合格を維持する。
