@@ -3,8 +3,9 @@
 use crate::{bad, journal::Checkpoint, Hash, Result, Trust};
 use serde_json::Value;
 use std::collections::BTreeMap;
-use zkapi_indexer::{tree::Tree, ChainState, Event, FinalizedBlock, Indexer, Position};
+use zkapi_indexer::{tree::Tree, ChainState, FinalizedBlock, Indexer};
 
+#[derive(Clone)]
 pub struct Scanner {
     trust: Trust,
     index: Indexer,
@@ -39,35 +40,16 @@ impl Scanner {
         if prior_slot.is_some_and(|slot| block.slot <= slot) {
             return Ok(());
         }
-        let program =
-            zkapi_control::wire::pubkey(&self.trust.pool.program_id).expect("validated program");
-        for (transaction_index, transaction) in block.transactions.iter().enumerate() {
-            if !transaction.succeeded {
-                continue;
-            }
-            for instruction in &transaction.instructions {
-                if instruction.program != program || instruction.succeeded != Some(true) {
-                    continue;
-                }
-                for bytes in &instruction.events {
-                    let event = Event::decode(bytes).map_err(|_| bad("Vault event"))?;
-                    if event.pool == self.trust.pool() && event.op == 2 {
-                        self.generations.insert(
-                            event.note_id,
-                            Checkpoint {
-                                position: Position {
-                                    slot: block.slot,
-                                    transaction_index: transaction_index as u32,
-                                    signature: transaction.signature.clone(),
-                                    outer_instruction: instruction.outer_index,
-                                    invocation_index: instruction.invocation_index,
-                                },
-                                blockhash: block.blockhash,
-                                tree_sequence: event.sequence,
-                            },
-                        );
-                    }
-                }
+        for (position, event) in self.index.block_transitions() {
+            if event.op == 2 {
+                self.generations.insert(
+                    event.note_id,
+                    Checkpoint {
+                        position: position.clone(),
+                        blockhash: block.blockhash,
+                        tree_sequence: event.sequence,
+                    },
+                );
             }
         }
         let state = self.index.replay_state().map_err(|_| bad("replay state"))?;
@@ -122,6 +104,9 @@ impl Scanner {
     }
 }
 impl FinalizedView {
+    pub fn now(&self) -> u64 {
+        self.now
+    }
     pub fn pending(&self) -> impl Iterator<Item = (u32, Hash)> + '_ {
         self.state.pending.iter().map(|(id, p)| (*id, p.nullifier))
     }

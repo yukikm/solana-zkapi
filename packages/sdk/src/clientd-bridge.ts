@@ -1,0 +1,160 @@
+/** Thin localhost application over the ONE ControlClient state machine.
+ * Go forwards authenticated requests here over a private Unix socket. */
+import { ControlClient, createCredentials, expiryNotice, PROXY_PRIVACY_NOTICE, type Mode, type NoteJournal, type PreparedSession } from './control.ts';
+import { JournalConflictError, JournalIntegrityError, type EncryptedJournal } from './journal.ts';
+import { parseStrictJson } from './trust.ts';
+
+export interface DaemonOptions {
+  client: ControlClient; journal: EncryptedJournal<NoteJournal>; noteId: string; mode: Mode;
+  models: string[]; keyReuseSeconds?: number; now?: () => bigint;
+  prepare(model: string, credentials: Awaited<ReturnType<typeof createCredentials>>): Promise<{ prepared: PreparedSession; root: string }>;
+  wallet?(command: unknown): Promise<unknown>;
+}
+const routes = new Set(['/v1/chat/completions','/v1/responses','/v1/messages','/v1/messages/count_tokens']);
+const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
+function json(value: unknown, status = 200): Response { return new Response(JSON.stringify(value),{status,headers:{'Content-Type':'application/json','Cache-Control':'no-store'}}); }
+export class DaemonConflict extends Error { constructor() { super('Unresolved session or operation. Inspect status; inference was not replayed.'); } }
+export class ClientDaemon {
+  private readonly o: DaemonOptions; private readonly reuse: number;
+  private serial: Promise<unknown> = Promise.resolve(); private inflight = 0; private stopping = false; private started = false; private recoveryRequired = false; private idleWaiters: (()=>void)[] = [];
+  constructor(options: DaemonOptions) {
+    this.o = {...options,models:[...options.models]}; this.reuse = options.keyReuseSeconds ?? 60;
+    if (!['proxy','direct_oa','direct_openrouter'].includes(options.mode) || !Number.isInteger(this.reuse) || this.reuse < 0 || this.reuse > 300 || !this.o.models.length || this.o.models.some(m=>typeof m !== 'string' || !m || m === '*')) throw new Error('explicit mode, pinned models and key reuse 0–300 required');
+  }
+  private now(): bigint { return this.o.now?.() ?? BigInt(Math.floor(Date.now()/1000)); }
+  private exclusive<T>(fn:()=>Promise<T>): Promise<T> {
+    const task = this.serial.then(fn,fn); this.serial = task.catch(()=>{}); return task;
+  }
+  private async record() { const r = await this.o.journal.read(this.o.noteId); if (!r) throw new Error('finalized note required'); return r; }
+  async start(): Promise<void> {
+    await this.exclusive(async()=>{
+      // A restart recovers and closes the old session before accepting NEW work.
+      // An unknown create may need its exact authorization POST, never inference.
+      this.started = false;
+      const r = await this.record();
+      const recover = async(action:()=>Promise<unknown>):Promise<boolean>=>{
+        try { await action(); return true; }
+        catch(error) {
+          // A remote outage or an incomplete receipt set must leave admin
+          // recovery reachable. Local journal corruption/concurrency is fatal.
+          if(error instanceof JournalIntegrityError || error instanceof JournalConflictError)throw error;
+          await this.record();
+          this.recoveryRequired = true; return false;
+        }
+      };
+      if (r.value.pending) {
+        if(!await recover(()=>this.o.client.recover(this.o.noteId)))return;
+        if((await this.record()).value.pending && !await recover(()=>this.o.client.close(this.o.noteId)))return;
+      }
+      this.recoveryRequired = (await this.record()).value.pending !== null;
+      this.started = !this.recoveryRequired;
+    });
+  }
+  async startIfNeeded(): Promise<void> { if (!this.started && !this.recoveryRequired) await this.start(); }
+  async maintenance(): Promise<void> {
+    await this.exclusive(async()=>{
+      if (this.inflight || this.recoveryRequired) return;
+      const p = (await this.record()).value.pending;
+      if (!p) return;
+      if (p.phase === 'closing' || p.closeRequested || this.stopping || this.reuse === 0 || this.now() >= BigInt(p.prepared.request.quote.body.issued_at)+BigInt(this.reuse)) {
+        if (p.phase === 'prepared' || p.phase === 'send_unknown') await this.o.client.recover(this.o.noteId);
+        if ((await this.record()).value.pending) await this.o.client.close(this.o.noteId);
+      }
+    });
+  }
+  async shutdown(): Promise<void> {
+    this.stopping = true;
+    // Authorization/proof preparation runs under serial before incrementing
+    // inflight. Drain that admission boundary before deciding we are idle.
+    await this.exclusive(async()=>{});
+    if(this.inflight) await new Promise<void>(resolve=>this.idleWaiters.push(resolve));
+    await this.maintenance();
+  }
+  async status(): Promise<unknown> {
+    const {value,head} = await this.record();
+    const witness = (value as NoteJournal & { witness?: {expiry:string} }).witness;
+    return { mode:this.o.mode, balance_micro_usdc:value.state.balance_micro_usdc, phase:value.pending?.phase ?? 'ready', in_flight:this.inflight, recovery_required:this.recoveryRequired,
+      unresolved_operations:value.pending?.operations.filter(o=>o.phase==='send_unknown').map(o=>({id:o.id,response_replayable:false})) ?? [],
+      key_reuse_seconds:this.reuse, journal_head:head, privacy_notice:PROXY_PRIVACY_NOTICE,
+      wallet_status:value.wallet?.status ?? 'legacy_import', wallet_operation:value.wallet?.operation ? {kind:value.wallet.operation.kind,phase:value.wallet.operation.phase} : null,
+      ...(witness ? {expiry:expiryNotice(BigInt(witness.expiry),this.now())} : {}) };
+  }
+  async management(action: 'close' | 'recover' | 'reconcile' | 'cancel-unsent' | 'wallet', body?: unknown): Promise<unknown> {
+    return this.exclusive(async()=>{
+      if (this.inflight) throw new DaemonConflict();
+      if (action === 'wallet') { if (!this.o.wallet) throw new Error('wallet adapter unavailable'); return this.o.wallet(body); }
+      if ((await this.record()).value.pending) {
+        if (action === 'reconcile') await this.o.client.reconcileAbsentOperations(this.o.noteId); else if (action === 'cancel-unsent') await this.o.client.cancelUnsent(this.o.noteId); else if (action === 'recover') await this.o.client.recover(this.o.noteId); else await this.o.client.close(this.o.noteId);
+      }
+      if(this.recoveryRequired) {
+        // Recovered pre-restart sessions must close before new inference; never
+        // reuse their upstream key or replay their uncertain operations.
+        if(action === 'recover' && (await this.record()).value.pending)await this.o.client.close(this.o.noteId);
+        if(!(await this.record()).value.pending) { this.recoveryRequired = false; this.started = true; }
+      }
+      return this.status();
+    });
+  }
+  async infer(path: string, bytes: Uint8Array, operationId = crypto.randomUUID() as string, anthropicVersion = '', signal?: AbortSignal): Promise<Response> {
+    signal?.throwIfAborted();
+    if (!routes.has(path) || !uuid.test(operationId) || bytes.length > 1024*1024) throw new Error('unsupported inference');
+    const body = parseStrictJson(bytes);
+    if (!body || typeof body !== 'object' || Array.isArray(body) || typeof body.model !== 'string' || !this.o.models.includes(body.model)) throw new Error('model is not in the pinned allowlist');
+    if (this.o.mode !== 'proxy') {
+      if (path.startsWith('/v1/messages') || this.o.mode === 'direct_openrouter' && path !== '/v1/chat/completions') throw new Error('unsupported direct endpoint');
+      // Direct adapters are text/client-tool only in this release as well.
+      const check = (v: unknown): void => {
+        if (Array.isArray(v)) { for (const x of v) check(x); return; }
+        if (!v || typeof v !== 'object') return;
+        const obj = v as Record<string,unknown>;
+        if (['image_url','input_audio','file_id','file_url','audio','web_search_options','previous_response_id','background','conversation'].some(k=>Object.hasOwn(obj,k)) || obj.store === true || obj.type !== undefined && !(Array.isArray(obj.type) ? obj.type.every(t=>['object','array','string','number','integer','boolean','null'].includes(String(t))) : ['text','input_text','output_text','function','function_call','function_call_output','message','object','array','string','number','integer','boolean','null'].includes(String(obj.type)))) throw new Error('unsupported modality or hosted tool');
+        for (const v of Object.values(obj)) check(v);
+      }; check(body);
+    }
+    const snapshot = new Uint8Array(bytes);
+    await this.exclusive(async()=>{
+      signal?.throwIfAborted();
+      if (!this.started || this.stopping || this.inflight >= (this.reuse === 0 ? 1 : 4)) throw new DaemonConflict();
+      let r = await this.record();
+      if (r.value.history.some(h=>h.operations.some(o=>o.id===operationId)) || r.value.pending?.operations.some(o=>o.id===operationId)) throw new DaemonConflict();
+      let p = r.value.pending;
+      if (p && (p.phase !== 'active' || p.closeRequested || this.now() >= BigInt(p.prepared.request.quote.body.issued_at)+BigInt(this.reuse) || p.prepared.request.authorization.mode !== this.o.mode || this.o.mode === 'proxy' && p.prepared.request.quote.body.models[0] !== body.model)) {
+        if (!this.inflight) await this.o.client.close(this.o.noteId);
+        throw new DaemonConflict();
+      }
+      if (!p) {
+        const credentials = await createCredentials(this.o.mode);
+        const prepared = await this.o.prepare(body.model as string,credentials);
+        if (prepared.prepared.request.authorization.mode !== this.o.mode) throw new Error('mode changed during preparation');
+        await this.o.client.prepare(this.o.noteId,prepared.prepared,prepared.root);
+        await this.o.client.submit(this.o.noteId);
+        r = await this.record(); p = r.value.pending;
+      }
+      if (!p || p.phase !== 'active' || p.serverState !== 'ACTIVE') throw new DaemonConflict();
+      if (this.o.mode === 'proxy') await this.o.client.prepareOperation(this.o.noteId,operationId,path,snapshot,anthropicVersion);
+      this.inflight++;
+    });
+    let finishing: Promise<void> | undefined;
+    const finish = () => finishing ??= (async() => { this.inflight--; if(this.inflight===0)for(const resolve of this.idleWaiters.splice(0))resolve(); await this.maintenance().catch(()=>{}); })();
+    try {
+      const response = this.o.mode === 'proxy' ? await this.o.client.sendOperation(this.o.noteId,operationId,signal) : await this.o.client.sendDirectOperation(this.o.noteId,operationId,path,snapshot,signal);
+      const headers = new Headers(response.headers); headers.set('X-Zkapi-Operation-Id',operationId); headers.set('Cache-Control','no-store');
+      const reader = response.body?.getReader();
+      if (!reader) { await finish(); return new Response(null,{status:response.status,headers}); }
+      const body = new ReadableStream<Uint8Array>({
+        async pull(controller) { try { const next = await reader.read(); if (next.done) { await finish(); controller.close(); } else controller.enqueue(next.value); } catch { controller.error(new Error('upstream stream interrupted; no replay')); await finish(); } },
+        async cancel() { try { await reader.cancel(); } finally { await finish(); } },
+      });
+      return new Response(body,{status:response.status,headers});
+    } catch (error) { await finish(); throw error; }
+  }
+  async handle(method: string, path: string, bytes: Uint8Array, headers: Headers, signal?: AbortSignal): Promise<Response> {
+    try {
+      if (method === 'GET' && path === '/v1/models') return json({object:'list',data:this.o.models.map(id=>({id,object:'model',owned_by:'configured-provider'}))});
+      if (method === 'GET' && path === '/admin/status') return json(await this.status());
+      if (method === 'POST' && ['/admin/close','/admin/recover','/admin/reconcile','/admin/cancel-unsent','/admin/wallet'].includes(path)) return json(await this.management(path.slice(7) as 'close'|'recover'|'reconcile'|'cancel-unsent'|'wallet',bytes.length?parseStrictJson(bytes):undefined));
+      if (method === 'POST' && routes.has(path)) return await this.infer(path,bytes,headers.get('Idempotency-Key') ?? undefined,headers.get('anthropic-version') ?? '',signal);
+      return json({error:{code:'unsupported_route'}},404);
+    } catch(error) { return json({error:{code:error instanceof DaemonConflict ? 'recovery_required' : 'client_request_failed',message:'Inference was not replayed. Inspect local status before retrying.'}},error instanceof DaemonConflict ? 409 : 400); }
+  }
+}

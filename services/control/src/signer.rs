@@ -59,7 +59,7 @@ pub struct SignerConfig {
     pub receipt_key: [u8; 32],
 }
 impl SignerConfig {
-    fn validate(&self) -> Result<()> {
+    pub(crate) fn validate(&self) -> Result<()> {
         FieldElement::from_bytes(self.binding)?;
         ensure!(
             crate::wire::pubkey(&self.authorization.pool)? == self.pool

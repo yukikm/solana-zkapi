@@ -335,6 +335,76 @@ fn journal_missing_corrupt_or_other_pool_fails_closed() {
 }
 
 #[test]
+fn buffer_absence_must_follow_the_failed_attempt_finalized_cut() {
+    let (trust, _) = trust_and_manifest();
+    let e = evidence(&trust);
+    let v = view(trust.clone(), &e);
+    let prepared = PreparedChallenge::from_finalized(&v, 0, e.clone()).unwrap();
+    let bytes = payload(&prepared, &trust);
+    let id = prepared.job.id();
+    let dir = tempfile::tempdir().unwrap();
+    let mut journal = Journal::initialize(dir.path(), trust.pool()).unwrap();
+    journal
+        .enqueue_cut(checkpoint(3), vec![(prepared.job, e)], 1)
+        .unwrap();
+    let digest = sha(&bytes);
+    let buffer = [9; 32];
+    journal
+        .save_payload(
+            &id,
+            Payload {
+                bytes,
+                digest,
+                buffer,
+                checkpoint: checkpoint(3),
+            },
+        )
+        .unwrap();
+    journal
+        .save_signed_attempt(
+            &id,
+            Attempt {
+                signature: "failed-create".into(),
+                signed_bytes: vec![1],
+                stage: Stage::Upload,
+                payload_digest: digest,
+                buffer,
+                outcome: Outcome::Unknown,
+            },
+        )
+        .unwrap();
+    assert!(journal
+        .record_buffer_absence(&id, buffer, 40, [40; 32])
+        .is_err());
+    journal
+        .resolve_finalized(
+            &id,
+            "failed-create",
+            Outcome::FinalizedFailure {
+                slot: 40,
+                blockhash: [40; 32],
+                error: "transaction_rejected".into(),
+            },
+        )
+        .unwrap();
+    // An account cut after preparation but before the failed create could miss
+    // a buffer created in between. A conflicting same-slot block also fails.
+    assert!(journal
+        .record_buffer_absence(&id, buffer, 39, [39; 32])
+        .is_err());
+    assert!(journal
+        .record_buffer_absence(&id, buffer, 40, [41; 32])
+        .is_err());
+    assert!(!journal.buffer_absence(buffer));
+    journal
+        .record_buffer_absence(&id, buffer, 40, [40; 32])
+        .unwrap();
+    drop(journal);
+    let journal = Journal::open(dir.path(), trust.pool()).unwrap();
+    assert!(journal.buffer_absence(buffer));
+}
+
+#[test]
 fn pending_identity_cannot_be_rekeyed_around_an_unknown_attempt() {
     let (trust, _) = trust_and_manifest();
     let e = evidence(&trust);
@@ -704,6 +774,7 @@ fn finalized_scanner_replays_actual_sbf_archive_and_rejects_account_cut_mismatch
     let cut = &scenario["checkpoints"][2];
     let (trust, _) = trust_and_manifest();
     let mut scan = scan::Scanner::new(trust.clone());
+    let mut without_logs = scan::Scanner::new(trust.clone());
     let mut first = None;
     for row in scenario["blocks"]
         .as_array()
@@ -720,10 +791,20 @@ fn finalized_scanner_replays_actual_sbf_archive_and_rejects_account_cut_mismatch
             first = Some(block.clone());
         }
         scan.apply_finalized(&block).unwrap();
+        let mut logless = block.clone();
+        for transaction in &mut logless.transactions {
+            for instruction in &mut transaction.instructions {
+                instruction.events.clear();
+            }
+        }
+        without_logs.apply_finalized(&logless).unwrap();
     }
     let state = scan.replay_state().unwrap();
     let pool_account = &cut["accounts"][&trust.pool.pool];
     let view = scan.reconcile(&state, pool_account).unwrap();
+    let logless_view = without_logs.reconcile(&state, pool_account).unwrap();
+    assert_eq!(logless_view.generations, view.generations);
+    assert_eq!(logless_view.state, view.state);
     assert_eq!(view.pending().count(), 1);
     let before = view.now;
     scan.apply_finalized(&first.unwrap()).unwrap();
@@ -784,4 +865,492 @@ fn generates_a_new_real_challenge_proof_using_pinned_test_setup() {
     assert_eq!(payload.len(), 1252);
     std::fs::write(out.join("generated-challenge.bin"), &payload).unwrap();
     std::fs::write(out.join("proof-generation.json"),serde_json::to_vec_pretty(&json!({"scope":"one native real tree proof, test-only pinned setup; not end-to-end latency or p50/p95","tree_pk_sha256":hex::encode(sha(&pk_bytes)),"payload_sha256":hex::encode(sha(&payload)),"payload_bytes":payload.len(),"prove_verify_ms":start.elapsed().as_millis()})).unwrap()).unwrap();
+}
+
+#[tokio::test]
+#[ignore = "requires I04 actual-SBF archive; run scripts/run_i09_challenger.py"]
+async fn rpc_daemon_replays_durable_history_and_reconciles_restart_forks_and_cuts() {
+    use axum::{routing::post, Json, Router};
+    use std::sync::{
+        atomic::{AtomicU64, Ordering},
+        Arc,
+    };
+    let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
+    let history: Value = serde_json::from_slice(
+        &std::fs::read(root.join("target/i04/sdk-svm-history.json")).unwrap(),
+    )
+    .unwrap();
+    let scenario = history["scenarios"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|s| s["name"] == "challenge")
+        .unwrap()
+        .clone();
+    let cut = scenario["checkpoints"][2].clone();
+    let tip = cut["slot"].as_u64().unwrap();
+    let (trust, manifest) = trust_and_manifest();
+    let mode = Arc::new(AtomicU64::new(0));
+    let requested = Arc::new(std::sync::Mutex::new(Vec::new()));
+    let route = {
+        let mode = mode.clone();
+        let requested = requested.clone();
+        let genesis = trust.pool.genesis_hash.clone();
+        post(move |Json(body): Json<Value>| {
+            let scenario = scenario.clone();
+            let cut = cut.clone();
+            let mode = mode.clone();
+            let requested = requested.clone();
+            let genesis = genesis.clone();
+            async move {
+                let method = body["method"].as_str().unwrap();
+                requested.lock().unwrap().push(method.to_owned());
+                let mode = mode.load(Ordering::SeqCst);
+                let value = match method {
+                    "getGenesisHash" => json!(if mode == 1 { "wrong-genesis" } else { &genesis }),
+                    "getSlot" => json!(if mode == 2 { tip - 1 } else { tip }),
+                    "getBlocks" => json!(scenario["blocks"]
+                        .as_array()
+                        .unwrap()
+                        .iter()
+                        .map(|r| r["slot"].as_u64().unwrap())
+                        .filter(|s| *s >= body["params"][0].as_u64().unwrap()
+                            && *s <= body["params"][1].as_u64().unwrap())
+                        .collect::<Vec<_>>()),
+                    "getBlock" => {
+                        let slot = body["params"][0].as_u64().unwrap();
+                        let mut b = scenario["blocks"]
+                            .as_array()
+                            .unwrap()
+                            .iter()
+                            .find(|r| r["slot"] == slot)
+                            .unwrap()["block"]
+                            .clone();
+                        if mode == 3 {
+                            b["blockhash"] = json!(zkapi_indexer::snapshot::key([42; 32]));
+                        }
+                        b
+                    }
+                    "getMultipleAccounts" => {
+                        json!({"context":{"slot":tip},"value":body["params"][0].as_array().unwrap().iter().map(|k|cut["accounts"][k.as_str().unwrap()].clone()).collect::<Vec<_>>()})
+                    }
+                    "getAccountInfo" => {
+                        json!({"context":{"slot":if mode==4 {tip+1} else {tip}},"value":cut["accounts"][body["params"][0].as_str().unwrap()]})
+                    }
+                    _ => panic!("unexpected RPC method"),
+                };
+                Json(json!({"jsonrpc":"2.0","id":body["id"],"result":value}))
+            }
+        })
+    };
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let addr = listener.local_addr().unwrap();
+    let server = tokio::spawn(async move {
+        axum::serve(listener, Router::new().route("/", route))
+            .await
+            .unwrap()
+    });
+    let dir = tempfile::tempdir().unwrap();
+    let manifest_file = dir.path().join("manifest.json");
+    std::fs::write(&manifest_file, serde_json::to_vec(&manifest).unwrap()).unwrap();
+    let config = runtime::Config {
+        manifest: manifest_file,
+        manifest_sha256: hex::encode(trust.manifest_hash),
+        rpc_url: format!("http://{addr}"),
+        database_dsn_file: dir.path().join("dsn"),
+        start_slot: 1,
+        journal_directory: dir.path().join("journal"),
+        tree_pk: root.join("target/i09-challenger/test-tree.pk"),
+        node: "/usr/bin/node".into(),
+        transport_bridge: root.join("packages/sdk/src/challenger-cli.ts"),
+        transport_bridge_sha256: "00".repeat(32),
+        fee_key_file: dir.path().join("fee.json"),
+        payer: zkapi_indexer::snapshot::key([7; 32]),
+        poll_seconds: 1,
+        alert_sink_directory: Some(dir.path().join("alerts")),
+        priority_fee: None,
+    };
+    let mut daemon = runtime::Runtime::open(config.clone(), true).unwrap();
+    let v = daemon.scan().await.unwrap();
+    assert_eq!(v.pending().count(), 1);
+    let e = evidence(&trust);
+    let p = PreparedChallenge::from_finalized(&v, 0, e.clone()).unwrap();
+    daemon
+        .journal
+        .enqueue_cut(daemon.checkpoint(&v), vec![(p.job, e)], 100)
+        .unwrap();
+    let blocks = daemon.journal.archive().len();
+    assert!(blocks > 1);
+    drop(daemon);
+    requested.lock().unwrap().clear();
+    let mut daemon = runtime::Runtime::open(config, false).unwrap();
+    let restored = daemon.scan().await.unwrap();
+    assert_eq!(restored.state, v.state);
+    assert_eq!(restored.generations, v.generations);
+    assert_eq!(daemon.journal.archive().len(), blocks);
+    assert!(!requested.lock().unwrap().iter().any(|m| m == "getBlocks"));
+    for fault in 1..=4 {
+        mode.store(fault, Ordering::SeqCst);
+        assert!(daemon.scan().await.is_err(), "accepted fault {fault}");
+    }
+    mode.store(0, Ordering::SeqCst);
+    assert!(daemon.scan().await.is_ok());
+    let m = runtime::metrics(&daemon.journal, 400);
+    assert_eq!(m.pending_jobs, 1);
+    assert_eq!(m.page_jobs, 1);
+    assert_eq!(m.finalized_slot, Some(tip));
+    server.abort();
+}
+
+#[test]
+fn v0_record_and_unknown_attempt_are_one_atomic_durable_transition() {
+    let (trust, _) = trust_and_manifest();
+    let e = evidence(&trust);
+    let v = view(trust.clone(), &e);
+    let p = PreparedChallenge::from_finalized(&v, 0, e.clone()).unwrap();
+    let bytes = payload(&p, &trust);
+    let id = p.job.id();
+    let directory = tempfile::tempdir().unwrap();
+    let mut journal = Journal::initialize(directory.path(), trust.pool()).unwrap();
+    journal
+        .enqueue_cut(checkpoint(3), vec![(p.job, e)], 1)
+        .unwrap();
+    let digest = sha(&bytes);
+    let buffer = [9; 32];
+    journal
+        .save_payload(
+            &id,
+            Payload {
+                bytes,
+                digest,
+                buffer,
+                checkpoint: checkpoint(3),
+            },
+        )
+        .unwrap();
+    let attempt = Attempt {
+        signature: "signed-fixture".into(),
+        signed_bytes: vec![1, 2, 3],
+        stage: Stage::Execute,
+        payload_digest: digest,
+        buffer,
+        outcome: Outcome::Unknown,
+    };
+    let record = json!({"signature":attempt.signature,"wireHex":"010203","planDigest":hex::encode(digest),"buffer":zkapi_indexer::snapshot::key(buffer),"kind":"execute","plan":{"operation":"challenge_escape"}});
+    let mut forged = record.clone();
+    forged["wireHex"] = json!("04");
+    assert!(journal
+        .save_v0_attempt(&id, attempt.clone(), forged)
+        .is_err());
+    assert!(journal.transport(&attempt.signature).is_none());
+    journal
+        .save_v0_attempt(&id, attempt.clone(), record.clone())
+        .unwrap();
+    drop(journal);
+    let journal = Journal::open(directory.path(), trust.pool()).unwrap();
+    assert_eq!(journal.transport(&attempt.signature), Some(&record));
+    assert_eq!(journal.jobs().next().unwrap().1.attempts, vec![attempt]);
+}
+
+#[tokio::test]
+#[ignore = "requires Node/I04 archive and test tree PK; run scripts/run_i09_challenger.py"]
+async fn native_daemon_prove_sign_persist_send_restart_and_stale_root_recovery() {
+    use std::process::Stdio;
+    use tokio::io::{AsyncBufReadExt, BufReader};
+    let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("../..")
+        .canonicalize()
+        .unwrap();
+    let node = std::process::Command::new("which")
+        .arg("node")
+        .output()
+        .unwrap();
+    let node = std::path::PathBuf::from(String::from_utf8(node.stdout).unwrap().trim());
+    let (trust, manifest) = trust_and_manifest();
+    let evidence = evidence(&trust);
+    let mut timings = Vec::new();
+    for case in [
+        "normal",
+        "lose-once",
+        "stale-once",
+        "restart",
+        "confirmed",
+        "expired-upload",
+        "buffer-expired",
+        "upload-rejected",
+    ] {
+        let started = std::time::Instant::now();
+        let mut server = tokio::process::Command::new(&node)
+            .arg(root.join("packages/sdk/test/challenger-rpc.ts"))
+            .stdout(Stdio::piped())
+            .stderr(Stdio::null())
+            .kill_on_drop(true)
+            .spawn()
+            .unwrap();
+        let mut line = String::new();
+        BufReader::new(server.stdout.take().unwrap())
+            .read_line(&mut line)
+            .await
+            .unwrap();
+        let port: Value = serde_json::from_str(&line).unwrap();
+        let directory = tempfile::tempdir().unwrap();
+        let manifest_file = directory.path().join("manifest.json");
+        std::fs::write(&manifest_file, serde_json::to_vec(&manifest).unwrap()).unwrap();
+        // Known-public-entropy fixture fee key. Never production custody.
+        let keypair=std::process::Command::new(&node).args(["--input-type=module","-e","import {Keypair} from '@solana/web3.js'; const k=Keypair.fromSeed(new Uint8Array(32).fill(10));process.stdout.write(JSON.stringify({secret:[...k.secretKey],payer:k.publicKey.toBase58()}))"]).current_dir(&root).output().unwrap();
+        assert!(keypair.status.success());
+        let keypair: Value = serde_json::from_slice(&keypair.stdout).unwrap();
+        let key_file = directory.path().join("fee.json");
+        std::fs::write(&key_file, serde_json::to_vec(&keypair["secret"]).unwrap()).unwrap();
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            std::fs::set_permissions(&key_file, std::fs::Permissions::from_mode(0o600)).unwrap();
+        }
+        let bridge = root.join("packages/sdk/src/challenger-cli.ts");
+        let config = runtime::Config {
+            manifest: manifest_file,
+            manifest_sha256: hex::encode(trust.manifest_hash),
+            rpc_url: format!("http://127.0.0.1:{}", port["port"]),
+            database_dsn_file: directory.path().join("unused-dsn"),
+            start_slot: 1,
+            journal_directory: directory.path().join("journal"),
+            tree_pk: root.join("target/i09-challenger/test-tree.pk"),
+            node: node.clone(),
+            transport_bridge_sha256: hex::encode(sha(&std::fs::read(&bridge).unwrap())),
+            transport_bridge: bridge,
+            fee_key_file: key_file,
+            payer: keypair["payer"].as_str().unwrap().into(),
+            poll_seconds: 1,
+            alert_sink_directory: Some(directory.path().join("alerts")),
+            priority_fee: Some(runtime::PriorityFeePolicy {
+                base: 1000,
+                warning: 10000,
+                page: 50000,
+                emergency: 100000,
+                cap: 100000,
+            }),
+        };
+        let rpc = zkapi_indexer::runtime::ArchiveRpc::new(config.rpc_url.clone()).unwrap();
+        rpc.call(
+            "testSetMode",
+            json!([if case == "restart" { "normal" } else { case }]),
+        )
+        .await
+        .unwrap();
+        let mut daemon = runtime::Runtime::open(config.clone(), true).unwrap();
+        let mut v = daemon.scan().await.unwrap();
+        let prepared = PreparedChallenge::from_finalized(&v, 0, evidence.clone()).unwrap();
+        let id = prepared.job.id();
+        daemon
+            .journal
+            .enqueue_cut(
+                daemon.checkpoint(&v),
+                vec![(prepared.job, evidence.clone())],
+                runtime::now(),
+            )
+            .unwrap();
+        assert_eq!(daemon.prove(&v).await.unwrap(), 1);
+        for round in 0..24 {
+            daemon.recover().await.unwrap();
+            if daemon.journal.jobs().next().unwrap().1.complete {
+                break;
+            }
+            v = daemon.scan().await.unwrap();
+            daemon.prove(&v).await.unwrap();
+            let signed = daemon.prepare_next(&v).await.unwrap();
+            // No network send occurs during preparation. Every Unknown has its
+            // exact I04 attempt in the same fsynced journal before recovery.
+            for (_, job) in daemon.journal.jobs() {
+                for attempt in &job.attempts {
+                    assert!(daemon.journal.transport(&attempt.signature).is_some());
+                }
+            }
+            if case == "restart" && signed > 0 {
+                let count = daemon.journal.jobs().next().unwrap().1.attempts.len();
+                drop(daemon);
+                daemon = runtime::Runtime::open(config.clone(), false).unwrap();
+                assert_eq!(
+                    daemon.journal.jobs().next().unwrap().1.attempts.len(),
+                    count
+                );
+            }
+            if case == "restart" && round == 0 {
+                rpc.call("testSetMode", json!(["wrong-genesis"]))
+                    .await
+                    .unwrap();
+                assert!(daemon.recover().await.is_err());
+                assert_eq!(rpc.call("testStats", json!([])).await.unwrap()["sends"], 0);
+                rpc.call("testSetMode", json!(["normal"])).await.unwrap();
+            }
+            if case == "expired-upload" && round == 1 {
+                rpc.call("testSetMode", json!(["expired"])).await.unwrap();
+            }
+            daemon.recover().await.unwrap();
+            if case == "expired-upload" && round == 1 {
+                let job = daemon.journal.jobs().next().unwrap().1;
+                assert_eq!(job.attempts.len(), 3);
+                assert!(matches!(
+                    job.attempts[1].outcome,
+                    Outcome::UploadReconciled {
+                        next_step_index: 1,
+                        ..
+                    }
+                ));
+                assert_eq!(job.attempts[2].outcome, Outcome::Unknown);
+                assert_ne!(job.attempts[1].signature, job.attempts[2].signature);
+                drop(daemon);
+                daemon = runtime::Runtime::open(config.clone(), false).unwrap();
+                rpc.call("testSetMode", json!(["normal"])).await.unwrap();
+            }
+            if case == "confirmed" && round == 1 {
+                let count = daemon.journal.jobs().next().unwrap().1.attempts.len();
+                assert_eq!(count, 1);
+                assert_eq!(daemon.prepare_next(&v).await.unwrap(), 0);
+                rpc.call("testSetMode", json!(["normal"])).await.unwrap();
+            }
+        }
+        let job = daemon.journal.jobs().next().unwrap().1;
+        assert_eq!(job.identity.id(), id);
+        assert!(job.complete, "incomplete case {case}");
+        assert_eq!(job.evidence, evidence);
+        assert_eq!(
+            job.payloads.len(),
+            if ["stale-once", "buffer-expired", "upload-rejected"].contains(&case) {
+                2
+            } else {
+                1
+            }
+        );
+        assert!(!job.attempts.iter().any(|a| a.outcome == Outcome::Unknown));
+        daemon.publish_health(true, runtime::now()).unwrap();
+        let health: Value = serde_json::from_slice(
+            &std::fs::read(config.journal_directory.join("health.json")).unwrap(),
+        )
+        .unwrap();
+        assert_eq!(health["schema"], 1);
+        assert_eq!(health["pool"], trust.pool.pool);
+        assert_eq!(health["ready"], true);
+        assert_eq!(health["proof_failure_total"], 0);
+        assert!(health["minimum_pending_deadline"].is_null());
+        assert_eq!(
+            health["root_conflict_reproves_total"],
+            u64::from(case == "stale-once")
+        );
+        daemon.publish_health(false, runtime::now()).unwrap();
+        assert_eq!(
+            serde_json::from_slice::<Value>(
+                &std::fs::read(config.journal_directory.join("health.json")).unwrap()
+            )
+            .unwrap()["ready"],
+            false
+        );
+        let stats = rpc.call("testStats", json!([])).await.unwrap();
+        assert_eq!(
+            stats["signatures"].as_array().unwrap().len(),
+            job.attempts.len() - usize::from(case == "expired-upload")
+        );
+        let elapsed = started.elapsed().as_millis() as u64;
+        assert!(elapsed < 300_000);
+        let rss = std::process::Command::new("ps")
+            .args(["-o", "rss=", "-p", &std::process::id().to_string()])
+            .output()
+            .unwrap();
+        let rss_kib: u64 = String::from_utf8(rss.stdout)
+            .unwrap()
+            .trim()
+            .parse()
+            .unwrap();
+        timings.push(json!({"case":case,"elapsed_ms":elapsed,"attempts":job.attempts.len(),"regenerated_proofs":job.payloads.len()-1,"native_test_process_rss_kib":rss_kib}));
+        if case == "normal" {
+            let export = root.join("target/i09-challenger/cli-state");
+            std::fs::create_dir_all(&export).unwrap();
+            let mut status_config = config.clone();
+            status_config.manifest = export.join("manifest.json");
+            status_config.journal_directory = export.join("journal");
+            std::fs::create_dir_all(&status_config.journal_directory).unwrap();
+            std::fs::write(
+                &status_config.manifest,
+                serde_json::to_vec(&manifest).unwrap(),
+            )
+            .unwrap();
+            std::fs::copy(
+                config.journal_directory.join("journal.json"),
+                status_config.journal_directory.join("journal.json"),
+            )
+            .unwrap();
+            std::fs::write(
+                export.join("config.json"),
+                serde_json::to_vec_pretty(&status_config).unwrap(),
+            )
+            .unwrap();
+        }
+        server.kill().await.unwrap();
+    }
+    let mut elapsed: Vec<_> = timings
+        .iter()
+        .map(|v| v["elapsed_ms"].as_u64().unwrap())
+        .collect();
+    elapsed.sort();
+    let report = json!({"scope":"local native runtime + real proof/v0 signatures + synthetic JSON-RPC outcomes; separate actual Vault SBF acceptance","samples":timings,"p50_ms":elapsed[elapsed.len()/2],"p95_ms":elapsed[elapsed.len()-1],"five_minute_local_target_met":elapsed[elapsed.len()-1]<300_000,"live_rpc":false});
+    std::fs::write(
+        root.join("target/i09-challenger/daemon-performance.json"),
+        serde_json::to_vec_pretty(&report).unwrap(),
+    )
+    .unwrap();
+}
+
+#[test]
+fn alert_transitions_survive_restart_and_spool_delivery_is_idempotent() {
+    let (trust, _) = trust_and_manifest();
+    let e = evidence(&trust);
+    let v = view(trust.clone(), &e);
+    let p = PreparedChallenge::from_finalized(&v, 0, e.clone()).unwrap();
+    let directory = tempfile::tempdir().unwrap();
+    let spool = tempfile::tempdir().unwrap();
+    let mut journal = Journal::initialize(directory.path(), trust.pool()).unwrap();
+    journal
+        .enqueue_cut(checkpoint(3), vec![(p.job, e)], 10)
+        .unwrap();
+    assert_eq!(journal.enqueue_alerts(69).unwrap(), 0);
+    assert_eq!(journal.enqueue_alerts(70).unwrap(), 1);
+    assert_eq!(journal.enqueue_alerts(80).unwrap(), 0);
+    assert_eq!(journal.enqueue_alerts(310).unwrap(), 1);
+    let event = journal.alerts().next().unwrap().clone();
+    // Simulate a crash after spool fsync and before journal acknowledgement.
+    let path = spool
+        .path()
+        .join(format!("{}-{}.json", hex::encode(event.pool), event.id));
+    std::fs::write(&path, serde_json::to_vec(&event).unwrap()).unwrap();
+    drop(journal);
+    let mut journal = Journal::open(directory.path(), trust.pool()).unwrap();
+    assert_eq!(journal.deliver_alerts(spool.path()).unwrap(), 2);
+    assert_eq!(journal.deliver_alerts(spool.path()).unwrap(), 0);
+    assert!(journal.alerts().all(|event| event.delivered));
+    assert_eq!(std::fs::read_dir(spool.path()).unwrap().count(), 2);
+    assert_eq!(journal.enqueue_alerts(3_000_086_400 - 3600).unwrap(), 1);
+    assert_eq!(journal.deliver_alerts(spool.path()).unwrap(), 1);
+    assert_eq!(journal.alerts().last().unwrap().severity, Alert::Emergency);
+}
+
+#[test]
+fn priority_fee_schedule_is_integer_capped_and_escalates_only_new_plans() {
+    let policy = runtime::PriorityFeePolicy {
+        base: 1000,
+        warning: 10000,
+        page: 50000,
+        emergency: 100000,
+        cap: 100000,
+    };
+    policy.validate().unwrap();
+    assert_eq!(policy.price(1, 60, 100000), 1000);
+    assert_eq!(policy.price(1, 61, 100000), 10000);
+    assert_eq!(policy.price(1, 301, 100000), 50000);
+    assert_eq!(policy.price(1, 301, 3901), 100000);
+    assert!(runtime::PriorityFeePolicy {
+        cap: 99999,
+        ..policy
+    }
+    .validate()
+    .is_err());
 }

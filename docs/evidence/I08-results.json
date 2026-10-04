@@ -1,16 +1,16 @@
 {
-  "scope": "I08 first slice: trust, durable journal, shared control recovery, native real-proof and successor verification",
+  "scope": "I08 shared SDK/native regression: trust, durable journal, control recovery, native real-proof and successor verification",
   "passed": true,
   "date_jst": "2026-10-04",
   "os": "macOS-26.6.2-arm64-arm-64bit-Mach-O",
-  "node": "v24.13.0",
+  "node": "v24.19.0",
   "npm": "11.9.0",
   "rust": "rustc 1.90.0 (1159e78c4 2025-09-14)",
   "requested_node": "24.19.0",
   "tests": {
     "sdk-tests": {
-      "tests": 68,
-      "pass": 68,
+      "tests": 97,
+      "pass": 97,
       "fail": 0,
       "skipped": 0
     },
@@ -37,7 +37,7 @@
         "--check"
       ],
       "exit_code": 0,
-      "seconds": 0.154
+      "seconds": 0.075
     },
     {
       "argv": [
@@ -50,7 +50,7 @@
         "--nocapture"
       ],
       "exit_code": 0,
-      "seconds": 9.452
+      "seconds": 20.527
     },
     {
       "argv": [
@@ -61,7 +61,7 @@
         "apps/clientd/companion/Cargo.toml"
       ],
       "exit_code": 0,
-      "seconds": 0.208
+      "seconds": 5.41
     },
     {
       "argv": [
@@ -76,7 +76,7 @@
         "warnings"
       ],
       "exit_code": 0,
-      "seconds": 0.21
+      "seconds": 2.879
     },
     {
       "argv": [
@@ -85,22 +85,26 @@
         "typecheck"
       ],
       "exit_code": 0,
-      "seconds": 1.019
+      "seconds": 1.37
     },
     {
       "argv": [
         "node",
         "--test",
         "--test-reporter=tap",
+        "/Users/yukikimura/work/solana-zkapi/packages/sdk/test/challenger.test.ts",
+        "/Users/yukikimura/work/solana-zkapi/packages/sdk/test/clientd.test.ts",
         "/Users/yukikimura/work/solana-zkapi/packages/sdk/test/control.test.ts",
         "/Users/yukikimura/work/solana-zkapi/packages/sdk/test/encoding.test.ts",
         "/Users/yukikimura/work/solana-zkapi/packages/sdk/test/journal-browser.test.ts",
         "/Users/yukikimura/work/solana-zkapi/packages/sdk/test/journal.test.ts",
         "/Users/yukikimura/work/solana-zkapi/packages/sdk/test/transport.test.ts",
-        "/Users/yukikimura/work/solana-zkapi/packages/sdk/test/trust.test.ts"
+        "/Users/yukikimura/work/solana-zkapi/packages/sdk/test/trust.test.ts",
+        "/Users/yukikimura/work/solana-zkapi/packages/sdk/test/wallet-recovery.test.ts",
+        "/Users/yukikimura/work/solana-zkapi/packages/sdk/test/wallet-standard.test.ts"
       ],
       "exit_code": 0,
-      "seconds": 1.723
+      "seconds": 4.14
     },
     {
       "argv": [
@@ -110,7 +114,7 @@
         "packages/sdk/test/native-integration.ts"
       ],
       "exit_code": 0,
-      "seconds": 1.264
+      "seconds": 1.267
     },
     {
       "argv": [
@@ -118,7 +122,7 @@
         "--version"
       ],
       "exit_code": 0,
-      "seconds": 0.013
+      "seconds": 0.014
     },
     {
       "argv": [
@@ -126,7 +130,7 @@
         "--version"
       ],
       "exit_code": 0,
-      "seconds": 0.053
+      "seconds": 0.056
     },
     {
       "argv": [
@@ -134,44 +138,72 @@
         "--version"
       ],
       "exit_code": 0,
-      "seconds": 0.023
+      "seconds": 0.024
     }
   ],
-  "elapsed_seconds": 14.177,
+  "elapsed_seconds": 35.781,
   "browser": [
     "Chrome/154.0.8037.95"
   ],
   "artifact_sha256": {
-    "apps/clientd/companion/Cargo.lock": "2daf9799752536546b8d6106e3ab59dc92c0283e88f884bf49603f4566eddc5a",
+    "apps/clientd/companion/Cargo.lock": "86c8e6f8c463bf309f85f9159155dd57c04b247d15eb5cfb4263ff38187a9c30",
     "apps/clientd/companion/Cargo.toml": "092f38e109aad9a918f8627d4ee0268450bda62c5d0171d2f3ed33dfc3166406",
     "apps/clientd/companion/src/lib.rs": "8ee7ce8775f2e0ee69c14c651f75b5d0d34e9a3edba491255aa6dd2bc9029a15",
     "apps/clientd/companion/src/main.rs": "3c1fc9cb2012845a459f6b538db251cecab19a1dfab93d5f887b9d9fe282aa05",
-    "apps/clientd/companion/target/debug/zkapi-client-verify": "15fe2a365544b2d8dc304eee70fac615d5ac06936755f8dab10e08bedf2abe59",
+    "apps/clientd/companion/target/debug/zkapi-client-verify": "9cb89f1c0e9f54582a87735196f63453f2967fc6a04cb56c645b564d4eb0abc4",
     "apps/clientd/companion/tests/support/mod.rs": "52b716a6fc1e791df38eaad3f6cfe968237363548e96533720a842f971ea6a61",
     "apps/clientd/companion/tests/verification.rs": "40262d01675b6c603f9e4c232b7e439499ba4b3a05ffcadfa61376cefa7f5962",
     "package-lock.json": "f20927b629c1a7700b90999783e052c8ef683c28d648415eb13d05caebecb2aa",
-    "packages/sdk/package.json": "a934cbc3ad130cef859c6f5b878e72d01e7c96c6eebd703ad1e98e883077aeb2",
+    "packages/sdk/package.json": "04720ae81b55d8c2eb3c2141edc82a1f0c4672bd7ca838f48acb4f68d4ceeb2b",
+    "packages/sdk/src/challenger-cli.ts": "851691cbd9984e6599897eac4ce87564a7bef95a903024463cfd8b13b234e4a8",
+    "packages/sdk/src/challenger.ts": "eff689c9c3bbdbf1b706be34615c1eeec898885268109c21ca9160835812a92c",
+    "packages/sdk/src/clientd-bridge.ts": "67534423fc4c49b22b02ebbd2d593727f22d5539f452b491bf3ed008e9d99dc3",
+    "packages/sdk/src/clientd-network.ts": "b4ee5d17d2520ca78fbe85b32870d543a97f1b3dd92b3f89f140852a687023aa",
     "packages/sdk/src/control-node.ts": "b1cd1c08972d364310a1cfd5cfd32b30b47a9adeffad1f44c8612b07f6cd685f",
-    "packages/sdk/src/control.ts": "f14000409678efa1e37ce8dac4fe17ff1d46c71d7dc44597b3002b20e59545a2",
+    "packages/sdk/src/control-prover.ts": "b2373dd39c4e7dec1bb6fc2dc15be201f93719f9f46290862bc3e20d124dfd64",
+    "packages/sdk/src/control.ts": "6297135fba01ef2d7f7a13945be4a39cdc4dc9adfcaf1c792098d284dfedce7d",
     "packages/sdk/src/encoding.ts": "7301ea7c7f93dcd4ae02f760d07829d342bc2c0d042ace67bc5a41a8d68aeee4",
-    "packages/sdk/src/journal-node.ts": "05240033f1542e5d51b8f466b55bea6fa8cb0263c239782e81d10bdeca4b6389",
+    "packages/sdk/src/journal-node.ts": "c93ee69fe01488ad8cdbdbdc88d1f046b1c821c179ce7d755250e81b9bbabb6d",
     "packages/sdk/src/journal.ts": "5c6d7ea7b9e5ee10f8c4e30ac4ce1f204851a52208a56e1bd1e84c112b4ac9c5",
     "packages/sdk/src/layout2.ts": "b6f6c1208f315327fed01b531a883a68676ebc0680f0d178cead59610906c91e",
-    "packages/sdk/src/transport.ts": "dbf78794df4f8a514aff72aac47a4e05c1cbad23e5bbdbdfdc28695ca2b06bd4",
+    "packages/sdk/src/prover-node.ts": "2bbcbc09a047c938c3c16bf2d28daae8ccf2a8934676d7db7ff4a9ee8f02cfcc",
+    "packages/sdk/src/prover-runtime.ts": "3c4d7e15984613307c4137d16200b5d75d236e616de50db482d1c1a3ad6e4ff4",
+    "packages/sdk/src/prover-worker.ts": "342ae466853e540185a1b67e37b0fb1262a08a23f36f4a5d4af5d473ab6e9cc8",
+    "packages/sdk/src/prover.ts": "992f3754245e8ff065c60940ec5677617c77ee7ee7ee6a4599d75dd5a4f53110",
+    "packages/sdk/src/secret-custody.ts": "44506804efec9d1340075f055ec1ad02a105b86599a59e101be71ee4adc1e8f3",
+    "packages/sdk/src/transport.ts": "caa5a71d4b8e5b1bae58227f23a350af864bb8fdcbbd3ea47441676b92469a67",
     "packages/sdk/src/trust.ts": "01aad662a80b1edc569bde9b7da08e2d2caef569b90d887a23838bc5eea17acf",
-    "packages/sdk/test/control.test.ts": "01e4e6887704fbb4e6ae5794195edf6a1f41178b0dfd59d7916a0f297bb4fa61",
+    "packages/sdk/src/wallet-chain.ts": "e15950ff025bd4b7b00a2648c115ddee65b6d1c0e4848612e104a31906cef03c",
+    "packages/sdk/src/wallet-standard.ts": "2b519f454bca7711e3cc659b001cf15d926b466df070d57e4e2abe60d63d6c44",
+    "packages/sdk/src/wallet.ts": "b6518fc7a9707f1056d1c55757ecc43820e8db2de9b311a089887c4163ce99f0",
+    "packages/sdk/test/challenger-rpc.ts": "9d322d7f6455dd1e3ddbd30d78ab05062adcf73b7d6124d2367ec80ac20de323",
+    "packages/sdk/test/challenger-sbf.ts": "9a641a53dbba42720cfeabc4f2334376f4ca8bd68e7ac3d12626cbe935839661",
+    "packages/sdk/test/challenger.test.ts": "cea9979ed726e43551c07869a9809a258c264e0d1421ebc492b1e67e0a332bcf",
+    "packages/sdk/test/clientd-sbf.ts": "8e727c71cb05398beee27c494183bec8d01e010c735f4847688193b41a5b534d",
+    "packages/sdk/test/clientd.test.ts": "a8f6510a339044edc681e092662afa4fd1c698d11660d2470855a430ac118712",
+    "packages/sdk/test/control.test.ts": "75bcae33091889cf9ba5eb7b9074763d41afccc1838ccd814f9bccfc96fad5f5",
     "packages/sdk/test/encoding.test.ts": "6ad5f94b9d8581c8c6e9d71793c061c1b50ed9ebc95bdbfd3d6cb3291534d73a",
     "packages/sdk/test/journal-browser.test.ts": "b66bcf0eee6441369461b13da11b9da547d926f4bd3daf9107f5078ac150a179",
-    "packages/sdk/test/journal.test.ts": "70483c643cfd1ffde2b0f0e2b5fe18d78ac22b5e4f59d2a8244a02d253de6972",
+    "packages/sdk/test/journal.test.ts": "2b950e49d010b8b4b1ba96552f851fcf46ca0f67c926f1ae68f4ef9634f64fca",
     "packages/sdk/test/native-integration.ts": "6b48c0634bcdff20ef99350271641f5e66d22200a776b85853e7663cde5b626c",
+    "packages/sdk/test/prover-browser.ts": "904aa638b693f88f638ead9855d4f59a74cdf147646789c9b1f428a8e1f6e988",
+    "packages/sdk/test/prover-sbf.ts": "d3c3d7e3ffcab10f9d44708e9c5d113ad48fe73b6b80b7429331ca794bed9363",
     "packages/sdk/test/sbf-transactions.ts": "b97b06d90865a12b708960bda5386913246b7ba75dc09f8a3df9cfde4c24d59d",
-    "packages/sdk/test/transport.test.ts": "9c55856df93811da1cd36427fa68f7d6d5ac73f2f915f10928a88709e509890b",
+    "packages/sdk/test/transport.test.ts": "8bb90550bacbe02e28c2a261c334a1f1efde333defd6d419622a07055250dd22",
     "packages/sdk/test/trust.test.ts": "ffa35e5eba8e8baea720b3d0a4a12c2cb949a835600947dff16b38764d548d8e",
-    "scripts/run_i08.py": "3c3fc1af045c9a77aa21c48c9769765dd589aa1b79c83ec35d6c2c961f412d07"
+    "packages/sdk/test/wallet-fixture.ts": "7ff53df56814238ffa06707f5cf531b49a8ef453a7af1a3c778c0cb874e8fa53",
+    "packages/sdk/test/wallet-integration.ts": "5cc44722207c9077b8c7dd9b1635748a433ab87adef69f7b5e6ee5c88eb9611a",
+    "packages/sdk/test/wallet-recovery.test.ts": "135ecf9b41e9b455511137dadd62a0b55f0b4636f1a2beb08cdfb991bc8833e3",
+    "packages/sdk/test/wallet-standard.test.ts": "b11fa61848530f315fab80917feb4e8d475e00357d88a1657e0599401143d8e3",
+    "scripts/run_i08.py": "b5698c752c24a61453f23550873d08ed5bcc2e56ce700fa24c1082fd6a88abca"
   },
   "release_gates_passed": [],
   "wasm_proofs_verified": false,
   "live_provider_verified": false,
   "wallet_public_rpc_verified": false,
-  "go_clientd_implemented": false
+  "go_clientd_verified_by_this_runner": false,
+  "additional_acceptance_runners": [
+    "scripts/run_i08_wallet.py",
+    "scripts/run_i08_clientd.py"
+  ]
 }

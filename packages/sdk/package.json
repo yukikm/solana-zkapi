@@ -11,7 +11,14 @@
     "./journal": "./src/journal.ts",
     "./journal-node": "./src/journal-node.ts",
     "./control": "./src/control.ts",
-    "./control-node": "./src/control-node.ts"
+    "./control-node": "./src/control-node.ts",
+    "./prover": "./src/prover.ts",
+    "./prover-runtime": "./src/prover-runtime.ts",
+    "./prover-node": "./src/prover-node.ts",
+    "./control-prover": "./src/control-prover.ts",
+    "./wallet": "./src/wallet.ts",
+    "./wallet-chain": "./src/wallet-chain.ts",
+    "./wallet-standard": "./src/wallet-standard.ts"
   },
   "dependencies": {
     "@solana/web3.js": "1.98.4",

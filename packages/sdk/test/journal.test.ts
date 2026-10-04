@@ -106,13 +106,13 @@ test('native operation locks serialize workers and release after exceptions', as
   assert.equal(await other.withLock('note', async () => 'resumed'), 'resumed');
 });
 
-test('process death releases native operation lock; restart loads committed ciphertext', async t => {
+test('GC cannot release a live operation lock; process death releases it and restart loads ciphertext', async t => {
   const { directory, store, journal } = await setup(); t.after(() => rm(directory, { recursive: true, force: true }));
   await journal.create('note', pending());
   const moduleUrl = new URL('../src/journal-node.ts', import.meta.url).href;
-  const child = spawn(process.execPath, ['--input-type=module', '-e', `import { NativeJournalStore } from ${JSON.stringify(moduleUrl)}; const store = await NativeJournalStore.open(process.argv[1]); await store.withLock('note', async () => { process.stdout.write('LOCKED\\n'); await new Promise(() => setInterval(() => {}, 1000)); });`, directory], { stdio: ['ignore', 'pipe', 'pipe'] });
+  const child = spawn(process.execPath, ['--expose-gc', '--input-type=module', '-e', `import { NativeJournalStore } from ${JSON.stringify(moduleUrl)}; const store = await NativeJournalStore.open(process.argv[1]); await store.withLock('note', async () => { setTimeout(() => { global.gc(); process.stdout.write('LOCKED\\n'); }, 10); await new Promise(() => setInterval(() => {}, 1000)); });`, directory], { stdio: ['ignore', 'pipe', 'pipe'] });
   t.after(() => { child.kill('SIGKILL'); });
-  const ready = once(child.stdout!, 'data'); await ready;
+  const [ready] = await once(child.stdout!, 'data'); assert.equal(ready.toString(), 'LOCKED\n');
   const competing = await NativeJournalStore.open(directory, { lockTimeoutMs: 30 });
   await assert.rejects(competing.withLock('note', async () => assert.fail('dead process not yet fenced')), /locked/);
   const exited = once(child, 'exit'); child.kill('SIGKILL'); await exited;

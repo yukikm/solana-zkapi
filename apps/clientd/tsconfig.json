@@ -1,0 +1,4 @@
+{
+  "extends": "../../packages/sdk/tsconfig.json",
+  "include": ["runtime.ts", "../../packages/sdk/src/**/*.ts"]
+}

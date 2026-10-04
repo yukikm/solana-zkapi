@@ -49,6 +49,23 @@ async function setup(t: TestContext) {
   return { journal, calls, verified, client: new ControlClient(options), restart: () => new ControlClient(options), clientWith: (overrides: Partial<ClientOptions>) => new ControlClient({ ...options, ...overrides }), setHandler: (next: typeof handler) => { handler = next; }, failStorage: () => { failStorage = true; }, failPrepare: () => { prepareFailure = true; }, failSettlement: () => { settleFailure = true; } };
 }
 
+test('explicit absent-operation reconciliation requires terminal settlement and original crypto verification', async t => {
+  const h=await setup(t);await h.client.prepare('note',prepared(),field(14));await h.client.submit('note');
+  await h.client.prepareOperation('note',operationId,'/v1/chat/completions',new TextEncoder().encode('{}'));
+  h.setHandler(async()=>{throw Error('never reached server');});await assert.rejects(h.client.sendOperation('note',operationId));
+  h.setHandler(async()=>response(status()));await assert.rejects(h.client.reconcileAbsentOperations('note'),/terminal/);
+  h.setHandler(async call=>call.url.includes('/operations/')?response({error:{code:'not_found'}},404):call.url.endsWith('/receipts')?response({receipts:[],next_cursor:null}):response({...status('proxy','SETTLED'),settlement:settlement()}));
+  await h.client.reconcileAbsentOperations('note');const r=(await h.journal.read('note'))!;
+  assert.equal(r.value.pending,null);assert.equal(r.value.history[0].operations[0].phase,'not_accepted');assert.deepEqual(h.verified.settlements[0].operations,[]);
+});
+
+test('absent-operation reconciliation does not persist exclusions when the signed successor fails verification', async t => {
+  const h=await setup(t);await h.client.prepare('note',prepared(),field(14));await h.client.submit('note');await h.client.prepareOperation('note',operationId,'/v1/chat/completions',new TextEncoder().encode('{}'));
+  h.setHandler(async()=>{throw Error('not sent');});await assert.rejects(h.client.sendOperation('note',operationId));h.failSettlement();
+  h.setHandler(async call=>call.url.includes('/operations/')?response({},404):call.url.endsWith('/receipts')?response({receipts:[],next_cursor:null}):response({...status('proxy','SETTLED'),settlement:settlement()}));
+  await assert.rejects(h.client.reconcileAbsentOperations('note'),/signature/);assert.equal((await h.journal.read('note'))!.value.pending!.operations[0].phase,'send_unknown');
+});
+
 test('prepare snapshots exact authorization and credentials; send_unknown is durable before the first POST', async t => {
   const h = await setup(t), input = prepared();
   const expected = JSON.stringify(input.request);

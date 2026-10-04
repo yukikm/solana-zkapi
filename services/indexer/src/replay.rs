@@ -52,6 +52,7 @@ pub struct Indexer {
     pub(crate) ready: bool,
     pub(crate) halted: bool,
     pub last_transition: Option<Position>,
+    block_transitions: Vec<(Position, Event)>,
 }
 impl Indexer {
     pub fn new(program: Bytes32, pool: Bytes32) -> Self {
@@ -72,6 +73,7 @@ impl Indexer {
             ready: false,
             halted: false,
             last_transition: None,
+            block_transitions: Vec::new(),
         }
     }
     /// Atomically replay an entire finalized block. Any inconsistent archive data
@@ -94,6 +96,7 @@ impl Indexer {
         }
         let mut candidate = self.clone();
         candidate.ready = false;
+        candidate.block_transitions.clear();
         let result = candidate.apply(block).map(|()| {
             candidate.blocks.insert(block.slot, digest);
             candidate.checkpoint = Some((block.slot, block.blockhash));
@@ -115,6 +118,11 @@ impl Indexer {
     }
     pub fn is_ready(&self) -> bool {
         self.ready && !self.halted
+    }
+    /// Verified transitions from the latest successfully replayed block. These
+    /// are reconstructed from instruction/buffer history even if logs are absent.
+    pub fn block_transitions(&self) -> &[(Position, Event)] {
+        &self.block_transitions
     }
     fn apply(&mut self, block: &FinalizedBlock) -> Result<()> {
         if let Some((slot, hash)) = self.checkpoint {
@@ -348,6 +356,7 @@ impl Indexer {
                 }
             }
             self.last_transition = Some(position.clone());
+            self.block_transitions.push((position.clone(), expected));
         } else if !ix.events.is_empty() {
             return Err(Error::Event);
         }

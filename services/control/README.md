@@ -129,3 +129,35 @@ Fault injection is test-only: `ZKAPI_LOCAL_CRASH_AT=reserved|sign_pending|signat
 I06/I07 direct and proxy HTTP adapters are described in [PROVIDERS.md](PROVIDERS.md).
 Run `bash scripts/run_i06_i07.sh` from the repository root for the combined local
 acceptance suite; actual provider authorization/usage remains a separate G3 gate.
+
+## I09 local operations runtime
+
+`providers.dispatcher` now connects the shared writer to the separately executed
+`dispatcherd`. The child owns provider credentials and independently rechecks
+immutable attempts, ledger provider/model/amount bindings and the accepted tariff
+before using the existing adapters. A retained, fsynced one-shot claim forbids
+replay after lost IPC or process restart. Direct management uses the saved
+checkpoint and requires final usage persistence before deletion. No new ledger
+or financial state machine was introduced.
+
+`opsd` supplies read-only admin summary/recent/events with a distinct Bearer token
+and socket peer ACL, integer monitoring policy evaluation, an independently
+retained recovery checkpoint and fail-closed physical restore verification.
+`controld fence` accepts a signed independent supervisor certificate; a timeout
+or old epoch alone cannot clear an attempt. The provider unknown breaker now
+survives control restart through ledger-derived counts and audited resets.
+
+`signerd --custody-config` loads role-bound AES-256-GCM envelopes through a pinned
+KMS unwrap helper. `mtls-bridge` connects existing private signer sockets using
+mutual TLS, CA validation and separate peer-role certificate pins. Wrong keys,
+roles, authentication tags, certificates and unavailable helpers fail closed.
+
+Run `python3 scripts/run_i09_operations.py` for actual provider worker processes,
+real control proofs/signatures through mTLS/envelopes, child suspension/termination,
+admin redaction, restore corruption detection and PostgreSQL physical backup/WAL,
+synchronous-replica ACK blocking and old-primary termination before promotion.
+See [the operations runbook](../../deploy/operations/README.md) for configuration,
+quiescent restore cuts, least privilege and exact local/production boundaries.
+Local fixed cryptographic profiles remain explicitly gated. Production credential
+isolation, network ACL enforcement, external KMS tenancy, independent fault-domain
+HA and actual on-call delivery still require deployment acceptance.

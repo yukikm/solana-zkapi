@@ -1,6 +1,8 @@
 //! I06/I07 full HTTP path with local provider wire fixtures, real PostgreSQL,
 //! request proofs, signed receipts, and the isolated sign-once settlement signer.
 //! No live provider credentials or public RPC are used.
+#[path = "support/operations.rs"]
+mod operations;
 mod support;
 use anyhow::Result;
 use axum::{
@@ -58,18 +60,27 @@ impl Drop for ChildGuard {
 }
 async fn start_signer(dir: &Path, url: &str) -> ChildGuard {
     let socket = dir.join("signer.sock");
-    let child = Command::new(env!("CARGO_BIN_EXE_signerd"))
+    let mut command = Command::new(env!("CARGO_BIN_EXE_signerd"));
+    command
         .arg("--local-test")
         .arg("--config")
         .arg(dir.join("signer.json"))
         .arg("--journal")
         .arg(dir.join("journal"))
         .arg("--socket")
-        .arg(&socket)
-        .arg("--state-seed-file")
-        .arg(dir.join("state.seed"))
-        .arg("--clearance-seed-file")
-        .arg(dir.join("clearance.seed"))
+        .arg(&socket);
+    if dir.join("custody.json").exists() {
+        command
+            .arg("--custody-config")
+            .arg(dir.join("custody.json"));
+    } else {
+        command
+            .arg("--state-seed-file")
+            .arg(dir.join("state.seed"))
+            .arg("--clearance-seed-file")
+            .arg(dir.join("clearance.seed"));
+    }
+    let child = command
         .env("ZKAPI_SIGNER_DATABASE_URL", url)
         .stdout(Stdio::null())
         .stderr(Stdio::inherit())
@@ -177,6 +188,8 @@ struct Fixture {
     origin: String,
     sql: Client,
     _signer: ChildGuard,
+    monitoring: zkapi_control::monitoring::Config,
+    monitoring_fault: Arc<AtomicUsize>,
     _directory: tempfile::TempDir,
     tasks: Vec<tokio::task::JoinHandle<()>>,
 }
@@ -206,10 +219,26 @@ async fn fixture_app(provider_origin: &str, direct: bool) -> Result<Fixture> {
     let chain: Value = serde_json::from_slice(&std::fs::read(root.join("target/i05/chain.json"))?)?;
     let mut tasks = vec![];
     let mut rpc = vec![];
+    let monitoring_fault = Arc::new(AtomicUsize::new(0));
     for _ in 0..2 {
         let c = chain.clone();
-        let (origin,task)=serve(Router::new().route("/",post(move|Json(r):Json<Value>|{let c=c.clone();async move {
-            let result=if r["method"]=="getGenesisHash" {json!(bs58::encode([0;32]).into_string())}else{json!({"context":{"slot":100},"value":if r["params"][0]==c["pool"]{c["pool_account"].clone()}else{Value::Null}})};
+        let fault = monitoring_fault.clone();
+        let (origin,task)=serve(Router::new().route("/",post(move|Json(r):Json<Value>|{let c=c.clone();let fault=fault.load(Ordering::SeqCst);async move {
+            let result=match r["method"].as_str().unwrap() {
+                "getGenesisHash" => json!(bs58::encode([if fault==1 {9}else{0};32]).into_string()),
+                "getSlot" => json!(if fault==4 {200}else{100}),
+                "getBlock" => json!({"blockhash":c["root"]["blockhash"]}),
+                "getBalance" => json!({"context":{"slot":if fault==4 {200}else{100}},"value":if fault==2 {1}else{200000000u64}}),
+                "getMultipleAccounts" => {
+                    let raw=base64::engine::general_purpose::STANDARD.decode(c["pool_account"]["data"][0].as_str().unwrap()).unwrap();
+                    let program=solana_pubkey::Pubkey::new_from_array(wire::pubkey(c["pool_account"]["owner"].as_str().unwrap()).unwrap());
+                    let pool=wire::pubkey(c["pool"].as_str().unwrap()).unwrap();
+                    let (authority,_)=solana_pubkey::Pubkey::find_program_address(&[b"vault",&pool],&program);
+                    let mut vault=vec![0u8;165];vault[..32].copy_from_slice(&raw[42..74]);vault[32..64].copy_from_slice(authority.as_ref());vault[64..72].copy_from_slice(&(if fault==3 {0u64}else{5000000u64}).to_le_bytes());vault[108]=1;
+                    json!({"context":{"slot":if fault==4 {200}else{100}},"value":[c["pool_account"],c["tree_account"],{"owner":bs58::encode(&raw[74..106]).into_string(),"lamports":2039280,"executable":false,"data":[base64::engine::general_purpose::STANDARD.encode(vault),"base64"]}]})
+                },
+                _ => json!({"context":{"slot":100},"value":if r["params"][0]==c["pool"]{c["pool_account"].clone()}else{Value::Null}})
+            };
             Json(json!({"jsonrpc":"2.0","id":1,"result":result}))
         }}))).await;
         rpc.push(origin);
@@ -241,6 +270,7 @@ async fn fixture_app(provider_origin: &str, direct: bool) -> Result<Fixture> {
     config.tariffs = vec![tariff.clone()];
     write_private(&dir.join("provider.key"), b"fixture-provider-secret");
     config.providers = ProviderConfig {
+        dispatcher: None,
         direct: vec![],
         proxy: vec![ProxyProviderConfig {
             provider: wire::Provider::Openai,
@@ -264,6 +294,7 @@ async fn fixture_app(provider_origin: &str, direct: bool) -> Result<Fixture> {
         tariff.tariff_hash = quote::tariff_hash(&tariff)?;
         config.tariffs = vec![tariff.clone()];
         config.providers = ProviderConfig {
+            dispatcher: None,
             proxy: vec![],
             direct: vec![zkapi_control::direct::DirectConfig::Openrouter {
                 api_base: format!("{provider_origin}/api/v1"),
@@ -280,6 +311,48 @@ async fn fixture_app(provider_origin: &str, direct: bool) -> Result<Fixture> {
     config.manifest["tariff_hashes"] = json!([tariff.tariff_hash]);
     complete_local_manifest(&mut config.manifest);
     config.trusted_manifest_hash = config.manifest["manifest_hash"].as_str().unwrap().into();
+    if std::env::var_os("ZKAPI_TEST_SEPARATE_DISPATCHER").is_some() {
+        use zkapi_control::egress::{ClientConfig, ServiceConfig};
+        let role = format!("dispatcher_{}", Uuid::new_v4().simple());
+        sql.batch_execute(&format!(
+            "CREATE ROLE {role} LOGIN; GRANT zkapi_control_reader TO {role}"
+        ))
+        .await?;
+        let claims = dir.join("dispatch-claims");
+        std::fs::create_dir(&claims)?;
+        std::fs::set_permissions(&claims, std::fs::Permissions::from_mode(0o700))?;
+        let child_config = dir.join("dispatcher.json");
+        write_private(
+            &child_config,
+            &serde_json::to_vec(&ServiceConfig {
+                local_test_only: true,
+                database_url: format!("{url} user={role}"),
+                pool: wire::pubkey(config.manifest["pool"].as_str().unwrap())?,
+                claims_directory: claims,
+                providers: config.providers.clone(),
+            })?,
+        );
+        let binary = PathBuf::from(env!("CARGO_BIN_EXE_dispatcherd"));
+        config.providers.dispatcher = Some(ClientConfig {
+            binary_sha256: hex::encode(wire::sha256(&std::fs::read(&binary)?)),
+            binary,
+            config_file: child_config,
+        });
+        // The control process has no usable provider secret reference.
+        for p in &mut config.providers.proxy {
+            p.credential_file = dir.join("not-mounted-in-control");
+        }
+        for p in &mut config.providers.direct {
+            match p {
+                zkapi_control::direct::DirectConfig::Openrouter {
+                    credential_file, ..
+                }
+                | zkapi_control::direct::DirectConfig::Oa {
+                    credential_file, ..
+                } => *credential_file = dir.join("not-mounted-in-control"),
+            }
+        }
+    }
     let validated = config.clone().validate()?;
     let identity = PoolIdentity {
         pool: validated.signer.pool,
@@ -302,7 +375,40 @@ async fn fixture_app(provider_origin: &str, direct: bool) -> Result<Fixture> {
         &zkapi_types::Felt252::from_u64(37).0,
     );
     Signer::initialize_journal(dir.join("journal"), &validated.signer)?;
+    if std::env::var_os("ZKAPI_TEST_SEPARATE_DISPATCHER").is_some() {
+        operations::envelopes(dir, &validated.signer)?;
+    }
     let signer = start_signer(dir, &url).await;
+    if std::env::var_os("ZKAPI_TEST_SEPARATE_DISPATCHER").is_some() {
+        let (socket, bridges) = operations::tls(dir, signer.socket.clone()).await?;
+        config.signer_socket = socket;
+        tasks.extend(bridges);
+    }
+
+    let output_directory = dir.join("monitoring");
+    std::fs::create_dir(&output_directory)?;
+    std::fs::set_permissions(&output_directory, std::fs::Permissions::from_mode(0o700))?;
+    let challenger_health_file = dir.join("challenger-health.json");
+    write_private(
+        &challenger_health_file,
+        &serde_json::to_vec(
+            &json!({"schema":1,"pool":config.manifest["pool"],"observed_at":zkapi_control::monitoring::now()?,"ready":true,"oldest_detection_to_send_seconds":0,"minimum_pending_deadline":null,"proof_failure_total":0,"root_conflict_reproves_total":0}),
+        )?,
+    );
+    let monitoring = zkapi_control::monitoring::Config {
+        local_test_only: true,
+        database_url: url.clone(),
+        trusted: zkapi_control::chain::TrustedPool::from_manifest(&config.manifest)?,
+        rpc_url: config.primary_rpc.clone(),
+        indexer_origin: config.indexer_origin.clone(),
+        fee_payer: bs58::encode([9; 32]).into_string(),
+        signer_socket: config.signer_socket.clone(),
+        signer_config: validated.signer,
+        challenger_health_file,
+        synchronous_replica_application: "i09_replica".into(),
+        output_directory,
+        interval_seconds: 1,
+    };
     let app = App::connect(config.validate()?, &url).await?;
     let router = app.router();
     tasks.push(tokio::spawn(async move {
@@ -313,6 +419,8 @@ async fn fixture_app(provider_origin: &str, direct: bool) -> Result<Fixture> {
         origin,
         sql,
         _signer: signer,
+        monitoring,
+        monitoring_fault,
         _directory: directory,
         tasks,
     })
@@ -911,5 +1019,194 @@ async fn concurrent_direct_creation_issues_once_without_closing_live_session() -
     assert!(!session.close_requested);
     settled(&fixture, id).await?;
     assert_eq!(fixture.app.ledger.receipts(id, None, 10).await?.len(), 1);
+    Ok(())
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+#[ignore = "requires disposable PostgreSQL and actual SBF export; scripts/run_i09_operations.py"]
+async fn operations_collector_live_sources_watch_and_failure_alerts() -> Result<()> {
+    use zkapi_control::monitoring::{collect, Report};
+    let (origin, provider) = serve(Router::new()).await;
+    let mut f = fixture_app(&origin, false).await?;
+    let config = &f.monitoring;
+    for field in ["cap", "state", "clearance"] {
+        let mut invalid = config.clone();
+        match field {
+            "cap" => {
+                invalid.signer_config.authorization.cap = zkapi_solana_types::MicroUsdc::new(1)?
+            }
+            "state" => {
+                invalid.signer_config.state_key = invalid.signer_config.clearance_key.clone()
+            }
+            _ => invalid.signer_config.clearance_key = invalid.signer_config.state_key.clone(),
+        }
+        assert!(
+            invalid.validate().is_err(),
+            "mismatched {field} must fail before collection"
+        );
+    }
+    let baseline = collect(config, None).await?;
+    assert!(
+        baseline.sources.values().all(|v| v == "ready"),
+        "{:?}",
+        baseline.sources
+    );
+    for name in [
+        "root_slot_lag",
+        "usage_unknown",
+        "signer_reconciliation_failure",
+        "signer_refused_requests_total",
+        "escrow_invariant_violation",
+    ] {
+        assert_eq!(
+            baseline.sample.measurements.get(name).map(String::as_str),
+            Some("0"),
+            "{name}"
+        );
+    }
+    assert!(baseline
+        .alerts
+        .iter()
+        .all(|a| a.metric.starts_with("database_")));
+    // A correctly responding signer cannot authenticate metrics from another
+    // primary ledger that happens to contain the same pool address.
+    let name = format!("i07_monitor_{}", Uuid::new_v4().simple());
+    f.sql
+        .batch_execute(&format!("CREATE DATABASE {name}"))
+        .await?;
+    let unrelated_url = format!("{} dbname={name}", config.database_url);
+    migrate(&unrelated_url).await?;
+    let mut unrelated_signer = config.signer_config.clone();
+    unrelated_signer
+        .authorization
+        .deployment_id
+        .push_str("-unrelated");
+    let unrelated_identity = PoolIdentity {
+        pool: config.signer_config.pool,
+        deployment_id: unrelated_signer.authorization.deployment_id.clone(),
+        manifest_hash: [19; 32],
+        authorization_config: json!({"signer":unrelated_signer}),
+    };
+    drop(Ledger::connect(&unrelated_url, &unrelated_identity).await?);
+    let mut wrong_ledger = config.clone();
+    wrong_ledger.database_url = unrelated_url;
+    let mismatch = collect(&wrong_ledger, Some(&baseline)).await?;
+    assert_eq!(mismatch.sources["signer"], "ready");
+    assert_eq!(mismatch.sources["ledger"], "unavailable");
+    assert!(!mismatch.sample.measurements.contains_key("usage_unknown"));
+    assert!(mismatch.alerts.iter().any(|a| a.metric == "usage_unknown"
+        && a.reason == "missing_measurement"
+        && a.severity == "page"));
+    for (fault, metric, severity) in [
+        (2, "fee_payer_lamports", "page"),
+        (3, "escrow_invariant_violation", "emergency"),
+        (4, "root_slot_lag", "page"),
+    ] {
+        f.monitoring_fault.store(fault, Ordering::SeqCst);
+        let report = collect(config, Some(&baseline)).await?;
+        assert!(
+            report
+                .alerts
+                .iter()
+                .any(|a| a.metric == metric && a.severity == severity),
+            "{:?}",
+            report.alerts
+        );
+    }
+    f.monitoring_fault.store(1, Ordering::SeqCst);
+    let bad = collect(config, Some(&baseline)).await?;
+    assert_eq!(bad.sources["chain"], "unavailable");
+    assert!(bad
+        .alerts
+        .iter()
+        .any(|a| a.metric == "fee_payer_lamports" && a.reason == "missing_measurement"));
+    f.monitoring_fault.store(0, Ordering::SeqCst);
+    // The new health request is read-only; actual signerd retains and reports
+    // rejected immutable targets, including conflicting sign attempts.
+    use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
+    let mut stream = tokio::net::UnixStream::connect(&config.signer_socket).await?;
+    stream
+        .write_all(
+            format!(
+                "{{\"kind\":\"settlement\",\"request_id\":\"{}\"}}\n",
+                Uuid::new_v4()
+            )
+            .as_bytes(),
+        )
+        .await?;
+    let mut line = String::new();
+    BufReader::new(stream).read_line(&mut line).await?;
+    assert!(line.contains("signing_refused"));
+    let refused = collect(config, Some(&baseline)).await?;
+    assert!(refused
+        .alerts
+        .iter()
+        .any(|a| a.metric == "signer_refused_requests_total" && a.severity == "emergency"));
+    let mut health: Value =
+        serde_json::from_slice(&std::fs::read(&config.challenger_health_file)?)?;
+    health["observed_at"] = 0.into();
+    write_private(
+        &config.challenger_health_file,
+        &serde_json::to_vec(&health)?,
+    );
+    let stale = collect(config, Some(&refused)).await?;
+    assert_eq!(stale.sources["challenger"], "unavailable");
+    assert!(stale
+        .alerts
+        .iter()
+        .any(|a| a.metric == "challenge_remaining_seconds" && a.reason == "missing_measurement"));
+    let config_file = f._directory.path().join("monitor.json");
+    write_private(&config_file, &serde_json::to_vec(config)?);
+    let mut watcher = ChildGuard {
+        child: Command::new(env!("CARGO_BIN_EXE_opsd"))
+            .args(["watch"])
+            .arg(&config_file)
+            .stdout(Stdio::null())
+            .stderr(Stdio::null())
+            .spawn()?,
+        socket: f._directory.path().join("unused"),
+    };
+    let output = config.output_directory.join("health.json");
+    for _ in 0..100 {
+        if output.exists() {
+            break;
+        }
+        tokio::time::sleep(Duration::from_millis(50)).await;
+    }
+    assert!(output.exists());
+    assert!(
+        !Command::new(env!("CARGO_BIN_EXE_opsd"))
+            .arg("collect")
+            .arg(&config_file)
+            .output()?
+            .status
+            .success(),
+        "second collector refused"
+    );
+    f._signer.child.kill()?;
+    f._signer.child.wait()?;
+    let mut lost = false;
+    for _ in 0..100 {
+        let report: Report = serde_json::from_slice(&std::fs::read(&output)?)?;
+        if report.sources["signer"] == "unavailable" {
+            lost = true;
+            break;
+        }
+        tokio::time::sleep(Duration::from_millis(100)).await;
+    }
+    assert!(lost, "watcher detects lost signer");
+    assert_eq!(
+        std::fs::metadata(&output)?.permissions().mode() & 0o777,
+        0o600
+    );
+    let published = std::fs::read_to_string(&output)?;
+    assert!(
+        !published.contains("fixture-provider-secret")
+            && !published.contains("database_url")
+            && !published.contains("signature")
+    );
+    watcher.child.kill()?;
+    watcher.child.wait()?;
+    provider.abort();
     Ok(())
 }

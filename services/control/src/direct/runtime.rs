@@ -67,7 +67,10 @@ impl DirectRuntime {
                 .await?;
             return Err(error.into());
         }
-        let created = self.adapter.create_key(&checkpoint.intent).await;
+        let created = self
+            .adapter
+            .create_for_attempt(&checkpoint.intent, &attempt)
+            .await;
         let mut created = match created {
             Ok(created) => created,
             Err(_) => {

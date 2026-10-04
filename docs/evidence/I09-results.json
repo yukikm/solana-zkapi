@@ -1,18 +1,93 @@
 {
-  "scope": "I09 challenger A/B foundation: local readonly PostgreSQL, historical real RP/tree verification, actual-SBF history replay, fsync journal, newly generated payload through actual Vault SBF/v0 buffers; no daemon/broadcaster recovery",
+  "scope": "I09 challenger A/B native RPC daemon/CLI, durable scan/restart, readonly PostgreSQL, real proof, I04 signed-v0 bridge/recovery fault fixtures, actual Vault signed-v0 SBF acceptance; no live RPC claim",
   "passed": true,
-  "tests_passed": 12,
+  "tests_passed": 25,
+  "native_tests_passed": 18,
+  "sdk_tests_passed": 7,
+  "daemon_performance": {
+    "five_minute_local_target_met": true,
+    "live_rpc": false,
+    "p50_ms": 5796,
+    "p95_ms": 11117,
+    "samples": [
+      {
+        "attempts": 5,
+        "case": "normal",
+        "elapsed_ms": 5499,
+        "native_test_process_rss_kib": 295472,
+        "regenerated_proofs": 0
+      },
+      {
+        "attempts": 5,
+        "case": "lose-once",
+        "elapsed_ms": 5490,
+        "native_test_process_rss_kib": 295792,
+        "regenerated_proofs": 0
+      },
+      {
+        "attempts": 11,
+        "case": "stale-once",
+        "elapsed_ms": 11117,
+        "native_test_process_rss_kib": 296000,
+        "regenerated_proofs": 1
+      },
+      {
+        "attempts": 5,
+        "case": "restart",
+        "elapsed_ms": 5425,
+        "native_test_process_rss_kib": 296000,
+        "regenerated_proofs": 0
+      },
+      {
+        "attempts": 5,
+        "case": "confirmed",
+        "elapsed_ms": 5685,
+        "native_test_process_rss_kib": 296016,
+        "regenerated_proofs": 0
+      },
+      {
+        "attempts": 6,
+        "case": "expired-upload",
+        "elapsed_ms": 5796,
+        "native_test_process_rss_kib": 296016,
+        "regenerated_proofs": 0
+      },
+      {
+        "attempts": 11,
+        "case": "buffer-expired",
+        "elapsed_ms": 11002,
+        "native_test_process_rss_kib": 281680,
+        "regenerated_proofs": 1
+      },
+      {
+        "attempts": 8,
+        "case": "upload-rejected",
+        "elapsed_ms": 9690,
+        "native_test_process_rss_kib": 281728,
+        "regenerated_proofs": 1
+      }
+    ],
+    "scope": "local native runtime + real proof/v0 signatures + synthetic JSON-RPC outcomes; separate actual Vault SBF acceptance"
+  },
+  "native_cli": {
+    "fresh_process_steps": 6,
+    "lost_response_recovered": true,
+    "confirmed_execute_preserved": true,
+    "finalized_recovered_without_fee_key": true,
+    "elapsed_seconds": 6.215,
+    "live_rpc": false
+  },
   "tests_failed": 0,
   "tests_ignored": 0,
   "postgres_version": "18.6 (Homebrew)",
   "fsync": true,
   "rust": "rustc 1.90.0 (1159e78c4 2025-09-14)",
-  "elapsed_seconds": 6.482,
+  "elapsed_seconds": 94.654,
   "commands": [
     [
       "initdb",
       "-D",
-      "/tmp/zkapi-i09-qt4vdwll/data",
+      "/tmp/zkapi-i09-lcwwgaxm/data",
       "-U",
       "i09_test",
       "--no-locale",
@@ -22,11 +97,11 @@
     [
       "pg_ctl",
       "-D",
-      "/tmp/zkapi-i09-qt4vdwll/data",
+      "/tmp/zkapi-i09-lcwwgaxm/data",
       "-l",
-      "/tmp/zkapi-i09-qt4vdwll/postgres.log",
+      "/tmp/zkapi-i09-lcwwgaxm/postgres.log",
       "-o",
-      "-k /tmp/zkapi-i09-qt4vdwll/socket -h '' -p 55439",
+      "-k /tmp/zkapi-i09-lcwwgaxm/socket -h '' -p 55439",
       "-w",
       "start"
     ],
@@ -34,7 +109,7 @@
       "psql",
       "-X",
       "-h",
-      "/tmp/zkapi-i09-qt4vdwll/socket",
+      "/tmp/zkapi-i09-lcwwgaxm/socket",
       "-p",
       "55439",
       "-U",
@@ -74,6 +149,71 @@
       "warnings"
     ],
     [
+      "node",
+      "--test",
+      "--test-reporter=tap",
+      "packages/sdk/test/challenger.test.ts"
+    ],
+    [
+      "cargo",
+      "build",
+      "--locked",
+      "--manifest-path",
+      "services/challenger/Cargo.toml",
+      "--bin",
+      "challengerd"
+    ],
+    [
+      "services/challenger/target/debug/challengerd",
+      "status",
+      "target/i09-challenger/cli-state/config.json"
+    ],
+    [
+      "services/challenger/target/debug/challengerd",
+      "init",
+      "/tmp/zkapi-i09-lcwwgaxm/native-cli.json"
+    ],
+    [
+      "services/challenger/target/debug/challengerd",
+      "once",
+      "/tmp/zkapi-i09-lcwwgaxm/native-cli.json"
+    ],
+    [
+      "services/challenger/target/debug/challengerd",
+      "once",
+      "/tmp/zkapi-i09-lcwwgaxm/native-cli.json"
+    ],
+    [
+      "services/challenger/target/debug/challengerd",
+      "once",
+      "/tmp/zkapi-i09-lcwwgaxm/native-cli.json"
+    ],
+    [
+      "services/challenger/target/debug/challengerd",
+      "once",
+      "/tmp/zkapi-i09-lcwwgaxm/native-cli.json"
+    ],
+    [
+      "services/challenger/target/debug/challengerd",
+      "once",
+      "/tmp/zkapi-i09-lcwwgaxm/native-cli.json"
+    ],
+    [
+      "services/challenger/target/debug/challengerd",
+      "once",
+      "/tmp/zkapi-i09-lcwwgaxm/native-cli.json"
+    ],
+    [
+      "services/challenger/target/debug/challengerd",
+      "recover",
+      "/tmp/zkapi-i09-lcwwgaxm/native-cli.json"
+    ],
+    [
+      "services/challenger/target/debug/challengerd",
+      "status",
+      "/tmp/zkapi-i09-lcwwgaxm/native-cli.json"
+    ],
+    [
       "cargo",
       "run",
       "--locked",
@@ -108,37 +248,54 @@
     ]
   ],
   "artifact_sha256": {
-    "target/i09-challenger/generated-challenge.bin": "1b11ef4c9e112d24e64fcf6c2be2d3bb8dfaa2b00721588cc8c99014eea1b24d",
-    "target/i09-challenger/proof-generation.json": "7110cc06a2724ba036a7b9a6acbac1d3aef7fd5c1f8a9b60a937e613b8d9c839",
-    "target/i09-challenger/svm-results.json": "f190431972f1b3054db7a7c30254c70c1ddf0a23cbfa097da66330456fd11085",
+    "target/i09-challenger/generated-challenge.bin": "34c95533000fb46c610fa9464d16b04022df1d1b2a314f4ed663639594567a8f",
+    "target/i09-challenger/proof-generation.json": "8cfc759ec96f3aa46544d098261b55ab63b96579d6f692c6152dac03fd2afae5",
+    "target/i09-challenger/svm-results.json": "54bc6f5e3ebe13d4b917362b57a26739e038552980bcf0092300732c5454f036",
     "target/i04-sbf/zkapi_vault.so": "f8e57adeee417ca58c27324999d3e46013800fd7d8892880ea8ee1becefc2334",
-    "services/challenger/Cargo.toml": "9f4b000b6252c626432d95953062067eda7e497263323ba2bd33c49c75241723",
-    "services/challenger/Cargo.lock": "4d77282e7836a2b122bdda405bbdd73ee06c8581ffa8b541223b51b1c9c2eb1b",
-    "scripts/run_i09_challenger.py": "225a1cdb5c7efeb3d9583e022431bb05ca010090263d395a58551dd72879d23d",
+    "services/challenger/Cargo.toml": "f4f593c9d2492027d60c161b781c90bc23f0ae0419016dfb80ec6ede2a8da361",
+    "services/challenger/Cargo.lock": "eb9b4319601eefe18c7ffb46b415692dafcb12b33c26b97bb7b93204f35f3918",
+    "scripts/run_i09_challenger.py": "542939b4f10a1065634cfbeb035697a355949fb9cd1a23c6e3bf88cc3fbff96e",
     "tests/svm/Cargo.toml": "3ad70f37a1c678b4ccb1b4124e205c1ae8b6271ac009c52eca8babaa4cd2a711",
     "tests/svm/Cargo.lock": "e98d71f3e793816ce0f0627d3b84008ce77ac6b733100e5371b75434ec088c9e",
-    "tests/svm/src/bin/challenger.rs": "f78281b7976bc25c1050aa4101054e59a3f201b96685965fcde1582bac51ac4c",
+    "tests/svm/src/bin/challenger.rs": "dd5a5a5c811e7a656a9a3731da7802e0c87bed8ba1393df628e8dbc4f6cec264",
     "tests/svm/src/vault_support.rs": "2d59e6e5f2474cf8563f6dde9b05344257f6db8af5a016a80e245bc6ff993f43",
     "tests/fixtures/vault/a.json": "fa84086effd14b23e346208c06857a5b61229cac49c23d64a21387af946cf5af",
     "tests/fixtures/vault/a-with-b.json": "7f3f68354f7edd0f46fe6844ae60df1aabc9bff6777aef59ebf993e80ee74078",
     "tests/fixtures/vault/b-with-a.json": "dce130506483e27d6a38a427dd4cb029ff46914056f03882c68482b8ce06890d",
     "tests/fixtures/layout2/test-tree.vk": "9141a035fdba50b13a5776182be029bb23dd15e69cd579c5d6e310b7e2ee5fb7",
     "target/i04/sdk-svm-history.json": "cc57562c1be8716ed1d870887479e868c89242bf69ee495f2c7b6d085a3af21c",
-    "services/challenger/src/journal.rs": "07e93b8b5e3b272dc004a937173e25e015a5b685997ceaad2bea112bc38dfdb7",
-    "services/challenger/src/lib.rs": "47728e069e486861b292e139c7151d2a23d42195999d1d9a467fe1f59f2df1fe",
+    "services/challenger/src/bin/challengerd.rs": "7b9e2e6c6d58bde69043836b6c41ddcfea884a1ba452b0e17a40d241c9254bd1",
+    "services/challenger/src/journal.rs": "6dca6712af8c9120fe4b2585e27722b087ae10713808093b9c4403443ab24018",
+    "services/challenger/src/lib.rs": "c5a4cd8bd61f5c43c951e1068792efaaa3dae9a3b83dd3aea534027971249482",
     "services/challenger/src/read_model.rs": "cbf40eaaed40559e7a04a8a7d398cac4141cd9c0431773eb11def195a4d09f5d",
-    "services/challenger/src/scan.rs": "1c890a7624bd968b2df15863a0dc1384191234062321df3a2da97836eb53de05",
-    "services/challenger/src/tests.rs": "f2119a24c726026e31e1d7cffeae1d3d43f1d6722d619d8b2cc21d4d8a313415"
+    "services/challenger/src/runtime.rs": "6fcd0aba8919b7b098bd5e34a2d85c14a49c7b3a294a80bdba0b7ea20d9a1f7e",
+    "services/challenger/src/scan.rs": "118d6133b2265acab0d9ff47a2b5e57b792079ffff5e4b0ae00b412e06c4f9aa",
+    "services/challenger/src/tests.rs": "5ae514590f63c5d468276fd056c6dcf883541c9398f46f889fde7afaac890a79",
+    "services/indexer/src/bin/indexerd.rs": "df9070ca3ae3a929f4569f38b14820296aefc918e98b7ff988c0647214419a6c",
+    "services/indexer/src/lib.rs": "9cb157a0b818c439669fdc772bea7e90c8a774e2cc58e04b69bdade002faa422",
+    "services/indexer/src/replay.rs": "07806e4c910b4916fd80f5b082e5bf04cceaf106e125cb1d546038c03a625f01",
+    "services/indexer/src/rpc.rs": "db2a7c2d626b510555ea13ff3c6ab9fb3f5620a155feef4eafeb54b330b9d310",
+    "services/indexer/src/runtime.rs": "aa02dd92359fea56c0e7dd3fa8f2ba8ed7616abe8f38e7cb3910f2189a005b57",
+    "services/indexer/src/snapshot.rs": "e77f70b969327948f1a1de41577f4a88b07b392596dfc2a96ee516dc01a955f9",
+    "services/indexer/src/tree.rs": "bfb9b75a177f9d4a26e6d07de2d70a3f979567f7083d49e3ce433b1d332d1e66",
+    "packages/sdk/src/challenger-cli.ts": "851691cbd9984e6599897eac4ce87564a7bef95a903024463cfd8b13b234e4a8",
+    "packages/sdk/src/challenger.ts": "eff689c9c3bbdbf1b706be34615c1eeec898885268109c21ca9160835812a92c",
+    "packages/sdk/test/challenger-rpc.ts": "9d322d7f6455dd1e3ddbd30d78ab05062adcf73b7d6124d2367ec80ac20de323",
+    "packages/sdk/test/challenger-sbf.ts": "9a641a53dbba42720cfeabc4f2334376f4ca8bd68e7ac3d12626cbe935839661",
+    "packages/sdk/test/challenger.test.ts": "cea9979ed726e43551c07869a9809a258c264e0d1421ebc492b1e67e0a332bcf",
+    "target/i09-challenger/daemon-performance.json": "bf8578330eaa1a2293190a9531ee39609c2ba77c32a21f4001240b5268718814",
+    "target/i09-challenger/native-cli-results.json": "bfc95c5373c81189a4618d2841fe7b189e56a00dc667628610cfd9fec5f08a7b",
+    "services/challenger/target/debug/challengerd": "b74261995d9f445b7383f99a7c106ced13846d83c787b95a7f25d6e5e318bc4c"
   },
   "release_gates_passed": [],
   "new_tree_proof_generated": true,
   "new_payload_sbf_verified": true,
   "svm": {
-    "transactions": 79,
-    "expected_rejections": 5,
+    "transactions": 114,
+    "expected_rejections": 8,
     "max_cu": 335295,
-    "max_transaction_bytes": 1091,
-    "payload_sha256": "1b11ef4c9e112d24e64fcf6c2be2d3bb8dfaa2b00721588cc8c99014eea1b24d",
+    "max_transaction_bytes": 1232,
+    "payload_sha256": "34c95533000fb46c610fa9464d16b04022df1d1b2a314f4ed663639594567a8f",
     "elf_sha256": "f8e57adeee417ca58c27324999d3e46013800fd7d8892880ea8ee1becefc2334"
   },
   "live_rpc_verified": false

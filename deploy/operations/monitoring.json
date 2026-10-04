@@ -1,0 +1,55 @@
+{
+  "schema_version": 1,
+  "missing_or_stale_measurement": "page",
+  "max_sample_age_seconds": 60,
+  "metrics": {
+    "challenge_detection_to_send_seconds": {
+      "warn": 60,
+      "page": 300
+    },
+    "challenge_remaining_seconds": {
+      "emergency_below": 3600
+    },
+    "tree_proof_failure_total": {
+      "page_increase": 1
+    },
+    "tree_root_conflict_reproves_total": {
+      "warn_increase": 1
+    },
+    "root_slot_lag": {
+      "page_above": 32
+    },
+    "usage_unknown": {
+      "warn_above": 0,
+      "provider_admission_stop_at": 3
+    },
+    "overdue_unknown": {
+      "page_above": 0
+    },
+    "unfenced_attempts": {},
+    "operator_loss_nano_usdc": {
+      "warn_increase": 1
+    },
+    "escrow_invariant_violation": {
+      "emergency_above": 0
+    },
+    "database_replica_flush_lag_bytes": {
+      "page_above": 0
+    },
+    "fee_payer_lamports": {
+      "page_below": "100000000"
+    },
+    "signer_refused_requests_total": {
+      "emergency_increase": 1
+    },
+    "signer_reconciliation_failure": {
+      "emergency_above": 0
+    },
+    "database_synchronous_replica_unavailable": {
+      "page_above": 0
+    },
+    "recovery_unfenced_attempts": {
+      "page_above": 0
+    }
+  }
+}

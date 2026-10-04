@@ -188,7 +188,7 @@ jobs:
           /tmp/zkapi-contract-venv/bin/python scripts/check_openapi_contract.py
           PATH="/usr/lib/postgresql/16/bin:$PATH" python3 scripts/check_ledger_contract.py
   client-challenger:
-    # First I08/I09 slice only: no live provider, wallet, broadcaster or release claim.
+    # I08/I09 local runtime acceptance; live provider/public RPC and release gates remain separate.
     runs-on: ubuntu-24.04
     timeout-minutes: 90
     steps:
@@ -198,6 +198,10 @@ jobs:
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version-file: .node-version
+      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5
+        with:
+          go-version: '1.25.0'
+          cache: false
       - name: Install pinned tools and local runtime dependencies
         run: |
           rustup show
@@ -207,19 +211,33 @@ jobs:
           sudo apt-get update
           sudo apt-get install --yes postgresql-16
           command -v google-chrome
-      - name: I08 trust, actual browser journal, recovery, and native real proof checks
-        run: python3 scripts/run_i08.py
-      - name: Generate actual I04 SBF archive and verify the I09 challenger foundation
+      - name: Generate actual Vault archive and local control trust fixtures
         env:
           RAYON_NUM_THREADS: '4'
         run: |
           bash scripts/run_i04.sh
-          PATH="/usr/lib/postgresql/16/bin:$PATH" python3 scripts/run_i09_challenger.py
+          PATH="/usr/lib/postgresql/16/bin:$PATH" bash scripts/run_i06_i07.sh
+      - name: I08 shared SDK and native verification
+        run: python3 scripts/run_i08.py
+      - name: I09 challenger daemon, signed v0 recovery and actual Vault
+        run: PATH="/usr/lib/postgresql/16/bin:$PATH" python3 scripts/run_i09_challenger.py
+      - name: I08 actual WASM, Chrome worker, wallet and installed Go daemon
+        run: |
+          python3 scripts/run_i08_wallet.py
+          python3 scripts/run_i08_clientd.py
+      - name: I09 dispatcher, mTLS custody and physical WAL recovery
+        run: PATH="/usr/lib/postgresql/16/bin:$PATH" python3 scripts/run_i09_operations.py
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         if: always()
         with:
-          name: I08-I09-first-slice-local-not-release
+          name: I08-I09-local-runtime-not-release
           path: |
+            target/i08-wallet/*.json
+            target/i08-wallet/*.log
+            target/i08-clientd/runtime-report.json
+            target/i08-clientd/*.log
+            target/i09-operations/*.json
+            target/i09-operations/*.log
             target/i08/runtime-report.json
             target/i08/*.log
             target/i09-challenger/runtime-report.json

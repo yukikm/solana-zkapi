@@ -153,7 +153,8 @@ pub struct ClearanceRecord {
     pub message_digest: Hash,
     pub signature: Option<Vec<u8>>,
 }
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct DispatchAttempt {
     pub attempt_id: Uuid,
     pub request_id: Uuid,
@@ -1292,6 +1293,34 @@ impl Ledger {
         if changed != 1 {
             return Err(LedgerError::Conflict("attempt_finished_or_fenced"));
         }
+        tx.commit().await?;
+        Ok(())
+    }
+    /// Durable provider circuit breaker. Restarting the control process cannot
+    /// clear unknown/loss counts. An explicit audited reset uses this same writer.
+    pub async fn provider_available(&self, provider: &str) -> Result<bool> {
+        self.check_health()?;
+        let c = self.inner.client.lock().await;
+        let count:i64=c.query_one("SELECT count(*) FROM operations o JOIN sessions s ON s.pool=o.pool AND s.request_id=o.request_id WHERE o.pool=$1 AND s.provider=$2 AND o.state IN ('USAGE_UNKNOWN','WAIVED_OPERATOR_LOSS') AND o.created_at>COALESCE((SELECT created_at FROM outbox WHERE pool=$1 AND event_type='PROVIDER_ADMISSION_RESET' AND metadata->>'provider'=$2 ORDER BY id DESC LIMIT 1),'-infinity'::timestamptz)",&[&&self.inner.pool[..],&provider]).await?.get(0);
+        Ok(count < 3)
+    }
+    pub async fn reset_provider_admission(&self, provider: &str, evidence: Hash) -> Result<()> {
+        if !matches!(provider, "oa" | "openai" | "anthropic" | "openrouter") {
+            return Err(LedgerError::Invalid("invalid_provider"));
+        }
+        let mut c = self.inner.client.lock().await;
+        let tx = c.transaction().await?;
+        self.lock_pool(&tx).await?;
+        // Every operation before the reset cut must be terminal. Otherwise an
+        // older RESERVED/DISPATCHING operation could become unknown afterwards
+        // while remaining excluded by provider_available's creation-time cut.
+        let pending:bool=tx.query_one("SELECT EXISTS(SELECT 1 FROM operations o JOIN sessions s ON s.pool=o.pool AND s.request_id=o.request_id WHERE o.pool=$1 AND s.provider=$2 AND o.state NOT IN ('DONE','WAIVED_OPERATOR_LOSS'))",&[&&self.inner.pool[..],&provider]).await?.get(0);
+        if pending {
+            return Err(LedgerError::Unavailable("provider_reconciliation_pending"));
+        }
+        let metadata =
+            serde_json::json!({"provider":provider,"evidence_digest":hex::encode(evidence)});
+        tx.execute("INSERT INTO outbox(pool,dedup_key,event_type,metadata) VALUES($1::bytea,$2,'PROVIDER_ADMISSION_RESET',$3)",&[&&self.inner.pool[..],&format!("provider-reset:{}",uuid::Uuid::new_v4()),&metadata]).await?;
         tx.commit().await?;
         Ok(())
     }

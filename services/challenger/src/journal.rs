@@ -84,6 +84,16 @@ pub enum Outcome {
         blockhash: Hash,
         error: String,
     },
+    /// Not transaction finality: I04 established finalized old blockhash expiry
+    /// and the exact same buffer's monotonic prefix/seal. Financial execute and
+    /// close can never use this outcome.
+    UploadReconciled {
+        slot: u64,
+        blockhash: Hash,
+        finalized_height: u64,
+        next_step_index: u32,
+        account_bytes: Vec<u8>,
+    },
 }
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(deny_unknown_fields)]
@@ -104,6 +114,8 @@ pub struct Job {
     pub payloads: Vec<Payload>,
     pub attempts: Vec<Attempt>,
     pub complete: bool,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub first_execute_send_at: Option<u64>,
 }
 #[derive(Clone, Debug, Default, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(deny_unknown_fields)]
@@ -112,6 +124,53 @@ struct State {
     pool: Hash,
     jobs: BTreeMap<String, Job>,
     checkpoint: Option<Checkpoint>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    archive: Vec<zkapi_indexer::FinalizedBlock>,
+    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
+    transport: BTreeMap<String, serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    alerts: Vec<AlertEvent>,
+    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
+    absent_buffers: BTreeMap<String, FinalizedAbsence>,
+    #[serde(default, skip_serializing_if = "is_zero")]
+    proof_failure_total: u64,
+}
+fn is_zero(value: &u64) -> bool {
+    *value == 0
+}
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(deny_unknown_fields)]
+struct FinalizedAbsence {
+    job_id: String,
+    slot: u64,
+    blockhash: Hash,
+}
+fn failure_precedes_observation(attempt: &Attempt, slot: u64, blockhash: Hash) -> bool {
+    matches!(attempt.outcome, Outcome::FinalizedFailure { slot: failed_slot, blockhash: failed_hash, .. }
+        if slot > failed_slot || slot == failed_slot && blockhash == failed_hash)
+}
+fn validate_transport(attempt: &Attempt, transport: &serde_json::Value) -> Result<()> {
+    if transport["signature"].as_str() != Some(&attempt.signature)
+        || transport["wireHex"].as_str() != Some(hex::encode(&attempt.signed_bytes).as_str())
+        || transport["planDigest"].as_str() != Some(hex::encode(attempt.payload_digest).as_str())
+        || transport["buffer"].as_str()
+            != Some(zkapi_indexer::snapshot::key(attempt.buffer).as_str())
+    {
+        return Err(Error::Conflict("transport/attempt mismatch"));
+    }
+    let kind = transport["kind"]
+        .as_str()
+        .ok_or(Error::Conflict("transport kind"))?;
+    if transport["plan"]["operation"] != "challenge_escape"
+        || match attempt.stage {
+            Stage::Execute => kind != "execute",
+            Stage::Upload => !["create", "append", "seal"].contains(&kind),
+            Stage::CloseBuffer => kind != "close",
+        }
+    {
+        return Err(Error::Conflict("transport operation/stage"));
+    }
+    Ok(())
 }
 impl State {
     /// The checksum protects bytes, not semantics. Apply the same invariants to
@@ -119,6 +178,16 @@ impl State {
     fn validate_job_identities(&self) -> Result<()> {
         let mut nullifiers = BTreeSet::new();
         let mut generations = BTreeSet::new();
+        let mut signatures = BTreeSet::new();
+        if self.archive.iter().any(|b| !b.finalized)
+            || self.archive.windows(2).any(|pair| {
+                pair[1].slot <= pair[0].slot
+                    || pair[1].parent_slot != pair[0].slot
+                    || pair[1].previous_blockhash != pair[0].blockhash
+            })
+        {
+            return Err(Error::Conflict("archive gap/fork"));
+        }
         for (id, job) in &self.jobs {
             let identity = &job.identity;
             let evidence = &job.evidence;
@@ -134,12 +203,98 @@ impl State {
             {
                 return Err(Error::Conflict("job evidence identity"));
             }
+            if job
+                .attempts
+                .iter()
+                .filter(|a| a.outcome == Outcome::Unknown)
+                .count()
+                > 1
+                || job.complete
+                    != job.attempts.iter().any(|a| {
+                        a.stage == Stage::Execute
+                            && matches!(a.outcome, Outcome::FinalizedSuccess { .. })
+                    })
+            {
+                return Err(Error::Conflict("attempt completion state"));
+            }
+            for attempt in &job.attempts {
+                if !signatures.insert(attempt.signature.clone())
+                    || attempt.signature.is_empty()
+                    || attempt.signed_bytes.is_empty()
+                    || !job
+                        .payloads
+                        .iter()
+                        .any(|p| p.digest == attempt.payload_digest && p.buffer == attempt.buffer)
+                {
+                    return Err(Error::Conflict("attempt identity/payload"));
+                }
+                if let Some(record) = self.transport.get(&attempt.signature) {
+                    validate_transport(attempt, record)?;
+                }
+                if let Outcome::UploadReconciled {
+                    finalized_height,
+                    next_step_index,
+                    account_bytes,
+                    slot,
+                    ..
+                } = &attempt.outcome
+                {
+                    let record = self
+                        .transport
+                        .get(&attempt.signature)
+                        .ok_or(Error::Conflict("reconciled upload transport"))?;
+                    if attempt.stage != Stage::Upload
+                        || account_bytes.is_empty()
+                        || *next_step_index > 32
+                        || record["lastValidBlockHeight"]
+                            .as_u64()
+                            .is_none_or(|height| *finalized_height <= height)
+                        || record["stepIndex"]
+                            .as_u64()
+                            .is_none_or(|index| u64::from(*next_step_index) < index)
+                        || record["plan"]["snapshotSlot"]
+                            .as_u64()
+                            .is_none_or(|snapshot| *slot < snapshot)
+                    {
+                        return Err(Error::Conflict("invalid upload reconciliation"));
+                    }
+                }
+            }
             // N is permanently consumed; one tree sequence identifies one
             // Pending creation. Neither can be an alias for a second job.
             if !nullifiers.insert(identity.nullifier)
                 || !generations.insert(identity.generation.tree_sequence)
             {
                 return Err(Error::Conflict("Pending generation already journaled"));
+            }
+        }
+        if self.transport.keys().any(|key| !signatures.contains(key)) {
+            return Err(Error::Conflict("orphan transport record"));
+        }
+        for (buffer, absence) in &self.absent_buffers {
+            let job = self
+                .jobs
+                .get(&absence.job_id)
+                .ok_or(Error::Conflict("buffer absence job"))?;
+            if !job.payloads.iter().any(|p| {
+                hex::encode(p.buffer) == *buffer && absence.slot >= p.checkpoint.position.slot
+            }) || !job
+                .attempts
+                .iter()
+                .rev()
+                .find(|a| hex::encode(a.buffer) == *buffer && a.stage != Stage::CloseBuffer)
+                .is_some_and(|a| failure_precedes_observation(a, absence.slot, absence.blockhash))
+            {
+                return Err(Error::Conflict("buffer absence without definite failure"));
+            }
+        }
+        for (i, event) in self.alerts.iter().enumerate() {
+            if event.id != i as u64 + 1
+                || event.pool != self.pool
+                || !self.jobs.contains_key(&event.job_id)
+                || i > 0 && self.alerts[i - 1].observed_at > event.observed_at
+            {
+                return Err(Error::Conflict("alert event identity"));
             }
         }
         Ok(())
@@ -152,6 +307,16 @@ struct Envelope {
     state: State,
 }
 
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(deny_unknown_fields)]
+pub struct AlertEvent {
+    pub id: u64,
+    pub pool: Hash,
+    pub job_id: String,
+    pub severity: Alert,
+    pub observed_at: u64,
+    pub delivered: bool,
+}
 pub struct Journal {
     directory: PathBuf,
     _lock: File,
@@ -159,6 +324,193 @@ pub struct Journal {
     poisoned: bool,
 }
 impl Journal {
+    pub fn proof_failure_total(&self) -> u64 {
+        self.state.proof_failure_total
+    }
+    pub fn record_proof_failure(&mut self) -> Result<()> {
+        self.update(|s| {
+            s.proof_failure_total = s
+                .proof_failure_total
+                .checked_add(1)
+                .ok_or(Error::Conflict("proof failure counter overflow"))?;
+            Ok(())
+        })
+    }
+    pub fn record_execute_send(&mut self, id: &str, at: u64) -> Result<()> {
+        self.update(|s| {
+            let job = s.jobs.get_mut(id).ok_or(Error::Conflict("job absent"))?;
+            if !job
+                .attempts
+                .iter()
+                .any(|a| a.stage == Stage::Execute && a.outcome == Outcome::Unknown)
+            {
+                return Err(Error::Conflict("unknown execute required"));
+            }
+            if job.first_execute_send_at.is_none() {
+                job.first_execute_send_at = Some(at.max(job.discovered_at));
+            }
+            Ok(())
+        })
+    }
+    pub fn buffer_absence(&self, buffer: Hash) -> bool {
+        self.state.absent_buffers.contains_key(&hex::encode(buffer))
+    }
+    pub fn record_buffer_absence(
+        &mut self,
+        id: &str,
+        buffer: Hash,
+        slot: u64,
+        blockhash: Hash,
+    ) -> Result<()> {
+        self.update(|s| {
+            let job = s.jobs.get(id).ok_or(Error::Conflict("job absent"))?;
+            if job.complete
+                || job.attempts.iter().any(|a| a.outcome == Outcome::Unknown)
+                || !job
+                    .attempts
+                    .iter()
+                    .rev()
+                    .find(|a| a.buffer == buffer && a.stage != Stage::CloseBuffer)
+                    .is_some_and(|a| failure_precedes_observation(a, slot, blockhash))
+                || !job
+                    .payloads
+                    .iter()
+                    .any(|p| p.buffer == buffer && slot >= p.checkpoint.position.slot)
+            {
+                return Err(Error::Conflict("absence requires definite failure"));
+            }
+            s.absent_buffers.insert(
+                hex::encode(buffer),
+                FinalizedAbsence {
+                    job_id: id.into(),
+                    slot,
+                    blockhash,
+                },
+            );
+            Ok(())
+        })
+    }
+    pub fn alerts(&self) -> impl Iterator<Item = &AlertEvent> {
+        self.state.alerts.iter()
+    }
+    pub fn enqueue_alerts(&mut self, now: u64) -> Result<usize> {
+        self.update(|s| {
+            let mut added = 0;
+            for (id, job) in &s.jobs {
+                let severity = alert(job, now);
+                let previous = s.alerts.iter().rev().find(|a| &a.job_id == id);
+                if previous.map_or(severity == Alert::None, |p| p.severity == severity) {
+                    continue;
+                }
+                let observed_at = s
+                    .alerts
+                    .last()
+                    .map_or(now, |event| now.max(event.observed_at));
+                s.alerts.push(AlertEvent {
+                    id: s.alerts.len() as u64 + 1,
+                    pool: s.pool,
+                    job_id: id.clone(),
+                    severity,
+                    observed_at,
+                    delivered: false,
+                });
+                added += 1;
+            }
+            Ok(added)
+        })
+    }
+    /// Local, private notification spool: content-addressed by pool/event id.
+    /// A crash after rename but before ack rechecks the same bytes, never writes
+    /// a second event. A configured collector can route these files externally.
+    pub fn deliver_alerts(&mut self, directory: &Path) -> Result<usize> {
+        fs::create_dir_all(directory)?;
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            fs::set_permissions(directory, fs::Permissions::from_mode(0o700))?;
+        }
+        let pending: Vec<_> = self
+            .state
+            .alerts
+            .iter()
+            .filter(|e| !e.delivered)
+            .cloned()
+            .collect();
+        let mut delivered = 0;
+        for event in pending {
+            let path = directory.join(format!("{}-{}.json", hex::encode(event.pool), event.id));
+            let bytes = serde_json::to_vec(&event)?;
+            if path.exists() {
+                if fs::read(&path)? != bytes {
+                    return Err(Error::Conflict("alert sink collision"));
+                }
+            } else {
+                let temporary = path.with_extension("next");
+                let mut options = OpenOptions::new();
+                options.create(true).truncate(true).write(true);
+                #[cfg(unix)]
+                {
+                    use std::os::unix::fs::OpenOptionsExt;
+                    options.mode(0o600);
+                }
+                let mut file = options.open(&temporary)?;
+                file.write_all(&bytes)?;
+                file.sync_all()?;
+                fs::rename(&temporary, &path)?;
+                File::open(directory)?.sync_all()?;
+            }
+            self.update(|s| {
+                let stored = s
+                    .alerts
+                    .iter_mut()
+                    .find(|e| e.id == event.id)
+                    .ok_or(Error::Conflict("alert event absent"))?;
+                stored.delivered = true;
+                Ok(())
+            })?;
+            delivered += 1;
+        }
+        Ok(delivered)
+    }
+    pub fn archive(&self) -> &[zkapi_indexer::FinalizedBlock] {
+        &self.state.archive
+    }
+    pub fn transport(&self, signature: &str) -> Option<&serde_json::Value> {
+        self.state.transport.get(signature)
+    }
+    /// A caller first validates this block through Scanner. Keeping the complete
+    /// finalized history permits buffer-generation replay after a process crash.
+    pub fn append_archive(&mut self, block: zkapi_indexer::FinalizedBlock) -> Result<()> {
+        self.update(|s| {
+            if !block.finalized {
+                return Err(Error::Conflict("unfinalized archive"));
+            }
+            if let Some(old) = s.archive.iter().find(|b| b.slot == block.slot) {
+                return if old == &block {
+                    Ok(())
+                } else {
+                    Err(Error::Conflict("archive fork"))
+                };
+            }
+            if s.archive.last().is_some_and(|old| {
+                block.parent_slot != old.slot || block.previous_blockhash != old.blockhash
+            }) {
+                return Err(Error::Conflict("archive gap/fork"));
+            }
+            s.archive.push(block);
+            Ok(())
+        })
+    }
+    /// Persist I04's validated recovery record and exact signed bytes atomically.
+    pub fn save_v0_attempt(
+        &mut self,
+        id: &str,
+        attempt: Attempt,
+        transport: serde_json::Value,
+    ) -> Result<()> {
+        validate_transport(&attempt, &transport)?;
+        self.save_attempt(id, attempt, Some(transport))
+    }
     /// Explicit initialization is separate from open, so a missing journal on
     /// recovery cannot silently become an empty queue.
     pub fn initialize(directory: &Path, pool: Hash) -> Result<Self> {
@@ -255,6 +607,7 @@ impl Journal {
                             payloads: Vec::new(),
                             attempts: Vec::new(),
                             complete: false,
+                            first_execute_send_at: None,
                         },
                     );
                 }
@@ -280,11 +633,17 @@ impl Journal {
                 if previous == &payload {
                     return Ok(());
                 }
-                if !job.attempts.last().is_some_and(|attempt| {
-                    matches!(attempt.outcome, Outcome::FinalizedFailure { .. })
-                        && attempt.payload_digest == previous.digest
-                        && attempt.buffer == previous.buffer
-                }) {
+                if !job
+                    .attempts
+                    .iter()
+                    .rev()
+                    .find(|a| a.stage != Stage::CloseBuffer)
+                    .is_some_and(|attempt| {
+                        matches!(attempt.outcome, Outcome::FinalizedFailure { .. })
+                            && attempt.payload_digest == previous.digest
+                            && attempt.buffer == previous.buffer
+                    })
+                {
                     return Err(Error::Conflict("replacement needs finalized failure"));
                 }
                 if !payload.checkpoint.follows(&previous.checkpoint) {
@@ -318,6 +677,14 @@ impl Journal {
     /// Exact signed bytes must be generated/verified by the I04 v0 transport.
     /// This boundary stores them before the caller obtains permission to send.
     pub fn save_signed_attempt(&mut self, id: &str, attempt: Attempt) -> Result<()> {
+        self.save_attempt(id, attempt, None)
+    }
+    fn save_attempt(
+        &mut self,
+        id: &str,
+        attempt: Attempt,
+        transport: Option<serde_json::Value>,
+    ) -> Result<()> {
         self.update(|s| {
             let job = s.jobs.get_mut(id).ok_or(Error::Conflict("job absent"))?;
             if job.complete
@@ -348,14 +715,74 @@ impl Journal {
             if payload.digest != attempt.payload_digest || payload.buffer != attempt.buffer {
                 return Err(Error::Conflict("attempt payload/buffer"));
             }
+            if let Some(value) = transport {
+                if let Some(old) = s.transport.get(&attempt.signature) {
+                    if old != &value {
+                        return Err(Error::Conflict("immutable transport"));
+                    }
+                }
+                s.transport.insert(attempt.signature.clone(), value);
+            }
             job.attempts.push(attempt);
+            Ok(())
+        })
+    }
+    /// One durable commit replaces an expired upload's Unknown state with the
+    /// I04 account reconciliation and, when needed, its refreshed signed bytes.
+    /// Callers cannot use this path for execute/close or a missing buffer.
+    pub fn reconcile_upload(
+        &mut self,
+        id: &str,
+        signature: &str,
+        outcome: Outcome,
+        replacement: Option<(Attempt, serde_json::Value)>,
+    ) -> Result<()> {
+        if !matches!(outcome, Outcome::UploadReconciled { .. }) {
+            return Err(Error::Conflict("upload reconciliation required"));
+        }
+        self.update(|s| {
+            let job = s.jobs.get_mut(id).ok_or(Error::Conflict("job absent"))?;
+            if job.complete {
+                return Err(Error::Conflict("job complete"));
+            }
+            let old = job
+                .attempts
+                .iter_mut()
+                .find(|a| a.signature == signature)
+                .ok_or(Error::Conflict("signature absent"))?;
+            if old.stage != Stage::Upload || old.outcome != Outcome::Unknown {
+                return Err(Error::Conflict("only unknown upload may reconcile"));
+            }
+            let digest = old.payload_digest;
+            let buffer = old.buffer;
+            old.outcome = outcome;
+            if let Some((attempt, record)) = replacement {
+                validate_transport(&attempt, &record)?;
+                if attempt.stage != Stage::Upload
+                    || attempt.outcome != Outcome::Unknown
+                    || attempt.payload_digest != digest
+                    || attempt.buffer != buffer
+                    || job
+                        .attempts
+                        .iter()
+                        .any(|a| a.signature == attempt.signature || a.outcome == Outcome::Unknown)
+                    || s.transport.contains_key(&attempt.signature)
+                {
+                    return Err(Error::Conflict("refreshed upload identity"));
+                }
+                s.transport.insert(attempt.signature.clone(), record);
+                job.attempts.push(attempt);
+            }
             Ok(())
         })
     }
     /// Caller supplies an independently authenticated finalized status, not an
     /// account-missing/blockheight-expired inference. Unknown keeps exact bytes.
     pub fn resolve_finalized(&mut self, id: &str, signature: &str, outcome: Outcome) -> Result<()> {
-        if outcome == Outcome::Unknown {
+        if !matches!(
+            outcome,
+            Outcome::FinalizedSuccess { .. } | Outcome::FinalizedFailure { .. }
+        ) {
             return Err(Error::Conflict("finalized outcome required"));
         }
         self.update(|s| {
@@ -378,7 +805,7 @@ impl Journal {
         })
     }
 }
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, Serialize, Deserialize, PartialEq, Eq)]
 pub enum Alert {
     Emergency,
     Page,

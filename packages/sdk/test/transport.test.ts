@@ -221,7 +221,7 @@ test('finalized root/ID/expiry conflicts request fresh proofs and never rewrite 
   const plan = await planFor('initiate_escape'), attempt = await attemptFor(plan, 'execute'), rpc = new Rpc();
   for (const code of [6006, 6007, 6008, 6011]) {
     const err = { InstructionError: [1, { Custom: code }] }; rpc.receipt = receipt(attempt, err);
-    assert.deepEqual(await recoverAttempt(attempt, rpc, true), { state: 'rejected', error: err, needsNewProof: code !== 6011 });
+    assert.deepEqual(await recoverAttempt(attempt, rpc, true), { state: 'rejected', slot: rpc.receipt.slot, error: err, needsNewProof: code !== 6011 });
   }
   assert.equal(rpc.sent.length, 0); assert.equal(hex(plan.payload), attempt.plan.payloadHex);
 });

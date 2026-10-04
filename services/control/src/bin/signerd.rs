@@ -13,6 +13,7 @@ use zkapi_control::signer::{SignCheckpoint, SignTarget, Signer, SignerConfig};
 #[serde(tag = "kind", rename_all = "snake_case", deny_unknown_fields)]
 enum Rpc {
     Reconcile,
+    Health,
     Settlement { request_id: uuid::Uuid },
     Clearance { nullifier: [u8; 32] },
 }
@@ -26,11 +27,15 @@ async fn main() -> Result<()> {
     let mut state_seed = None;
     let mut clearance_seed = None;
     let mut local = false;
+    let mut custody_config = None;
     let mut initialize = false;
     let mut crash = None;
     while let Some(arg) = args.next() {
         match arg.as_str() {
             "--local-test" => local = true,
+            "--custody-config" => {
+                custody_config = Some(PathBuf::from(args.next().context("custody config")?))
+            }
             "--config" => config = Some(PathBuf::from(args.next().context("config path")?)),
             "--journal" => journal = Some(PathBuf::from(args.next().context("journal path")?)),
             "--socket" => socket = Some(PathBuf::from(args.next().context("socket path")?)),
@@ -61,8 +66,28 @@ async fn main() -> Result<()> {
         Signer::initialize_journal(&journal, &config)?;
         return Ok(());
     }
-    let state = read_seed(state_seed.context("--state-seed-file required")?)?;
-    let clearance = read_seed(clearance_seed.context("--clearance-seed-file required")?)?;
+    let (state, clearance) = if let Some(path) = custody_config {
+        ensure!(
+            state_seed.is_none() && clearance_seed.is_none(),
+            "choose envelope custody or local seed files"
+        );
+        zkapi_control::egress::private_file(&path)?;
+        let custody: zkapi_control::custody::Config =
+            serde_json::from_slice(&std::fs::read(path)?)?;
+        ensure!(
+            custody.pool == config.pool && custody.deployment == config.authorization.deployment_id,
+            "custody deployment mismatch"
+        );
+        (
+            *custody.load("state").await?,
+            *custody.load("clearance").await?,
+        )
+    } else {
+        (
+            read_seed(state_seed.context("--state-seed-file required")?)?,
+            read_seed(clearance_seed.context("--clearance-seed-file required")?)?,
+        )
+    };
     let primary =
         std::env::var("ZKAPI_SIGNER_DATABASE_URL").context("ZKAPI_SIGNER_DATABASE_URL required")?;
     let mut signer = Signer::open(config, &primary, journal, state, clearance).await?;
@@ -76,6 +101,8 @@ async fn main() -> Result<()> {
     );
     let listener = UnixListener::bind(&socket)?;
     std::fs::set_permissions(&socket, std::fs::Permissions::from_mode(0o600))?;
+    let instance_id = uuid::Uuid::new_v4();
+    let mut refused_requests = 0u64;
     loop {
         let (stream, _) = listener.accept().await?;
         let mut reader = BufReader::new(stream);
@@ -92,20 +119,32 @@ async fn main() -> Result<()> {
                     .reconcile()
                     .await
                     .map(|()| serde_json::json!({"reconciled":true,"config_digest":config_digest})),
+                Ok(Rpc::Health) => Ok(serde_json::json!({
+                    "reconciled":signer.reconcile().await.is_ok(),
+                    "config_digest":config_digest,
+                    "instance_id":instance_id,
+                    "refused_requests_total":refused_requests.to_string()
+                })),
                 Ok(request) => {
                     let target = match request {
                         Rpc::Settlement { request_id } => SignTarget::Settlement { request_id },
                         Rpc::Clearance { nullifier } => SignTarget::Clearance { nullifier },
-                        Rpc::Reconcile => unreachable!(),
+                        Rpc::Reconcile | Rpc::Health => unreachable!(),
                     };
-                    signer
+                    let signed = signer
                         .sign_with_checkpoint(target, |point| {
                             if crash == Some(point) {
                                 std::process::exit(86);
                             }
                         })
                         .await
-                        .map(|signature| serde_json::json!({"signature":hex::encode(signature)}))
+                        .map(|signature| serde_json::json!({"signature":hex::encode(signature)}));
+                    if signed.is_err() {
+                        // Includes conflicting messages, journal/primary mismatch,
+                        // and invalid targets. No target or secret is exported.
+                        refused_requests = refused_requests.saturating_add(1);
+                    }
+                    signed
                 }
                 Err(_) => Err(anyhow::anyhow!("invalid target")),
             },

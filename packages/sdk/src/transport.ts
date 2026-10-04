@@ -17,6 +17,8 @@ export interface BufferPlanInput {
   programId: PublicKey; pool: PublicKey; uploader: PublicKey; rentPayer: PublicKey; feePayer: PublicKey;
   nonce: Uint8Array; expires: bigint; operation: Operation; payload: Uint8Array; financial: FinancialAccounts;
   snapshot: { slot: number; sequence: bigint };
+  /** Immutable per-plan CU price; omitted/zero preserves the original wire. */
+  priorityFeeMicroLamports?: bigint;
 }
 export interface Step { kind: 'create' | 'append' | 'seal' | 'execute' | 'close' | 'finalize'; instruction: TransactionInstruction; offset?: number; endOffset?: number }
 export interface UploadPlan extends BufferPlanInput { buffer: PublicKey; bump: number; digest: Uint8Array; steps: Step[] }
@@ -54,16 +56,17 @@ async function ix(programId: PublicKey, name: string, keys: AccountMeta[], args:
   return new TransactionInstruction({ programId, keys, data: Buffer.from(concat(await discriminator(name), args)) });
 }
 /** Includes all signatures (zero placeholders before signing), account keys and ComputeBudget. No ALT required. */
-export function compileV0(instruction: TransactionInstruction, feePayer: PublicKey, blockhash: string): VersionedTransaction {
+export function compileV0(instruction: TransactionInstruction, feePayer: PublicKey, blockhash: string, priorityFeeMicroLamports = 0n): VersionedTransaction {
+  u64(priorityFeeMicroLamports);
   const message = new TransactionMessage({ payerKey: feePayer, recentBlockhash: blockhash,
-    instructions: [ComputeBudgetProgram.setComputeUnitLimit({ units: MAX_COMPUTE_UNITS }), instruction] }).compileToV0Message();
+    instructions: [ComputeBudgetProgram.setComputeUnitLimit({ units: MAX_COMPUTE_UNITS }), ...(priorityFeeMicroLamports > 0n ? [ComputeBudgetProgram.setComputeUnitPrice({ microLamports: priorityFeeMicroLamports })] : []), instruction] }).compileToV0Message();
   const transaction = new VersionedTransaction(message);
   try { if (transaction.serialize().length > MAX_TRANSACTION_BYTES) throw new Error('too large'); }
   catch { throw new Error('transaction exceeds 1232-byte v0 limit'); }
   return transaction;
 }
 export async function buildUploadPlan(input: BufferPlanInput): Promise<UploadPlan> {
-  validatePayload(input.operation, input.payload); raw32(input.nonce); u64(input.expires); u64(input.snapshot.sequence);
+  validatePayload(input.operation, input.payload); raw32(input.nonce); u64(input.expires); u64(input.snapshot.sequence); u64(input.priorityFeeMicroLamports ?? 0n);
   if (!Number.isSafeInteger(input.snapshot.slot) || input.snapshot.slot < 0) throw new Error('invalid snapshot slot');
   if (!input.pool.equals(input.financial.pool)) throw new Error('pool mismatch');
   const [buffer, bump] = PublicKey.findProgramAddressSync([Buffer.from('payload'), input.pool.toBuffer(), input.uploader.toBuffer(), input.nonce], input.programId);
@@ -78,7 +81,7 @@ export async function buildUploadPlan(input: BufferPlanInput): Promise<UploadPla
     while (low <= high) {
       const size = Math.floor((low + high) / 2);
       const candidate = await ix(plan.programId, 'append_payload', common, concat(u32(offset), u32(size), plan.payload.slice(offset, offset + size)));
-      try { compileV0(candidate, plan.feePayer, PublicKey.default.toBase58()); best = candidate; count = size; low = size + 1; }
+      try { compileV0(candidate, plan.feePayer, PublicKey.default.toBase58(), plan.priorityFeeMicroLamports); best = candidate; count = size; low = size + 1; }
       catch { high = size - 1; }
     }
     if (!best || count === 0) throw new Error('cannot fit append transaction');
@@ -86,7 +89,7 @@ export async function buildUploadPlan(input: BufferPlanInput): Promise<UploadPla
   }
   plan.steps.push({ kind: 'seal', instruction: await ix(plan.programId, 'seal_payload', common) });
   plan.steps.push({ kind: 'execute', instruction: await ix(plan.programId, 'execute_payload', [meta(buffer, true), meta(plan.uploader, false, true), meta(plan.rentPayer, true), ...financialMetas(plan.financial, plan.operation === 'deposit')], plan.digest) });
-  for (const step of plan.steps) compileV0(step.instruction, plan.feePayer, PublicKey.default.toBase58());
+  for (const step of plan.steps) compileV0(step.instruction, plan.feePayer, PublicKey.default.toBase58(), plan.priorityFeeMicroLamports);
   return plan;
 }
 export async function closePayload(plan: UploadPlan, closer = plan.uploader): Promise<Step> {
@@ -148,6 +151,7 @@ export interface PlanRecord {
   programId: string; pool: string; operation: Operation; payloadHex: string; nonceHex: string; expires: string;
   uploader: string; rentPayer: string; feePayer: string; snapshotSlot: number; snapshotSequence: string;
   expectedRoot: string; expectedNoteId: number; financial: Record<keyof FinancialAccounts, string>;
+  priorityFeeMicroLamports?: string;
 }
 export interface SignedAttempt { schema: 1; kind: Step['kind']; signature: string; wireHex: string; blockhash: string; lastValidBlockHeight: number }
 export interface Attempt extends SignedAttempt { planDigest: string; buffer: string; plan: PlanRecord; closer?: string }
@@ -162,16 +166,18 @@ function planRecord(plan: UploadPlan): PlanRecord {
   return { programId: plan.programId.toBase58(), pool: plan.pool.toBase58(), operation: plan.operation, payloadHex: hex(plan.payload), nonceHex: hex(plan.nonce), expires: plan.expires.toString(),
     uploader: plan.uploader.toBase58(), rentPayer: plan.rentPayer.toBase58(), feePayer: plan.feePayer.toBase58(), snapshotSlot: plan.snapshot.slot, snapshotSequence: plan.snapshot.sequence.toString(),
     expectedRoot: hex(plan.payload.slice(treeStart + 32, treeStart + 64)), expectedNoteId: Number(id),
+    ...((plan.priorityFeeMicroLamports ?? 0n) > 0n ? { priorityFeeMicroLamports: plan.priorityFeeMicroLamports!.toString() } : {}),
     financial: Object.fromEntries(FINANCIAL_ACCOUNT_ORDER.map(name => [name, plan.financial[name].toBase58()])) as Record<keyof FinancialAccounts, string> };
 }
+export { planRecord as snapshotPlan };
 export async function restorePlan(record: PlanRecord): Promise<UploadPlan> {
   const restored = await buildUploadPlan({ programId: new PublicKey(record.programId), pool: new PublicKey(record.pool), operation: record.operation,
     payload: fromHex(record.payloadHex, OPERATIONS[record.operation].bytes), nonce: fromHex(record.nonceHex, 32), expires: BigInt(record.expires),
     uploader: new PublicKey(record.uploader), rentPayer: new PublicKey(record.rentPayer), feePayer: new PublicKey(record.feePayer),
-    snapshot: { slot: record.snapshotSlot, sequence: BigInt(record.snapshotSequence) },
+    snapshot: { slot: record.snapshotSlot, sequence: BigInt(record.snapshotSequence) }, priorityFeeMicroLamports: BigInt(record.priorityFeeMicroLamports ?? '0'),
     financial: Object.fromEntries(FINANCIAL_ACCOUNT_ORDER.map(name => [name, new PublicKey(record.financial[name])])) as FinancialAccounts });
   const expected = planRecord(restored);
-  if (expected.expectedRoot !== record.expectedRoot || expected.expectedNoteId !== record.expectedNoteId) throw new Error('journal proof context mismatch');
+  if (expected.expectedRoot !== record.expectedRoot || expected.expectedNoteId !== record.expectedNoteId || expected.priorityFeeMicroLamports !== record.priorityFeeMicroLamports) throw new Error('journal proof context mismatch');
   return restored;
 }
 export interface Journal<T = Attempt> { save(attempt: T): Promise<void> }
@@ -183,14 +189,14 @@ export interface TransportRpc {
   finalizedBlockHeight(): Promise<number>;
   sendRawTransaction(bytes: Uint8Array): Promise<string>;
 }
-export type Recovery = { state: 'finalized'; slot: number } | { state: 'rejected'; error: unknown; needsNewProof: boolean } | { state: 'pending' | 'unknown' | 'expired_reconcile_required' };
+export type Recovery = { state: 'finalized'; slot: number } | { state: 'rejected'; slot: number; error: unknown; needsNewProof: boolean } | { state: 'pending' | 'unknown' | 'expired_reconcile_required' };
 export async function prepareAttempt(plan: UploadPlan, step: Step, blockhash: { blockhash: string; lastValidBlockHeight: number }, wallets: readonly V0Wallet[], journal: Journal): Promise<Attempt> {
   if (!Number.isSafeInteger(blockhash.lastValidBlockHeight) || blockhash.lastValidBlockHeight < 0) throw new Error('invalid last valid block height');
   // Capture all caller-owned inputs before the first await. Wallet prompts may
   // outlive UI edits to the plan, instruction or current blockhash.
   const record = planRecord(plan), digest = hex(plan.digest), buffer = plan.buffer.toBase58(), kind = step.kind;
   const { blockhash: recentBlockhash, lastValidBlockHeight } = blockhash;
-  const transaction = VersionedTransaction.deserialize(compileV0(step.instruction, plan.feePayer, recentBlockhash).serialize());
+  const transaction = VersionedTransaction.deserialize(compileV0(step.instruction, plan.feePayer, recentBlockhash, plan.priorityFeeMicroLamports).serialize());
   const closer = kind === 'close' ? step.instruction.keys[2].pubkey.toBase58() : undefined;
   const checked = await restorePlan(record);
   if (hex(checked.digest) !== digest || checked.buffer.toBase58() !== buffer) throw new Error('upload plan changed');
@@ -203,7 +209,7 @@ export async function prepareAttempt(plan: UploadPlan, step: Step, blockhash: { 
 async function assertPlannedMessage(plan: UploadPlan, kind: Step['kind'], tx: VersionedTransaction, closer?: string): Promise<void> {
   if (closer && kind !== 'close') throw new Error('closer only allowed for close');
   const steps = [...plan.steps, await closePayload(plan, closer ? new PublicKey(closer) : plan.uploader)];
-  if (!steps.some(step => step.kind === kind && equal(compileV0(step.instruction, plan.feePayer, tx.message.recentBlockhash).message.serialize(), tx.message.serialize()))) throw new Error('signed message does not match journal plan');
+  if (!steps.some(step => step.kind === kind && equal(compileV0(step.instruction, plan.feePayer, tx.message.recentBlockhash, plan.priorityFeeMicroLamports).message.serialize(), tx.message.serialize()))) throw new Error('signed message does not match journal plan');
 }
 function staleProof(error: unknown): boolean {
   // Anchor 6006 StaleRoot, 6007 StaleNoteId, 6008 InvalidExpiry: preserve auth state, request new proof and fresh buffer.
@@ -224,8 +230,8 @@ async function observeSignedAttempt(attempt: SignedAttempt, transaction: Version
     const status = await rpc.signatureStatus(attempt.signature);
     const receipt = await rpc.finalizedReceipt(attempt.signature);
     if (receipt) {
-      if (receipt.signature !== attempt.signature || !equal(receipt.message, transaction.message.serialize())) throw new Error('RPC receipt does not match signed transaction');
-      return receipt.err === null ? { state: 'finalized', slot: receipt.slot } : { state: 'rejected', error: receipt.err, needsNewProof: attempt.kind === 'execute' && staleProof(receipt.err) };
+      if (receipt.signature !== attempt.signature || !equal(receipt.message, transaction.message.serialize()) || !Number.isSafeInteger(receipt.slot) || receipt.slot < 0) throw new Error('RPC receipt does not match signed transaction');
+      return receipt.err === null ? { state: 'finalized', slot: receipt.slot } : { state: 'rejected', slot: receipt.slot, error: receipt.err, needsNewProof: attempt.kind === 'execute' && staleProof(receipt.err) };
     }
     if (status) return { state: 'pending' };
     if (await rpc.finalizedBlockHeight() > attempt.lastValidBlockHeight) return { state: 'expired_reconcile_required' };
@@ -300,15 +306,18 @@ export async function refreshExpiredUpload(attempt: Attempt, rpc: TransportRpc, 
   if (account === null) throw new Error('missing buffer: finalized history reconciliation required');
   const next = (await nextUploadStep(plan, account))!;
   const old = VersionedTransaction.deserialize(fromHex(attempt.wireHex, attempt.wireHex.length / 2));
-  const retry = compileV0(next.instruction, plan.feePayer, attempt.blockhash);
+  const retry = compileV0(next.instruction, plan.feePayer, attempt.blockhash, plan.priorityFeeMicroLamports);
   if (!equal(old.message.serialize(), retry.message.serialize())) return { next };
   // A refreshed hash must be new and valid after the old finalized height.
   if (blockhash.blockhash === attempt.blockhash || blockhash.lastValidBlockHeight <= attempt.lastValidBlockHeight) throw new Error('fresh blockhash required');
   return prepareAttempt(plan, next, blockhash, wallets, journal);
 }
 
-export async function fetchFinalizedBuffer(connection: Connection, plan: UploadPlan): Promise<BufferState | null> {
-  const result = await connection.getAccountInfoAndContext(plan.buffer, { commitment: 'finalized', minContextSlot: plan.snapshot.slot });
+export async function fetchFinalizedBuffer(connection: Connection, plan: UploadPlan, minimumSlot = plan.snapshot.slot): Promise<BufferState | null> {
+  if (!Number.isSafeInteger(minimumSlot) || minimumSlot < 0) throw new Error('invalid minimum buffer slot');
+  const minContextSlot = Math.max(plan.snapshot.slot, minimumSlot);
+  const result = await connection.getAccountInfoAndContext(plan.buffer, { commitment: 'finalized', minContextSlot });
+  if (!Number.isSafeInteger(result.context.slot) || result.context.slot < minContextSlot) throw new Error('stale finalized buffer observation');
   if (!result.value) return null;
   const account: BufferState = { address: plan.buffer, owner: result.value.owner, data: result.value.data, slot: result.context.slot, commitment: 'finalized' };
   await readBuffer(plan, account); return account;

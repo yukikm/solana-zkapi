@@ -10,6 +10,10 @@ import type { AtomicJournalStore, EncryptedRecord } from './journal.ts';
 
 function missing(error: unknown): boolean { return (error as NodeJS.ErrnoException).code === 'ENOENT'; }
 function digest(value: string): string { return createHash('sha256').update(value).digest('hex'); }
+// A suspended callback may retain no externally reachable Promise resolver.
+// Keep the native handle rooted until explicit rollback; otherwise V8 can
+// finalize the connection while the logical operation is still suspended.
+const activeLocks = new Set<DatabaseSync>();
 export class NativeJournalStore implements AtomicJournalStore {
   private readonly directory: string;
   private readonly lockTimeoutMs: number;
@@ -52,10 +56,11 @@ export class NativeJournalStore implements AtomicJournalStore {
     // SQLite is solely an OS-owned lock, so a terminated owner cannot leave a lease that allows
     // overlapping writers or requires guessing whether an old PID will resume.
     const database = new DatabaseSync(path);
-    await chmod(path, 0o600);
-    database.exec('PRAGMA busy_timeout = 0');
+    activeLocks.add(database);
     let locked = false;
     try {
+      await chmod(path, 0o600);
+      database.exec('PRAGMA busy_timeout = 0');
       const deadline = Date.now() + this.lockTimeoutMs;
       for (;;) {
         try { database.exec('BEGIN EXCLUSIVE'); locked = true; break; }
@@ -67,8 +72,8 @@ export class NativeJournalStore implements AtomicJournalStore {
       }
       return await action();
     } finally {
-      if (locked) database.exec('ROLLBACK');
-      database.close();
+      try { if (locked) database.exec('ROLLBACK'); }
+      finally { try { database.close(); } finally { activeLocks.delete(database); } }
     }
   }
 }

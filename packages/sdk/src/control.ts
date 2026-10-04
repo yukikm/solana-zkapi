@@ -6,6 +6,8 @@ import { parseField, parseMicroUsdc, parseScalar } from './encoding.ts';
 import { EncryptedJournal, type JournalRecord } from './journal.ts';
 import { parseStrictJson, jcsBytes, sha256Hex, verifyEd25519, verifyArtifactBundle, verifyPoolConfig,
   type VerifiedManifest, type ArtifactBundle, type FinalizedPoolAccount } from './trust.ts';
+import { validateWitness, type NoteWitness } from './prover.ts';
+import type { WalletJournal } from './wallet.ts';
 
 export type Mode = 'proxy' | 'direct_oa' | 'direct_openrouter';
 export interface Point { x: string; y: string }
@@ -82,7 +84,7 @@ export interface SessionVerifier {
 }
 export interface Operation {
   id: string; path: string; anthropicVersion: string; bodyBase64: string;
-  phase: 'prepared' | 'send_unknown' | 'response_received';
+  phase: 'prepared' | 'send_unknown' | 'response_received' | 'not_accepted';
 }
 export interface PendingSession {
   prepared: PreparedSession; exactRequest: string; phase: 'prepared' | 'send_unknown' | 'active' | 'closing';
@@ -92,6 +94,9 @@ export interface PendingSession {
 }
 export interface NoteJournal {
   schema: 1; state: PrivateState; pending: PendingSession | null;
+  /** Full prover witness stays in the same encrypted record as control state. */
+  witness?: NoteWitness;
+  wallet?: WalletJournal;
   history: { previous: PrivateState; prepared: PreparedSession; settlement: Settlement; receipts: Receipt[]; operations: Operation[] }[];
 }
 export interface SessionStatus {
@@ -112,6 +117,24 @@ function privateState(s: PrivateState): void {
 export function validateNoteJournal(value: unknown): asserts value is NoteJournal {
   object(value); requireTrue(value.schema === 1 && Array.isArray(value.history), 'invalid note journal');
   privateState(value.state as PrivateState);
+  if (value.witness !== undefined) validateWitness(value.witness);
+  if (value.wallet !== undefined) {
+    const w = value.wallet as WalletJournal;
+    requireTrue(w && ['unfunded','active','pending_escape','closed'].includes(w.status) && Array.isArray(w.history), 'invalid wallet journal');
+    requireTrue(value.witness !== undefined, 'wallet witness missing');
+    if (w.clearance) { parseField(w.clearance.nullifier); requireTrue(['requested','verified'].includes(w.clearance.phase), 'invalid clearance journal'); }
+    if (w.operation) {
+      requireTrue(['deposit','mutual_close','initiate_escape','finalize_escape'].includes(w.operation.kind)
+        && ['proving','ready','stale','closing_stale','failed'].includes(w.operation.phase)
+        && Array.isArray(w.operation.attempts) && Number.isInteger(w.operation.step) && w.operation.step >= 0, 'invalid financial operation');
+      const signatures = new Set();
+      for (const attempt of w.operation.attempts) {
+        requireTrue(attempt.schema === 1 && typeof attempt.signature === 'string' && !signatures.has(attempt.signature)
+          && typeof attempt.wireHex === 'string' && /^(?:[0-9a-f]{2})+$/.test(attempt.wireHex), 'invalid financial attempt'); signatures.add(attempt.signature);
+      }
+      requireTrue(w.operation.current === undefined || signatures.has(w.operation.current), 'missing current financial attempt');
+    }
+  }
   if (value.pending !== null) {
     const p = value.pending as PendingSession; object(p); object(p.prepared);
     requireTrue(['prepared', 'send_unknown', 'active', 'closing'].includes(p.phase) && Array.isArray(p.operations), 'invalid session phase');
@@ -122,7 +145,7 @@ export function validateNoteJournal(value: unknown): asserts value is NoteJourna
     const ids = new Set();
     for (const o of p.operations) {
       uuid(o.id); requireTrue(!ids.has(o.id), 'duplicate operation'); ids.add(o.id);
-      requireTrue(routes.has(o.path) && ['prepared', 'send_unknown', 'response_received'].includes(o.phase), 'invalid operation');
+      requireTrue(routes.has(o.path) && ['prepared', 'send_unknown', 'response_received', 'not_accepted'].includes(o.phase), 'invalid operation');
       const raw = Buffer.from(o.bodyBase64, 'base64');
       requireTrue(raw.toString('base64') === o.bodyBase64 && raw.length <= 1024 * 1024, 'invalid operation bytes');
     }
@@ -241,6 +264,7 @@ export class ControlClient {
     const copy = structuredClone(prepared);
     await this.options.journal.withNoteLock(noteId, async () => {
       const r = await this.record(noteId); requireTrue(r.value.pending === null, 'note already has an unresolved authorization');
+      requireTrue(!r.value.wallet || r.value.wallet.status === 'active' && !r.value.wallet.operation && !r.value.wallet.clearance, 'note has an unresolved financial operation or permanent clearance intent');
       const id = copy.request.authorization.request_id;
       requireTrue(!r.value.history.some(h => h.prepared.request.authorization.request_id === id), 'request already settled');
       await this.options.verifier.prepare(this.config, r.value.state, copy, (this.options.now?.() ?? BigInt(Math.floor(Date.now() / 1000))).toString(), finalizedRoot);
@@ -316,7 +340,7 @@ export class ControlClient {
     if (status.state === 'SETTLED') {
       requireTrue(status.settlement && !status.provider_key, 'missing settlement');
       const receipts = await this.receipts(p);
-      const operations = p.operations.filter(o => o.phase !== 'prepared').map(o => o.id);
+      const operations = q.mode === 'proxy' ? p.operations.filter(o => o.phase !== 'prepared' && o.phase !== 'not_accepted').map(o => o.id) : [];
       const next = await this.options.verifier.settle(this.config, r.value.state, p.prepared, status.settlement, receipts, operations);
       privateState(next);
       r.value.history.push({ previous: r.value.state, prepared: p.prepared, settlement: status.settlement, receipts, operations: p.operations });
@@ -367,7 +391,8 @@ export class ControlClient {
       p.operations.push({ id: operationId, path, bodyBase64, anthropicVersion, phase: 'prepared' }); await this.save(noteId, r);
     });
   }
-  async sendOperation(noteId: string, operationId: string): Promise<Response> {
+  async sendOperation(noteId: string, operationId: string, signal?: AbortSignal): Promise<Response> {
+    signal?.throwIfAborted();
     uuid(operationId);
     const dispatch = await this.options.journal.withNoteLock(noteId, async () => {
       const r = await this.record(noteId); const p = r.value.pending;
@@ -380,11 +405,61 @@ export class ControlClient {
     const response = await (this.options.fetch ?? globalThis.fetch)(this.config.inference_api_origin + dispatch.operation.path, {
       method: 'POST', headers: { Authorization: `Bearer ${dispatch.token}`, 'Content-Type': 'application/json', 'Idempotency-Key': operationId,
         ...(dispatch.operation.anthropicVersion ? { 'anthropic-version': dispatch.operation.anthropicVersion } : {}) },
-      body: new Uint8Array(Buffer.from(dispatch.operation.bodyBase64, 'base64')), redirect: 'error', credentials: 'omit', cache: 'no-store', signal: AbortSignal.timeout(600_000),
+      body: new Uint8Array(Buffer.from(dispatch.operation.bodyBase64, 'base64')), redirect: 'error', credentials: 'omit', cache: 'no-store', signal: signal ? AbortSignal.any([signal, AbortSignal.timeout(600_000)]) : AbortSignal.timeout(600_000),
     });
     if (response.status === 409) { await response.body?.cancel(); throw new ResponseNotReplayable(operationId, dispatch.statusPath); }
     // The response stream is passed through once. Usage comes from signed receipts.
     return response;
+  }
+  /** Direct inference uses the same encrypted intent journal. Recovery closes the
+   * key/session; it never submits an inference again. Only explicit new IDs send. */
+  async sendDirectOperation(noteId: string, operationId: string, path: string, body: Uint8Array, signal?: AbortSignal): Promise<Response> {
+    signal?.throwIfAborted();
+    uuid(operationId);
+    requireTrue(['/v1/chat/completions', '/v1/responses'].includes(path) && body.length <= 1024 * 1024, 'unsupported direct route');
+    new TextDecoder('utf-8', { fatal: true }).decode(body);
+    const bytes = new Uint8Array(body);
+    const dispatch = await this.options.journal.withNoteLock(noteId, async () => {
+      const r = await this.record(noteId); const p = r.value.pending;
+      requireTrue(p && p.phase === 'active' && p.serverState === 'ACTIVE' && p.providerKey && !p.closeRequested, 'active direct session required');
+      const mode = p.prepared.request.authorization.mode;
+      requireTrue(mode === 'direct_oa' || mode === 'direct_openrouter', 'explicit direct mode required');
+      requireTrue(mode !== 'direct_openrouter' || path === '/v1/chat/completions', 'unsupported direct route');
+      const base = this.options.directProviderBases?.[mode]; requireTrue(base, 'pinned direct provider required');
+      requireTrue(!p.operations.some(o => o.id === operationId) && !r.value.history.some(h => h.operations.some(o => o.id === operationId)), 'direct inference cannot be replayed');
+      p.operations.push({ id: operationId, path, anthropicVersion: '', bodyBase64: Buffer.from(bytes).toString('base64'), phase: 'send_unknown' });
+      await this.save(noteId, r);
+      return { base, key: p.providerKey };
+    });
+    return (this.options.fetch ?? globalThis.fetch)(dispatch.base.replace(/\/$/, '') + path.slice(3), {
+      method: 'POST', headers: { Authorization: `Bearer ${dispatch.key}`, 'Content-Type': 'application/json' }, body: bytes,
+      redirect: 'error', credentials: 'omit', cache: 'no-store', signal: signal ? AbortSignal.any([signal, AbortSignal.timeout(600_000)]) : AbortSignal.timeout(600_000),
+    });
+  }
+  /** Explicit reconciliation after terminal settlement only. A 404 while ACTIVE
+   * cannot establish non-admission: an earlier inference may still arrive. The
+   * original successor and all receipt signatures are verified by accept before
+   * committing the exclusion or advancing the note. No inference is retried. */
+  async reconcileAbsentOperations(noteId: string): Promise<SessionStatus> {
+    return this.options.journal.withNoteLock(noteId, async () => {
+      const r = await this.record(noteId); const p = r.value.pending;
+      requireTrue(p && p.prepared.request.authorization.mode === 'proxy', 'unresolved proxy session required');
+      const response = await this.fetch(this.path(p), 'GET', p.prepared.control_token);
+      if (!response.ok) throw new ControlHttpError(response.status);
+      const status = await this.json(response); object(status);
+      requireTrue(status.state === 'SETTLED', 'only a terminal session can exclude unaccepted operations');
+      for (const operation of p.operations) {
+        if (operation.phase === 'prepared' || operation.phase === 'not_accepted') continue;
+        const result = await this.fetch(this.path(p) + `/operations/${operation.id}`, 'GET', p.prepared.control_token);
+        if (result.status === 404) operation.phase = 'not_accepted';
+        else {
+          if (!result.ok) throw new ControlHttpError(result.status);
+          const known = await this.json(result); object(known);
+          requireTrue(known.request_id === p.prepared.request.authorization.request_id && known.operation_id === operation.id && known.response_replayable === false, 'operation identity');
+        }
+      }
+      return this.accept(noteId, r, status, false);
+    });
   }
   async operationStatus(noteId: string, operationId: string): Promise<unknown> {
     uuid(operationId); const r = await this.record(noteId); const p = r.value.pending;

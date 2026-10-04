@@ -28,7 +28,7 @@ pub enum RelayEvent {
     Data(Bytes),
 }
 
-#[derive(Debug)]
+#[derive(Debug, serde::Serialize, serde::Deserialize)]
 pub struct DispatchObservation {
     pub provider_request_id: Option<String>,
     pub usage: Option<Vec<Usage>>,

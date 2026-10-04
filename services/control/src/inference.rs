@@ -206,7 +206,7 @@ async fn infer(
         Err(_) => return fail(StatusCode::SERVICE_UNAVAILABLE, "ledger_unavailable"),
     };
     let provider = &request.quote.body.provider;
-    if !app.providers.available(provider).await {
+    if !app.providers.available(&app.ledger, provider).await {
         return fail(StatusCode::SERVICE_UNAVAILABLE, "provider_suspended");
     }
     let Some(profile) = app
@@ -238,10 +238,17 @@ async fn infer(
         }
         Err(_) => return fail(StatusCode::BAD_REQUEST, "unsupported_metering"),
     };
-    let Some((_, adapter)) = app.providers.proxy.iter().find(|(p, _)| p == provider) else {
+    let adapter = app
+        .providers
+        .proxy
+        .iter()
+        .find(|(p, _)| p == provider)
+        .map(|(_, a)| a.clone());
+    let dispatcher = app.providers.dispatcher.clone();
+    if adapter.is_none() && dispatcher.is_none() {
         return fail(StatusCode::SERVICE_UNAVAILABLE, "adapter_unavailable");
-    };
-    let adapter = adapter.clone();
+    }
+    let dispatch_provider = provider.clone();
     let op = match app
         .ledger
         .reserve_operation(&NewOperation {
@@ -340,8 +347,28 @@ async fn infer(
                     }
                 }
             };
-            let (observation, ()) =
-                tokio::join!(adapter.dispatch_once(prepared, Some(provider_tx)), forward);
+            let dispatch = async {
+                if let Some(dispatcher) = dispatcher {
+                    dispatcher
+                        .proxy(
+                            dispatch_provider,
+                            attempt.clone(),
+                            prepared,
+                            Some(provider_tx),
+                        )
+                        .await
+                } else {
+                    Ok(adapter
+                        .as_ref()
+                        .expect("adapter checked")
+                        .dispatch_once(prepared, Some(provider_tx))
+                        .await)
+                }
+            };
+            let (observation, ()) = tokio::join!(dispatch, forward);
+            // A missing child response is uncertain: retain the unquiesced attempt.
+            // Only a separately verified process fence may make it settleable.
+            let observation = observation?;
             // The network future has ended and owns no retry path. Only this owner
             // can attest finished; a replacement process cannot invent this evidence.
             worker
@@ -373,10 +400,6 @@ async fn infer(
                     .await?;
             } else {
                 worker.ledger.mark_operation_unknown(id, operation).await?;
-                worker
-                    .providers
-                    .note_unknown(&request.quote.body.provider)
-                    .await;
             }
             Ok(())
         }

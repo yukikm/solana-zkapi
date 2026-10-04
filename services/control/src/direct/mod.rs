@@ -131,11 +131,62 @@ pub struct Checkpoint {
 }
 #[derive(Clone)]
 pub struct DirectAdapter {
+    remote: Option<crate::egress::ClientConfig>,
     config: DirectConfig,
     http: Client,
     credential: String,
 }
 impl DirectAdapter {
+    pub fn remote(config: DirectConfig, remote: crate::egress::ClientConfig) -> Self {
+        Self {
+            config,
+            remote: Some(remote),
+            http: Client::new(),
+            credential: String::new(),
+        }
+    }
+    async fn remote_call(&self, action: crate::egress::Action) -> Result<serde_json::Value> {
+        self.remote
+            .as_ref()
+            .context("dispatcher required")?
+            .call(
+                crate::egress::Request {
+                    provider: self.provider(),
+                    action,
+                },
+                None,
+            )
+            .await
+    }
+    pub async fn create_for_attempt(
+        &self,
+        intent: &IssueIntent,
+        attempt: &crate::ledger::DispatchAttempt,
+    ) -> Result<CreatedKey> {
+        if self.remote.is_none() {
+            return self.create_key(intent).await;
+        }
+        let v = self
+            .remote_call(crate::egress::Action::Create {
+                intent: intent.clone(),
+                attempt: attempt.clone(),
+            })
+            .await?;
+        Ok(CreatedKey {
+            runtime_key: v["runtime_key"].as_str().context("key unavailable")?.into(),
+            reference: serde_json::from_value(v["reference"].clone())?,
+            inference_base: v["inference_base"]
+                .as_str()
+                .context("base unavailable")?
+                .into(),
+            verification: if v["verification"].is_null() {
+                None
+            } else {
+                Some(v["verification"].clone())
+            },
+            deliverable: v["deliverable"].as_bool().context("delivery unavailable")?,
+        })
+    }
     pub fn new(config: DirectConfig, local_test_only: bool) -> Result<Self> {
         let (base, path, inference) = match &config {
             DirectConfig::Openrouter {
@@ -200,6 +251,7 @@ impl DirectAdapter {
             .no_proxy()
             .build()?;
         Ok(Self {
+            remote: None,
             config,
             http,
             credential,
@@ -215,6 +267,7 @@ impl DirectAdapter {
         }
     }
     pub async fn create_key(&self, intent: &IssueIntent) -> Result<CreatedKey> {
+        ensure!(self.remote.is_none(), "immutable attempt required");
         intent.validate()?;
         match &self.config {
             DirectConfig::Openrouter { .. } => self.or_create(intent).await,
@@ -222,6 +275,17 @@ impl DirectAdapter {
         }
     }
     pub async fn verify_created(&self, created: &CreatedKey) -> Result<()> {
+        if self.remote.is_some() {
+            self.remote_call(crate::egress::Action::Verify {
+                reference: created.reference.clone(),
+                runtime_key: created.runtime_key.clone(),
+                inference_base: created.inference_base.clone(),
+                verification: created.verification.clone(),
+                deliverable: created.deliverable,
+            })
+            .await?;
+            return Ok(());
+        }
         ensure!(
             created.deliverable && created.reference.expires_at > now_seconds(),
             "provider did not apply bounded lease"
@@ -237,6 +301,14 @@ impl DirectAdapter {
     }
     /// Absence is UNKNOWN, never authorization to issue again or bill zero.
     pub async fn recover_key(&self, intent: &IssueIntent) -> Result<Option<KeyReference>> {
+        if self.remote.is_some() {
+            return Ok(serde_json::from_value(
+                self.remote_call(crate::egress::Action::Recover {
+                    intent: intent.clone(),
+                })
+                .await?,
+            )?);
+        }
         intent.validate()?;
         match &self.config {
             DirectConfig::Openrouter { .. } => self.or_recover(intent).await,
@@ -246,6 +318,13 @@ impl DirectAdapter {
     /// OA key_usage performs retirement at the pinned issuer/station. It returns
     /// pending until its durable signed receipt and provider deletion are ready.
     pub async fn disable_key(&self, reference: &KeyReference) -> Result<()> {
+        if self.remote.is_some() {
+            self.remote_call(crate::egress::Action::Disable {
+                reference: reference.clone(),
+            })
+            .await?;
+            return Ok(());
+        }
         match self.config {
             DirectConfig::Openrouter { .. } => self.or_disable(reference).await,
             DirectConfig::Oa { .. } => Ok(()),
@@ -258,6 +337,17 @@ impl DirectAdapter {
         disabled_at: u64,
         now: u64,
     ) -> Result<Option<DirectUsage>> {
+        if self.remote.is_some() {
+            return Ok(serde_json::from_value(
+                self.remote_call(crate::egress::Action::Usage {
+                    intent: intent.clone(),
+                    reference: reference.clone(),
+                    disabled_at,
+                    now,
+                })
+                .await?,
+            )?);
+        }
         match self.config {
             DirectConfig::Openrouter {
                 settlement_grace_seconds,
@@ -272,6 +362,13 @@ impl DirectAdapter {
         }
     }
     pub async fn delete_key(&self, reference: &KeyReference) -> Result<()> {
+        if self.remote.is_some() {
+            self.remote_call(crate::egress::Action::Delete {
+                reference: reference.clone(),
+            })
+            .await?;
+            return Ok(());
+        }
         match self.config {
             DirectConfig::Openrouter { .. } => self.or_delete(reference).await,
             DirectConfig::Oa { .. } => Ok(()),

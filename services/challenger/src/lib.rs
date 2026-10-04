@@ -2,6 +2,7 @@
 //! No provider capability and no control ledger writer are owned by this crate.
 pub mod journal;
 pub mod read_model;
+pub mod runtime;
 pub mod scan;
 
 use ark_bn254::Bn254;

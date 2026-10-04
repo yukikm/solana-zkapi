@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Reproduce I08's first local slice; no WASM/provider/wallet release claims."""
+"""Reproduce shared I08 SDK/native regression; full wallet and clientd have separate runners."""
 import hashlib
 import json
 import os
@@ -54,7 +54,7 @@ files = [p for directory in ['packages/sdk/src', 'packages/sdk/test', 'apps/clie
          for p in (ROOT / directory).rglob('*') if p.is_file()]
 files += [ROOT / manifest, ROOT / 'apps/clientd/companion/Cargo.lock', ROOT / 'package-lock.json', ROOT / 'packages/sdk/package.json',
           ROOT / 'scripts/run_i08.py', ROOT / 'apps/clientd/companion/target/debug/zkapi-client-verify']
-report = {'scope': 'I08 first slice: trust, durable journal, shared control recovery, native real-proof and successor verification',
+report = {'scope': 'I08 shared SDK/native regression: trust, durable journal, control recovery, native real-proof and successor verification',
           'passed': True, 'date_jst': '2026-10-04', 'os': platform.platform(),
           'node': run('node-version', ['node', '--version']), 'npm': run('npm-version', ['npm', '--version']),
           'rust': run('rust-version', ['rustc', '--version']),
@@ -63,6 +63,7 @@ report = {'scope': 'I08 first slice: trust, durable journal, shared control reco
           'browser': re.findall(r'Runtime browser: ([^\n]+)', logs['sdk-tests']),
           'artifact_sha256': {str(p.relative_to(ROOT)): hashlib.sha256(p.read_bytes()).hexdigest() for p in sorted(set(files))},
           'release_gates_passed': [], 'wasm_proofs_verified': False, 'live_provider_verified': False,
-          'wallet_public_rpc_verified': False, 'go_clientd_implemented': False}
+          'wallet_public_rpc_verified': False, 'go_clientd_verified_by_this_runner': False,
+          'additional_acceptance_runners': ['scripts/run_i08_wallet.py', 'scripts/run_i08_clientd.py']}
 REPORT.write_text(json.dumps(report, indent=2) + '\n')
 print(json.dumps({'passed': True, 'tests': tests, 'release_gates_passed': []}))

@@ -42,6 +42,47 @@ async fn run() -> Result<()> {
         println!("pool registered with admission disabled; initialize and start the independently stored signer journal");
         return Ok(());
     }
+    if mode == "fence" {
+        let certificate: zkapi_control::operations::FenceCertificate = serde_json::from_slice(
+            &std::fs::read(args.next().context("supervisor certificate path")?)?,
+        )?;
+        let key_path = std::path::PathBuf::from(
+            args.next()
+                .context("independently pinned supervisor key path")?,
+        );
+        zkapi_control::egress::private_file(&key_path)?;
+        let key: [u8; 32] = std::fs::read(key_path)?
+            .try_into()
+            .map_err(|_| anyhow::anyhow!("supervisor public key length"))?;
+        let now = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)?
+            .as_secs();
+        let evidence = certificate.verify(key, now)?;
+        let identity = PoolIdentity {
+            pool: config.signer.pool,
+            deployment_id: config.binding.deployment_id.clone(),
+            manifest_hash: wire::hash(&config.runtime.trusted_manifest_hash)?,
+            authorization_config: serde_json::json!({"signer":config.signer}),
+        };
+        let writer = Ledger::connect(&url, &identity).await?;
+        let mut matched = false;
+        for session in writer.pending_sessions().await? {
+            for record in writer
+                .dispatch_attempts_for_session(session.request_id)
+                .await?
+            {
+                if record.attempt.attempt_id == certificate.attempt_id {
+                    writer.fence_attempt(&record.attempt, &evidence).await?;
+                    matched = true;
+                }
+            }
+        }
+        ensure!(matched, "fence attempt unavailable");
+        println!(
+            "verified fence saved; admission remains disabled until signer and ledger recovery"
+        );
+        return Ok(());
+    }
     ensure!(mode == "serve", "unsupported command");
     let listen = config.runtime.listen;
     let app = App::connect(config, &url).await?;

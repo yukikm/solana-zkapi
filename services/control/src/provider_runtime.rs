@@ -13,6 +13,8 @@ use std::path::{Path, PathBuf};
 #[serde(deny_unknown_fields)]
 pub struct ProviderConfig {
     #[serde(default)]
+    pub dispatcher: Option<crate::egress::ClientConfig>,
+    #[serde(default)]
     pub direct: Vec<DirectConfig>,
     #[serde(default)]
     pub proxy: Vec<ProxyProviderConfig>,
@@ -44,6 +46,9 @@ impl ProviderConfig {
         Ok(false)
     }
     pub fn validate(&self, tariffs: &[Tariff], local: bool) -> Result<()> {
+        if let Some(dispatcher) = &self.dispatcher {
+            dispatcher.validate()?;
+        }
         let mut seen = Vec::new();
         for direct in &self.direct {
             ensure!(
@@ -52,7 +57,9 @@ impl ProviderConfig {
             );
             seen.push(direct.provider());
             // Client construction validates pinned endpoints and owner-only credentials.
-            let _ = crate::direct::DirectAdapter::new(direct.clone(), local)?;
+            if self.dispatcher.is_none() {
+                let _ = crate::direct::DirectAdapter::new(direct.clone(), local)?;
+            }
             ensure!(
                 tariffs
                     .iter()
@@ -86,7 +93,9 @@ impl ProviderConfig {
             if proxy.local_test_base.is_some() {
                 ensure!(local, "local provider origin forbidden");
             }
-            let _ = read_credential(&proxy.credential_file)?;
+            if self.dispatcher.is_none() {
+                let _ = read_credential(&proxy.credential_file)?;
+            }
         }
         Ok(())
     }
@@ -122,18 +131,18 @@ use tokio::sync::Mutex;
 use uuid::Uuid;
 
 pub struct ProviderRuntime {
+    pub dispatcher: Option<crate::egress::ClientConfig>,
     pub proxy: Vec<(Provider, Arc<crate::proxy::HttpAdapter>)>,
     pub direct: Vec<(Provider, crate::direct::DirectRuntime)>,
     owner: Uuid,
     // Ephemeral throttles hold no raw IP, credentials, prompt, or response.
     rates: Mutex<BTreeMap<[u8; 32], (u64, u32)>>,
-    unknown: Mutex<BTreeMap<String, u32>>,
     salt: [u8; 32],
 }
 impl ProviderRuntime {
     pub async fn connect(config: &ProviderConfig, local: bool) -> Result<Self> {
         let mut proxy = Vec::new();
-        for p in &config.proxy {
+        for p in config.proxy.iter().filter(|_| config.dispatcher.is_none()) {
             let credential =
                 crate::proxy::ServiceCredential::new(read_credential(&p.credential_file)?)?;
             let adapter = if let Some(base) = &p.local_test_base {
@@ -153,36 +162,32 @@ impl ProviderRuntime {
         for d in &config.direct {
             direct.push((
                 d.provider(),
-                crate::direct::DirectRuntime::new(crate::direct::DirectAdapter::new(
-                    d.clone(),
-                    local,
-                )?),
+                crate::direct::DirectRuntime::new(if let Some(remote) = &config.dispatcher {
+                    crate::direct::DirectAdapter::remote(d.clone(), remote.clone())
+                } else {
+                    crate::direct::DirectAdapter::new(d.clone(), local)?
+                }),
             ));
         }
         Ok(Self {
+            dispatcher: config.dispatcher.clone(),
             proxy,
             direct,
             owner: Uuid::new_v4(),
             rates: Mutex::new(BTreeMap::new()),
-            unknown: Mutex::new(BTreeMap::new()),
             salt: rand::random(),
         })
     }
     pub fn owner(&self) -> Uuid {
         self.owner
     }
-    pub async fn available(&self, provider: &Provider) -> bool {
-        self.unknown
-            .lock()
+    pub async fn available(&self, ledger: &ledger::Ledger, provider: &Provider) -> bool {
+        // The durable ledger is also the reset authority. A process-local
+        // unknown counter would keep an audited reset suspended until restart.
+        ledger
+            .provider_available(provider.as_str())
             .await
-            .get(provider.as_str())
-            .copied()
-            .unwrap_or(0)
-            < 3
-    }
-    pub async fn note_unknown(&self, provider: &Provider) {
-        let mut counts = self.unknown.lock().await;
-        *counts.entry(provider.as_str().into()).or_default() += 1;
+            .unwrap_or(false)
     }
     pub async fn rate_limit(&self, session: Uuid, ip: Option<std::net::IpAddr>) -> bool {
         let minute = now() / 60;
@@ -244,7 +249,7 @@ impl App {
         {
             return true;
         }
-        if !self.providers.available(provider).await {
+        if !self.providers.available(&self.ledger, provider).await {
             return false;
         }
         match mode {

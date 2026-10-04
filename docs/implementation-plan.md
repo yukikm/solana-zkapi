@@ -1,10 +1,8 @@
 # 実装タスクと受入条件
 
-2026-10-04：**I08/I09は初期実装のレビュー・修正を完了し、継続実装へ着手可**。[レビュー記録](evidence/I08-I09-review.md)、[I08](evidence/I08.md)、[I09](evidence/I09.md)に最新の回帰と新payload実Vault SBF/v0-buffer検証を記録した。I08 D〜F、Go本体、I09常駐RPC/broadcaster復旧・C〜E等は未完了。タスク全体の完了やI10への完了引継ぎとはしない。
+2026-10-04：**I08/I09のlocal実装・受入を追加**。[対応表](evidence/I08-I09-local-acceptance.md)、[I08](evidence/I08.md)、[I09](evidence/I09.md)に再現commands・runtime結果・artifact hash・制限を記録する。初期sliceの未実装項目だったWASM/wallet/Go、challenger常駐送信と復旧、dispatcher/fencing/DB復旧/運用を既存の共通部へ接続した。追加実装の[local受入後レビュー](evidence/I08-I09-local-review.md)で復旧・停止・管理APIを修正し、再検証した。
 
-[I01](evidence/I01.md)・[I02](evidence/I02B.md)・[I03](evidence/I03.md)・[I04](evidence/I04.md)・[I05](evidence/I05.md)のlocal実装・検証を完了。[I06](evidence/I06.md)・[I07](evidence/I07.md)もlocal実装・検証を完了。**I08 SDK/clientd・I09 challenger/運用の初期実装を継続中**。I04の実buffer upload・SDK署名v0・finalized replay/snapshotに、I05のPostgres・独立signer・復旧を接続した。I05は26テスト、実Vault SBF 10取引、最大422,429 CU / 1,091 bytesと新署名による出金を検証済み。実provider・実wallet・公開cluster/RPC・hosted CI・G1〜G4公開gateは未完了。署名公開鍵のビルド固定は[ADR-0002](adr/0002-build-validated-signing-keys.md)を参照。各完了時にevidenceへcommands/artifact/限界を残す。
-
-I06/I07はレビューで7件を修正し、最新のlocal統合59テスト、実Vault SBF 10取引、SDK既存26テストが成功。**[I08/I09実装開始契約](i08-i09-implementation-ready.md)に従って着手Ready**。
+I01〜I07のlocal証跡は保持する。元回路・layout 2・mandatory v0_bufferと[ADR-0002](adr/0002-build-validated-signing-keys.md)を維持し、実provider・実wallet/公開RPC・production運用環境・hosted CI・G1〜G4は未合格のまま。I10への完了引継ぎは宣言しない。localの実暗号/SBF/process/DB結果と、公開環境のE2E・負荷/障害受入を区別する。
 
 ## 1. タスク
 
@@ -17,8 +15,8 @@ I06/I07はレビューで7件を修正し、最新のlocal統合59テスト、�
 | I05 | Postgres ledger・quote・signer（local完了：[証拠](evidence/I05.md)） | I02-B,I03,I04 | [実装引き継ぎ](i05-implementation-ready.md)のA〜F。schema適用、N/clearance排他、quote/proof binding、row lock予算、署名対象一意、schema migration・dispatch attempt fencing・署名明細試験。P05〜P10/P14/P15 |
 | I06 | OA-org / OpenRouter direct adapters（local完了：[証拠](evidence/I06.md)） | I05,I04 | 元のissuer/verifier検証、key発行/disable/usage/delete、unknown recovery、実usage精算。P11〜P13 |
 | I07 | proxy / 3 provider adapters（local完了：[証拠](evidence/I07.md)） | I05,I04 | OpenAI Chat/Responses、Anthropic Messages、OpenRouter Chat、SSE、tool call、metering、cap、UNKNOWN waiver。P32〜P36 |
-| I08 | SDK/WASM・Go clientd（着手中：[初期証拠](evidence/I08.md)） | I04,I05,I06,I07 | 秘密storage、proof worker、note journal、local API、mode選択、expiry表示、Tor、native配布。P04/P23〜P27 |
-| I09 | challenger・ops・dashboard（着手中：[初期証拠](evidence/I09.md)） | I03,I04,I05（運用統合はI06,I07） | 過去RP/proof+現在zero pathのtree proof、期限再送、signer/DB復旧、secret redaction、監視、ダッシュボード。P29〜P31 |
+| I08 | SDK/WASM・Go clientd（local受入：[証拠](evidence/I08.md)） | I04,I05,I06,I07 | 秘密storage、proof worker、note journal、local API、mode選択、expiry表示、Tor、native配布。P04/P23〜P27 |
+| I09 | challenger・ops・dashboard（local受入：[証拠](evidence/I09.md)） | I03,I04,I05（運用統合はI06,I07） | 過去RP/proof+現在zero pathのtree proof、期限再送、signer/DB復旧、secret redaction、監視、ダッシュボード。P29〜P31 |
 | I10 | E2E・負荷・障害注入 | I06,I07,I08,I09 | G1全体/G2、全modeで入金→利用→精算→出金、実providerでG3。二重署名・二重課金・cap超過転嫁なし |
 | I11 | setup・review・release | I10 | ceremony/transcript、第三者review、実mint/manifest、multisig、restore演習、G4。配布物再現build |
 | I12 | mainnet配備手順の実行 | I11 | 別途配備作業として実アドレスとreceiptを記録。初回の設計作業では実行しない |
@@ -79,7 +77,9 @@ P01〜P31はproduction-parity.mdの定義を継承。P32〜P36も初回productio
 
 > docs/implementation-ready.md、ADR-0001/0002、evidence/I04.md・I05.md、ledger/API仕様とi05-implementation-ready.mdを読み、I06 direct・I07 proxyのprovider adaptersへ進む。I04のbuffer・SDK transaction・indexerとI05のPostgres ledger・quote・signerを再実装せず利用する。I05のlocal test adapterを実provider対応と扱わず、直接接続の発行/失効/最終usage、proxyの推論/SSE/usage正規化を個別に検証する。N/clearance排他、整数予算予約、idempotency、sign-once settlement、送信owner停止と未知usageの再送禁止を維持する。元回路/Poseidonと固定profileを維持する。G1〜G4を未検証のまま合格にしない。購入・provider契約・mainnet配備は開始指示に含めない。
 
-## 5. I06/I07完了後の再開位置
+## 5. I06/I07完了後の再開位置（履歴）
+
+この開始順序に沿って実装した現在の結果は[I08/I09 local受入](evidence/I08-I09-local-acceptance.md)を参照する。以下の着手指示を現在の未実装一覧として扱わない。
 
 [I06/I07引き継ぎ](i06-i07-implementation-ready.md)と[I08/I09実装開始契約](i08-i09-implementation-ready.md)を読み、I08とI09へ進む。上のI06/I07開始指示は当時の受入契約として保持する。local provider HTTP fixtureの成功を実provider/G3合格としない。共通ledger・署名journal・checkpoint・native adapterを再利用する。
 

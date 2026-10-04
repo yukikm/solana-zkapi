@@ -112,7 +112,7 @@ fn main() {
     let b = read(root.join("tests/fixtures/vault/b-with-a.json"));
     let ab = read(root.join("tests/fixtures/vault/a-with-b.json"));
     let mut rows = Vec::new();
-    for scenario in ["historical", "paused", "deadline"] {
+    for scenario in ["historical", "paused", "deadline", "sdk-signed"] {
         let mut w = World::new(&elf);
         w.initialize(&a);
         for (fixture, op, nonce, name) in [
@@ -154,19 +154,111 @@ fn main() {
             w.admin("pause", &[], Expect::Ok).unwrap();
         }
         w.clock((pending.deadline - u64::from(scenario != "deadline")) as i64);
-        upload_execute(
-            &mut w,
-            &ab,
-            Operation::Challenge,
-            &generated,
-            84,
-            "new-challenger-payload",
-            if scenario == "deadline" {
-                Expect::Error(6014)
-            } else {
-                Expect::Ok
-            },
-        );
+        if scenario == "sdk-signed" {
+            let generated_txs = std::process::Command::new("node")
+                .arg(root.join("packages/sdk/test/challenger-sbf.ts"))
+                .arg(w.svm.latest_blockhash().to_string())
+                .arg(w.svm.get_sysvar::<Clock>().unix_timestamp.to_string())
+                .output()
+                .expect("challenger SDK bridge");
+            assert!(
+                generated_txs.status.success(),
+                "{}",
+                String::from_utf8_lossy(&generated_txs.stderr)
+            );
+            let signed: Value = serde_json::from_slice(&generated_txs.stdout).unwrap();
+            let mut kinds = Vec::new();
+            for attempt in signed["transactions"].as_array().unwrap() {
+                let raw = hex::decode(attempt["wireHex"].as_str().unwrap()).unwrap();
+                let tx: solana_sdk::transaction::VersionedTransaction =
+                    bincode::deserialize(&raw).unwrap();
+                assert_eq!(
+                    tx.signatures[0].to_string(),
+                    attempt["signature"].as_str().unwrap()
+                );
+                assert!(raw.len() <= 1232);
+                let before = w.state::<TreeState>(w.tree);
+                let meta = w
+                    .svm
+                    .send_transaction(tx)
+                    .expect("SDK challenger signed v0 transaction");
+                assert!(meta.compute_units_consumed <= 1_000_000);
+                if attempt["kind"] == "execute" {
+                    assert_eq!(w.state::<TreeState>(w.tree).sequence, before.sequence + 1);
+                }
+                kinds.push(attempt["kind"].as_str().unwrap().to_owned());
+                w.rows.push(json!({"case":format!("sdk-challenger/{}",attempt["kind"].as_str().unwrap()),"ok":true,"expected":"Ok","cu":meta.compute_units_consumed,"transaction_bytes":raw.len(),"logs":meta.logs}));
+            }
+            assert_eq!(kinds.first().unwrap(), "create");
+            assert_eq!(kinds.last().unwrap(), "execute");
+            assert_eq!(kinds.iter().filter(|k| *k == "seal").count(), 1);
+            assert!(kinds.iter().filter(|k| *k == "append").count() >= 2);
+        } else {
+            upload_execute(
+                &mut w,
+                &ab,
+                Operation::Challenge,
+                &generated,
+                84,
+                "new-challenger-payload",
+                if scenario == "deadline" {
+                    Expect::Error(6014)
+                } else {
+                    Expect::Ok
+                },
+            );
+        }
+        if scenario == "sdk-signed" {
+            let output = std::process::Command::new("node")
+                .arg(root.join("packages/sdk/test/challenger-sbf.ts"))
+                .arg(w.svm.latest_blockhash().to_string())
+                .arg(w.svm.get_sysvar::<Clock>().unix_timestamp.to_string())
+                .arg("cleanup")
+                .output()
+                .unwrap();
+            assert!(
+                output.status.success(),
+                "{}",
+                String::from_utf8_lossy(&output.stderr)
+            );
+            let cleanup: Value = serde_json::from_slice(&output.stdout).unwrap();
+            let buffer = cleanup["buffer"]
+                .as_str()
+                .unwrap()
+                .parse::<Pubkey>()
+                .unwrap();
+            for attempt in cleanup["transactions"].as_array().unwrap() {
+                let bytes = hex::decode(attempt["wireHex"].as_str().unwrap()).unwrap();
+                let tx: solana_sdk::transaction::VersionedTransaction =
+                    bincode::deserialize(&bytes).unwrap();
+                let before = w.svm.get_account(&w.attacker.pubkey()).unwrap().lamports;
+                let result = w.svm.send_transaction(tx);
+                let expected_failure = attempt["kind"] == "execute";
+                let (ok, meta) = match result {
+                    Ok(meta) => {
+                        assert!(!expected_failure);
+                        (true, meta)
+                    }
+                    Err(failure) => {
+                        assert!(expected_failure);
+                        assert!(matches!(
+                            failure.err,
+                            solana_sdk::transaction::TransactionError::InstructionError(
+                                _,
+                                solana_sdk::instruction::InstructionError::Custom(6013)
+                            )
+                        ));
+                        (false, failure.meta)
+                    }
+                };
+                assert!(bytes.len() <= 1232 && meta.compute_units_consumed <= 1_000_000);
+                if attempt["kind"] == "close" {
+                    assert!(w.svm.get_account(&buffer).is_none_or(|a| a.lamports == 0));
+                    assert!(w.svm.get_account(&w.attacker.pubkey()).unwrap().lamports > before);
+                }
+                w.rows.push(json!({"case":format!("sdk-failed-buffer/{}",attempt["kind"].as_str().unwrap()),"ok":ok,"expected":if expected_failure {"NotPending"} else {"Ok"},"cu":meta.compute_units_consumed,"transaction_bytes":bytes.len(),"logs":meta.logs}));
+            }
+        }
         if scenario == "deadline" {
             assert!(w.state::<PendingWithdrawal>(w.pending(0)).exists);
             assert_eq!(w.state::<Note>(w.note(0)).status, 2);
@@ -221,7 +313,7 @@ fn main() {
         .max()
         .unwrap();
     let rejected = rows.iter().filter(|r| r["ok"] == false).count();
-    let report = json!({"scope":"I09 newly generated native payload, real Vault SBF/v0 buffer lifecycle, historical RP/current tree, pause/deadline/tombstone; no daemon, SDK broadcaster, live RPC or recovery claim", "passed":true, "elf_sha256":hex::encode(Sha256::digest(&elf)), "payload_sha256":hex::encode(Sha256::digest(&generated)), "transactions":rows.len(), "expected_rejections":rejected, "max_cu":max_cu, "max_transaction_bytes":max_bytes, "cases":rows, "release_gates_passed":[]});
+    let report = json!({"scope":"I09 newly generated native payload, real Vault SBF/v0 buffer lifecycle, historical RP/current tree, pause/deadline/tombstone; SDK challenger bridge signed v0 bytes; no live RPC or full daemon-to-SBF claim", "passed":true, "elf_sha256":hex::encode(Sha256::digest(&elf)), "payload_sha256":hex::encode(Sha256::digest(&generated)), "transactions":rows.len(), "expected_rejections":rejected, "max_cu":max_cu, "max_transaction_bytes":max_bytes, "cases":rows, "release_gates_passed":[]});
     fs::write(
         out.join("svm-results.json"),
         serde_json::to_vec_pretty(&report).unwrap(),
