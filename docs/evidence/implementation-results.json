@@ -1,6 +1,6 @@
 {
   "date_jst": "2026-10-04",
-  "scope": "I01_I02_I03_I04_I05_local_implementation_completed_I06_I07_next_release_gates_pending",
+  "scope": "I01_I02_I03_I04_I05_I06_I07_local_completed_I08_I09_initial_slices_reviewed_continuation_ready_release_gates_pending",
   "toolchain": {
     "rust": "1.90.0",
     "go": "1.25.0",
@@ -19,13 +19,20 @@
     "svm_litesvm": "0.6.1"
   },
   "artifact_sha256": {
-    ".github/workflows/ci.yml": "e3e624a5e5a7d7741ae9d8693ac313e9ad048d3efa6868d5705a562200eca385",
+    ".github/workflows/ci.yml": "cc132492f0f2e360b662a70600ac579c3431a477186f376e8d682056a355a215",
     ".go-version": "32112436a82effc1d958644a972f2a81e829e5ff08beb71305473cf6d41ca956",
     ".node-version": "7e8a2fa94951112b894a3dbe3d05efef5e9263741fa49125f0a70f40fedab4cc",
-    "AGENTS.md": "3bc3be5ee45e2ed8c28dcfa45e7c153b55161fb3a3eb918a4b71647ae227c8f4",
+    "AGENTS.md": "5c971c401f62348a80df460d5e0d4b694281a6056016233b82af1cab88857e97",
     "Cargo.lock": "e4489876e3ee37a9a67647a272729444535aa3d6279ae15807d5ae0535113291",
     "Cargo.toml": "051013c25855f1fa7eae9b0149dc35cf962bf0dc5e7f780f5583d93f7dd65873",
     "README.md": "df7bb29034c1d2947747add5b1d217fadee05d02be6158e28f351cbecd3bae1e",
+    "apps/clientd/README.md": "c9d63b73c95942b6a2ca9b146dae18dc886e81ab806ecd18ac9f20586698364e",
+    "apps/clientd/companion/Cargo.lock": "2daf9799752536546b8d6106e3ab59dc92c0283e88f884bf49603f4566eddc5a",
+    "apps/clientd/companion/Cargo.toml": "092f38e109aad9a918f8627d4ee0268450bda62c5d0171d2f3ed33dfc3166406",
+    "apps/clientd/companion/src/lib.rs": "8ee7ce8775f2e0ee69c14c651f75b5d0d34e9a3edba491255aa6dd2bc9029a15",
+    "apps/clientd/companion/src/main.rs": "3c1fc9cb2012845a459f6b538db251cecab19a1dfab93d5f887b9d9fe282aa05",
+    "apps/clientd/companion/tests/support/mod.rs": "52b716a6fc1e791df38eaad3f6cfe968237363548e96533720a842f971ea6a61",
+    "apps/clientd/companion/tests/verification.rs": "40262d01675b6c603f9e4c232b7e439499ba4b3a05ffcadfa61376cefa7f5962",
     "crates/zkapi-layout2/Cargo.toml": "710f242bc6e5392bea1a352b58b8e8cb605111581d8c6bfefe37a00a452f5b7b",
     "crates/zkapi-layout2/src/binding.rs": "6181541842c911632f0e60de4fe196725b187709221acc89e84ef1340b81dc1f",
     "crates/zkapi-layout2/src/framing.rs": "a55d6c30c4281a7f6d3bb7debb93bc64645fc8b35627aa7d7333d3dc39e267cc",
@@ -85,25 +92,46 @@
     "docs/evidence/I04.md": "3f6cab58a5ed3ee3aca7f60c76473199510014dcfc99b5b733093a22cda3f380",
     "docs/evidence/I05-results.json": "4359ce03140b70d1063038f42196c72cffb6a59ec029934e83bb5f1fc9d32f15",
     "docs/evidence/I05.md": "5e351543acc400be8f33f12d0602e880af8de213583a92e26ae31151e2ba6e44",
+    "docs/evidence/I06-I07-results.json": "9971b0419b9ebcadfcece38d00847ba860717cf8fdae0715e3619c26eae28153",
+    "docs/evidence/I06.md": "d7655ab26e0a32e37d623c24298f0683ff75b4f21fcd58c19c5e2c0afdc84901",
+    "docs/evidence/I07.md": "6bdd3cff26d02bc8e0137eacd954809332e09034cb20bbaedd89144267421a6a",
+    "docs/evidence/I08-I09-review.md": "8d47617d24d7ff77c641bf2a79744156cdb42fb787a0c5ee01eb4a57842e382a",
+    "docs/evidence/I08-results.json": "5b57c8f51a553016ac9fa08fc846bed80b88dede536908a9d479aaadea4fd823",
+    "docs/evidence/I08.md": "9729c79e35b36b4c5e4bc42fd29797c06c155b818723271431df889caffd9e52",
+    "docs/evidence/I09-results.json": "dd1c3a4193414c62fc4c54377a57134daf5180f3e018b8e1f2d812e6d3a4692e",
+    "docs/evidence/I09.md": "dd062e61bdcfe54ea46ec9f910318f70b7400882a3d3bbb93e9e2f7174c018ea",
     "docs/evidence/ci-baseline.json": "6d24c5387804fe16e067102ad442b6a41047f2d758d31604f2d4babbd64d88ad",
     "docs/evidence/layout2-design-ready.md": "43a69bb6d5989cad23001598342e25b43687b5d62f6d0df228e3cdda8d08657f",
+    "docs/fixtures/i07-provider-contracts.json": "8bc01307bd956974ed9e182f3e9f834418c218bf6a663f170d843403bc4b4d8e",
     "docs/i05-implementation-ready.md": "532e1bbe9ddd5f34622e72160d0237a1681b4b2d030000a4fcb7bc53b1bed758",
-    "docs/implementation-plan.md": "81460295643a197dc679f4aa0375c61f6e1e14d6371f614bf05b5e98c0e5636d",
-    "docs/implementation-ready.md": "75895f60074c81b1d759111392e44b6d0941e9ca73bd8076fa358286610479b0",
+    "docs/i06-i07-implementation-ready.md": "04cbbcf2815899b2d2c998d19ffb0394e43e8d96ce4506c9fb60f5efa14bbf35",
+    "docs/i08-i09-implementation-ready.md": "10f814796cd461a98fbbe1c68cc5438a6bade3d965c42c4e8885209246a2e9a7",
+    "docs/implementation-plan.md": "1c18e306653ce74a2d78fd149ac299e3489f07cb48cf581a8f82fa1171ce92e3",
+    "docs/implementation-ready.md": "2ceeffbb42727c2465ae982aec7e6bbef0b78068fc1b7b68439ff1132fd7145b",
     "docs/production-parity.md": "0c57051497a8b7a0786dc9b361a3629596e86f50c9f0aeba5b5045b875e7f65b",
     "docs/specs/api-proxy.md": "77a7b925a7332af7bd2a008f34fd52779fd7be597dab806c4cc3375493c233cc",
     "docs/specs/operations.md": "f05631f7c9d81daf3cb7cac8f2702d1beaa61a19ea570f3193cf1d1b65485253",
     "docs/specs/protocol-solana.md": "f583496de4c363722c0cb03fe862468c5e726bb8430c9fe2424f26acce1b5adc",
     "docs/specs/tree-transition.md": "eafe562109ff41dd977c07d2b4c605647b420d8e2e74b170c208746a5291803d",
     "package-lock.json": "f20927b629c1a7700b90999783e052c8ef683c28d648415eb13d05caebecb2aa",
-    "packages/sdk/README.md": "24f25fc019b33166ba7b812624f282b208952b967b95088418edbe6fb2c7fce0",
-    "packages/sdk/package.json": "3fc6c6fa4f74494bed3386fbd724edd897edd99971e561b17e24b8846eb56518",
+    "packages/sdk/README.md": "368d000e40b23dc007e2c567b32af37967139ee75052a48f9eebe62c07e196cb",
+    "packages/sdk/package.json": "a934cbc3ad130cef859c6f5b878e72d01e7c96c6eebd703ad1e98e883077aeb2",
+    "packages/sdk/src/control-node.ts": "b1cd1c08972d364310a1cfd5cfd32b30b47a9adeffad1f44c8612b07f6cd685f",
+    "packages/sdk/src/control.ts": "f14000409678efa1e37ce8dac4fe17ff1d46c71d7dc44597b3002b20e59545a2",
     "packages/sdk/src/encoding.ts": "7301ea7c7f93dcd4ae02f760d07829d342bc2c0d042ace67bc5a41a8d68aeee4",
+    "packages/sdk/src/journal-node.ts": "05240033f1542e5d51b8f466b55bea6fa8cb0263c239782e81d10bdeca4b6389",
+    "packages/sdk/src/journal.ts": "5c6d7ea7b9e5ee10f8c4e30ac4ce1f204851a52208a56e1bd1e84c112b4ac9c5",
     "packages/sdk/src/layout2.ts": "b6f6c1208f315327fed01b531a883a68676ebc0680f0d178cead59610906c91e",
     "packages/sdk/src/transport.ts": "dbf78794df4f8a514aff72aac47a4e05c1cbad23e5bbdbdfdc28695ca2b06bd4",
+    "packages/sdk/src/trust.ts": "01aad662a80b1edc569bde9b7da08e2d2caef569b90d887a23838bc5eea17acf",
+    "packages/sdk/test/control.test.ts": "01e4e6887704fbb4e6ae5794195edf6a1f41178b0dfd59d7916a0f297bb4fa61",
     "packages/sdk/test/encoding.test.ts": "6ad5f94b9d8581c8c6e9d71793c061c1b50ed9ebc95bdbfd3d6cb3291534d73a",
+    "packages/sdk/test/journal-browser.test.ts": "b66bcf0eee6441369461b13da11b9da547d926f4bd3daf9107f5078ac150a179",
+    "packages/sdk/test/journal.test.ts": "70483c643cfd1ffde2b0f0e2b5fe18d78ac22b5e4f59d2a8244a02d253de6972",
+    "packages/sdk/test/native-integration.ts": "6b48c0634bcdff20ef99350271641f5e66d22200a776b85853e7663cde5b626c",
     "packages/sdk/test/sbf-transactions.ts": "b97b06d90865a12b708960bda5386913246b7ba75dc09f8a3df9cfde4c24d59d",
     "packages/sdk/test/transport.test.ts": "9c55856df93811da1cd36427fa68f7d6d5ac73f2f915f10928a88709e509890b",
+    "packages/sdk/test/trust.test.ts": "ffa35e5eba8e8baea720b3d0a4a12c2cb949a835600947dff16b38764d548d8e",
     "programs/i02-harness/Cargo.lock": "a6afe1069fd46559e61f4fc021433c9256b3abe2e9c8bc0c8e6c747eaaf1b382",
     "programs/i02-harness/Cargo.toml": "44c6b2c5148d99afb3b2a08f03de4b30f2817a2444f1f7766f38b51b2da98ae6",
     "programs/i02-harness/src/lib.rs": "ce4ef5e6ab07deeb94f7abca4505882a36fdff543f04bfe29e96958f378f097e",
@@ -153,32 +181,59 @@
     "scripts/run_i04.sh": "719fddeade32c3cf304caffc4f0eddc6fc964dd10f1d2481273bce5cb8812225",
     "scripts/run_i05.py": "1cb9263274cd8faaa2f9f7fcf47156cecd180c0e699ff98d06567f57b0c56fc9",
     "scripts/run_i05.sh": "8f865efa4d48660e8d35923b6ded2c735571749a9f0e270ef85d121e26d6106d",
+    "scripts/run_i06_i07.py": "238b79adc0e796044cd8693f4435544b5c58a71f443b7204b5a701f7aab74234",
+    "scripts/run_i06_i07.sh": "776fc7644515b0b8c4b0e1c12d572902e205ae4cc7e7c059d63d76c3ecf44596",
+    "scripts/run_i08.py": "3c3fc1af045c9a77aa21c48c9769765dd589aa1b79c83ec35d6c2c961f412d07",
+    "scripts/run_i09_challenger.py": "225a1cdb5c7efeb3d9583e022431bb05ca010090263d395a58551dd72879d23d",
     "scripts/test_check_vault_idl.py": "d78a9a286f3f75321444cc1eca0e9450b85dbac3576df59a42d24c6b27c4a183",
-    "services/control/Cargo.lock": "8fd5c927f8799ff0c16aab911c77a7b1cfa4cde8191e4581a6849a7210a2cb53",
-    "services/control/Cargo.toml": "a2b0cd1eb0d83566d6aa6eaa8207731887fb99f346846684bc0a8f349cf932cd",
-    "services/control/README.md": "8ac127cb5a27fbe0721ec635d8527430ef7a4bf3bf8a0c6e19aa4e90f7c48b82",
+    "services/challenger/Cargo.lock": "4d77282e7836a2b122bdda405bbdd73ee06c8581ffa8b541223b51b1c9c2eb1b",
+    "services/challenger/Cargo.toml": "9f4b000b6252c626432d95953062067eda7e497263323ba2bd33c49c75241723",
+    "services/challenger/README.md": "2ed7a7455d6bfd08ecd8c7d22a44a6a4a09d8a0f2d52989247d06caf43da2b6b",
+    "services/challenger/src/journal.rs": "07e93b8b5e3b272dc004a937173e25e015a5b685997ceaad2bea112bc38dfdb7",
+    "services/challenger/src/lib.rs": "47728e069e486861b292e139c7151d2a23d42195999d1d9a467fe1f59f2df1fe",
+    "services/challenger/src/read_model.rs": "cbf40eaaed40559e7a04a8a7d398cac4141cd9c0431773eb11def195a4d09f5d",
+    "services/challenger/src/scan.rs": "1c890a7624bd968b2df15863a0dc1384191234062321df3a2da97836eb53de05",
+    "services/challenger/src/tests.rs": "f2119a24c726026e31e1d7cffeae1d3d43f1d6722d619d8b2cc21d4d8a313415",
+    "services/control/Cargo.lock": "7347f5fdc5153c595e5da3f87b05463d8603c009355abd0ff85899fb44e634eb",
+    "services/control/Cargo.toml": "0e46e3ec35c2c101ba76cfd0d72bdc1f4ea9edb7d54124fa8d1747408a00f424",
+    "services/control/PROVIDERS.md": "b6fe68b98a06e917b4199ba1147bdcb1d68fa46f6760c0b31347959b99e50f76",
+    "services/control/README.md": "a5a2cd0cca858dc5e4abc5adbe2fb0627f30acd967d8922f2d61cafe450be1da",
     "services/control/migrations/0001_ledger.sql": "cd2329944c5da37a29232f4b355cb713f3da3ce34923d589d8e866ca538a02fb",
     "services/control/migrations/0002_invariants.sql": "3a3994489f16903df3393d45a63c8511d37b0faf539a48e57dfeb1255ddda7b9",
-    "services/control/src/api.rs": "71d2bc2b3c25a81352d239b5ebd43a1dcc97d8971f9aa9cd4020ac666685fa5f",
-    "services/control/src/bin/controld.rs": "180fe18d7887a6c165753ee83c0207ad7622e22d416c4bc38d7857af1e58ee5f",
+    "services/control/src/api.rs": "1bd8d22c6f4a16bf682c24ea851ccd7b011b238eda42f4cee9735d70700de4ac",
+    "services/control/src/bin/controld.rs": "8a8e52c69363d7c620d3a04951e4fd398f9a8f0e330c83fb28c84f57a4a55e30",
     "services/control/src/bin/dispatch-owner.rs": "357b7e8d9d24d971e81189d946223b80675787752507fd1dbd3b0a7d5e109cae",
     "services/control/src/bin/signerd.rs": "116ddeeaca349e23efa7a1609defdbd46e1650dae00fbce881f33c5fa2f6e321",
     "services/control/src/chain.rs": "8a9667bf98862aa09d63f038f9a01496c0f940f9d0fcb043a8616aef6fbc2ff9",
-    "services/control/src/config.rs": "6e7c69b24ec19e1ad13aeef78f2a79c7352061fd172254ae13fc9b8e4eb54a61",
+    "services/control/src/config.rs": "0e803c55b588d4272779e500ec41a93f5889b9c8a0612118aa15db48aba5367f",
     "services/control/src/crypto.rs": "767dee3d41d11613a4e008029ad56bf4c17c221db509ce3602078970234770e9",
+    "services/control/src/direct/mod.rs": "785472f429cba70ae2a02612ec40618db8f0a935c81cd388f785919872ed9e90",
+    "services/control/src/direct/oa.rs": "11886e778d828b0859fa3a6ece486e22841aff3d27dd1bee66fbb145a8e7285f",
+    "services/control/src/direct/openrouter.rs": "f78f90e4145fee1dde1dfeabdccb33caeb4b9bef4c3d573e8cd3c2833e024391",
+    "services/control/src/direct/runtime.rs": "c0f7c8f399639bced797dd8087c07cd4b484694f4888f079e24152861a7bc8ac",
     "services/control/src/dispatcher.rs": "219a13ce8454b4cee4e1edc05cf04fb0803f77bf3b7d2a6a23879b68e8a73731",
     "services/control/src/faults.rs": "460e4d87ca97ba3e466547d4fd704aade6ef56415aa58845122fd94bd805abc6",
-    "services/control/src/ledger.rs": "e1843222330b7667c64c3e4fafc564980010aa5b6e3d1035c3807d545c6e497b",
-    "services/control/src/lib.rs": "bdb37f133309d300e001bfb99cc35c2608ab3689605100d84b8343a3a6af07c8",
+    "services/control/src/inference.rs": "c451ddb0aff82603ccbfbddb47a9037801fc51a9c22a1d69efd3eef4f08fa344",
+    "services/control/src/ledger.rs": "26cd5f7c6091e07d96a34f4916776b42a400df5632e3adea07c8b90d00eb4592",
+    "services/control/src/lib.rs": "84755c39be451af8d5f66b04e14d26b5140ece96a07dee2a72c71de1ecd8ee05",
+    "services/control/src/provider_runtime.rs": "fbdfe7885a6a4d379ce27b4bb04d0a7482101376ff63366b937191a21fb3d165",
+    "services/control/src/proxy/mod.rs": "bbc0e945dd649c0c5458aebe861c6f78ae2d4a2862587a4a55a53066f87e88a5",
+    "services/control/src/proxy/request.rs": "0e623b4a883a209d35181ab5b3a1d5a2a5576f9996995f9c00c03cdd945289fd",
+    "services/control/src/proxy/transport.rs": "39af47a6018f47d82e38f367480229fac40ea79fbe50f794066f01c9e0de9fbe",
+    "services/control/src/proxy/usage.rs": "227e07a076ed623bffd1137c5122d2119c467b06bb3bc17aa988030f808bca7f",
     "services/control/src/quote.rs": "9fe998f1897154c4f9a5a48769be9a0a5f6f3643bb599c286bf851faeabdc0dd",
     "services/control/src/receipts.rs": "7205be2eed4598fa5b75551a997ddedf0e79f735ce17452e37d38ab190ee69d0",
     "services/control/src/signer.rs": "37c95be9500b8cec24d088ab96654701efcbddfd717f4205392f1af1412d81ee",
     "services/control/src/signer_client.rs": "78d1cfe427f0345ab3f241dfa63a2450d0bd2ee5b3d0c297b8062f021d376037",
-    "services/control/src/wire.rs": "321e9a050423d46bc39ae9dcbf0e216d87b4b5fb760a15c361dfa0ecf5d2fe13",
+    "services/control/src/wire.rs": "dbbe1e2e9f3ff7e65f682d3840d44c08a280483068a8240608d74d0eecb04af7",
     "services/control/tests/binding_chain.rs": "12948615cd200fe19ce3a13ea79824e3ba2e82fa8183c69159034c7a93f2314a",
-    "services/control/tests/control_process.rs": "0619d49d7fd4d18f31e97eebed23fa6bd1b5a394474c9f7159c581de5a5d8a26",
-    "services/control/tests/http_runtime.rs": "d81cabd442c8cfcf0c1b703878af90cf74d10c5229f59501adbaa9b976a32efd",
+    "services/control/tests/control_process.rs": "4a6b88abd115cd7b51301078abf45e53b04c1499af14c906279a120b99da6e99",
+    "services/control/tests/direct_adapters.rs": "3906a6bee225153c77c6708a418a1193e5f3a55eadb394a3fd8b3cd3314ba03e",
+    "services/control/tests/http_runtime.rs": "e2c3b26c695ef7b385620b18a5a9eb9ba890caf440bee75012fa2a8830edffe9",
     "services/control/tests/ledger_runtime.rs": "9afda182b87fcaa0fde9cae3be734d8318bbbb3ee9ffafce96d7eea0982b2250",
+    "services/control/tests/provider_http_runtime.rs": "2d2487b44a80a24ed8940664979b9ef8d082ff7a75181c4309666fb2659f1fac",
+    "services/control/tests/provider_ledger.rs": "ae71c2d09f6e918cf862f5e5e0fe16f31a9f17175211433beb4d445e5fb308cd",
+    "services/control/tests/proxy_adapters.rs": "c65762d9bb0bdcf2a0d36de248b074439ce4db1fcbb3357c7c3f21e2539d2c5b",
     "services/control/tests/receipts.rs": "4588e2f4924f02ebb9cf5941154ff44dd85fd2e84eb31c0358ada1a29b61525e",
     "services/control/tests/signer_process.rs": "2fec6b480082935a7af753ba2c67b4692148bb24ad10ac232eed5c8b46df9a40",
     "services/control/tests/support/mod.rs": "6277d3dc3ad3752ab9616713fed4d1d9e53f96032a6f564ad4ec42d3997bddad",
@@ -249,6 +304,7 @@
     "tests/svm/Cargo.lock": "e98d71f3e793816ce0f0627d3b84008ce77ac6b733100e5371b75434ec088c9e",
     "tests/svm/Cargo.toml": "3ad70f37a1c678b4ccb1b4124e205c1ae8b6271ac009c52eca8babaa4cd2a711",
     "tests/svm/src/bin/buffer.rs": "bb98796af26b9f53935186850aef8bf33b824f686bcac2f6f9f77689ebe947bd",
+    "tests/svm/src/bin/challenger.rs": "f78281b7976bc25c1050aa4101054e59a3f201b96685965fcde1582bac51ac4c",
     "tests/svm/src/bin/control.rs": "7dba8a0aa3a0089b25325dd25d44ed3369a304287c09d9ed42334d2dd648b100",
     "tests/svm/src/bin/fallback_probe.rs": "d378b34863cb722139715e42ef3c0d23dc9a231b49127aeec23729848662d503",
     "tests/svm/src/bin/layout2.rs": "575570095ea81d449c63ef6f54c3b1f64b3306c2f3a9e50af16baf31f806195f",
@@ -258,7 +314,7 @@
     "tests/svm/src/main.rs": "6a1dcc01bd11ba11e0c12830755c7a71a5febdebb57016a55424ee7d545852d6",
     "tests/svm/src/runner.rs": "1558d2f6b87dd3f7393318b3a8ad288d5b74dcb2cba9bd8326eb31a8b73f2e24",
     "tests/svm/src/sizes.rs": "2356a41dc774298407954815e7b4dec91f6acb876b60320368c395e939433557",
-    "tests/svm/src/vault_support.rs": "7dca06a30dac55c579b1d402e1612c511c7777dbd1f6c70b9f471109fa09f11c",
+    "tests/svm/src/vault_support.rs": "2d59e6e5f2474cf8563f6dde9b05344257f6db8af5a016a80e245bc6ff993f43",
     "tools/vault-idl/Cargo.lock": "2814e1493c553502e311de551759da6cee631d7d3d24ee6b982da7ca8e792aea",
     "tools/vault-idl/Cargo.toml": "fb47edc8dd219d896a060bfa5a34a3814a3838e4e1e3602dee3f3240d39d8fd3",
     "tools/vault-idl/src/main.rs": "97d4ada04e791a715b423c6afebadd574dabe79876a925e7f36be24f1f3c77f3",
@@ -1342,5 +1398,168 @@
     "runtime_summary": "docs/evidence/I05-results.json",
     "command": "bash scripts/run_i05.sh",
     "exit_code": 0
+  },
+  "i06_i07": {
+    "date_jst": "2026-10-04",
+    "status": "reviewed_ready_for_I08_I09_local_implementation",
+    "scope": "I06/I07 LOCAL ONLY: loopback provider HTTP fixtures, real PostgreSQL, original request proofs, isolated signer, actual Vault SBF regression",
+    "tests_passed": 59,
+    "tests_failed": 0,
+    "tests_ignored": 0,
+    "new_tests": 33,
+    "existing_i05_tests": 26,
+    "postgres_version": "18.6 (Homebrew)",
+    "fsync": true,
+    "svm_regression": {
+      "passed": true,
+      "transactions": 10,
+      "max_cu": 422435,
+      "max_transaction_bytes": 1091,
+      "user_micro_usdc": 4999998,
+      "treasury_micro_usdc": 2,
+      "elf_sha256": "f8e57adeee417ca58c27324999d3e46013800fd7d8892880ea8ee1becefc2334",
+      "scope": "Unchanged I05 new-signer withdrawal fixture regression against actual Vault SBF; provider HTTP tests settle through same signer but are not additional provider-specific SBF cases"
+    },
+    "next_tasks": [
+      "I08 SDK/WASM/clientd",
+      "I09 challenger/operations"
+    ],
+    "limitations": [
+      "No live provider keys or inference/externally reconciled billing; G3 unverified",
+      "OA receipt signature source/structure/lease binding preserved from upstream; independent cryptographic receipt validation not established",
+      "OpenRouter two stable exact USD observations are operational stabilization, not a finality proof",
+      "Local control and dispatch are colocated; production isolated dispatcher, egress ACL, remote fencing, KMS/mTLS and failover remain I09/I10",
+      "Initial direct response body abandonment is tested; the full 45-second elapsed response deadline path is not separately timed in tests",
+      "Public wallet/RPC, hosted CI, production setup/audit, G1-G4 remain unverified"
+    ],
+    "evidence": [
+      "docs/evidence/I06.md",
+      "docs/evidence/I07.md"
+    ],
+    "runtime_summary": "docs/evidence/I06-I07-results.json",
+    "command": "bash scripts/run_i06_i07.sh",
+    "release_gates_passed": [],
+    "live_providers_verified": false,
+    "hosted_ci_verified": false,
+    "review": {
+      "fixes": [
+        {
+          "id": "R1",
+          "component": "I06 OA direct",
+          "fix": "Retain known management reference on malformed credit_limit while rejecting key delivery"
+        },
+        {
+          "id": "R2",
+          "component": "I06 direct lifecycle",
+          "fix": "Set provider lease clock after dispatch serialization wait, once before immutable checkpoint"
+        },
+        {
+          "id": "R3",
+          "component": "I06 control HTTP",
+          "fix": "Transfer cancellation guard with queued direct key; duplicate no-key failures do not close the live session"
+        },
+        {
+          "id": "R4",
+          "component": "I06/I07 ledger",
+          "fix": "Reject old-epoch finish_attempt without independently validated fencing"
+        },
+        {
+          "id": "R5",
+          "component": "I07 Responses",
+          "fix": "Treat error:null as a successful envelope subject to final usage validation"
+        },
+        {
+          "id": "R6",
+          "component": "I07 Anthropic SSE",
+          "fix": "Preserve previously observed usage on nullable deltas"
+        },
+        {
+          "id": "R7",
+          "component": "I07 Anthropic SSE",
+          "fix": "Reject decreasing cumulative input/cache and cache TTL counters"
+        }
+      ],
+      "prior_acceptance_tests": 54,
+      "added_regression_tests": 5,
+      "handoff": "docs/i08-i09-implementation-ready.md"
+    },
+    "additional_validation": [
+      {
+        "command": "npm run typecheck && npm test",
+        "passed": true,
+        "tests_passed": 26,
+        "scope": "Existing I04 SDK local regression, not I08 implementation or live wallet"
+      },
+      {
+        "command": "python3 scripts/check_upstream.py",
+        "passed": true
+      },
+      {
+        "command": "python3 work/design/generate_contracts.py --check",
+        "passed": true
+      }
+    ]
+  },
+  "I08_I09_initial_slice": {
+    "date_jst": "2026-10-04",
+    "task_complete": false,
+    "I08_tests_passed": 77,
+    "I09_tests_passed": 12,
+    "backend_regression_tests_passed": 59,
+    "evidence": [
+      "docs/evidence/I08.md",
+      "docs/evidence/I09.md"
+    ],
+    "runtime_reports": [
+      "docs/evidence/I08-results.json",
+      "docs/evidence/I09-results.json"
+    ],
+    "commands": [
+      "python3 scripts/run_i08.py",
+      "python3 scripts/run_i09_challenger.py"
+    ],
+    "release_gates_passed": [],
+    "hosted_ci_verified": false,
+    "live_provider_verified": false,
+    "remaining": [
+      "browser WASM real proofs, note witness/clearance and wallet flows",
+      "Go clientd, localhost credential separation, key custody, Tor and distribution",
+      "challenger RPC daemon, SDK broadcaster and signature recovery",
+      "I09 dispatcher fencing, restore, monitoring and dashboard"
+    ],
+    "initial_validation": {
+      "I08_tests_passed": 73,
+      "I09_tests_passed": 8
+    },
+    "review": {
+      "date_jst": "2026-10-04",
+      "status": "reviewed_ready_for_I08_I09_continuation_not_I10_completion_handoff",
+      "task_complete": false,
+      "I10_handoff_ready": false,
+      "fixes": [
+        "preserve close intent and exact authorization recovery after unknown create",
+        "snapshot and return authenticated prover artifacts without breaking context API",
+        "reject remote hostaddr overrides in local-only challenger DB connections",
+        "enforce immutable unique Pending/nullifier jobs on update and old journal reopen",
+        "validate checkpoint execution order and fork identity",
+        "bind payload replacement permission to failure of that exact payload and buffer"
+      ],
+      "tests_passed": 89,
+      "tests_failed": 0,
+      "tests_skipped": 0,
+      "new_payload_sbf": {
+        "transactions": 79,
+        "expected_rejections": 5,
+        "max_cu": 335295,
+        "max_transaction_bytes": 1091,
+        "payload_sha256": "1b11ef4c9e112d24e64fcf6c2be2d3bb8dfaa2b00721588cc8c99014eea1b24d",
+        "elf_sha256": "f8e57adeee417ca58c27324999d3e46013800fd7d8892880ea8ee1becefc2334"
+      },
+      "evidence": "docs/evidence/I08-I09-review.md",
+      "handoff": "docs/i08-i09-implementation-ready.md",
+      "runtime_node": "v24.13.0",
+      "requested_node": "24.19.0",
+      "release_gates_passed": []
+    }
   }
 }

@@ -499,7 +499,7 @@ impl World {
             expected,
         )
     }
-    fn assert_event(&self, before: &TreeState, op: u8) {
+    pub(crate) fn assert_event(&self, before: &TreeState, op: u8) {
         let events = self.rows.last().unwrap()["events"].as_array().unwrap();
         assert_eq!(events.len(), 1, "one transition event");
         let e = &events[0];

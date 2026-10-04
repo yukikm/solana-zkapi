@@ -321,6 +321,32 @@ pub struct ControlCredential {
     pub request_id: uuid::Uuid,
     pub secret_hash: [u8; 32],
 }
+/// Only request-scoped memory contains the proxy secret used for the body HMAC.
+pub struct ProxyCredential {
+    pub request_id: uuid::Uuid,
+    pub secret: [u8; 32],
+}
+impl Drop for ProxyCredential {
+    fn drop(&mut self) {
+        self.secret.fill(0);
+    }
+}
+pub fn parse_proxy_token(token: &str) -> Result<ProxyCredential> {
+    let parts: Vec<_> = token.split('.').collect();
+    if parts.len() != 3 || parts[0] != "zkp1" || parts[2].len() != 43 {
+        return Err(ValidationError::Unauthorized);
+    }
+    let request_id = uuid(parts[1]).map_err(|_| ValidationError::Unauthorized)?;
+    let secret: [u8; 32] = URL_SAFE_NO_PAD
+        .decode(parts[2])
+        .map_err(|_| ValidationError::Unauthorized)?
+        .try_into()
+        .map_err(|_| ValidationError::Unauthorized)?;
+    if URL_SAFE_NO_PAD.encode(secret) != parts[2] {
+        return Err(ValidationError::Unauthorized);
+    }
+    Ok(ProxyCredential { request_id, secret })
+}
 pub fn parse_control_token(header: &str) -> Result<ControlCredential> {
     let token = header
         .strip_prefix("Bearer ")

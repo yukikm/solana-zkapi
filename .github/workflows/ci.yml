@@ -134,7 +134,7 @@ jobs:
             docs/evidence/I04*.json
           if-no-files-found: error
   control:
-    # I05 local runtime acceptance. Hosted execution and release gates are separate evidence.
+    # I05–I07 local runtime acceptance. Hosted execution and release gates are separate evidence.
     runs-on: ubuntu-24.04
     timeout-minutes: 90
     steps:
@@ -160,14 +160,15 @@ jobs:
           if grep -Ei 'stack offset .*exceeded|stack frame size.*exceed' target/i05/sbf-build.log; then
             exit 1
           fi
-      - name: Reproduce I05 PostgreSQL, HTTP, process recovery, and SBF acceptance
-        run: PATH="/usr/lib/postgresql/16/bin:$PATH" bash scripts/run_i05.sh
+      - name: Reproduce I05–I07 PostgreSQL, provider HTTP fixtures, recovery, and SBF acceptance
+        run: PATH="/usr/lib/postgresql/16/bin:$PATH" bash scripts/run_i06_i07.sh
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         if: always()
         with:
-          name: I05-local-Postgres-control-signer-SBF-not-production
+          name: I05-I07-local-provider-fixtures-Postgres-signer-SBF-not-production
           path: |
             target/i05/**
+            target/i06-i07/**
             target/i04-sbf/*.so
             services/control/Cargo.lock
           if-no-files-found: error
@@ -186,6 +187,50 @@ jobs:
           python3 work/design/generate_contracts.py --check
           /tmp/zkapi-contract-venv/bin/python scripts/check_openapi_contract.py
           PATH="/usr/lib/postgresql/16/bin:$PATH" python3 scripts/check_ledger_contract.py
+  client-challenger:
+    # First I08/I09 slice only: no live provider, wallet, broadcaster or release claim.
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          submodules: recursive
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version-file: .node-version
+      - name: Install pinned tools and local runtime dependencies
+        run: |
+          rustup show
+          scripts/install_sbf_tools.sh
+          npm install --global npm@11.9.0
+          npm ci --ignore-scripts
+          sudo apt-get update
+          sudo apt-get install --yes postgresql-16
+          command -v google-chrome
+      - name: I08 trust, actual browser journal, recovery, and native real proof checks
+        run: python3 scripts/run_i08.py
+      - name: Generate actual I04 SBF archive and verify the I09 challenger foundation
+        env:
+          RAYON_NUM_THREADS: '4'
+        run: |
+          bash scripts/run_i04.sh
+          PATH="/usr/lib/postgresql/16/bin:$PATH" python3 scripts/run_i09_challenger.py
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        if: always()
+        with:
+          name: I08-I09-first-slice-local-not-release
+          path: |
+            target/i08/runtime-report.json
+            target/i08/*.log
+            target/i09-challenger/runtime-report.json
+            target/i09-challenger/runtime.log
+            target/i09-challenger/proof-generation.json
+            target/i09-challenger/generated-challenge.bin
+            target/i09-challenger/svm-results.json
+            target/i04-sbf/zkapi_vault.so
+            apps/clientd/companion/Cargo.lock
+            services/challenger/Cargo.lock
+          if-no-files-found: error
   node:
     runs-on: ubuntu-24.04
     steps:

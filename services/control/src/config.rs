@@ -26,8 +26,10 @@ pub struct RuntimeConfig {
     pub signer_socket: PathBuf,
     pub quote_seed_file: PathBuf,
     pub receipt_seed_file: PathBuf,
-    /// Only an explicitly named synthetic local adapter is available before I06/I07.
+    /// Synthetic I05 adapter remains separate from actual HTTP provider adapters.
     pub enable_local_adapter: bool,
+    #[serde(default)]
+    pub providers: crate::provider_runtime::ProviderConfig,
     pub tariffs: Vec<Tariff>,
 }
 pub struct ValidatedConfig {
@@ -154,9 +156,11 @@ impl RuntimeConfig {
                 "unlisted tariff"
             );
             ensure!(
-                tariff.model == "i05-local-only"
-                    && tariff.pricing_basis == "fixed_usage_rates"
-                    && tariff.provider == wire::Provider::Openai,
+                self.providers.supports_tariff(tariff)?
+                    || (self.enable_local_adapter
+                        && tariff.model == "i05-local-only"
+                        && tariff.pricing_basis == "fixed_usage_rates"
+                        && tariff.provider == wire::Provider::Openai),
                 "provider adapter unavailable"
             );
         }
@@ -171,10 +175,8 @@ impl RuntimeConfig {
                 );
             }
         }
-        ensure!(
-            self.enable_local_adapter || self.tariffs.is_empty(),
-            "test tariff requires enabled local adapter"
-        );
+        self.providers
+            .validate(&self.tariffs, self.local_test_only)?;
         Ok(ValidatedConfig {
             runtime: self,
             trusted,

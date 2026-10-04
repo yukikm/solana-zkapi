@@ -37,10 +37,11 @@ pub struct App {
     pub ledger: Ledger,
     pub chain: ChainClient,
     pub signer: SignerClient,
+    pub providers: crate::provider_runtime::ProviderRuntime,
     rate: Mutex<(u64, u32)>,
 }
 #[derive(Debug)]
-pub struct ApiError(StatusCode, &'static str);
+pub struct ApiError(pub(crate) StatusCode, pub(crate) &'static str);
 impl IntoResponse for ApiError {
     fn into_response(self) -> Response {
         (self.0,Json(json!({"error":{"code":self.1,"message":self.1,"retriable":self.0==StatusCode::SERVICE_UNAVAILABLE}}))).into_response()
@@ -87,7 +88,7 @@ fn now() -> u64 {
         .expect("clock before epoch")
         .as_secs()
 }
-fn live_error(e: ValidationError) -> LedgerError {
+pub(crate) fn live_error(e: ValidationError) -> LedgerError {
     match e {
         ValidationError::Conflict("exit consumed") => LedgerError::Conflict("exit_consumed"),
         ValidationError::Conflict("stale root") => LedgerError::Conflict("stale_root"),
@@ -142,6 +143,11 @@ fn signature_json(bytes: &[u8]) -> Result<Value> {
 impl App {
     /// Schema migration is a separate command/credential; startup only verifies it.
     pub async fn connect(config: ValidatedConfig, database_url: &str) -> anyhow::Result<Arc<Self>> {
+        let providers = crate::provider_runtime::ProviderRuntime::connect(
+            &config.runtime.providers,
+            config.runtime.local_test_only,
+        )
+        .await?;
         let chain = ChainClient::new(
             config.runtime.primary_rpc.clone(),
             config.runtime.secondary_rpc.clone(),
@@ -176,12 +182,17 @@ impl App {
                 )
                 .await?;
         }
-        ledger.set_accepting(chain_ready).await?;
+        ledger
+            .set_accepting(
+                chain_ready && !crate::provider_runtime::abandoned_owner_exists(&ledger).await?,
+            )
+            .await?;
         Ok(Arc::new(Self {
             config,
             ledger,
             chain,
             signer,
+            providers,
             rate: Mutex::new((0, 0)),
         }))
     }
@@ -205,6 +216,7 @@ impl App {
             .fallback(|| async { ApiError(StatusCode::NOT_FOUND, "unsupported_endpoint") })
             .layer(DefaultBodyLimit::max(16 * 1024))
             .with_state(self.clone())
+            .merge(crate::inference::router(self.clone()))
     }
     async fn authenticate(&self, id: Uuid, headers: &HeaderMap) -> Result<SessionRecord> {
         let token = credential(headers)?;
@@ -252,7 +264,23 @@ impl App {
     }
     pub async fn advance(&self, id: Uuid) -> Result<()> {
         self.ledger.recover_abandoned_operations(id).await?;
+        self.ledger.recover_abandoned_direct(id).await?;
         let mut s = self.ledger.session(id).await?;
+        if s.mode != "proxy" && s.state == "ACTIVE" {
+            let n = FieldElement::from_bytes(s.nullifier).map_err(|_| unavailable())?;
+            if let Err(error) = self.chain.assert_live(n, None).await {
+                if matches!(error, ValidationError::Conflict("exit consumed")) {
+                    self.ledger
+                        .record_exit(id, "exit_during_direct_use")
+                        .await?;
+                }
+                s = self.ledger.close(id).await?;
+            }
+        }
+        if s.mode != "proxy" && s.state == "RESERVED" && s.writer_epoch < self.ledger.writer_epoch()
+        {
+            s = self.ledger.close(id).await?;
+        }
         if s.state == "RESERVED" && s.mode == "proxy" && !s.close_requested {
             let request: wire::SessionCreate = wire::strict_parse(&s.request_transcript)?;
             let n = FieldElement::from_bytes(s.nullifier).map_err(|_| unavailable())?;
@@ -285,6 +313,9 @@ impl App {
             s = self.ledger.close(id).await?;
         }
         if matches!(s.state.as_str(), "DRAINING" | "RECONCILING") {
+            self.recover_provider_operations(&s)
+                .await
+                .map_err(|_| unavailable())?;
             for operation in self.ledger.operations_for_session(id).await? {
                 if operation.state == "RESERVED" {
                     let request: wire::SessionCreate = wire::strict_parse(&s.request_transcript)?;
@@ -334,7 +365,16 @@ impl App {
                 }
             }
         }
-        if s.state == "DRAINING" {
+        if s.mode != "proxy"
+            && matches!(
+                s.state.as_str(),
+                "ISSUING" | "ISSUANCE_UNKNOWN" | "DRAINING" | "RECONCILING"
+            )
+        {
+            self.advance_direct(&s).await.map_err(|_| unavailable())?;
+            s = self.ledger.session(id).await?;
+        }
+        if s.state == "DRAINING" && s.mode == "proxy" {
             s = self.ledger.reconcile(id).await?;
         }
         if s.state == "RECONCILING" {
@@ -395,7 +435,12 @@ impl App {
         // Chain health gates new work, not completion of already accepted work.
         // Keep recovering frozen settlement/clearance targets during an outage.
         let chain_health = self.chain.startup().await;
-        self.ledger.set_accepting(chain_health.is_ok()).await?;
+        let old_owner = crate::provider_runtime::abandoned_owner_exists(&self.ledger)
+            .await
+            .map_err(|_| unavailable())?;
+        self.ledger
+            .set_accepting(chain_health.is_ok() && !old_owner)
+            .await?;
         for s in self.ledger.pending_sessions().await? {
             let _ = self.advance(s.request_id).await;
         }
@@ -424,14 +469,55 @@ async fn config(State(a): State<Arc<App>>) -> Json<Value> {
 }
 async fn catalog(State(a): State<Arc<App>>) -> Json<Value> {
     let timestamp = now();
-    Json(
-        json!({"models":if a.config.runtime.enable_local_adapter {a.config.runtime.tariffs.iter().filter(|t|quote::tariff_valid_at(t,timestamp).unwrap_or(false)).map(|t|json!({"model":t.model,"provider":t.provider,"modes":["proxy"],"endpoints":[],"modalities":["text"],"tariff_hash":t.tariff_hash})).collect::<Vec<_>>()}else{vec![]}}),
-    )
+    let mut models = Vec::new();
+    for t in &a.config.runtime.tariffs {
+        if !quote::tariff_valid_at(t, timestamp).unwrap_or(false) {
+            continue;
+        }
+        let mode = match t.provider {
+            wire::Provider::Oa => wire::Mode::DirectOa,
+            wire::Provider::Openrouter if t.model == "*" => wire::Mode::DirectOpenrouter,
+            _ => wire::Mode::Proxy,
+        };
+        if !a.adapter_available(&mode, &t.provider, &t.model).await {
+            continue;
+        }
+        let endpoints = a
+            .config
+            .runtime
+            .providers
+            .proxy
+            .iter()
+            .filter(|p| p.provider == t.provider)
+            .flat_map(|p| &p.models)
+            .find(|m| m.model == t.model)
+            .map(|m| m.endpoints.iter().map(|e| e.path()).collect::<Vec<_>>())
+            .unwrap_or_default();
+        models.push(json!({"model":t.model,"provider":t.provider,"modes":[mode],"endpoints":endpoints,"modalities":["text"],"tariff_hash":t.tariff_hash}));
+    }
+    Json(json!({"models":models}))
 }
 async fn attestation(State(a): State<Arc<App>>) -> Json<Value> {
-    Json(
-        json!({"deployment_id":a.config.binding.deployment_id,"manifest_hash":a.config.runtime.trusted_manifest_hash,"direct_oa_enabled":false}),
-    )
+    let mut value = json!({"deployment_id":a.config.binding.deployment_id,"manifest_hash":a.config.runtime.trusted_manifest_hash,"direct_oa_enabled":false});
+    if let Some(crate::direct::DirectConfig::Oa {
+        issuer_base,
+        verifier_base,
+        ..
+    }) = a
+        .config
+        .runtime
+        .providers
+        .direct
+        .iter()
+        .find(|d| d.provider() == wire::Provider::Oa)
+    {
+        value["direct_oa_enabled"] = true.into();
+        value["issuer"] = issuer_base.clone().into();
+        value["verifier"] = verifier_base.clone().into();
+        value["evidence"] =
+            "Configured issuer/verifier pins; live provider acceptance remains required".into();
+    }
+    Json(value)
 }
 async fn tariff(State(a): State<Arc<App>>, Path(hash): Path<String>) -> Result<Json<Value>> {
     wire::hash(&hash)?;
@@ -451,7 +537,20 @@ async fn issue_quote(
 ) -> Result<Json<wire::Quote>> {
     a.limit().await?;
     let r: wire::QuoteRequest = body(&headers, bytes)?;
-    if !a.config.runtime.enable_local_adapter || r.mode != wire::Mode::Proxy {
+    if r.mode == wire::Mode::DirectOa {
+        let ttl = wire::uint(r.session_ttl_seconds.as_deref().unwrap_or("60"))?;
+        if ttl == 0 || ttl > 300 || !ttl.is_multiple_of(60) {
+            return Err(ApiError(
+                StatusCode::BAD_REQUEST,
+                "unsupported_lease_duration",
+            ));
+        }
+    }
+    if r.models.len() != 1
+        || !a
+            .adapter_available(&r.mode, &r.provider, &r.models[0])
+            .await
+    {
         return Err(ApiError(StatusCode::BAD_REQUEST, "adapter_unavailable"));
     }
     let timestamp = now();
@@ -485,7 +584,7 @@ async fn create_session(
     State(a): State<Arc<App>>,
     headers: HeaderMap,
     bytes: std::result::Result<Bytes, BytesRejection>,
-) -> Result<(StatusCode, Json<Value>)> {
+) -> Result<Response> {
     let r: wire::SessionCreate = body(&headers, bytes)?;
     let c = credential(&headers)?;
     let v = quote::validate_binding(&r, &c, &a.config.binding)?;
@@ -494,12 +593,19 @@ async fn create_session(
             if s.request_digest != v.digest || s.request_transcript != v.transcript {
                 return Err(ApiError(StatusCode::CONFLICT, "idempotency_conflict"));
             }
-            return Ok((StatusCode::OK, Json(a.status(&s).await?)));
+            return Ok((StatusCode::OK, Json(a.status(&s).await?)).into_response());
         }
         Err(LedgerError::NotFound) => {}
         Err(e) => return Err(e.into()),
     }
-    if r.authorization.mode != wire::Mode::Proxy || !a.config.runtime.enable_local_adapter {
+    if !a
+        .adapter_available(
+            &r.authorization.mode,
+            &r.quote.body.provider,
+            &r.quote.body.models[0],
+        )
+        .await
+    {
         return Err(ApiError(StatusCode::BAD_REQUEST, "adapter_unavailable"));
     }
     let saved = a.ledger.quote(wire::uuid(&r.quote.body.quote_id)?).await?;
@@ -550,6 +656,49 @@ async fn create_session(
         })
         .await?;
     crate::faults::checkpoint("reserved");
+    if r.authorization.mode != wire::Mode::Proxy {
+        let app = a.clone();
+        // The owner continues retirement/recovery even if the initial caller disconnects.
+        let (tx, rx) = tokio::sync::oneshot::channel();
+        tokio::spawn(async move {
+            let result = app.issue_direct(v.request_id).await;
+            // Own cancellation from the moment an issued key exists, including
+            // while it waits in the channel for the HTTP handler. A successful
+            // send only transfers ownership; it does not prove delivery.
+            let delivery = result.as_ref().ok().and_then(|key| {
+                key.as_ref().map(|_| DirectDelivery {
+                    app: app.clone(),
+                    id: v.request_id,
+                    complete: false,
+                })
+            });
+            // Dropping a failed send drops the guard. Duplicate creation returns
+            // None and must never close the original caller's live session.
+            let _ = tx.send((result, delivery));
+        });
+        let (key, delivery) =
+            match tokio::time::timeout(std::time::Duration::from_secs(45), rx).await {
+                Ok(result) => result,
+                Err(_) => {
+                    a.ledger.close(v.request_id).await?;
+                    return Ok((
+                        StatusCode::ACCEPTED,
+                        Json(a.status(&a.ledger.session(v.request_id).await?).await?),
+                    )
+                        .into_response());
+                }
+            }
+            .map_err(|_| unavailable())?;
+        let key =
+            key.map_err(|_| ApiError(StatusCode::SERVICE_UNAVAILABLE, "provider_unavailable"))?;
+        let mut status = a.status(&a.ledger.session(v.request_id).await?).await?;
+        if let Some(key) = key {
+            status["provider_key"] = key.runtime_key.into();
+            status["provider_api_origin"] = key.inference_base.into();
+            return direct_response(delivery.expect("key delivery guard"), status);
+        }
+        return Ok((StatusCode::CREATED, Json(status)).into_response());
+    }
     a.advance(v.request_id).await?;
     // Exit racing activation causes a challenger outbox and stops further usage.
     if let Err(e) = a.chain.assert_live(v.nullifier, None).await {
@@ -564,7 +713,47 @@ async fn create_session(
     Ok((
         StatusCode::CREATED,
         Json(a.status(&a.ledger.session(v.request_id).await?).await?),
-    ))
+    )
+        .into_response())
+}
+
+struct DirectDelivery {
+    app: Arc<App>,
+    id: Uuid,
+    complete: bool,
+}
+impl Drop for DirectDelivery {
+    fn drop(&mut self) {
+        if !self.complete {
+            let app = self.app.clone();
+            let id = self.id;
+            tokio::spawn(async move {
+                let _ = app.ledger.close(id).await;
+                let _ = app.advance(id).await;
+            });
+        }
+    }
+}
+fn direct_response(guard: DirectDelivery, value: Value) -> Result<Response> {
+    let bytes = Bytes::from(serde_json::to_vec(&value).map_err(|_| unavailable())?);
+    // HTTP body abandonment before EOF closes the lease. Socket delivery cannot
+    // prove receipt at the client; missing-key recovery and provider expiry remain required.
+    let stream =
+        futures_util::stream::unfold((Some(bytes), guard), |(bytes, mut guard)| async move {
+            match bytes {
+                Some(bytes) => Some((Ok::<_, std::convert::Infallible>(bytes), (None, guard))),
+                None => {
+                    guard.complete = true;
+                    None
+                }
+            }
+        });
+    Response::builder()
+        .status(StatusCode::CREATED)
+        .header("content-type", "application/json")
+        .header("cache-control", "no-store")
+        .body(axum::body::Body::from_stream(stream))
+        .map_err(|_| unavailable())
 }
 async fn session_status(
     State(a): State<Arc<App>>,

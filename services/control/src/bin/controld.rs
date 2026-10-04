@@ -56,11 +56,15 @@ async fn run() -> Result<()> {
         }
     });
     let listener = tokio::net::TcpListener::bind(listen).await?;
-    axum::serve(listener, app.router())
-        .with_graceful_shutdown(async {
-            let _ = tokio::signal::ctrl_c().await;
-        })
-        .await?;
+    axum::serve(
+        listener,
+        app.router()
+            .into_make_service_with_connect_info::<std::net::SocketAddr>(),
+    )
+    .with_graceful_shutdown(async {
+        let _ = tokio::signal::ctrl_c().await;
+    })
+    .await?;
     app.ledger.set_accepting(false).await?;
     Ok(())
 }

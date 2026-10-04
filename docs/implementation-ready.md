@@ -2,13 +2,17 @@
 
 状態：**設計・インターフェース確定、実装着手可**。更新日：2026-10-04 JST。[layout 2設計確認](evidence/layout2-design-ready.md)と[従来の設計レビュー](evidence/design-review-2026-10-03.md)を参照。
 
-現在地：**I01〜I05 local実装・検証完了、次はI06 direct・I07 proxyのprovider adapters**。[I05完了記録](evidence/I05.md)にPostgres ledger、quote/proof結合、独立signer journal、整数予算・署名明細・復旧を記録した。26テストと実Vault SBF 10取引が成功し、最新SBF実行の最大422,429 CU / 1,091 bytes。新signerの後継署名を用いて次のRPとclearance付きWPを生成し、利用者4,999,998 micro-USDC・treasury 2 micro-USDCの出金を確認した。実provider・実wallet端末・公開RPC・hosted CI・G1〜G4公開gateは未完了。元回路/profileと[署名公開鍵のビルド固定](adr/0002-build-validated-signing-keys.md)を維持する。
+**I08/I09の初期実装をレビュー・修正済み**。[レビュー記録](evidence/I08-I09-review.md)、[I08](evidence/I08.md)、[I09](evidence/I09.md)に復旧・artifact・challenger job/DBの修正と新payloadの実Vault SBF/v0-buffer検証を記録した。[開始契約の再開位置](i08-i09-implementation-ready.md)から継続実装へ着手できる。WASM/Go clientd/wallet、challenger RPC daemon/broadcaster復旧、dispatcher/fencing/復旧/運用は未完了で、I10への完了引継ぎはまだできない。I08/I09全体や公開gateの完了ではない。以下のI01〜I07記録と開始契約を引き続き維持する。
 
-[I05レビュー](evidence/I05.md#2026-10-04-レビューとi06i07への引き継ぎ)で7件の問題を修正し、26テストと実Vault SBFを再検証した。**I06/I07実装着手Ready**。最終送信許可、発行済みkey参照の復旧、signerの料金表結合とjournal、障害時の受付停止/精算継続を共有台帳の契約として引き継ぐ。
+現在地：**I01〜I07 local実装・検証完了、I08 SDK/clientd・I09 challenger/運用は初期実装中**。[I06 direct](evidence/I06.md)・[I07 proxy](evidence/I07.md)・[統合結果](evidence/I06-I07-results.json)と[I06/I07引き継ぎ](i06-i07-implementation-ready.md)を参照。次工程の着手順序・境界・受入条件は[I08/I09実装開始契約](i08-i09-implementation-ready.md)に固定した。[I05完了記録](evidence/I05.md)にPostgres ledger、quote/proof結合、独立signer journal、整数予算・署名明細・復旧を記録した。26テストと実Vault SBF 10取引が成功し、I05レビュー時のSBF実行は最大422,429 CU / 1,091 bytes。新signerの後継署名を用いて次のRPとclearance付きWPを生成し、利用者4,999,998 micro-USDC・treasury 2 micro-USDCの出金を確認した。実provider・実wallet端末・公開RPC・hosted CI・G1〜G4公開gateは未完了。元回路/profileと[署名公開鍵のビルド固定](adr/0002-build-validated-signing-keys.md)を維持する。
+
+[I05レビュー](evidence/I05.md#2026-10-04-レビューとi06i07への引き継ぎ)で7件の問題を修正し、26テストと実Vault SBFを再検証した。このレビューでI06/I07実装着手Readyとなり、その後のlocal実装・検証は[I06](evidence/I06.md)・[I07](evidence/I07.md)に記録した。最終送信許可、発行済みkey参照の復旧、signerの料金表結合とjournal、障害時の受付停止/精算継続を共有台帳の契約として引き継ぐ。
 
 [I04完了記録](evidence/I04.md)のbuffer全5操作、SDK署名v0、finalized indexer、復旧試験はそのまま再利用する。I04実SBFのbuffer 161取引＋SDK統合53取引、既存I03回帰366取引、最大426,830 CU / 1,232 bytesは歴史的な検証値として保持する。[I05実装引き継ぎ](i05-implementation-ready.md)にはPoolConfig/RPC境界、DB排他、署名journalと受入契約を残す。I05のRPC応答・usageはlocal fixtureを使うため、実providerや公開clusterでの成功は意味しない。
 
 これはUSDC決済、Ethereum zkAPIの直接接続機能、第三者運営のproxyを含む本番向け仕様である。コード完成・性能検証・監査・mainnet配備の完了を意味しない。暗号互換性などの実測項目は、担当・判定基準・不合格時の処理を実装計画に固定した。
+
+2026-10-04のI06/I07レビューで7件を修正し、59テスト・実Vault SBF 10取引（今回最大422,435 CU / 1,091 bytes）、SDK 26テストを再検証した。**I08/I09のlocal実装着手Ready**。[開始契約](i08-i09-implementation-ready.md)に順序・接続先・失敗時契約・受入試験を固定した。実provider/公開gate合格とはしない。
 
 ## 1. 読む順序と仕様の優先順位
 
@@ -20,6 +24,8 @@
 6. [実装タスク](implementation-plan.md)：依存順序、変更箇所、完了の証拠。
 7. [OpenAPI](contracts/openapi.json)、[DBスキーマ](contracts/ledger.sql)、[決定論的テストベクトル](contracts/binding-vectors.json)、[layout 2 wire契約](contracts/tree-transition.json)。
 8. [I05実装引き継ぎ](i05-implementation-ready.md)：完了したI05の成果物・transaction境界・受入契約。
+9. [I06/I07実装引き継ぎ](i06-i07-implementation-ready.md)：provider adapters・配信/復旧契約・I08/I09への境界。
+10. [I08/I09実装開始契約](i08-i09-implementation-ready.md)：SDK/clientdの実装順序、暗号化journalと署名検証、challengerの証拠・送信・復旧、運用受入。
 
 新規Solanaインターフェースについては上記の仕様を正本とする。[従来の比較設計](production-parity.md)はEthereum版との対応表、[参照元記録](ethereum-reference.json)は観測事実である。参照元の実装詳細は固定commitを優先し、記事の説明から未実装機能を推測しない。仕様と固定コードの差が見つかったら差分を記録して修正し、無言で独自方式に変更しない。
 
@@ -104,11 +110,11 @@ tests/{fixtures,svm,e2e,faults}/
 deploy/                    # image digest、manifest、runbook
 ```
 
-この仕様の初版作成時点では設計書・契約schema・テストベクトル・タスクのみを作成した。現在の実装・検証範囲は [I01](evidence/I01.md)、[I02](evidence/I02.md)、[I03](evidence/I03.md)、[I04](evidence/I04.md)、[I05](evidence/I05.md) に記録する。runtimeディレクトリの存在だけで実装済みとはしない。
+この仕様の初版作成時点では設計書・契約schema・テストベクトル・タスクのみを作成した。現在の実装・検証範囲は [I01](evidence/I01.md)、[I02](evidence/I02.md)、[I03](evidence/I03.md)、[I04](evidence/I04.md)、[I05](evidence/I05.md)、[I06](evidence/I06.md)、[I07](evidence/I07.md) に記録する。runtimeディレクトリの存在だけで実装済みとはしない。
 
 ## 5. 実装開始と本番公開の境界
 
-実装担当はI06 direct・I07 proxyのprovider adaptersから再開する。I01〜I05のlocal実装・検証は完了しており、比較研究やbackend選択を最初からやり直す必要はない。G1は全Vault/transportのCU・transactionサイズと統合動作、G2は精算・障害回復、G3は実provider、G4はsetup・鍵・監査・復旧演習を確認する。I04の実upload・署名・SBF・replayとI05の実Postgres・独立signer・新署名によるSBF出金はlocalで検証済みだが、実provider・wallet/clusterと全機能E2Eの検証は別途必要。
+実装担当はI08 SDK/clientd・I09 challenger/運用から再開する。I01〜I07のlocal実装・検証は完了しており、比較研究やbackend選択を最初からやり直す必要はない。G1は全Vault/transportのCU・transactionサイズと統合動作、G2は精算・障害回復、G3は実provider、G4はsetup・鍵・監査・復旧演習を確認する。I04の実upload・署名・SBF・replayとI05の実Postgres・独立signer・新署名によるSBF出金はlocalで検証済みだが、実provider・wallet/clusterと全機能E2Eの検証は別途必要。
 
 追加tree証明方式は採用済み。I02-Bのwire/verifier/bindingはI03へ統合済み。ソースアーカイブの権限差によるprofile不一致は修正し、再生成・実SBF再実行とチェックアウト条件を変えた回帰検査を[I02-B完了記録](evidence/I02B.md)に残した。新しい回路/VKを既存poolへ上書きしてはいけない。実装証拠が揃う前のmainnet配備は作業範囲に含まれない。
 
@@ -121,6 +127,7 @@ deploy/                    # image digest、manifest、runbook
 - **I03で完成したもの**：全Vault命令・PDA署名CPI・ATA/PDA作成・status/N/Pending管理・イベント・IDL・同一EVM traceの差分試験。Anchor/SDK/Agaveをlockし実SBFで検証済み。公開鍵はADR-0002に従い役割別に固定する。
 - **I04で完成したもの（local検証）**：buffer作成/追記/封印/中止、wallet送信とblockhash/競合/復旧、finalized indexer、最終account listと全送信単位のCU/bytes検証。
 - **I05で完成したもの（local検証）**：Postgres migrationと専用writer connection、quote/proofの厳密結合、AUTH/CLEARANCE永久排他、整数予算・dispatch契約、署名明細、独立signer journal、process停止・復旧・ledger restore拒否、実Vaultへ接続した新署名の出金。I06/I07はこの共通台帳と署名サービスを利用する。
+- **I06/I07で完成したもの（local検証）**：directの初回限定key配送・停止/usage/delete checkpoint・未知発行回収、4推論APIとcount_tokens・SSE・整数metering・同一台帳の予算/attempt/署名receipt・unknown waiver。実providerと本番egress/failoverは未検証。詳しくは[I06/I07引き継ぎ](i06-i07-implementation-ready.md)。
 - **公開前に残るもの**：target cluster/walletでの全命令100万CU/transaction1232 bytes再確認、証明生成待ち時間と競合耐性、全機能E2E、実provider、3回路のproduction setup、第三者review。環境値/秘密の未発行はlocal実装の開始を止めない。
 
 採用方式の性能不足が本番account処理の追加後に判明した場合は、検査を省かず計測結果をI02へ戻す。今回はrelease目標を変更していない。既知entropyのテスト鍵をproductionに使わない。

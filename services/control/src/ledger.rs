@@ -89,6 +89,9 @@ pub struct SessionRecord {
     pub max_concurrency: i16,
     pub activated_at: Option<i64>,
     pub expires_at: Option<i64>,
+    /// Provider management identifier only; never a usable runtime key.
+    pub provider_key_ref: Option<String>,
+    pub writer_epoch: i64,
 }
 #[derive(Clone, Debug)]
 pub struct NewOperation {
@@ -111,6 +114,9 @@ pub struct OperationRecord {
     pub charged_nano: u128,
     pub observed_cost_nano: Option<u128>,
     pub operator_loss_nano: u128,
+    pub provider_request_id: Option<String>,
+    pub dispatched_at: Option<i64>,
+    pub reconcile_deadline: Option<i64>,
 }
 #[derive(Clone, Debug)]
 pub struct ReceiptRecord {
@@ -154,6 +160,21 @@ pub struct DispatchAttempt {
     pub operation_id: Option<Uuid>,
     pub owner_instance: Uuid,
     pub writer_epoch: i64,
+}
+/// Read-only ownership inventory. Neither a stale epoch nor this record authorizes
+/// retry, reassignment, or marking an external sender as stopped.
+#[derive(Clone, Debug)]
+pub struct DispatchAttemptRecord {
+    pub attempt: DispatchAttempt,
+    pub kind: String,
+    pub send_claimed: bool,
+    pub finished: bool,
+    pub fenced: bool,
+}
+impl DispatchAttemptRecord {
+    pub fn quiesced(&self) -> bool {
+        self.finished || self.fenced
+    }
 }
 /// Evidence must be obtained by the supervisor only after actual process exit or egress fencing.
 /// A timer, lease expiry, or database flag is not evidence of a stopped sender.
@@ -737,6 +758,160 @@ impl Ledger {
         tx.commit().await?;
         Ok(changed)
     }
+    /// The original creation response can no longer be delivered after writer
+    /// restart. Preserve ownership and uncertainty; never infer nonissuance or
+    /// fencing from the old epoch. An existing key reference is retained.
+    pub async fn recover_abandoned_direct(&self, id: Uuid) -> Result<bool> {
+        let mut c = self.inner.client.lock().await;
+        let tx = c.transaction().await?;
+        self.lock_pool(&tx).await?;
+        let s = locked_session(&tx, self.inner.pool, id).await?;
+        let changed = if s.mode != "proxy" && s.state == "ISSUING" {
+            tx.execute("UPDATE sessions s SET state='ISSUANCE_UNKNOWN',close_requested=true,updated_at=clock_timestamp() WHERE s.pool=$1::bytea AND s.request_id=$2 AND EXISTS (SELECT 1 FROM dispatch_attempts d WHERE d.pool=s.pool AND d.request_id=s.request_id AND d.kind='DIRECT_ISSUANCE' AND d.writer_epoch<>$3)", &[&&self.inner.pool[..], &id, &self.inner.epoch]).await? != 0
+        } else {
+            false
+        };
+        tx.commit().await?;
+        Ok(changed)
+    }
+    /// Append-only, prompt-free recovery snapshots in the existing durable outbox.
+    /// In particular, preserve final usage before deleting a direct provider key.
+    pub async fn direct_checkpoint(&self, id: Uuid) -> Result<Option<Value>> {
+        self.check_health()?;
+        let c = self.inner.client.lock().await;
+        Ok(c.query_opt("SELECT metadata FROM outbox WHERE pool=$1::bytea AND event_type='DIRECT_RECOVERY_CHECKPOINT' AND metadata->'intent'->>'request_id'=$2 ORDER BY id DESC LIMIT 1", &[&&self.inner.pool[..], &id.to_string()]).await?.map(|r| r.get(0)))
+    }
+    pub async fn save_direct_checkpoint(
+        &self,
+        id: Uuid,
+        expected: Option<&Value>,
+        next: &Value,
+    ) -> Result<()> {
+        let mut c = self.inner.client.lock().await;
+        let tx = c.transaction().await?;
+        self.lock_pool(&tx).await?;
+        let s = locked_session(&tx, self.inner.pool, id).await?;
+        if s.mode == "proxy" || matches!(s.state.as_str(), "SIGN_PENDING" | "SETTLED") {
+            return Err(LedgerError::Conflict("direct_checkpoint_unavailable"));
+        }
+        validate_direct_checkpoint(&s, next)?;
+        let previous: Option<Value> = tx.query_opt("SELECT metadata FROM outbox WHERE pool=$1::bytea AND event_type='DIRECT_RECOVERY_CHECKPOINT' AND metadata->'intent'->>'request_id'=$2 ORDER BY id DESC LIMIT 1", &[&&self.inner.pool[..], &id.to_string()]).await?.map(|r| r.get(0));
+        if previous.as_ref() != expected {
+            return Err(LedgerError::Conflict("direct_checkpoint_conflict"));
+        }
+        if previous.is_none()
+            && (s.state != "RESERVED"
+                || !next["reference"].is_null()
+                || !next["disabled_at"].is_null()
+                || !next["observation"].is_null()
+                || !next["usage"].is_null()
+                || next["deleted"] != false)
+        {
+            return Err(LedgerError::Invalid("direct_intent_must_precede_issuance"));
+        }
+        if let Some(old) = &previous {
+            if old["intent"] != next["intent"]
+                || (old["deleted"] == true && next["deleted"] != true)
+                || ["reference", "disabled_at", "usage"]
+                    .iter()
+                    .any(|field| !old[*field].is_null() && old[*field] != next[*field])
+            {
+                return Err(LedgerError::Conflict("direct_checkpoint_immutable"));
+            }
+            if !old["observation"].is_null() {
+                let old_observation = &old["observation"];
+                let observation = &next["observation"];
+                if observation.is_null()
+                    || observation["observed_at"].as_u64() < old_observation["observed_at"].as_u64()
+                    || (!old["usage"].is_null() && observation != old_observation)
+                {
+                    return Err(LedgerError::Conflict("direct_checkpoint_immutable"));
+                }
+                let previous: u128 = old_observation["usage"]["observed_nano"]
+                    .as_str()
+                    .ok_or(LedgerError::Invalid("invalid_direct_checkpoint"))?
+                    .parse()
+                    .map_err(|_| LedgerError::Invalid("invalid_direct_checkpoint"))?;
+                let current: u128 = observation["usage"]["observed_nano"]
+                    .as_str()
+                    .ok_or(LedgerError::Invalid("invalid_direct_checkpoint"))?
+                    .parse()
+                    .map_err(|_| LedgerError::Invalid("invalid_direct_checkpoint"))?;
+                if current < previous {
+                    return Err(LedgerError::Conflict("direct_usage_regressed"));
+                }
+            }
+            if old == next {
+                tx.commit().await?;
+                return Ok(());
+            }
+        }
+        let key = format!("direct-checkpoint:{id}:{}", Uuid::new_v4());
+        tx.execute("INSERT INTO outbox(pool,dedup_key,event_type,metadata) VALUES($1::bytea,$2,'DIRECT_RECOVERY_CHECKPOINT',$3)", &[&&self.inner.pool[..], &key, &next]).await?;
+        tx.commit().await?;
+        Ok(())
+    }
+    /// Management references are safe to retain; plaintext runtime keys are not.
+    pub async fn provider_key_ref(&self, id: Uuid) -> Result<Option<String>> {
+        Ok(self.session(id).await?.provider_key_ref)
+    }
+    pub async fn dispatch_attempts_for_session(
+        &self,
+        id: Uuid,
+    ) -> Result<Vec<DispatchAttemptRecord>> {
+        self.check_health()?;
+        let c = self.inner.client.lock().await;
+        c.query("SELECT attempt_id,request_id,operation_id,owner_instance,writer_epoch,kind,send_claimed_at IS NOT NULL AS send_claimed,finished_at IS NOT NULL AS finished,fenced_at IS NOT NULL AS fenced FROM dispatch_attempts WHERE pool=$1::bytea AND request_id=$2 ORDER BY committed_at,attempt_id", &[&&self.inner.pool[..], &id]).await?.into_iter().map(|r| {
+            Ok(DispatchAttemptRecord {
+                attempt: DispatchAttempt {
+                    attempt_id: r.get("attempt_id"),
+                    request_id: r.get("request_id"),
+                    operation_id: r.get("operation_id"),
+                    owner_instance: r.get("owner_instance"),
+                    writer_epoch: r.get("writer_epoch"),
+                },
+                kind: r.get("kind"),
+                send_claimed: r.get("send_claimed"),
+                finished: r.get("finished"),
+                fenced: r.get("fenced"),
+            })
+        }).collect()
+    }
+    /// Persist the provider's lookup reference as soon as it is observed. It may
+    /// only describe this already-dispatched operation and can never be replaced.
+    pub async fn record_provider_request(
+        &self,
+        id: Uuid,
+        operation_id: Uuid,
+        provider_request_id: &str,
+    ) -> Result<()> {
+        if provider_request_id.is_empty()
+            || provider_request_id.len() > 256
+            || provider_request_id.chars().any(char::is_control)
+        {
+            return Err(LedgerError::Invalid("invalid_provider_request_id"));
+        }
+        let mut c = self.inner.client.lock().await;
+        let tx = c.transaction().await?;
+        self.lock_pool(&tx).await?;
+        locked_session(&tx, self.inner.pool, id).await?;
+        let o = locked_operation(&tx, self.inner.pool, id, operation_id).await?;
+        if !matches!(
+            o.state.as_str(),
+            "DISPATCHING" | "STREAMING" | "USAGE_UNKNOWN"
+        ) {
+            return Err(LedgerError::Conflict("operation_not_dispatched"));
+        }
+        if o.provider_request_id
+            .as_deref()
+            .is_some_and(|saved| saved != provider_request_id)
+        {
+            return Err(LedgerError::Conflict("provider_request_id_conflict"));
+        }
+        tx.execute("UPDATE operations SET provider_request_id=$4 WHERE pool=$1::bytea AND request_id=$2 AND operation_id=$3", &[&&self.inner.pool[..], &id, &operation_id, &provider_request_id]).await?;
+        tx.commit().await?;
+        Ok(())
+    }
     /// Read-only recovery inventory; returning a row never grants permission to resend.
     pub async fn operations_for_session(&self, id: Uuid) -> Result<Vec<OperationRecord>> {
         self.check_health()?;
@@ -791,11 +966,23 @@ impl Ledger {
         if !matches!(
             (s.provider.as_str(), n.endpoint.as_str()),
             ("anthropic", "/v1/messages")
+                | ("anthropic", "/v1/messages/count_tokens")
                 | ("openai", "/v1/chat/completions")
                 | ("openai", "/v1/responses")
                 | ("openrouter", "/v1/chat/completions")
         ) {
             return Err(LedgerError::Invalid("endpoint_not_allowed"));
+        }
+        // Count estimates are free to the user, including any upstream cost.
+        // The per-session bound survives process restarts and concurrent callers.
+        if n.endpoint == "/v1/messages/count_tokens" {
+            if n.reservation_nano != 0 {
+                return Err(LedgerError::Invalid("count_tokens_must_be_free"));
+            }
+            let count: i64 = tx.query_one("SELECT count(*) FROM operations WHERE pool=$1 AND request_id=$2 AND endpoint='/v1/messages/count_tokens'", &[&&self.inner.pool[..], &n.request_id]).await?.get(0);
+            if count >= 16 {
+                return Err(LedgerError::Conflict("count_tokens_rate_limit"));
+            }
         }
         if s.active_operations >= s.max_concurrency {
             return Err(LedgerError::Conflict("concurrency_limit"));
@@ -1073,6 +1260,11 @@ impl Ledger {
         let tx = c.transaction().await?;
         self.lock_pool(&tx).await?;
         locked_session(&tx, self.inner.pool, attempt.request_id).await?;
+        // An inventory row from an old writer is not proof that its sender has
+        // stopped. A replacement must use independently verified fence evidence.
+        if attempt.writer_epoch != self.inner.epoch {
+            return Err(LedgerError::Conflict("dispatch_owner_fenced"));
+        }
         let changed=tx.execute("UPDATE dispatch_attempts SET finished_at=clock_timestamp(),finish_evidence_digest=$5::bytea WHERE pool=$1 AND attempt_id=$2 AND owner_instance=$3 AND writer_epoch=$4 AND request_id=$6 AND operation_id IS NOT DISTINCT FROM $7 AND finished_at IS NULL AND fenced_at IS NULL",&[&&self.inner.pool[..],&attempt.attempt_id,&attempt.owner_instance,&attempt.writer_epoch,&&evidence[..],&attempt.request_id,&attempt.operation_id]).await?;
         if changed != 1 {
             return Err(LedgerError::Conflict("attempt_finished_or_fenced"));
@@ -1426,6 +1618,75 @@ fn amount(row: &Row, key: &str) -> Result<u128> {
         .parse()
         .map_err(|_| LedgerError::Invalid("invalid_stored_amount"))
 }
+/// The recovery journal only admits normalized, bounded accounting fields. It
+/// cannot become an accidental storage route for provider responses or keys.
+fn validate_direct_checkpoint(s: &SessionRecord, checkpoint: &Value) -> Result<()> {
+    let invalid = || LedgerError::Invalid("invalid_direct_checkpoint");
+    // deny_unknown_fields on every nested type excludes payloads and plaintext keys.
+    let checkpoint: crate::direct::Checkpoint =
+        serde_json::from_value(checkpoint.clone()).map_err(|_| invalid())?;
+    checkpoint.intent.validate().map_err(|_| invalid())?;
+    if checkpoint.intent.request_id != s.request_id || checkpoint.intent.cap_micro != s.cap_micro {
+        return Err(invalid());
+    }
+    if let Some(reference) = &checkpoint.reference {
+        if reference.key_ref.is_empty()
+            || reference.key_ref.len() > 256
+            || reference.key_ref.chars().any(char::is_control)
+            || reference.station_id.as_ref().is_some_and(|station| {
+                station.is_empty() || station.len() > 128 || station.chars().any(char::is_control)
+            })
+        {
+            return Err(invalid());
+        }
+        if s.provider_key_ref
+            .as_ref()
+            .is_some_and(|saved| saved != &reference.key_ref)
+        {
+            return Err(LedgerError::Conflict("direct_key_reference_conflict"));
+        }
+    }
+    if checkpoint.disabled_at.is_some() && checkpoint.reference.is_none() {
+        return Err(invalid());
+    }
+    if checkpoint.deleted && checkpoint.usage.is_none() {
+        return Err(invalid());
+    }
+    for usage in checkpoint.usage.iter().chain(
+        checkpoint
+            .observation
+            .iter()
+            .map(|observation| &observation.usage),
+    ) {
+        if checkpoint.disabled_at.is_none()
+            || checkpoint
+                .reference
+                .as_ref()
+                .is_none_or(|reference| reference.key_ref != usage.key_ref)
+        {
+            return Err(invalid());
+        }
+        let normalized = crate::quote::direct_charge(
+            &[&usage.provider_reported_usd],
+            zkapi_solana_types::MicroUsdc::new(s.cap_micro).map_err(|_| invalid())?,
+        )
+        .map_err(|_| invalid())?;
+        if normalized.normalized_usd != usage.provider_reported_usd
+            || normalized.observed_nano.to_string() != usage.observed_nano
+        {
+            return Err(invalid());
+        }
+        if !matches!(
+            (s.provider.as_str(), usage.evidence_kind.as_str()),
+            ("oa", "OA_SIGNED_RECEIPT") | ("openrouter", "OPENROUTER_USAGE")
+        ) {
+            return Err(invalid());
+        }
+        crate::wire::hash(&usage.evidence_digest).map_err(|_| invalid())?;
+    }
+    Ok(())
+}
+
 fn session_row(r: &Row) -> Result<SessionRecord> {
     Ok(SessionRecord {
         request_id: r.get("request_id"),
@@ -1452,6 +1713,8 @@ fn session_row(r: &Row) -> Result<SessionRecord> {
         max_concurrency: r.get("max_concurrency"),
         activated_at: r.get("activated_at"),
         expires_at: r.get("expires_at"),
+        provider_key_ref: r.get("provider_key_ref"),
+        writer_epoch: r.get("writer_epoch"),
     })
 }
 fn operation_row(r: &Row) -> Result<OperationRecord> {
@@ -1472,6 +1735,9 @@ fn operation_row(r: &Row) -> Result<OperationRecord> {
             })
             .transpose()?,
         operator_loss_nano: amount(r, "loss_text")?,
+        provider_request_id: r.get("provider_request_id"),
+        dispatched_at: r.get("dispatched_at"),
+        reconcile_deadline: r.get("reconcile_deadline"),
     })
 }
 fn receipt_row(r: &Row) -> Result<ReceiptRecord> {

@@ -206,6 +206,7 @@ fn local_config(dir: &Path, primary: String, secondary: String, indexer: String)
         quote_seed_file: dir.join("quote.seed"),
         receipt_seed_file: dir.join("receipt.seed"),
         enable_local_adapter: true,
+        providers: Default::default(),
         tariffs: vec![tariff],
     }
 }

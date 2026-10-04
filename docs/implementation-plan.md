@@ -1,6 +1,10 @@
 # 実装タスクと受入条件
 
-[I01](evidence/I01.md)・[I02](evidence/I02B.md)・[I03](evidence/I03.md)・[I04](evidence/I04.md)・[I05](evidence/I05.md)のlocal実装・検証を完了。**次はI06 direct・I07 proxyのprovider adapters**。I04の実buffer upload・SDK署名v0・finalized replay/snapshotに、I05のPostgres・独立signer・復旧を接続した。I05は26テスト、実Vault SBF 10取引、最大422,429 CU / 1,091 bytesと新署名による出金を検証済み。実provider・実wallet・公開cluster/RPC・hosted CI・G1〜G4公開gateは未完了。署名公開鍵のビルド固定は[ADR-0002](adr/0002-build-validated-signing-keys.md)を参照。各完了時にevidenceへcommands/artifact/限界を残す。
+2026-10-04：**I08/I09は初期実装のレビュー・修正を完了し、継続実装へ着手可**。[レビュー記録](evidence/I08-I09-review.md)、[I08](evidence/I08.md)、[I09](evidence/I09.md)に最新の回帰と新payload実Vault SBF/v0-buffer検証を記録した。I08 D〜F、Go本体、I09常駐RPC/broadcaster復旧・C〜E等は未完了。タスク全体の完了やI10への完了引継ぎとはしない。
+
+[I01](evidence/I01.md)・[I02](evidence/I02B.md)・[I03](evidence/I03.md)・[I04](evidence/I04.md)・[I05](evidence/I05.md)のlocal実装・検証を完了。[I06](evidence/I06.md)・[I07](evidence/I07.md)もlocal実装・検証を完了。**I08 SDK/clientd・I09 challenger/運用の初期実装を継続中**。I04の実buffer upload・SDK署名v0・finalized replay/snapshotに、I05のPostgres・独立signer・復旧を接続した。I05は26テスト、実Vault SBF 10取引、最大422,429 CU / 1,091 bytesと新署名による出金を検証済み。実provider・実wallet・公開cluster/RPC・hosted CI・G1〜G4公開gateは未完了。署名公開鍵のビルド固定は[ADR-0002](adr/0002-build-validated-signing-keys.md)を参照。各完了時にevidenceへcommands/artifact/限界を残す。
+
+I06/I07はレビューで7件を修正し、最新のlocal統合59テスト、実Vault SBF 10取引、SDK既存26テストが成功。**[I08/I09実装開始契約](i08-i09-implementation-ready.md)に従って着手Ready**。
 
 ## 1. タスク
 
@@ -11,10 +15,10 @@
 | I03 | Anchor Vault / USDC | I02-B（scaffold/IDLは並行可） | 全命令、PDA/ATA/authorityチェック、元Vaultとの差分シナリオ、転送失敗rollback、イベント、IDL。P01/P02/P03/P16〜P21 |
 | I04 | buffer・SDK transaction・indexer | I03 | expected_digest署名結合付きlayout 2/v0 buffer経路（v1は任意追加）、wallet対応、finalized path、snapshot再構築、blockhash切れ/重複送信/競合試験。P22/P28 |
 | I05 | Postgres ledger・quote・signer（local完了：[証拠](evidence/I05.md)） | I02-B,I03,I04 | [実装引き継ぎ](i05-implementation-ready.md)のA〜F。schema適用、N/clearance排他、quote/proof binding、row lock予算、署名対象一意、schema migration・dispatch attempt fencing・署名明細試験。P05〜P10/P14/P15 |
-| I06 | OA-org / OpenRouter direct adapters | I05,I04 | 元のissuer/verifier検証、key発行/disable/usage/delete、unknown recovery、実usage精算。P11〜P13 |
-| I07 | proxy / 3 provider adapters | I05,I04 | OpenAI Chat/Responses、Anthropic Messages、OpenRouter Chat、SSE、tool call、metering、cap、UNKNOWN waiver。P32〜P36 |
-| I08 | SDK/WASM・Go clientd | I04,I05 | 秘密storage、proof worker、note journal、local API、mode選択、expiry表示、Tor、native配布。P04/P23〜P27 |
-| I09 | challenger・ops・dashboard | I03,I04,I05 | 過去RP/proof+現在zero pathのtree proof、期限再送、signer/DB復旧、secret redaction、監視、ダッシュボード。P29〜P31 |
+| I06 | OA-org / OpenRouter direct adapters（local完了：[証拠](evidence/I06.md)） | I05,I04 | 元のissuer/verifier検証、key発行/disable/usage/delete、unknown recovery、実usage精算。P11〜P13 |
+| I07 | proxy / 3 provider adapters（local完了：[証拠](evidence/I07.md)） | I05,I04 | OpenAI Chat/Responses、Anthropic Messages、OpenRouter Chat、SSE、tool call、metering、cap、UNKNOWN waiver。P32〜P36 |
+| I08 | SDK/WASM・Go clientd（着手中：[初期証拠](evidence/I08.md)） | I04,I05,I06,I07 | 秘密storage、proof worker、note journal、local API、mode選択、expiry表示、Tor、native配布。P04/P23〜P27 |
+| I09 | challenger・ops・dashboard（着手中：[初期証拠](evidence/I09.md)） | I03,I04,I05（運用統合はI06,I07） | 過去RP/proof+現在zero pathのtree proof、期限再送、signer/DB復旧、secret redaction、監視、ダッシュボード。P29〜P31 |
 | I10 | E2E・負荷・障害注入 | I06,I07,I08,I09 | G1全体/G2、全modeで入金→利用→精算→出金、実providerでG3。二重署名・二重課金・cap超過転嫁なし |
 | I11 | setup・review・release | I10 | ceremony/transcript、第三者review、実mint/manifest、multisig、restore演習、G4。配布物再現build |
 | I12 | mainnet配備手順の実行 | I11 | 別途配備作業として実アドレスとreceiptを記録。初回の設計作業では実行しない |
@@ -71,6 +75,12 @@ I03の最初にAnchor/SDK/Agaveの依存を解決しexact version/Cargo.lockを�
 
 P01〜P31はproduction-parity.mdの定義を継承。P32〜P36も初回productionの必須であり、後回しの候補ではない。stageの順序で最終要件を削らない。
 
-## 4. 実装担当へ渡す開始指示
+## 4. I05完了時の開始指示（履歴）
 
 > docs/implementation-ready.md、ADR-0001/0002、evidence/I04.md・I05.md、ledger/API仕様とi05-implementation-ready.mdを読み、I06 direct・I07 proxyのprovider adaptersへ進む。I04のbuffer・SDK transaction・indexerとI05のPostgres ledger・quote・signerを再実装せず利用する。I05のlocal test adapterを実provider対応と扱わず、直接接続の発行/失効/最終usage、proxyの推論/SSE/usage正規化を個別に検証する。N/clearance排他、整数予算予約、idempotency、sign-once settlement、送信owner停止と未知usageの再送禁止を維持する。元回路/Poseidonと固定profileを維持する。G1〜G4を未検証のまま合格にしない。購入・provider契約・mainnet配備は開始指示に含めない。
+
+## 5. I06/I07完了後の再開位置
+
+[I06/I07引き継ぎ](i06-i07-implementation-ready.md)と[I08/I09実装開始契約](i08-i09-implementation-ready.md)を読み、I08とI09へ進む。上のI06/I07開始指示は当時の受入契約として保持する。local provider HTTP fixtureの成功を実provider/G3合格としない。共通ledger・署名journal・checkpoint・native adapterを再利用する。
+
+I08はmanifest/prover bridge → 暗号化journal/排他 → 制御API/署名receipt検証 → browser/wallet → Go clientd → Tor/配布の順。I09は独立read modelとPending監視 → 過去RP＋現在treeのchallenge/永続送信 → dispatcher分離/fencing → DB/signer復旧 → dashboard/監視の順。I08の基盤とI09のchallengerは並行着手できる。具体的な再利用path・失敗条件・受入試験は上記契約に固定し、実装完了はI08.md/I09.mdの新規runtime証拠で判定する。

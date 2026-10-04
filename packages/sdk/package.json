@@ -6,7 +6,12 @@
   "exports": {
     "./encoding": "./src/encoding.ts",
     "./layout2": "./src/layout2.ts",
-    "./transport": "./src/transport.ts"
+    "./transport": "./src/transport.ts",
+    "./trust": "./src/trust.ts",
+    "./journal": "./src/journal.ts",
+    "./journal-node": "./src/journal-node.ts",
+    "./control": "./src/control.ts",
+    "./control-node": "./src/control-node.ts"
   },
   "dependencies": {
     "@solana/web3.js": "1.98.4",

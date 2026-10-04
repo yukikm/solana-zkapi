@@ -125,3 +125,7 @@ The signer pins `(pool, N)`, AUTH/CLEARANCE kind, request ID, role key, frozen t
 Any journal target missing or changed in a restored ledger, any signed ledger target missing from the journal, unknown schema, invalid receipt total, or unfenced dispatch stops signing. Preserve both stores, stop new admission, establish the primary/writer/dispatcher identities, and reconcile with retained evidence. Do not repair this by deleting reservations, rewriting settlement randomness, clearing attempt ownership, replaying inference, swapping signing keys, or manufacturing stop evidence. A partial/tampered journal, a missing header, or an empty frame also fails closed and needs explicit operator reconciliation; it is not silently truncated.
 
 Fault injection is test-only: `ZKAPI_LOCAL_CRASH_AT=reserved|sign_pending|signature|settled` exits controld at the named durable boundary. Signerd's `--crash-at intent|signature|synced` exercises its journal boundaries. Leave these unset for ordinary local use. Local recovery tests do not establish production RPO/RTO, hosted CI completion, provider acceptance, or release readiness.
+
+I06/I07 direct and proxy HTTP adapters are described in [PROVIDERS.md](PROVIDERS.md).
+Run `bash scripts/run_i06_i07.sh` from the repository root for the combined local
+acceptance suite; actual provider authorization/usage remains a separate G3 gate.
