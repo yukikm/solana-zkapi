@@ -1,0 +1,9 @@
+{
+  "schema": 1,
+  "observed_at_utc": "2026-10-05T03:05:24.871Z",
+  "http_status": 200,
+  "generation_identity_matched": true,
+  "inference_replays": 0,
+  "scope": "Authenticated read-only metadata lookup for the saved provider request; raw body is private",
+  "primary_source": "https://openrouter.ai/docs/api/api-reference/generations/get-request-&-usage-metadata-for-a-generation"
+}

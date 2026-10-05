@@ -2,7 +2,7 @@
  * A financial attempt stays unresolved until its exact signed receipt is finalized. */
 import { PublicKey, VersionedTransaction, type TransactionInstruction } from '@solana/web3.js';
 import { EncryptedJournal, type JournalRecord } from './journal.ts';
-import type { NoteJournal, PrivateState, StateSignature } from './control.ts';
+import type { NoteJournal, PendingSession, PrivateState, StateSignature } from './control.ts';
 import { NoteProver, type NoteWitness, type PublicNote } from './prover.ts';
 import { parseField, parseMicroUsdc } from './encoding.ts';
 import { encodeLayout2Args, fromHex } from './layout2.ts';
@@ -21,6 +21,9 @@ export interface WalletOperation {
 export interface WalletJournal {
   status:'unfunded'|'active'|'pending_escape'|'closed';
   clearance?:{nullifier:string;phase:'requested'|'verified';signature?:StateSignature};
+  /** Exact uncertain AUTH retained after a signed permanent clearance fences its N.
+   * This is not a settlement and does not change the private balance/state. */
+  clearedAuthorization?:{pending:PendingSession;previous:PrivateState};
   operation?:WalletOperation;history:WalletOperation[];
 }
 export interface WalletOptions {
@@ -70,6 +73,42 @@ export class WalletClient {
         r.value.wallet!.clearance??={nullifier,phase:'requested'};
       }
       r=await this.save(id,r);await this.build(id,r);
+    });
+  }
+  /** Resolve an unacknowledged AUTH only with the server's signed permanent N
+   * clearance. A missing session or expired quote is never sufficient. This
+   * sends neither AUTH nor inference/transactions; use beginWithdrawal after it.
+   * Lost clearance responses can retry this same method after journal reopen. */
+  async reconcileUnacceptedAuthorization(id:string):Promise<void>{
+    await this.o.journal.withNoteLock(id,async()=>{
+      let r=await this.record(id);const w=r.value.wallet!;
+      const p=w.clearedAuthorization?.pending??r.value.pending;
+      requireTrue(p?.phase==='send_unknown'&&p.operations.length===0
+        &&p.providerKey===undefined&&p.serverState===undefined,'uncertain authorization without inference required');
+      const request=p.prepared.request,q=request.quote.body,m=this.o.manifest;
+      requireTrue(p.exactRequest===JSON.stringify(request),'saved authorization bytes changed');
+      requireTrue(request.authorization.deployment_id===m.deployment_id&&request.authorization.pool===m.pool
+        &&q.deployment_id===m.deployment_id&&q.pool===m.pool&&request.authorization.mode===q.mode
+        &&q.control_api_origin===m.control_api_origin&&q.inference_api_origin===m.inference_api_origin,
+        'clearance authorization deployment mismatch');
+      requireTrue(Array.isArray(request.public_inputs)&&request.public_inputs.length===12,'clearance request public inputs');
+      request.public_inputs.forEach(parseField);
+      const {nullifier}=await this.o.prover.inspect(r.value.witness!,r.value.state);parseField(nullifier);
+      requireTrue(request.public_inputs[8]===nullifier,'clearance authorization nullifier mismatch');
+      requireTrue(!w.clearance||w.clearance.nullifier===nullifier,'clearance state mismatch');
+      if(w.clearedAuthorization){
+        requireTrue(r.value.pending===null&&w.clearance?.phase==='verified'&&w.clearance.signature,
+          'invalid cleared authorization');
+        await this.o.prover.verifyClearance(nullifier,w.clearance.signature);return;
+      }
+      requireTrue(w.status==='active'&&!w.operation,'note unavailable for authorization clearance');
+      if(!w.clearance){w.clearance={nullifier,phase:'requested'};r=await this.save(id,r);}
+      r=await this.clearance(id,r);
+      // The durable signature is the fence against any delayed/racing AUTH.
+      // Archive and release the pending slot in one encrypted CAS, retaining
+      // every original request/credential byte and the unchanged prior state.
+      r.value.wallet!.clearedAuthorization={pending:structuredClone(r.value.pending!),previous:structuredClone(r.value.state)};
+      r.value.pending=null;await this.save(id,r);
     });
   }
   /** Explicit user selection when clearance is unavailable. Any signed upload

@@ -7,8 +7,14 @@ to empty, so old I05 fixture configurations remain valid. Enabling the synthetic
 
 The current Vault keys/setup, listener, PostgreSQL transport and process layout
 remain a **local acceptance profile**, guarded by `local_test_only` and loopback.
-Live provider permissions/usage, external egress fencing, production secret
-management, public RPC/wallet and release gates remain separate acceptance work.
+The explicit I10 devnet overlay can enable fixed real-provider egress only after
+manifest/genesis/pool/build validation, a matching connected database deployment
+and manifest identity, and a dedicated read-only Unix PostgreSQL role. It does
+not promote the known test setup to production. Live provider permissions/usage,
+external egress fencing, production secret management, wallet UI and release
+gates remain separate acceptance work. See [provider preparation](../../docs/provider-acceptance.md)
+for `.env` credentials, the approved 10 USDC campaign, exact model/price pins,
+and the no-replay reservation journal.
 The provider adapter implementation is exercised with HTTP fixtures, not a claim
 that those fixtures are provider attestations.
 
@@ -109,9 +115,11 @@ receipts follow its issuer's retirement lifecycle.
 Proxy unknown usage is waived only during drain after the owner returned or was
 independently fenced. Old-epoch unquiesced attempts stop admission and settlement;
 restart/timeout alone is never fencing. I09 must provide deployment-specific
-process/egress fencing. The local runtime suspends a provider after three unknown
-observations in that process; this is an in-memory admission circuit breaker,
-not a production monitoring service. Late provider evidence can be appended via
+process/egress fencing. The runtime derives the provider admission breaker from
+durable ledger observations, so restarting cannot clear it. Audited reset requires
+all of that provider's operations to be terminal, and applies to the running process.
+Production egress isolation and external alert delivery require separate acceptance.
+Late provider evidence can be appended via
 the existing ledger loss-receipt contract without changing settled charges.
 
 Run `bash scripts/run_i06_i07.sh` for disposable PostgreSQL, provider HTTP fixtures,

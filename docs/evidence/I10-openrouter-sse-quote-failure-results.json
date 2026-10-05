@@ -1,0 +1,17 @@
+{
+  "schema": 1,
+  "passed": false,
+  "scope": "sanitized SDK provider-case failure checkpoint; no replay or refund authority",
+  "case_id": "openrouter-proxy-sse",
+  "plan_sha256": "50f3f10040671f27ecd2ff59db3d3d6474a58de67bb0cf38e7a2cd41d7577167",
+  "diagnostic": {
+    "schema": 1,
+    "stage": "quote",
+    "elapsed_ms": 12119,
+    "control_http_status": 503,
+    "inference": null,
+    "settlement": "not_started",
+    "inference_replays": 0
+  },
+  "full_g3_passed": false
+}

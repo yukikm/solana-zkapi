@@ -2800,10 +2800,10 @@
             "type": "object",
             "properties": {
               "admin": {
-                "$ref": "#/components/schemas/MultisigAuthority"
+                "$ref": "#/components/schemas/DeploymentAuthority"
               },
               "upgrade": {
-                "$ref": "#/components/schemas/MultisigAuthority"
+                "$ref": "#/components/schemas/DeploymentAuthority"
               }
             },
             "required": [
@@ -2857,6 +2857,46 @@
         ],
         "additionalProperties": false,
         "allOf": [
+          {
+            "if": {
+              "properties": {
+                "deployment_environment": {
+                  "const": "devnet"
+                },
+                "setup_profile": {
+                  "const": "test_only"
+                },
+                "genesis_hash": {
+                  "const": "EtWTRABZaYq6iMfeYKouRu166VU2xqa1wcaWoxPkrZBG"
+                }
+              },
+              "required": [
+                "deployment_environment",
+                "setup_profile",
+                "genesis_hash"
+              ]
+            },
+            "else": {
+              "properties": {
+                "authorities": {
+                  "type": "object",
+                  "properties": {
+                    "admin": {
+                      "$ref": "#/components/schemas/MultisigAuthority"
+                    },
+                    "upgrade": {
+                      "$ref": "#/components/schemas/MultisigAuthority"
+                    }
+                  },
+                  "required": [
+                    "admin",
+                    "upgrade"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
           {
             "if": {
               "properties": {
@@ -2978,6 +3018,36 @@
           "members"
         ],
         "additionalProperties": false
+      },
+      "DevnetTestSingleKeyAuthority": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": "string",
+            "const": "devnet_test_single_key"
+          },
+          "authority": {
+            "type": "string",
+            "pattern": "^[1-9A-HJ-NP-Za-km-z]{32,44}$",
+            "description": "Base58 decoding must yield exactly 32 bytes."
+          }
+        },
+        "required": [
+          "kind",
+          "authority"
+        ],
+        "additionalProperties": false,
+        "description": "Explicit devnet test-only custody. Deployment preflight must independently verify the finalized ProgramData upgrade authority; PoolConfig pins the admin authority."
+      },
+      "DeploymentAuthority": {
+        "oneOf": [
+          {
+            "$ref": "#/components/schemas/MultisigAuthority"
+          },
+          {
+            "$ref": "#/components/schemas/DevnetTestSingleKeyAuthority"
+          }
+        ]
       },
       "CatalogEntry": {
         "type": "object",

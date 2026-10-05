@@ -350,6 +350,40 @@ fn identical_block_is_idempotent_conflicting_duplicate_and_gap_halt() {
     );
 }
 #[test]
+fn long_history_keeps_financial_rollback_and_prior_duplicate_evidence() {
+    let mut index = initial();
+    for slot in 2..=4096 {
+        index.apply_block(&block(slot, 10, vec![])).unwrap();
+    }
+    let before = index.replay_state().unwrap();
+    let mut tree = Tree::new();
+    let deposit = ix(
+        "deposit",
+        payload(&mut tree, &note(0), Operation::Deposit, 0),
+        accounts(),
+    );
+    let mut successful = index.clone();
+    successful
+        .apply_block(&block(4097, 10, vec![deposit.clone()]))
+        .unwrap();
+    assert_eq!(successful.replay_state().unwrap().active.len(), 1);
+    assert_eq!(successful.replay_state().unwrap().sequence, 1);
+    let accepted = successful.replay_state().unwrap();
+    successful.apply_block(&block(1, 10, vec![init()])).unwrap();
+    successful.apply_block(&block(2048, 10, vec![])).unwrap();
+    assert_eq!(successful.replay_state().unwrap(), accepted);
+    let bad = ix("deposit", vec![], accounts());
+    assert!(index
+        .apply_block(&block(4097, 10, vec![deposit, bad]))
+        .is_err());
+    assert_eq!(index.replay_state().unwrap(), before);
+    assert!(index.root().is_err());
+    assert_eq!(
+        index.apply_block(&block(4098, 10, vec![])),
+        Err(Error::Unavailable)
+    );
+}
+#[test]
 fn emitted_sequence_and_fields_must_equal_full_instruction_replay() {
     let mut index = initial();
     let mut tree = Tree::new();

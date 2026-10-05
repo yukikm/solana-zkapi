@@ -2,6 +2,7 @@
 //! the pool writer advisory lock, or consumes/mutates another consumer's outbox.
 use crate::{bad, Evidence, Hash, Result, Trust};
 use tokio_postgres::{Client, IsolationLevel, NoTls};
+use zkapi_control::chain::DeploymentEnvironment;
 
 pub struct ReadRepository {
     client: Client,
@@ -27,12 +28,26 @@ pub(crate) fn local_config(dsn: &str) -> Result<tokio_postgres::Config> {
     }
     Ok(config)
 }
+pub(crate) fn trusted_config(dsn: &str, trust: &Trust) -> Result<tokio_postgres::Config> {
+    let config = local_config(dsn)?;
+    if trust.pool.deployment_environment == DeploymentEnvironment::Devnet
+        && (config.get_hosts().is_empty()
+            || !config
+                .get_hosts()
+                .iter()
+                .all(|host| matches!(host, tokio_postgres::config::Host::Unix(_)))
+            || !config.get_hostaddrs().is_empty())
+    {
+        return Err(bad("devnet Unix-socket DB transport"));
+    }
+    Ok(config)
+}
 impl ReadRepository {
     /// Use a dedicated DB role granted SELECT only on pools,
     /// nullifier_reservations and sessions. No TLS is suitable for local Unix
     /// sockets only; production transport configuration remains an I09 follow-up.
     pub async fn connect_local(dsn: &str, trust: Trust) -> Result<Self> {
-        let config = local_config(dsn)?;
+        let config = trusted_config(dsn, &trust)?;
         let (client, connection) = config.connect(NoTls).await?;
         tokio::spawn(async move {
             let _ = connection.await;

@@ -1,0 +1,16 @@
+{
+  "schema": 1,
+  "url": "https://openrouter.ai/docs/api/api-reference/api-keys/create-keys",
+  "retrieved_at": "2026-10-04T19:01:39Z",
+  "capture_kind": "reviewed factual summary, not a raw HTTP archive",
+  "facts": {
+    "method": "POST /api/v1/keys",
+    "authentication": "Management API key",
+    "limit": "Optional spending limit in USD.",
+    "limit_reset": "null means no periodic reset.",
+    "expires_at": "Optional UTC expiration timestamp.",
+    "include_byok_in_limit": "Controls inclusion of BYOK usage in the cap.",
+    "secret": "The new inference key is returned only by creation.",
+    "limitation": "Exact existing-adapter response compatibility is a live acceptance requirement; no key was issued during this review."
+  }
+}

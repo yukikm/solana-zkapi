@@ -1,0 +1,19 @@
+{
+  "schema": 1,
+  "url": "https://openrouter.ai/docs/cookbook/administration/usage-accounting",
+  "retrieved_at": "2026-10-04T19:01:39Z",
+  "capture_kind": "reviewed factual summary, not a raw HTTP archive",
+  "facts": {
+    "usage": "Automatically included in every response; last SSE message for streaming.",
+    "token_fields": [
+      "prompt_tokens",
+      "completion_tokens",
+      "total_tokens",
+      "prompt_tokens_details.cached_tokens"
+    ],
+    "cache_write_tokens": "Returned for models with explicit cache-write pricing.",
+    "cost": "usage.cost is the account charge; cost_details contains upstream inference cost.",
+    "deprecated_parameters": "usage.include and stream_options.include_usage no longer affect inclusion of usage.",
+    "scope": "No nonzero cache-write bucket is selected for GPT-4o mini. The adapter still rejects unknown billable fields."
+  }
+}

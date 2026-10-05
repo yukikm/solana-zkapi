@@ -5,7 +5,9 @@ use crate::{
     journal::{Attempt, Checkpoint, Journal, Outcome, Payload, Stage},
     read_model::ReadRepository,
     scan::{FinalizedView, Scanner},
-    sha, Hash, PreparedChallenge, Result, Trust,
+    sha,
+    shutdown::{interruptible, Shutdown, Signals},
+    Error, Hash, PreparedChallenge, Result, Trust,
 };
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
@@ -14,7 +16,7 @@ use std::{
     process::Stdio,
     time::{Duration, SystemTime, UNIX_EPOCH},
 };
-use tokio::io::AsyncWriteExt;
+use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use zkapi_indexer::{
     runtime::{ArchiveRpc, Config as IndexConfig},
     Position,
@@ -25,6 +27,9 @@ use zkapi_indexer::{
 pub struct Config {
     pub manifest: PathBuf,
     pub manifest_sha256: String,
+    /// A devnet manifest alone never switches the local default trust profile.
+    #[serde(default)]
+    pub devnet: Option<zkapi_control::config::DevnetConfig>,
     pub rpc_url: String,
     pub database_dsn_file: PathBuf,
     pub start_slot: u64,
@@ -95,8 +100,21 @@ pub fn now() -> u64 {
 impl Config {
     pub fn trust(&self) -> Result<Trust> {
         let manifest = serde_json::from_slice(&std::fs::read(&self.manifest)?)?;
-        let trust = Trust::from_pinned_manifest(&manifest, hash(&self.manifest_sha256)?)?;
+        let trust = if let Some(devnet) = &self.devnet {
+            Trust::from_pinned_devnet_manifest(&manifest, hash(&self.manifest_sha256)?, devnet)?
+        } else {
+            Trust::from_pinned_manifest(&manifest, hash(&self.manifest_sha256)?)?
+        };
         let url = reqwest::Url::parse(&self.rpc_url).map_err(|_| bad("RPC URL"))?;
+        if self.devnet.is_some()
+            && (url.scheme() != "https"
+                || url.host_str().is_none()
+                || !url.username().is_empty()
+                || url.password().is_some()
+                || url.fragment().is_some())
+        {
+            return Err(bad("devnet RPC transport"));
+        }
         if url.scheme() != "https"
             && !(url.scheme() == "http"
                 && url.host_str().is_some_and(|s| {
@@ -138,9 +156,20 @@ impl Config {
 /// Its configured hash is independent of all RPC inputs. It reads fee material
 /// from a mode-0600 file only for prepare; recovery needs no signing capability.
 pub async fn bridge(config: &Config, input: Value) -> Result<Value> {
+    bridge_supervised(config, input, None).await
+}
+async fn bridge_supervised(
+    config: &Config,
+    input: Value,
+    shutdown: Option<&Shutdown>,
+) -> Result<Value> {
+    if let Some(shutdown) = shutdown {
+        shutdown.checkpoint()?;
+    }
     if sha(&std::fs::read(&config.transport_bridge)?) != hash(&config.transport_bridge_sha256)? {
         return Err(bad("transport bridge pin"));
     }
+    let input = serde_json::to_vec(&input)?;
     let mut child = tokio::process::Command::new(&config.node)
         .arg(&config.transport_bridge)
         .env_clear()
@@ -150,15 +179,50 @@ pub async fn bridge(config: &Config, input: Value) -> Result<Value> {
         .kill_on_drop(true)
         .spawn()?;
     let mut stdin = child.stdin.take().ok_or(bad("bridge stdin"))?;
-    stdin.write_all(&serde_json::to_vec(&input)?).await?;
-    drop(stdin);
-    let output = tokio::time::timeout(Duration::from_secs(45), child.wait_with_output())
-        .await
-        .map_err(|_| bad("transport bridge timeout"))??;
-    if !output.status.success() || output.stdout.len() > 2_000_000 {
+    let stdout = child.stdout.take().ok_or(bad("bridge stdout"))?;
+    let exchange = async {
+        let write = async {
+            stdin.write_all(&input).await?;
+            drop(stdin);
+            Ok::<_, std::io::Error>(())
+        };
+        let read = async {
+            let mut bytes = Vec::new();
+            stdout.take(2_000_001).read_to_end(&mut bytes).await?;
+            Ok::<_, std::io::Error>(bytes)
+        };
+        let (_, bytes, status) = tokio::try_join!(write, read, child.wait())?;
+        Ok::<_, Error>((status, bytes))
+    };
+    let result = match interruptible(
+        shutdown,
+        tokio::time::timeout(Duration::from_secs(45), exchange),
+    )
+    .await
+    {
+        Ok(Ok(result)) => result,
+        Ok(Err(_)) => Err(bad("transport bridge timeout")),
+        Err(error) => Err(error),
+    };
+    let (status, bytes) = match result {
+        Ok(value) => value,
+        Err(error) => {
+            // A recover bridge can only send already durable exact bytes. An
+            // interrupted response leaves that attempt Unknown for restart.
+            // Prepare/refresh have no send capability. Never drop an unreaped
+            // child on graceful stop, timeout, or pipe error.
+            child.start_kill().map_err(|_| Error::BridgeCleanup)?;
+            tokio::time::timeout(Duration::from_secs(5), child.wait())
+                .await
+                .map_err(|_| Error::BridgeCleanup)?
+                .map_err(|_| Error::BridgeCleanup)?;
+            return Err(error);
+        }
+    };
+    if !status.success() || bytes.len() > 2_000_000 {
         return Err(bad("transport bridge failed"));
     }
-    Ok(serde_json::from_slice(&output.stdout)?)
+    Ok(serde_json::from_slice(&bytes)?)
 }
 
 pub struct Runtime {
@@ -167,9 +231,22 @@ pub struct Runtime {
     scanner: Scanner,
     trust: Trust,
     rpc: ArchiveRpc,
+    shutdown: Option<Shutdown>,
 }
+const ARCHIVE_BATCH_BLOCKS: usize = 64;
+const ARCHIVE_BATCH_BYTES: usize = 8 * 1024 * 1024;
 impl Runtime {
     pub fn open(config: Config, initialize: bool) -> Result<Self> {
+        Self::open_with_shutdown(config, initialize, None)
+    }
+    pub(crate) fn open_with_shutdown(
+        config: Config,
+        initialize: bool,
+        shutdown: Option<Shutdown>,
+    ) -> Result<Self> {
+        if let Some(shutdown) = &shutdown {
+            shutdown.checkpoint()?;
+        }
         let trust = config.trust()?;
         let journal = if initialize {
             Journal::initialize(&config.journal_directory, trust.pool())?
@@ -178,6 +255,9 @@ impl Runtime {
         };
         let mut scanner = Scanner::new(trust.clone());
         for block in journal.archive() {
+            if let Some(shutdown) = &shutdown {
+                shutdown.checkpoint()?;
+            }
             scanner.apply_finalized(block)?;
         }
         // A v1 queue with a checkpoint but no archive must explicitly import its
@@ -192,28 +272,58 @@ impl Runtime {
             scanner,
             trust,
             rpc,
+            shutdown,
         })
+    }
+    fn checkpoint_stop(&self) -> Result<()> {
+        self.shutdown.as_ref().map_or(Ok(()), Shutdown::checkpoint)
+    }
+    async fn rpc_call(&self, method: &str, params: Value) -> Result<Value> {
+        interruptible(self.shutdown.as_ref(), self.rpc.call(method, params))
+            .await?
+            .map_err(|_| bad("RPC unavailable"))
+    }
+    async fn bridge(&self, input: Value) -> Result<Value> {
+        bridge_supervised(&self.config, input, self.shutdown.as_ref()).await
     }
     /// Every restart replays durable history and then authenticates the current
     /// genesis, block anchor, PoolConfig, Note, Pending and tree account cut.
     pub async fn scan(&mut self) -> Result<FinalizedView> {
-        if self
-            .rpc
-            .call("getGenesisHash", json!([]))
-            .await
-            .map_err(|_| bad("RPC genesis unavailable"))?
-            .as_str()
+        if self.rpc_call("getGenesisHash", json!([])).await?.as_str()
             != Some(&self.trust.pool.genesis_hash)
         {
             return Err(bad("RPC genesis mismatch"));
         }
         let tip = self
-            .rpc
-            .call("getSlot", json!([{"commitment":"finalized"}]))
-            .await
-            .map_err(|_| bad("RPC finalized tip"))?
+            .rpc_call("getSlot", json!([{"commitment":"finalized"}]))
+            .await?
             .as_u64()
             .ok_or(bad("RPC slot"))?;
+        self.catch_up_to(tip).await?;
+        let cfg = self.config.index(&self.trust);
+        let cut = interruptible(
+            self.shutdown.as_ref(),
+            self.rpc.capture_chain(&cfg, &self.scanner.replay_state()?),
+        )
+        .await?
+        .map_err(|_| bad("RPC account capture"))?;
+        // Preserve every new block and Pending generation before reconciling
+        // the captured bank. An inventory changed by replay fails closed until
+        // the next complete capture; it never discards durable history.
+        self.catch_up_to(cut.slot()).await?;
+        let accounts = interruptible(
+            self.shutdown.as_ref(),
+            self.rpc
+                .observe_cut(&cfg, &self.scanner.replay_state()?, &cut),
+        )
+        .await?
+        .map_err(|_| bad("RPC account cut"))?;
+        let pool = cut
+            .account(&self.trust.pool())
+            .map_err(|_| bad("RPC captured PoolConfig"))?;
+        self.scanner.reconcile(&accounts, &pool)
+    }
+    async fn catch_up_to(&mut self, tip: u64) -> Result<()> {
         let mut next = self
             .journal
             .archive()
@@ -225,41 +335,82 @@ impl Runtime {
         while next <= tip {
             let end = next.saturating_add(999).min(tip);
             let slots = self
-                .rpc
-                .call("getBlocks", json!([next,end,{"commitment":"finalized"}]))
-                .await
-                .map_err(|_| bad("RPC block range"))?;
-            let mut previous = None;
-            for slot in slots.as_array().ok_or(bad("RPC block range"))? {
-                let slot = slot.as_u64().ok_or(bad("RPC slot"))?;
-                if slot < next || slot > end || previous.is_some_and(|p| slot <= p) {
-                    return Err(bad("RPC unordered blocks"));
+                .rpc_call("getBlocks", json!([next,end,{"commitment":"finalized"}]))
+                .await?;
+            let mut pending = Vec::new();
+            let mut pending_bytes = 0usize;
+            let mut checked = self.scanner.clone();
+            let result: Result<()> = async {
+                let mut previous = None;
+                for window in slots.as_array().ok_or(bad("RPC block range"))?.chunks(4) {
+                    let mut ordered = Vec::with_capacity(window.len());
+                    for slot in window {
+                        let slot = slot.as_u64().ok_or(bad("RPC slot"))?;
+                        if slot < next || slot > end || previous.is_some_and(|p| slot <= p) {
+                            return Err(bad("RPC unordered blocks"));
+                        }
+                        ordered.push(slot);
+                        previous = Some(slot);
+                    }
+                    let values = interruptible(
+                        self.shutdown.as_ref(),
+                        self.rpc.finalized_block_window(&ordered),
+                    )
+                    .await?
+                    .map_err(|_| bad("RPC archive read window"))?;
+                    for (slot, value) in ordered.into_iter().zip(values) {
+                        self.checkpoint_stop()?;
+                        let value = value.map_err(|_| bad("RPC archive unavailable"))?;
+                        let block = zkapi_indexer::rpc::decode_finalized_block(slot, &value)
+                            .map_err(|_| bad("RPC archive encoding"))?;
+                        let bytes = serde_json::to_vec(&block)?.len();
+                        if pending_bytes.saturating_add(bytes) > ARCHIVE_BATCH_BYTES {
+                            self.commit_archive_prefix(&mut pending, &checked)?;
+                            pending_bytes = 0;
+                        }
+                        // An invalid block may latch its Scanner closed. Keep
+                        // the last successful prefix separate for error flush.
+                        let mut candidate = checked.clone();
+                        candidate.apply_finalized(&block)?;
+                        checked = candidate;
+                        pending.push(block);
+                        pending_bytes = pending_bytes.saturating_add(bytes);
+                        // A single oversized block is committed alone: batching
+                        // must not invent an archive size rejection/truncation.
+                        if pending.len() >= ARCHIVE_BATCH_BLOCKS
+                            || pending_bytes >= ARCHIVE_BATCH_BYTES
+                        {
+                            self.commit_archive_prefix(&mut pending, &checked)?;
+                            pending_bytes = 0;
+                        }
+                    }
                 }
-                let value = self.rpc.call("getBlock", json!([slot,{"commitment":"finalized","encoding":"json","transactionDetails":"full","maxSupportedTransactionVersion":0,"rewards":false}])).await.map_err(|_| bad("RPC archive unavailable"))?;
-                let block = zkapi_indexer::rpc::decode_finalized_block(slot, &value)
-                    .map_err(|_| bad("RPC archive encoding"))?;
-                let mut checked = self.scanner.clone();
-                checked.apply_finalized(&block)?;
-                self.journal.append_archive(block)?;
-                self.scanner = checked;
-                previous = Some(slot);
+                Ok(())
             }
+            .await;
+            // Fetch/decode/replay errors retain the same successful durable
+            // prefix as before batching. A crash re-fetches the uncommitted
+            // read-only suffix; no view, proof or send observes that suffix.
+            self.commit_archive_prefix(&mut pending, &checked)?;
+            result?;
             next = end.checked_add(1).ok_or(bad("slot overflow"))?;
         }
         let expected = self.scanner.replay_state()?;
         if expected.slot != tip {
             return Err(bad("RPC finalized tail missing"));
         }
-        let accounts = self
-            .rpc
-            .observe_chain(&self.config.index(&self.trust), &expected)
-            .await
-            .map_err(|_| bad("RPC account cut"))?;
-        let pool = self.rpc.call("getAccountInfo", json!([self.trust.pool.pool,{"commitment":"finalized","encoding":"base64","minContextSlot":tip}])).await.map_err(|_| bad("RPC PoolConfig"))?;
-        if pool["context"]["slot"].as_u64() != Some(tip) {
-            return Err(bad("RPC PoolConfig cut"));
+        Ok(())
+    }
+    fn commit_archive_prefix(
+        &mut self,
+        blocks: &mut Vec<zkapi_indexer::FinalizedBlock>,
+        checked: &Scanner,
+    ) -> Result<()> {
+        if !blocks.is_empty() {
+            self.journal.append_archive_batch(std::mem::take(blocks))?;
+            self.scanner = checked.clone();
         }
-        self.scanner.reconcile(&accounts, &pool["value"])
+        Ok(())
     }
     pub fn publish_health(&self, ready: bool, observed_at: u64) -> Result<()> {
         use std::io::Write;
@@ -316,7 +467,10 @@ impl Runtime {
     ) -> Result<()> {
         let mut candidates = Vec::new();
         for (id, nullifier) in view.pending() {
-            if let Some(evidence) = repository.auth(nullifier).await? {
+            self.checkpoint_stop()?;
+            if let Some(evidence) =
+                interruptible(self.shutdown.as_ref(), repository.auth(nullifier)).await??
+            {
                 let pending = &view.state.pending[&id];
                 let generation = view
                     .generations
@@ -379,6 +533,7 @@ impl Runtime {
         jobs.sort_by_key(|(_, job)| (job.identity.deadline, job.discovered_at));
         let mut count = 0;
         for (id, job) in jobs {
+            self.checkpoint_stop()?;
             if job.complete || job.attempts.iter().any(|a| a.outcome == Outcome::Unknown) {
                 continue;
             }
@@ -408,6 +563,7 @@ impl Runtime {
             {
                 continue;
             }
+            self.checkpoint_stop()?;
             let pk = self
                 .trust
                 .load_tree_key(&std::fs::read(&self.config.tree_pk)?)?;
@@ -433,7 +589,7 @@ impl Runtime {
                 checkpoint: self.checkpoint(view),
             };
             let plan = self.plan(&job, &payload)?;
-            let info = bridge(&self.config, json!({"command":"plan","plan":plan})).await?;
+            let info = self.bridge(json!({"command":"plan","plan":plan})).await?;
             payload.buffer = key(info["buffer"].as_str().ok_or(bad("transport buffer"))?)?;
             self.journal.save_payload(&id, payload)?;
             count += 1;
@@ -441,12 +597,7 @@ impl Runtime {
         Ok(count)
     }
     async fn authenticate_rpc(&self) -> Result<()> {
-        if self
-            .rpc
-            .call("getGenesisHash", json!([]))
-            .await
-            .map_err(|_| bad("RPC genesis unavailable"))?
-            .as_str()
+        if self.rpc_call("getGenesisHash", json!([])).await?.as_str()
             != Some(&self.trust.pool.genesis_hash)
         {
             return Err(bad("RPC genesis mismatch"));
@@ -486,8 +637,7 @@ impl Runtime {
             .journal
             .transport(&failed.signature)
             .ok_or(bad("cleanup transport"))?;
-        let observed = bridge(
-            &self.config,
+        let observed = self.bridge(
             json!({"command":"inspect-buffer","attempt":transport,"rpcUrl":self.config.rpc_url,"minContextSlot":failed_slot}),
         )
         .await?;
@@ -504,8 +654,8 @@ impl Runtime {
             )?;
             return Ok(true);
         }
-        let blockhash=self.rpc.call("getLatestBlockhash",json!([{"commitment":"finalized","minContextSlot":payload.checkpoint.position.slot}])).await.map_err(|_|bad("cleanup blockhash"))?;
-        let value=bridge(&self.config,json!({"command":"prepare-close","attempt":transport,"keyFile":self.config.fee_key_file,"blockhash":blockhash["value"]})).await?;
+        let blockhash=self.rpc_call("getLatestBlockhash",json!([{"commitment":"finalized","minContextSlot":payload.checkpoint.position.slot}])).await?;
+        let value=self.bridge(json!({"command":"prepare-close","attempt":transport,"keyFile":self.config.fee_key_file,"blockhash":blockhash["value"]})).await?;
         let attempt = signed_attempt(&value, payload.digest, payload.buffer)?;
         self.journal.save_v0_attempt(id, attempt, value)?;
         Ok(false)
@@ -518,6 +668,7 @@ impl Runtime {
             .map(|(id, j)| (id.to_owned(), j.clone()))
             .collect();
         for (id, job) in jobs {
+            self.checkpoint_stop()?;
             if job.complete || job.attempts.iter().any(|a| a.outcome == Outcome::Unknown) {
                 continue;
             }
@@ -551,6 +702,7 @@ impl Runtime {
             .collect();
         let mut resolved = 0;
         for (id, attempt) in unknown {
+            self.checkpoint_stop()?;
             if attempt.stage == Stage::Execute {
                 self.journal.record_execute_send(&id, now())?;
             }
@@ -558,18 +710,18 @@ impl Runtime {
                 .journal
                 .transport(&attempt.signature)
                 .ok_or(bad("validated v0 record absent"))?;
-            let reply = bridge(
-                &self.config,
-                json!({"command":"recover","rpcUrl":self.config.rpc_url,"attempt":transport}),
-            )
-            .await?;
+            let reply = self
+                .bridge(
+                    json!({"command":"recover","rpcUrl":self.config.rpc_url,"attempt":transport}),
+                )
+                .await?;
             let state = reply["result"]["state"]
                 .as_str()
                 .ok_or(bad("transport recovery result"))?;
             if state == "expired_reconcile_required" && attempt.stage == Stage::Upload {
                 // Missing buffers, unavailable signing keys and inconclusive
                 // RPC leave this attempt Unknown. They never permit recreate.
-                let Ok(reconciled) = bridge(&self.config, json!({"command":"refresh","rpcUrl":self.config.rpc_url,"attempt":transport,"keyFile":self.config.fee_key_file})).await else { continue; };
+                let reconciled = match self.bridge( json!({"command":"refresh","rpcUrl":self.config.rpc_url,"attempt":transport,"keyFile":self.config.fee_key_file})).await { Ok(value) => value, Err(error @ (Error::Interrupted | Error::BridgeCleanup)) => return Err(error), Err(_) => continue };
                 let next_step_index = reconciled["nextStepIndex"]
                     .as_u64()
                     .and_then(|v| u32::try_from(v).ok())
@@ -649,6 +801,7 @@ impl Runtime {
         jobs.sort_by_key(|(_, job)| (job.identity.deadline, job.discovered_at));
         let mut count = 0;
         for (id, job) in jobs {
+            self.checkpoint_stop()?;
             if job.complete
                 || view.now >= job.identity.deadline
                 || job.attempts.iter().any(|a| a.outcome == Outcome::Unknown)
@@ -674,13 +827,11 @@ impl Runtime {
             }
             let plan = self.plan(&job, payload)?;
             let blockhash = self
-                .rpc
-                .call(
+                .rpc_call(
                     "getLatestBlockhash",
                     json!([{"commitment":"finalized","minContextSlot":view.slot()}]),
                 )
-                .await
-                .map_err(|_| bad("RPC blockhash"))?;
+                .await?;
             if blockhash["context"]["slot"]
                 .as_u64()
                 .is_none_or(|slot| slot < view.slot())
@@ -708,7 +859,7 @@ impl Runtime {
                     _ => {}
                 }
             }
-            let mut value = bridge(&self.config, json!({"command":"prepare","plan":plan,"stepIndex":step_index,"keyFile":self.config.fee_key_file,"blockhash":blockhash["value"]})).await?;
+            let mut value = self.bridge( json!({"command":"prepare","plan":plan,"stepIndex":step_index,"keyFile":self.config.fee_key_file,"blockhash":blockhash["value"]})).await?;
             value["stepIndex"] = json!(step_index);
             let attempt = signed_attempt(&value, payload.digest, payload.buffer)?;
             self.journal.save_v0_attempt(&id, attempt, value)?;
@@ -802,7 +953,26 @@ pub fn metrics(journal: &Journal, at: u64) -> Metrics {
     m
 }
 pub async fn run(config: Config, command: &str) -> Result<()> {
-    let mut runtime = Runtime::open(config, command == "init")?;
+    let signals = Signals::install()?;
+    let mut runtime = match Runtime::open_with_shutdown(
+        config,
+        command == "init",
+        Some(signals.shutdown.clone()),
+    ) {
+        Ok(runtime) => runtime,
+        Err(Error::Interrupted) => return Ok(()),
+        Err(error) => return Err(error),
+    };
+    match run_command(&mut runtime, command).await {
+        Err(Error::Interrupted) => {
+            runtime.publish_health(false, now())?;
+            Ok(())
+        }
+        result => result,
+    }
+}
+async fn run_command(runtime: &mut Runtime, command: &str) -> Result<()> {
+    runtime.checkpoint_stop()?;
     if command == "init" {
         return Ok(());
     }
@@ -826,10 +996,18 @@ pub async fn run(config: Config, command: &str) -> Result<()> {
         return Ok(());
     }
     let dsn = std::fs::read_to_string(&runtime.config.database_dsn_file)?;
-    let mut repository = ReadRepository::connect_local(dsn.trim(), runtime.trust.clone()).await?;
+    let mut repository = interruptible(
+        runtime.shutdown.as_ref(),
+        ReadRepository::connect_local(dsn.trim(), runtime.trust.clone()),
+    )
+    .await??;
     loop {
         let result: Result<()> = async {
-            runtime.recover().await?;
+            // Observation-only prewarming must never rebroadcast a saved
+            // unknown attempt. Signing/recovery remains explicit for workers.
+            if command != "scan" {
+                runtime.recover().await?;
+            }
             let view = runtime.scan().await?;
             runtime.discover(&view, &mut repository).await?;
             if command != "scan" {
@@ -842,6 +1020,9 @@ pub async fn run(config: Config, command: &str) -> Result<()> {
             Ok(())
         }
         .await;
+        if matches!(result, Err(Error::Interrupted | Error::BridgeCleanup)) {
+            return result;
+        }
         let alerts = runtime.emit_alerts(now());
         let result = result.and(alerts);
         runtime.publish_health(result.is_ok(), now())?;
@@ -855,7 +1036,11 @@ pub async fn run(config: Config, command: &str) -> Result<()> {
         if result.is_err() {
             eprintln!("challenger paused: reconciliation or transport unavailable");
         }
-        tokio::select! { _=tokio::time::sleep(Duration::from_secs(runtime.config.poll_seconds))=>{}, _=tokio::signal::ctrl_c()=>return Ok(()) }
+        interruptible(
+            runtime.shutdown.as_ref(),
+            tokio::time::sleep(Duration::from_secs(runtime.config.poll_seconds)),
+        )
+        .await?;
     }
 }
 pub fn read_config(path: &Path) -> Result<Config> {

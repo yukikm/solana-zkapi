@@ -167,6 +167,7 @@ fn local_config(dir: &Path, primary: String, secondary: String, indexer: String)
     write_private(&dir.join("quote.seed"), &[11; 32]);
     write_private(&dir.join("receipt.seed"), &[12; 32]);
     RuntimeConfig {
+        devnet: None,
         local_test_only: true,
         listen: "127.0.0.1:0".parse().unwrap(),
         manifest,
@@ -227,7 +228,7 @@ async fn fixture_app(provider_origin: &str, direct: bool) -> Result<Fixture> {
             let result=match r["method"].as_str().unwrap() {
                 "getGenesisHash" => json!(bs58::encode([if fault==1 {9}else{0};32]).into_string()),
                 "getSlot" => json!(if fault==4 {200}else{100}),
-                "getBlock" => json!({"blockhash":c["root"]["blockhash"]}),
+                "getBlock" => {assert_eq!(r["params"][1]["maxSupportedTransactionVersion"],1);json!({"blockhash":c["root"]["blockhash"]})},
                 "getBalance" => json!({"context":{"slot":if fault==4 {200}else{100}},"value":if fault==2 {1}else{200000000u64}}),
                 "getMultipleAccounts" => {
                     let raw=base64::engine::general_purpose::STANDARD.decode(c["pool_account"]["data"][0].as_str().unwrap()).unwrap();
@@ -326,6 +327,7 @@ async fn fixture_app(provider_origin: &str, direct: bool) -> Result<Fixture> {
             &child_config,
             &serde_json::to_vec(&ServiceConfig {
                 local_test_only: true,
+                devnet: None,
                 database_url: format!("{url} user={role}"),
                 pool: wire::pubkey(config.manifest["pool"].as_str().unwrap())?,
                 claims_directory: claims,

@@ -1,0 +1,26 @@
+{
+  "schema": 1,
+  "passed": true,
+  "observed_at_utc": "2026-10-04T19:24:11.254209+00:00",
+  "scope": "Actual devnet runner rejects a missing provider campaign before RPC/wallet access; expected nonzero process",
+  "argv": [
+    "target/i08-toolchain/bin/node",
+    "scripts/run_i10_devnet_vault.ts",
+    "--pool=provider",
+    "--provider-plan=config/provider-acceptance.i10.json",
+    "--lifecycle"
+  ],
+  "exit_code": 1,
+  "observed_stage": "preflight",
+  "budget_command_failed_before_rpc_configuration_access": true,
+  "campaign_initialized": false,
+  "RPC_or_wallet_environment_provided": false,
+  "provider_calls": 0,
+  "financial_sends": 0,
+  "source_sha256": {
+    "scripts/run_i10_devnet_vault.ts": "5a970d105fab06d14c11687f73ad37859f5a0e719cb4cade2b81df6e16b544a2",
+    "scripts/provider_acceptance.py": "556643a948e505e43a016cd6833195d16a211cab2efff8c3c816e027200a913c"
+  },
+  "I10_complete": false,
+  "release_gates_passed": []
+}

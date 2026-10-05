@@ -1,0 +1,63 @@
+{
+  "schema": 1,
+  "passed": true,
+  "observed_at_utc": "2026-10-04T19:13:25.063541+00:00",
+  "scope": "Offline streaming and nonstreaming endpoint-specific tool evidence validation with synthetic HTTP fixtures; existing SDK encrypted-journal settlement/no-replay tests. No real-provider claim.",
+  "commands": [
+    {
+      "name": "nonstream-typescript-check",
+      "command": [
+        "target/i08-toolchain/bin/node",
+        "node_modules/typescript/bin/tsc",
+        "--noEmit",
+        "--strict",
+        "--target",
+        "ES2023",
+        "--module",
+        "NodeNext",
+        "--moduleResolution",
+        "NodeNext",
+        "--allowImportingTsExtensions",
+        "--lib",
+        "ES2023,DOM",
+        "--types",
+        "node",
+        "scripts/provider_acceptance_client.test.ts"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 0.793,
+      "log": "target/i10-provider-sse-validation/nonstream-typescript-check.log",
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "name": "nonstream-sdk-offline",
+      "command": [
+        "target/i08-toolchain/bin/node",
+        "--test",
+        "scripts/provider_acceptance_client.test.ts"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 0.883,
+      "log": "target/i10-provider-sse-validation/nonstream-sdk-offline.log",
+      "log_sha256": "1e60ed3af156f0370fa533f7734e8679a09f319e65d39e2c301b8d779570d31a"
+    }
+  ],
+  "tests": {
+    "passed": 15,
+    "failed": 0
+  },
+  "source_sha256": {
+    "scripts/provider_acceptance_client.ts": "2f5a135593043ee00153a66a540cc69af03cc7db8c032310db27eaa2ad39cb01",
+    "scripts/provider_acceptance_client.test.ts": "71232538494dd09f19c6fa73b258f93cfa9b7a1791ca6e763a9c6d6579156e09",
+    "scripts/i10_devnet_provider.ts": "a5b523388f53ddd40ecb65a676f53ff232de3f0727511999b586cc52e3cfbe40",
+    "packages/sdk/src/control.ts": "6297135fba01ef2d7f7a13945be4a39cdc4dc9adfcaf1c792098d284dfedce7d",
+    "packages/sdk/src/trust.ts": "6fe8ca3639ff2b0547122ca3e2aaa419379019e5ac5f42aaeac3565f5ccd924f"
+  },
+  "source_unchanged_during_validation": true,
+  "network_requests": 0,
+  "private_user_inputs_read": false,
+  "provider_spend_micro_usdc": "0",
+  "real_provider_verified": false,
+  "full_g3_passed": false,
+  "release_gates_passed": []
+}

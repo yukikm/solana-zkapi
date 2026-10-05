@@ -65,7 +65,8 @@ impl Scanner {
     }
     /// `accounts` and `pool_account` MUST come from finalized RPC at this same
     /// slot, with the replayed blockhash authenticated by the archive adapter.
-    /// Reuse ArchiveRpc::observe_chain for the Note/Pending/Tree account cut.
+    /// Reuse ArchiveRpc::capture_chain/observe_cut for Note/Pending/Tree and
+    /// AccountCut::account for PoolConfig, all from that same captured response.
     pub fn reconcile(
         &mut self,
         accounts: &ChainState,

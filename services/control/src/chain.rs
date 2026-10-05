@@ -12,9 +12,21 @@ use std::time::Duration;
 use zkapi_solana_types::{FieldElement, MicroUsdc};
 
 pub const PROFILE_HASH: &str = "ba688d8a2be7647499c98d52c335c381b86f0471f39fa6539f7d451b76dafca1";
+pub const DEVNET_GENESIS: &str = "EtWTRABZaYq6iMfeYKouRu166VU2xqa1wcaWoxPkrZBG";
+pub const DEVNET_USDC_MINT: &str = "4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU";
+pub const SPL_TOKEN_PROGRAM: &str = "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA";
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum DeploymentEnvironment {
+    #[default]
+    Local,
+    Devnet,
+}
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct TrustedPool {
+    #[serde(default)]
+    pub deployment_environment: DeploymentEnvironment,
     pub program_id: String,
     pub pool: String,
     pub genesis_hash: String,
@@ -32,6 +44,14 @@ impl TrustedPool {
     /// The input must already be operator trusted (signature verification belongs
     /// to manifest distribution). All authorization settings are extracted here.
     pub fn from_manifest(m: &Value) -> Result<Self> {
+        Self::from_manifest_for(m, DeploymentEnvironment::Local)
+    }
+    /// Explicit test-only public-devnet profile; runtime separately pins the
+    /// exact public IDL, ELF and operator-trusted build manifest.
+    pub fn from_devnet_manifest(m: &Value) -> Result<Self> {
+        Self::from_manifest_for(m, DeploymentEnvironment::Devnet)
+    }
+    fn from_manifest_for(m: &Value, environment: DeploymentEnvironment) -> Result<Self> {
         let profile: Value =
             serde_json::from_str(include_str!("../../../tests/fixtures/layout2/profile.json"))
                 .expect("build profile");
@@ -62,7 +82,7 @@ impl TrustedPool {
             || m["circuit_id"] != "zkapi-v2-note-bound-v1"
             || m["request_vk_hash"] != REQUEST_VK_HASH
             || m["setup_profile"] != "test_only"
-            || m["deployment_environment"] != "local"
+            || m["deployment_environment"] != serde_json::to_value(environment).unwrap()
             || !m["transaction_formats"]
                 .as_array()
                 .is_some_and(|a| a.iter().any(|v| v == "v0_buffer"))
@@ -70,6 +90,7 @@ impl TrustedPool {
             return Err(invalid("manifest/build profile"));
         }
         let result = Self {
+            deployment_environment: environment,
             program_id: get("program_id")?.into(),
             pool: get("pool")?.into(),
             genesis_hash: get("genesis_hash")?.into(),
@@ -96,11 +117,22 @@ impl TrustedPool {
         let genesis = pubkey(&self.genesis_hash)?;
         let mint = pubkey(&self.mint)?;
         let token = pubkey(&self.token_program)?;
+        let deployment_matches = match self.deployment_environment {
+            DeploymentEnvironment::Local => true,
+            DeploymentEnvironment::Devnet => {
+                self.genesis_hash == DEVNET_GENESIS
+                    && self.mint == DEVNET_USDC_MINT
+                    && self.token_program == SPL_TOKEN_PROGRAM
+                    && program != [0; 32]
+                    && program != [43; 32]
+            }
+        };
         if self.vault_binding
             != zkapi_solana_types::binding::vault_binding(&genesis, &program, &pool, &token, &mint)
             || self.state_key != role_key(&deployment_keys::STATE_KEY)?
             || self.clearance_key != role_key(&deployment_keys::CLEARANCE_KEY)?
             || self.circuit_profile_hash != PROFILE_HASH
+            || !deployment_matches
             || self.cap_micro_usdc == MicroUsdc::ZERO
             || uint(&self.note_ttl_seconds)? == 0
             || uint(&self.challenge_seconds)? == 0
@@ -251,7 +283,7 @@ impl ChainClient {
     ) -> Result<Self> {
         trusted.validate()?;
         let mut rpc_origins = Vec::new();
-        for url in [&primary, &secondary, &indexer] {
+        for (index, url) in [&primary, &secondary, &indexer].into_iter().enumerate() {
             let url = reqwest::Url::parse(url).map_err(|_| invalid("chain URL"))?;
             if !matches!(url.scheme(), "http" | "https")
                 || url.host_str().is_none()
@@ -260,6 +292,23 @@ impl ChainClient {
                 || url.fragment().is_some()
             {
                 return Err(invalid("chain URL"));
+            }
+            if trusted.deployment_environment == DeploymentEnvironment::Devnet {
+                if index < 2 && url.scheme() != "https" {
+                    return Err(invalid("devnet RPC requires HTTPS"));
+                }
+                if index == 2
+                    && !url
+                        .host_str()
+                        .and_then(|host| {
+                            host.trim_matches(['[', ']'])
+                                .parse::<std::net::IpAddr>()
+                                .ok()
+                        })
+                        .is_some_and(|ip| ip.is_loopback())
+                {
+                    return Err(invalid("devnet test indexer must be numeric loopback"));
+                }
             }
             rpc_origins.push(url.origin());
         }

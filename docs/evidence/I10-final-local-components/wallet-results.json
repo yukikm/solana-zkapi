@@ -1,0 +1,393 @@
+{
+  "scope": "I08 C/D: real native/WASM proof generation, shared verifier, explicit native fallback, full encrypted witness and SDK wallet with actual Vault SBF",
+  "passed": true,
+  "os": "macOS-26.6.2-arm64-arm-64bit-Mach-O",
+  "node": "v24.19.0",
+  "npm": "11.9.0",
+  "rust": "rustc 1.90.0 (1159e78c4 2025-09-14)",
+  "tests": {
+    "sdk-tests": {
+      "tests": 107,
+      "pass": 107,
+      "fail": 0,
+      "skipped": 0
+    },
+    "wasm-browser": {
+      "tests": 1,
+      "pass": 1,
+      "fail": 0,
+      "skipped": 0
+    },
+    "wasm-sbf": {
+      "tests": 1,
+      "pass": 1,
+      "fail": 0,
+      "skipped": 0
+    },
+    "wallet-sbf": {
+      "tests": 1,
+      "pass": 1,
+      "fail": 0,
+      "skipped": 0
+    },
+    "native-tests": {
+      "pass": 2,
+      "fail": 0,
+      "skipped": 0
+    }
+  },
+  "wasm": {
+    "scope": "real Chromium dedicated worker, new WASM proofs, shared verifier and actual native fallback",
+    "browser": "Chrome/154.0.8037.95",
+    "wasm_sha256": "ca82e6a6cbfc493fdefa0a764b04205f65002eb99529f4a95450234f9797cd1b",
+    "wasm_bytes": 3686617,
+    "timings_ms": {
+      "request": 10586.59999999404,
+      "close": 12708.90000000596,
+      "escape": 12631.200000017881,
+      "tree0": 11497.5,
+      "tree1": 11387.699999988079
+    },
+    "js_heap_bytes": 76470228,
+    "native_fallback_calls": 1,
+    "rejections": 3,
+    "request_nullifier": "0x297c134bc2ba2db527d7d6cf5818de29f838328162eb1566546ec75916e6a33f"
+  },
+  "svm": {
+    "wallet": {
+      "max_cu": 420105,
+      "max_transaction_bytes": 1232,
+      "vault_micro_usdc": 1000000,
+      "destination_micro_usdc": 10000000,
+      "transactions": 34,
+      "expected_rejections": 2
+    },
+    "wasm-close": {
+      "max_cu": 417105,
+      "max_transaction_bytes": 1232,
+      "vault_micro_usdc": 0,
+      "destination_micro_usdc": 5000000,
+      "transactions": 9,
+      "expected_rejections": 0
+    },
+    "wasm-escape": {
+      "max_cu": 333797,
+      "max_transaction_bytes": 1232,
+      "vault_micro_usdc": 0,
+      "destination_micro_usdc": 5000000,
+      "transactions": 10,
+      "expected_rejections": 0
+    }
+  },
+  "commands": [
+    {
+      "argv": [
+        "node",
+        "--version"
+      ],
+      "exit_code": 0,
+      "seconds": 0.012
+    },
+    {
+      "argv": [
+        "npm",
+        "--version"
+      ],
+      "exit_code": 0,
+      "seconds": 0.076
+    },
+    {
+      "argv": [
+        "rustc",
+        "--version"
+      ],
+      "exit_code": 0,
+      "seconds": 0.024
+    },
+    {
+      "argv": [
+        "bash",
+        "scripts/build_i02_source.sh",
+        "target/i08-wallet/circuit-source.tar"
+      ],
+      "exit_code": 0,
+      "seconds": 0.041
+    },
+    {
+      "argv": [
+        "cargo",
+        "fmt",
+        "--manifest-path",
+        "apps/clientd/prover/Cargo.toml",
+        "--",
+        "--check"
+      ],
+      "exit_code": 0,
+      "seconds": 0.07
+    },
+    {
+      "argv": [
+        "cargo",
+        "build",
+        "--locked",
+        "--release",
+        "--manifest-path",
+        "apps/clientd/prover/Cargo.toml",
+        "--bin",
+        "zkapi-client-prover",
+        "--example",
+        "test_clearance"
+      ],
+      "exit_code": 0,
+      "seconds": 0.162
+    },
+    {
+      "argv": [
+        "cargo",
+        "build",
+        "--locked",
+        "--release",
+        "--manifest-path",
+        "apps/clientd/prover/Cargo.toml",
+        "--target",
+        "wasm32-unknown-unknown",
+        "--lib"
+      ],
+      "exit_code": 0,
+      "seconds": 0.158
+    },
+    {
+      "argv": [
+        "cargo",
+        "test",
+        "--locked",
+        "--manifest-path",
+        "apps/clientd/prover/Cargo.toml",
+        "--",
+        "--nocapture"
+      ],
+      "exit_code": 0,
+      "seconds": 16.334
+    },
+    {
+      "argv": [
+        "cargo",
+        "clippy",
+        "--locked",
+        "--manifest-path",
+        "apps/clientd/prover/Cargo.toml",
+        "--all-targets",
+        "--",
+        "-D",
+        "warnings"
+      ],
+      "exit_code": 0,
+      "seconds": 0.282
+    },
+    {
+      "argv": [
+        "cargo",
+        "test",
+        "--locked",
+        "--manifest-path",
+        "apps/clientd/companion/Cargo.toml",
+        "--test",
+        "verification",
+        "real_request_receipts_successor_and_next_request",
+        "--",
+        "--nocapture"
+      ],
+      "exit_code": 0,
+      "seconds": 4.962
+    },
+    {
+      "argv": [
+        "cargo",
+        "build",
+        "--locked",
+        "--manifest-path",
+        "tests/svm/Cargo.toml",
+        "--bin",
+        "wallet"
+      ],
+      "exit_code": 0,
+      "seconds": 0.502
+    },
+    {
+      "argv": [
+        "rustfmt",
+        "--edition",
+        "2021",
+        "--check",
+        "--config",
+        "skip_children=true",
+        "tests/svm/src/bin/wallet.rs"
+      ],
+      "exit_code": 0,
+      "seconds": 0.031
+    },
+    {
+      "argv": [
+        "cargo",
+        "clippy",
+        "--locked",
+        "--manifest-path",
+        "tests/svm/Cargo.toml",
+        "--bin",
+        "wallet",
+        "--",
+        "-D",
+        "warnings"
+      ],
+      "exit_code": 0,
+      "seconds": 0.339
+    },
+    {
+      "argv": [
+        "npm",
+        "run",
+        "typecheck"
+      ],
+      "exit_code": 0,
+      "seconds": 1.324
+    },
+    {
+      "argv": [
+        "node",
+        "--test",
+        "--test-reporter=tap",
+        "/Users/yukikimura/work/solana-zkapi/packages/sdk/test/challenger.test.ts",
+        "/Users/yukikimura/work/solana-zkapi/packages/sdk/test/clientd.test.ts",
+        "/Users/yukikimura/work/solana-zkapi/packages/sdk/test/control.test.ts",
+        "/Users/yukikimura/work/solana-zkapi/packages/sdk/test/encoding.test.ts",
+        "/Users/yukikimura/work/solana-zkapi/packages/sdk/test/journal-browser.test.ts",
+        "/Users/yukikimura/work/solana-zkapi/packages/sdk/test/journal.test.ts",
+        "/Users/yukikimura/work/solana-zkapi/packages/sdk/test/transport.test.ts",
+        "/Users/yukikimura/work/solana-zkapi/packages/sdk/test/trust.test.ts",
+        "/Users/yukikimura/work/solana-zkapi/packages/sdk/test/wallet-chain.test.ts",
+        "/Users/yukikimura/work/solana-zkapi/packages/sdk/test/wallet-recovery.test.ts",
+        "/Users/yukikimura/work/solana-zkapi/packages/sdk/test/wallet-standard.test.ts"
+      ],
+      "exit_code": 0,
+      "seconds": 4.223
+    },
+    {
+      "argv": [
+        "node",
+        "--test",
+        "--test-reporter=tap",
+        "packages/sdk/test/prover-browser.ts"
+      ],
+      "exit_code": 0,
+      "seconds": 62.681
+    },
+    {
+      "argv": [
+        "node",
+        "--test",
+        "--test-reporter=tap",
+        "packages/sdk/test/prover-sbf.ts"
+      ],
+      "exit_code": 0,
+      "seconds": 0.885
+    },
+    {
+      "argv": [
+        "node",
+        "--test",
+        "--test-reporter=tap",
+        "packages/sdk/test/wallet-integration.ts"
+      ],
+      "exit_code": 0,
+      "seconds": 29.261
+    }
+  ],
+  "elapsed_seconds": 121.393,
+  "artifact_sha256": {
+    "apps/clientd/companion/Cargo.lock": "86c8e6f8c463bf309f85f9159155dd57c04b247d15eb5cfb4263ff38187a9c30",
+    "apps/clientd/companion/Cargo.toml": "092f38e109aad9a918f8627d4ee0268450bda62c5d0171d2f3ed33dfc3166406",
+    "apps/clientd/companion/src/lib.rs": "8ee7ce8775f2e0ee69c14c651f75b5d0d34e9a3edba491255aa6dd2bc9029a15",
+    "apps/clientd/companion/src/main.rs": "3c1fc9cb2012845a459f6b538db251cecab19a1dfab93d5f887b9d9fe282aa05",
+    "apps/clientd/prover/Cargo.lock": "270bf7787e6d0863de0f681d42f62cd2c2c9d733db42ddb556cb44eb972711d9",
+    "apps/clientd/prover/Cargo.toml": "2d9a3d5f2d5841fc059eb7c182f15ef9d0efe377ad027bc3a163d47f342ca190",
+    "apps/clientd/prover/examples/test_clearance.rs": "81e34533c87609e422b3a190bb22bf2e4e6ae4a8f1cb590e321b85772fc77319",
+    "apps/clientd/prover/src/lib.rs": "725f53f78f89033415ce4aa0566a6a2962b7e71ce7a044663a2d506224596af4",
+    "apps/clientd/prover/src/main.rs": "181cb414eb99da9741be0f278d754c9c62a261678c2d77ca0319afde866cb420",
+    "apps/clientd/prover/target/release/zkapi-client-prover": "c4cf9d03283fa21fb026efb8eb26a4c365a766a90a0d5e1b19403cc9f07121d4",
+    "apps/clientd/prover/target/wasm32-unknown-unknown/release/zkapi_client_prover.wasm": "ca82e6a6cbfc493fdefa0a764b04205f65002eb99529f4a95450234f9797cd1b",
+    "apps/clientd/prover/tests/proofs.rs": "9deb78ee3ed3caf2bd8aca37d190d028c1aa8bb832037eccea6e4dcbd3f928cf",
+    "package-lock.json": "f20927b629c1a7700b90999783e052c8ef683c28d648415eb13d05caebecb2aa",
+    "packages/sdk/package.json": "04720ae81b55d8c2eb3c2141edc82a1f0c4672bd7ca838f48acb4f68d4ceeb2b",
+    "packages/sdk/src/challenger-cli.ts": "4d6af7d7f668155e6a30d91d2cd60843128c65276db8ba9106f6c59d341cd647",
+    "packages/sdk/src/challenger.ts": "444c80d62925b1bf3f3474d96ea0ceda556672fa6858836105197df6896a1d7e",
+    "packages/sdk/src/clientd-bridge.ts": "67534423fc4c49b22b02ebbd2d593727f22d5539f452b491bf3ed008e9d99dc3",
+    "packages/sdk/src/clientd-network.ts": "b4ee5d17d2520ca78fbe85b32870d543a97f1b3dd92b3f89f140852a687023aa",
+    "packages/sdk/src/control-node.ts": "b1cd1c08972d364310a1cfd5cfd32b30b47a9adeffad1f44c8612b07f6cd685f",
+    "packages/sdk/src/control-prover.ts": "b2373dd39c4e7dec1bb6fc2dc15be201f93719f9f46290862bc3e20d124dfd64",
+    "packages/sdk/src/control.ts": "6297135fba01ef2d7f7a13945be4a39cdc4dc9adfcaf1c792098d284dfedce7d",
+    "packages/sdk/src/encoding.ts": "7301ea7c7f93dcd4ae02f760d07829d342bc2c0d042ace67bc5a41a8d68aeee4",
+    "packages/sdk/src/journal-node.ts": "c93ee69fe01488ad8cdbdbdc88d1f046b1c821c179ce7d755250e81b9bbabb6d",
+    "packages/sdk/src/journal.ts": "5c6d7ea7b9e5ee10f8c4e30ac4ce1f204851a52208a56e1bd1e84c112b4ac9c5",
+    "packages/sdk/src/layout2.ts": "b6f6c1208f315327fed01b531a883a68676ebc0680f0d178cead59610906c91e",
+    "packages/sdk/src/prover-node.ts": "2bbcbc09a047c938c3c16bf2d28daae8ccf2a8934676d7db7ff4a9ee8f02cfcc",
+    "packages/sdk/src/prover-runtime.ts": "3c4d7e15984613307c4137d16200b5d75d236e616de50db482d1c1a3ad6e4ff4",
+    "packages/sdk/src/prover-worker.ts": "342ae466853e540185a1b67e37b0fb1262a08a23f36f4a5d4af5d473ab6e9cc8",
+    "packages/sdk/src/prover.ts": "992f3754245e8ff065c60940ec5677617c77ee7ee7ee6a4599d75dd5a4f53110",
+    "packages/sdk/src/secret-custody.ts": "44506804efec9d1340075f055ec1ad02a105b86599a59e101be71ee4adc1e8f3",
+    "packages/sdk/src/transport.ts": "caa5a71d4b8e5b1bae58227f23a350af864bb8fdcbbd3ea47441676b92469a67",
+    "packages/sdk/src/trust.ts": "6fe8ca3639ff2b0547122ca3e2aaa419379019e5ac5f42aaeac3565f5ccd924f",
+    "packages/sdk/src/wallet-chain.ts": "2b23b53eddaffb4d235c4bfae860922bad5493415b3d6a44c668735286d48f16",
+    "packages/sdk/src/wallet-standard.ts": "2b519f454bca7711e3cc659b001cf15d926b466df070d57e4e2abe60d63d6c44",
+    "packages/sdk/src/wallet.ts": "b6518fc7a9707f1056d1c55757ecc43820e8db2de9b311a089887c4163ce99f0",
+    "packages/sdk/test/challenger-rpc.ts": "9d322d7f6455dd1e3ddbd30d78ab05062adcf73b7d6124d2367ec80ac20de323",
+    "packages/sdk/test/challenger-sbf.ts": "9a641a53dbba42720cfeabc4f2334376f4ca8bd68e7ac3d12626cbe935839661",
+    "packages/sdk/test/challenger.test.ts": "71ae5fa4910ecd12c864cb778fdc81cee00e92de7900dadd62c616986e01d387",
+    "packages/sdk/test/clientd-sbf.ts": "8e727c71cb05398beee27c494183bec8d01e010c735f4847688193b41a5b534d",
+    "packages/sdk/test/clientd.test.ts": "a8f6510a339044edc681e092662afa4fd1c698d11660d2470855a430ac118712",
+    "packages/sdk/test/control.test.ts": "75bcae33091889cf9ba5eb7b9074763d41afccc1838ccd814f9bccfc96fad5f5",
+    "packages/sdk/test/encoding.test.ts": "6ad5f94b9d8581c8c6e9d71793c061c1b50ed9ebc95bdbfd3d6cb3291534d73a",
+    "packages/sdk/test/i10-e2e.ts": "eb2b08ae58e13a0d5c8d8e5eac906a5c9d7d1eabf3c70a24dd23ba54442ca808",
+    "packages/sdk/test/journal-browser.test.ts": "b66bcf0eee6441369461b13da11b9da547d926f4bd3daf9107f5078ac150a179",
+    "packages/sdk/test/journal.test.ts": "2b950e49d010b8b4b1ba96552f851fcf46ca0f67c926f1ae68f4ef9634f64fca",
+    "packages/sdk/test/native-integration.ts": "6b48c0634bcdff20ef99350271641f5e66d22200a776b85853e7663cde5b626c",
+    "packages/sdk/test/prover-browser.ts": "904aa638b693f88f638ead9855d4f59a74cdf147646789c9b1f428a8e1f6e988",
+    "packages/sdk/test/prover-sbf.ts": "d3c3d7e3ffcab10f9d44708e9c5d113ad48fe73b6b80b7429331ca794bed9363",
+    "packages/sdk/test/sbf-transactions.ts": "b97b06d90865a12b708960bda5386913246b7ba75dc09f8a3df9cfde4c24d59d",
+    "packages/sdk/test/transport.test.ts": "8bb90550bacbe02e28c2a261c334a1f1efde333defd6d419622a07055250dd22",
+    "packages/sdk/test/trust.test.ts": "57295fcf913faad99166682bb60db9d2f1c9230d7f539c3a1045bf099e912c29",
+    "packages/sdk/test/wallet-chain.test.ts": "b39c37e004346bcba87d267ba6a6507bc43cc738d7cead3928a1ac965f8beca4",
+    "packages/sdk/test/wallet-fixture.ts": "7ff53df56814238ffa06707f5cf531b49a8ef453a7af1a3c778c0cb874e8fa53",
+    "packages/sdk/test/wallet-integration.ts": "5cc44722207c9077b8c7dd9b1635748a433ab87adef69f7b5e6ee5c88eb9611a",
+    "packages/sdk/test/wallet-recovery.test.ts": "135ecf9b41e9b455511137dadd62a0b55f0b4636f1a2beb08cdfb991bc8833e3",
+    "packages/sdk/test/wallet-standard.test.ts": "b11fa61848530f315fab80917feb4e8d475e00357d88a1657e0599401143d8e3",
+    "scripts/run_i08_wallet.py": "db069c0601389459203ec3583ab8f897bcbaf6ecb7e90735d5ce99b59b0a84ca",
+    "services/control/src/crypto.rs": "767dee3d41d11613a4e008029ad56bf4c17c221db509ce3602078970234770e9",
+    "services/control/src/quote.rs": "9fe998f1897154c4f9a5a48769be9a0a5f6f3643bb599c286bf851faeabdc0dd",
+    "services/control/src/receipts.rs": "7205be2eed4598fa5b75551a997ddedf0e79f735ce17452e37d38ab190ee69d0",
+    "services/control/src/wire.rs": "dbbe1e2e9f3ff7e65f682d3840d44c08a280483068a8240608d74d0eecb04af7",
+    "target/i04-sbf/zkapi_vault.so": "920fe7864f8f05b512b47bcc7edfe77c9440890e0d479ee9fca0bd1aba02f315",
+    "target/i05/public-manifest.json": "684edd065b216230c0142f1244e4cf8e585a2a6b2d2c671734de8c76f2bf1569",
+    "target/i08-wallet/circuit-source.tar": "49659e9933a61d05051ed4377ce95d915840f484f3f7f8ce4c6c1b7ca07fa56e",
+    "target/i08-wallet/native-request.json": "49c942a764bb46e05075025f280f7dd47b6d169a216df0b066e0d5fd3fac2f99",
+    "target/i08-wallet/native-vault.json": "c3bb9f3dd8f3bcc193471b639bce225663005bf3a4b57a5174fe3d80a215f838",
+    "target/i08-wallet/wallet-sbf-results.json": "df11285a0717d1982190e0d6b4b493351987a33117f9064ad7e213db82e33ff7",
+    "target/i08-wallet/wasm-close-sbf-results.json": "f2afefb629a932d95c72bf5d59f0c24f2c18350c18b5883f03c941cccec11cca",
+    "target/i08-wallet/wasm-escape-sbf-results.json": "2e148cecb500f742abfa0e4cec6d6383d1ac38bb1c278c8f79ce88519b8282ed",
+    "target/i08-wallet/wasm-results.json": "f20607a2c09c6e31ca2a32439a6912049a90691b9e35b1983d9476c1fcc95a16",
+    "target/i08-wallet/wasm-vault.json": "93447510dc6116af08826299c96e42ab2458ad964adbbe5663082bd2a2ee1a8a",
+    "target/i09-challenger/test-tree.pk": "c01b31f6806ce59114fe8befa210967415e20229b0a998018d4955a726fd0f80",
+    "tests/svm/Cargo.lock": "4161ddce8f3dc962a9a2d15d9d7fe945e35121018fa9b94851316d987107d78c",
+    "tests/svm/Cargo.toml": "3ad70f37a1c678b4ccb1b4124e205c1ae8b6271ac009c52eca8babaa4cd2a711",
+    "tests/svm/src/bin/wallet.rs": "375395e8d0db314f0e6f37b9d2e32fb7eca61e37188fee62c5f1747032280533",
+    "tests/svm/src/vault_support.rs": "2d59e6e5f2474cf8563f6dde9b05344257f6db8af5a016a80e245bc6ff993f43"
+  },
+  "wasm_proofs_verified": true,
+  "new_wasm_payload_sbf_verified": true,
+  "wallet_recovery_sbf_verified": true,
+  "clearance_http": "test signer, actual Baby-JubJub signature",
+  "chain_finality": "local RPC/indexer fixtures over actual SBF accounts; no live consensus",
+  "setup_profile": "authenticated TEST ONLY public setup",
+  "live_provider_verified": false,
+  "wallet_public_rpc_verified": false,
+  "release_gates_passed": []
+}

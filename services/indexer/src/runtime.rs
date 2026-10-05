@@ -93,6 +93,36 @@ fn decode_pending(raw: &[u8], note: Note, bump: u8) -> Result<Pending> {
     crate::canonical(pending.nullifier)?;
     Ok(pending)
 }
+/// Raw account bytes from one finalized RPC bank. Decode only after replay has
+/// reached this exact slot; the required account inventory may have changed.
+pub struct AccountCut {
+    slot: u64,
+    program: Bytes32,
+    values: BTreeMap<Bytes32, Option<Vec<u8>>>,
+    raw_accounts: BTreeMap<Bytes32, Value>,
+}
+impl AccountCut {
+    pub fn slot(&self) -> u64 {
+        self.slot
+    }
+    /// Exact captured bytes with the owner/encoding already authenticated by
+    /// this response. No second RPC read is needed for role-specific validation.
+    pub fn account(&self, address: &Bytes32) -> Result<Value> {
+        self.required(address)?;
+        self.raw_accounts
+            .get(address)
+            .cloned()
+            .ok_or_else(|| "captured account metadata missing".into())
+    }
+    fn required(&self, key: &Bytes32) -> Result<&[u8]> {
+        self.values
+            .get(key)
+            .ok_or("captured account inventory missing; retry after replay")?
+            .as_deref()
+            .ok_or_else(|| "missing account at captured cut".into())
+    }
+}
+
 #[derive(Clone)]
 pub struct ArchiveRpc {
     client: reqwest::Client,
@@ -135,45 +165,90 @@ impl ArchiveRpc {
     async fn accounts(
         &self,
         keys: &[Bytes32],
-        slot: u64,
+        minimum_slot: u64,
         program: &Bytes32,
-    ) -> Result<Vec<Vec<u8>>> {
-        let mut out = Vec::new();
+    ) -> Result<AccountCut> {
+        let mut cut = None;
+        let mut out = BTreeMap::new();
+        let mut raw_accounts = BTreeMap::new();
         for batch in keys.chunks(100) {
-            let response=self.call("getMultipleAccounts",json!([batch.iter().map(b58).collect::<Vec<_>>(),{"commitment":"finalized","encoding":"base64","minContextSlot":slot}])).await?;
-            if response["context"]["slot"].as_u64() != Some(slot) {
-                return Err("RPC account cut advanced; replay next finalized cut".into());
+            let response=self.call("getMultipleAccounts",json!([batch.iter().map(b58).collect::<Vec<_>>(),{"commitment":"finalized","encoding":"base64","minContextSlot":cut.unwrap_or(minimum_slot)}])).await?;
+            let slot = response["context"]["slot"]
+                .as_u64()
+                .ok_or("RPC account cut")?;
+            if slot < minimum_slot || cut.is_some_and(|chosen| chosen != slot) {
+                return Err("RPC account cut advanced or regressed between batches".into());
             }
+            cut = Some(slot);
             let values = response["value"].as_array().ok_or("RPC account list")?;
             if values.len() != batch.len() {
                 return Err("RPC account count".into());
             }
-            for value in values {
-                if value["owner"].as_str() != Some(b58(program).as_str())
-                    || value["executable"] != false
-                    || value["data"][1] != "base64"
-                {
-                    return Err("RPC account owner/encoding".into());
+            for (address, value) in batch.iter().zip(values) {
+                // An account from the previous inventory may have closed at S.
+                // Null is accepted only if replay no longer requires that key.
+                let bytes = if value.is_null() {
+                    None
+                } else {
+                    if value["owner"].as_str() != Some(b58(program).as_str())
+                        || value["executable"] != false
+                        || value["data"][1] != "base64"
+                    {
+                        return Err("RPC account owner/encoding".into());
+                    }
+                    Some(STANDARD.decode(value["data"][0].as_str().ok_or("missing account")?)?)
+                };
+                if out.insert(*address, bytes).is_some() {
+                    return Err("duplicate account inventory".into());
                 }
-                out.push(STANDARD.decode(value["data"][0].as_str().ok_or("missing account")?)?);
+                raw_accounts.insert(*address, value.clone());
             }
         }
-        Ok(out)
+        Ok(AccountCut {
+            slot: cut.ok_or("empty account inventory")?,
+            program: *program,
+            values: out,
+            raw_accounts,
+        })
     }
-    pub async fn observe_chain(&self, cfg: &Config, expected: &ChainState) -> Result<ChainState> {
+    /// Capture once, then let durable consumers replay to `cut.slot()` before
+    /// calling `observe_cut`. An incomplete new inventory must be retried.
+    pub async fn capture_chain(&self, cfg: &Config, inventory: &ChainState) -> Result<AccountCut> {
         let program = key(&cfg.program_id)?;
         let pool = key(&cfg.pool)?;
-        let (tree, tree_bump) = pda(&program, &[b"tree", &pool]);
+        let (tree, _) = pda(&program, &[b"tree", &pool]);
         let mut keys = vec![pool, tree];
-        for id in expected.active.keys() {
+        for id in inventory.active.keys() {
             keys.push(pda(&program, &[b"note", &pool, &id.to_le_bytes()]).0);
         }
-        for id in expected.pending.keys() {
+        for id in inventory.pending.keys() {
             keys.push(pda(&program, &[b"note", &pool, &id.to_le_bytes()]).0);
             keys.push(pda(&program, &[b"pending", &pool, &id.to_le_bytes()]).0);
         }
-        let values = self.accounts(&keys, expected.slot, &program).await?;
-        let pool_raw = &values[0];
+        self.accounts(&keys, inventory.slot, &program).await
+    }
+    /// Preserve exact-cut observation for callers that already replayed a known
+    /// slot. The live refresh path captures the bank before its final replay.
+    pub async fn observe_chain(&self, cfg: &Config, expected: &ChainState) -> Result<ChainState> {
+        let cut = self.capture_chain(cfg, expected).await?;
+        if cut.slot != expected.slot {
+            return Err("RPC account cut advanced; replay next finalized cut".into());
+        }
+        self.observe_cut(cfg, expected, &cut).await
+    }
+    pub async fn observe_cut(
+        &self,
+        cfg: &Config,
+        expected: &ChainState,
+        cut: &AccountCut,
+    ) -> Result<ChainState> {
+        if cut.slot != expected.slot || cut.program != key(&cfg.program_id)? {
+            return Err("account/replay cut mismatch".into());
+        }
+        let program = key(&cfg.program_id)?;
+        let pool = key(&cfg.pool)?;
+        let (tree, tree_bump) = pda(&program, &[b"tree", &pool]);
+        let pool_raw = cut.required(&pool)?;
         if pool_raw.len() != 422 {
             return Err("pool length".into());
         }
@@ -187,26 +262,27 @@ impl ArchiveRpc {
         {
             return Err("pool profile/genesis mismatch".into());
         }
-        let tree_raw = &values[1];
+        let tree_raw = cut.required(&tree)?;
         check_account(tree_raw, "TreeState", 66, tree_bump)?;
         let root = array(tree_raw, 10)?;
         crate::canonical(root)?;
         let mut active = BTreeMap::new();
         let mut pending = BTreeMap::new();
-        let mut at = 2;
         for id in expected.active.keys() {
-            let bump = pda(&program, &[b"note", &pool, &id.to_le_bytes()]).1;
-            active.insert(*id, decode_note(&values[at], *id, 1, bump)?);
-            at += 1;
+            let (address, bump) = pda(&program, &[b"note", &pool, &id.to_le_bytes()]);
+            active.insert(*id, decode_note(cut.required(&address)?, *id, 1, bump)?);
         }
         for id in expected.pending.keys() {
-            let note_bump = pda(&program, &[b"note", &pool, &id.to_le_bytes()]).1;
-            let pending_bump = pda(&program, &[b"pending", &pool, &id.to_le_bytes()]).1;
-            let note = decode_note(&values[at], *id, 2, note_bump)?;
-            pending.insert(*id, decode_pending(&values[at + 1], note, pending_bump)?);
-            at += 2;
+            let (note_address, note_bump) = pda(&program, &[b"note", &pool, &id.to_le_bytes()]);
+            let (pending_address, pending_bump) =
+                pda(&program, &[b"pending", &pool, &id.to_le_bytes()]);
+            let note = decode_note(cut.required(&note_address)?, *id, 2, note_bump)?;
+            pending.insert(
+                *id,
+                decode_pending(cut.required(&pending_address)?, note, pending_bump)?,
+            );
         }
-        let block=self.call("getBlock",json!([expected.slot,{"commitment":"finalized","transactionDetails":"none","maxSupportedTransactionVersion":0,"rewards":false}])).await?;
+        let block=self.call("getBlock",json!([expected.slot,{"commitment":"finalized","transactionDetails":"none","maxSupportedTransactionVersion":1,"rewards":false}])).await?;
         if key(block["blockhash"].as_str().ok_or("blockhash missing")?)? != expected.blockhash {
             return Err("block anchor mismatch".into());
         }
@@ -221,6 +297,23 @@ impl ArchiveRpc {
             pending,
         })
     }
+    /// Reconcile one captured finalized bank without chasing a moving RPC tip.
+    /// If replay discovers new required accounts, keep its advanced inventory
+    /// but publish nothing until a later complete capture succeeds.
+    pub async fn refresh(
+        &self,
+        cfg: &Config,
+        index: &mut Indexer,
+        next_slot: &mut u64,
+    ) -> Result<()> {
+        index.ready = false;
+        self.catch_up(index, next_slot).await?;
+        let cut = self.capture_chain(cfg, &index.replay_state()?).await?;
+        self.catch_up_to(index, next_slot, cut.slot).await?;
+        let observed = self.observe_cut(cfg, &index.replay_state()?, &cut).await?;
+        index.reconcile(&observed)?;
+        Ok(())
+    }
     pub async fn catch_up(&self, index: &mut Indexer, next_slot: &mut u64) -> Result<()> {
         // A failed refresh must not leave an earlier reconciled root available
         // through the library API. Every refresh requires a fresh account cut.
@@ -230,26 +323,72 @@ impl ArchiveRpc {
             .await?
             .as_u64()
             .ok_or("invalid finalized slot")?;
+        self.catch_up_to(index, next_slot, tip).await
+    }
+    /// Read at most four finalized blocks concurrently, returning per-slot
+    /// results in the requested order. Durable consumers must stop at the first
+    /// failed item; a later fetched block never authorizes skipping that slot.
+    pub async fn finalized_block_window(&self, slots: &[u64]) -> Result<Vec<Result<Value>>> {
+        if slots.is_empty() || slots.len() > 4 || slots.windows(2).any(|pair| pair[0] >= pair[1]) {
+            return Err("invalid finalized block window".into());
+        }
+        let mut tasks = tokio::task::JoinSet::new();
+        for (position, slot) in slots.iter().copied().enumerate() {
+            let rpc = self.clone();
+            tasks.spawn(async move {
+                let value = rpc.call("getBlock", json!([slot,{"commitment":"finalized","encoding":"json","transactionDetails":"full","maxSupportedTransactionVersion":1,"rewards":false}])).await;
+                (position, value)
+            });
+        }
+        let mut completed = BTreeMap::new();
+        while let Some(result) = tasks.join_next().await {
+            let (position, value) = result.map_err(|_| "RPC archive task unavailable")?;
+            completed.insert(position, value);
+        }
+        // Completion order never becomes execution order. Dropping JoinSet on
+        // error/cancellation aborts pending requests; no detached tasks linger.
+        Ok(completed.into_values().collect())
+    }
+    async fn catch_up_to(&self, index: &mut Indexer, next_slot: &mut u64, tip: u64) -> Result<()> {
+        index.ready = false;
         let mut scan = *next_slot;
+        let report_progress = tip.saturating_sub(scan) >= 999;
+        if report_progress {
+            eprintln!("indexer replay start: next_slot={scan} target_slot={tip}");
+        }
         while scan <= tip {
             let end = scan.saturating_add(999).min(tip);
             let slots = self
                 .call("getBlocks", json!([scan,end,{"commitment":"finalized"}]))
                 .await?;
             let mut prior = None;
-            for slot in slots.as_array().ok_or("invalid block range")? {
-                let slot = slot.as_u64().ok_or("invalid block slot")?;
-                if slot < scan || slot > end || prior.is_some_and(|p| slot <= p) {
-                    return Err("unordered block range".into());
+            // Keep memory/RPC pressure bounded while replaying long archives.
+            // Decode and apply only the ordered successful prefix of each read
+            // window. A later successful fetch cannot skip a failed slot.
+            for window in slots.as_array().ok_or("invalid block range")?.chunks(4) {
+                let mut ordered = Vec::with_capacity(window.len());
+                for slot in window {
+                    let slot = slot.as_u64().ok_or("invalid block slot")?;
+                    if slot < scan || slot > end || prior.is_some_and(|p| slot <= p) {
+                        return Err("unordered block range".into());
+                    }
+                    prior = Some(slot);
+                    ordered.push(slot);
                 }
-                let value=self.call("getBlock",json!([slot,{"commitment":"finalized","encoding":"json","transactionDetails":"full","maxSupportedTransactionVersion":0,"rewards":false}])).await?;
-                index.apply_block(&rpc::decode_finalized_block(slot, &value)?)?;
-                *next_slot = slot.checked_add(1).ok_or("slot overflow")?;
-                prior = Some(slot);
+                let values = self.finalized_block_window(&ordered).await?;
+                for (slot, value) in ordered.into_iter().zip(values) {
+                    index.apply_block(&rpc::decode_finalized_block(slot, &value?)?)?;
+                    *next_slot = slot.checked_add(1).ok_or("slot overflow")?;
+                }
             }
             // Empty/skipped slots advance only this attempt's scan. Keep the
             // retry cursor at the last applied block: an incomplete range can
             // omit its tail, and that tail must be fetched again on retry.
+            if report_progress {
+                // Numeric replay progress is not a readiness assertion. The
+                // exact finalized account-cut reconciliation still follows.
+                eprintln!("indexer replay progress: range_start={scan} range_end={end} next_slot={next_slot} target_slot={tip}");
+            }
             scan = end.checked_add(1).ok_or("slot overflow")?;
         }
         if index.replay_state()?.slot != tip {
@@ -388,14 +527,7 @@ pub async fn serve(cfg: Config) -> Result<()> {
         let mut next = config.start_slot;
         loop {
             state.write().await.available = false;
-            let result: Result<()> = async {
-                rpc.catch_up(&mut index, &mut next).await?;
-                let expected = index.replay_state()?;
-                let observed = rpc.observe_chain(&config, &expected).await?;
-                index.reconcile(&observed)?;
-                Ok(())
-            }
-            .await;
+            let result = rpc.refresh(&config, &mut index, &mut next).await;
             if result.is_ok() {
                 *state.write().await = Published {
                     index: index.clone(),
@@ -403,8 +535,29 @@ pub async fn serve(cfg: Config) -> Result<()> {
                 };
             }
             // Never log raw RPC errors: URLs can contain provider credentials.
-            else {
-                eprintln!("indexer paused: finalized archive/account reconciliation incomplete");
+            else if let Err(error) = result {
+                // Typed replay errors contain only compile-time descriptions.
+                // Never interpolate an arbitrary transport error or RPC URL.
+                let category = if let Some(error) = error.downcast_ref::<crate::Error>() {
+                    error.to_string()
+                } else {
+                    match error.to_string().as_str() {
+                        "RPC transport unavailable" => "RPC transport unavailable",
+                        "RPC HTTP error" => "RPC HTTP error",
+                        "RPC response error" => "RPC response error",
+                        "RPC result unavailable" => "RPC result unavailable",
+                        "captured account inventory missing; retry after replay" => {
+                            "account inventory changed"
+                        }
+                        "RPC account cut advanced or regressed between batches" => {
+                            "account cut moved"
+                        }
+                        "finalized tip block is unavailable" => "finalized tip unavailable",
+                        _ => "runtime reconciliation unavailable",
+                    }
+                    .to_owned()
+                };
+                eprintln!("indexer paused: next_slot={next} category={category}");
             }
             tokio::time::sleep(Duration::from_secs(2)).await;
         }

@@ -31,20 +31,30 @@ export class SolanaWalletChain implements WalletChain {
     return parseStrictJson(new Uint8Array(Buffer.concat(parts)));
   }
   async snapshot(noteId?:number,path:'active'|'zero'|'none'='active',minimumSlot=0):Promise<WalletSnapshot> {
+    if(!Number.isSafeInteger(minimumSlot)||minimumSlot<0)throw Error('invalid minimum snapshot slot');
     const m=this.manifest,program=new PublicKey(m.program_id),pool=new PublicKey(m.pool);
     let p:any;
     if(noteId===undefined){const root=await this.json('/zkapi/v1/tree/root');noteId=Number(integer(root.next_note_id));path='zero';}
     if(!Number.isInteger(noteId)||noteId<0||noteId>0xffffffff)throw Error('tree full or invalid note ID');
     if(path==='none')p={snapshot:await this.json('/zkapi/v1/tree/root'),siblings:[]};
     else p=await this.json(`/zkapi/v1/tree/notes/${noteId}/${path==='zero'?'zero-path':'path'}`);
-    const root=p.snapshot;if(!root||root.pool!==m.pool||!Number.isSafeInteger(Number(integer(root.slot)))||Number(root.slot)<minimumSlot)throw Error('indexer snapshot identity');
+    const root=p.snapshot;if(!root||root.pool!==m.pool||!Number.isSafeInteger(Number(integer(root.slot))))throw Error('indexer snapshot identity');
     if(path!=='none'&&(p.note_id!==String(noteId)||!Array.isArray(p.siblings)||p.siblings.length!==32))throw Error('indexer path identity');
     parseField(root.root);p.siblings.forEach(parseField);
     const derive=(seed:string,suffix?:Uint8Array)=>PublicKey.findProgramAddressSync([Buffer.from(seed),pool.toBytes(),...(suffix?[suffix]:[])],program);
     const [tree,treeBump]=derive('tree'),[note,noteBump]=derive('note',u32(noteId)),[pending,pendingBump]=derive('pending',u32(noteId));
-    const slot=Number(root.slot);
-    const [genesis,block,accounts]=await Promise.all([this.connection.getGenesisHash(),this.connection.getBlock(slot,{commitment:'finalized',transactionDetails:'none',rewards:false,maxSupportedTransactionVersion:0}),this.connection.getMultipleAccountsInfoAndContext([pool,tree,note,pending,SYSVAR_CLOCK_PUBKEY],{commitment:'finalized',minContextSlot:slot})]);
-    if(accounts.context.slot!==slot||block?.blockhash!==root.blockhash)throw Error('RPC/indexer finalized cut changed; retry snapshot');
+    const sourceSlot=Number(root.slot),minimum=Math.max(sourceSlot,minimumSlot);
+    const header=(slot:number)=>this.connection.getBlock(slot,{commitment:'finalized',transactionDetails:'none',rewards:false,maxSupportedTransactionVersion:1});
+    const [genesis,sourceBlock,accounts]=await Promise.all([this.connection.getGenesisHash(),header(sourceSlot),this.connection.getMultipleAccountsInfoAndContext([pool,tree,note,pending,SYSVAR_CLOCK_PUBKEY],{commitment:'finalized',minContextSlot:minimum})]);
+    const slot=accounts.context.slot;
+    const validBlockhash=(value:unknown)=>{try{return typeof value==='string'&&new PublicKey(value).toBase58()===value;}catch{return false;}};
+    if(!Number.isSafeInteger(slot)||slot<minimum||accounts.value.length!==5||!sourceBlock||!validBlockhash(sourceBlock.blockhash)||sourceBlock.blockhash!==root.blockhash)throw Error('RPC/indexer finalized cut changed; retry snapshot');
+    // The path's source block must remain authentic. An unchanged tree can then
+    // be observed at a later finalized bank without requiring an idle cluster.
+    // All account bytes below come from this ONE response, including Clock and
+    // current Pool/Note/Pending state. Equal root alone is insufficient (ABA).
+    const accountBlock=slot===sourceSlot?sourceBlock:await header(slot);
+    if(!accountBlock||!validBlockhash(accountBlock.blockhash))throw Error('RPC finalized account cut block missing or invalid');
     const [poolAccount,treeAccount,noteAccount,pendingAccount,clock]=accounts.value;if(!poolAccount||!treeAccount||!clock)throw Error('missing finalized accounts');
     const checked=await verifyPoolConfig(m,genesis,{address:m.pool,owner:poolAccount.owner.toBase58(),executable:poolAccount.executable,lamports:BigInt(poolAccount.lamports),data:poolAccount.data,slot:BigInt(slot),commitment:'finalized'},BigInt(minimumSlot));
     const check=async(account:typeof treeAccount,name:string,len:number,bump:number)=>{

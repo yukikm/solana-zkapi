@@ -1,0 +1,113 @@
+{
+  "schema": 1,
+  "reviewed_at_utc": "2026-10-04T19:04:51.117948+00:00",
+  "status": "prepared_public_plan_not_provider_acceptance",
+  "plan": {
+    "file": "provider-acceptance.i10.json",
+    "sha256": "c26a170b5c4490cf2aeecf2f8f74917bbeeabbea034e1dddb9f36cbe8951001f",
+    "planned_requests": 18,
+    "planned_max_micro_usdc": "3833884",
+    "plan_sha256": "50f3f10040671f27ecd2ff59db3d3d6474a58de67bb0cf38e7a2cd41d7577167",
+    "native_config_validation_required": true
+  },
+  "tariff_window_utc": {
+    "from": "2026-10-04T00:00:00Z",
+    "until_exclusive": "2026-10-11T00:00:00Z"
+  },
+  "case_groups": {
+    "openai_chat": 4,
+    "openai_responses": 4,
+    "anthropic_messages": 4,
+    "openrouter_proxy_chat": 4,
+    "openrouter_direct_chat": 2
+  },
+  "financial_bounds": {
+    "approved_external_provider_budget_micro_usdc": "10000000",
+    "planned_max_micro_usdc": "3833884",
+    "unallocated_micro_usdc": "6166116",
+    "pool_session_cap_micro_usdc": "1000000",
+    "planned_devnet_note_deposit_micro_usdc": "10000000",
+    "minimum_remaining_note_balance_under_planned_maxima_micro_usdc": "6166116",
+    "operator_fee_micro_usdc": "0",
+    "direct_reserve": "Each direct case reserves the entire Pool quote cap.",
+    "proxy_reserve": "Full documented context at highest applicable input/cache rate, plus 128 output tokens; ceil nano/1000."
+  },
+  "source_snapshots": [
+    {
+      "url": "https://platform.claude.com/docs/en/models/haiku-4-5/overview",
+      "retrieved_at": "2026-10-04T19:01:39Z",
+      "file": "provider-sources/anthropic-haiku-4-5.json",
+      "sha256": "5bdb5c21c7256406d27f0eec8f4e13d2eca9bc2ceb09263e74b3c7323c0a6776"
+    },
+    {
+      "url": "https://platform.claude.com/docs/en/api/typescript/messages",
+      "retrieved_at": "2026-10-04T19:01:39Z",
+      "file": "provider-sources/anthropic-output-usage.json",
+      "sha256": "4cda44a0b8853681f9f957f3f34c61db2b4888f4b162f13d339a3db52ff5d262"
+    },
+    {
+      "url": "https://platform.claude.com/docs/en/build-with-claude/thinking-steering-and-cost",
+      "retrieved_at": "2026-10-04T19:01:39Z",
+      "file": "provider-sources/anthropic-stream-usage.json",
+      "sha256": "c6a1f8e8eff4357e046228d359e285dc9e32d841906558794d9c49859cc10921"
+    },
+    {
+      "url": "https://developers.openai.com/api/docs/models/gpt-4o-mini",
+      "retrieved_at": "2026-10-04T19:01:39Z",
+      "file": "provider-sources/openai-gpt-4o-mini.json",
+      "sha256": "f0f6be1134c28a6a5c535416b1a061deb1b9ccc4a80d99dcd3f666a6a77bcf89"
+    },
+    {
+      "url": "https://developers.openai.com/api/docs/guides/prompt-caching",
+      "retrieved_at": "2026-10-04T19:01:39Z",
+      "file": "provider-sources/openai-prompt-caching.json",
+      "sha256": "94d19891e54e98ad9fb0e771fd944717c035f1800be066c2e00d32000b5ebd12"
+    },
+    {
+      "url": "https://openrouter.ai/docs/api/api-reference/api-keys/create-keys",
+      "retrieved_at": "2026-10-04T19:01:39Z",
+      "file": "provider-sources/openrouter-create-key.json",
+      "sha256": "f4a72c1bf27f95e75d9f26388bdb0c98ab3afd1bf89b79140c9658a1c6c855bb"
+    },
+    {
+      "url": "https://openrouter.ai/openai/gpt-4o-mini",
+      "retrieved_at": "2026-10-04T19:01:39Z",
+      "file": "provider-sources/openrouter-gpt-4o-mini.json",
+      "sha256": "2fc994e8ed6ba22184803e5851bd84168968642459212b697410b95afe165d83"
+    },
+    {
+      "url": "https://openrouter.ai/docs/guides/overview/auth/management-api-keys",
+      "retrieved_at": "2026-10-04T19:01:39Z",
+      "file": "provider-sources/openrouter-management.json",
+      "sha256": "0e2999b32297cbd628a97a9e19152518dacb99b9b84e62049dbeb63bb98252fe"
+    },
+    {
+      "url": "https://openrouter.ai/docs/cookbook/administration/usage-accounting",
+      "retrieved_at": "2026-10-04T19:01:39Z",
+      "file": "provider-sources/openrouter-usage.json",
+      "sha256": "1ae2f418d772912f579be2c41ba6b6bc947b9de536ccd289281b26371ff050b1"
+    }
+  ],
+  "pending": {
+    "authenticated_availability": "All selected models, account rights, credit and exact usage shape require live verification; public listings are not API success.",
+    "anthropic_known_metadata": "Current documented output_tokens_details is inclusive output decomposition; strict adapter compatibility review is coordinated separately, not a new tariff.",
+    "openrouter_route": "Selected model is a routing alias. Recheck Standard routing and account settings; no hidden provider selection or pricing override.",
+    "oa_direct": {
+      "status": "undetermined_not_scheduled",
+      "missing": [
+        "organization credential",
+        "issuer base",
+        "verifier base",
+        "inference base",
+        "station ID",
+        "compatible inference model and metering/retirement contract"
+      ],
+      "reason": "No deployment/model endpoints are inferred. OA is required by I10 but is not represented by a fake executable case."
+    },
+    "campaign_extension": "The immutable budget cannot silently add OA cases or reset after this plan is initialized. Resolve OA before initialization, or implement an audited same-budget extension preserving all prior reservations; unallocated capacity is not a new budget.",
+    "validity": "If this pricing window expires before initialization, recheck sources and regenerate before use. A live immutable campaign is not overwritten.",
+    "public_results": "No inference, provider-key issuance, or G3 acceptance was performed by this preparation."
+  },
+  "g3_passed": false,
+  "full_i10_passed": false
+}

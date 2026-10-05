@@ -1,0 +1,51 @@
+{
+  "schema": 1,
+  "passed": true,
+  "scope": "Two bounded observation-only stops on public devnet; does not claim completed scan, financial challenger acceptance, unknown-send recovery or production shutdown SLO",
+  "verified_at_utc": "2026-10-04T19:00:23.214659+00:00",
+  "runs": [
+    {
+      "started_at_utc": "2026-10-04T18:57:41.273604+00:00",
+      "status": "failed",
+      "stop_reason": "bounded_runtime_expired",
+      "failure_stage": "scan",
+      "binary_sha256": "15ecaf8e772e583ed092fe76a7ff4cd3b1b40ce9cec7e9437ad60b911b0c3de1",
+      "maximum_runtime_seconds": 5,
+      "native_exit_code": 0,
+      "shutdown_reasons": [],
+      "shutdown_milliseconds": 84,
+      "clean_shutdown": true,
+      "transaction_send_enabled": false
+    },
+    {
+      "started_at_utc": "2026-10-04T18:59:12.751387+00:00",
+      "status": "failed",
+      "stop_reason": "bounded_runtime_expired",
+      "failure_stage": "scan",
+      "binary_sha256": "15ecaf8e772e583ed092fe76a7ff4cd3b1b40ce9cec7e9437ad60b911b0c3de1",
+      "maximum_runtime_seconds": 5,
+      "native_exit_code": 0,
+      "shutdown_reasons": [],
+      "shutdown_milliseconds": 75,
+      "clean_shutdown": true,
+      "transaction_send_enabled": false
+    }
+  ],
+  "genesis": "EtWTRABZaYq6iMfeYKouRu166VU2xqa1wcaWoxPkrZBG",
+  "pool": "Di5Q9RxKpUB4At37eadxMonAsrK4fMhtDXhmr6PzBcD8",
+  "transactions_sent": 0,
+  "same_journal_reopened_by_native_status": true,
+  "status_exit_code": 0,
+  "status_preserved_journal_sha256": "a42eaf58ab13e251e2641ff38acbb83152e29acb1f85d34232d91d295d6c3b4c",
+  "journal_bytes": 3679558,
+  "final_native_binary_sha256": "15ecaf8e772e583ed092fe76a7ff4cd3b1b40ce9cec7e9437ad60b911b0c3de1",
+  "historical_challenge_live_clean_shutdown_false_preserved": true,
+  "scan_completed": false,
+  "I10_complete": false,
+  "release_gates_passed": [],
+  "source_sha256": {
+    "services/challenger/src/runtime.rs": "5aaba36c13670c07941fe5adf42d4c9d6f7ab76f3a46f459e7450164c1adf572",
+    "services/challenger/src/shutdown.rs": "61e10932870da7d2a6b4b5cb25e72a474c6e57608d199cbc2149df92241895f0",
+    "scripts/run_i10_devnet_challenger.py": "81241024bee945a9e78e3f4f8a1403db3a4201c13268d6e084a65c00c09490c2"
+  }
+}

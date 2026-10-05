@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>zkAPI · Devnet wallet acceptance</title><link rel="stylesheet" href="/style.css"></head>
+<body><main>
+<header><p class="eyebrow">zkAPI / I10 acceptance</p><h1>One note. Your wallet.</h1><p id="scope">Loading the pinned devnet configuration…</p></header>
+<section><h2>1. Connect Phantom</h2><p>This page never asks for a seed phrase or private key. Select your existing devnet account in Phantom.</p>
+<label>Wallet<select id="wallet"><option value="">Choose wallet</option></select></label><button id="connect" disabled>Connect wallet</button>
+<label>Connected account<select id="account"><option value="">Choose account</option></select></label>
+<label>Installed wallet version<input id="wallet-version" placeholder="Record the extension version" autocomplete="off"></label>
+<button id="select" disabled>Use selected account</button><p id="identity" class="mono"></p></section>
+<section><h2>2. Deposit 1 devnet USDC</h2><p>The deposit is fixed at 1,000,000 micro-USDC. Each transaction fee is limited to 10,000 lamports. Buffer rent uses test SOL separately.</p>
+<p id="pins" class="mono"></p><button id="deposit" disabled>Prepare deposit</button>
+<p>For the rejection case, reject the first signature in Phantom. Then use “Continue saved operation” to resume. Nothing signs automatically.</p>
+<button id="advance" disabled>Continue saved operation</button><button id="prove" disabled>Resume saved proof</button>
+<button id="withdraw" disabled>Prepare mutual close to this account</button>
+<p>Keep this Chrome profile and localhost port. Reloading reopens the same encrypted journal. Clearing site data removes the local note; this page does not provide backup restoration.</p></section>
+<section><h2>3. One OpenAI request</h2><p id="provider-scope">Select an account to inspect the configured provider case.</p>
+<p>Fixed request: “Reply with the single word ok.” Provider credentials stay in the local dispatcher. This step uses the deposited note's existing encrypted journal.</p>
+<button id="provider-prepare" disabled>Prepare OpenAI authorization</button><button id="provider-send" disabled>Send saved request once</button>
+<button id="provider-close" disabled>Recover / close session</button><button id="provider-reconcile" disabled>Reconcile unaccepted operation</button>
+<p>After a lost response, recover the session; do not send again. Recovery verifies signed receipts and the successor balance. Reconciliation only checks an already settled session for an operation that was never accepted. A never-sent authorization can be cancelled with “Recover / close”.</p>
+<pre id="provider-response" aria-label="OpenAI response">Response text is shown once here and is not retained across reloads.</pre>
+<p>After settlement, prepare mutual close above to withdraw the remaining balance to the same account.</p></section>
+<section><h2>4. Review evidence</h2><p id="status" role="status">Waiting for configuration</p><pre id="state">No account selected</pre>
+<button id="report" disabled>Download public observations</button><p>Observations are scoped to this browser run. Actual wallet identity and finalized receipts require independent acceptance review.</p></section>
+</main><script type="module" src="/app.js"></script></body></html>

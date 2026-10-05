@@ -1,0 +1,66 @@
+{
+  "schema": 1,
+  "passed": true,
+  "tests": 28,
+  "scope": "offline read-only settled-provider recovery evidence; real Ed25519 fixture signatures, synthetic RP/successor verifier; no private inputs, provider/RPC calls, sends, budget or journal writes",
+  "sources": {
+    "scripts/i10_devnet_provider_recovery.ts": "a6a62f7078236737fdfbc673d55c8b06198fc3930233e58f117525c6906e30db",
+    "scripts/i10_devnet_provider_recovery.test.ts": "1fc68ba0f84cdd2bef6d80e86f1ad075203e959e8f4dea7797471ce13fbefef7"
+  },
+  "checks": [
+    {
+      "command": [
+        "target/i08-toolchain/bin/node",
+        "--test",
+        "scripts/i10_devnet_provider_recovery.test.ts"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 0.237,
+      "log": "target/i10-settled-provider-recovery-validation/check-1.log",
+      "sha256": "319fd31eea41eca2d93ab221db4d79a04c23d1711ed2c790633b62cbba8f26fa"
+    },
+    {
+      "command": [
+        "target/i08-toolchain/bin/node",
+        "node_modules/typescript/bin/tsc",
+        "--noEmit",
+        "--strict",
+        "--target",
+        "ES2023",
+        "--module",
+        "NodeNext",
+        "--moduleResolution",
+        "NodeNext",
+        "--allowImportingTsExtensions",
+        "--resolveJsonModule",
+        "--lib",
+        "ES2023,DOM",
+        "--types",
+        "node",
+        "scripts/i10_devnet_provider_recovery.ts",
+        "scripts/i10_devnet_provider_recovery.test.ts",
+        "scripts/run_i10_devnet_vault.ts"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 1.038,
+      "log": "target/i10-settled-provider-recovery-validation/check-2.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "command": [
+        "git",
+        "diff",
+        "--check",
+        "--",
+        "scripts/i10_devnet_provider_recovery.ts",
+        "scripts/i10_devnet_provider_recovery.test.ts"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 0.02,
+      "log": "target/i10-settled-provider-recovery-validation/check-3.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  ],
+  "provider_acceptance_passed": false,
+  "full_g3_passed": false
+}

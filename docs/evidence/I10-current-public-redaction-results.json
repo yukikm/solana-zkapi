@@ -1,0 +1,12 @@
+{
+  "schema": 1,
+  "passed": true,
+  "checked_at_utc": "2026-10-05T04:02:00.048886+00:00",
+  "scope": "exact current configured credential/RPC/wallet-reference and key-material byte matches across git-visible project files; not exhaustive detection",
+  "files_scanned": 582,
+  "known_sensitive_value_count": 8,
+  "matches": 0,
+  "matching_public_files": [],
+  "values_printed": false,
+  "script_sha256": "10a506100f41f8db4f18c385e4074a9aca51a0f82a265901be7eb16c78b236e0"
+}

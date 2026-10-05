@@ -1,0 +1,10 @@
+{
+  "schema": 1,
+  "campaign_id": "i10-provider-acceptance",
+  "budget_micro_usdc": "10000000",
+  "usd_usdc_ratio": "1:1",
+  "max_requests": 32,
+  "max_output_tokens": 128,
+  "models": [],
+  "cases": []
+}

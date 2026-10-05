@@ -1,0 +1,119 @@
+{
+  "schema": 1,
+  "passed": true,
+  "observed_at_utc": "2026-10-05T03:21:49.473064+00:00",
+  "scope": "Local static provider failure diagnostics: real encrypted SDK journal with synthetic responses, twelve actual loopback HTTP adapter cases, and private append-only child stderr. No public provider/RPC access, billing changes or replay.",
+  "commands": [
+    {
+      "name": "typecheck",
+      "command": [
+        "target/i08-toolchain/bin/node",
+        "node_modules/typescript/bin/tsc",
+        "--noEmit",
+        "--strict",
+        "--target",
+        "ES2023",
+        "--module",
+        "NodeNext",
+        "--moduleResolution",
+        "NodeNext",
+        "--allowImportingTsExtensions",
+        "--lib",
+        "ES2023,DOM",
+        "--types",
+        "node",
+        "scripts/provider_acceptance_client.test.ts",
+        "scripts/i10_provider_report.test.ts",
+        "scripts/i10_devnet_provider_config.test.ts",
+        "scripts/run_i10_devnet_vault.ts"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 1.107,
+      "log": "target/i10-provider-diagnostics-validation/typecheck.log",
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "name": "sdk-offline",
+      "command": [
+        "target/i08-toolchain/bin/node",
+        "--test",
+        "scripts/provider_acceptance_client.test.ts",
+        "scripts/i10_provider_report.test.ts",
+        "scripts/i10_devnet_provider_config.test.ts"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 4.239,
+      "log": "target/i10-provider-diagnostics-validation/sdk-offline.log",
+      "log_sha256": "2788ba4ca90ff78580d616c78e5ae9d86a4edc4a07a39c1874a26cdf5a383d8d"
+    },
+    {
+      "name": "native-loopback",
+      "command": [
+        "cargo",
+        "test",
+        "--locked",
+        "--manifest-path",
+        "services/control/Cargo.toml",
+        "--test",
+        "proxy_diagnostics"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 1.281,
+      "log": "target/i10-provider-diagnostics-validation/native-loopback.log",
+      "log_sha256": "f0c28c69dee15367b04f9e91f76b5ba8263cbd705413043cd8d3fe76628062d5"
+    },
+    {
+      "name": "private-stderr",
+      "command": [
+        "python3",
+        "scripts/test_i10_provider_diagnostics.py"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 0.677,
+      "log": "target/i10-provider-diagnostics-validation/private-stderr.log",
+      "log_sha256": "05451201fd053c7629a60030d38b48da6f33cff86f0353ccb0fa2588ac25955a"
+    },
+    {
+      "name": "python-compile",
+      "command": [
+        "python3",
+        "-m",
+        "py_compile",
+        "scripts/run_i10_devnet_backend.py",
+        "scripts/test_i10_provider_diagnostics.py"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 0.04,
+      "log": "target/i10-provider-diagnostics-validation/python-compile.log",
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  ],
+  "tests": {
+    "node": 38,
+    "native_tests": 1,
+    "native_loopback_cases": 12,
+    "python": 2
+  },
+  "source_sha256": {
+    "scripts/provider_acceptance_client.ts": "245d7931a40dcef55db26b6d51b79516bbb0c6ab3e5946ddb9731ea11ad2f911",
+    "scripts/provider_acceptance_client.test.ts": "eea4a3c4d5ce365cdee98c4b0d92d7c653f89a8fd6968bb19a2d3025bbc9b608",
+    "scripts/i10_devnet_provider.ts": "627bacaf4e86d9866ba018403c15ef88a34a4d651d495d549f0e6187a5970cc6",
+    "scripts/i10_provider_report.test.ts": "d3018a70cf24c079c9ada2165957ccf25429eba221e75a8bd7baa9cc22a1d09a",
+    "scripts/i10_devnet_provider_config.test.ts": "2be26d16b07def3b76cf44ec19ee024d03eab574725254b6e8ae14a89b382568",
+    "scripts/run_i10_devnet_backend.py": "778fc52dc76c5261c213747fd6a6f54b32b3eae062ffeb1de51b00fe65cebce5",
+    "scripts/test_i10_provider_diagnostics.py": "51c441cacd20010f5a29d8b8cbd9c83ed1285ae9a9c8e2ff351c88ffa806b8ba",
+    "services/control/src/proxy/transport.rs": "7a2426443f4c1c7cb7e60edd11b65b2e99070be267ef7582cfce807b14ea63c2",
+    "services/control/src/inference.rs": "767e1502fce6991facc1e8253894e1fa3783fb12a6decf44ba34e41708749037",
+    "services/control/src/proxy/usage.rs": "8cce4aaffe714acbe6f8ffbf6a2cc930b7bfdb89d2a7f950455fce718ccf5a79",
+    "services/control/tests/proxy_diagnostics.rs": "6b39d42d9caa71e1f829da9cab927ba344e43845237ab76ee33691944f36fc04",
+    "packages/sdk/src/control.ts": "ba03dc0c7908e6abf65e2827d11974af28316e27cd40c664e641e3b9d48eabcc",
+    "packages/sdk/src/wallet.ts": "6e57ca1259a349d830b8f8702e884f15d8b44bcfe9d7e495e027527fadcc61eb"
+  },
+  "source_unchanged_during_validation": true,
+  "public_network_requests": 0,
+  "private_user_inputs_read": false,
+  "provider_spend_micro_usdc": "0",
+  "real_provider_verified": false,
+  "full_g3_passed": false,
+  "release_gates_passed": []
+}

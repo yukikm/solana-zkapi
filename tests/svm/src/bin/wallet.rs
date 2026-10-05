@@ -168,11 +168,15 @@ fn main() {
                 json!({"signature":signature})
             }
             "report" => {
-                let report = json!({"scope":"actual Vault SBF with SDK wallet signed v0 transactions; simulated finality RPC","rows":rows,"max_cu":rows.iter().map(|r|r["cu"].as_u64().unwrap()).max(),"max_transaction_bytes":rows.iter().map(|r|r["transaction_bytes"].as_u64().unwrap()).max(),"vault_micro_usdc":w.amount(w.vault),"destination_micro_usdc":w.svm.get_account(&w.destination).filter(|a|!a.data.is_empty()).map(|_|w.amount(w.destination)).unwrap_or(0),"source_micro_usdc":w.amount(w.source)});
+                let report = json!({"scope":"actual Vault SBF with SDK wallet signed v0 transactions; simulated finality RPC","rows":rows,"max_cu":rows.iter().map(|r|r["cu"].as_u64().unwrap()).max(),"max_transaction_bytes":rows.iter().map(|r|r["transaction_bytes"].as_u64().unwrap()).max(),"vault_micro_usdc":w.amount(w.vault),"destination_micro_usdc":w.svm.get_account(&w.destination).filter(|a|!a.data.is_empty()).map(|_|w.amount(w.destination)).unwrap_or(0),"source_micro_usdc":w.amount(w.source),"treasury_micro_usdc":w.svm.get_account(&w.treasury).filter(|a|!a.data.is_empty()).map(|_|w.amount(w.treasury)).unwrap_or(0)});
                 let name = command["name"].as_str().unwrap_or("wallet");
-                assert!(["wallet", "wasm-close", "wasm-escape", "clientd"].contains(&name));
+                assert!(["wallet", "wasm-close", "wasm-escape", "clientd", "i10"].contains(&name));
                 fs::write(
-                    root.join(format!("target/i08-wallet/{name}-sbf-results.json")),
+                    if name == "i10" {
+                        root.join("target/i10/vault-sbf-results.json")
+                    } else {
+                        root.join(format!("target/i08-wallet/{name}-sbf-results.json"))
+                    },
                     serde_json::to_vec_pretty(&report).unwrap(),
                 )
                 .unwrap();

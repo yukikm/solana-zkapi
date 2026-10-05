@@ -1,0 +1,27 @@
+{
+  "schema": 1,
+  "url": "https://developers.openai.com/api/docs/models/gpt-4o-mini",
+  "retrieved_at": "2026-10-04T19:01:39Z",
+  "capture_kind": "reviewed factual summary, not a raw HTTP archive",
+  "facts": {
+    "model_snapshot": "gpt-4o-mini-2024-07-18",
+    "page_status": "Default",
+    "context_tokens": 128000,
+    "max_output_tokens": 16384,
+    "usd_per_million_tokens": {
+      "input": "0.15",
+      "cache_read": "0.075",
+      "output": "0.60"
+    },
+    "endpoints": [
+      "/v1/chat/completions",
+      "/v1/responses"
+    ],
+    "capabilities": [
+      "text input/output",
+      "streaming",
+      "function calling"
+    ],
+    "limitation": "A public listing does not establish authenticated account access or successful inference."
+  }
+}

@@ -209,7 +209,7 @@ impl Collector {
             .as_u64()
             .context("finalized slot")?;
         ensure!(finalized >= root_slot, "indexer ahead of finalized RPC");
-        let block=self.rpc("getBlock",json!([root_slot,{"commitment":"finalized","transactionDetails":"none","rewards":false}])).await?;
+        let block=self.rpc("getBlock",json!([root_slot,{"commitment":"finalized","transactionDetails":"none","maxSupportedTransactionVersion":1,"rewards":false}])).await?;
         ensure!(
             block["blockhash"] == root.blockhash,
             "indexer finalized block mismatch"

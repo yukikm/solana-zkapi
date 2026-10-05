@@ -1,0 +1,26 @@
+{
+  "schema": 1,
+  "url": "https://openrouter.ai/docs/guides/overview/auth/management-api-keys",
+  "retrieved_at": "2026-10-04T19:01:39Z",
+  "capture_kind": "reviewed factual summary, not a raw HTTP archive",
+  "facts": {
+    "management_origin": "https://openrouter.ai/api/v1/keys",
+    "operations": [
+      "create",
+      "list",
+      "get",
+      "update disabled",
+      "delete"
+    ],
+    "credential": "Management credentials administer keys; they cannot call completion endpoints.",
+    "fields": [
+      "limit",
+      "limit_remaining",
+      "limit_reset",
+      "include_byok_in_limit",
+      "usage",
+      "byok_usage"
+    ],
+    "limitation": "Documentation alone does not establish disabled-key usage stability or account rights."
+  }
+}

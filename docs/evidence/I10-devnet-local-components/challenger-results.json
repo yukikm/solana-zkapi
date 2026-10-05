@@ -1,0 +1,330 @@
+{
+  "scope": "I09 challenger A/B native RPC daemon/CLI, durable scan/restart, readonly PostgreSQL, real proof, I04 signed-v0 bridge/recovery fault fixtures, actual Vault signed-v0 SBF acceptance; no live RPC claim",
+  "passed": true,
+  "tests_passed": 32,
+  "native_tests_passed": 25,
+  "sdk_tests_passed": 7,
+  "daemon_performance": {
+    "five_minute_local_target_met": true,
+    "live_rpc": false,
+    "p50_ms": 5640,
+    "p95_ms": 11001,
+    "samples": [
+      {
+        "attempts": 5,
+        "case": "normal",
+        "elapsed_ms": 5343,
+        "native_test_process_rss_kib": 297680,
+        "regenerated_proofs": 0
+      },
+      {
+        "attempts": 5,
+        "case": "lose-once",
+        "elapsed_ms": 5425,
+        "native_test_process_rss_kib": 297808,
+        "regenerated_proofs": 0
+      },
+      {
+        "attempts": 11,
+        "case": "stale-once",
+        "elapsed_ms": 10924,
+        "native_test_process_rss_kib": 297920,
+        "regenerated_proofs": 1
+      },
+      {
+        "attempts": 5,
+        "case": "restart",
+        "elapsed_ms": 5350,
+        "native_test_process_rss_kib": 297920,
+        "regenerated_proofs": 0
+      },
+      {
+        "attempts": 5,
+        "case": "confirmed",
+        "elapsed_ms": 5603,
+        "native_test_process_rss_kib": 280656,
+        "regenerated_proofs": 0
+      },
+      {
+        "attempts": 6,
+        "case": "expired-upload",
+        "elapsed_ms": 5640,
+        "native_test_process_rss_kib": 290912,
+        "regenerated_proofs": 0
+      },
+      {
+        "attempts": 11,
+        "case": "buffer-expired",
+        "elapsed_ms": 11001,
+        "native_test_process_rss_kib": 290928,
+        "regenerated_proofs": 1
+      },
+      {
+        "attempts": 8,
+        "case": "upload-rejected",
+        "elapsed_ms": 9582,
+        "native_test_process_rss_kib": 290928,
+        "regenerated_proofs": 1
+      }
+    ],
+    "scope": "local native runtime + real proof/v0 signatures + synthetic JSON-RPC outcomes; separate actual Vault SBF acceptance"
+  },
+  "native_cli": {
+    "fresh_process_steps": 6,
+    "lost_response_recovered": true,
+    "confirmed_execute_preserved": true,
+    "finalized_recovered_without_fee_key": true,
+    "elapsed_seconds": 5.948,
+    "live_rpc": false
+  },
+  "tests_failed": 0,
+  "tests_ignored": 0,
+  "postgres_version": "18.6 (Homebrew)",
+  "fsync": true,
+  "rust": "rustc 1.90.0 (1159e78c4 2025-09-14)",
+  "elapsed_seconds": 83.353,
+  "commands": [
+    [
+      "initdb",
+      "-D",
+      "/tmp/zkapi-i09-x92ml9ci/data",
+      "-U",
+      "i09_test",
+      "--no-locale",
+      "--encoding=UTF8",
+      "--auth=trust"
+    ],
+    [
+      "pg_ctl",
+      "-D",
+      "/tmp/zkapi-i09-x92ml9ci/data",
+      "-l",
+      "/tmp/zkapi-i09-x92ml9ci/postgres.log",
+      "-o",
+      "-k /tmp/zkapi-i09-x92ml9ci/socket -h '' -p 55439",
+      "-w",
+      "start"
+    ],
+    [
+      "psql",
+      "-X",
+      "-h",
+      "/tmp/zkapi-i09-x92ml9ci/socket",
+      "-p",
+      "55439",
+      "-U",
+      "i09_test",
+      "-d",
+      "postgres",
+      "-Atc",
+      "SHOW server_version"
+    ],
+    [
+      "cargo",
+      "fmt",
+      "--manifest-path",
+      "services/challenger/Cargo.toml",
+      "--",
+      "--check"
+    ],
+    [
+      "cargo",
+      "test",
+      "--locked",
+      "--manifest-path",
+      "services/challenger/Cargo.toml",
+      "--",
+      "--include-ignored",
+      "--test-threads=1"
+    ],
+    [
+      "cargo",
+      "clippy",
+      "--locked",
+      "--manifest-path",
+      "services/challenger/Cargo.toml",
+      "--all-targets",
+      "--",
+      "-D",
+      "warnings"
+    ],
+    [
+      "node",
+      "--test",
+      "--test-reporter=tap",
+      "packages/sdk/test/challenger.test.ts"
+    ],
+    [
+      "cargo",
+      "build",
+      "--locked",
+      "--manifest-path",
+      "services/challenger/Cargo.toml",
+      "--bin",
+      "challengerd"
+    ],
+    [
+      "services/challenger/target/debug/challengerd",
+      "status",
+      "target/i09-challenger/cli-state/config.json"
+    ],
+    [
+      "services/challenger/target/debug/challengerd",
+      "init",
+      "/tmp/zkapi-i09-x92ml9ci/native-cli.json"
+    ],
+    [
+      "services/challenger/target/debug/challengerd",
+      "once",
+      "/tmp/zkapi-i09-x92ml9ci/native-cli.json"
+    ],
+    [
+      "services/challenger/target/debug/challengerd",
+      "once",
+      "/tmp/zkapi-i09-x92ml9ci/native-cli.json"
+    ],
+    [
+      "services/challenger/target/debug/challengerd",
+      "once",
+      "/tmp/zkapi-i09-x92ml9ci/native-cli.json"
+    ],
+    [
+      "services/challenger/target/debug/challengerd",
+      "once",
+      "/tmp/zkapi-i09-x92ml9ci/native-cli.json"
+    ],
+    [
+      "services/challenger/target/debug/challengerd",
+      "once",
+      "/tmp/zkapi-i09-x92ml9ci/native-cli.json"
+    ],
+    [
+      "services/challenger/target/debug/challengerd",
+      "once",
+      "/tmp/zkapi-i09-x92ml9ci/native-cli.json"
+    ],
+    [
+      "services/challenger/target/debug/challengerd",
+      "recover",
+      "/tmp/zkapi-i09-x92ml9ci/native-cli.json"
+    ],
+    [
+      "services/challenger/target/debug/challengerd",
+      "status",
+      "/tmp/zkapi-i09-x92ml9ci/native-cli.json"
+    ],
+    [
+      "cargo",
+      "run",
+      "--locked",
+      "--manifest-path",
+      "tests/svm/Cargo.toml",
+      "--bin",
+      "challenger"
+    ],
+    [
+      "cargo",
+      "fmt",
+      "--manifest-path",
+      "tests/svm/Cargo.toml",
+      "--",
+      "--check"
+    ],
+    [
+      "cargo",
+      "clippy",
+      "--locked",
+      "--manifest-path",
+      "tests/svm/Cargo.toml",
+      "--bin",
+      "challenger",
+      "--",
+      "-D",
+      "warnings"
+    ],
+    [
+      "rustc",
+      "--version"
+    ]
+  ],
+  "artifact_sha256": {
+    "target/i09-challenger/generated-challenge.bin": "3ad131a458174dd8bf79711c09745862c014ca50446f9e971514a7ad0c766fa7",
+    "target/i09-challenger/proof-generation.json": "04f0ec79e1ba691428e03f22184e0780d1929faa0575b4f74757beee92304a4f",
+    "target/i09-challenger/svm-results.json": "fe915687f6d038c9eb7b4f850d7742cccb0700fd8f058183fd7c6182c4a9e629",
+    "target/i04-sbf/zkapi_vault.so": "920fe7864f8f05b512b47bcc7edfe77c9440890e0d479ee9fca0bd1aba02f315",
+    "services/challenger/Cargo.toml": "f4f593c9d2492027d60c161b781c90bc23f0ae0419016dfb80ec6ede2a8da361",
+    "services/challenger/Cargo.lock": "274c8711528b79c94b7c05cc6ed09e8b5b2dd5e421fbf0502545ce600e60b34a",
+    "scripts/run_i09_challenger.py": "62c2e7ed234539a70a434db06407dc59f8b9e23b09c8d2879e9f8548643dcbc2",
+    "tests/svm/Cargo.toml": "3ad70f37a1c678b4ccb1b4124e205c1ae8b6271ac009c52eca8babaa4cd2a711",
+    "tests/svm/Cargo.lock": "4161ddce8f3dc962a9a2d15d9d7fe945e35121018fa9b94851316d987107d78c",
+    "tests/svm/src/bin/challenger.rs": "dd5a5a5c811e7a656a9a3731da7802e0c87bed8ba1393df628e8dbc4f6cec264",
+    "tests/svm/src/vault_support.rs": "2d59e6e5f2474cf8563f6dde9b05344257f6db8af5a016a80e245bc6ff993f43",
+    "tests/fixtures/vault/a.json": "fa84086effd14b23e346208c06857a5b61229cac49c23d64a21387af946cf5af",
+    "tests/fixtures/vault/a-with-b.json": "7f3f68354f7edd0f46fe6844ae60df1aabc9bff6777aef59ebf993e80ee74078",
+    "tests/fixtures/vault/b-with-a.json": "dce130506483e27d6a38a427dd4cb029ff46914056f03882c68482b8ce06890d",
+    "tests/fixtures/layout2/test-tree.vk": "9141a035fdba50b13a5776182be029bb23dd15e69cd579c5d6e310b7e2ee5fb7",
+    "target/i04/sdk-svm-history.json": "236dc9e81759f10ee040e99478bbe67edfbea808471861fc6eddeb793d14da9c",
+    "services/challenger/src/bin/challengerd.rs": "7b9e2e6c6d58bde69043836b6c41ddcfea884a1ba452b0e17a40d241c9254bd1",
+    "services/challenger/src/journal.rs": "6dca6712af8c9120fe4b2585e27722b087ae10713808093b9c4403443ab24018",
+    "services/challenger/src/lib.rs": "22bc6a243647b9893fb719f699c74ce75376df1e0534a7604c3b6fdd3140f5da",
+    "services/challenger/src/read_model.rs": "a5788926c4ed3e3f69bbfd967770962e6f61c6c73277e0e79e3c7f2821b29049",
+    "services/challenger/src/runtime.rs": "a3389cde034ef650403796a45ceb7a37d13dc385bc7edae597da3d6fc4b8f3bb",
+    "services/challenger/src/scan.rs": "4b25c33501cb77aa1996556712bcdfba3959dbd3128c271df0f45bf80ddc07bd",
+    "services/challenger/src/tests/coherent_cut.rs": "bd3d1f5e2cbae640f2e2016fbce9658551d5a501ca4830c3c718a74c1322a16d",
+    "services/challenger/src/tests/devnet.rs": "dcbc489323832dcd389d2af20b5b6f00a79ffda9d5476a811e10887ea3740b22",
+    "services/challenger/src/tests/scan_readonly.rs": "02081badec088d3214f1b0c529aa64caee14c3fec06328031df315ab490fc786",
+    "services/challenger/src/tests.rs": "4878232e1baaa850937abf3d9770c14b04527a55cba40de04f686c6f1ee60227",
+    "services/challenger/tests/i10_acceptance.rs": "84fa3a4a6b728fff97bb741905e09fb0fbb2e84f88e23a5f143ab0392fb7c6bd",
+    "services/indexer/src/bin/indexerd.rs": "df9070ca3ae3a929f4569f38b14820296aefc918e98b7ff988c0647214419a6c",
+    "services/indexer/src/lib.rs": "9cb157a0b818c439669fdc772bea7e90c8a774e2cc58e04b69bdade002faa422",
+    "services/indexer/src/replay.rs": "70949915c777cc3373f7adb3eb8bd1cdb5148efddb0d2d8ee1f9f213bf702973",
+    "services/indexer/src/replay_history_tests.rs": "ae313407706100809d13b461fa8c526967386a00ed8db110b7bd2f37252813ac",
+    "services/indexer/src/rpc.rs": "360b63394d25fc107f721c5e2c706223a38f70eae0a6db9e4ad637e744ee8305",
+    "services/indexer/src/runtime.rs": "f24f677caa67c520e70af281222b92c15cdd0d2f087a2fd043f0a3be8d69886c",
+    "services/indexer/src/snapshot.rs": "e77f70b969327948f1a1de41577f4a88b07b392596dfc2a96ee516dc01a955f9",
+    "services/indexer/src/tree.rs": "bfb9b75a177f9d4a26e6d07de2d70a3f979567f7083d49e3ce433b1d332d1e66",
+    "packages/sdk/src/challenger-cli.ts": "4d6af7d7f668155e6a30d91d2cd60843128c65276db8ba9106f6c59d341cd647",
+    "packages/sdk/src/challenger.ts": "444c80d62925b1bf3f3474d96ea0ceda556672fa6858836105197df6896a1d7e",
+    "packages/sdk/test/challenger-rpc.ts": "9d322d7f6455dd1e3ddbd30d78ab05062adcf73b7d6124d2367ec80ac20de323",
+    "packages/sdk/test/challenger-sbf.ts": "9a641a53dbba42720cfeabc4f2334376f4ca8bd68e7ac3d12626cbe935839661",
+    "packages/sdk/test/challenger.test.ts": "71ae5fa4910ecd12c864cb778fdc81cee00e92de7900dadd62c616986e01d387",
+    "target/i09-challenger/daemon-performance.json": "996994d7c9110ef4b0a0ab6be1a71f690836d4bdd08b96e8e530b73bd8e31495",
+    "target/i09-challenger/native-cli-results.json": "5a66a5c0e7d4456a80d40114fa39e4e0ce0a4a31ac3eb38f34eca30622b4f62e",
+    "services/challenger/target/debug/challengerd": "333e5fa0451dbb4bd6618fe22a27668fe123a66051521e979ea6e804028080e0",
+    "target/i09-challenger/i10-restart-results.json": "3963cc9647668f0894be45d258063e37798882b1345c1bbc860d8910526d6aeb"
+  },
+  "release_gates_passed": [],
+  "new_tree_proof_generated": true,
+  "new_payload_sbf_verified": true,
+  "svm": {
+    "transactions": 114,
+    "expected_rejections": 8,
+    "max_cu": 335295,
+    "max_transaction_bytes": 1232,
+    "payload_sha256": "3ad131a458174dd8bf79711c09745862c014ca50446f9e971514a7ad0c766fa7",
+    "elf_sha256": "920fe7864f8f05b512b47bcc7edfe77c9440890e0d479ee9fca0bd1aba02f315"
+  },
+  "live_rpc_verified": false,
+  "i10_repeated_outage_restarts": {
+    "confirmed_only_restarts": 8,
+    "durable_page_events_during_delay": 1,
+    "elapsed_seconds": 8.2110675,
+    "exact_execute_preserved": true,
+    "execute_bytes": 636,
+    "execute_sha256": "7a3b9edffd91fec5be770977042624e59fa7724ad4d682f38cd00a6f6b8cd4f4",
+    "extra_sends_during_outage_and_finality_recovery": 0,
+    "fee_key_removed_before_restarts": true,
+    "finalized_without_fee_key": true,
+    "five_minute_production_slo_verified": false,
+    "fresh_process_recoveries": 17,
+    "injected_status_503": 8,
+    "input_manifest_sha256": "d781da167359be9727a99f29b6b127a98dd8fcdba63ff198cfebd2d29da679e4",
+    "jobs": 1,
+    "live_rpc": false,
+    "multi_job_load": false,
+    "passed": true,
+    "proof_regenerations": 0,
+    "schema": 1,
+    "scope": "One real-RP/tree-proof job, real signed v0, 17 fresh challengerd processes; synthetic finalized RPC outcomes and virtual discovery age; separate I09 actual Vault SBF acceptance"
+  }
+}

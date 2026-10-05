@@ -1,0 +1,14 @@
+{
+  "schema": 1,
+  "passed": false,
+  "recorded_at_utc": "2026-10-05T03:51:50.021103+00:00",
+  "stage": "unstarted-provider-recovery-verification",
+  "cause": "initial helper incorrectly required a reservation, but actual quote failure occurs before the existing reserve step",
+  "financial_action_from_failed_recovery": false,
+  "global_reserved_micro_usdc": "38554",
+  "selected_case_reserved": false,
+  "case_id": "openrouter-proxy-sse",
+  "initial_journal_predicates_verified": true,
+  "correction": "require selected-case absence; preserve strict global budget identity and arithmetic; existing settled recovery still requires its reservation",
+  "release_gates_passed": []
+}

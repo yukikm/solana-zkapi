@@ -1,0 +1,70 @@
+{
+  "schema": 1,
+  "passed": true,
+  "tests": 73,
+  "previous_settled_tests": 28,
+  "new_unstarted_tests": 45,
+  "scope": "offline read-only quote503/initial-journal recovery guard; synthetic lifecycle histories and preserved settled verifier fixtures; no private inputs, network, sends, budget or journal writes",
+  "sources": {
+    "scripts/i10_devnet_provider_recovery.ts": "c4a69ab70b807a9c71424a999b189e0e73d2706af1f8433f476fda66eb4bc187",
+    "scripts/i10_devnet_provider_recovery.test.ts": "0f499cce7585144499d748cbfce51b5c6b4b34cbd4928e95b720d9a03e916cc6"
+  },
+  "source_unchanged_during_validation": true,
+  "checks": [
+    {
+      "command": [
+        "target/i08-toolchain/bin/node",
+        "--test",
+        "scripts/i10_devnet_provider_recovery.test.ts"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 0.241,
+      "log": "target/i10-unstarted-provider-recovery-validation/check-1.log",
+      "sha256": "da55b47b865838307ab4db3f82d306b9130ca79f6cec50f0472b6b6f4c269bf8"
+    },
+    {
+      "command": [
+        "target/i08-toolchain/bin/node",
+        "node_modules/typescript/bin/tsc",
+        "--noEmit",
+        "--strict",
+        "--target",
+        "ES2023",
+        "--module",
+        "NodeNext",
+        "--moduleResolution",
+        "NodeNext",
+        "--allowImportingTsExtensions",
+        "--resolveJsonModule",
+        "--lib",
+        "ES2023,DOM",
+        "--types",
+        "node",
+        "scripts/i10_devnet_provider_recovery.ts",
+        "scripts/i10_devnet_provider_recovery.test.ts",
+        "scripts/run_i10_devnet_vault.ts"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 1.098,
+      "log": "target/i10-unstarted-provider-recovery-validation/check-2.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "command": [
+        "git",
+        "diff",
+        "--check",
+        "--",
+        "scripts/i10_devnet_provider_recovery.ts",
+        "scripts/i10_devnet_provider_recovery.test.ts"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 0.014,
+      "log": "target/i10-unstarted-provider-recovery-validation/check-3.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  ],
+  "cryptographic_absence_verified": false,
+  "provider_acceptance_passed": false,
+  "full_g3_passed": false
+}

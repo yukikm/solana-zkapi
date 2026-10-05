@@ -94,15 +94,34 @@ impl Indexer {
             self.halt();
             return Err(Error::History);
         }
-        let mut candidate = self.clone();
-        candidate.ready = false;
-        candidate.block_transitions.clear();
-        let result = candidate.apply(block).map(|()| {
-            candidate.blocks.insert(block.slot, digest);
-            candidate.checkpoint = Some((block.slot, block.blockhash));
-        });
+        // Replay mutates financial/buffer state, but never the accepted-block
+        // digest history. Keep that growing map in the original until commit;
+        // cloning it for every block makes an otherwise quiet archive O(B²).
+        let mut candidate = Self {
+            program: self.program,
+            pool: self.pool,
+            config: self.config.clone(),
+            tree: self.tree.clone(),
+            active: self.active.clone(),
+            pending: self.pending.clone(),
+            exits: self.exits.clone(),
+            buffers: self.buffers.clone(),
+            sequence: self.sequence,
+            next_note_id: self.next_note_id,
+            outstanding: self.outstanding,
+            checkpoint: self.checkpoint,
+            blocks: BTreeMap::new(),
+            ready: false,
+            halted: self.halted,
+            last_transition: self.last_transition.clone(),
+            block_transitions: Vec::new(),
+        };
+        let result = candidate.apply(block);
         match result {
             Ok(()) => {
+                candidate.blocks = std::mem::take(&mut self.blocks);
+                candidate.blocks.insert(block.slot, digest);
+                candidate.checkpoint = Some((block.slot, block.blockhash));
                 *self = candidate;
                 Ok(())
             }
@@ -615,3 +634,7 @@ impl Indexer {
         })
     }
 }
+
+#[cfg(test)]
+#[path = "replay_history_tests.rs"]
+mod history_tests;

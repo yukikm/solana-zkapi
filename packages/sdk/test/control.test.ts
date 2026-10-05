@@ -255,6 +255,22 @@ test('duplicate JSON fields in status fail closed without advancing state', asyn
   assert.deepEqual((await h.journal.read('note'))?.value.state, initial());
 });
 
+test('browser-compatible credential encoding is byte-identical to Node base64url including both substituted alphabet characters and padding', async t => {
+  let fill = 0;
+  t.mock.method(crypto, 'getRandomValues', (target: Uint8Array) => { target.fill(fill); return target; });
+  for (const value of [0, 0xfb, 0xff, 0x3e]) {
+    fill = value;
+    for (const mode of ['proxy', 'direct_oa', 'direct_openrouter'] as const) {
+      const credentials = await createCredentials(mode), bytes = Buffer.alloc(32, value), expected = bytes.toString('base64url');
+      assert.equal(credentials.controlToken, `zkc1.${credentials.requestId}.${expected}`);
+      assert.equal(credentials.proxyToken, mode === 'proxy' ? `zkp1.${credentials.requestId}.${expected}` : null);
+      assert.match(expected, /^[A-Za-z0-9_-]{43}$/);
+      assert.equal(credentials.controlHash, await sha256Hex(bytes));
+      assert.equal(credentials.proxyHash, mode === 'proxy' ? await sha256Hex(bytes) : null);
+    }
+  }
+});
+
 test('credential mode is explicit and expiry warning includes the Active principal treasury consequence', async () => {
   const direct = await createCredentials('direct_oa'), proxy = await createCredentials('proxy');
   assert.equal(direct.proxyToken, null); assert.equal(direct.proxyHash, null);

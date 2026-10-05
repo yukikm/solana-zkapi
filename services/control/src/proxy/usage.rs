@@ -24,6 +24,22 @@ fn optional_zero(v: &Value, name: &str) -> Result<u64> {
         count(v, name)
     }
 }
+// Anthropic documents this as an optional, nullable observability breakdown.
+// output_tokens remains the inclusive billable count; no extra tariff unit.
+fn anthropic_output_details(usage: &Map<String, Value>) -> Result<()> {
+    if let Some(details) = usage.get("output_tokens_details").filter(|v| !v.is_null()) {
+        keys(details, &["thinking_tokens"])?;
+        let output = usage
+            .get("output_tokens")
+            .and_then(Value::as_u64)
+            .filter(|n| *n <= i64::MAX as u64)
+            .ok_or(ProxyError::UsageUnknown)?;
+        if count(details, "thinking_tokens")? > output {
+            return Err(ProxyError::UsageUnknown);
+        }
+    }
+    Ok(())
+}
 fn sum(a: u64, b: u64) -> Result<u64> {
     a.checked_add(b)
         .filter(|n| *n <= i64::MAX as u64)
@@ -70,6 +86,7 @@ pub fn normalize_usage(
             &[
                 "input_tokens",
                 "output_tokens",
+                "output_tokens_details",
                 "cache_read_input_tokens",
                 "cache_creation_input_tokens",
                 "cache_creation",
@@ -100,6 +117,7 @@ pub fn normalize_usage(
         }
         let input = count(usage, "input_tokens")?;
         let output = count(usage, "output_tokens")?;
+        anthropic_output_details(object(usage)?)?;
         let read = count(usage, "cache_read_input_tokens")?;
         let creation = count(usage, "cache_creation_input_tokens")?;
         let (short, long) = if let Some(c) = usage.get("cache_creation") {
@@ -184,15 +202,23 @@ pub fn normalize_usage(
         0
     };
     if let Some(d) = usage.get(output_details_key) {
-        keys(
-            d,
-            &[
-                "reasoning_tokens",
-                "audio_tokens",
-                "accepted_prediction_tokens",
-                "rejected_prediction_tokens",
-            ],
-        )?;
+        let mut allowed = vec![
+            "reasoning_tokens",
+            "audio_tokens",
+            "accepted_prediction_tokens",
+            "rejected_prediction_tokens",
+        ];
+        // OpenRouter Chat documents image_tokens in the completion breakdown.
+        // This text-only profile has no image tariff: only integer zero is safe.
+        if profile.provider == crate::wire::Provider::Openrouter
+            && endpoint == Endpoint::ChatCompletions
+        {
+            allowed.push("image_tokens");
+            if optional_zero(d, "image_tokens")? != 0 {
+                return Err(ProxyError::UsageUnknown);
+            }
+        }
+        keys(d, &allowed)?;
         if optional_zero(d, "audio_tokens")? != 0 || optional_zero(d, "reasoning_tokens")? > output
         {
             return Err(ProxyError::UsageUnknown);
@@ -363,7 +389,7 @@ impl SseMeter {
                         let m = v.get("message").ok_or(ProxyError::UsageUnknown)?;
                         self.set_id(m)?;
                         let u = m.get("usage").ok_or(ProxyError::UsageUnknown)?;
-                        object(u)?;
+                        anthropic_output_details(object(u)?)?;
                         self.usage = Some(u.clone());
                         self.started = true;
                     }
@@ -399,6 +425,7 @@ impl SseMeter {
                                         | "cache_read_input_tokens"
                                         | "cache_creation_input_tokens"
                                         | "server_tool_use"
+                                        | "output_tokens_details"
                                 )
                             {
                                 continue;
@@ -408,6 +435,9 @@ impl SseMeter {
                             }
                             current.insert(k.clone(), val.clone());
                         }
+                        // Validate every observed breakdown, including final-only
+                        // metadata, before a later delta could replace it.
+                        anthropic_output_details(current)?;
                     }
                     "message_stop" => {
                         if !self.started || !self.output_observed {

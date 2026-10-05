@@ -96,5 +96,41 @@ for name in ['request','withdrawal','tree']:
     bad['setup_transcript_hashes'][name] = None
     case('Manifest',bad,False)
 case('Manifest',{**production,'tree_proof_artifacts':tree},False)
+
+# Single-key custody is an explicit devnet/test-only variant, never fabricated
+# multisig metadata and never an alternative for mainnet/ceremony authority.
+devnet = deepcopy(manifest)
+devnet.update({'deployment_environment':'devnet',
+    'genesis_hash':'EtWTRABZaYq6iMfeYKouRu166VU2xqa1wcaWoxPkrZBG',
+    'authorities':{role:{'kind':'devnet_test_single_key','authority':public_key}
+        for role in ['admin','upgrade']}})
+case('Manifest',devnet,True)
+for role in ['admin','upgrade']:
+    mixed = deepcopy(devnet)
+    mixed['authorities'][role] = authority
+    case('Manifest',mixed,True)
+    isolated = deepcopy(devnet)
+    isolated['authorities']['upgrade' if role == 'admin' else 'admin'] = authority
+    for changes in [
+        {'deployment_environment':'local'}, {'deployment_environment':'mainnet'},
+        {'genesis_hash':public_key},
+        {'setup_profile':'ceremony_verified',
+         'setup_transcript_hashes':dict.fromkeys(['request','withdrawal','tree'],digest),
+         'tree_proof_artifacts':{**tree,'setup_transcript_hash':digest}},
+    ]:
+        case('Manifest',{**isolated,**changes},False)
+    mainnet_single = deepcopy(production)
+    mainnet_single['authorities'][role] = devnet['authorities'][role]
+    case('Manifest',mainnet_single,False)
+    for malformed in [
+        {'authority':public_key}, {'kind':'single_key','authority':public_key},
+        {'kind':'devnet_test_single_key'},
+        {'kind':'devnet_test_single_key','authority':'not-a-pubkey'},
+        *[{'kind':'devnet_test_single_key','authority':public_key,field:'unexpected'}
+          for field in ['program_id','config_hash','threshold','members','extra']],
+    ]:
+        bad = deepcopy(devnet)
+        bad['authorities'][role] = malformed
+        case('Manifest',bad,False)
 print(f"PASS: OpenAPI 3.1, {len(schemas)} schemas, {count} positive/negative examples.")
 print("NOT RUN: provider-native nested payload conformance, manifest crypto/setup verification and runtime semantic checks.")

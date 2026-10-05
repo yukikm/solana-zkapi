@@ -114,6 +114,21 @@ function privateState(s: PrivateState): void {
   object(s); parseMicroUsdc(s.balance_micro_usdc); parseScalar(s.balance_blinding); parseField(s.note_leaf); point(s.commitment); parseField(s.anchor);
   if (s.state_signature !== null) { object(s.state_signature); parseField(s.state_signature.r_x); parseField(s.state_signature.r_y); parseScalar(s.state_signature.s); }
 }
+function pendingSession(p: PendingSession): void {
+  object(p); object(p.prepared);
+  requireTrue(['prepared', 'send_unknown', 'active', 'closing'].includes(p.phase) && Array.isArray(p.operations), 'invalid session phase');
+  requireTrue(p.closeRequested === undefined || typeof p.closeRequested === 'boolean', 'invalid close intent');
+  uuid(p.prepared.request.authorization.request_id);
+  requireTrue(JSON.stringify(p.prepared.request) === p.exactRequest, 'saved authorization bytes changed');
+  requireTrue(typeof p.prepared.control_token === 'string' && (typeof p.prepared.proxy_token === 'string' || p.prepared.proxy_token === null), 'missing credentials');
+  const ids = new Set();
+  for (const o of p.operations) {
+    uuid(o.id); requireTrue(!ids.has(o.id), 'duplicate operation'); ids.add(o.id);
+    requireTrue(routes.has(o.path) && ['prepared', 'send_unknown', 'response_received', 'not_accepted'].includes(o.phase), 'invalid operation');
+    const raw = Buffer.from(o.bodyBase64, 'base64');
+    requireTrue(raw.toString('base64') === o.bodyBase64 && raw.length <= 1024 * 1024, 'invalid operation bytes');
+  }
+}
 export function validateNoteJournal(value: unknown): asserts value is NoteJournal {
   object(value); requireTrue(value.schema === 1 && Array.isArray(value.history), 'invalid note journal');
   privateState(value.state as PrivateState);
@@ -123,6 +138,23 @@ export function validateNoteJournal(value: unknown): asserts value is NoteJourna
     requireTrue(w && ['unfunded','active','pending_escape','closed'].includes(w.status) && Array.isArray(w.history), 'invalid wallet journal');
     requireTrue(value.witness !== undefined, 'wallet witness missing');
     if (w.clearance) { parseField(w.clearance.nullifier); requireTrue(['requested','verified'].includes(w.clearance.phase), 'invalid clearance journal'); }
+    if (w.clearedAuthorization !== undefined) {
+      const archived = w.clearedAuthorization; object(archived);
+      requireTrue(Object.keys(archived).sort().join(',') === 'pending,previous', 'invalid cleared authorization fields');
+      privateState(archived.previous); pendingSession(archived.pending);
+      requireTrue(Buffer.from(jcsBytes(archived.previous)).equals(Buffer.from(jcsBytes(value.state))), 'cleared authorization state changed');
+      requireTrue(value.pending === null && w.clearance?.phase === 'verified' && w.clearance.signature,
+        'cleared authorization requires permanent clearance');
+      const signature = w.clearance.signature; object(signature);
+      requireTrue(Object.keys(signature).sort().join(',') === 'r_x,r_y,s', 'invalid clearance signature fields');
+      parseField(signature.r_x); parseField(signature.r_y); parseScalar(signature.s);
+      const p = archived.pending, inputs = p.prepared.request.public_inputs;
+      requireTrue(p.phase === 'send_unknown' && p.operations.length === 0 && p.providerKey === undefined && p.serverState === undefined,
+        'invalid cleared authorization phase');
+      requireTrue(Array.isArray(inputs) && inputs.length === 12, 'invalid cleared authorization inputs');
+      inputs.forEach(parseField);
+      requireTrue(inputs[8] === w.clearance.nullifier, 'cleared authorization nullifier changed');
+    }
     if (w.operation) {
       requireTrue(['deposit','mutual_close','initiate_escape','finalize_escape'].includes(w.operation.kind)
         && ['proving','ready','stale','closing_stale','failed'].includes(w.operation.phase)
@@ -135,21 +167,7 @@ export function validateNoteJournal(value: unknown): asserts value is NoteJourna
       requireTrue(w.operation.current === undefined || signatures.has(w.operation.current), 'missing current financial attempt');
     }
   }
-  if (value.pending !== null) {
-    const p = value.pending as PendingSession; object(p); object(p.prepared);
-    requireTrue(['prepared', 'send_unknown', 'active', 'closing'].includes(p.phase) && Array.isArray(p.operations), 'invalid session phase');
-    requireTrue(p.closeRequested === undefined || typeof p.closeRequested === 'boolean', 'invalid close intent');
-    uuid(p.prepared.request.authorization.request_id);
-    requireTrue(JSON.stringify(p.prepared.request) === p.exactRequest, 'saved authorization bytes changed');
-    requireTrue(typeof p.prepared.control_token === 'string' && (typeof p.prepared.proxy_token === 'string' || p.prepared.proxy_token === null), 'missing credentials');
-    const ids = new Set();
-    for (const o of p.operations) {
-      uuid(o.id); requireTrue(!ids.has(o.id), 'duplicate operation'); ids.add(o.id);
-      requireTrue(routes.has(o.path) && ['prepared', 'send_unknown', 'response_received', 'not_accepted'].includes(o.phase), 'invalid operation');
-      const raw = Buffer.from(o.bodyBase64, 'base64');
-      requireTrue(raw.toString('base64') === o.bodyBase64 && raw.length <= 1024 * 1024, 'invalid operation bytes');
-    }
-  }
+  if (value.pending !== null) pendingSession(value.pending as PendingSession);
 }
 
 export interface ClientOptions {
@@ -181,8 +199,11 @@ export async function createCredentials(mode: Mode): Promise<{
   requireTrue(['proxy', 'direct_oa', 'direct_openrouter'].includes(mode), 'explicit mode required');
   const requestId = crypto.randomUUID(); const control = crypto.getRandomValues(new Uint8Array(32));
   const proxy = mode === 'proxy' ? crypto.getRandomValues(new Uint8Array(32)) : null;
-  return { requestId, controlToken: `zkc1.${requestId}.${Buffer.from(control).toString('base64url')}`,
-    proxyToken: proxy ? `zkp1.${requestId}.${Buffer.from(proxy).toString('base64url')}` : null,
+  // buffer@6 in browsers supports base64, not Node's newer base64url label.
+  // This is the same canonical unpadded RFC 4648 URL alphabet for both runtimes.
+  const tokenBytes = (bytes: Uint8Array) => Buffer.from(bytes).toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+  return { requestId, controlToken: `zkc1.${requestId}.${tokenBytes(control)}`,
+    proxyToken: proxy ? `zkp1.${requestId}.${tokenBytes(proxy)}` : null,
     controlHash: await sha256(control), proxyHash: proxy ? await sha256(proxy) : null };
 }
 
@@ -343,6 +364,16 @@ export class ControlClient {
       const operations = q.mode === 'proxy' ? p.operations.filter(o => o.phase !== 'prepared' && o.phase !== 'not_accepted').map(o => o.id) : [];
       const next = await this.options.verifier.settle(this.config, r.value.state, p.prepared, status.settlement, receipts, operations);
       privateState(next);
+      const clearance = r.value.wallet?.clearance;
+      if (clearance) {
+        // A verified successor establishes that AUTH won the server's atomic N
+        // reservation race. Retire only its still-unverified clearance intent,
+        // in the same commit as settlement; HTTP rejection alone cannot do so.
+        requireTrue(clearance.phase === 'requested' && clearance.signature === undefined && !r.value.wallet!.operation
+          && clearance.nullifier === p.prepared.request.public_inputs[8],
+          'settlement conflicts with permanent clearance');
+        delete r.value.wallet!.clearance;
+      }
       r.value.history.push({ previous: r.value.state, prepared: p.prepared, settlement: status.settlement, receipts, operations: p.operations });
       r.value.state = next; r.value.pending = null; await this.save(noteId, r);
       return status;

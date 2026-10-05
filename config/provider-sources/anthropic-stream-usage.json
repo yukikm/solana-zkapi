@@ -1,0 +1,11 @@
+{
+  "schema": 1,
+  "url": "https://platform.claude.com/docs/en/build-with-claude/thinking-steering-and-cost",
+  "retrieved_at": "2026-10-04T19:01:39Z",
+  "capture_kind": "reviewed factual summary, not a raw HTTP archive",
+  "facts": {
+    "streaming_output_details": "The thinking-token breakdown is emitted on the final message_delta.",
+    "billing": "output_tokens includes billed internal reasoning; returned summarized thinking text is not the billing counter.",
+    "plan_scope": "This plan does not enable thinking; it preserves the inclusive total and can validate a zero-valued known breakdown."
+  }
+}

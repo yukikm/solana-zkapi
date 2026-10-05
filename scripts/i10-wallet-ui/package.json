@@ -1,0 +1,10 @@
+{
+  "name": "zkapi-i10-wallet-ui-acceptance",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "@wallet-standard/app": "1.1.1",
+    "@wallet-standard/features": "1.1.1"
+  },
+  "devDependencies": { "esbuild": "0.28.2" }
+}

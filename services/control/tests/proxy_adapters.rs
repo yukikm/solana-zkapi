@@ -97,6 +97,22 @@ fn request(endpoint: Endpoint, streaming: bool) -> Value {
 fn openai_usage() -> Value {
     json!({"prompt_tokens":10,"completion_tokens":3,"total_tokens":13,"prompt_tokens_details":{"cached_tokens":4},"completion_tokens_details":{"reasoning_tokens":2}})
 }
+// Public OpenRouter Chat schema, not a retained live response.
+// https://openrouter.ai/docs/api_reference/overview#completionsresponse-format
+fn openrouter_zero_image_usage() -> Value {
+    json!({
+        "prompt_tokens":14,"completion_tokens":2,"total_tokens":16,
+        "prompt_tokens_details":{"cached_tokens":0,"cache_write_tokens":0,"audio_tokens":0,"video_tokens":0},
+        "completion_tokens_details":{"reasoning_tokens":0,"audio_tokens":0,"image_tokens":0},
+        "cost":0.0000033,"cost_details":{"upstream_inference_cost":null},"is_byok":false
+    })
+}
+fn openrouter_sse(usage: &Value) -> String {
+    // OpenRouter's final usage chunk may retain a nonempty choices array.
+    let content = json!({"id":"router-fixture","choices":[{"index":0,"delta":{"role":"assistant","content":"ok"},"finish_reason":null}],"usage":null});
+    let final_usage = json!({"id":"router-fixture","choices":[{"index":0,"delta":{},"finish_reason":"stop"}],"usage":usage});
+    format!(": keepalive\r\n\r\ndata: {content}\r\n\r\ndata: {final_usage}\n\ndata: [DONE]\n\n")
+}
 fn responses_usage() -> Value {
     json!({"input_tokens":10,"output_tokens":3,"total_tokens":13,"input_tokens_details":{"cached_tokens":4},"output_tokens_details":{"reasoning_tokens":2}})
 }
@@ -316,6 +332,96 @@ fn proxy_normalizes_inclusive_exclusive_cache_and_reasoning_without_double_charg
 }
 
 #[test]
+fn proxy_anthropic_thinking_details_are_nullable_bounded_and_never_double_charged() {
+    let (profile, tariff) = setup(Provider::Anthropic, CacheMode::AnthropicSplit);
+    for details in [
+        Value::Null,
+        json!({"thinking_tokens":0}),
+        json!({"thinking_tokens":2}),
+        json!({"thinking_tokens":3}),
+    ] {
+        let mut u = anthropic_usage();
+        u["output_tokens_details"] = details;
+        let usage = proxy::normalize_usage(Endpoint::Messages, &profile, &u).unwrap();
+        assert_eq!(
+            usage.iter().map(|u| u.count.as_str()).collect::<Vec<_>>(),
+            ["4", "3", "2", "6", "3"]
+        );
+        assert_eq!(profile.calculate_charge(&tariff, &usage).unwrap(), 7);
+    }
+    for details in [
+        json!({}),
+        json!([]),
+        json!(0),
+        json!("0"),
+        json!(true),
+        json!({"thinking_tokens":null}),
+        json!({"thinking_tokens":-1}),
+        json!({"thinking_tokens":1.5}),
+        json!({"thinking_tokens":"2"}),
+        json!({"thinking_tokens":4}),
+        json!({"thinking_tokens":u64::MAX}),
+        json!({"thinking_tokens":0,"new_billable_tokens":0}),
+        json!({"reasoning_tokens":0}),
+    ] {
+        let mut u = anthropic_usage();
+        u["output_tokens_details"] = details;
+        assert!(proxy::normalize_usage(Endpoint::Messages, &profile, &u).is_err());
+    }
+}
+
+#[test]
+fn proxy_anthropic_final_only_thinking_details_survive_all_sse_byte_boundaries() {
+    let (profile, tariff) = setup(Provider::Anthropic, CacheMode::AnthropicSplit);
+    let mut initial = anthropic_usage();
+    initial["output_tokens"] = json!(0);
+    initial["output_tokens_details"] = Value::Null;
+    let start = json!({"type":"message_start","message":{"id":"msg-thinking","usage":initial}});
+    let partial = json!({"type":"message_delta","usage":{"output_tokens":1}});
+    let final_delta = json!({"type":"message_delta","usage":{"output_tokens":3,"output_tokens_details":{"thinking_tokens":2}}});
+    let wire = format!("data: {start}\n\ndata: {partial}\n\ndata: {final_delta}\n\ndata: {{\"type\":\"message_stop\"}}\n\n");
+    for split in 1..wire.len() {
+        let mut meter = SseMeter::new(Endpoint::Messages, profile.clone());
+        let mut frames = meter.push(&wire.as_bytes()[..split]).unwrap();
+        frames.extend(meter.push(&wire.as_bytes()[split..]).unwrap());
+        assert_eq!(frames.concat(), wire.as_bytes());
+        let (usage, id) = meter.finish().unwrap();
+        assert_eq!(id.as_deref(), Some("msg-thinking"));
+        assert_eq!(usage.last().unwrap().count, "3");
+        assert_eq!(profile.calculate_charge(&tariff, &usage).unwrap(), 7);
+    }
+}
+
+#[test]
+fn proxy_anthropic_sse_invalid_or_decreasing_thinking_details_cannot_be_erased() {
+    let (profile, _) = setup(Provider::Anthropic, CacheMode::AnthropicSplit);
+    let start = json!({"type":"message_start","message":{"id":"msg-thinking-invalid","usage":anthropic_usage()}});
+    for details in [
+        json!({"thinking_tokens":4}),
+        json!({"thinking_tokens":-1}),
+        json!({"thinking_tokens":0,"unknown":1}),
+        json!({}),
+    ] {
+        let invalid = json!({"type":"message_delta","usage":{"output_tokens":3,"output_tokens_details":details}});
+        let replacement = json!({"type":"message_delta","usage":{"output_tokens":3,"output_tokens_details":null}});
+        let wire = format!("data: {start}\n\ndata: {invalid}\n\ndata: {replacement}\n\ndata: {{\"type\":\"message_stop\"}}\n\n");
+        let mut meter = SseMeter::new(Endpoint::Messages, profile.clone());
+        assert!(meter.push(wire.as_bytes()).is_err());
+    }
+    let observed = json!({"type":"message_delta","usage":{"output_tokens":3,"output_tokens_details":{"thinking_tokens":2}}});
+    let null =
+        json!({"type":"message_delta","usage":{"output_tokens":3,"output_tokens_details":null}});
+    let decrease = json!({"type":"message_delta","usage":{"output_tokens":4,"output_tokens_details":{"thinking_tokens":1}}});
+    let mut meter = SseMeter::new(Endpoint::Messages, profile);
+    meter
+        .push(format!("data: {start}\n\ndata: {observed}\n\ndata: {null}\n\n").as_bytes())
+        .unwrap();
+    assert!(meter
+        .push(format!("data: {decrease}\n\n").as_bytes())
+        .is_err());
+}
+
+#[test]
 fn proxy_missing_contradictory_or_unpriced_usage_is_unknown() {
     let (profile, _) = setup(Provider::Openai, CacheMode::InclusiveRead);
     for (key, val) in [
@@ -352,6 +458,82 @@ fn proxy_missing_contradictory_or_unpriced_usage_is_unknown() {
         let mut u = anthropic_usage();
         u[key] = val;
         assert!(proxy::normalize_usage(Endpoint::Messages, &profile, &u).is_err());
+    }
+}
+
+#[test]
+fn proxy_openrouter_image_tokens_accepts_only_integer_zero_without_new_billing_units() {
+    let (profile, tariff) = setup(Provider::Openrouter, CacheMode::InclusiveRead);
+    let mut absent = openrouter_zero_image_usage();
+    absent["completion_tokens_details"]
+        .as_object_mut()
+        .unwrap()
+        .remove("image_tokens");
+    let baseline = proxy::normalize_usage(Endpoint::ChatCompletions, &profile, &absent).unwrap();
+    let zero = proxy::normalize_usage(
+        Endpoint::ChatCompletions,
+        &profile,
+        &openrouter_zero_image_usage(),
+    )
+    .unwrap();
+    assert_eq!(zero, baseline);
+    assert_eq!(
+        zero.iter()
+            .map(|u| (u.unit.as_str(), u.count.as_str()))
+            .collect::<Vec<_>>(),
+        [
+            ("cache_read_tokens", "0"),
+            ("input_tokens", "14"),
+            ("output_tokens", "2")
+        ]
+    );
+    assert_eq!(profile.calculate_charge(&tariff, &zero).unwrap(), 6);
+    for invalid in [
+        json!(1),
+        json!(-1),
+        Value::Null,
+        json!("0"),
+        json!(0.0),
+        json!(0.5),
+        json!(true),
+        json!(u64::MAX),
+        json!({}),
+        json!([]),
+    ] {
+        let mut usage = openrouter_zero_image_usage();
+        usage["completion_tokens_details"]["image_tokens"] = invalid;
+        assert!(proxy::normalize_usage(Endpoint::ChatCompletions, &profile, &usage).is_err());
+    }
+    let mut unknown = openrouter_zero_image_usage();
+    unknown["completion_tokens_details"]["unknown_image_tokens"] = json!(0);
+    assert!(proxy::normalize_usage(Endpoint::ChatCompletions, &profile, &unknown).is_err());
+    // The compatibility rule does not broaden other providers or endpoints.
+    let (openai, _) = setup(Provider::Openai, CacheMode::InclusiveRead);
+    let mut openai_chat = openai_usage();
+    openai_chat["completion_tokens_details"]["image_tokens"] = json!(0);
+    assert!(proxy::normalize_usage(Endpoint::ChatCompletions, &openai, &openai_chat).is_err());
+    let mut responses = responses_usage();
+    responses["output_tokens_details"]["image_tokens"] = json!(0);
+    assert!(proxy::normalize_usage(Endpoint::Responses, &openai, &responses).is_err());
+    assert!(proxy::normalize_usage(Endpoint::Responses, &profile, &responses).is_err());
+    let (anthropic, _) = setup(Provider::Anthropic, CacheMode::AnthropicSplit);
+    let mut messages = anthropic_usage();
+    messages["output_tokens_details"] = json!({"thinking_tokens":0,"image_tokens":0});
+    assert!(proxy::normalize_usage(Endpoint::Messages, &anthropic, &messages).is_err());
+}
+
+#[test]
+fn proxy_openrouter_zero_image_usage_survives_every_sse_byte_boundary() {
+    let (profile, tariff) = setup(Provider::Openrouter, CacheMode::InclusiveRead);
+    let wire = openrouter_sse(&openrouter_zero_image_usage());
+    for split in 1..wire.len() {
+        let mut meter = SseMeter::new(Endpoint::ChatCompletions, profile.clone());
+        let mut frames = meter.push(&wire.as_bytes()[..split]).unwrap();
+        frames.extend(meter.push(&wire.as_bytes()[split..]).unwrap());
+        assert_eq!(frames.concat(), wire.as_bytes());
+        let (usage, id) = meter.finish().unwrap();
+        assert_eq!(id.as_deref(), Some("router-fixture"));
+        assert_eq!(profile.calculate_charge(&tariff, &usage).unwrap(), 6);
     }
 }
 
@@ -633,6 +815,119 @@ async fn proxy_http_native_routes_credentials_usage_and_count_tokens() {
             assert!(obs.usage.unwrap().iter().all(|u| u.count == "0"));
         }
         server.abort();
+    }
+}
+
+#[tokio::test]
+async fn proxy_openrouter_http_json_and_sse_zero_image_usage_and_fail_closed_variants() {
+    let (profile, tariff) = setup(Provider::Openrouter, CacheMode::InclusiveRead);
+    for streaming in [false, true] {
+        for (case, details, accepted) in [
+            (
+                "zero",
+                json!({"reasoning_tokens":0,"audio_tokens":0,"image_tokens":0}),
+                true,
+            ),
+            (
+                "absent",
+                json!({"reasoning_tokens":0,"audio_tokens":0}),
+                true,
+            ),
+            ("positive", json!({"image_tokens":1}), false),
+            ("null", json!({"image_tokens":null}), false),
+            (
+                "unknown",
+                json!({"image_tokens":0,"unpriced_tokens":0}),
+                false,
+            ),
+        ] {
+            let mut usage = openrouter_zero_image_usage();
+            usage["completion_tokens_details"] = details;
+            let wire = if streaming {
+                openrouter_sse(&usage).into_bytes()
+            } else {
+                serde_json::to_vec(&json!({"id":"router-fixture","choices":[{"index":0,"message":{"role":"assistant","content":"ok"},"finish_reason":"stop"}],"service_tier":"default","usage":usage})).unwrap()
+            };
+            let (origin, f, server) = fixture(
+                wire.chunks(37).map(<[u8]>::to_vec).collect(),
+                if streaming {
+                    "text/event-stream"
+                } else {
+                    "application/json"
+                },
+                200,
+                Duration::ZERO,
+            )
+            .await;
+            let adapter = HttpAdapter::local_fixture(
+                Provider::Openrouter,
+                &origin,
+                ServiceCredential::new("LOCAL_FIXTURE_KEY".into()).unwrap(),
+                Duration::from_secs(2),
+            )
+            .unwrap();
+            let prepared = proxy::validate(
+                Endpoint::ChatCompletions,
+                &serde_json::to_vec(&request(Endpoint::ChatCompletions, streaming)).unwrap(),
+                &profile,
+                &tariff,
+            )
+            .unwrap();
+            let (tx, mut rx) = mpsc::channel(16);
+            let forward = async {
+                let mut bytes = Vec::new();
+                while let Some(event) = rx.recv().await {
+                    if let RelayEvent::Data(chunk) = event {
+                        bytes.extend_from_slice(&chunk);
+                    }
+                }
+                bytes
+            };
+            let (observed, forwarded) =
+                tokio::join!(adapter.dispatch_once(prepared, Some(tx)), forward);
+            server.abort();
+            assert_eq!(
+                f.count.load(Ordering::SeqCst),
+                1,
+                "{case} streaming={streaming}"
+            );
+            assert_eq!(observed.http_status, Some(200));
+            assert_eq!(
+                observed.provider_request_id.as_deref(),
+                Some("request-fixture")
+            );
+            assert_eq!(
+                observed.usage.is_some(),
+                accepted,
+                "{case} streaming={streaming}"
+            );
+            assert_eq!(observed.evidence_digest.is_some(), accepted);
+            if accepted {
+                let units = observed.usage.unwrap();
+                assert_eq!(
+                    units
+                        .iter()
+                        .map(|u| (u.unit.as_str(), u.count.as_str()))
+                        .collect::<Vec<_>>(),
+                    [
+                        ("cache_read_tokens", "0"),
+                        ("input_tokens", "14"),
+                        ("output_tokens", "2")
+                    ]
+                );
+                assert_eq!(profile.calculate_charge(&tariff, &units).unwrap(), 6);
+                assert_eq!(forwarded, wire);
+            } else {
+                let text = String::from_utf8(forwarded).unwrap();
+                assert!(text.contains("operation status"));
+                assert!(!text.contains("unpriced_tokens"));
+                assert!(!text.contains("LOCAL_FIXTURE_KEY"));
+            }
+            let seen = f.seen.lock().await;
+            assert_eq!(seen[0].0, "/api/v1/chat/completions");
+            assert_eq!(seen[0].2["stream"], streaming);
+            assert_eq!(seen[0].2["store"], false);
+        }
     }
 }
 

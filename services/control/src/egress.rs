@@ -22,14 +22,81 @@ pub struct ClientConfig {
     pub binary_sha256: String,
     pub config_file: PathBuf,
 }
-#[derive(Serialize, Deserialize)]
+#[derive(Clone, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct ServiceConfig {
     pub local_test_only: bool,
+    /// Public provider acceptance still uses the explicit test-only devnet Vault.
+    /// Omitting this field never enables a production dispatcher.
+    #[serde(default)]
+    pub devnet: Option<DevnetProviderScope>,
     pub database_url: String,
     pub pool: [u8; 32],
     pub claims_directory: PathBuf,
     pub providers: crate::provider_runtime::ProviderConfig,
+}
+#[derive(Clone, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct DevnetProviderScope {
+    pub deployment: crate::config::DevnetConfig,
+    pub manifest: serde_json::Value,
+    pub trusted_manifest_hash: String,
+}
+impl ServiceConfig {
+    /// Offline validation only; financial egress still requires the immutable
+    /// ledger attempt, exclusive claim and final database fence below.
+    pub fn validate_scope(&self) -> Result<()> {
+        ensure!(
+            self.providers.dispatcher.is_none(),
+            "nested dispatcher forbidden"
+        );
+        crate::operations::local_database(&self.database_url)?;
+        if self.local_test_only {
+            ensure!(self.devnet.is_none(), "ambiguous provider test profile");
+            return Ok(());
+        }
+        let scope = self
+            .devnet
+            .as_ref()
+            .context("public providers require explicit devnet acceptance scope")?;
+        wire::hash(&scope.trusted_manifest_hash)?;
+        let mut body = scope.manifest.clone();
+        let object = body.as_object_mut().context("provider manifest object")?;
+        object.remove("manifest_hash");
+        object.remove("manifest_signature");
+        let digest = hex::encode(wire::sha256(&serde_jcs::to_vec(&body)?));
+        ensure!(
+            digest == scope.trusted_manifest_hash && scope.manifest["manifest_hash"] == digest,
+            "provider manifest pin mismatch"
+        );
+        let trusted = scope.deployment.validate_manifest(&scope.manifest)?;
+        ensure!(
+            wire::pubkey(&trusted.pool)? == self.pool,
+            "provider pool scope mismatch"
+        );
+        let database: tokio_postgres::Config = self.database_url.parse()?;
+        ensure!(
+            !database.get_hosts().is_empty()
+                && database
+                    .get_hosts()
+                    .iter()
+                    .all(|host| matches!(host, tokio_postgres::config::Host::Unix(_)))
+                && database.get_hostaddrs().is_empty(),
+            "public provider acceptance requires Unix database"
+        );
+        for proxy in &self.providers.proxy {
+            ensure!(
+                proxy.local_test_base.is_none(),
+                "fixture target forbidden in public provider acceptance"
+            );
+        }
+        for direct in &self.providers.direct {
+            // Applies pinned OpenRouter endpoints, HTTPS OA endpoints and the
+            // real usage drain interval. Construction performs no HTTP call.
+            let _ = direct::DirectAdapter::new(direct.clone(), false)?;
+        }
+        Ok(())
+    }
 }
 #[derive(Serialize, Deserialize)]
 #[serde(tag = "action", rename_all = "snake_case", deny_unknown_fields)]
@@ -249,7 +316,12 @@ async fn emit(event: Event) -> Result<()> {
     use tokio::io::AsyncWriteExt;
     let mut v = serde_json::to_vec(&event)?;
     v.push(b'\n');
-    tokio::io::stdout().write_all(&v).await?;
+    // Tokio stdout acknowledges its staging buffer before the blocking write
+    // reaches the pipe. Flush this SAME handle before creating the next one,
+    // otherwise Data/Result can overtake Head even when emit calls are awaited.
+    let mut output = tokio::io::stdout();
+    output.write_all(&v).await?;
+    output.flush().await?;
     Ok(())
 }
 
@@ -343,17 +415,34 @@ async fn checkpoint(
     Ok(cp)
 }
 pub async fn serve(c: ServiceConfig, request: Request) -> Result<()> {
-    ensure!(
-        c.local_test_only && c.providers.dispatcher.is_none(),
-        "production dispatcher requires deployment validation"
-    );
-    crate::operations::local_database(&c.database_url)?;
+    c.validate_scope()?;
     let (db, connection) = tokio_postgres::connect(&c.database_url, tokio_postgres::NoTls).await?;
     tokio::spawn(async move {
         let _ = connection.await;
     });
     db.batch_execute("SET default_transaction_read_only=on")
         .await?;
+    if let Some(scope) = &c.devnet {
+        // A pool address alone does not authenticate the connected database's
+        // deployment. Refuse a same-pool ledger from another manifest before
+        // selecting or authorizing any provider action.
+        let identity = db
+            .query_opt(
+                "SELECT deployment_id,manifest_hash FROM pools WHERE pool=$1",
+                &[&&c.pool[..]],
+            )
+            .await?
+            .context("provider database pool absent")?;
+        ensure!(
+            identity.get::<_, String>(0)
+                == scope.manifest["deployment_id"]
+                    .as_str()
+                    .context("provider deployment identity")?
+                && identity.get::<_, Vec<u8>>(1)
+                    == wire::hash(&scope.trusted_manifest_hash)?.as_slice(),
+            "provider database manifest identity mismatch"
+        );
+    }
     let p = request.provider;
     let value = match request.action {
         Action::Proxy {
@@ -404,6 +493,10 @@ pub async fn serve(c: ServiceConfig, request: Request) -> Result<()> {
                 crate::provider_runtime::read_credential(&cfg.credential_file)?,
             )?;
             let adapter = if let Some(base) = &cfg.local_test_base {
+                ensure!(
+                    c.local_test_only,
+                    "fixture target forbidden in public provider acceptance"
+                );
                 proxy::HttpAdapter::local_fixture(p, base, credential, Duration::from_secs(600))?
             } else {
                 proxy::HttpAdapter::production(p, credential).await?
@@ -440,7 +533,7 @@ pub async fn serve(c: ServiceConfig, request: Request) -> Result<()> {
                 .find(|x| x.provider() == p)
                 .context("direct unavailable")?
                 .clone();
-            let adapter = direct::DirectAdapter::new(cfg, true)?;
+            let adapter = direct::DirectAdapter::new(cfg, c.local_test_only)?;
             match action {
                 Action::Create { attempt, intent } => {
                     ensure!(
@@ -512,4 +605,81 @@ pub async fn serve(c: ServiceConfig, request: Request) -> Result<()> {
         }
     };
     emit(Event::Result { value }).await
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Exercise real Tokio stdout buffering and kernel pipe delivery in an
+    /// isolated child. A new stdout handle per unflushed frame used to reorder
+    /// Head/Data/Result, allowing billing success while the caller saw 503.
+    #[test]
+    fn stdout_frames_are_ordered_and_drained() {
+        const CHILD: &str = "ZKAPI_EGRESS_STDOUT_ORDER_CHILD";
+        const FRAMES: usize = 512;
+        if std::env::var_os(CHILD).is_some() {
+            let runtime = tokio::runtime::Builder::new_multi_thread()
+                .worker_threads(2)
+                .max_blocking_threads(32)
+                .enable_all()
+                .build()
+                .unwrap();
+            runtime.block_on(async {
+                for index in 0..FRAMES {
+                    emit(Event::Head {
+                        status: 200,
+                        reference: Some(index.to_string()),
+                        sse: false,
+                    })
+                    .await
+                    .unwrap();
+                    emit(Event::Data {
+                        bytes: index.to_le_bytes().to_vec(),
+                    })
+                    .await
+                    .unwrap();
+                }
+                emit(Event::Result {
+                    value: serde_json::json!({"frames":FRAMES}),
+                })
+                .await
+                .unwrap();
+            });
+            return;
+        }
+        let output = std::process::Command::new(std::env::current_exe().unwrap())
+            .args([
+                "--exact",
+                "egress::tests::stdout_frames_are_ordered_and_drained",
+                "--nocapture",
+                "--quiet",
+            ])
+            .env_clear()
+            .env(CHILD, "1")
+            .output()
+            .unwrap();
+        assert!(output.status.success(), "stdout fixture child failed");
+        let text = String::from_utf8(output.stdout).unwrap();
+        let events: Vec<Event> = text
+            .lines()
+            .filter_map(|line| serde_json::from_str(line).ok())
+            .collect();
+        assert_eq!(
+            events.len(),
+            2 * FRAMES + 1,
+            "IPC frames must reach the pipe"
+        );
+        for index in 0..FRAMES {
+            assert!(
+                matches!(&events[index * 2], Event::Head {status:200,reference:Some(reference),sse:false} if reference == &index.to_string()),
+                "IPC Head reordered at frame {index}"
+            );
+            assert!(
+                matches!(&events[index * 2 + 1], Event::Data {bytes} if bytes == &index.to_le_bytes()),
+                "IPC Data reordered at frame {index}"
+            );
+        }
+        assert!(matches!(&events[2 * FRAMES], Event::Result {value} if value["frames"] == FRAMES));
+    }
 }

@@ -3,6 +3,7 @@
 use axum::{extract::State, routing::post, Json, Router};
 use base64::{engine::general_purpose::STANDARD, Engine};
 use serde_json::{json, Value};
+use sha2::Digest;
 use solana_pubkey::Pubkey;
 use std::{
     collections::BTreeMap,
@@ -74,6 +75,13 @@ struct Fixture {
 }
 impl Fixture {
     fn load(pending: bool) -> Self {
+        Self::load_at(if pending {
+            "initiate_escape"
+        } else {
+            "challenge_escape"
+        })
+    }
+    fn load_at(checkpoint_name: &str) -> Self {
         let root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../..");
         let history: Value = serde_json::from_slice(
             &fs::read(root.join("target/i04/sdk-svm-history.json"))
@@ -86,16 +94,12 @@ impl Fixture {
             .iter()
             .find(|s| s["name"] == "challenge")
             .unwrap();
-        let checkpoint = if pending {
-            scenario["checkpoints"]
-                .as_array()
-                .unwrap()
-                .iter()
-                .find(|c| c["name"].as_str().unwrap().starts_with("initiate_escape"))
-                .unwrap()
-        } else {
-            scenario["checkpoints"].as_array().unwrap().last().unwrap()
-        };
+        let checkpoint = scenario["checkpoints"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|c| c["name"].as_str().unwrap().starts_with(checkpoint_name))
+            .unwrap();
         let fixture: Value =
             serde_json::from_slice(&fs::read(root.join("tests/fixtures/vault/a.json")).unwrap())
                 .unwrap();
@@ -144,6 +148,27 @@ impl Fixture {
             blocks,
         }
     }
+    fn add_empty_block(&mut self) {
+        let old = self.expected.slot;
+        let slot = old + 1;
+        let hash = sha2::Sha256::digest(format!("snapshot-cut-empty-block-{slot}")).into();
+        let mut block = self.blocks[&old].clone();
+        block["parentSlot"] = json!(old);
+        block["previousBlockhash"] = json!(b58(self.expected.blockhash));
+        block["blockhash"] = json!(b58(hash));
+        block["blockHeight"] = json!(slot);
+        block["transactions"] = json!([]);
+        self.blocks.insert(slot, block);
+        self.expected.slot = slot;
+        self.expected.blockhash = hash;
+    }
+    fn captured_response(&self, request: &Value) -> Value {
+        assert_eq!(request["method"], "getMultipleAccounts");
+        assert!(request["params"][1]["minContextSlot"].as_u64().unwrap() <= self.expected.slot);
+        let mut same_slot_request = request.clone();
+        same_slot_request["params"][1]["minContextSlot"] = json!(self.expected.slot);
+        self.response(&same_slot_request)
+    }
     fn response(&self, request: &Value) -> Value {
         let result = match request["method"].as_str().unwrap() {
             "getMultipleAccounts" => {
@@ -159,7 +184,7 @@ impl Fixture {
             }
             "getBlock" => {
                 assert_eq!(request["params"][1]["commitment"], "finalized");
-                assert_eq!(request["params"][1]["maxSupportedTransactionVersion"], 0);
+                assert_eq!(request["params"][1]["maxSupportedTransactionVersion"], 1);
                 self.blocks
                     .get(&request["params"][0].as_u64().unwrap())
                     .cloned()
@@ -326,11 +351,19 @@ async fn advanced_cut_and_split_account_batches_are_not_combined() {
     let observed = counter.clone();
     let copy = f.clone();
     let server = mock(move |r| {
-        let mut response = copy.response(&r);
-        if r["method"] == "getMultipleAccounts" && observed.fetch_add(1, Ordering::SeqCst) > 0 {
-            response["result"]["context"]["slot"] = json!(copy.expected.slot + 1);
+        if r["method"] == "getMultipleAccounts" {
+            let batch = observed.fetch_add(1, Ordering::SeqCst);
+            assert_eq!(
+                r["params"][1]["minContextSlot"],
+                copy.expected.slot + u64::from(batch > 0)
+            );
+            let mut same_slot_request = r.clone();
+            same_slot_request["params"][1]["minContextSlot"] = json!(copy.expected.slot);
+            let mut response = copy.response(&same_slot_request);
+            response["result"]["context"]["slot"] = json!(copy.expected.slot + 1 + batch as u64);
+            return response;
         }
-        response
+        copy.response(&r)
     })
     .await;
     let err = server
@@ -462,5 +495,216 @@ async fn rpc_envelope_errors_are_rejected_without_leaking_provider_details() {
         let err = server.rpc.call("getSlot", json!([])).await.unwrap_err();
         assert!(!err.to_string().contains("secret-provider-key"));
         assert!(server.url.starts_with("http://127.0.0.1:"));
+    }
+}
+
+#[tokio::test]
+async fn captured_finalized_cut_reconciles_even_when_tip_advances_during_archive_fetch() {
+    let near = Fixture::load(false);
+    let mut captured = near.clone();
+    captured.add_empty_block();
+    let expected = captured.expected.clone();
+    let mut later = captured.clone();
+    later.add_empty_block();
+    let bank_advanced = Arc::new(AtomicUsize::new(0));
+    let advanced = bank_advanced.clone();
+    let initial_slot = near.expected.slot;
+    let captured_slot = captured.expected.slot;
+    let server = mock(move |r| {
+        if r["method"] == "getSlot" {
+            return success(
+                &r,
+                json!(if advanced.load(Ordering::SeqCst) == 0 {
+                    initial_slot
+                } else {
+                    later.expected.slot
+                }),
+            );
+        }
+        if r["method"] == "getMultipleAccounts" {
+            return if advanced.load(Ordering::SeqCst) == 0 {
+                captured.captured_response(&r)
+            } else {
+                later.captured_response(&r)
+            };
+        }
+        if r["method"] == "getBlock"
+            && r["params"][0] == captured_slot
+            && r["params"][1]["transactionDetails"] == "full"
+        {
+            // Deterministically advance the live bank before the slower archive
+            // response arrives. Reading accounts again would now return S+1.
+            advanced.store(1, Ordering::SeqCst);
+        }
+        later.response(&r)
+    })
+    .await;
+    let mut index = Indexer::new(key(&near.cfg.program_id), key(&near.cfg.pool));
+    let mut next = near.cfg.start_slot;
+    server
+        .rpc
+        .refresh(&near.cfg, &mut index, &mut next)
+        .await
+        .unwrap();
+    assert_eq!(bank_advanced.load(Ordering::SeqCst), 1);
+    assert!(index.is_ready());
+    assert_eq!(index.replay_state().unwrap(), expected);
+    assert_eq!(next, captured_slot + 1);
+    let calls = server.calls.lock().unwrap();
+    assert_eq!(calls.iter().filter(|r| r["method"] == "getSlot").count(), 1);
+    assert_eq!(
+        calls
+            .iter()
+            .filter(|r| r["method"] == "getMultipleAccounts")
+            .count(),
+        1
+    );
+    let capture = calls
+        .iter()
+        .position(|r| r["method"] == "getMultipleAccounts")
+        .unwrap();
+    let tail = calls
+        .iter()
+        .position(|r| {
+            r["method"] == "getBlock"
+                && r["params"][0] == captured_slot
+                && r["params"][1]["transactionDetails"] == "full"
+        })
+        .unwrap();
+    assert!(capture < tail);
+    assert!(calls
+        .iter()
+        .filter(|r| r["method"] == "getBlocks")
+        .all(|r| r["params"][1].as_u64().unwrap() <= captured_slot));
+    assert!(calls.iter().any(|r| r["method"] == "getBlock"
+        && r["params"][0] == captured_slot
+        && r["params"][1]["transactionDetails"] == "none"));
+}
+
+#[tokio::test]
+async fn new_note_or_pending_inventory_retries_after_replay_without_publishing_partial_cut() {
+    for (before, after) in [("deposit-1", "deposit-2"), ("deposit-2", "initiate_escape")] {
+        let near = Fixture::load_at(before);
+        let captured = Fixture::load_at(after);
+        let expected = captured.expected.clone();
+        let polls = Arc::new(AtomicUsize::new(0));
+        let polled = polls.clone();
+        let initial_slot = near.expected.slot;
+        let server = mock(move |r| {
+            if r["method"] == "getSlot" {
+                return success(
+                    &r,
+                    json!(if polled.fetch_add(1, Ordering::SeqCst) == 0 {
+                        initial_slot
+                    } else {
+                        captured.expected.slot
+                    }),
+                );
+            }
+            if r["method"] == "getMultipleAccounts" {
+                return captured.captured_response(&r);
+            }
+            captured.response(&r)
+        })
+        .await;
+        let mut index = Indexer::new(key(&near.cfg.program_id), key(&near.cfg.pool));
+        let mut next = near.cfg.start_slot;
+        let error = server
+            .rpc
+            .refresh(&near.cfg, &mut index, &mut next)
+            .await
+            .unwrap_err();
+        assert!(
+            error.to_string().contains("inventory missing"),
+            "{before}->{after}: {error}"
+        );
+        assert_eq!(index.replay_state().unwrap(), expected);
+        assert_eq!(next, expected.slot + 1);
+        assert!(!index.is_ready());
+        assert!(index.root().is_err());
+        server
+            .rpc
+            .refresh(&near.cfg, &mut index, &mut next)
+            .await
+            .unwrap();
+        assert!(index.is_ready());
+        assert_eq!(index.replay_state().unwrap(), expected);
+        assert_eq!(polls.load(Ordering::SeqCst), 2);
+    }
+}
+
+#[tokio::test]
+async fn captured_cut_rejects_missing_tail_account_anchor_or_replayed_state_mismatch() {
+    for failure in [
+        "missing-tail",
+        "missing-block",
+        "missing-account",
+        "anchor",
+        "state",
+    ] {
+        let near = Fixture::load(false);
+        let mut captured = near.clone();
+        captured.add_empty_block();
+        let slot = captured.expected.slot;
+        let initial_slot = near.expected.slot;
+        if failure == "missing-account" {
+            let id = *captured.expected.active.keys().next().unwrap();
+            let address = pda(
+                key(&captured.cfg.program_id),
+                &[b"note", &key(&captured.cfg.pool), &id.to_le_bytes()],
+            )
+            .0;
+            captured.accounts[b58(address)] = Value::Null;
+        }
+        if failure == "state" {
+            let tree = pda(
+                key(&captured.cfg.program_id),
+                &[b"tree", &key(&captured.cfg.pool)],
+            )
+            .0;
+            captured.mutate_account(tree, |raw| raw[50] ^= 1);
+        }
+        let server = mock(move |r| {
+            if r["method"] == "getSlot" {
+                return success(&r, json!(initial_slot));
+            }
+            if r["method"] == "getMultipleAccounts" {
+                return captured.captured_response(&r);
+            }
+            let mut response = captured.response(&r);
+            match failure {
+                "missing-tail" if r["method"] == "getBlocks" && r["params"][1] == slot => {
+                    response["result"] = json!([]);
+                }
+                "missing-block" if r["method"] == "getBlock" && r["params"][0] == slot => {
+                    response["result"] = Value::Null;
+                }
+                "anchor"
+                    if r["method"] == "getBlock"
+                        && r["params"][0] == slot
+                        && r["params"][1]["transactionDetails"] == "none" =>
+                {
+                    response["result"]["blockhash"] = json!(b58([99; 32]));
+                }
+                _ => {}
+            }
+            response
+        })
+        .await;
+        let mut index = Indexer::new(key(&near.cfg.program_id), key(&near.cfg.pool));
+        let mut next = near.cfg.start_slot;
+        assert!(
+            server
+                .rpc
+                .refresh(&near.cfg, &mut index, &mut next)
+                .await
+                .is_err(),
+            "{failure}"
+        );
+        assert!(!index.is_ready(), "{failure}");
+        assert!(index.root().is_err(), "{failure}");
+        if failure == "missing-tail" || failure == "missing-block" {
+            assert_eq!(next, slot);
+        }
     }
 }

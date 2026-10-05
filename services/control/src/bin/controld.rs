@@ -27,6 +27,7 @@ async fn run() -> Result<()> {
         args.next().context("config path required")?,
     )?)?;
     let config = config.validate()?;
+    config.validate_database(&url)?;
     if mode == "signer-config" {
         println!("{}", serde_json::to_string_pretty(&config.signer)?);
         return Ok(());

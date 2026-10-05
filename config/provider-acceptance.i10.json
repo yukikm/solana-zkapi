@@ -1,0 +1,438 @@
+{
+  "schema": 1,
+  "campaign_id": "i10-provider-acceptance",
+  "budget_micro_usdc": "10000000",
+  "usd_usdc_ratio": "1:1",
+  "max_requests": 18,
+  "max_output_tokens": 128,
+  "models": [
+    {
+      "profile": {
+        "provider": "openai",
+        "model": "gpt-4o-mini-2024-07-18",
+        "endpoints": [
+          "chat_completions",
+          "responses"
+        ],
+        "context_tokens": 128000,
+        "max_output_tokens": 16384,
+        "cache_mode": "inclusive_read"
+      },
+      "tariff": {
+        "tariff_hash": "c94948bd49767c812a2d8250c4d5b51197d3656c10c2b7c6d83fe95946f098b5",
+        "version": "1",
+        "provider": "openai",
+        "model": "gpt-4o-mini-2024-07-18",
+        "pricing_basis": "fixed_usage_rates",
+        "valid_from": "1791072000",
+        "valid_until": "1791676800",
+        "rates": [
+          {
+            "unit": "cache_read_tokens",
+            "nano_usdc_numerator": "75",
+            "unit_denominator": "1"
+          },
+          {
+            "unit": "input_tokens",
+            "nano_usdc_numerator": "150",
+            "unit_denominator": "1"
+          },
+          {
+            "unit": "output_tokens",
+            "nano_usdc_numerator": "600",
+            "unit_denominator": "1"
+          }
+        ],
+        "operator_fee_micro_usdc": "0"
+      },
+      "sources": [
+        {
+          "url": "https://developers.openai.com/api/docs/models/gpt-4o-mini",
+          "retrieved_at": "2026-10-04T19:01:39Z",
+          "file": "provider-sources/openai-gpt-4o-mini.json",
+          "sha256": "f0f6be1134c28a6a5c535416b1a061deb1b9ccc4a80d99dcd3f666a6a77bcf89"
+        },
+        {
+          "url": "https://developers.openai.com/api/docs/guides/prompt-caching",
+          "retrieved_at": "2026-10-04T19:01:39Z",
+          "file": "provider-sources/openai-prompt-caching.json",
+          "sha256": "94d19891e54e98ad9fb0e771fd944717c035f1800be066c2e00d32000b5ebd12"
+        }
+      ]
+    },
+    {
+      "profile": {
+        "provider": "anthropic",
+        "model": "claude-haiku-4-5-20251001",
+        "endpoints": [
+          "messages"
+        ],
+        "context_tokens": 200000,
+        "max_output_tokens": 64000,
+        "cache_mode": "anthropic_split"
+      },
+      "tariff": {
+        "tariff_hash": "2e498d1e67fb9f8080ade3d9ce444b7a24b5d307dc6f693811cabb7e01083185",
+        "version": "1",
+        "provider": "anthropic",
+        "model": "claude-haiku-4-5-20251001",
+        "pricing_basis": "fixed_usage_rates",
+        "valid_from": "1791072000",
+        "valid_until": "1791676800",
+        "rates": [
+          {
+            "unit": "cache_read_tokens",
+            "nano_usdc_numerator": "100",
+            "unit_denominator": "1"
+          },
+          {
+            "unit": "cache_write_1h_tokens",
+            "nano_usdc_numerator": "2000",
+            "unit_denominator": "1"
+          },
+          {
+            "unit": "cache_write_5m_tokens",
+            "nano_usdc_numerator": "1250",
+            "unit_denominator": "1"
+          },
+          {
+            "unit": "input_tokens",
+            "nano_usdc_numerator": "1000",
+            "unit_denominator": "1"
+          },
+          {
+            "unit": "output_tokens",
+            "nano_usdc_numerator": "5000",
+            "unit_denominator": "1"
+          }
+        ],
+        "operator_fee_micro_usdc": "0"
+      },
+      "sources": [
+        {
+          "url": "https://platform.claude.com/docs/en/models/haiku-4-5/overview",
+          "retrieved_at": "2026-10-04T19:01:39Z",
+          "file": "provider-sources/anthropic-haiku-4-5.json",
+          "sha256": "5bdb5c21c7256406d27f0eec8f4e13d2eca9bc2ceb09263e74b3c7323c0a6776"
+        },
+        {
+          "url": "https://platform.claude.com/docs/en/api/typescript/messages",
+          "retrieved_at": "2026-10-04T19:01:39Z",
+          "file": "provider-sources/anthropic-output-usage.json",
+          "sha256": "4cda44a0b8853681f9f957f3f34c61db2b4888f4b162f13d339a3db52ff5d262"
+        },
+        {
+          "url": "https://platform.claude.com/docs/en/build-with-claude/thinking-steering-and-cost",
+          "retrieved_at": "2026-10-04T19:01:39Z",
+          "file": "provider-sources/anthropic-stream-usage.json",
+          "sha256": "c6a1f8e8eff4357e046228d359e285dc9e32d841906558794d9c49859cc10921"
+        }
+      ]
+    },
+    {
+      "profile": {
+        "provider": "openrouter",
+        "model": "openai/gpt-4o-mini",
+        "endpoints": [
+          "chat_completions"
+        ],
+        "context_tokens": 128000,
+        "max_output_tokens": 16384,
+        "cache_mode": "inclusive_read"
+      },
+      "tariff": {
+        "tariff_hash": "836f4837ed87f09728b9b3b570f369afc64087cc39677484899e32c2832809fc",
+        "version": "1",
+        "provider": "openrouter",
+        "model": "openai/gpt-4o-mini",
+        "pricing_basis": "fixed_usage_rates",
+        "valid_from": "1791072000",
+        "valid_until": "1791676800",
+        "rates": [
+          {
+            "unit": "cache_read_tokens",
+            "nano_usdc_numerator": "75",
+            "unit_denominator": "1"
+          },
+          {
+            "unit": "input_tokens",
+            "nano_usdc_numerator": "150",
+            "unit_denominator": "1"
+          },
+          {
+            "unit": "output_tokens",
+            "nano_usdc_numerator": "600",
+            "unit_denominator": "1"
+          }
+        ],
+        "operator_fee_micro_usdc": "0"
+      },
+      "sources": [
+        {
+          "url": "https://openrouter.ai/openai/gpt-4o-mini",
+          "retrieved_at": "2026-10-04T19:01:39Z",
+          "file": "provider-sources/openrouter-gpt-4o-mini.json",
+          "sha256": "2fc994e8ed6ba22184803e5851bd84168968642459212b697410b95afe165d83"
+        },
+        {
+          "url": "https://openrouter.ai/docs/cookbook/administration/usage-accounting",
+          "retrieved_at": "2026-10-04T19:01:39Z",
+          "file": "provider-sources/openrouter-usage.json",
+          "sha256": "1ae2f418d772912f579be2c41ba6b6bc947b9de536ccd289281b26371ff050b1"
+        }
+      ]
+    },
+    {
+      "profile": null,
+      "tariff": {
+        "tariff_hash": "798ac2ab8f94ff4ba57e5fe6d2fc95cd0dc974239ea3cde3c745aa1edfee768b",
+        "version": "1",
+        "provider": "openrouter",
+        "model": "*",
+        "pricing_basis": "provider_reported_usd",
+        "valid_from": "1791072000",
+        "valid_until": "1791676800",
+        "rates": [],
+        "operator_fee_micro_usdc": "0"
+      },
+      "sources": [
+        {
+          "url": "https://openrouter.ai/openai/gpt-4o-mini",
+          "retrieved_at": "2026-10-04T19:01:39Z",
+          "file": "provider-sources/openrouter-gpt-4o-mini.json",
+          "sha256": "2fc994e8ed6ba22184803e5851bd84168968642459212b697410b95afe165d83"
+        },
+        {
+          "url": "https://openrouter.ai/docs/guides/overview/auth/management-api-keys",
+          "retrieved_at": "2026-10-04T19:01:39Z",
+          "file": "provider-sources/openrouter-management.json",
+          "sha256": "0e2999b32297cbd628a97a9e19152518dacb99b9b84e62049dbeb63bb98252fe"
+        },
+        {
+          "url": "https://openrouter.ai/docs/api/api-reference/api-keys/create-keys",
+          "retrieved_at": "2026-10-04T19:01:39Z",
+          "file": "provider-sources/openrouter-create-key.json",
+          "sha256": "f4a72c1bf27f95e75d9f26388bdb0c98ab3afd1bf89b79140c9658a1c6c855bb"
+        }
+      ]
+    }
+  ],
+  "cases": [
+    {
+      "id": "openai-chat-plain",
+      "mode": "proxy",
+      "provider": "openai",
+      "model": "gpt-4o-mini-2024-07-18",
+      "endpoint": "chat_completions",
+      "stream": false,
+      "tools": false,
+      "max_output_tokens": 128,
+      "max_cost_micro_usdc": "19277",
+      "session_ttl_seconds": 300
+    },
+    {
+      "id": "openai-chat-sse",
+      "mode": "proxy",
+      "provider": "openai",
+      "model": "gpt-4o-mini-2024-07-18",
+      "endpoint": "chat_completions",
+      "stream": true,
+      "tools": false,
+      "max_output_tokens": 128,
+      "max_cost_micro_usdc": "19277",
+      "session_ttl_seconds": 300
+    },
+    {
+      "id": "openai-chat-tools",
+      "mode": "proxy",
+      "provider": "openai",
+      "model": "gpt-4o-mini-2024-07-18",
+      "endpoint": "chat_completions",
+      "stream": false,
+      "tools": true,
+      "max_output_tokens": 128,
+      "max_cost_micro_usdc": "19277",
+      "session_ttl_seconds": 300
+    },
+    {
+      "id": "openai-chat-tools-sse",
+      "mode": "proxy",
+      "provider": "openai",
+      "model": "gpt-4o-mini-2024-07-18",
+      "endpoint": "chat_completions",
+      "stream": true,
+      "tools": true,
+      "max_output_tokens": 128,
+      "max_cost_micro_usdc": "19277",
+      "session_ttl_seconds": 300
+    },
+    {
+      "id": "openai-responses-plain",
+      "mode": "proxy",
+      "provider": "openai",
+      "model": "gpt-4o-mini-2024-07-18",
+      "endpoint": "responses",
+      "stream": false,
+      "tools": false,
+      "max_output_tokens": 128,
+      "max_cost_micro_usdc": "19277",
+      "session_ttl_seconds": 300
+    },
+    {
+      "id": "openai-responses-sse",
+      "mode": "proxy",
+      "provider": "openai",
+      "model": "gpt-4o-mini-2024-07-18",
+      "endpoint": "responses",
+      "stream": true,
+      "tools": false,
+      "max_output_tokens": 128,
+      "max_cost_micro_usdc": "19277",
+      "session_ttl_seconds": 300
+    },
+    {
+      "id": "openai-responses-tools",
+      "mode": "proxy",
+      "provider": "openai",
+      "model": "gpt-4o-mini-2024-07-18",
+      "endpoint": "responses",
+      "stream": false,
+      "tools": true,
+      "max_output_tokens": 128,
+      "max_cost_micro_usdc": "19277",
+      "session_ttl_seconds": 300
+    },
+    {
+      "id": "openai-responses-tools-sse",
+      "mode": "proxy",
+      "provider": "openai",
+      "model": "gpt-4o-mini-2024-07-18",
+      "endpoint": "responses",
+      "stream": true,
+      "tools": true,
+      "max_output_tokens": 128,
+      "max_cost_micro_usdc": "19277",
+      "session_ttl_seconds": 300
+    },
+    {
+      "id": "openrouter-proxy-plain",
+      "mode": "proxy",
+      "provider": "openrouter",
+      "model": "openai/gpt-4o-mini",
+      "endpoint": "chat_completions",
+      "stream": false,
+      "tools": false,
+      "max_output_tokens": 128,
+      "max_cost_micro_usdc": "19277",
+      "session_ttl_seconds": 300
+    },
+    {
+      "id": "openrouter-proxy-sse",
+      "mode": "proxy",
+      "provider": "openrouter",
+      "model": "openai/gpt-4o-mini",
+      "endpoint": "chat_completions",
+      "stream": true,
+      "tools": false,
+      "max_output_tokens": 128,
+      "max_cost_micro_usdc": "19277",
+      "session_ttl_seconds": 300
+    },
+    {
+      "id": "openrouter-proxy-tools",
+      "mode": "proxy",
+      "provider": "openrouter",
+      "model": "openai/gpt-4o-mini",
+      "endpoint": "chat_completions",
+      "stream": false,
+      "tools": true,
+      "max_output_tokens": 128,
+      "max_cost_micro_usdc": "19277",
+      "session_ttl_seconds": 300
+    },
+    {
+      "id": "openrouter-proxy-tools-sse",
+      "mode": "proxy",
+      "provider": "openrouter",
+      "model": "openai/gpt-4o-mini",
+      "endpoint": "chat_completions",
+      "stream": true,
+      "tools": true,
+      "max_output_tokens": 128,
+      "max_cost_micro_usdc": "19277",
+      "session_ttl_seconds": 300
+    },
+    {
+      "id": "anthropic-messages-plain",
+      "mode": "proxy",
+      "provider": "anthropic",
+      "model": "claude-haiku-4-5-20251001",
+      "endpoint": "messages",
+      "stream": false,
+      "tools": false,
+      "max_output_tokens": 128,
+      "max_cost_micro_usdc": "400640",
+      "session_ttl_seconds": 300
+    },
+    {
+      "id": "anthropic-messages-sse",
+      "mode": "proxy",
+      "provider": "anthropic",
+      "model": "claude-haiku-4-5-20251001",
+      "endpoint": "messages",
+      "stream": true,
+      "tools": false,
+      "max_output_tokens": 128,
+      "max_cost_micro_usdc": "400640",
+      "session_ttl_seconds": 300
+    },
+    {
+      "id": "anthropic-messages-tools",
+      "mode": "proxy",
+      "provider": "anthropic",
+      "model": "claude-haiku-4-5-20251001",
+      "endpoint": "messages",
+      "stream": false,
+      "tools": true,
+      "max_output_tokens": 128,
+      "max_cost_micro_usdc": "400640",
+      "session_ttl_seconds": 300
+    },
+    {
+      "id": "anthropic-messages-tools-sse",
+      "mode": "proxy",
+      "provider": "anthropic",
+      "model": "claude-haiku-4-5-20251001",
+      "endpoint": "messages",
+      "stream": true,
+      "tools": true,
+      "max_output_tokens": 128,
+      "max_cost_micro_usdc": "400640",
+      "session_ttl_seconds": 300
+    },
+    {
+      "id": "openrouter-direct-plain",
+      "mode": "direct_openrouter",
+      "provider": "openrouter",
+      "model": "openai/gpt-4o-mini",
+      "endpoint": "chat_completions",
+      "stream": false,
+      "tools": false,
+      "max_output_tokens": 128,
+      "max_cost_micro_usdc": "1000000",
+      "session_ttl_seconds": 300
+    },
+    {
+      "id": "openrouter-direct-sse",
+      "mode": "direct_openrouter",
+      "provider": "openrouter",
+      "model": "openai/gpt-4o-mini",
+      "endpoint": "chat_completions",
+      "stream": true,
+      "tools": false,
+      "max_output_tokens": 128,
+      "max_cost_micro_usdc": "1000000",
+      "session_ttl_seconds": 300
+    }
+  ]
+}

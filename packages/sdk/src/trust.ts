@@ -15,6 +15,14 @@ export interface MultisigAuthority {
   readonly authority: string; readonly program_id: string; readonly config_hash: string;
   readonly threshold: 2; readonly members: readonly string[];
 }
+/** Explicit test custody, accepted only on devnet with test-only setup.
+ * This declaration does not replace a finalized ProgramData upgrade-authority
+ * check during deployment preflight. PoolConfig still pins the admin address.
+ */
+export interface DevnetTestSingleKeyAuthority {
+  readonly kind: 'devnet_test_single_key'; readonly authority: string;
+}
+export type DeploymentAuthority = MultisigAuthority | DevnetTestSingleKeyAuthority;
 export interface Manifest {
   readonly deployment_id: string; readonly manifest_hash: string; readonly manifest_signature: string;
   readonly genesis_hash: string; readonly program_id: string; readonly pool: string; readonly mint: string;
@@ -30,7 +38,7 @@ export interface Manifest {
   readonly control_api_origin: string; readonly inference_api_origin: string; readonly proving_keys_base_url: string;
   readonly idl_hash: string; readonly api_endpoints: readonly string[]; readonly tariff_hashes: readonly string[];
   readonly artifact_digests: Readonly<Record<string, string>>; readonly db_schema_version: string;
-  readonly authorities: { readonly admin: MultisigAuthority; readonly upgrade: MultisigAuthority };
+  readonly authorities: { readonly admin: DeploymentAuthority; readonly upgrade: DeploymentAuthority };
 }
 declare const verifiedManifestBrand: unique symbol;
 export type VerifiedManifest = Manifest & { readonly [verifiedManifestBrand]: true };
@@ -61,9 +69,12 @@ function validString(value: string): void {
   }
 }
 
-/** Fatal UTF-8 and duplicate-key parsing before canonicalization. JSON.parse alone loses duplicate keys. */
-export function parseStrictJson(bytes: Uint8Array): Json {
-  requireTrue(bytes instanceof Uint8Array && bytes.length <= 1024 * 1024, 'JSON size');
+/** Fatal UTF-8 and duplicate-key parsing before canonicalization. JSON.parse alone loses duplicate keys.
+ * Network callers retain the 1 MiB default. Local archive readers may explicitly
+ * select a bounded input size; the same syntax and nesting checks still apply. */
+export function parseStrictJson(bytes: Uint8Array, maximumBytes = 1024 * 1024): Json {
+  requireTrue(Number.isSafeInteger(maximumBytes) && maximumBytes > 0 && maximumBytes <= 512 * 1024 * 1024, 'JSON size limit');
+  requireTrue(bytes instanceof Uint8Array && bytes.length <= maximumBytes, 'JSON size');
   const source = new TextDecoder('utf-8', { fatal: true, ignoreBOM: true }).decode(bytes);
   let at = 0;
   const space = () => { while (at < source.length && /[\x20\x09\x0a\x0d]/.test(source[at])) at++; };
@@ -181,6 +192,7 @@ function url(value: unknown, local: boolean, origin: boolean): void {
 }
 const MANIFEST_KEYS = ['deployment_id', 'manifest_hash', 'genesis_hash', 'program_id', 'pool', 'mint', 'token_program', 'decimals', 'vault_binding', 'state_key', 'clearance_key', 'quote_public_key', 'circuit_id', 'protocol_layout_version', 'tree_backend', 'tree_tag_policy', 'circuit_profile_hash', 'deployment_environment', 'setup_profile', 'setup_transcript_hashes', 'transaction_formats', 'request_pk_hash', 'request_vk_hash', 'withdrawal_pk_hash', 'withdrawal_vk_hash', 'cap_micro_usdc', 'note_ttl_seconds', 'challenge_seconds', 'control_api_origin', 'inference_api_origin', 'manifest_signature', 'idl_hash', 'api_endpoints', 'tariff_hashes', 'artifact_digests', 'db_schema_version', 'proving_keys_base_url', 'tree_proof_artifacts', 'receipt_public_key', 'authorities'] as const;
 const PROFILE_KEYS = ['protocol_layout_version', 'tree_backend', 'tree_tag_policy', 'circuit_id', 'request_pk_hash', 'request_vk_hash', 'withdrawal_pk_hash', 'withdrawal_vk_hash', 'tree_proof_artifacts', 'setup_profile', 'setup_transcript_hashes'] as const;
+const DEVNET_GENESIS_HASH = 'EtWTRABZaYq6iMfeYKouRu166VU2xqa1wcaWoxPkrZBG';
 function validateManifest(value: unknown): asserts value is Manifest {
   record(value, MANIFEST_KEYS);
   requireTrue(typeof value.deployment_id === 'string' && value.deployment_id.length > 0, 'deployment ID');
@@ -215,6 +227,14 @@ function validateManifest(value: unknown): asserts value is Manifest {
   value.tariff_hashes.forEach(digest); record(value.artifact_digests); Object.values(value.artifact_digests).forEach(digest);
   record(value.authorities, ['admin', 'upgrade']);
   for (const authority of Object.values(value.authorities)) {
+    record(authority);
+    if (authority.kind === 'devnet_test_single_key') {
+      record(authority, ['kind', 'authority']);
+      requireTrue(value.deployment_environment === 'devnet' && value.setup_profile === 'test_only'
+        && value.genesis_hash === DEVNET_GENESIS_HASH, 'single-key authority requires devnet test-only setup');
+      base58PublicKey(authority.authority);
+      continue;
+    }
     record(authority, ['authority', 'program_id', 'config_hash', 'threshold', 'members']);
     base58PublicKey(authority.authority); base58PublicKey(authority.program_id); digest(authority.config_hash);
     strings(authority.members, true); requireTrue(authority.threshold === 2 && authority.members.length === 3, '2-of-3 authority');

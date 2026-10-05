@@ -1,0 +1,158 @@
+{
+  "passed": true,
+  "scope": "I08 local Go frontend, same encrypted SDK lifecycle, SOCKS5 remote DNS/fail closed, passphrase custody, whole-install hash pin, native proof and actual Vault",
+  "date_jst": "2026-10-04",
+  "os": "macOS-26.6.2-arm64-arm-64bit-Mach-O",
+  "node": "v24.19.0",
+  "go": "go version go1.25.0 darwin/arm64",
+  "commands": [
+    {
+      "argv": [
+        "/Users/yukikimura/work/solana-zkapi/target/i08-toolchain/bin/node",
+        "--version"
+      ],
+      "exit_code": 0,
+      "seconds": 0.015
+    },
+    {
+      "argv": [
+        "/Users/yukikimura/work/solana-zkapi/target/i08-toolchain/bin/go",
+        "version"
+      ],
+      "exit_code": 0,
+      "seconds": 0.031
+    },
+    {
+      "argv": [
+        "/Users/yukikimura/work/solana-zkapi/target/toolchains/go/bin/gofmt",
+        "-l",
+        "apps/clientd/cmd",
+        "apps/clientd/internal"
+      ],
+      "exit_code": 0,
+      "seconds": 0.036
+    },
+    {
+      "argv": [
+        "/Users/yukikimura/work/solana-zkapi/target/i08-toolchain/bin/go",
+        "-C",
+        "apps/clientd",
+        "test",
+        "-race",
+        "-count=1",
+        "-json",
+        "./..."
+      ],
+      "exit_code": 0,
+      "seconds": 2.999
+    },
+    {
+      "argv": [
+        "/Users/yukikimura/work/solana-zkapi/target/i08-toolchain/bin/node",
+        "node_modules/typescript/bin/tsc",
+        "--noEmit",
+        "-p",
+        "apps/clientd/tsconfig.json"
+      ],
+      "exit_code": 0,
+      "seconds": 0.945
+    },
+    {
+      "argv": [
+        "/Users/yukikimura/work/solana-zkapi/target/i08-toolchain/bin/node",
+        "--test",
+        "--test-reporter=tap",
+        "packages/sdk/test/clientd.test.ts",
+        "packages/sdk/test/control.test.ts"
+      ],
+      "exit_code": 0,
+      "seconds": 3.59
+    },
+    {
+      "argv": [
+        "python3",
+        "scripts/build_clientd_distribution.py"
+      ],
+      "exit_code": 0,
+      "seconds": 2.402
+    },
+    {
+      "argv": [
+        "/Users/yukikimura/work/solana-zkapi/target/i08-toolchain/bin/node",
+        "--test",
+        "--test-reporter=tap",
+        "packages/sdk/test/clientd-sbf.ts"
+      ],
+      "exit_code": 0,
+      "seconds": 10.935
+    }
+  ],
+  "tests": {
+    "go_with_subtests": 23,
+    "sdk": 41,
+    "go_sdk_actual_sbf": 1
+  },
+  "elapsed_seconds": 21.195,
+  "artifact_sha256": {
+    "apps/clientd/cmd/clientd/main.go": "94ef462d92514c25c12e80dccbb60426207b7bb18faa542af98e9e3928080cea",
+    "apps/clientd/cmd/clientd/main_test.go": "fc160b3450015cac9914d683dfe4e3555ab741adce387d800e81598277583be0",
+    "apps/clientd/internal/egress/egress_test.go": "aa7a2dc66f9932afe6504541d05428e08beb8c719b0a88ed02c4ac726175ee6b",
+    "apps/clientd/internal/egress/egress.go": "88e26431f8f15beeddbbaad44030c6e0db8f7cfbdba4249ec85966443344a434",
+    "apps/clientd/internal/egress/socks5.go": "9176ac52c8b50f551e002704a0b09053aa6c917e14ffa4c1793084d34c792319",
+    "apps/clientd/internal/egress/socks5_test.go": "d288e57ab1055ec82f2b2bac68476115ff77a8eabdfa789ab903979095ccffbd",
+    "apps/clientd/internal/daemon/server.go": "571a8fb21399cd362f0b0817d5b63338c2f0e004957ab8bbffb2daa2db77175a",
+    "apps/clientd/internal/daemon/distribution.go": "00d93b2ae5acc4895233725320941a954ada5ea1d30b1b638f9026804d0dc3a3",
+    "apps/clientd/internal/daemon/distribution_test.go": "8d934f4be0cb33177db0907fd8a795fcf2bc1aa48976f9670282992785de1465",
+    "apps/clientd/internal/daemon/server_test.go": "608c9124573275304ce9c8cc64b473963b8ea4147c51ee733271a8f6c0c14e05",
+    "packages/sdk/src/wallet.ts": "b6518fc7a9707f1056d1c55757ecc43820e8db2de9b311a089887c4163ce99f0",
+    "packages/sdk/src/control-prover.ts": "b2373dd39c4e7dec1bb6fc2dc15be201f93719f9f46290862bc3e20d124dfd64",
+    "packages/sdk/src/challenger.ts": "444c80d62925b1bf3f3474d96ea0ceda556672fa6858836105197df6896a1d7e",
+    "packages/sdk/src/journal-node.ts": "c93ee69fe01488ad8cdbdbdc88d1f046b1c821c179ce7d755250e81b9bbabb6d",
+    "packages/sdk/src/prover.ts": "992f3754245e8ff065c60940ec5677617c77ee7ee7ee6a4599d75dd5a4f53110",
+    "packages/sdk/src/prover-runtime.ts": "3c4d7e15984613307c4137d16200b5d75d236e616de50db482d1c1a3ad6e4ff4",
+    "packages/sdk/src/control-node.ts": "b1cd1c08972d364310a1cfd5cfd32b30b47a9adeffad1f44c8612b07f6cd685f",
+    "packages/sdk/src/trust.ts": "6fe8ca3639ff2b0547122ca3e2aaa419379019e5ac5f42aaeac3565f5ccd924f",
+    "packages/sdk/src/wallet-standard.ts": "2b519f454bca7711e3cc659b001cf15d926b466df070d57e4e2abe60d63d6c44",
+    "packages/sdk/src/layout2.ts": "b6f6c1208f315327fed01b531a883a68676ebc0680f0d178cead59610906c91e",
+    "packages/sdk/src/secret-custody.ts": "44506804efec9d1340075f055ec1ad02a105b86599a59e101be71ee4adc1e8f3",
+    "packages/sdk/src/prover-node.ts": "2bbcbc09a047c938c3c16bf2d28daae8ccf2a8934676d7db7ff4a9ee8f02cfcc",
+    "packages/sdk/src/clientd-network.ts": "b4ee5d17d2520ca78fbe85b32870d543a97f1b3dd92b3f89f140852a687023aa",
+    "packages/sdk/src/wallet-chain.ts": "2b23b53eddaffb4d235c4bfae860922bad5493415b3d6a44c668735286d48f16",
+    "packages/sdk/src/control.ts": "6297135fba01ef2d7f7a13945be4a39cdc4dc9adfcaf1c792098d284dfedce7d",
+    "packages/sdk/src/transport.ts": "caa5a71d4b8e5b1bae58227f23a350af864bb8fdcbbd3ea47441676b92469a67",
+    "packages/sdk/src/encoding.ts": "7301ea7c7f93dcd4ae02f760d07829d342bc2c0d042ace67bc5a41a8d68aeee4",
+    "packages/sdk/src/clientd-bridge.ts": "67534423fc4c49b22b02ebbd2d593727f22d5539f452b491bf3ed008e9d99dc3",
+    "packages/sdk/src/journal.ts": "5c6d7ea7b9e5ee10f8c4e30ac4ce1f204851a52208a56e1bd1e84c112b4ac9c5",
+    "packages/sdk/src/challenger-cli.ts": "4d6af7d7f668155e6a30d91d2cd60843128c65276db8ba9106f6c59d341cd647",
+    "packages/sdk/src/prover-worker.ts": "342ae466853e540185a1b67e37b0fb1262a08a23f36f4a5d4af5d473ab6e9cc8",
+    "apps/clientd/runtime.ts": "2722a52b35b12c08e0acd016189fbf481f21532432bddc361c437c14ce332adf",
+    "apps/clientd/go.mod": "1db83768cf3acce81ae40ba5592cf5a16a9a606053b0fd07869f5c76fc42a83a",
+    "apps/clientd/tsconfig.json": "9223670a4a43239897dc3974b0f7256b72021777f8a8dc7f03e3a62762331249",
+    "scripts/run_i08_clientd.py": "c2f233950fd2b5a4d677f8f0c4cc04a04d855e5c516c4503de2a1b0e274712a7",
+    "scripts/build_clientd_distribution.py": "1383ce68b03d1954c8d98485d9635ea7fb88cf725b711a46e077ffc8a69a9808",
+    "packages/sdk/test/clientd.test.ts": "a8f6510a339044edc681e092662afa4fd1c698d11660d2470855a430ac118712",
+    "packages/sdk/test/clientd-sbf.ts": "8e727c71cb05398beee27c494183bec8d01e010c735f4847688193b41a5b534d",
+    "package-lock.json": "f20927b629c1a7700b90999783e052c8ef683c28d648415eb13d05caebecb2aa"
+  },
+  "distribution": {
+    "distribution": "/Users/yukikimura/work/solana-zkapi/target/i08-clientd/distribution/release.json",
+    "distribution_sha256": "32d4d30e40c5e9ca0fcb367a63f7f267cafb5f697964f91337e65443c75c3d24",
+    "node": "/Users/yukikimura/work/solana-zkapi/target/i08-clientd/distribution/bin/node",
+    "node_sha256": "27db838bb204ef7c21df2931f5656e4c8fb32e6e947f363a402b49714d32b5b1",
+    "runtime": "/Users/yukikimura/work/solana-zkapi/target/i08-clientd/distribution/apps/clientd/runtime.ts",
+    "runtime_sha256": "2722a52b35b12c08e0acd016189fbf481f21532432bddc361c437c14ce332adf",
+    "node_version": "v24.19.0",
+    "go_version": "go version go1.25.0 darwin/arm64",
+    "production_signed": false
+  },
+  "svm": {
+    "transactions": 9,
+    "max_cu": 420004,
+    "max_transaction_bytes": 1232
+  },
+  "release_gates_passed": [],
+  "live_provider": false,
+  "live_tor": false,
+  "public_rpc": false,
+  "production_native_signature": false
+}

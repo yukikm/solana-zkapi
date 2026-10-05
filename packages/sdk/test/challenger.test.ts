@@ -110,7 +110,7 @@ test('challenger buffer absence inspection requires a finalized cut at the failu
     const chunks:Buffer[]=[];for await(const chunk of req)chunks.push(Buffer.from(chunk));
     const request=JSON.parse(Buffer.concat(chunks).toString('utf8'));let result:unknown;
     if(request.method==='getAccountInfo'){minimums.push(request.params[1].minContextSlot);result={context:{slot},value:null};}
-    else if(request.method==='getBlock')result={blockhash:blockhash.blockhash,previousBlockhash:blockhash.blockhash,parentSlot:slot-1,blockTime:null,blockHeight:slot};
+    else if(request.method==='getBlock'){assert.equal(request.params[1].maxSupportedTransactionVersion,1);result={blockhash:blockhash.blockhash,previousBlockhash:blockhash.blockhash,parentSlot:slot-1,blockTime:null,blockHeight:slot};}
     else throw Error('unexpected fixture RPC');
     res.setHeader('Content-Type','application/json');res.end(JSON.stringify({jsonrpc:'2.0',id:request.id,result}));
   });

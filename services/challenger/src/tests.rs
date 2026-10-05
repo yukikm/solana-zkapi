@@ -1,5 +1,11 @@
 //! Real, fixed RP/tree verification inside a synthetic archived envelope and
 //! state-machine tests. No test here claims a new live transaction or provider.
+mod archive_batch;
+mod coherent_cut;
+mod devnet;
+mod scan_readonly;
+mod shutdown;
+
 use super::*;
 use crate::{journal::*, scan::FinalizedView};
 use ark_serialize::CanonicalDeserialize;
@@ -918,6 +924,7 @@ async fn rpc_daemon_replays_durable_history_and_reconciles_restart_forks_and_cut
                             && *s <= body["params"][1].as_u64().unwrap())
                         .collect::<Vec<_>>()),
                     "getBlock" => {
+                        assert_eq!(body["params"][1]["maxSupportedTransactionVersion"], 1);
                         let slot = body["params"][0].as_u64().unwrap();
                         let mut b = scenario["blocks"]
                             .as_array()
@@ -932,10 +939,16 @@ async fn rpc_daemon_replays_durable_history_and_reconciles_restart_forks_and_cut
                         b
                     }
                     "getMultipleAccounts" => {
-                        json!({"context":{"slot":tip},"value":body["params"][0].as_array().unwrap().iter().map(|k|cut["accounts"][k.as_str().unwrap()].clone()).collect::<Vec<_>>()})
-                    }
-                    "getAccountInfo" => {
-                        json!({"context":{"slot":if mode==4 {tip+1} else {tip}},"value":cut["accounts"][body["params"][0].as_str().unwrap()]})
+                        let mut values: Vec<Value> = body["params"][0]
+                            .as_array()
+                            .unwrap()
+                            .iter()
+                            .map(|k| cut["accounts"][k.as_str().unwrap()].clone())
+                            .collect();
+                        if mode == 4 {
+                            values[0]["owner"] = json!(zkapi_indexer::snapshot::key([42; 32]));
+                        }
+                        json!({"context":{"slot":tip},"value":values})
                     }
                     _ => panic!("unexpected RPC method"),
                 };
@@ -956,6 +969,7 @@ async fn rpc_daemon_replays_durable_history_and_reconciles_restart_forks_and_cut
     let config = runtime::Config {
         manifest: manifest_file,
         manifest_sha256: hex::encode(trust.manifest_hash),
+        devnet: None,
         rpc_url: format!("http://{addr}"),
         database_dsn_file: dir.path().join("dsn"),
         start_slot: 1,
@@ -1111,6 +1125,7 @@ async fn native_daemon_prove_sign_persist_send_restart_and_stale_root_recovery()
         let config = runtime::Config {
             manifest: manifest_file,
             manifest_sha256: hex::encode(trust.manifest_hash),
+            devnet: None,
             rpc_url: format!("http://127.0.0.1:{}", port["port"]),
             database_dsn_file: directory.path().join("unused-dsn"),
             start_slot: 1,

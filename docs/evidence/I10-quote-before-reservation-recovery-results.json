@@ -1,0 +1,74 @@
+{
+  "schema": 1,
+  "passed": true,
+  "tests": 73,
+  "previous_settled_tests": 28,
+  "unstarted_tests": 45,
+  "scope": "corrected offline read-only quote503/initial-journal recovery guard: quote precedes proof/reservation, so selected budget reservation must be absent; no private inputs, network, sends, budget or journal writes",
+  "sources": {
+    "scripts/i10_devnet_provider_recovery.ts": "82b078e7205474ac871707b1a487368072e8a2340189e843f27bef930fe32236",
+    "scripts/i10_devnet_provider_recovery.test.ts": "f0042158a1cea51219b2ecb9e33c66db83fef40b3e9f8b016781aab8d3f24ab8"
+  },
+  "source_unchanged_during_validation": true,
+  "checks": [
+    {
+      "command": [
+        "target/i08-toolchain/bin/node",
+        "--test",
+        "scripts/i10_devnet_provider_recovery.test.ts"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 0.229,
+      "log": "target/i10-unstarted-provider-recovery-validation/quote-before-reserve/check-1.log",
+      "sha256": "c491514534966614fe643124cd3c0e59cdde07dc2f92bce7a4b86ba0ba1c7bc3"
+    },
+    {
+      "command": [
+        "target/i08-toolchain/bin/node",
+        "node_modules/typescript/bin/tsc",
+        "--noEmit",
+        "--strict",
+        "--target",
+        "ES2023",
+        "--module",
+        "NodeNext",
+        "--moduleResolution",
+        "NodeNext",
+        "--allowImportingTsExtensions",
+        "--resolveJsonModule",
+        "--lib",
+        "ES2023,DOM",
+        "--types",
+        "node",
+        "scripts/i10_devnet_provider_recovery.ts",
+        "scripts/i10_devnet_provider_recovery.test.ts",
+        "scripts/run_i10_devnet_vault.ts"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 1.137,
+      "log": "target/i10-unstarted-provider-recovery-validation/quote-before-reserve/check-2.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "command": [
+        "git",
+        "diff",
+        "--check",
+        "--",
+        "scripts/i10_devnet_provider_recovery.ts",
+        "scripts/i10_devnet_provider_recovery.test.ts"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 0.021,
+      "log": "target/i10-unstarted-provider-recovery-validation/quote-before-reserve/check-3.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  ],
+  "selected_reservation_required": "absent for unstarted; present for settled",
+  "budget_reservation_created": false,
+  "historical_prior_report": "target/i10-unstarted-provider-recovery-validation/results.json",
+  "historical_prior_report_limitation": "Earlier 73 tests assumed a selected reservation for quote failure; retained only as superseded implementation history, not the current contract.",
+  "cryptographic_absence_verified": false,
+  "provider_acceptance_passed": false,
+  "full_g3_passed": false
+}

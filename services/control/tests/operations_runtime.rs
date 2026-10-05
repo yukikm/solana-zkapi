@@ -180,6 +180,7 @@ async fn dispatcher_one_shot_process_and_restart_fencing() {
     .unwrap();
     let cfg = egress::ServiceConfig {
         local_test_only: true,
+        devnet: None,
         database_url: format!("{url} user={role}"),
         pool: identity.pool,
         claims_directory: dir.path().into(),

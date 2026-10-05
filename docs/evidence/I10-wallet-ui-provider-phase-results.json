@@ -1,0 +1,36 @@
+{
+  "schema": 1,
+  "passed": true,
+  "recorded_at": "2026-10-05T02:49:06.369205+00:00",
+  "scope": "Offline follow-up: phase-derived Japanese action text; financial behavior unchanged.",
+  "tests": {
+    "total": 12,
+    "passed": 12,
+    "browser": 1,
+    "provider_client": 5,
+    "host": 6
+  },
+  "strict_typecheck_passed": true,
+  "source_sha256": {
+    "scripts/i10-wallet-ui/app.ts": "a737095791bbc89268db073fba6036cf2fd24a55d692ffca2bf2942f2729881a",
+    "scripts/i10-wallet-ui/browser.test.ts": "ceca58c7fc2e803fc86ba8598dedc3804043a89a349b386effc7ffad95acaef8",
+    "scripts/i10-wallet-ui/provider.ts": "f34fb67ae4e486a2ee0b6ddb474c7bf159bf22559504346381f252967259a468",
+    "scripts/i10-wallet-ui/main.ts": "947b5e190ddd66002b15ad3151dd599c21bf734891acc9aa77084881aea11a40",
+    "packages/sdk/src/control.ts": "debc891e6f4eaed3124f77448b0b9db4945e8864ef5da1f6c7571ad902cddd0d"
+  },
+  "artifact_sha256": {
+    "target/i10-wallet-ui-provider-validation/phase-actions-build.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "target/i10-wallet-ui-provider-validation/phase-actions-tests.log": "0568ce3437404fdd09dace8d40aa99e3a20e955ee14b86915a68f66d28459d1c",
+    "target/i10-wallet-ui-provider-validation/phase-actions-typecheck.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "bundle_sha256": "d92a071379d7e5caf1290f913812e5cc19a8e0aa5019d0a435565ba6a4f0a469",
+  "checks": [
+    "AUTH503 fixture leaves zero inference operations; exact-AUTH retry action remains enabled and explanation names the same saved AUTH",
+    "after one inference, reload preserves send_unknown and disables sending",
+    "pending settlement/verification failure retains balance and shows recover-close-only action"
+  ],
+  "previous_full_validation": "target/i10-wallet-ui-provider-validation/results.json",
+  "live_provider_verified": false,
+  "wallet_UI_verified": false,
+  "release_gates_passed": []
+}

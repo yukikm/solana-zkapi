@@ -40,7 +40,7 @@ if not (ROOT / 'target/i04/sdk-svm-history.json').is_file():
     raise SystemExit('Generate the required actual Vault SBF history first: bash scripts/run_i04.sh')
 if not (ROOT / 'target/i04-sbf/zkapi_vault.so').is_file():
     raise SystemExit('Build the required actual Vault SBF ELF first: bash scripts/run_i04.sh')
-for name in ['generated-challenge.bin', 'proof-generation.json', 'svm-results.json', 'daemon-performance.json', 'native-cli-results.json']:
+for name in ['generated-challenge.bin', 'proof-generation.json', 'svm-results.json', 'daemon-performance.json', 'native-cli-results.json', 'i10-restart-results.json']:
     (OUT / name).unlink(missing_ok=True)
 started = time.monotonic()
 with tempfile.TemporaryDirectory(prefix='zkapi-i09-', dir='/tmp') as directory:
@@ -62,6 +62,12 @@ with tempfile.TemporaryDirectory(prefix='zkapi-i09-', dir='/tmp') as directory:
             raise RuntimeError('All challenger tests must run without failures or ignored cases')
         if 'generates_a_new_real_challenge_proof_using_pinned_test_setup ... ok' not in LOG.read_text():
             raise RuntimeError('Missing native proof generation test')
+        restarts_result = json.loads((OUT / 'i10-restart-results.json').read_text())
+        if (restarts_result.get('passed') is not True
+                or restarts_result.get('fresh_process_recoveries') != 17
+                or restarts_result.get('extra_sends_during_outage_and_finality_recovery') != 0
+                or restarts_result.get('finalized_without_fee_key') is not True):
+            raise RuntimeError('Missing repeated challenger outage/restart acceptance')
         sdk_output = run(['node', '--test', '--test-reporter=tap', 'packages/sdk/test/challenger.test.ts'])
         sdk_tests = re.search(r'# tests (\d+)', sdk_output)
         if not sdk_tests or '# fail 0' not in sdk_output:
@@ -137,10 +143,13 @@ with tempfile.TemporaryDirectory(prefix='zkapi-i09-', dir='/tmp') as directory:
             raise RuntimeError('New challenger payload failed the actual Vault SBF bounds')
         artifacts = ['target/i09-challenger/generated-challenge.bin', 'target/i09-challenger/proof-generation.json', 'target/i09-challenger/svm-results.json', 'target/i04-sbf/zkapi_vault.so', 'services/challenger/Cargo.toml', 'services/challenger/Cargo.lock', 'scripts/run_i09_challenger.py', 'tests/svm/Cargo.toml', 'tests/svm/Cargo.lock', 'tests/svm/src/bin/challenger.rs', 'tests/svm/src/vault_support.rs', 'tests/fixtures/vault/a.json', 'tests/fixtures/vault/a-with-b.json', 'tests/fixtures/vault/b-with-a.json', 'tests/fixtures/layout2/test-tree.vk', 'target/i04/sdk-svm-history.json']
         artifacts += [str(path.relative_to(ROOT)) for path in sorted((ROOT / 'services/challenger/src').rglob('*.rs'))]
+        artifacts += [str(path.relative_to(ROOT)) for path in sorted((ROOT / 'services/challenger/tests').rglob('*.rs'))]
         artifacts += [str(path.relative_to(ROOT)) for path in sorted((ROOT / 'services/indexer/src').rglob('*.rs'))]
         artifacts += [str(path.relative_to(ROOT)) for directory in ['packages/sdk/src', 'packages/sdk/test'] for path in sorted((ROOT / directory).glob('challenger*.ts'))]
         artifacts += ['target/i09-challenger/daemon-performance.json', 'target/i09-challenger/native-cli-results.json', 'services/challenger/target/debug/challengerd']
+        artifacts += ['target/i09-challenger/i10-restart-results.json']
         report = {'scope': 'I09 challenger A/B native RPC daemon/CLI, durable scan/restart, readonly PostgreSQL, real proof, I04 signed-v0 bridge/recovery fault fixtures, actual Vault signed-v0 SBF acceptance; no live RPC claim', 'passed': True, 'tests_passed': sum(int(p) for p, _, _ in results) + int(sdk_tests.group(1)), 'native_tests_passed': sum(int(p) for p, _, _ in results), 'sdk_tests_passed': int(sdk_tests.group(1)), 'daemon_performance': json.loads((OUT / 'daemon-performance.json').read_text()), 'native_cli': cli_result, 'tests_failed': 0, 'tests_ignored': 0, 'postgres_version': postgres, 'fsync': True, 'rust': run(['rustc', '--version'], True), 'elapsed_seconds': round(time.monotonic() - started, 3), 'commands': COMMANDS, 'artifact_sha256': {name: hashlib.sha256((ROOT / name).read_bytes()).hexdigest() for name in artifacts}, 'release_gates_passed': [], 'new_tree_proof_generated': True, 'new_payload_sbf_verified': True, 'svm': {key: svm[key] for key in ['transactions', 'expected_rejections', 'max_cu', 'max_transaction_bytes', 'payload_sha256', 'elf_sha256']}, 'live_rpc_verified': False}
+        report['i10_repeated_outage_restarts'] = restarts_result
         (OUT / 'runtime-report.json').write_text(json.dumps(report, indent=2) + '\n')
     finally:
         if running:

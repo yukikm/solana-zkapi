@@ -153,10 +153,19 @@ sch['Manifest'] = obj({'deployment_id':S,'manifest_hash':H,'genesis_hash':P,'pro
     'tree_proof_artifacts':ref('TreeProofArtifacts')})
 sch['MultisigAuthority'] = obj({'authority':P,'program_id':P,'config_hash':H,
     'threshold':{'type':'integer','const':2},'members':array(P,minItems=3,maxItems=3,uniqueItems=True)})
+sch['DevnetTestSingleKeyAuthority'] = obj({
+    'kind':{'type':'string','const':'devnet_test_single_key'},'authority':P})
+sch['DevnetTestSingleKeyAuthority']['description'] = 'Explicit devnet test-only custody. Deployment preflight must independently verify the finalized ProgramData upgrade authority; PoolConfig pins the admin authority.'
+sch['DeploymentAuthority'] = {'oneOf':[ref('MultisigAuthority'),ref('DevnetTestSingleKeyAuthority')]}
 sch['Manifest']['properties'].update({'receipt_public_key':P,
-    'authorities':obj({'admin':ref('MultisigAuthority'),'upgrade':ref('MultisigAuthority')})})
+    'authorities':obj({'admin':ref('DeploymentAuthority'),'upgrade':ref('DeploymentAuthority')})})
 sch['Manifest']['required'] += ['receipt_public_key','authorities']
 sch['Manifest']['allOf'] = [
+    {'if':{'properties':{
+        'deployment_environment':{'const':'devnet'},'setup_profile':{'const':'test_only'},
+        'genesis_hash':{'const':'EtWTRABZaYq6iMfeYKouRu166VU2xqa1wcaWoxPkrZBG'}},
+        'required':['deployment_environment','setup_profile','genesis_hash']},
+     'else':{'properties':{'authorities':obj({'admin':ref('MultisigAuthority'),'upgrade':ref('MultisigAuthority')})}}},
     {'if':{'properties':{'deployment_environment':{'const':'mainnet'}}},
      'then':{'properties':{'setup_profile':{'const':'ceremony_verified'}}}},
     {'if':{'properties':{'setup_profile':{'const':'ceremony_verified'}}},

@@ -1,0 +1,51 @@
+{
+  "schema": 1,
+  "passed": true,
+  "observed_at_utc": "2026-10-04T19:09:51.210491+00:00",
+  "scope": "Disposable local Unix PostgreSQL; real migrations and read-only provider role permissions; no provider network or public financial sends",
+  "commands": [
+    {
+      "argv": [
+        "python3",
+        "scripts/test_i10_provider_backend.py"
+      ],
+      "exit_code": 0,
+      "tests": 3,
+      "log": "target/i10-provider-backend-validation.log",
+      "log_sha256": "0da603a8897f869f92ac44c630df22426ceb05ad3b9acf48ce1f05e5c1e0fc68"
+    },
+    {
+      "argv": [
+        "cargo",
+        "clippy",
+        "--locked",
+        "--manifest-path",
+        "services/control/Cargo.toml",
+        "--all-targets",
+        "--features",
+        "i10-acceptance",
+        "--",
+        "-D",
+        "warnings"
+      ],
+      "exit_code": 0,
+      "log": "target/i10-provider-control-clippy.log",
+      "log_sha256": "56744c14857312da39e3de91c2b192f43b9117d6d5d41d44f97ab725dca7bb87"
+    }
+  ],
+  "checks": [
+    "Reader cannot write even in an explicitly read-write transaction",
+    "Extra table write grants stop provisioning without silently revoking them",
+    "Existing role memberships stop provisioning"
+  ],
+  "source_sha256": {
+    "scripts/run_i10_devnet_backend.py": "d0063c634687f29d7bcafc2e6f04b350ad61ba7f25e5c27fc9c8e20a8e65ecc7",
+    "scripts/test_i10_provider_backend.py": "b7df01715cda1eca077774dffc066b498303a871283f347f3841ce7fc9b73580",
+    "services/control/src/egress.rs": "073f872a3d8ea025fec9f703cdf878904f46efd1be2774c800030525e30f212f",
+    "services/control/tests/devnet_config.rs": "746270f4e0e02d9ad74f129e3d4ba5c7d3b0a7359848a971773fdce15f354728"
+  },
+  "provider_calls": 0,
+  "provider_spend_micro_usdc": "0",
+  "I10_complete": false,
+  "release_gates_passed": []
+}

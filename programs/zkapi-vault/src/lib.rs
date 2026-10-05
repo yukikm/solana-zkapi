@@ -30,11 +30,15 @@ mod vk;
 pub use contexts::*;
 pub use state::*;
 
+#[cfg(feature = "local-test")]
 declare_id!("3uWi9x2SRpmjztkpkr2WWeBoVq3exjXG2YfDWLvm8KsQ");
+#[cfg(feature = "local-test")]
 pub const DEPLOYMENT_AUTHORITY: Pubkey = Pubkey::new_from_array([
     138, 136, 227, 221, 116, 9, 241, 149, 253, 82, 219, 45, 60, 186, 93, 114, 202, 103, 9, 191, 29,
     148, 18, 27, 243, 116, 136, 1, 180, 15, 111, 92,
 ]);
+#[cfg(all(feature = "devnet", not(feature = "local-test")))]
+include!(concat!(env!("OUT_DIR"), "/devnet_pins.rs"));
 #[cfg(feature = "local-test")]
 pub const USDC_MINT: Pubkey = Pubkey::new_from_array([4; 32]);
 #[cfg(all(feature = "devnet", not(feature = "local-test")))]
@@ -270,6 +274,35 @@ mod transport_wire_tests {
             assert!(validate_instruction_length(&data).is_ok());
             data.push(0);
             assert!(validate_instruction_length(&data).is_err());
+        }
+    }
+}
+
+#[cfg(test)]
+mod deployment_pin_tests {
+    use super::*;
+    #[test]
+    fn pins_match_the_selected_deployment() {
+        #[cfg(feature = "local-test")]
+        {
+            assert_eq!(ID, Pubkey::new_from_array([43; 32]));
+            assert_eq!(
+                DEPLOYMENT_AUTHORITY,
+                pubkey!("AKnL4NNf3DGWZJS6cPknBuEGnVsV4A4m5tgebLHaRSZ9")
+            );
+            assert_eq!(USDC_MINT, Pubkey::new_from_array([4; 32]));
+        }
+        #[cfg(all(feature = "devnet", not(feature = "local-test")))]
+        {
+            assert_eq!(ID.to_string(), env!("ZKAPI_DEVNET_PROGRAM_ID"));
+            assert_eq!(
+                DEPLOYMENT_AUTHORITY.to_string(),
+                env!("ZKAPI_DEVNET_INITIALIZER")
+            );
+            assert_eq!(
+                USDC_MINT,
+                pubkey!("4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU")
+            );
         }
     }
 }

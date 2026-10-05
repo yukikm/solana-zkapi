@@ -481,23 +481,33 @@ impl Journal {
     /// A caller first validates this block through Scanner. Keeping the complete
     /// finalized history permits buffer-generation replay after a process crash.
     pub fn append_archive(&mut self, block: zkapi_indexer::FinalizedBlock) -> Result<()> {
+        self.append_archive_batch(vec![block])
+    }
+    /// Atomically append an already validated ordered prefix. A failed batch
+    /// publishes none of its blocks; a caller must install its Scanner only
+    /// after this durable commit. The on-disk v1 format is unchanged.
+    pub fn append_archive_batch(
+        &mut self,
+        blocks: Vec<zkapi_indexer::FinalizedBlock>,
+    ) -> Result<()> {
         self.update(|s| {
-            if !block.finalized {
-                return Err(Error::Conflict("unfinalized archive"));
+            for block in blocks {
+                if !block.finalized {
+                    return Err(Error::Conflict("unfinalized archive"));
+                }
+                if let Some(old) = s.archive.iter().find(|b| b.slot == block.slot) {
+                    if old != &block {
+                        return Err(Error::Conflict("archive fork"));
+                    }
+                    continue;
+                }
+                if s.archive.last().is_some_and(|old| {
+                    block.parent_slot != old.slot || block.previous_blockhash != old.blockhash
+                }) {
+                    return Err(Error::Conflict("archive gap/fork"));
+                }
+                s.archive.push(block);
             }
-            if let Some(old) = s.archive.iter().find(|b| b.slot == block.slot) {
-                return if old == &block {
-                    Ok(())
-                } else {
-                    Err(Error::Conflict("archive fork"))
-                };
-            }
-            if s.archive.last().is_some_and(|old| {
-                block.parent_slot != old.slot || block.previous_blockhash != old.blockhash
-            }) {
-                return Err(Error::Conflict("archive gap/fork"));
-            }
-            s.archive.push(block);
             Ok(())
         })
     }
@@ -842,10 +852,11 @@ fn lock(directory: &Path) -> Result<File> {
     Ok(file)
 }
 fn persist(directory: &Path, state: &State) -> Result<()> {
-    let envelope = Envelope {
-        digest: sha(&serde_json::to_vec(state)?),
-        state: state.clone(),
-    };
+    // Reuse these exact state bytes both for the checksum and the v1 envelope.
+    // Serializing an owned Envelope cloned and encoded the growing archive a
+    // second time. Field order and bytes stay identical to serde's Envelope.
+    let state_bytes = serde_json::to_vec(state)?;
+    let digest_bytes = serde_json::to_vec(&sha(&state_bytes))?;
     let temporary = directory.join("journal.next");
     let mut options = OpenOptions::new();
     options.create(true).truncate(true).write(true);
@@ -855,7 +866,11 @@ fn persist(directory: &Path, state: &State) -> Result<()> {
         options.mode(0o600);
     }
     let mut file = options.open(&temporary)?;
-    file.write_all(&serde_json::to_vec(&envelope)?)?;
+    file.write_all(b"{\"digest\":")?;
+    file.write_all(&digest_bytes)?;
+    file.write_all(b",\"state\":")?;
+    file.write_all(&state_bytes)?;
+    file.write_all(b"}")?;
     file.sync_all()?;
     fs::rename(temporary, directory.join("journal.json"))?;
     File::open(directory)?.sync_all()?;

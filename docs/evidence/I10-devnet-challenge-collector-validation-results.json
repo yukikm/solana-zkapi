@@ -1,0 +1,126 @@
+{
+  "schema": 1,
+  "passed": true,
+  "scope": "Offline collector input-bound and canonical tree-binding validation; real RPC receipts are a separate report",
+  "reports": [
+    {
+      "path": "target/i10-collector-bounds-validation/validation-results.json",
+      "report": {
+        "schema": 1,
+        "passed": true,
+        "recorded_at_utc": "2026-10-04T18:08:43.438024+00:00",
+        "scope": "Offline synthetic collector size boundaries, strict parser behavior, exact archived payload preservation and no-send/event regression; no live journal or public RPC",
+        "checks": {
+          "tests": {
+            "command": [
+              "target/i08-toolchain/bin/node",
+              "--test",
+              "scripts/verify_i10_devnet_challenge.test.ts"
+            ],
+            "exit_code": 0,
+            "elapsed_seconds": 0.41075208300026134,
+            "log_sha256": "1bc8bae0c2ce4c9175097e96ace17874362df5d0c5f39167c2c0dd2f603b7b9b"
+          },
+          "typecheck": {
+            "command": [
+              "target/i08-toolchain/bin/node",
+              "node_modules/typescript/bin/tsc",
+              "--noEmit",
+              "--strict",
+              "--target",
+              "ES2023",
+              "--module",
+              "NodeNext",
+              "--moduleResolution",
+              "NodeNext",
+              "--allowImportingTsExtensions",
+              "--lib",
+              "ES2023,DOM",
+              "--types",
+              "node",
+              "scripts/verify_i10_devnet_challenge.ts",
+              "scripts/verify_i10_devnet_challenge.test.ts"
+            ],
+            "exit_code": 0,
+            "elapsed_seconds": 0.8736131670011673,
+            "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          }
+        },
+        "test_count": 7,
+        "source_unchanged": true,
+        "private_inputs_read": false,
+        "public_rpc_calls": 0,
+        "transactions_sent": 0,
+        "release_gates_passed": [],
+        "source_sha256": {
+          "scripts/verify_i10_devnet_challenge.ts": "3de966a145b4eea5c6bf41cb6cf5bf6e6066763f8587106bbabe2c827a3fab2b",
+          "scripts/verify_i10_devnet_challenge.test.ts": "ff95ac956a2a4ad73e48f4427ca1943da7ca4f43d994896778b91e92b8c91ec2",
+          "packages/sdk/src/trust.ts": "6fe8ca3639ff2b0547122ca3e2aaa419379019e5ac5f42aaeac3565f5ccd924f",
+          "packages/sdk/test/trust.test.ts": "57295fcf913faad99166682bb60db9d2f1c9230d7f539c3a1045bf099e912c29"
+        }
+      }
+    },
+    {
+      "path": "target/i10-collector-tree-binding-validation/validation-results.json",
+      "report": {
+        "schema": 1,
+        "passed": true,
+        "recorded_at_utc": "2026-10-04T18:12:29.116383+00:00",
+        "scope": "Offline canonical TreeUpdate field mapping using existing SDK encoder and checked-in real-proof fixture; no proof verification, live journal or RPC. Retains collector bounds/event/no-send regressions.",
+        "checks": {
+          "tests": {
+            "command": [
+              "target/i08-toolchain/bin/node",
+              "--test",
+              "scripts/verify_i10_devnet_challenge.test.ts"
+            ],
+            "exit_code": 0,
+            "elapsed_seconds": 0.43195666701649316,
+            "log_sha256": "33b51f1067dfc243c21d5af29dd8ba0269e4217a8941a33bf471e9daf10a7dc7"
+          },
+          "typecheck": {
+            "command": [
+              "target/i08-toolchain/bin/node",
+              "node_modules/typescript/bin/tsc",
+              "--noEmit",
+              "--strict",
+              "--target",
+              "ES2023",
+              "--module",
+              "NodeNext",
+              "--moduleResolution",
+              "NodeNext",
+              "--allowImportingTsExtensions",
+              "--lib",
+              "ES2023,DOM",
+              "--types",
+              "node",
+              "scripts/verify_i10_devnet_challenge.ts",
+              "scripts/verify_i10_devnet_challenge.test.ts"
+            ],
+            "exit_code": 0,
+            "elapsed_seconds": 0.8914772499992978,
+            "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          }
+        },
+        "test_count": 9,
+        "source_unchanged": true,
+        "private_inputs_read": false,
+        "public_rpc_calls": 0,
+        "transactions_sent": 0,
+        "release_gates_passed": [],
+        "source_and_fixture_sha256": {
+          "scripts/verify_i10_devnet_challenge.ts": "245379253182adc4feb5fa499fc28cf1cc0cbb1953f1228230446248a89d9d1b",
+          "scripts/verify_i10_devnet_challenge.test.ts": "76d22994a94a462ca6d31f5100bb7b8dca0c1f096e2e6e639fe9d6126ab0a2e7",
+          "packages/sdk/src/trust.ts": "6fe8ca3639ff2b0547122ca3e2aaa419379019e5ac5f42aaeac3565f5ccd924f",
+          "packages/sdk/src/layout2.ts": "b6f6c1208f315327fed01b531a883a68676ebc0680f0d178cead59610906c91e",
+          "docs/contracts/tree-transition.json": "8622d5114902a83b280f9920d7d4dd950335331e6c79336cfeeeb5a3bf2cdbdf",
+          "crates/zkapi-layout2/src/binding.rs": "6181541842c911632f0e60de4fe196725b187709221acc89e84ef1340b81dc1f",
+          "tests/fixtures/vault/a-with-b.json": "7f3f68354f7edd0f46fe6844ae60df1aabc9bff6777aef59ebf993e80ee74078"
+        }
+      }
+    }
+  ],
+  "I10_complete": false,
+  "release_gates_passed": []
+}

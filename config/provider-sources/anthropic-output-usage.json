@@ -1,0 +1,13 @@
+{
+  "schema": 1,
+  "url": "https://platform.claude.com/docs/en/api/typescript/messages",
+  "retrieved_at": "2026-10-04T19:01:39Z",
+  "capture_kind": "reviewed factual summary, not a raw HTTP archive",
+  "facts": {
+    "usage_output_tokens": "Inclusive authoritative billing total.",
+    "output_tokens_details": "Nullable object containing thinking_tokens; a read-only output decomposition.",
+    "thinking_tokens": "Nonnegative count no greater than output_tokens, including internal reasoning delimiter tokens.",
+    "cache_creation": "TTL breakdown uses ephemeral_5m_input_tokens and ephemeral_1h_input_tokens.",
+    "adapter_requirement": "When present and non-null, validate the exact known decomposition without billing it twice. Unknown keys remain rejected."
+  }
+}

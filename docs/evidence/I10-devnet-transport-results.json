@@ -1,0 +1,81 @@
+{
+  "passed": true,
+  "scope": "actual localhost HTTP/TLS fixtures only",
+  "public_network_verified": false,
+  "provider_calls": 0,
+  "financial_sends": 0,
+  "release_gates_passed": [],
+  "tests": 3,
+  "test_runs": 2,
+  "coverage": [
+    "first SSE frame observed before gated final usage",
+    "manifest inference authority overrides caller Host",
+    "idempotency/auth/anthropic and x-zkapi response headers preserved",
+    "downstream cancellation reaches upstream",
+    "indexer/control legacy reads and clearance status preserved",
+    "wrong direct path/query/scheme refused before connection",
+    "direct TLS uses normal trust rather than local service CA",
+    "redirects refused and no automatic request/TLS retries",
+    "unusable process proxy environment does not alter native direct requests"
+  ],
+  "commands": [
+    {
+      "name": "typecheck",
+      "command": [
+        "/Users/yukikimura/work/solana-zkapi/target/i08-toolchain/bin/node",
+        "node_modules/typescript/bin/tsc",
+        "--noEmit",
+        "--strict",
+        "--target",
+        "ES2023",
+        "--module",
+        "NodeNext",
+        "--moduleResolution",
+        "NodeNext",
+        "--allowImportingTsExtensions",
+        "--lib",
+        "ES2023,DOM",
+        "--types",
+        "node",
+        "scripts/i10_devnet_transport.ts",
+        "scripts/i10_devnet_transport.test.ts",
+        "scripts/run_i10_devnet_vault.ts"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 0.915,
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "name": "local-tls-tests",
+      "command": [
+        "/Users/yukikimura/work/solana-zkapi/target/i08-toolchain/bin/node",
+        "--test",
+        "scripts/i10_devnet_transport.test.ts"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 3.191,
+      "log_sha256": "2816b99d535bcac9695a7d68d463c2caf60f64807ca60478aaa3c99e4aa454fc"
+    },
+    {
+      "name": "environment-proxy-denied-tests",
+      "command": [
+        "/Users/yukikimura/work/solana-zkapi/target/i08-toolchain/bin/node",
+        "--test",
+        "scripts/i10_devnet_transport.test.ts"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 3.21,
+      "log_sha256": "b881fcc1e0b74b6446dffeec294dbc5fd6302eb9d7fa7bcc7f7128436cb185a4"
+    }
+  ],
+  "sources_sha256": {
+    "scripts/i10_devnet_transport.ts": "66cb80311b1a43b175e132dd3bf6054c9543498c3565ac755580c813a484457c",
+    "scripts/i10_devnet_transport.test.ts": "767322691d17dc5610f4e4d707626f7d2db638d0e068fd7074a9e63c83c7a12f",
+    "scripts/run_i10_devnet_vault.ts": "3bd7cf4c5853d4b054dbb5306eae3543b09a7ceb5c8adf3c5537676b3c7a8e1e"
+  },
+  "primary_source": "https://nodejs.org/download/release/latest-v24.x/docs/api/http.html",
+  "limitations": [
+    "No live provider, public RPC or browser-wallet result claimed",
+    "Direct valid system-trust provider response remains separate live acceptance; synthetic self-signed direct endpoint is intentionally refused"
+  ]
+}

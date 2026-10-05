@@ -1,0 +1,230 @@
+{
+  "passed": true,
+  "scope": "Public devnet permanent clearance and existing stale SDK WalletClient mutual close recover the deposited funds after one uncertain zero-inference AUTH; this is not a daemon challenge pass",
+  "program_id": "64C2qsG8xB5XpnqiJBBDPqJqBc2P8wz73knVhFpi1PDh",
+  "pool": "9Aszsns9KjzZo16NWWiCpq5DX474zLqNb7jxRGGBbYCq",
+  "mint": "4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU",
+  "genesis": "EtWTRABZaYq6iMfeYKouRu166VU2xqa1wcaWoxPkrZBG",
+  "recovery": {
+    "schema": 1,
+    "passed": true,
+    "scope": "Existing stale WalletClient mutual close after authoritative signed CLEARANCE fences the unchanged uncertain AUTH",
+    "pool": "9Aszsns9KjzZo16NWWiCpq5DX474zLqNb7jxRGGBbYCq",
+    "note_id": 0,
+    "request_id": "d6de3135-b0f1-4aca-a338-30e9e43ce904",
+    "nullifier": "0x2c28704b386f3c0cc660ff5afb897c29dd720e86a90aa8be138ddeebdaf9ee09",
+    "inference_operations": 0,
+    "auth_resubmitted": false,
+    "auth_request_sha256": "27532e1e1ec82a0b43a88e2712a2615f17ecc01769ccb6d2154c30523ef57159",
+    "main_journal_head": {
+      "revision": 12,
+      "digest": "6023d25c3b2ea01413f03adcde7abbf6aaf935690646ccf70d24942142a3b2f2"
+    },
+    "main_ciphertext_sha256": "0b990b6bc191a85db41132bca70aeadea737eba18a73bcb46f2823f84f444954",
+    "main_journal_unchanged": true,
+    "clearance_signature_verified": true,
+    "existing_attempts_preserved": true,
+    "stale_wallet_closed": true,
+    "closed_slot": 507447309,
+    "finalized_attempts": [
+      {
+        "signature": "4KqBn5EnZuSjc6kW8mcJPsGRBAZrNc292ruHhF3TNsD4UaUVHrCMbT95Sh3LTXEKWfqgGndLXaNw7p46W5Du8w5o",
+        "kind": "create",
+        "slot": 507444679,
+        "wire_sha256": "3294ae6dbe841f9a5e02c7c1e2fe2b5c2f70dd368ce207b98f715354766c8e8f"
+      },
+      {
+        "signature": "5sCrQUp7DdDoPP8UWjjcGKxcyRLxxoxNEGsTe6AD2zFHdoSseqEd1Z5eKLNMynUXqkxCktyiB9MeKsCWHVMoHCaT",
+        "kind": "append",
+        "slot": 507444697,
+        "wire_sha256": "d7cd3caf3578b813cf89b8ad137ffa01ab462579e14c9a82c3662dae33989825"
+      },
+      {
+        "signature": "3y7f1G1wM7dUtz13Xy9HHChUZTavy28ifmSQ8tcG1WMu6MTiub6TdAy7URkC9xhTHjUqajZghjjZrnZTf8B6nLcK",
+        "kind": "append",
+        "slot": 507444864,
+        "wire_sha256": "296f46c74fcf5976ad8784d685f767820356dc774469d3e089447dadfb6a7c5a"
+      },
+      {
+        "signature": "4tgRXxyi7v7mqdLsUZjGGdPXp2kWtpahnfCK3SrmpraoNJZv1bhZovBi7YN227fP7ou4NVXSdqVGg6tvho3eZyAA",
+        "kind": "seal",
+        "slot": 507444877,
+        "wire_sha256": "b6581debc507b11f88d79b236079697b16c3aa9f2e4a5324e20be72534e54eb1"
+      },
+      {
+        "signature": "3eXrq9Q6LaeCbJSTXEJ7FzWRLcixtQhkwuhqqYTC1GfuZskx17gdJv5puiYa5e5CiDdY2jXLo8DHs78qsy7eV9Lh",
+        "kind": "execute",
+        "slot": 507444887,
+        "wire_sha256": "6ef1d5b6091da2014a992ae54605e7acafb95a555082d887f151226d5a0e8bd1"
+      }
+    ],
+    "superseded_upload_attempts": [
+      {
+        "signature": "3q8cM5PYvgJ2sr2W3P6eBVS61oVs2MLQVHcraoTbi8eYsyfXLPuuHwr3wSM55u4Xgkthea3D6mGwMmbV7yc8AHv9",
+        "kind": "append",
+        "wire_sha256": "325c54417ae235c8389b436a0266a715d4dfbe58667f8ff2e49e7b75ff090d07",
+        "buffer": "6LncfCr3rvu18azKjQTq4xEV7iGP8nH12wwfoyptXXVg",
+        "plan_digest": "d49bbebd4fe1d34145f82f9a0b971ee9315a122e3061466f797134550bdd0398",
+        "last_valid_block_height": 494690516,
+        "observed_finalized_block_height": 494692936,
+        "replacement_signature": "3y7f1G1wM7dUtz13Xy9HHChUZTavy28ifmSQ8tcG1WMu6MTiub6TdAy7URkC9xhTHjUqajZghjjZrnZTf8B6nLcK",
+        "replacement_slot": 507444864,
+        "replacement_wire_sha256": "296f46c74fcf5976ad8784d685f767820356dc774469d3e089447dadfb6a7c5a",
+        "status": "finalized_expired_upload_superseded"
+      }
+    ],
+    "superseded_upload_scope": "Exact saved expired upload linked to a later finalized identical-step replacement; old receipt and fee are unverified",
+    "balance_restoration_requires_caller_verification": true,
+    "native_challenge_proved": false,
+    "I10_complete": false,
+    "release_gates_passed": []
+  },
+  "balance_before": {
+    "wallet_micro_usdc": "38010000",
+    "vault_micro_usdc": "0"
+  },
+  "wallet_after_micro_usdc": "38010000",
+  "vault_after_micro_usdc": "0",
+  "balance_observation_slots": {
+    "wallet": 507447311,
+    "vault": 507447311
+  },
+  "finalized_balance_conservation": true,
+  "rows": [
+    {
+      "signature": "4C9wws8TP26QPnXjDdWxq6VPpbb2BDqTsky6r2VFXWF5E1jUM6czNXhWyc7vFyJm2nfVannkoQFoMANGXBD7s8kb",
+      "kind": "create",
+      "wire_sha256": "c34767ca2ad7cf85fde7a9117add9f962e0fcd2f0707d5dbb0988af2f05d7661",
+      "wire_bytes": 397,
+      "recorded_before_send": true,
+      "slot": 507321226,
+      "fee_lamports": "5000",
+      "compute_units": 25994,
+      "finalized": true
+    },
+    {
+      "signature": "2LJiCrv5M3P9tKh3c4a1QX5cSM3qkKU95uFUXybMZ7AJQ81anyvtUZjja2B2tE1DPZ5t1SsRtiLQkqgNjeX1uPbb",
+      "kind": "append",
+      "wire_sha256": "378c119753a19683bddaf9380b14edbfbdb1efe279e5e6e504f123767ba34e41",
+      "wire_bytes": 987,
+      "recorded_before_send": true,
+      "slot": 507321240,
+      "fee_lamports": "5000",
+      "compute_units": 23417,
+      "finalized": true
+    },
+    {
+      "signature": "2Ydv6rptsckSXngJvQ86BxT6MjCoCA3nFKRn4WJfVgSXZmum9WAeCw3qjNCfVnFf6RL5Yn4TZNCSn9JMqk2UATXZ",
+      "kind": "seal",
+      "wire_sha256": "d8f96a3b1cbf9c225e76f4070ef06e2f0d2f0dd8281059adfcdd77e88da02ba4",
+      "wire_bytes": 286,
+      "recorded_before_send": true,
+      "slot": 507321255,
+      "fee_lamports": "5000",
+      "compute_units": 23671,
+      "finalized": true
+    },
+    {
+      "signature": "2wi5zoeEYRYn6qpMf4Hg3otNFmxXYfvB7dUUZVn1gEEyFSR7M1S3r11U9TdW7VRwV5vRkZLFFG4rqjbyLfA6Uuoc",
+      "kind": "execute",
+      "wire_sha256": "29bfd7fab0abc869a3b58eeed79e1a9bd293e6bec3b046a80b0c2cd27b30e8b5",
+      "wire_bytes": 624,
+      "recorded_before_send": true,
+      "slot": 507321270,
+      "fee_lamports": "5000",
+      "compute_units": 187912,
+      "finalized": true
+    },
+    {
+      "signature": "4KqBn5EnZuSjc6kW8mcJPsGRBAZrNc292ruHhF3TNsD4UaUVHrCMbT95Sh3LTXEKWfqgGndLXaNw7p46W5Du8w5o",
+      "kind": "create",
+      "wire_sha256": "3294ae6dbe841f9a5e02c7c1e2fe2b5c2f70dd368ce207b98f715354766c8e8f",
+      "wire_bytes": 397,
+      "recorded_before_send": true,
+      "slot": 507444679,
+      "fee_lamports": "5000",
+      "compute_units": 24494,
+      "finalized": true
+    },
+    {
+      "signature": "5sCrQUp7DdDoPP8UWjjcGKxcyRLxxoxNEGsTe6AD2zFHdoSseqEd1Z5eKLNMynUXqkxCktyiB9MeKsCWHVMoHCaT",
+      "kind": "append",
+      "wire_sha256": "d7cd3caf3578b813cf89b8ad137ffa01ab462579e14c9a82c3662dae33989825",
+      "wire_bytes": 1232,
+      "recorded_before_send": true,
+      "slot": 507444697,
+      "fee_lamports": "5000",
+      "compute_units": 21917,
+      "finalized": true
+    },
+    {
+      "signature": "3y7f1G1wM7dUtz13Xy9HHChUZTavy28ifmSQ8tcG1WMu6MTiub6TdAy7URkC9xhTHjUqajZghjjZrnZTf8B6nLcK",
+      "kind": "append",
+      "wire_sha256": "296f46c74fcf5976ad8784d685f767820356dc774469d3e089447dadfb6a7c5a",
+      "wire_bytes": 670,
+      "recorded_before_send": true,
+      "slot": 507444864,
+      "fee_lamports": "5000",
+      "compute_units": 21917,
+      "finalized": true
+    },
+    {
+      "signature": "4tgRXxyi7v7mqdLsUZjGGdPXp2kWtpahnfCK3SrmpraoNJZv1bhZovBi7YN227fP7ou4NVXSdqVGg6tvho3eZyAA",
+      "kind": "seal",
+      "wire_sha256": "b6581debc507b11f88d79b236079697b16c3aa9f2e4a5324e20be72534e54eb1",
+      "wire_bytes": 286,
+      "recorded_before_send": true,
+      "slot": 507444877,
+      "fee_lamports": "5000",
+      "compute_units": 22481,
+      "finalized": true
+    },
+    {
+      "signature": "3eXrq9Q6LaeCbJSTXEJ7FzWRLcixtQhkwuhqqYTC1GfuZskx17gdJv5puiYa5e5CiDdY2jXLo8DHs78qsy7eV9Lh",
+      "kind": "execute",
+      "wire_sha256": "6ef1d5b6091da2014a992ae54605e7acafb95a555082d887f151226d5a0e8bd1",
+      "wire_bytes": 656,
+      "recorded_before_send": true,
+      "slot": 507444887,
+      "fee_lamports": "5000",
+      "compute_units": 352891,
+      "finalized": true
+    }
+  ],
+  "superseded_upload_rows": [
+    {
+      "signature": "3q8cM5PYvgJ2sr2W3P6eBVS61oVs2MLQVHcraoTbi8eYsyfXLPuuHwr3wSM55u4Xgkthea3D6mGwMmbV7yc8AHv9",
+      "kind": "append",
+      "wire_sha256": "325c54417ae235c8389b436a0266a715d4dfbe58667f8ff2e49e7b75ff090d07",
+      "wire_bytes": 670,
+      "recorded_before_send": true,
+      "buffer": "6LncfCr3rvu18azKjQTq4xEV7iGP8nH12wwfoyptXXVg",
+      "plan_digest": "d49bbebd4fe1d34145f82f9a0b971ee9315a122e3061466f797134550bdd0398",
+      "last_valid_block_height": 494690516,
+      "observed_finalized_block_height": 494692936,
+      "replacement_signature": "3y7f1G1wM7dUtz13Xy9HHChUZTavy28ifmSQ8tcG1WMu6MTiub6TdAy7URkC9xhTHjUqajZghjjZrnZTf8B6nLcK",
+      "replacement_slot": 507444864,
+      "replacement_wire_sha256": "296f46c74fcf5976ad8784d685f767820356dc774469d3e089447dadfb6a7c5a",
+      "status": "finalized_expired_upload_superseded",
+      "receipt_verified": false,
+      "fee_lamports": null,
+      "compute_units": null
+    }
+  ],
+  "automatic_exact_signature_resends": 0,
+  "verified_upload_renewals": 1,
+  "source_sha256": "0b0d3b770459aa98a64054d76632adfcba898470adb8c095217062a954d733f0",
+  "recovery_helper_sha256": "0f8df22cd35ced24225e40a3854f957581db72f31dd2b5759c7efbc8c82242e6",
+  "runtime_binary_sha256": {
+    "native_prover": "c4cf9d03283fa21fb026efb8eb26a4c365a766a90a0d5e1b19403cc9f07121d4",
+    "indexer": null,
+    "session_verifier": "de8af29939b4e2349222b805c79837a33a42a6d2283078cf5eb0532373aa418e"
+  },
+  "elf_sha256": "7b592cdfd750065df15d46abc54bd402877c493fd3153e1ab38982ab8f4f29a0",
+  "idl_sha256": "fe4a27e5625ae7d3f4d8b485efd8813de385b2a2f5818053d29a4f8c77c21c39",
+  "verified_at_utc": "2026-10-04T17:53:21.952Z",
+  "live_provider_verified": false,
+  "daemon_challenge_verified": false,
+  "I10_complete": false,
+  "release_gates_passed": []
+}

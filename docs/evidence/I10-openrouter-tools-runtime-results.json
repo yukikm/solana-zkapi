@@ -1,0 +1,280 @@
+{
+  "passed": true,
+  "provider_acceptance": {
+    "schema": 1,
+    "passed": true,
+    "scope": "selected real-provider cases using actual devnet SDK/control/ledger",
+    "plan_sha256": "50f3f10040671f27ecd2ff59db3d3d6474a58de67bb0cf38e7a2cd41d7577167",
+    "campaign_id": "i10-provider-acceptance",
+    "pool": "PL8w1L1hQpKoruJgFCRW4pBFaux3JoQx1siKdSq9RiX",
+    "cases": [
+      {
+        "schema": 1,
+        "passed": true,
+        "scope": "one real-provider case via existing ControlClient; no wallet UI or full G3 claim",
+        "case_id": "openrouter-proxy-tools",
+        "mode": "proxy",
+        "provider": "openrouter",
+        "model": "openai/gpt-4o-mini",
+        "stream": false,
+        "tools": true,
+        "operation_id": "8d6f55a6-3b66-4089-a943-49d6b2ab3961",
+        "endpoint": "/v1/chat/completions",
+        "http_status": 200,
+        "response_bytes": 984,
+        "response_sha256": "bc2af1e316da479a5a0b3f571b8902de5edc32f40bfdaccc3462eba3959d741e",
+        "inference_sends": 1,
+        "inference_observation": {
+          "stage": "complete",
+          "elapsed_ms": 1252,
+          "http_status": 200,
+          "service_error_code": null,
+          "response_bytes": 984,
+          "sdk_send_invoked": true
+        },
+        "request_id": "8f3a117c-fec4-4f42-8957-cd83b8d7f850",
+        "receipt_id": "b379f3c4-3ae3-4807-8348-589a6385261d",
+        "receipt_hash": "d2fe15e4df566bc3a3bc8ae80d4c2834a77b4520b4d446357f01937ab568ddd4",
+        "evidence_kind": "PROXY_USAGE",
+        "charged_micro_usdc": "18",
+        "reserved_micro_usdc": "19277",
+        "plan_sha256": "50f3f10040671f27ecd2ff59db3d3d6474a58de67bb0cf38e7a2cd41d7577167",
+        "tariff_hash": "836f4837ed87f09728b9b3b570f369afc64087cc39677484899e32c2832809fc",
+        "signed_successor_verified_by_sdk": true,
+        "authorization_recovery_attempts": 14,
+        "quote_request_attempts": 1,
+        "inference_replays": 0,
+        "full_g3_passed": false
+      }
+    ],
+    "selection": {
+      "case_ids": [
+        "openrouter-proxy-tools"
+      ],
+      "parent_plan_sha256": "50f3f10040671f27ecd2ff59db3d3d6474a58de67bb0cf38e7a2cd41d7577167",
+      "profile": "openrouter-native-tools",
+      "role": "openrouter",
+      "schema": 1
+    },
+    "budget": {
+      "identity": {
+        "schema": 1,
+        "campaign_id": "i10-provider-acceptance",
+        "plan_sha256": "50f3f10040671f27ecd2ff59db3d3d6474a58de67bb0cf38e7a2cd41d7577167",
+        "budget_micro_usdc": "10000000",
+        "max_requests": 18
+      },
+      "reserved_micro_usdc": "57831",
+      "remaining_micro_usdc": "9942169",
+      "reservations": [
+        {
+          "case_id": "openai-responses-plain",
+          "max_cost_micro_usdc": "19277",
+          "state": "reserved_no_automatic_replay"
+        },
+        {
+          "case_id": "openrouter-proxy-plain",
+          "max_cost_micro_usdc": "19277",
+          "state": "reserved_no_automatic_replay"
+        },
+        {
+          "case_id": "openrouter-proxy-tools",
+          "max_cost_micro_usdc": "19277",
+          "state": "reserved_no_automatic_replay"
+        }
+      ],
+      "refunds_supported": false,
+      "inference_replays_supported": false
+    },
+    "source_sha256": {
+      "scripts/provider_acceptance.py": "deeb43d6891df6dad1b3a0bba7d1cbaacfba0cfd73fb207e3ed82b1394c7e37f",
+      "scripts/provider_acceptance_client.ts": "84aee21b5b6840ab52ed73095ed2ed882059ef1297fa29b44003de8770a96fe4",
+      "scripts/i10_devnet_provider.ts": "627bacaf4e86d9866ba018403c15ef88a34a4d651d495d549f0e6187a5970cc6"
+    },
+    "full_g3_passed": false,
+    "wallet_ui_verified": false
+  },
+  "unaccepted_provider_auth_recovered": false,
+  "settled_provider_recovery": null,
+  "unstarted_provider_recovery": null,
+  "balance_observation_slots": {
+    "wallet": 507601940,
+    "vault": 507601940
+  },
+  "finalized_withdrawal_slot": 507601905,
+  "scope": "public devnet Vault deposit -> selected real provider cases -> verified signed settlement -> mutual close with existing SDK/shared ledger",
+  "program_id": "64C2qsG8xB5XpnqiJBBDPqJqBc2P8wz73knVhFpi1PDh",
+  "pool": "PL8w1L1hQpKoruJgFCRW4pBFaux3JoQx1siKdSq9RiX",
+  "mint": "4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU",
+  "genesis": "EtWTRABZaYq6iMfeYKouRu166VU2xqa1wcaWoxPkrZBG",
+  "wallet_public_key": "nHSjCbSd3XD3UwGy5uAAUqEfDf4kBDYaJZ4eF82nCDZ",
+  "deposit_micro_usdc": "10000000",
+  "balance_before": {
+    "wallet_micro_usdc": "38010000",
+    "vault_micro_usdc": "0"
+  },
+  "wallet_after_micro_usdc": "38010000",
+  "vault_after_micro_usdc": "0",
+  "rows": [
+    {
+      "signature": "423BJCNCLGWzqFyJVTGJ9KYVCZgoeH2phHTKaRBzkAyTwpZ8sPf65CfexArqyCKJxx4SsZQP1vjnqJy2UmSn2qAZ",
+      "kind": "create",
+      "wire_sha256": "f005a575b4c919a33d46808a75e07488394f9900d37f65e6d38f29b5bf0df0a1",
+      "wire_bytes": 397,
+      "recorded_before_send": true,
+      "slot": 507601521,
+      "fee_lamports": "5000",
+      "compute_units": 13166,
+      "finalized": true
+    },
+    {
+      "signature": "UGS6FeiGDgxeTm5cqehZ5DVGKWBRZiQQnaDoiokLQkNhUmw7TSbenn7FmRHhE3tdA7QAKq6rjRbESLxNdKPHwg2",
+      "kind": "append",
+      "wire_sha256": "4402654d9ae0006e593e633a6eba9acc52cf9a4506140d0b54e07bf6577d211b",
+      "wire_bytes": 987,
+      "recorded_before_send": true,
+      "slot": 507601548,
+      "fee_lamports": "5000",
+      "compute_units": 10589,
+      "finalized": true
+    },
+    {
+      "signature": "668Dp1oYDpEWdhx5yp86QJsrkemS2AGBVonMHJXraChAvqAowh9FL3awHuAjLaBwusvHa26Haa6sppTpnSZxheZj",
+      "kind": "seal",
+      "wire_sha256": "08f0eed2b712763e9dc114d8c699b6e1bd475d2defbec6424fdc2364c4c00801",
+      "wire_bytes": 286,
+      "recorded_before_send": true,
+      "slot": 507601562,
+      "fee_lamports": "5000",
+      "compute_units": 10843,
+      "finalized": true
+    },
+    {
+      "signature": "5iP3kB1swdLwWC6Vpstb4bviHV5MUHqv4ioDTnhrSwSVGoJT9jU67BfRrxnF1p5XicU9EreK2WWjccjj6vRAVoSy",
+      "kind": "execute",
+      "wire_sha256": "1ff7b33a20b9bf01fe46e3cfceae834dc660265fc6864382712467020edb28dc",
+      "wire_bytes": 624,
+      "recorded_before_send": true,
+      "slot": 507601577,
+      "fee_lamports": "5000",
+      "compute_units": 182584,
+      "finalized": true
+    },
+    {
+      "signature": "ub4CiMxFSqJm2MSpt7bD8HakPZ1sPagyJudDgpaiFHM9qUiKkEaufe32BniEEbrBsvEspWGVZsYZs9VxTNx5prf",
+      "kind": "create",
+      "wire_sha256": "d4b97c3030bec6e6627e625d956d5cd924563804bb7b86cd91df35ab5ff42eae",
+      "wire_bytes": 397,
+      "recorded_before_send": true,
+      "slot": 507601841,
+      "fee_lamports": "5000",
+      "compute_units": 17666,
+      "finalized": true
+    },
+    {
+      "signature": "5hj7TgAMCfwRGHJPtq53TS4LHs3Ew555e23Y3TqFm2ZC9V1dnXvHkpTajRR1woUrfoohUVHynEUuVkYEewqYhdbD",
+      "kind": "append",
+      "wire_sha256": "5bf650fe9e7a72f406d0b995718e26b510b1ce7ddb17f2379eaabc439e764bac",
+      "wire_bytes": 1232,
+      "recorded_before_send": true,
+      "slot": 507601857,
+      "fee_lamports": "5000",
+      "compute_units": 15089,
+      "finalized": true
+    },
+    {
+      "signature": "47W1aaCEAi8QxaD2FtVqhkyQo6WSgPKx1AerrrsYtJE6jfbLQHjcgckvZtrjMbhmZgQKoycybb63gxQUhwfopFjS",
+      "kind": "append",
+      "wire_sha256": "e6ed7327bfaf892c4050315cbaaea8e62801eb12a6bf864e95581f11bfdeb68a",
+      "wire_bytes": 670,
+      "recorded_before_send": true,
+      "slot": 507601874,
+      "fee_lamports": "5000",
+      "compute_units": 15089,
+      "finalized": true
+    },
+    {
+      "signature": "2hRg1JCcFmHP4UJKBW6eTXUa9JTEJohyL8ZUempASrbpRtyeExp5UpTZ9HRqR8BHro7je6nSGXUmtANdNNkEKvwX",
+      "kind": "seal",
+      "wire_sha256": "2b594f151f38eac09bcd3b57eb9d36bba218e2ef143d7d873bb4dd8c78c2426c",
+      "wire_bytes": 286,
+      "recorded_before_send": true,
+      "slot": 507601888,
+      "fee_lamports": "5000",
+      "compute_units": 15653,
+      "finalized": true
+    },
+    {
+      "signature": "4ZBUfYjEVFTY7MPw2uidaVkx5NC3iv5LU9wyWVBYX2qtiTErWUHxt3YjDcChTJSgLKe7GuJ3o55i2SoFUDtRVhKU",
+      "kind": "execute",
+      "wire_sha256": "7abe188a90b1c8adc570d004a43de5d2e5facfa0c1d5d3602b08c5ef84cf1720",
+      "wire_bytes": 656,
+      "recorded_before_send": true,
+      "slot": 507601905,
+      "fee_lamports": "5000",
+      "compute_units": 360266,
+      "finalized": true
+    }
+  ],
+  "max_transaction_bytes": 1232,
+  "max_cu": 360266,
+  "automatic_resends": 0,
+  "finalized_balance_conservation": true,
+  "coherent_snapshot_retries": 77,
+  "snapshot_wait_limit_seconds": 300,
+  "snapshot_wait_scope": "Acceptance read-only wait; not a latency/SLO pass or financial retry policy",
+  "snapshot_wait_calls": 5,
+  "snapshot_wait_total_elapsed_ms": 41274,
+  "snapshot_wait_max_elapsed_ms": 21294,
+  "snapshot_wait_timeouts": 0,
+  "indexer_retry_log_events": null,
+  "indexer_process_ownership": "external; inspect separate indexer log",
+  "indexer_readiness_limit_seconds": 600,
+  "indexer_readiness_elapsed_ms": 28163,
+  "encrypted_note_journal": true,
+  "runtime_binary_sha256": {
+    "native_prover": "c4cf9d03283fa21fb026efb8eb26a4c365a766a90a0d5e1b19403cc9f07121d4",
+    "indexer": null,
+    "session_verifier": "c47af908a53ccd686f7ab74d18746575f719493370c68b1e6953e719c2edbae8"
+  },
+  "installed_artifact_sha256": {
+    "indexer": "9e83e57abb4bbab98b12309a21e0d3ded484f4c70a41c5a4a56fa05a0addfc18"
+  },
+  "helper_source_sha256": null,
+  "proof_artifact_sha256": {
+    "idl": "fe4a27e5625ae7d3f4d8b485efd8813de385b2a2f5818053d29a4f8c77c21c39",
+    "requestPk": "c894b261a13f571d0df36be29734aabf2a8cd7162baddc5e08a50341aa076584",
+    "requestVk": "8011244c99fa1a8524870906462d430fc86366b8ad821736c5fa726b479e6d97",
+    "withdrawalPk": "8e41398092fdd02b9ff86c6ccbecbd7ce2402e6f22ec162e6124d1d04fe0a668",
+    "withdrawalVk": "2a8ea7f07176e369a93d1d816124192a798d1466c99fd6dc47850ba82094b679",
+    "treePk": "c01b31f6806ce59114fe8befa210967415e20229b0a998018d4955a726fd0f80",
+    "treeVk": "9141a035fdba50b13a5776182be029bb23dd15e69cd579c5d6e310b7e2ee5fb7",
+    "treeSourceBundle": "49659e9933a61d05051ed4377ce95d915840f484f3f7f8ce4c6c1b7ca07fa56e",
+    "treeVerifierConstants": "d4048c4b228fca9ef4342de8f89f96f90f606c9beb74cd3c6606db44925d1bf9"
+  },
+  "lost_execute_ack_recovered_in_fresh_process": false,
+  "verified_program": {
+    "program_data": "DyQNxurMWrRvsCTsWS8TcAQwpvsKWjVUmPfZqSmZMNg2",
+    "deployed_program_sha256": "7b592cdfd750065df15d46abc54bd402877c493fd3153e1ab38982ab8f4f29a0",
+    "upgrade_authority": "nHSjCbSd3XD3UwGy5uAAUqEfDf4kBDYaJZ4eF82nCDZ"
+  },
+  "source_sha256": "f60b1796e9ce51d96497d40ef347ae2bf010497404873d54e38485383d2781c8",
+  "execution_helper_sha256": {
+    "scripts/i10_devnet_transport.ts": "3157d6705054f8b95eb48e51a47b655d9a4132a9569c5509b3e6b33e39ff5b52",
+    "scripts/i10_devnet_provider.ts": "627bacaf4e86d9866ba018403c15ef88a34a4d651d495d549f0e6187a5970cc6",
+    "scripts/provider_acceptance_client.ts": "84aee21b5b6840ab52ed73095ed2ed882059ef1297fa29b44003de8770a96fe4",
+    "scripts/provider_acceptance.py": "deeb43d6891df6dad1b3a0bba7d1cbaacfba0cfd73fb207e3ed82b1394c7e37f"
+  },
+  "withdrawal_mode": "mutual_close",
+  "daemon_challenge_observation": null,
+  "clearance_signature_verified": true,
+  "elf_sha256": "7b592cdfd750065df15d46abc54bd402877c493fd3153e1ab38982ab8f4f29a0",
+  "idl_sha256": "fe4a27e5625ae7d3f4d8b485efd8813de385b2a2f5818053d29a4f8c77c21c39",
+  "manifest_sha256": "cc944279a730186d222c4315548e5a0036f2d18427ec31756cafd8eb4e42acf0",
+  "build_manifest_sha256": "59686368ae83cd0421415845ec321518593a5270bcbed5059cc4a0120eeabfe1",
+  "verified_at_utc": "2026-10-05T03:57:35.369Z",
+  "live_provider_verified": true,
+  "wallet_UI_verified": false,
+  "I10_complete": false,
+  "release_gates_passed": []
+}

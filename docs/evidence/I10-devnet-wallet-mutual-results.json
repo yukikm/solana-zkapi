@@ -1,0 +1,172 @@
+{
+  "passed": true,
+  "scope": "actual public devnet Vault deposit -> signed control clearance -> mutual close with existing SDK WalletClient/native proof/local controld + PG + signerd; no provider",
+  "program_id": "64C2qsG8xB5XpnqiJBBDPqJqBc2P8wz73knVhFpi1PDh",
+  "pool": "EP1NDPcXVir5LtVWkBhLZjDChCXeZAJ4BfUuF4Pk5Vy2",
+  "mint": "4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU",
+  "genesis": "EtWTRABZaYq6iMfeYKouRu166VU2xqa1wcaWoxPkrZBG",
+  "wallet_public_key": "nHSjCbSd3XD3UwGy5uAAUqEfDf4kBDYaJZ4eF82nCDZ",
+  "deposit_micro_usdc": "1000000",
+  "balance_before": {
+    "wallet_micro_usdc": "38010000",
+    "vault_micro_usdc": "0"
+  },
+  "wallet_after_micro_usdc": "38010000",
+  "vault_after_micro_usdc": "0",
+  "rows": [
+    {
+      "signature": "QgynvqsPaN4EFxp3K6BBqfh8tvTMkZwK8bXePCz8RTYwKfEE6gYBXK8psFgh8bLHXU29cagTSDgL7tVLkx1aTRp",
+      "kind": "create",
+      "wire_sha256": "216c65470455c90abb7890182db49a6c8a1d05979769f8e80f0822bc28262c2f",
+      "wire_bytes": 397,
+      "recorded_before_send": true,
+      "slot": 507307931,
+      "fee_lamports": "5000",
+      "compute_units": 13166,
+      "finalized": true
+    },
+    {
+      "signature": "4KyJ7STuRediV5wWKojov1MZYFR3kCnUCyutzqhCXzQJYHaHEM8evzyNwWiRzmfMnvzYEdDE7YsfhtiF2HqzZsNg",
+      "kind": "append",
+      "wire_sha256": "502d7276a4dd6e5b7836f1716183e18f2ff535ae1148e0ed850ec90413db5edf",
+      "wire_bytes": 987,
+      "recorded_before_send": true,
+      "slot": 507307944,
+      "fee_lamports": "5000",
+      "compute_units": 10589,
+      "finalized": true
+    },
+    {
+      "signature": "2uyzuWEu4hgDdBQTQhTHXHiWbcgFWLpCPev2ox13Z1JYEFxu2zHLxNqLEXzW2rTy5zUzayMh9gTeafvQjBmSMm67",
+      "kind": "seal",
+      "wire_sha256": "bc3f89fbd75b88a4a2b39fd6933314fd1037cde96c2544c92adea09e08921dd0",
+      "wire_bytes": 286,
+      "recorded_before_send": true,
+      "slot": 507307957,
+      "fee_lamports": "5000",
+      "compute_units": 10843,
+      "finalized": true
+    },
+    {
+      "signature": "3U3nh9HDFy81cdJ8mu6A64Vgp9k46t82GqDmSjaggiUb1MoHoQArKzLw8beaJeAnAkDcCijMXNr52MdFRZkyUWVA",
+      "kind": "execute",
+      "wire_sha256": "19843ed53a4645d18c65dbe97cc5fb3163533a85ef9595ab70bcc5d88fa4d51f",
+      "wire_bytes": 624,
+      "recorded_before_send": true,
+      "slot": 507307971,
+      "fee_lamports": "5000",
+      "compute_units": 181088,
+      "finalized": true
+    },
+    {
+      "signature": "4hjyVZ2zWvsjEBh4shez18U6B5rVgzn24Vq2GPd5Eu5dvAvpo7ehDE4Z4kUsv88W3jLqsciE5EJ1zviiy93HLVka",
+      "kind": "create",
+      "wire_sha256": "c47edb9c382684f5fd45c8df6c62d23355a6e1c801f55465b9f4f6af21bb3091",
+      "wire_bytes": 397,
+      "recorded_before_send": true,
+      "slot": 507308041,
+      "fee_lamports": "5000",
+      "compute_units": 11666,
+      "finalized": true
+    },
+    {
+      "signature": "5d3LR17H1CN8WjMvgtXGnrA36BvvLNEbzKDu3MrSHQ2kH5ad7ZH1VucRfJYgRHqvZWSeQdj68DxLpXR2X2ZQQvUq",
+      "kind": "append",
+      "wire_sha256": "c0d9bd789ba58658e9c3d82fc6e0256407ce4a8fcb0ee71404495c64e8b067fb",
+      "wire_bytes": 1232,
+      "recorded_before_send": true,
+      "slot": 507308055,
+      "fee_lamports": "5000",
+      "compute_units": 9089,
+      "finalized": true
+    },
+    {
+      "signature": "5BuSPZaCvBcFm5GuYopqSBJ9G9kwEbaiuXyKdgRN5BToAFXeXQumUQ7koW6hLRZarDkCudw9aUxLGXDRjNJauHWf",
+      "kind": "append",
+      "wire_sha256": "d1817c8d5be6bb004d6d30601c332598df143e4c86b56d6570abc3a8fcf31ccd",
+      "wire_bytes": 670,
+      "recorded_before_send": true,
+      "slot": 507308073,
+      "fee_lamports": "5000",
+      "compute_units": 9089,
+      "finalized": true
+    },
+    {
+      "signature": "F7GrKQrecPVhu86hcjj17LnZRvYujzPyC4TZKXq7oRPGXArBcoYwYtCVVDk8hQvzzkyzVZtLyUc65mMvwPq5BFT",
+      "kind": "seal",
+      "wire_sha256": "6647c0646833fca0dd95e29adde7b3890e364b72959ee2016f2b5876f3d251af",
+      "wire_bytes": 286,
+      "recorded_before_send": true,
+      "slot": 507308088,
+      "fee_lamports": "5000",
+      "compute_units": 9653,
+      "finalized": true
+    },
+    {
+      "signature": "5zCx22EPFHqWYimapBWEjiDujZkMbasTb74cuXRLMKSnxP8hkX5d3SouTztDX1br6RZmrWqSVEVTnxxZussDxb1n",
+      "kind": "execute",
+      "wire_sha256": "eb94bd8378903149566d4adaf61a8dcc2b5440f07fdd20b0d33ec68a2c998f8d",
+      "wire_bytes": 656,
+      "recorded_before_send": true,
+      "slot": 507308103,
+      "fee_lamports": "5000",
+      "compute_units": 347571,
+      "finalized": true
+    }
+  ],
+  "max_transaction_bytes": 1232,
+  "max_cu": 347571,
+  "automatic_resends": 0,
+  "finalized_balance_conservation": true,
+  "coherent_snapshot_retries": 28,
+  "snapshot_wait_limit_seconds": 1800,
+  "snapshot_wait_scope": "Acceptance read-only wait; not a latency/SLO pass or financial retry policy",
+  "snapshot_wait_calls": 4,
+  "snapshot_wait_total_elapsed_ms": 18022,
+  "snapshot_wait_max_elapsed_ms": 9130,
+  "snapshot_wait_timeouts": 0,
+  "indexer_retry_log_events": null,
+  "indexer_process_ownership": "external; inspect separate indexer log",
+  "indexer_readiness_limit_seconds": 1800,
+  "indexer_readiness_elapsed_ms": 8,
+  "encrypted_note_journal": true,
+  "runtime_binary_sha256": {
+    "native_prover": "c4cf9d03283fa21fb026efb8eb26a4c365a766a90a0d5e1b19403cc9f07121d4",
+    "indexer": null,
+    "session_verifier": null
+  },
+  "installed_artifact_sha256": {
+    "indexer": "b19f26aaa88e4973e4bced0bc61332d8b3d666910125e175cb7bd9cb707b9b2c"
+  },
+  "helper_source_sha256": null,
+  "proof_artifact_sha256": {
+    "idl": "fe4a27e5625ae7d3f4d8b485efd8813de385b2a2f5818053d29a4f8c77c21c39",
+    "requestPk": "c894b261a13f571d0df36be29734aabf2a8cd7162baddc5e08a50341aa076584",
+    "requestVk": "8011244c99fa1a8524870906462d430fc86366b8ad821736c5fa726b479e6d97",
+    "withdrawalPk": "8e41398092fdd02b9ff86c6ccbecbd7ce2402e6f22ec162e6124d1d04fe0a668",
+    "withdrawalVk": "2a8ea7f07176e369a93d1d816124192a798d1466c99fd6dc47850ba82094b679",
+    "treePk": "c01b31f6806ce59114fe8befa210967415e20229b0a998018d4955a726fd0f80",
+    "treeVk": "9141a035fdba50b13a5776182be029bb23dd15e69cd579c5d6e310b7e2ee5fb7",
+    "treeSourceBundle": "49659e9933a61d05051ed4377ce95d915840f484f3f7f8ce4c6c1b7ca07fa56e",
+    "treeVerifierConstants": "d4048c4b228fca9ef4342de8f89f96f90f606c9beb74cd3c6606db44925d1bf9"
+  },
+  "lost_execute_ack_recovered_in_fresh_process": false,
+  "verified_program": {
+    "program_data": "DyQNxurMWrRvsCTsWS8TcAQwpvsKWjVUmPfZqSmZMNg2",
+    "deployed_program_sha256": "7b592cdfd750065df15d46abc54bd402877c493fd3153e1ab38982ab8f4f29a0",
+    "upgrade_authority": "nHSjCbSd3XD3UwGy5uAAUqEfDf4kBDYaJZ4eF82nCDZ"
+  },
+  "source_sha256": "0d1b43944f944f3c1f6dbffdef3d949433f40100393990550a007dd1498ff6e2",
+  "withdrawal_mode": "mutual_close",
+  "daemon_challenge_observation": null,
+  "clearance_signature_verified": true,
+  "elf_sha256": "7b592cdfd750065df15d46abc54bd402877c493fd3153e1ab38982ab8f4f29a0",
+  "idl_sha256": "fe4a27e5625ae7d3f4d8b485efd8813de385b2a2f5818053d29a4f8c77c21c39",
+  "manifest_sha256": "5ce8d993ae51074cc19cad9f2ec1107a60deee4eab2bb5bd72959db88a2d95d2",
+  "build_manifest_sha256": "59686368ae83cd0421415845ec321518593a5270bcbed5059cc4a0120eeabfe1",
+  "verified_at_utc": "2026-10-04T08:49:19.371Z",
+  "live_provider_verified": false,
+  "wallet_UI_verified": false,
+  "I10_complete": false,
+  "release_gates_passed": []
+}

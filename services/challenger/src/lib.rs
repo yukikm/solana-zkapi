@@ -4,6 +4,7 @@ pub mod journal;
 pub mod read_model;
 pub mod runtime;
 pub mod scan;
+mod shutdown;
 
 use ark_bn254::Bn254;
 use ark_groth16::ProvingKey;
@@ -13,6 +14,7 @@ use serde_json::Value;
 use sha2::{Digest, Sha256};
 use zkapi_control::{
     chain::TrustedPool,
+    config::DevnetConfig,
     wire::{self, SessionCreate},
 };
 use zkapi_layout2::{binding, Command, Operation, TreeUpdate};
@@ -22,6 +24,10 @@ pub type Hash = [u8; 32];
 pub type Result<T> = std::result::Result<T, Error>;
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
+    #[error("challenger stopping at a durable checkpoint")]
+    Interrupted,
+    #[error("challenger transport child could not be reaped")]
+    BridgeCleanup,
     #[error("challenger rejected evidence: {0}")]
     Evidence(&'static str),
     #[error("challenger journal conflict: {0}")]
@@ -41,7 +47,7 @@ fn bad(why: &'static str) -> Error {
 }
 
 /// Starts from a distribution-pinned hash, never a hash trusted from the fetched
-/// manifest itself. This local build retains I05's explicit test-only profile.
+/// manifest itself. Both local and explicit devnet use the fixed test profile.
 #[derive(Clone)]
 pub struct Trust {
     pub(crate) pool: TrustedPool,
@@ -52,6 +58,22 @@ pub struct Trust {
 }
 impl Trust {
     pub fn from_pinned_manifest(manifest: &Value, pinned_hash: Hash) -> Result<Self> {
+        Self::from_pinned_manifest_for(manifest, pinned_hash, None)
+    }
+    /// Explicit devnet opt-in reuses the control service's offline build/IDL
+    /// validation, without loading any control, provider or wallet secret.
+    pub fn from_pinned_devnet_manifest(
+        manifest: &Value,
+        pinned_hash: Hash,
+        devnet: &DevnetConfig,
+    ) -> Result<Self> {
+        Self::from_pinned_manifest_for(manifest, pinned_hash, Some(devnet))
+    }
+    fn from_pinned_manifest_for(
+        manifest: &Value,
+        pinned_hash: Hash,
+        devnet: Option<&DevnetConfig>,
+    ) -> Result<Self> {
         let mut body = manifest.as_object().ok_or(bad("manifest object"))?.clone();
         body.remove("manifest_hash");
         body.remove("manifest_signature");
@@ -60,7 +82,14 @@ impl Trust {
             return Err(bad("distribution manifest hash"));
         }
         Ok(Self {
-            pool: TrustedPool::from_manifest(manifest).map_err(|_| bad("manifest/build pins"))?,
+            pool: match devnet {
+                Some(devnet) => devnet
+                    .validate_manifest(manifest)
+                    .map_err(|_| bad("devnet manifest/build pins"))?,
+                None => {
+                    TrustedPool::from_manifest(manifest).map_err(|_| bad("manifest/build pins"))?
+                }
+            },
             deployment: manifest["deployment_id"]
                 .as_str()
                 .ok_or(bad("deployment"))?

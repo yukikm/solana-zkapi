@@ -17,6 +17,7 @@ sha2 = "=0.10.9"
 hex = "=0.4.3"
 base64 = "=0.22.1"
 bs58 = "=0.5.1"
+num-bigint = "=0.4.8"
 thiserror = "=2.0.18"
 zkapi-poseidon = { path = "../../crates/zkapi-poseidon" }
 zkapi-layout2 = { path = "../../crates/zkapi-layout2" }

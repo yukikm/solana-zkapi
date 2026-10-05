@@ -1,0 +1,26 @@
+{
+  "schema": 1,
+  "scope": "Read-only actual ChainClient startup against configured public devnet RPCs and local indexer; no AUTH or inference",
+  "observed_at_utc": "2026-10-05T02:47:01.708872+00:00",
+  "observations": [
+    {
+      "category": "chain observation unavailable: indexer not ready",
+      "chain_startup_ready": false
+    },
+    {
+      "category": "chain observation unavailable: indexer not ready",
+      "chain_startup_ready": false
+    },
+    {
+      "category": null,
+      "chain_startup_ready": true
+    }
+  ],
+  "source_sha256": "35f87b3851c63e4384692f2826a26c4c2a21e88904dab4fee3e3c877b7f796f3",
+  "source_hash_note": "rustfmt-only formatting applied after compiled run; binary hash pins actual execution",
+  "binary_sha256": "af6a93b3d24b45e6c488eb4dc5a6979ae154f7d4918e7055fc3f85b86a519343",
+  "financial_sends": 0,
+  "inference_calls": 0,
+  "scope_limit": "three point-in-time observations, no availability SLO",
+  "release_gates_passed": []
+}

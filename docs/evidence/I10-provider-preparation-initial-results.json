@@ -1,0 +1,75 @@
+{
+  "schema": 1,
+  "passed": true,
+  "observed_at": "2026-10-04T18:55:36.516064+00:00",
+  "scope": "offline provider preparation, durable external test-budget guard, and existing SDK orchestration; synthetic provider/proof/successor fixtures",
+  "commands": [
+    {
+      "name": "python-offline",
+      "command": [
+        "python3",
+        "scripts/test_provider_acceptance.py"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 0.156,
+      "log": "target/i10-provider-acceptance-validation/python-offline.log",
+      "log_sha256": "9b0476c2658047331efa78ea0cee3374f1846136ba47c7a3be76d92caa293629"
+    },
+    {
+      "name": "typescript-check",
+      "command": [
+        "target/i08-toolchain/bin/node",
+        "node_modules/typescript/bin/tsc",
+        "--noEmit",
+        "--strict",
+        "--target",
+        "ES2023",
+        "--module",
+        "NodeNext",
+        "--moduleResolution",
+        "NodeNext",
+        "--allowImportingTsExtensions",
+        "--lib",
+        "ES2023,DOM",
+        "--types",
+        "node",
+        "scripts/provider_acceptance_client.test.ts",
+        "scripts/i10_devnet_provider.ts"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 0.81,
+      "log": "target/i10-provider-acceptance-validation/typescript-check.log",
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "name": "sdk-offline",
+      "command": [
+        "target/i08-toolchain/bin/node",
+        "--test",
+        "scripts/provider_acceptance_client.test.ts"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 0.685,
+      "log": "target/i10-provider-acceptance-validation/sdk-offline.log",
+      "log_sha256": "9d92e1c091bad7668b8335473d378ed3568ebbc24da39faeacda7607540ca357"
+    }
+  ],
+  "tests": {
+    "python_offline": 13,
+    "sdk_offline": 7
+  },
+  "source_sha256": {
+    "scripts/provider_acceptance.py": "556643a948e505e43a016cd6833195d16a211cab2efff8c3c816e027200a913c",
+    "scripts/test_provider_acceptance.py": "ce51e36d1b2bb99b4a674b07fd97d6923bf805a9d37dc200ce781d2545982f2b",
+    "scripts/provider_acceptance_client.ts": "00100c080f073b476254eb243031238976cb602d6f2c7084463ce9fd1f6d3ec6",
+    "scripts/provider_acceptance_client.test.ts": "3089278aebd88879787651ebe320e5facfb2d97bbcfe87cca4aa3b03ae6306b1",
+    "scripts/i10_devnet_provider.ts": "02016e5f027ee577e5d0b3ffde06c0f914be8d1ce8b6243ff48591806c43adae",
+    "config/provider-acceptance.example.json": "e7ccf70df50a990e0d2b463fbd8263264b3196721dca5c35f4c752a2acdad68f",
+    "docs/provider-acceptance.md": "26bf1494aa3a8599861e8caf9b4bb0f865be1f053bfa0d343747ef3b2b106f9b"
+  },
+  "private_user_env_or_keys_read": false,
+  "network_requests": 0,
+  "provider_spend_micro_usdc": "0",
+  "real_provider_verified": false,
+  "full_g3_passed": false
+}

@@ -3,7 +3,10 @@ use crate::wire::{Provider, Usage};
 use axum::body::Bytes;
 use reqwest::{header::HeaderValue, Client, Url};
 use sha2::{Digest, Sha256};
-use std::{net::IpAddr, time::Duration};
+use std::{
+    net::IpAddr,
+    time::{Duration, Instant},
+};
 use tokio::sync::mpsc;
 
 /// Deliberately neither Debug nor Serialize.
@@ -36,7 +39,44 @@ pub struct DispatchObservation {
     pub evidence_digest: Option<[u8; 32]>,
     pub http_status: Option<u16>,
     pub downstream_dropped: bool,
+    pub diagnostic: DispatchDiagnostic,
     response_started: bool,
+}
+
+/// Bounded operational metadata only. Never retains provider fields or errors.
+#[derive(Debug, serde::Serialize, serde::Deserialize)]
+pub struct DispatchDiagnostic {
+    pub stage: DispatchStage,
+    pub elapsed_ms: u64,
+    pub completed: bool,
+    pub timed_out: bool,
+}
+#[derive(Debug, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum DispatchStage {
+    Configuration,
+    RequestTransport,
+    UpstreamStatus,
+    ContentEncoding,
+    ContentType,
+    ResponseRead,
+    ResponseLimit,
+    JsonDecode,
+    ProviderError,
+    UsageSchema,
+    ProviderIdentity,
+    StreamFrame,
+    StreamTerminal,
+    Evidence,
+    Complete,
+}
+impl DispatchObservation {
+    /// Keep this projection independent from the response-bearing observation.
+    pub fn diagnostic_event(&self) -> serde_json::Value {
+        serde_json::json!({"event":"provider_dispatch", "http_status":self.http_status,
+            "stage":self.diagnostic.stage, "elapsed_ms":self.diagnostic.elapsed_ms,
+            "completed":self.diagnostic.completed, "timed_out":self.diagnostic.timed_out})
+    }
 }
 
 pub struct HttpAdapter {
@@ -129,12 +169,19 @@ impl HttpAdapter {
         request: PreparedRequest,
         relay: Option<mpsc::Sender<RelayEvent>>,
     ) -> DispatchObservation {
+        let started = Instant::now();
         let mut observation = DispatchObservation {
             provider_request_id: None,
             usage: None,
             evidence_digest: None,
             http_status: None,
             downstream_dropped: false,
+            diagnostic: DispatchDiagnostic {
+                stage: DispatchStage::Configuration,
+                elapsed_ms: 0,
+                completed: false,
+                timed_out: false,
+            },
             response_started: false,
         };
         let mut relay = relay;
@@ -145,6 +192,9 @@ impl HttpAdapter {
             self.dispatch_inner(request, &mut relay, &mut observation),
         )
         .await;
+        observation.diagnostic.elapsed_ms =
+            started.elapsed().as_millis().min(u64::MAX as u128) as u64;
+        observation.diagnostic.timed_out = result.is_err();
         if !matches!(result, Ok(Ok(()))) {
             observation.usage = None;
             observation.evidence_digest = None;
@@ -189,12 +239,14 @@ impl HttpAdapter {
         } else {
             builder = builder.bearer_auth(&self.credential.0);
         }
+        observation.diagnostic.stage = DispatchStage::RequestTransport;
         let mut response = builder
             .body(request.upstream_body)
             .send()
             .await
             .map_err(|_| ProxyError::UsageUnknown)?;
         observation.http_status = Some(response.status().as_u16());
+        observation.diagnostic.stage = DispatchStage::UpstreamStatus;
         observation.provider_request_id = response
             .headers()
             .get(if self.provider == Provider::Anthropic {
@@ -219,6 +271,7 @@ impl HttpAdapter {
             );
             return Ok(());
         }
+        observation.diagnostic.stage = DispatchStage::ContentEncoding;
         if response
             .headers()
             .get("content-encoding")
@@ -226,6 +279,7 @@ impl HttpAdapter {
         {
             return Err(ProxyError::UsageUnknown);
         }
+        observation.diagnostic.stage = DispatchStage::ContentType;
         let content_type = response
             .headers()
             .get("content-type")
@@ -250,11 +304,13 @@ impl HttpAdapter {
             );
             observation.response_started = true;
             let mut meter = SseMeter::new(request.endpoint, request.profile);
+            observation.diagnostic.stage = DispatchStage::ResponseRead;
             while let Some(chunk) = response
                 .chunk()
                 .await
                 .map_err(|_| ProxyError::UsageUnknown)?
             {
+                observation.diagnostic.stage = DispatchStage::StreamFrame;
                 let frames = meter.push(&chunk);
                 if observation.provider_request_id.is_none() {
                     observation.provider_request_id =
@@ -268,7 +324,9 @@ impl HttpAdapter {
                     )
                     .await;
                 }
+                observation.diagnostic.stage = DispatchStage::ResponseRead;
             }
+            observation.diagnostic.stage = DispatchStage::StreamTerminal;
             let (usage, id) = meter.finish()?;
             observation.usage = Some(usage);
             if observation.provider_request_id.is_none() {
@@ -279,22 +337,27 @@ impl HttpAdapter {
                 return Err(ProxyError::UsageUnknown);
             }
             let mut bytes = Vec::new();
+            observation.diagnostic.stage = DispatchStage::ResponseRead;
             while let Some(chunk) = response
                 .chunk()
                 .await
                 .map_err(|_| ProxyError::UsageUnknown)?
             {
                 if bytes.len() + chunk.len() > 8 * 1024 * 1024 {
+                    observation.diagnostic.stage = DispatchStage::ResponseLimit;
                     return Err(ProxyError::UsageUnknown);
                 }
                 bytes.extend_from_slice(&chunk);
             }
+            observation.diagnostic.stage = DispatchStage::JsonDecode;
             let value =
                 super::parse_json(&bytes, 8 * 1024 * 1024).map_err(|_| ProxyError::UsageUnknown)?;
             // Responses includes `error: null` on successful results.
+            observation.diagnostic.stage = DispatchStage::ProviderError;
             if value.get("error").is_some_and(|error| !error.is_null()) {
                 return Err(ProxyError::UsageUnknown);
             }
+            observation.diagnostic.stage = DispatchStage::UsageSchema;
             if request.endpoint == Endpoint::CountTokens {
                 let n = value
                     .get("input_tokens")
@@ -310,6 +373,7 @@ impl HttpAdapter {
                     &request.profile,
                     value.get("usage").ok_or(ProxyError::UsageUnknown)?,
                 )?);
+                observation.diagnostic.stage = DispatchStage::ProviderIdentity;
                 if let Some(id) = value
                     .get("id")
                     .and_then(|v| v.as_str())
@@ -339,8 +403,11 @@ impl HttpAdapter {
                 &mut observation.downstream_dropped,
             );
         }
+        observation.diagnostic.stage = DispatchStage::Evidence;
         let evidence = serde_jcs::to_vec(&serde_json::json!({"provider_request_id": observation.provider_request_id,"usage":observation.usage})).map_err(|_| ProxyError::UsageUnknown)?;
         observation.evidence_digest = Some(Sha256::digest(evidence).into());
+        observation.diagnostic.stage = DispatchStage::Complete;
+        observation.diagnostic.completed = true;
         Ok(())
     }
 

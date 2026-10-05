@@ -1,0 +1,23 @@
+{
+  "schema": 1,
+  "url": "https://platform.claude.com/docs/en/models/haiku-4-5/overview",
+  "retrieved_at": "2026-10-04T19:01:39Z",
+  "capture_kind": "reviewed factual summary, not a raw HTTP archive",
+  "facts": {
+    "model_snapshot": "claude-haiku-4-5-20251001",
+    "page_status": "Active (latest)",
+    "earliest_retirement": "2026-10-15",
+    "context_tokens": 200000,
+    "max_output_tokens": 64000,
+    "usd_per_million_tokens": {
+      "input": "1",
+      "cache_write_5m": "1.25",
+      "cache_write_1h": "2",
+      "cache_read": "0.10",
+      "output": "5"
+    },
+    "thinking": "Optional manual extended thinking; omitted by this plan.",
+    "scope": "Standard global Claude API, without batch discount.",
+    "limitation": "Account access and actual response usage remain unverified."
+  }
+}

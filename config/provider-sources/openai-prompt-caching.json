@@ -1,0 +1,13 @@
+{
+  "schema": 1,
+  "url": "https://developers.openai.com/api/docs/guides/prompt-caching",
+  "retrieved_at": "2026-10-04T19:01:39Z",
+  "capture_kind": "reviewed factual summary, not a raw HTTP archive",
+  "facts": {
+    "scope": "Models earlier than GPT-5.6, including GPT-4o mini",
+    "cache_write_charge": "No additional charge; uncached input rate applies.",
+    "cache_read_charge": "Model-specific cached-input rate.",
+    "adapter_mapping": "inclusive_read",
+    "limitation": "The GPT-5.6+ cache-write and retention semantics are not selected by this plan."
+  }
+}

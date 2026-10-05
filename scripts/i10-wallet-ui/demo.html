@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>zkAPI — AIを使う。使った分だけ払う。</title>
+  <link rel="stylesheet" href="/demo.css">
+</head>
+<body>
+  <a class="skip-link" href="#demo-workspace">デモへ移動</a>
+  <div class="page-shell">
+    <header class="topbar">
+      <a class="wordmark" href="/" aria-label="zkAPI デモのホーム"><span class="brand-symbol" aria-hidden="true"><i></i><i></i><i></i></span>zk<span>API</span></a>
+      <span class="topbar-caption">AI ACCESS, ON YOUR TERMS.</span>
+      <a class="live-link" href="/live">実接続を開く <span aria-hidden="true">↗</span></a>
+    </header>
+    <main>
+      <section class="intro" aria-labelledby="page-title">
+        <div><div class="eyebrow"><span class="small-line"></span> THE ZKAPI WALKTHROUGH</div>
+          <h1 id="page-title">AIを使う。<br>使った分だけ払う。</h1>
+          <p class="intro-description">USDCをチャージして、AIを呼び出す。<br>利用料を確認したら、残りをウォレットへ。</p>
+        </div>
+        <aside class="demo-intro">
+          <span class="demo-tag"><span aria-hidden="true">◈</span> 説明用デモ</span>
+          <p>4ステップで、資金の流れを体験。<br>実際の送金・API呼び出しは行いません。</p>
+          <button id="demo-auto" class="text-button" type="button" aria-pressed="false">自動で再生</button>
+        </aside>
+      </section>
+
+      <ol class="stepper" aria-label="デモの流れ">
+        <li data-demo-step="0" data-state="current" aria-current="step"><span class="step-number">01</span><div><strong>入金</strong><span>USDCをチャージ</span></div><span class="step-check" aria-hidden="true">✓</span></li>
+        <li data-demo-step="1" data-state="idle"><span class="step-number">02</span><div><strong>AI利用</strong><span>利用権限を証明して呼び出す</span></div><span class="step-check" aria-hidden="true">✓</span></li>
+        <li data-demo-step="2" data-state="idle"><span class="step-number">03</span><div><strong>精算</strong><span>使った分だけ確定</span></div><span class="step-check" aria-hidden="true">✓</span></li>
+        <li data-demo-step="3" data-state="idle"><span class="step-number">04</span><div><strong>出金</strong><span>残額をウォレットへ</span></div><span class="step-check" aria-hidden="true">✓</span></li>
+      </ol>
+
+      <section id="demo-workspace" class="workspace" data-phase="ready" aria-label="操作デモ" tabindex="-1">
+        <div class="workspace-main">
+          <div class="workspace-heading"><span id="demo-step-label" class="eyebrow">STEP 01 / 04</span><span class="sample-label">SAMPLE SESSION</span></div>
+          <h2 id="demo-title">まず、1 USDCをチャージ。</h2>
+          <p id="demo-description" class="step-description">ウォレットから利用する分を預けます。残ったUSDCは、あとで出金できます。</p>
+
+          <div class="flow-map" aria-label="ウォレットからVault、AIへ進み、明細を確認する流れ">
+            <div class="flow-node" data-demo-node="wallet" data-state="active"><span class="node-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 6h15v13H4zM4 6V4h12v2M16 10h5v5h-5z"/><path d="M18 12.5h.1"/></svg></span><span>Wallet</span></div>
+            <span class="flow-connector" aria-hidden="true"></span>
+            <div class="flow-node" data-demo-node="vault" data-state="idle"><span class="node-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="3"/><circle cx="12" cy="12" r="4"/><path d="M12 8v8M8 12h8"/></svg></span><span>zkAPI Vault</span></div>
+            <span class="flow-connector" aria-hidden="true"></span>
+            <div class="flow-node" data-demo-node="provider" data-state="idle"><span class="node-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="m12 3 2.5 6.5L21 12l-6.5 2.5L12 21l-2.5-6.5L3 12l6.5-2.5z"/></svg></span><span>AI Provider</span></div>
+            <span class="flow-connector" aria-hidden="true"></span>
+            <div class="flow-node" data-demo-node="receipt" data-state="idle"><span class="node-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M6 3h12v18l-3-2-3 2-3-2-3 2zM9 8h6M9 12h6"/></svg></span><span>Receipt</span></div>
+          </div>
+
+          <div class="conversation">
+            <div class="conversation-label"><span class="eyebrow">ONE REQUEST</span><span class="model-label">OpenRouter <span aria-hidden="true">/</span> GPT-4o mini <span class="sample-label">サンプル</span></span></div>
+            <p class="prompt-text">zkAPIの仕組みを、一文で教えて。</p>
+            <div class="response-block"><div class="response-heading"><span class="response-mark" aria-hidden="true">✳</span><span>AIの応答</span><span id="demo-response-state">未送信</span></div>
+              <p id="demo-response" class="response-text">チャージのあとに、AIを呼び出してみましょう。</p>
+            </div>
+          </div>
+          <div class="action-area">
+            <p id="demo-status" class="status-text" role="status" aria-live="polite">準備できました。ボタンを押してデモを進めてください。</p>
+            <button id="demo-next" class="primary-button" type="button"><span id="demo-next-label">1 USDCをチャージ</span><span aria-hidden="true">→</span></button>
+          </div>
+        </div>
+
+        <aside class="account-panel" aria-label="サンプル残高と利用明細">
+          <div class="account-heading"><span class="eyebrow">YOUR SESSION</span><span class="account-dot" aria-hidden="true"></span></div>
+          <p class="balance-label">zkAPIの利用残高</p>
+          <div class="balance-amount"><span id="demo-balance">0</span><span class="amount-unit">USDC</span></div>
+          <p class="balance-caption">このセッションで利用できる金額</p>
+          <div class="receipt-divider" aria-hidden="true"></div>
+          <dl class="amount-list">
+            <div><dt>確定した利用料</dt><dd><span id="demo-paid">0</span> <span>USDC</span></dd></div>
+            <div><dt>ウォレットへ戻した額</dt><dd><span id="demo-returned">0</span> <span>USDC</span></dd></div>
+          </dl>
+          <div class="receipt-card"><div class="receipt-top"><span>利用明細</span><span id="demo-receipt-state" class="receipt-badge">利用前</span></div><p id="demo-receipt-body">AIを利用すると、ここに利用料と精算結果が表示されます。</p><span class="receipt-sample">表示する金額・応答は説明用サンプル</span></div>
+          <div class="wallet-line"><span class="wallet-caption">サンプルウォレット</span><strong><span id="demo-wallet-balance">1</span> <span>USDC</span></strong></div>
+        </aside>
+      </section>
+      <div class="below-workspace"><p id="demo-explanation">必要な分を預けて、使った分だけ精算。残額は自分のウォレットへ。</p><button id="demo-reset" class="reset-button" type="button"><span aria-hidden="true">↺</span> 最初から</button></div>
+
+      <section class="how-it-works" aria-label="このデモで伝えること">
+        <div class="section-label"><span class="eyebrow">WHAT HAPPENS UNDERNEATH</span><h2>利用の裏側も、シンプルに。</h2></div>
+        <div class="principle"><span class="principle-index">01 / FUND</span><h3>USDCで利用枠を用意</h3><p>SolanaのVaultに預けた資金から、AIの利用料を支払います。</p></div>
+        <div class="principle"><span class="principle-index">02 / PROVE</span><h3>利用権限をZKで証明</h3><p>残高と利用条件を満たすことを証明して、APIを呼び出します。</p></div>
+        <div class="principle"><span class="principle-index">03 / SETTLE</span><h3>明細を確認、残額を回収</h3><p>実接続では署名付き明細を検証し、精算後の残額を出金します。</p></div>
+      </section>
+      <footer class="footer"><p>この画面は説明用です。ウォレット接続・送金・API呼び出しは行いません。<br>ZKは残高と利用権限を証明します。AI応答の正しさ・使用量・本文の匿名性を保証しません。proxy利用時は中継サービスとproviderが本文を処理します。</p><span>zkAPI <span aria-hidden="true">/</span> Solana</span></footer>
+    </main>
+  </div>
+  <noscript><p class="noscript">デモを操作するにはJavaScriptを有効にしてください。実際の送金は行いません。</p></noscript>
+  <script type="module" src="/demo.js"></script>
+</body>
+</html>

@@ -1,0 +1,85 @@
+{
+  "schema": 1,
+  "passed": true,
+  "observed_at_utc": "2026-10-05T02:59:53.676117+00:00",
+  "scope": "Offline same saved AUTH recovery under transient HTTP/transport errors with existing encrypted SDK journal; no inference replay. Immutable completed profile retains point-in-time global budget bytes while validated global reservations grow append-only. Synthetic-only public redaction utility tests.",
+  "commands": [
+    {
+      "name": "typecheck",
+      "command": [
+        "target/i08-toolchain/bin/node",
+        "node_modules/typescript/bin/tsc",
+        "--noEmit",
+        "--strict",
+        "--target",
+        "ES2023",
+        "--module",
+        "NodeNext",
+        "--moduleResolution",
+        "NodeNext",
+        "--allowImportingTsExtensions",
+        "--lib",
+        "ES2023,DOM",
+        "--types",
+        "node",
+        "scripts/provider_acceptance_client.test.ts",
+        "scripts/i10_provider_report.test.ts",
+        "scripts/i10_devnet_provider_config.test.ts",
+        "scripts/run_i10_devnet_vault.ts"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 1.01,
+      "log": "target/i10-provider-auth-recovery-validation/typecheck.log",
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "name": "sdk-offline",
+      "command": [
+        "target/i08-toolchain/bin/node",
+        "--test",
+        "scripts/provider_acceptance_client.test.ts",
+        "scripts/i10_provider_report.test.ts",
+        "scripts/i10_devnet_provider_config.test.ts"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 3.416,
+      "log": "target/i10-provider-auth-recovery-validation/sdk-offline.log",
+      "log_sha256": "9586d44ab2d96056c25425b510210f38cae3e0bd0d0ab65af7528a022380a130"
+    },
+    {
+      "name": "redaction-synthetic",
+      "command": [
+        "python3",
+        "scripts/test_public_redaction.py"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 0.077,
+      "log": "target/i10-provider-auth-recovery-validation/redaction-synthetic.log",
+      "log_sha256": "199ba496f288116d36c62f29346d4fbf0bd75745a1c893abfcbdaa4c6d5b1033"
+    }
+  ],
+  "tests": {
+    "sdk_client_and_report_and_configuration": 31,
+    "redaction_synthetic": 3
+  },
+  "source_sha256": {
+    "scripts/provider_acceptance_client.ts": "8210e59c360ec3a0ebaf32a15515fe1baa1a800ed1b1109ad26d0601b0acf554",
+    "scripts/provider_acceptance_client.test.ts": "335d540ba8f7854792c3db885a6029ef447e3b86289e44f07e6caf7afbfd98d1",
+    "scripts/i10_devnet_provider.ts": "62415b1e4a9f3258176a5c338dd7f130adcace5a4a2ca5b7295a4df5d4c32115",
+    "scripts/i10_provider_report.test.ts": "fa9b026c03e53cc631d4838dbd6733ee35eb919346606a739e26af328982dc20",
+    "scripts/i10_devnet_provider_config.test.ts": "2be26d16b07def3b76cf44ec19ee024d03eab574725254b6e8ae14a89b382568",
+    "scripts/check_public_redaction.py": "27f4101151921185b452e2a21506280b925ea1a673ffe10fcc3db6533ed91e92",
+    "scripts/test_public_redaction.py": "255b133576630c29424c196c4f3bbe115a31273a9643f874a593857e57b2e1d8",
+    "packages/sdk/src/control.ts": "ba03dc0c7908e6abf65e2827d11974af28316e27cd40c664e641e3b9d48eabcc",
+    "packages/sdk/src/wallet.ts": "6e57ca1259a349d830b8f8702e884f15d8b44bcfe9d7e495e027527fadcc61eb",
+    "packages/sdk/src/trust.ts": "6fe8ca3639ff2b0547122ca3e2aaa419379019e5ac5f42aaeac3565f5ccd924f",
+    "scripts/provider_acceptance.py": "deeb43d6891df6dad1b3a0bba7d1cbaacfba0cfd73fb207e3ed82b1394c7e37f"
+  },
+  "source_unchanged_during_validation": true,
+  "network_requests": 0,
+  "private_user_inputs_read": false,
+  "provider_spend_micro_usdc": "0",
+  "real_provider_verified": false,
+  "full_g3_passed": false,
+  "release_gates_passed": []
+}

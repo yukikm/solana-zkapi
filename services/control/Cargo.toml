@@ -7,6 +7,23 @@ publish = false
 
 [workspace]
 
+[features]
+# Integration acceptance consumes the I08/I09 artifacts produced after I05.
+# Keep it out of I05's --include-ignored bootstrap to avoid a dependency cycle.
+i10-acceptance = []
+
+[[test]]
+name = "i10_e2e"
+required-features = ["i10-acceptance"]
+
+[[test]]
+name = "i10_load"
+required-features = ["i10-acceptance"]
+
+[[test]]
+name = "i10_faults"
+required-features = ["i10-acceptance"]
+
 [dependencies]
 anyhow = "=1.0.104"
 ark-bn254 = "=0.5.0"

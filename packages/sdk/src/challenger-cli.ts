@@ -32,7 +32,7 @@ try {
       const account = await connection.getAccountInfoAndContext(plan.buffer,{commitment:'finalized',minContextSlot});
       if(!Number.isSafeInteger(account.context.slot)||account.context.slot<minContextSlot)throw new Error('stale finalized buffer observation');
       if(account.value) await readBuffer(plan,{address:plan.buffer,owner:account.value.owner,data:account.value.data,slot:account.context.slot,commitment:'finalized'});
-      const block = await connection.getBlock(account.context.slot,{commitment:'finalized',transactionDetails:'none',maxSupportedTransactionVersion:0,rewards:false});
+      const block = await connection.getBlock(account.context.slot,{commitment:'finalized',transactionDetails:'none',maxSupportedTransactionVersion:1,rewards:false});
       if(!block)throw new Error('buffer block missing');
       result={absent:account.value===null,slot:account.context.slot,blockhash:block.blockhash};
     } else {
@@ -54,7 +54,7 @@ try {
     if (!info.isFile() || (process.platform !== 'win32' && (info.mode & 0o077) !== 0)) throw new Error('private key file mode');
     const wallet = challengerWallet(Uint8Array.from(JSON.parse(await readFile(input.keyFile, 'utf8'))));
     const reconciliation = await refreshChallengeUpload(attempt, connectionTransport(connection), account, blockhash, wallet);
-    const block = await connection.getBlock(reconciliation.accountSlot, { commitment: 'finalized', transactionDetails: 'none', maxSupportedTransactionVersion: 0, rewards: false });
+    const block = await connection.getBlock(reconciliation.accountSlot, { commitment: 'finalized', transactionDetails: 'none', maxSupportedTransactionVersion: 1, rewards: false });
     if (!block) throw new Error('reconciliation block missing');
     result = { ...reconciliation, blockhash: block.blockhash };
   } else if (input.command === 'recover') {

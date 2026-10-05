@@ -51,6 +51,17 @@ function policyFor(m: Manifest): ManifestTrustPolicy {
     build: { stateKey: { ...m.state_key }, clearanceKey: { ...m.clearance_key }, circuitProfileHash: m.circuit_profile_hash, idlHash: m.idl_hash, setupProfile: m.setup_profile },
   };
 }
+async function devnetSingleKeyFixture() {
+  const { manifest } = await fixture();
+  manifest.deployment_environment = 'devnet';
+  manifest.genesis_hash = 'EtWTRABZaYq6iMfeYKouRu166VU2xqa1wcaWoxPkrZBG';
+  manifest.control_api_origin = 'https://control.example'; manifest.inference_api_origin = 'https://inference.example';
+  manifest.proving_keys_base_url = 'https://keys.example/keys';
+  manifest.authorities = { admin: { kind: 'devnet_test_single_key', authority: key(20) }, upgrade: { kind: 'devnet_test_single_key', authority: key(25) } };
+  manifest.vault_binding = await vaultBinding(...[manifest.genesis_hash, manifest.program_id, manifest.pool, manifest.token_program, manifest.mint].map(bs58.decode) as [Uint8Array, Uint8Array, Uint8Array, Uint8Array, Uint8Array]);
+  await resign(manifest);
+  return manifest;
+}
 async function poolAccount(m: Manifest): Promise<FinalizedPoolAccount> {
   const bytes = new Uint8Array(422); const view = new DataView(bytes.buffer);
   bytes.set(createHash('sha256').update('account:PoolConfig').digest().subarray(0, 8)); bytes[8] = 2;
@@ -72,6 +83,38 @@ test('strict parser preserves JCS ordering/numbers and rejects duplicate/invalid
   for (const value of [NaN, Infinity, 1n, undefined, new Date(), { x: undefined }, { x: '\ud800' }, new Array(1)]) assert.throws(() => jcsBytes(value));
   const cycle: any = {}; cycle.x = cycle; assert.throws(() => jcsBytes(cycle));
   assert.equal(new TextDecoder().decode(jcsBytes(parseStrictJson(utf8('{"__proto__":{"ok":true}}')))), '{"__proto__":{"ok":true}}');
+});
+
+test('strict parser defaults to 1 MiB and permits only an explicit bounded local archive size', () => {
+  const archive = 'a'.repeat(1024 * 1024), bytes = utf8(JSON.stringify({archive}));
+  assert.ok(bytes.length > 1024 * 1024);
+  assert.throws(() => parseStrictJson(bytes), /JSON size/);
+  assert.deepEqual({...parseStrictJson(bytes, bytes.length) as Record<string, unknown>}, {archive});
+  assert.throws(() => parseStrictJson(bytes, bytes.length - 1), /JSON size/);
+  assert.equal(parseStrictJson(utf8('0'), 512 * 1024 * 1024), 0);
+  // Count encoded bytes, including multibyte UTF-8, rather than JS characters.
+  const euro = utf8('"€"');
+  assert.equal(parseStrictJson(euro, euro.length), '€');
+  assert.throws(() => parseStrictJson(euro, euro.length - 1), /JSON size/);
+  for (const limit of [0, -1, 0.5, NaN, Infinity, -Infinity, 512 * 1024 * 1024 + 1,
+    Number.MAX_SAFE_INTEGER, Number.MAX_SAFE_INTEGER + 1, '1024', null, {}]) {
+    assert.throws(() => parseStrictJson(utf8('0'), limit as number), /JSON size limit/);
+  }
+});
+
+test('expanded local archive limit retains duplicate, fatal UTF-8, depth and number checks', () => {
+  const padding = ' '.repeat(1024 * 1024);
+  for (const [document, error] of [
+    ['{"a":1,"\\u0061":2}', /duplicate JSON key/],
+    ['['.repeat(65) + '0' + ']'.repeat(65), /JSON nesting/],
+    ['1e999', /nonfinite JSON number/],
+    ['"\\ud800"', /unpaired UTF-16 surrogate/],
+  ] as const) {
+    const bytes = utf8(padding + document);
+    assert.throws(() => parseStrictJson(bytes, bytes.length), error);
+  }
+  const invalidUtf8 = Buffer.concat([utf8(padding), Uint8Array.of(0x22, 0xc0, 0x80, 0x22)]);
+  assert.throws(() => parseStrictJson(invalidUtf8, invalidUtf8.length), /encoded data|encoding/i);
 });
 
 test('authenticates a full OpenAPI manifest via external distribution signature or digest; immutable result', async () => {
@@ -120,6 +163,59 @@ test('ceremony assertion requires independently reviewed transcripts and mainnet
   const policy = policyFor(manifest);
   await assert.rejects(verifyManifest(jcsBytes(manifest), policy), /unreviewed setup transcripts/);
   await assert.rejects(verifyManifest(jcsBytes(manifest), { ...policy, build: { ...policy.build, verifiedSetupTranscripts: manifest.setup_transcript_hashes } }), /known test artifacts/);
+});
+
+test('explicit devnet test-only single-key custody preserves distribution and finalized PoolConfig admin pins', async () => {
+  const manifest = await devnetSingleKeyFixture();
+  const verified = await verifyManifest(jcsBytes(manifest), policyFor(manifest));
+  const account = await poolAccount(verified);
+  await verifyPoolConfig(verified, manifest.genesis_hash, account, 123n);
+  const changed = { ...account, data: account.data.slice() }; changed.data[139] ^= 1;
+  await assert.rejects(verifyPoolConfig(verified, manifest.genesis_hash, changed, 123n), /PoolConfig manifest mismatch/);
+  const tampered = structuredClone(manifest); tampered.authorities.admin.authority = key(26); await resign(tampered);
+  await assert.rejects(verifyManifest(jcsBytes(tampered), { ...policyFor(manifest), anchor: { kind: 'hash', sha256: manifest.manifest_hash } }), /distribution hash pin/);
+  // Each role may independently retain the original multisig encoding.
+  const legacy = (await fixture()).manifest.authorities;
+  for (const role of ['admin', 'upgrade'] as const) {
+    const mixed = structuredClone(manifest); mixed.authorities[role] = legacy[role]; await resign(mixed);
+    await verifyManifest(jcsBytes(mixed), policyFor(mixed));
+  }
+});
+
+test('single-key custody cannot be relabeled as local, mainnet, another genesis, or ceremony verified', async () => {
+  const base = await devnetSingleKeyFixture(), legacy = (await fixture()).manifest.authorities;
+  for (const role of ['admin', 'upgrade'] as const) {
+    for (const scenario of ['local', 'mainnet_test', 'mainnet_ceremony', 'ceremony', 'wrong_genesis']) {
+      const manifest = structuredClone(base);
+      manifest.authorities[role === 'admin' ? 'upgrade' : 'admin'] = legacy[role === 'admin' ? 'upgrade' : 'admin'];
+      if (scenario === 'local') manifest.deployment_environment = 'local';
+      if (scenario.startsWith('mainnet')) manifest.deployment_environment = 'mainnet';
+      if (scenario === 'wrong_genesis') manifest.genesis_hash = key(0);
+      if (scenario.includes('ceremony')) {
+        manifest.setup_profile = 'ceremony_verified';
+        manifest.setup_transcript_hashes = { request: 'aa'.repeat(32), withdrawal: 'bb'.repeat(32), tree: 'cc'.repeat(32) };
+        manifest.tree_proof_artifacts.setup_transcript_hash = manifest.setup_transcript_hashes.tree;
+      }
+      await resign(manifest);
+      const originalPolicy = policyFor(manifest);
+      const policy = { ...originalPolicy, build: { ...originalPolicy.build, verifiedSetupTranscripts: manifest.setup_transcript_hashes } };
+      await assert.rejects(verifyManifest(jcsBytes(manifest), policy), /single-key authority requires devnet test-only setup|mainnet test setup/, role + '/' + scenario);
+    }
+  }
+});
+
+test('single-key authority discriminant and fields are strict for both roles', async () => {
+  const manifest = await devnetSingleKeyFixture();
+  for (const role of ['admin', 'upgrade'] as const) {
+    for (const authority of [
+      { authority: key(20) }, { kind: 'single_key', authority: key(20) },
+      { kind: 'devnet_test_single_key' }, { kind: 'devnet_test_single_key', authority: 'not-a-pubkey' },
+      ...['program_id', 'config_hash', 'threshold', 'members', 'extra'].map(field => ({ kind: 'devnet_test_single_key', authority: key(20), [field]: 'unexpected' })),
+    ]) {
+      const changed: any = structuredClone(manifest); changed.authorities[role] = authority; await resign(changed);
+      await assert.rejects(verifyManifest(jcsBytes(changed), policyFor(changed)), role + '/' + JSON.stringify(authority));
+    }
+  }
 });
 
 test('checks finalized raw Vault PoolConfig PDA/owner/layout/role pins/cap/profile and never trusts an unverified object', async () => {

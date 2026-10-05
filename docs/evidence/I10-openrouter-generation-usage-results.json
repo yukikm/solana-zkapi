@@ -1,0 +1,38 @@
+{
+  "schema": 1,
+  "scope": "Whitelisted provider usage metadata of the exact prior OpenRouter generation; not retroactive user billing",
+  "observed_at_utc": "2026-10-05T03:05:46.411303+00:00",
+  "metadata": {
+    "model": "openai/gpt-4o-mini",
+    "streamed": true,
+    "cancelled": false,
+    "finish_reason": "stop",
+    "native_finish_reason": "stop",
+    "tokens_prompt": 8,
+    "tokens_completion": 1,
+    "native_tokens_prompt": 14,
+    "native_tokens_completion": 2,
+    "native_tokens_reasoning": 0,
+    "native_tokens_cached": 0,
+    "num_media_prompt": null,
+    "num_input_audio_prompt": null,
+    "num_media_completion": 0,
+    "num_search_results": null,
+    "total_cost": "0.0000033",
+    "usage": "0.0000033",
+    "upstream_inference_cost": 0,
+    "cache_discount": null,
+    "is_byok": false,
+    "api_type": "completions",
+    "service_tier": "default",
+    "provider_response_statuses": [
+      200
+    ]
+  },
+  "raw_metadata_sha256": "5a2303ad132910d0037c5a147c1e6cbf9da5afcff4c49009e32d36fac690ecfb",
+  "inference_replays": 0,
+  "zkapi_charged_micro_usdc": "0",
+  "budget_reservation_retained_micro_usdc": "19277",
+  "full_g3_passed": false,
+  "primary_source": "https://openrouter.ai/docs/api/api-reference/generations/get-request-&-usage-metadata-for-a-generation"
+}

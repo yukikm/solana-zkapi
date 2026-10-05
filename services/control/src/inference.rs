@@ -369,6 +369,9 @@ async fn infer(
             // A missing child response is uncertain: retain the unquiesced attempt.
             // Only a separately verified process fence may make it settleable.
             let observation = observation?;
+            // Fixed enum/status/timing projection only: no provider body, error,
+            // credential, request identity or billing fields enter diagnostics.
+            eprintln!("{}", observation.diagnostic_event());
             // The network future has ended and owns no retry path. Only this owner
             // can attest finished; a replacement process cannot invent this evidence.
             worker

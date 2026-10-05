@@ -248,6 +248,7 @@ fn local_config(dir: &Path, primary: String, secondary: String, indexer: String)
     write_private(&dir.join("quote.seed"), &[11; 32]);
     write_private(&dir.join("receipt.seed"), &[12; 32]);
     RuntimeConfig {
+        devnet: None,
         local_test_only: true,
         listen: "127.0.0.1:0".parse().unwrap(),
         manifest,

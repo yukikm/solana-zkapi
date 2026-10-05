@@ -43,7 +43,7 @@ export async function recoverChallengeOnConnection(attempt: Attempt, connection:
   const result = await recoverChallenge(attempt, rpc);
   if (result.state !== 'finalized' && result.state !== 'rejected') return { result };
   if (receiptSlot === undefined) throw new Error('finalized receipt missing');
-  const block = await connection.getBlock(receiptSlot, { commitment: 'finalized', transactionDetails: 'none', maxSupportedTransactionVersion: 0, rewards: false });
+  const block = await connection.getBlock(receiptSlot, { commitment: 'finalized', transactionDetails: 'none', maxSupportedTransactionVersion: 1, rewards: false });
   if (!block) throw new Error('finalized block missing');
   return { result, slot: receiptSlot, blockhash: block.blockhash };
 }

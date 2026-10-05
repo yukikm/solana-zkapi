@@ -1,4 +1,4 @@
-//! Trusted local deployment configuration. Fixed test VKs cannot start a production service.
+//! Trusted test deployment configuration. Fixed test VKs cannot start a production service.
 use crate::{
     chain::TrustedPool,
     quote::{validate_tariff, BindingConfig},
@@ -17,6 +17,10 @@ use std::{
 #[serde(deny_unknown_fields)]
 pub struct RuntimeConfig {
     pub local_test_only: bool,
+    /// Explicit public-devnet chain with local test services. Omission preserves
+    /// the local chain/embedded IDL profile; a manifest never selects this alone.
+    #[serde(default)]
+    pub devnet: Option<DevnetConfig>,
     pub listen: SocketAddr,
     pub manifest: Value,
     pub trusted_manifest_hash: String,
@@ -32,6 +36,123 @@ pub struct RuntimeConfig {
     pub providers: crate::provider_runtime::ProviderConfig,
     pub tariffs: Vec<Tariff>,
 }
+#[derive(Clone, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct DevnetConfig {
+    pub idl_file: PathBuf,
+    pub program_file: PathBuf,
+    pub build_manifest_file: PathBuf,
+    pub trusted_build_manifest_hash: String,
+}
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct DevnetBuildManifest {
+    schema: u32,
+    deployment_environment: String,
+    setup_profile: String,
+    program_id: String,
+    deployment_authority: String,
+    genesis_hash: String,
+    mint: String,
+    token_program: String,
+    idl_sha256: String,
+    program_sha256: String,
+    state_key: Value,
+    clearance_key: Value,
+    circuit_profile_hash: String,
+}
+impl DevnetConfig {
+    /// Shared offline trust boundary for local test services attached to devnet.
+    /// Callers must also authenticate the public manifest against their own
+    /// distribution pin. This never reads service or wallet signing keys.
+    pub fn validate_manifest(&self, manifest: &Value) -> Result<TrustedPool> {
+        self.validate(manifest)?;
+        let trusted = TrustedPool::from_devnet_manifest(manifest)?;
+        for name in [
+            "control_api_origin",
+            "inference_api_origin",
+            "proving_keys_base_url",
+        ] {
+            let url = reqwest::Url::parse(
+                manifest[name]
+                    .as_str()
+                    .context("devnet public service URL")?,
+            )?;
+            ensure!(
+                url.scheme() == "https"
+                    && url.host_str().is_some()
+                    && url.username().is_empty()
+                    && url.password().is_none()
+                    && url.fragment().is_none(),
+                "devnet public service URLs require HTTPS without embedded credentials"
+            );
+        }
+        Ok(trusted)
+    }
+
+    fn validate(&self, manifest: &Value) -> Result<()> {
+        let build_bytes = std::fs::read(&self.build_manifest_file)?;
+        let build_hash = hex::encode(wire::sha256(&build_bytes));
+        wire::hash(&self.trusted_build_manifest_hash)?;
+        ensure!(
+            build_hash == self.trusted_build_manifest_hash
+                && manifest["artifact_digests"]["devnet_build_manifest"] == build_hash,
+            "devnet build manifest trusted hash mismatch"
+        );
+        let build: DevnetBuildManifest = serde_json::from_slice(&build_bytes)?;
+        ensure!(
+            build.schema == 1
+                && build.deployment_environment == "devnet"
+                && build.setup_profile == "test_only"
+                && manifest["deployment_environment"] == "devnet"
+                && manifest["setup_profile"] == "test_only",
+            "devnet test build profile"
+        );
+        ensure!(
+            wire::pubkey(&build.deployment_authority)? != [0; 32],
+            "devnet initializer pin"
+        );
+        for (name, value) in [
+            ("program_id", &build.program_id),
+            ("genesis_hash", &build.genesis_hash),
+            ("mint", &build.mint),
+            ("token_program", &build.token_program),
+            ("circuit_profile_hash", &build.circuit_profile_hash),
+        ] {
+            ensure!(manifest[name] == *value, "devnet build binding mismatch");
+        }
+        ensure!(
+            build.state_key == manifest["state_key"]
+                && build.clearance_key == manifest["clearance_key"],
+            "devnet build signing role pins"
+        );
+        let idl_bytes = std::fs::read(&self.idl_file)?;
+        let program = std::fs::read(&self.program_file)?;
+        wire::hash(&build.idl_sha256)?;
+        wire::hash(&build.program_sha256)?;
+        ensure!(
+            hex::encode(wire::sha256(&idl_bytes)) == build.idl_sha256
+                && manifest["idl_hash"] == build.idl_sha256,
+            "devnet IDL/build pin"
+        );
+        ensure!(
+            program.starts_with(b"\x7fELF")
+                && hex::encode(wire::sha256(&program)) == build.program_sha256
+                && manifest["artifact_digests"]["vault_program"] == build.program_sha256,
+            "devnet program/build pin"
+        );
+        let mut idl: Value = serde_json::from_slice(&idl_bytes)?;
+        let local_idl: Value =
+            serde_json::from_str(include_str!("../../../docs/contracts/zkapi_vault.json"))?;
+        ensure!(idl["address"] == build.program_id, "devnet IDL program ID");
+        idl["address"] = local_idl["address"].clone();
+        ensure!(
+            idl == local_idl,
+            "devnet IDL must preserve build wire contract"
+        );
+        Ok(())
+    }
+}
 pub struct ValidatedConfig {
     pub runtime: RuntimeConfig,
     pub trusted: TrustedPool,
@@ -39,6 +160,23 @@ pub struct ValidatedConfig {
     pub signer: SignerConfig,
     pub quote_key: SigningKey,
     pub receipt_key: SigningKey,
+}
+impl ValidatedConfig {
+    pub fn validate_database(&self, database_url: &str) -> Result<()> {
+        if self.runtime.devnet.is_some() {
+            let database: tokio_postgres::Config = database_url.parse()?;
+            ensure!(
+                !database.get_hosts().is_empty()
+                    && database
+                        .get_hosts()
+                        .iter()
+                        .all(|host| matches!(host, tokio_postgres::config::Host::Unix(_)))
+                    && database.get_hostaddrs().is_empty(),
+                "devnet test services require a Unix-socket database"
+            );
+        }
+        Ok(())
+    }
 }
 fn read_key(path: &Path) -> Result<SigningKey> {
     #[cfg(unix)]
@@ -82,13 +220,15 @@ impl RuntimeConfig {
             .context("manifest signature")?;
         wire::base64_exact::<64>(signature)?;
         wire::hash(self.manifest["idl_hash"].as_str().context("IDL hash")?)?;
-        ensure!(
-            self.manifest["idl_hash"]
-                == hex::encode(wire::sha256(include_bytes!(
-                    "../../../docs/contracts/zkapi_vault.json"
-                ))),
-            "IDL/build pin"
-        );
+        if self.devnet.is_none() {
+            ensure!(
+                self.manifest["idl_hash"]
+                    == hex::encode(wire::sha256(include_bytes!(
+                        "../../../docs/contracts/zkapi_vault.json"
+                    ))),
+                "IDL/build pin"
+            );
+        }
         let mut body = self.manifest.clone();
         let object = body.as_object_mut().context("manifest object")?;
         object.remove("manifest_hash");
@@ -98,7 +238,35 @@ impl RuntimeConfig {
             hash == self.trusted_manifest_hash && self.manifest["manifest_hash"] == hash,
             "trusted manifest hash mismatch"
         );
-        let trusted = TrustedPool::from_manifest(&self.manifest)?;
+        let trusted = if let Some(devnet) = &self.devnet {
+            devnet.validate_manifest(&self.manifest)?
+        } else {
+            TrustedPool::from_manifest(&self.manifest)?
+        };
+        if self.devnet.is_some() {
+            use std::os::unix::fs::PermissionsExt;
+            ensure!(
+                self.signer_socket.is_absolute(),
+                "absolute local signer socket required"
+            );
+            let parent = std::fs::symlink_metadata(
+                self.signer_socket
+                    .parent()
+                    .context("signer socket parent")?,
+            )?;
+            ensure!(
+                parent.is_dir() && parent.permissions().mode() & 0o077 == 0,
+                "devnet signer socket parent must be owner-only"
+            );
+            // Validate transport policy before reading any signing key. Actual
+            // genesis/PoolConfig checks remain on the existing live RPC path.
+            crate::chain::ChainClient::new(
+                self.primary_rpc.clone(),
+                self.secondary_rpc.clone(),
+                self.indexer_origin.clone(),
+                trusted.clone(),
+            )?;
+        }
         ensure!(
             self.manifest["db_schema_version"] == "2",
             "ledger schema version"

@@ -82,6 +82,7 @@ with tempfile.TemporaryDirectory(prefix='zkapi-i09-ops-',dir='/tmp') as tmp:
         counts=re.findall(r'test result: ok\. (\d+) passed; (\d+) failed; (\d+) ignored;',log.read_text())
         assert len(counts)==3 and all(int(f)==0 and int(i)==0 for _,f,i in counts)
         report={'test_counts':{'passed':sum(int(p) for p,_,_ in counts),'failed':0,'ignored':0},'scope':'local read-only periodic ledger/finalized-RPC/escrow/fee/signer/challenger collector with fail-closed alerts, process dispatcher/admin, real AES-GCM envelopes with fixture KMS helper, real mTLS signer, isolated restore detection, sign-once recovery and synchronous PostgreSQL physical WAL failover; production infrastructure/cloud-KMS/provider gates unverified','passed':True,'commands':commands,'postgres_version':pg_version,'platform':platform.platform(),'acknowledged_flush_lsn':acknowledged_lsn,'acknowledged_rows_lost':0,'primary_only_ack_blocked':True,'physical_financial_databases_replicated':db_count,'physical_financial_rows_verified':True,'fsync':True,'local_failover_seconds':failover_seconds,'elapsed_seconds':round(time.monotonic()-started,3),'source_sha256':source}
+        report['release_gates_passed']=[]
         (OUT/'runtime-report.json').write_text(json.dumps(report,indent=2)+'\n')
     finally:
         for data in reversed(running):run(['pg_ctl','-D',str(data),'-m','immediate','-w','stop'],True)

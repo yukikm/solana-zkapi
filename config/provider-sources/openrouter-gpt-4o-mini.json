@@ -1,0 +1,23 @@
+{
+  "schema": 1,
+  "url": "https://openrouter.ai/openai/gpt-4o-mini",
+  "retrieved_at": "2026-10-04T19:01:39Z",
+  "capture_kind": "reviewed factual summary, not a raw HTTP archive",
+  "facts": {
+    "model": "openai/gpt-4o-mini",
+    "context_tokens": 128000,
+    "max_output_tokens": 16384,
+    "standard_usd_per_million_tokens": {
+      "input": "0.15",
+      "cache_read": "0.075",
+      "output": "0.60"
+    },
+    "standard_providers": [
+      "Azure",
+      "OpenAI"
+    ],
+    "nonstandard_endpoint": "The higher-priced Azure EU row is identified as excluded from Standard routing.",
+    "tools": "Requests with tools route to a provider supporting tools/tool_choice.",
+    "limitation": "The model ID is an OpenRouter routing alias, not an immutable OpenAI snapshot. Standard routing prices and account settings must remain compatible; public metadata does not prove account access."
+  }
+}
