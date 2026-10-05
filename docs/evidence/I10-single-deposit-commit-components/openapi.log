@@ -1,0 +1,2 @@
+PASS: OpenAPI 3.1, 55 schemas, 65 positive/negative examples.
+NOT RUN: provider-native nested payload conformance, manifest crypto/setup verification and runtime semantic checks.

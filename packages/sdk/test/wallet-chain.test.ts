@@ -4,13 +4,13 @@ import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {Connection,PublicKey,SYSVAR_CLOCK_PUBKEY} from '@solana/web3.js';
 import {SolanaWalletChain} from '../src/wallet-chain.ts';
-import {discriminator} from '../src/transport.ts';
+import {discriminator, type TransactionPreparationCommitment} from '../src/transport.ts';
 import {u32} from '../src/layout2.ts';
 import {json,walletFixture} from './wallet-fixture.ts';
 
 const key=(n:number)=>new PublicKey(new Uint8Array(32).fill(n)).toBase58();
 const field=(n:number)=>'0x'+BigInt(n).toString(16).padStart(64,'0');
-async function fixture(status:'active'|'pending'|'closed'|'deposit'='active'){
+async function fixture(status:'active'|'pending'|'closed'|'deposit'='active',preparationCommitment?:TransactionPreparationCommitment){
   const {manifest}=await walletFixture(), exported=await json('target/i05/chain.json');
   const program=new PublicKey(manifest.program_id),pool=new PublicKey(manifest.pool);
   const derive=(name:string,suffix?:Uint8Array)=>PublicKey.findProgramAddressSync([Buffer.from(name),pool.toBytes(),...(suffix?[suffix]:[])],program);
@@ -32,7 +32,8 @@ async function fixture(status:'active'|'pending'|'closed'|'deposit'='active'){
       return Response.json(String(url).endsWith('/root')?root:{snapshot:root,note_id:'0',leaf:field(0),siblings:Array(32).fill(field(0))});
     }
     const request=JSON.parse(String(init?.body));const {method,params}=request;calls.push({method,params});let result:any;
-    if(method==='getGenesisHash')result=manifest.genesis_hash;
+    if(method==='getLatestBlockhash')result={context:{slot:state.targetSlot},value:{blockhash:state.targetHash,lastValidBlockHeight:250}};
+    else if(method==='getGenesisHash')result=manifest.genesis_hash;
     else if(method==='getBlock'){
       assert.equal(params[1].commitment,'finalized');assert.equal(params[1].transactionDetails,'none');assert.equal(params[1].maxSupportedTransactionVersion,1,'mixed-block reader cap does not change v0 transaction transport');
       const source=params[0]===state.sourceSlot;
@@ -45,9 +46,26 @@ async function fixture(status:'active'|'pending'|'closed'|'deposit'='active'){
     return Response.json({jsonrpc:'2.0',id:request.id,result});
   };
   const connection=new Connection('http://127.0.0.1:19890',{fetch:fetcher});
-  const chain=new SolanaWalletChain(connection,manifest,'http://127.0.0.1:19891',{fetch:fetcher,allowLoopbackHttp:true});
-  return {chain,state,root,accounts,calls};
+  const options={fetch:fetcher,allowLoopbackHttp:true,preparationCommitment};
+  const chain=new SolanaWalletChain(connection,manifest,'http://127.0.0.1:19891',options);
+  return {chain,state,root,accounts,calls,options};
 }
+
+test('confirmed blockhash preparation is opt-in and snapshotted while proof accounts stay finalized',async()=>{
+  for(const commitment of [undefined,'confirmed','finalized'] as const){
+    const f=await fixture('active',commitment);
+    f.options.preparationCommitment=commitment==='confirmed'?'finalized':'confirmed';
+    assert.deepEqual(await f.chain.blockhash(),{blockhash:f.state.targetHash,lastValidBlockHeight:250});
+    assert.deepEqual(f.calls[0],{method:'getLatestBlockhash',params:[{commitment:commitment??'finalized'}]});
+    await f.chain.snapshot(0,'active',105);
+    // Fixture RPC validates finalized on every source/target block and account cut.
+    assert.equal(f.calls.filter(c=>c.method==='getMultipleAccounts').length,1);
+  }
+  for(const commitment of ['processed','recent',null,1]){
+    assert.throws(()=>new SolanaWalletChain({} as Connection,{} as never,'https://indexer.invalid',
+      {preparationCommitment:commitment as never}),/invalid transaction preparation commitment/);
+  }
+});
 
 test('wallet snapshot promotes unchanged tree to one newer finalized account cut and propagates minimum slot',async()=>{
   const f=await fixture();f.accounts[0]!.data[355]=1;f.accounts[0]!.data.set(new PublicKey(key(12)).toBytes(),171);

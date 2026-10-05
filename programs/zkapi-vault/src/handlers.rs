@@ -435,6 +435,15 @@ fn command_error(e: zkapi_layout2::Error) -> anchor_lang::error::Error {
         _ => error!(VaultError::InvalidBinding),
     }
 }
+/// Authenticate the binding before restoring omitted inputs; all financial
+/// checks and effects still run through the existing canonical deposit handler.
+#[inline(never)]
+pub fn deposit_compact_v1(a: &Financial, bytes: &[u8]) -> Result<()> {
+    let p = pool(&a.pool)?;
+    let canonical =
+        zkapi_layout2::expand_deposit_compact_v1(bytes, &p.vault_binding).map_err(command_error)?;
+    run(a, Operation::Deposit, &canonical)
+}
 #[inline(never)]
 pub fn run(a: &Financial, op: Operation, bytes: &[u8]) -> Result<()> {
     let c = Command::decode(op, bytes).map_err(command_error)?;

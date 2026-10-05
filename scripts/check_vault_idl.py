@@ -51,6 +51,10 @@ INSTRUCTION_ACCOUNTS = {
         {"name": "financial", "accounts": FINANCIAL_ACCOUNTS},
         account("token_owner_signer", signer=True),
     ],
+    "deposit_compact_v1": [
+        {"name": "financial", "accounts": FINANCIAL_ACCOUNTS},
+        account("token_owner_signer", signer=True),
+    ],
     "mutual_close": FINANCIAL_ACCOUNTS,
     "initiate_escape": FINANCIAL_ACCOUNTS,
     "challenge_escape": FINANCIAL_ACCOUNTS,
@@ -118,10 +122,22 @@ def validate(idl):
     }
     for name, args in buffer_args.items():
         assert instructions[name]["args"] == args, f"{name}: buffer wire differs"
+    assert instructions["deposit_compact_v1"]["args"] == [
+        {"name": "expected_id", "type": "u32"},
+        {"name": "expected_root", "type": {"array": ["u8", 32]}},
+        {"name": "expiry", "type": "u64"},
+        {"name": "commitment", "type": {"array": ["u8", 32]}},
+        {"name": "amount", "type": "u64"},
+        {"name": "new_root", "type": {"array": ["u8", 32]}},
+        {"name": "new_leaf", "type": {"array": ["u8", 32]}},
+        {"name": "transition_tag", "type": {"array": ["u8", 32]}},
+        {"name": "tree_proof", "type": {"array": ["u8", 256]}},
+    ], "deposit_compact_v1: compact wire differs"
     # Fixed args only; Anchor adds the eight-byte discriminator.
     lengths = {
         "initialize_pool": 280,
         "deposit": 692,
+        "deposit_compact_v1": 436,
         "mutual_close": 1312,
         "initiate_escape": 1312,
         "challenge_escape": 1252,

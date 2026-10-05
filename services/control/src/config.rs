@@ -13,6 +13,21 @@ use std::{
     net::SocketAddr,
     path::{Path, PathBuf},
 };
+// Exact compiler-backed IDL from 94b4116728d3e9ee111dd161d16f50eeba592e46,
+// before deposit_compact_v1 was added. Existing local
+// manifests retain this independently pinned hash; accepting it never enables
+// compact sends or rewrites the manifest identity.
+const LEGACY_BUFFER_IDL_HASH: &str =
+    "73b6fa42aeba639589d59d1c2264653c8cda6a4c4ac0ca67a96653a8db9fb594";
+fn advertises_compact_deposit(manifest: &Value) -> bool {
+    manifest["transaction_formats"]
+        .as_array()
+        .is_some_and(|formats| {
+            formats
+                .iter()
+                .any(|format| format == "v0_inline_deposit_v1")
+        })
+}
 #[derive(Clone, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct RuntimeConfig {
@@ -142,10 +157,19 @@ impl DevnetConfig {
             "devnet program/build pin"
         );
         let mut idl: Value = serde_json::from_slice(&idl_bytes)?;
-        let local_idl: Value =
+        let mut local_idl: Value =
             serde_json::from_str(include_str!("../../../docs/contracts/zkapi_vault.json"))?;
         ensure!(idl["address"] == build.program_id, "devnet IDL program ID");
         idl["address"] = local_idl["address"].clone();
+        if idl != local_idl && !advertises_compact_deposit(manifest) {
+            // The compact upgrade adds only this instruction. Preserve exact
+            // legacy wire checking for already funded deployments, while the
+            // authenticated capability still requires the complete new IDL.
+            local_idl["instructions"]
+                .as_array_mut()
+                .context("build IDL instructions")?
+                .retain(|instruction| instruction["name"] != "deposit_compact_v1");
+        }
         ensure!(
             idl == local_idl,
             "devnet IDL must preserve build wire contract"
@@ -221,11 +245,13 @@ impl RuntimeConfig {
         wire::base64_exact::<64>(signature)?;
         wire::hash(self.manifest["idl_hash"].as_str().context("IDL hash")?)?;
         if self.devnet.is_none() {
+            let current_idl_hash = hex::encode(wire::sha256(include_bytes!(
+                "../../../docs/contracts/zkapi_vault.json"
+            )));
             ensure!(
-                self.manifest["idl_hash"]
-                    == hex::encode(wire::sha256(include_bytes!(
-                        "../../../docs/contracts/zkapi_vault.json"
-                    ))),
+                self.manifest["idl_hash"] == current_idl_hash
+                    || (!advertises_compact_deposit(&self.manifest)
+                        && self.manifest["idl_hash"] == LEGACY_BUFFER_IDL_HASH),
                 "IDL/build pin"
             );
         }

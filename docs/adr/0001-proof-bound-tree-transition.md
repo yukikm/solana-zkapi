@@ -2,6 +2,8 @@
 
 状態：**実装方針として採用**（2026-10-03 JST）。ユーザーの「実装ができるようにReadyな状態にすべく設計」に基づく。production配備・G1合格の承認ではない。
 
+2026-10-06補足：[ADR-0003](0003-single-transaction-deposit.md)で、同じproof/public inputsを使うcompact入金を追加実装した。独立build pinと署名manifestが対応する新規depositのみ選択可能で、旧journal・退出等のmandatory bufferは維持する。公開canary/Phantom受入は未完了であり、稼働manifestの既定経路はまだ変更していない。
+
 ## 問題と実測
 
 固定Ethereum zkAPIのrequest/withdrawal回路、Poseidon、32段treeを維持する。元treeを直接SBFで計算すると約2.18億CU。最初の追加tree証明案にもprogramでのtransition tag再計算が残り、全体で約1,034〜1,065万CUだった。同一ハッシュの演算最適化でもtag単体が約262万CU。標準Poseidon syscallは異なるspongeで出力が一致しない。

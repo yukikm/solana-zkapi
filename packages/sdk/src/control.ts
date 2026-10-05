@@ -7,7 +7,8 @@ import { EncryptedJournal, type JournalRecord } from './journal.ts';
 import { parseStrictJson, jcsBytes, sha256Hex, verifyEd25519, verifyArtifactBundle, verifyPoolConfig,
   type VerifiedManifest, type ArtifactBundle, type FinalizedPoolAccount } from './trust.ts';
 import { validateWitness, type NoteWitness } from './prover.ts';
-import type { WalletJournal } from './wallet.ts';
+import { validateInlineDepositPlanRecord, validateInlineDepositAttemptRecord } from './transport.ts';
+import type { WalletJournal, WalletOperation } from './wallet.ts';
 
 export type Mode = 'proxy' | 'direct_oa' | 'direct_openrouter';
 export interface Point { x: string; y: string }
@@ -101,7 +102,7 @@ export interface PendingSession {
   closeRequested?: boolean;
 }
 export interface NoteJournal {
-  schema: 1; state: PrivateState; pending: PendingSession | null;
+  schema: 1 | 2; state: PrivateState; pending: PendingSession | null;
   /** Full prover witness stays in the same encrypted record as control state. */
   witness?: NoteWitness;
   wallet?: WalletJournal;
@@ -117,6 +118,7 @@ const states = new Set(['RESERVED', 'ISSUING', 'ISSUANCE_UNKNOWN', 'ACTIVE', 'DR
 const routes = new Set(['/v1/chat/completions', '/v1/responses', '/v1/messages', '/v1/messages/count_tokens']);
 function requireTrue(v: unknown, message: string): asserts v { if (!v) throw new Error(message); }
 function object(v: unknown): asserts v is Record<string, unknown> { requireTrue(v && typeof v === 'object' && !Array.isArray(v), 'invalid object'); }
+function allowedFields(value: object, allowed: readonly string[]): void { object(value); requireTrue(Object.keys(value).every(k=>allowed.includes(k)), 'unknown journal field'); }
 function uuid(v: string): void { requireTrue(typeof v === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/.test(v), 'UUIDv4 required'); }
 function point(p: Point): void { object(p); parseField(p.x); parseField(p.y); }
 function privateState(s: PrivateState): void {
@@ -139,13 +141,15 @@ function pendingSession(p: PendingSession): void {
   }
 }
 export function validateNoteJournal(value: unknown): asserts value is NoteJournal {
-  object(value); requireTrue(value.schema === 1 && Array.isArray(value.history), 'invalid note journal');
+  object(value); requireTrue((value.schema === 1 || value.schema === 2) && Array.isArray(value.history), 'invalid note journal');
+  if(value.schema===2)allowedFields(value,['schema','state','pending','witness','wallet','history']);
   privateState(value.state as PrivateState);
   if (value.witness !== undefined) validateWitness(value.witness);
   if (value.wallet !== undefined) {
     const w = value.wallet as WalletJournal;
     requireTrue(w && ['unfunded','active','pending_escape','closed'].includes(w.status) && Array.isArray(w.history), 'invalid wallet journal');
     requireTrue(value.witness !== undefined, 'wallet witness missing');
+    if(value.schema===2)allowedFields(w,['status','clearance','clearedAuthorization','operation','history']);
     if (w.clearance) { parseField(w.clearance.nullifier); requireTrue(['requested','verified'].includes(w.clearance.phase), 'invalid clearance journal'); }
     if (w.clearedAuthorization !== undefined) {
       const archived = w.clearedAuthorization; object(archived);
@@ -164,19 +168,85 @@ export function validateNoteJournal(value: unknown): asserts value is NoteJourna
       inputs.forEach(parseField);
       requireTrue(inputs[8] === w.clearance.nullifier, 'cleared authorization nullifier changed');
     }
-    if (w.operation) {
-      requireTrue(['deposit','mutual_close','initiate_escape','finalize_escape'].includes(w.operation.kind)
-        && ['proving','ready','stale','closing_stale','failed'].includes(w.operation.phase)
-        && Array.isArray(w.operation.attempts) && Number.isInteger(w.operation.step) && w.operation.step >= 0, 'invalid financial operation');
+    for (const operation of [...w.history, ...(w.operation ? [w.operation] : [])]) {
+      requireTrue(operation && typeof operation === 'object', 'invalid wallet operation');
+      const inline = operation.transport === 'v0_inline_deposit_v1';
+      requireTrue(operation.transport === undefined || operation.transport === 'v0_buffer' || inline, 'unknown wallet transport');
+      requireTrue(value.schema === 2 || !inline && !operation.inlinePlan && operation.attempts?.every(a => a.kind !== 'deposit_inline' && a.schema === 1), 'schema 1 cannot contain inline deposit');
+      requireTrue(['deposit','mutual_close','initiate_escape','finalize_escape'].includes(operation.kind)
+        && ['proving','ready','stale','closing_stale','failed','cancelled'].includes(operation.phase)
+        && Array.isArray(operation.attempts) && Number.isInteger(operation.step) && operation.step >= 0, 'invalid financial operation');
       const signatures = new Set();
-      for (const attempt of w.operation.attempts) {
-        requireTrue(attempt.schema === 1 && typeof attempt.signature === 'string' && !signatures.has(attempt.signature)
+      for (const attempt of operation.attempts) {
+        requireTrue((inline ? attempt.schema === 2 && attempt.kind === 'deposit_inline' : attempt.schema === 1)
+          && typeof attempt.signature === 'string' && !signatures.has(attempt.signature)
           && typeof attempt.wireHex === 'string' && /^(?:[0-9a-f]{2})+$/.test(attempt.wireHex), 'invalid financial attempt'); signatures.add(attempt.signature);
+        if (attempt.kind === 'deposit_inline') validateInlineDepositAttemptRecord(attempt);
       }
-      requireTrue(w.operation.current === undefined || signatures.has(w.operation.current), 'missing current financial attempt');
+      requireTrue(operation.current === undefined || signatures.has(operation.current), 'missing current financial attempt');
+      if (inline) {
+        if(operation===w.operation)requireTrue(w.status==='unfunded'&&value.pending===null&&w.clearance===undefined,'inline deposit requires unfunded note');
+        validateInlineWalletOperation(operation,operation===w.operation);
+      }
+      else {
+        requireTrue(operation.inlinePlan === undefined, 'buffer operation contains inline plan');
+        if(value.schema===2){
+          allowedFields(operation,['id','kind','phase','roles','destinationOwner','plan','finalization','step','attempts','current','finalized','expiredCreations','transport']);
+          allowedFields(operation.roles,['uploader','rentPayer','feePayer','payer','tokenOwner']);
+          const planFields=['programId','pool','operation','payloadHex','nonceHex','expires','uploader','rentPayer','feePayer','snapshotSlot','snapshotSequence','expectedRoot','expectedNoteId','financial','priorityFeeMicroLamports'];
+          if(operation.plan)allowedFields(operation.plan,planFields);
+          requireTrue(operation.kind==='finalize_escape'?operation.plan===undefined:operation.finalization===undefined,'mixed financial plans');
+          for(const attempt of operation.attempts){
+            allowedFields(attempt,['schema','kind','signature','wireHex','blockhash','lastValidBlockHeight',...(attempt.kind==='finalize'?['finalization']:['planDigest','buffer','plan','closer'])]);
+            if(attempt.kind!=='finalize'&&attempt.kind!=='deposit_inline')allowedFields(attempt.plan,planFields);
+          }
+        }
+      }
     }
   }
   if (value.pending !== null) pendingSession(value.pending as PendingSession);
+}
+
+function validateInlineWalletOperation(op: WalletOperation, active: boolean): void {
+  requireTrue(op.transport === 'v0_inline_deposit_v1' && op.kind === 'deposit' && op.step === 0, 'invalid inline operation');
+  const allowed = ['id','kind','phase','roles','transport','inlineContext','inlinePlan','priorityFeeMicroLamports','step','attempts','current','finalized','rejectedInline'];
+  requireTrue(Object.keys(op).every(k => allowed.includes(k)) && !['closing_stale','cancelled'].includes(op.phase), 'invalid inline operation fields');
+  uuid(op.id); object(op.roles); object(op.inlineContext);
+  requireTrue(Object.keys(op.inlineContext).sort().join(',')==='deploymentId,manifestHash,mint,pool,programId,vaultBinding','invalid inline deployment context');
+  requireTrue(typeof op.inlineContext.deploymentId==='string'&&op.inlineContext.deploymentId.length>0&&/^[0-9a-f]{64}$/.test(op.inlineContext.manifestHash),'invalid inline deployment pins');
+  parseField(op.inlineContext.vaultBinding);
+  requireTrue(Object.keys(op.roles).sort().join(',') === 'feePayer,payer,tokenOwner', 'invalid inline role fields');
+  if (op.priorityFeeMicroLamports !== undefined) {
+    requireTrue(typeof op.priorityFeeMicroLamports === 'string' && /^(0|[1-9][0-9]*)$/.test(op.priorityFeeMicroLamports)
+      && BigInt(op.priorityFeeMicroLamports) <= 0xffffffffffffffffn, 'invalid inline priority fee');
+  }
+  if (op.inlinePlan) {
+    validateInlineDepositPlanRecord(op.inlinePlan);
+    requireTrue(op.priorityFeeMicroLamports === undefined || op.priorityFeeMicroLamports === (op.inlinePlan.priorityFeeMicroLamports ?? '0'), 'inline priority fee changed');
+    requireTrue(Object.entries(op.inlineContext).every(([k,v])=>op.inlinePlan![k as keyof typeof op.inlineContext]===v),'inline plan deployment changed');
+    requireTrue(op.inlinePlan.financial.tokenOwner === op.roles.tokenOwner && op.inlinePlan.financial.payer === op.roles.payer && op.inlinePlan.feePayer === op.roles.feePayer, 'inline roles changed');
+  }
+  requireTrue(op.phase === 'proving' ? op.inlinePlan === undefined && op.current === undefined : !!op.inlinePlan, 'invalid inline preparation phase');
+  requireTrue(Array.isArray(op.finalized) && (active ? op.finalized.length===0 : op.finalized.length===1&&op.current===undefined&&op.phase==='ready'), 'invalid inline finality');
+  for (const final of op.finalized) requireTrue(op.attempts.some(a => a.signature === final.signature) && Number.isSafeInteger(final.slot) && final.slot >= 0, 'invalid inline finality');
+  const rejected = new Set<string>();
+  for (const evidence of op.rejectedInline ?? []) {
+    requireTrue(Object.keys(evidence).sort().join(',') === 'signature,slot' && !rejected.has(evidence.signature) && op.attempts.some(a => a.signature === evidence.signature) && Number.isSafeInteger(evidence.slot) && evidence.slot >= 0, 'invalid inline rejection evidence');
+    rejected.add(evidence.signature);
+  }
+  for (const attempt of op.attempts) {
+    requireTrue(attempt.kind === 'deposit_inline', 'mixed inline transport history');
+    requireTrue(op.priorityFeeMicroLamports === undefined || op.priorityFeeMicroLamports === (attempt.plan.priorityFeeMicroLamports ?? '0'), 'inline attempt priority fee changed');
+    requireTrue(Object.entries(op.inlineContext).every(([k,v])=>attempt.plan[k as keyof typeof op.inlineContext]===v),'inline attempt deployment changed');
+    requireTrue(attempt.plan.financial.tokenOwner === op.roles.tokenOwner && attempt.plan.financial.payer === op.roles.payer && attempt.plan.feePayer === op.roles.feePayer, 'inline attempt roles changed');
+  }
+  if (op.current) {
+    const current = op.attempts.find(a => a.signature === op.current)!;
+    requireTrue(op.phase === 'ready' && current.kind === 'deposit_inline' && JSON.stringify(current.plan) === JSON.stringify(op.inlinePlan) && !rejected.has(op.current), 'inline current plan changed');
+  }
+  const terminalSignature = op.current ?? op.finalized[0]?.signature
+    ?? (op.phase==='stale'||op.phase==='failed'?op.attempts.at(-1)?.signature:undefined);
+  requireTrue(op.attempts.every(a=>a.signature===terminalSignature?!rejected.has(a.signature):rejected.has(a.signature)), 'unresolved inline attempt cannot be replaced');
 }
 
 export interface ClientOptions {

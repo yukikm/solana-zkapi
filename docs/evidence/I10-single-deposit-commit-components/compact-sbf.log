@@ -1,0 +1,9 @@
+   Compiling zkapi-layout2 v0.1.0 (/private/var/folders/d5/cmyw7m5n7fzc9dq4ttm4kn9m0000gn/T/zkapi-compact-commit-sved3mpc/repo/crates/zkapi-layout2)
+   Compiling zkapi-vault v0.1.0 (/private/var/folders/d5/cmyw7m5n7fzc9dq4ttm4kn9m0000gn/T/zkapi-compact-commit-sved3mpc/repo/programs/zkapi-vault)
+   Compiling zkapi-poseidon v0.1.0 (/private/var/folders/d5/cmyw7m5n7fzc9dq4ttm4kn9m0000gn/T/zkapi-compact-commit-sved3mpc/repo/crates/zkapi-poseidon)
+   Compiling zkapi-solana-types v0.1.0 (/private/var/folders/d5/cmyw7m5n7fzc9dq4ttm4kn9m0000gn/T/zkapi-compact-commit-sved3mpc/repo/crates/zkapi-solana-types)
+   Compiling zkapi-solana-crypto v0.1.0 (/private/var/folders/d5/cmyw7m5n7fzc9dq4ttm4kn9m0000gn/T/zkapi-compact-commit-sved3mpc/repo/crates/zkapi-solana-crypto)
+   Compiling zkapi-i02-svm v0.1.0 (/private/var/folders/d5/cmyw7m5n7fzc9dq4ttm4kn9m0000gn/T/zkapi-compact-commit-sved3mpc/repo/tests/svm)
+    Finished `dev` profile [optimized + debuginfo] target(s) in 4.11s
+     Running `tests/svm/target/debug/compact_deposit /private/var/folders/d5/cmyw7m5n7fzc9dq4ttm4kn9m0000gn/T/zkapi-compact-commit-sved3mpc/repo/target/single-deposit-sbf/zkapi_vault.so /private/var/folders/d5/cmyw7m5n7fzc9dq4ttm4kn9m0000gn/T/zkapi-compact-commit-sved3mpc/repo/target/single-deposit-acceptance/run-x97bxrwy/svm-results.json`
+compact deposit: 61 real SBF cases passed; max 179148 CU; report /private/var/folders/d5/cmyw7m5n7fzc9dq4ttm4kn9m0000gn/T/zkapi-compact-commit-sved3mpc/repo/target/single-deposit-acceptance/run-x97bxrwy/svm-results.json

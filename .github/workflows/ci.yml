@@ -124,6 +124,12 @@ jobs:
         run: |
           bash scripts/run_i04.sh
           git diff --exit-code -- docs/contracts/zkapi_vault.json
+      - name: Compact deposit SDK wire, real Vault and replay regression
+        env:
+          ZKAPI_NODE: node
+        run: |
+          cargo run --locked --manifest-path tests/svm/Cargo.toml --bin compact_deposit -- target/i04-sbf/zkapi_vault.so target/single-deposit/svm-results.json
+          cargo run --locked --manifest-path services/indexer/Cargo.toml --example verify_compact_history -- target/single-deposit/sdk-history.json > target/single-deposit/indexer-sbf-results.json
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: I04-local-real-SBF-transport-not-production
@@ -131,6 +137,7 @@ jobs:
             target/i04/**
             target/i04-sbf/*.so
             target/i04-sbf-wrong/*.so
+            target/single-deposit/**
             docs/evidence/I04*.json
           if-no-files-found: error
   control:

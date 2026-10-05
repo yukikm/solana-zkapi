@@ -2792,7 +2792,8 @@
               "enum": [
                 "v0_buffer",
                 "v0_inline",
-                "v1_inline"
+                "v1_inline",
+                "v0_inline_deposit_v1"
               ]
             },
             "minItems": 1,

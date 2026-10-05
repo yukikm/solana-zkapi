@@ -1,0 +1,10 @@
+   Compiling zkapi-layout2 v0.1.0 (/private/var/folders/d5/cmyw7m5n7fzc9dq4ttm4kn9m0000gn/T/zkapi-compact-commit-sved3mpc/repo/crates/zkapi-layout2)
+   Compiling zkapi-vault v0.1.0 (/private/var/folders/d5/cmyw7m5n7fzc9dq4ttm4kn9m0000gn/T/zkapi-compact-commit-sved3mpc/repo/programs/zkapi-vault)
+   Compiling zkapi-vault-idl v0.1.0 (/private/var/folders/d5/cmyw7m5n7fzc9dq4ttm4kn9m0000gn/T/zkapi-compact-commit-sved3mpc/repo/tools/vault-idl)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 2.00s
+     Running `tools/vault-idl/target/debug/zkapi-vault-idl /private/var/folders/d5/cmyw7m5n7fzc9dq4ttm4kn9m0000gn/T/zkapi-compact-commit-sved3mpc/repo/target/single-deposit-acceptance/run-x97bxrwy/generated-vault.json`
+   Compiling zkapi-layout2 v0.1.0 (/private/var/folders/d5/cmyw7m5n7fzc9dq4ttm4kn9m0000gn/T/zkapi-compact-commit-sved3mpc/repo/crates/zkapi-layout2)
+   Compiling zkapi-vault v0.1.0 (/private/var/folders/d5/cmyw7m5n7fzc9dq4ttm4kn9m0000gn/T/zkapi-compact-commit-sved3mpc/repo/programs/zkapi-vault)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 2.13s
+     Running unittests src/lib.rs (target/debug/deps/zkapi_vault-fcca4499776f10a3)
+Generated /private/var/folders/d5/cmyw7m5n7fzc9dq4ttm4kn9m0000gn/T/zkapi-compact-commit-sved3mpc/repo/target/single-deposit-acceptance/run-x97bxrwy/generated-vault.json

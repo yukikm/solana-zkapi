@@ -1,0 +1,428 @@
+TAP version 13
+# Subtest: production demo runs from the presentation bundle without API/wallet calls or changing stored live data
+ok 1 - production demo runs from the presentation bundle without API/wallet calls or changing stored live data
+  ---
+  duration_ms: 659.523084
+  type: 'test'
+  ...
+# Subtest: Chrome fixtures: wallet rejection/reload and provider one-send/reload/verified-settlement UI share existing SDK journals
+not ok 2 - Chrome fixtures: wallet rejection/reload and provider one-send/reload/verified-settlement UI share existing SDK journals
+  ---
+  duration_ms: 519.320583
+  type: 'test'
+  location: '/Users/yukikimura/work/solana-zkapi/scripts/i10-wallet-ui/browser.test.ts:96:1'
+  failureType: 'testCodeFailure'
+  error: |-
+    SyntaxError: Unexpected end of JSON input
+        at JSON.parse (<anonymous>)
+        at <anonymous>:1:6
+  code: 'ERR_TEST_FAILURE'
+  stack: |-
+    JSON.parse (<anonymous>)
+    <anonymous>:1:6
+    Cdp.evaluate (file:///Users/yukikimura/work/solana-zkapi/scripts/i10-wallet-ui/browser.test.ts:23:172)
+    async Cdp.wait (file:///Users/yukikimura/work/solana-zkapi/scripts/i10-wallet-ui/browser.test.ts:24:72)
+    async TestContext.<anonymous> (file:///Users/yukikimura/work/solana-zkapi/scripts/i10-wallet-ui/browser.test.ts:123:3)
+    async Test.run (node:internal/test_runner/test:1389:7)
+    async Test.processPendingSubtests (node:internal/test_runner/test:960:7)
+  ...
+# Runtime browser: Chrome/154.0.8037.95
+# Subtest: production build defaults to live with a separate sample; reused fixture output removes the sample
+ok 3 - production build defaults to live with a separate sample; reused fixture output removes the sample
+  ---
+  duration_ms: 80.063625
+  type: 'test'
+  ...
+# Subtest: initial deposit retains legacy ID and uses two USDC; reopened SDK operation blocks replacement
+ok 4 - initial deposit retains legacy ID and uses two USDC; reopened SDK operation blocks replacement
+  ---
+  duration_ms: 19.8875
+  type: 'test'
+  ...
+# Subtest: closed-note rotation preserves prior ciphertext and history; reload selects the new note
+ok 5 - closed-note rotation preserves prior ciphertext and history; reload selects the new note
+  ---
+  duration_ms: 23.757333
+  type: 'test'
+  ...
+# Subtest: two independent journal clients cannot allocate two new active deposits
+ok 6 - two independent journal clients cannot allocate two new active deposits
+  ---
+  duration_ms: 36.455417
+  type: 'test'
+  ...
+# Subtest: failure after SDK creation reopens that saved operation; failure before creation reuses the same absent ID
+ok 7 - failure after SDK creation reopens that saved operation; failure before creation reuses the same absent ID
+  ---
+  duration_ms: 13.244584
+  type: 'test'
+  ...
+# Subtest: paid active legacy balance, uncertain sessions, and incomplete withdrawals never allow a new deposit
+ok 8 - paid active legacy balance, uncertain sessions, and incomplete withdrawals never allow a new deposit
+  ---
+  duration_ms: 10.307
+  type: 'test'
+  ...
+# Subtest: discovery refuses a later run while an earlier note remains unresolved
+ok 9 - discovery refuses a later run while an earlier note remains unresolved
+  ---
+  duration_ms: 26.515583
+  type: 'test'
+  ...
+# Subtest: read-only budget snapshot validates identity and exact integer accounting; zero availability is valid
+ok 10 - read-only budget snapshot validates identity and exact integer accounting; zero availability is valid
+  ---
+  duration_ms: 1.743
+  type: 'test'
+  ...
+# Subtest: fixed demo projections conserve integer USDC and charge only on settlement
+ok 11 - fixed demo projections conserve integer USDC and charge only on settlement
+  ---
+  duration_ms: 0.721333
+  type: 'test'
+  ...
+# Subtest: manual next is single-step, and reset fences an already queued transition
+ok 12 - manual next is single-step, and reset fences an already queued transition
+  ---
+  duration_ms: 0.644667
+  type: 'test'
+  ...
+# Subtest: autoplay pauses without stale progress, then finishes once and disposes timers
+ok 13 - autoplay pauses without stale progress, then finishes once and disposes timers
+  ---
+  duration_ms: 0.569791
+  type: 'test'
+  ...
+# Subtest: provider failure preserves finite HTTP/code diagnostics without upstream values
+ok 14 - provider failure preserves finite HTTP/code diagnostics without upstream values
+  ---
+  duration_ms: 0.35725
+  type: 'test'
+  ...
+# Subtest: diagnostics distinguish signing guards without echoing arbitrary data
+ok 15 - diagnostics distinguish signing guards without echoing arbitrary data
+  ---
+  duration_ms: 0.077125
+  type: 'test'
+  ...
+# Subtest: saved-attempt recovery failures use exact finite labels and never echo details
+ok 16 - saved-attempt recovery failures use exact finite labels and never echo details
+  ---
+  duration_ms: 0.110291
+  type: 'test'
+  ...
+# Subtest: known browser exception names return fixed labels without their message
+ok 17 - known browser exception names return fixed labels without their message
+  ---
+  duration_ms: 0.085041
+  type: 'test'
+  ...
+# Subtest: presentation assets use an exact route allowlist and preserve the live document without backend calls
+ok 18 - presentation assets use an exact route allowlist and preserve the live document without backend calls
+  ---
+  duration_ms: 56.705666
+  type: 'test'
+  ...
+# Subtest: fixture output keeps root and live on the existing document, and partial demo output fails closed
+ok 19 - fixture output keeps root and live on the existing document, and partial demo output fails closed
+  ---
+  duration_ms: 8.908541
+  type: 'test'
+  ...
+# Subtest: loopback host denies foreign origins, arbitrary provider/routes/batch RPC and financial sends by default
+ok 20 - loopback host denies foreign origins, arbitrary provider/routes/batch RPC and financial sends by default
+  ---
+  duration_ms: 9.136958
+  type: 'test'
+  ...
+# Subtest: financial relay uses default preparation with exact signed v0, genesis, pool and fee guards
+ok 21 - financial relay uses default preparation with exact signed v0, genesis, pool and fee guards
+  ---
+  duration_ms: 44.692084
+  type: 'test'
+  ...
+# Subtest: financial relay uses confirmed preparation with exact signed v0, genesis, pool and fee guards
+ok 22 - financial relay uses confirmed preparation with exact signed v0, genesis, pool and fee guards
+  ---
+  duration_ms: 19.954084
+  type: 'test'
+  ...
+# Subtest: invalid preparation commitment fails before file reads, RPC or listener startup
+ok 23 - invalid preparation commitment fails before file reads, RPC or listener startup
+  ---
+  duration_ms: 0.283916
+  type: 'test'
+  ...
+# Subtest: explicit history endpoint receives only transaction reads after its own Devnet pin; primary reads remain primary
+ok 24 - explicit history endpoint receives only transaction reads after its own Devnet pin; primary reads remain primary
+  ---
+  duration_ms: 13.572709
+  type: 'test'
+  ...
+# Subtest: history identity failures stop before transaction lookup and never fall back, retry or expose credentials
+ok 25 - history identity failures stop before transaction lookup and never fall back, retry or expose credentials
+  ---
+  duration_ms: 7.697958
+  type: 'test'
+  ...
+# Subtest: history RPC and HTTP failures stay failures; only an actual successful null result represents absence
+ok 26 - history RPC and HTTP failures stay failures; only an actual successful null result represents absence
+  ---
+  duration_ms: 2.326375
+  type: 'test'
+  ...
+# Subtest: read-only host refuses permanent clearance; upstream HTTP/RPC error credentials never reach browser
+ok 27 - read-only host refuses permanent clearance; upstream HTTP/RPC error credentials never reach browser
+  ---
+  duration_ms: 6.034916
+  type: 'test'
+  ...
+# Subtest: provider bridge allows only bound native control routes and canonical receipt cursors
+ok 28 - provider bridge allows only bound native control routes and canonical receipt cursors
+  ---
+  duration_ms: 43.337834
+  type: 'test'
+  ...
+# Subtest: read-only provider bridge blocks AUTH, quote, close and inference before reservation or forwarding
+ok 29 - read-only provider bridge blocks AUTH, quote, close and inference before reservation or forwarding
+  ---
+  duration_ms: 5.868459
+  type: 'test'
+  ...
+# Subtest: provider error status and fixed code reach browser while private body and unknown headers do not
+ok 30 - provider error status and fixed code reach browser while private body and unknown headers do not
+  ---
+  duration_ms: 2.940375
+  type: 'test'
+  ...
+# Subtest: provider budget is an exact read-only route with origin checks and redacted failures
+ok 31 - provider budget is an exact read-only route with origin checks and redacted failures
+  ---
+  duration_ms: 16.902791
+  type: 'test'
+  ...
+# Subtest: prepared UI profile uses existing global budget and refuses concurrent/restarted inference replay
+ok 32 - prepared UI profile uses existing global budget and refuses concurrent/restarted inference replay
+  ---
+  duration_ms: 340.255958
+  type: 'test'
+  ...
+# Subtest: explicit demo bridge burns a separate session/operation reservation and preserves the completed acceptance reservation
+ok 33 - explicit demo bridge burns a separate session/operation reservation and preserves the completed acceptance reservation
+  ---
+  duration_ms: 569.551459
+  type: 'test'
+  ...
+# Subtest: compact deposit offers one signature and explicit rejection recovery, never expired-setup recovery
+ok 34 - compact deposit offers one signature and explicit rejection recovery, never expired-setup recovery
+  ---
+  duration_ms: 0.977291
+  type: 'test'
+  ...
+# Subtest: expired setup recovery is offered only for unresolved create-only deposits
+ok 35 - expired setup recovery is offered only for unresolved create-only deposits
+  ---
+  duration_ms: 0.267083
+  type: 'test'
+  ...
+# Subtest: expired mutual-close setup is offered only with verified clearance and create-only saved attempts
+ok 36 - expired mutual-close setup is offered only with verified clearance and create-only saved attempts
+  ---
+  duration_ms: 0.246416
+  type: 'test'
+  ...
+# Subtest: unfunded or disconnected state never presents candidate deposit as usable money
+ok 37 - unfunded or disconnected state never presents candidate deposit as usable money
+  ---
+  duration_ms: 0.104875
+  type: 'test'
+  ...
+# Subtest: active deposit is available only without unresolved session or wallet operation
+ok 38 - active deposit is available only without unresolved session or wallet operation
+  ---
+  duration_ms: 0.073333
+  type: 'test'
+  ...
+# Subtest: unknown AUTH remains distinguishable from an accepted session and successful API response
+ok 39 - unknown AUTH remains distinguishable from an accepted session and successful API response
+  ---
+  duration_ms: 0.075208
+  type: 'test'
+  ...
+# Subtest: unknown inference prevents replay instructions even when session is active or closing
+ok 40 - unknown inference prevents replay instructions even when session is active or closing
+  ---
+  duration_ms: 0.088458
+  type: 'test'
+  ...
+# Subtest: current-page response observation explains a saved unknown operation without advancing financial state
+ok 41 - current-page response observation explains a saved unknown operation without advancing financial state
+  ---
+  duration_ms: 0.322917
+  type: 'test'
+  ...
+# Subtest: a received answer is not a signed settlement or a paid charge
+ok 42 - a received answer is not a signed settlement or a paid charge
+  ---
+  duration_ms: 0.07375
+  type: 'test'
+  ...
+# Subtest: terminal absence and close intent do not encourage an API send
+ok 43 - terminal absence and close intent do not encourage an API send
+  ---
+  duration_ms: 0.109583
+  type: 'test'
+  ...
+# Subtest: only verified settlement history contributes to paid; latest pending session stays unverified
+ok 44 - only verified settlement history contributes to paid; latest pending session stays unverified
+  ---
+  duration_ms: 0.166083
+  type: 'test'
+  ...
+# Subtest: zero-charge and operator-loss waiver do not establish successful API use
+ok 45 - zero-charge and operator-loss waiver do not establish successful API use
+  ---
+  duration_ms: 0.101625
+  type: 'test'
+  ...
+# Subtest: mutual-close return amount requires closed note and exact finalized execute signature
+ok 46 - mutual-close return amount requires closed note and exact finalized execute signature
+  ---
+  duration_ms: 0.082833
+  type: 'test'
+  ...
+# Subtest: escape status, current signature and failed operation retain recovery presentation
+ok 47 - escape status, current signature and failed operation retain recovery presentation
+  ---
+  duration_ms: 0.051541
+  type: 'test'
+  ...
+# Subtest: signed clearance and missing provider never offer another API authorization
+ok 48 - signed clearance and missing provider never offer another API authorization
+  ---
+  duration_ms: 0.03875
+  type: 'test'
+  ...
+# Subtest: integer formatting preserves micro-USDC beyond JavaScript safe integer precision
+ok 49 - integer formatting preserves micro-USDC beyond JavaScript safe integer precision
+  ---
+  duration_ms: 0.054416
+  type: 'test'
+  ...
+# Subtest: busy/disconnected headlines take precedence, and projection leaves journal byte-equivalent
+ok 50 - busy/disconnected headlines take precedence, and projection leaves journal byte-equivalent
+  ---
+  duration_ms: 0.082042
+  type: 'test'
+  ...
+# Subtest: repeat demo explains the exact authorization reserve without enabling an underfunded request
+ok 51 - repeat demo explains the exact authorization reserve without enabling an underfunded request
+  ---
+  duration_ms: 0.100209
+  type: 'test'
+  ...
+# Subtest: disabled-request hints distinguish reconnect, saved recovery, clearance and completed run
+ok 52 - disabled-request hints distinguish reconnect, saved recovery, clearance and completed run
+  ---
+  duration_ms: 0.085625
+  type: 'test'
+  ...
+# Subtest: fixed browser body equals parent budget template; prepares after snapshot and verifies charge through SDK before withdrawal is available
+ok 53 - fixed browser body equals parent budget template; prepares after snapshot and verifies charge through SDK before withdrawal is available
+  ---
+  duration_ms: 131.6805
+  type: 'test'
+  ...
+# Subtest: lost AUTH can only resend its exact bytes; lost inference stays one send after encrypted journal reopen
+ok 54 - lost AUTH can only resend its exact bytes; lost inference stays one send after encrypted journal reopen
+  ---
+  duration_ms: 126.021292
+  type: 'test'
+  ...
+# Subtest: invalid successor retains old balance and pending operation; explicit recovery succeeds without another inference
+ok 55 - invalid successor retains old balance and pending operation; explicit recovery succeeds without another inference
+  ---
+  duration_ms: 122.684875
+  type: 'test'
+  ...
+# Subtest: never-sent cancellation uses SDK cancellation; unknown inference absence requires terminal SDK reconciliation
+ok 56 - never-sent cancellation uses SDK cancellation; unknown inference absence requires terminal SDK reconciliation
+  ---
+  duration_ms: 147.911708
+  type: 'test'
+  ...
+# Subtest: two UI intents cannot create two operations; different body or case is rejected before control/inference
+ok 57 - two UI intents cannot create two operations; different body or case is rejected before control/inference
+  ---
+  duration_ms: 101.276791
+  type: 'test'
+  ...
+# Subtest: explicit demo uses a new AUTH and operation only after SDK verified the prior zero-charge successor
+ok 58 - explicit demo uses a new AUTH and operation only after SDK verified the prior zero-charge successor
+  ---
+  duration_ms: 269.647417
+  type: 'test'
+  ...
+# Subtest: a funded repeat demo preserves paid settlements and uses fresh request IDs across journal reopen
+ok 59 - a funded repeat demo preserves paid settlements and uses fresh request IDs across journal reopen
+  ---
+  duration_ms: 407.948334
+  type: 'test'
+  ...
+# Subtest: an untouched message remains equal despite a signature, without exposing private bytes or mutating either input
+ok 60 - an untouched message remains equal despite a signature, without exposing private bytes or mutating either input
+  ---
+  duration_ms: 2.920916
+  type: 'test'
+  ...
+# Subtest: blockhash mutation is distinguished from instruction or account changes
+ok 61 - blockhash mutation is distinguished from instruction or account changes
+  ---
+  duration_ms: 0.461417
+  type: 'test'
+  ...
+# Subtest: added or changed compute-unit price is reported exactly without authorizing message mutation
+ok 62 - added or changed compute-unit price is reported exactly without authorizing message mutation
+  ---
+  duration_ms: 0.812167
+  type: 'test'
+  ...
+# Subtest: an added assertion-like program keeps originals but is distinct from an unchanged instruction list
+ok 63 - an added assertion-like program keeps originals but is distinct from an unchanged instruction list
+  ---
+  duration_ms: 0.474125
+  type: 'test'
+  ...
+# Subtest: changed non-compute data, account or writable flags never count as retained
+ok 64 - changed non-compute data, account or writable flags never count as retained
+  ---
+  duration_ms: 0.796875
+  type: 'test'
+  ...
+# Subtest: non-compute comparison preserves order, multiplicity and signer flags
+ok 65 - non-compute comparison preserves order, multiplicity and signer flags
+  ---
+  duration_ms: 0.82725
+  type: 'test'
+  ...
+# Subtest: malformed or non-compute payloads never masquerade as decoded compute settings
+ok 66 - malformed or non-compute payloads never masquerade as decoded compute settings
+  ---
+  duration_ms: 1.0465
+  type: 'test'
+  ...
+# Subtest: unresolved ALT changes cannot establish byte-equivalent non-compute instructions
+ok 67 - unresolved ALT changes cannot establish byte-equivalent non-compute instructions
+  ---
+  duration_ms: 0.492625
+  type: 'test'
+  ...
+1..67
+# tests 67
+# suites 0
+# pass 66
+# fail 1
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 4701.312375

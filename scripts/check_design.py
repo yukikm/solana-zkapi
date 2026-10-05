@@ -144,6 +144,16 @@ check(tree['tree_update']=={'field_order':['public','proof'],'public_bytes':352,
 check(tree['buffer_payload_includes_discriminator'] is False, 'Buffer args only')
 check(tree['mandatory_transport']=='v0_buffer' and tree['compute_budget_target']==1000000
       and tree['v0_transaction_max_bytes']==1232, 'CU/transport target')
+compact=tree['compact_deposit']
+check(compact['name']=='deposit_compact_v1' and compact['capability']=='v0_inline_deposit_v1'
+      and compact['buffer_operation'] is False and compact['accounts']=='DepositAccounts', 'Compact deposit capability/accounts')
+check((compact['payload_bytes'],compact['instruction_data_bytes'],compact['canonical_payload_bytes'])==(436,444,692), 'Compact deposit sizes')
+check([(a['name'],a['bytes']) for a in compact['args']]==[
+    ('expected_id',4),('expected_root',32),('expiry',8),('commitment',32),('amount',8),
+    ('new_root',32),('new_leaf',32),('transition_tag',32),('tree_proof',256)], 'Compact deposit wire order')
+check(compact['public_inputs']==['verified_pool.vault_binding','expected_root','new_root','Fr(expected_id)',
+    'Fr(0)','new_leaf','commitment','Fr(amount)','Fr(expiry)','Fr(0)','transition_tag'], 'Compact restored public inputs')
+check(compact['discriminator_hex']==hashlib.sha256(b'global:deposit_compact_v1').digest()[:8].hex(), 'Compact discriminator')
 expected_ops = {'deposit':(0,0,692),'mutual_close':(1,1,1312),
     'initiate_escape':(2,1,1312),'challenge_escape':(3,2,1252),
     'claim_expired':(4,1,612),'finalize_escape':(None,None,4)}
@@ -156,6 +166,7 @@ for row in tree['instructions']:
     check(row['discriminator_hex']==hashlib.sha256(('global:'+row['name']).encode()).digest()[:8].hex(),
           'Anchor discriminator '+row['name'])
 manifest=schemas['Manifest']
+check('v0_inline_deposit_v1' in manifest['properties']['transaction_formats']['items']['enum'], 'Manifest compact capability')
 check(set(tree['circuit_profile_fields']) <= set(manifest['required']), 'Profile fields in Manifest')
 for key,value in [('protocol_layout_version',2),('tree_backend','transition_proof'),('tree_tag_policy','proof_bound')]:
     check(manifest['properties'][key]['const']==value,'Manifest '+key)

@@ -32,7 +32,7 @@ export interface Manifest {
   readonly tree_backend: 'transition_proof'; readonly tree_tag_policy: 'proof_bound'; readonly circuit_profile_hash: string;
   readonly deployment_environment: 'local' | 'devnet' | 'mainnet'; readonly setup_profile: 'test_only' | 'ceremony_verified';
   readonly setup_transcript_hashes: SetupTranscripts; readonly tree_proof_artifacts: TreeProofArtifacts;
-  readonly transaction_formats: readonly ('v0_buffer' | 'v0_inline' | 'v1_inline')[];
+  readonly transaction_formats: readonly ('v0_buffer' | 'v0_inline' | 'v1_inline' | 'v0_inline_deposit_v1')[];
   readonly request_pk_hash: string; readonly request_vk_hash: string; readonly withdrawal_pk_hash: string; readonly withdrawal_vk_hash: string;
   readonly cap_micro_usdc: string; readonly note_ttl_seconds: string; readonly challenge_seconds: string;
   readonly control_api_origin: string; readonly inference_api_origin: string; readonly proving_keys_base_url: string;
@@ -52,6 +52,9 @@ export interface ManifestTrustPolicy {
   readonly build: {
     readonly stateKey: Point; readonly clearanceKey: Point; readonly circuitProfileHash: string; readonly idlHash: string;
     readonly setupProfile: Manifest['setup_profile'];
+    /** Independently installed build capabilities. Required to enable compact deposits;
+     * omission preserves legacy buffer-only distributions. Never copy from fetched config. */
+    readonly transactionFormats?: Manifest['transaction_formats'];
     /** Out-of-band, reviewed ceremony transcripts; merely downloading a transcript is insufficient. */
     readonly verifiedSetupTranscripts?: SetupTranscripts;
   };
@@ -217,7 +220,7 @@ function validateManifest(value: unknown): asserts value is Manifest {
   }
   requireTrue(tree.setup_transcript_hash === value.setup_transcript_hashes.tree, 'tree transcript mismatch');
   strings(value.transaction_formats, true);
-  requireTrue(value.transaction_formats.includes('v0_buffer') && value.transaction_formats.every(v => ['v0_buffer', 'v0_inline', 'v1_inline'].includes(v)), 'mandatory v0_buffer');
+  requireTrue(value.transaction_formats.includes('v0_buffer') && value.transaction_formats.every(v => ['v0_buffer', 'v0_inline', 'v1_inline', 'v0_inline_deposit_v1'].includes(v)), 'mandatory v0_buffer');
   requireTrue(typeof value.cap_micro_usdc === 'string' && parseMicroUsdc(value.cap_micro_usdc) > 0n, 'positive cap');
   uint(value.note_ttl_seconds, true); uint(value.challenge_seconds, true); uint(value.db_schema_version, true);
   url(value.control_api_origin, value.deployment_environment === 'local', true);
@@ -248,6 +251,41 @@ function freezeDeep<T>(value: T): T {
 function equalPoint(a: Point, b: Point): boolean { return a.x === b.x && a.y === b.y; }
 function trusted(manifest: VerifiedManifest): void { requireTrue(verifiedManifests.has(manifest), 'manifest was not verified by this SDK'); }
 
+/** Capability selection is permitted only after distribution/build authentication. */
+export function supportsInlineDeposit(manifest: VerifiedManifest): boolean {
+  trusted(manifest);
+  return manifest.transaction_formats.includes('v0_inline_deposit_v1');
+}
+
+async function verifyCompactDepositIdl(idl: Record<string, Json>): Promise<void> {
+  requireTrue(Array.isArray(idl.instructions), 'compact deposit IDL instructions');
+  const named = (name: string) => (idl.instructions as Json[]).filter(i => i !== null && typeof i === 'object' && !Array.isArray(i) && i.name === name);
+  const matches = named('deposit_compact_v1');
+  requireTrue(matches.length === 1, 'compact deposit IDL instruction');
+  const instruction = matches[0]; record(instruction);
+  const discriminator = Array.from(hashBytes(await sha256Hex(new TextEncoder().encode('global:deposit_compact_v1'))).slice(0, 8));
+  const same = (left: unknown, right: unknown) => new TextDecoder().decode(jcsBytes(left)) === new TextDecoder().decode(jcsBytes(right));
+  requireTrue(same(instruction.discriminator, discriminator), 'compact deposit IDL discriminator');
+  const array = (length: number) => ({ array: ['u8', length] });
+  const args = [
+    ['expected_id', 'u32'], ['expected_root', array(32)], ['expiry', 'u64'],
+    ['commitment', array(32)], ['amount', 'u64'], ['new_root', array(32)],
+    ['new_leaf', array(32)], ['transition_tag', array(32)], ['tree_proof', array(256)],
+  ].map(([name, type]) => ({ name, type }));
+  requireTrue(same(instruction.args, args), 'compact deposit IDL arguments');
+  const financial = ['pool', 'tree', 'note', 'pending', 'exit', 'vault_authority', 'mint', 'source', 'vault',
+    'destination_owner', 'destination', 'treasury_owner', 'treasury', 'token_owner', 'payer'].map(name => ({ name,
+      ...(['tree', 'note', 'pending', 'exit', 'source', 'vault', 'destination', 'treasury', 'payer'].includes(name) ? { writable: true } : {}),
+      ...(name === 'payer' ? { signer: true } : {}),
+    }));
+  const accounts = [{ name: 'financial', accounts: [...financial,
+    { name: 'token_program', address: 'TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA' },
+    { name: 'associated_token_program', address: 'ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL' },
+    { name: 'system_program', address: '11111111111111111111111111111111' },
+  ] }, { name: 'token_owner_signer', signer: true }];
+  requireTrue(same(instruction.accounts, accounts), 'compact deposit IDL accounts');
+}
+
 /** Hash semantics are shared with the server: omit manifest_hash and manifest_signature only. */
 export async function manifestDigest(manifest: Manifest): Promise<string> {
   const { manifest_hash: _hash, manifest_signature: _signature, ...body } = manifest;
@@ -274,6 +312,10 @@ export async function verifyManifest(bytes: Uint8Array, policy: ManifestTrustPol
   requireTrue(equalPoint(manifest.state_key, pins.build.stateKey) && equalPoint(manifest.clearance_key, pins.build.clearanceKey), 'ADR-0002 build role keys');
   requireTrue(manifest.circuit_profile_hash === pins.build.circuitProfileHash && manifest.circuit_profile_hash === await circuitProfileDigest(manifest), 'circuit profile mismatch');
   requireTrue(manifest.idl_hash === pins.build.idlHash && manifest.setup_profile === pins.build.setupProfile, 'IDL/setup build pin');
+  if (manifest.transaction_formats.includes('v0_inline_deposit_v1')) {
+    requireTrue(pins.build.transactionFormats?.includes('v0_buffer')
+      && pins.build.transactionFormats.includes('v0_inline_deposit_v1'), 'compact deposit build capability pin');
+  }
   if (manifest.setup_profile === 'ceremony_verified') {
     requireTrue(pins.build.verifiedSetupTranscripts && ['request', 'withdrawal', 'tree'].every(k => manifest.setup_transcript_hashes[k as keyof SetupTranscripts] === pins.build.verifiedSetupTranscripts![k as keyof SetupTranscripts]), 'unreviewed setup transcripts');
   }
@@ -351,5 +393,6 @@ export async function verifyArtifactBundle(manifest: VerifiedManifest, bundle: A
   for (const [name, hash] of Object.entries(manifest.artifact_digests)) requireTrue(await sha256Hex(additional[name]) === hash, `artifact mismatch ${name}`);
   // IDL is JSON as well as a digest-pinned artifact; its program address must agree with the deployment.
   const idl = parseStrictJson(verified.idl); record(idl); requireTrue(idl.address === manifest.program_id, 'IDL program address');
+  if (supportsInlineDeposit(manifest)) await verifyCompactDepositIdl(idl);
   return Object.freeze({ ...verified, additional: Object.freeze(additional) }) as unknown as ArtifactBundle;
 }

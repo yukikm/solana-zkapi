@@ -1,0 +1,4 @@
+   Compiling zkapi-i02-svm v0.1.0 (/private/var/folders/d5/cmyw7m5n7fzc9dq4ttm4kn9m0000gn/T/zkapi-compact-commit-sved3mpc/repo/tests/svm)
+    Finished `dev` profile [optimized + debuginfo] target(s) in 2.01s
+     Running `tests/svm/target/debug/vault /private/var/folders/d5/cmyw7m5n7fzc9dq4ttm4kn9m0000gn/T/zkapi-compact-commit-sved3mpc/repo/target/single-deposit-sbf/zkapi_vault.so /private/var/folders/d5/cmyw7m5n7fzc9dq4ttm4kn9m0000gn/T/zkapi-compact-commit-sved3mpc/repo/target/i04-sbf-wrong/zkapi_vault.so /private/var/folders/d5/cmyw7m5n7fzc9dq4ttm4kn9m0000gn/T/zkapi-compact-commit-sved3mpc/repo/target/single-deposit-acceptance/run-x97bxrwy/legacy-vault-regression`
+I03 PASS: 366 real SBF transactions, 163 rejected, max 426835 CU, 863 bytes; I04 lifecycle remains pending

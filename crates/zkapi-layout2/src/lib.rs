@@ -2,7 +2,11 @@
 //! Callers must authenticate accounts and verify proofs before applying a transition.
 #![no_std]
 pub mod binding;
+mod compact;
 pub mod framing;
+pub use compact::{
+    compress_deposit_compact_v1, expand_deposit_compact_v1, DEPOSIT_COMPACT_V1_BYTES,
+};
 pub type Field = [u8; 32];
 pub type Proof = [u8; 256];
 pub const ZERO: Field = [0; 32];

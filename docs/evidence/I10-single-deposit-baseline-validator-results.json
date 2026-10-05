@@ -1,0 +1,54 @@
+{
+  "baseline_commit": "94b4116728d3e9ee111dd161d16f50eeba592e46",
+  "baseline_path": "packages/sdk/src/control.ts",
+  "original_sha256": "8b02a84cb3b9bb896d243faa0cb23aeeb1c26a150f68eef0e6ba13cccbbdcaf1",
+  "executable_sha256": "87dc92d95511c17afe17b910a74585e638023c85894d604bb02fa58f3efef10c",
+  "extraction_command": "git show HEAD:packages/sdk/src/control.ts",
+  "only_edits": "Relative module import specifiers rewritten to current SDK absolute source paths; original validator body is unchanged.",
+  "import_rewrites": [
+    {
+      "from": "from './encoding.ts'",
+      "to": "from '/Users/yukikimura/work/solana-zkapi/packages/sdk/src/encoding.ts'"
+    },
+    {
+      "from": "from './journal.ts'",
+      "to": "from '/Users/yukikimura/work/solana-zkapi/packages/sdk/src/journal.ts'"
+    },
+    {
+      "from": "from './trust.ts'",
+      "to": "from '/Users/yukikimura/work/solana-zkapi/packages/sdk/src/trust.ts'"
+    },
+    {
+      "from": "from './prover.ts'",
+      "to": "from '/Users/yukikimura/work/solana-zkapi/packages/sdk/src/prover.ts'"
+    },
+    {
+      "from": "from './wallet.ts'",
+      "to": "from '/Users/yukikimura/work/solana-zkapi/packages/sdk/src/wallet.ts'"
+    }
+  ],
+  "command": "target/i08-toolchain/bin/node work/single-deposit-review/baseline-validator-check.ts",
+  "node": "v24.19.0",
+  "current_validator_sha256": "6a80bec224ba9ba390cd0a8ae5e38e46b2c209f08c801f2b759094ec881b8860",
+  "real_ed25519_signature_verified": true,
+  "synthetic_fixture_source": "tests/fixtures/vault/a.json + deterministic offline signing key; no network transaction",
+  "cases": [
+    {
+      "name": "actual baseline schema1 validator accepts legacy schema1 record",
+      "pass": true
+    },
+    {
+      "name": "current validator accepts signed schema2 compact record",
+      "pass": true
+    },
+    {
+      "name": "actual baseline schema1 validator rejects exact same schema2 record",
+      "pass": true,
+      "error": "invalid note journal"
+    }
+  ],
+  "limitations": [
+    "Baseline transitive dependencies resolve to current SDK; the baseline validator source is unchanged except import paths.",
+    "Offline synthetic fixture, no real wallet or RPC."
+  ]
+}

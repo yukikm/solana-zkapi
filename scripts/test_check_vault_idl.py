@@ -41,6 +41,23 @@ class AccountContractTests(unittest.TestCase):
     def test_generated_idl_passes(self):
         validate(self.idl)
 
+    def test_compact_wire_field_order_names_and_types_are_enforced(self):
+        original = next(i for i in self.idl["instructions"] if i["name"] == "deposit_compact_v1")
+        for position in range(len(original["args"])):
+            for mutation in ("name", "type", "order"):
+                idl = copy.deepcopy(self.idl)
+                instruction = next(i for i in idl["instructions"] if i["name"] == "deposit_compact_v1")
+                args = instruction["args"]
+                if mutation == "name":
+                    args[position]["name"] = "unexpected"
+                elif mutation == "type":
+                    args[position]["type"] = "u8"
+                else:
+                    other = (position + 1) % len(args)
+                    args[position], args[other] = args[other], args[position]
+                with self.subTest(position=position, mutation=mutation), self.assertRaisesRegex(AssertionError, "compact wire differs"):
+                    validate(idl)
+
     def test_every_signer_and_writable_bit_is_enforced(self):
         for location, group in self.groups():
             for position, item in enumerate(group):

@@ -1,0 +1,3 @@
+    Finished `dev` profile [optimized + debuginfo] target(s) in 0.16s
+     Running `tests/svm/target/debug/vault /Users/yukikimura/work/solana-zkapi/target/single-deposit-sbf/zkapi_vault.so /Users/yukikimura/work/solana-zkapi/target/i04-sbf-wrong/zkapi_vault.so /Users/yukikimura/work/solana-zkapi/target/single-deposit-acceptance/run-f_5_7aiq/legacy-vault-regression`
+I03 PASS: 366 real SBF transactions, 163 rejected, max 426835 CU, 863 bytes; I04 lifecycle remains pending

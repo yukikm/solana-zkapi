@@ -339,6 +339,14 @@ impl Indexer {
             let id = r.u32()?;
             r.end()?;
             Some(self.finalize(id, now)?)
+        } else if is("deposit_compact_v1") {
+            // The binding belongs to this pool's accepted initialization history;
+            // compact wire cannot supply or override it. Reuse the same canonical
+            // transition/event reconstruction as legacy inline and buffer deposits.
+            let binding = self.config.as_ref().ok_or(Error::State)?.binding;
+            let canonical = zkapi_layout2::expand_deposit_compact_v1(args, &binding)
+                .map_err(|_| Error::Encoding("compact deposit payload"))?;
+            Some(self.transition(Operation::Deposit, &canonical, key(9)?, now)?)
         } else {
             let op = [
                 ("deposit", Operation::Deposit),

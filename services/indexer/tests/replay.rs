@@ -437,6 +437,118 @@ fn execute(buffer: Bytes32, data: &[u8]) -> Instruction {
     keys.extend(accounts());
     ix("execute_payload", hash(data).to_vec(), keys)
 }
+fn compact(canonical: &[u8]) -> Vec<u8> {
+    zkapi_layout2::compress_deposit_compact_v1(canonical, &binding())
+        .unwrap()
+        .to_vec()
+}
+#[test]
+fn mixed_deposit_transports_without_events_replay_identically_after_restart() {
+    let mut tree = Tree::new();
+    let inline = payload(&mut tree, &note(0), Operation::Deposit, 0);
+    let buffered = payload(&mut tree, &note(1), Operation::Deposit, 0);
+    let small = compact(&payload(&mut tree, &note(2), Operation::Deposit, 0));
+    let buffer = [15; 32];
+    let mut failed = block(
+        4,
+        10,
+        vec![ix("deposit_compact_v1", small.clone(), accounts())],
+    );
+    failed.transactions[0].succeeded = false;
+    // Logs from a rolled-back transaction must never advance financial state.
+    failed.transactions[0].instructions[0]
+        .events
+        .push(vec![255]);
+    let history = vec![
+        block(1, 10, vec![init()]),
+        block(2, 10, vec![ix("deposit", inline, accounts())]),
+        block(
+            3,
+            10,
+            vec![
+                create(buffer, &buffered, Operation::Deposit),
+                append(buffer, 0, &buffered),
+                seal(buffer),
+                execute(buffer, &buffered),
+            ],
+        ),
+        failed,
+        block(5, 10, vec![ix("deposit_compact_v1", small, accounts())]),
+    ];
+    let mut index = Indexer::new(PROGRAM, POOL);
+    for b in &history {
+        index.apply_block(b).unwrap();
+    }
+    reconcile(&mut index);
+    let expected = index.replay_state().unwrap();
+    assert_eq!(expected.sequence, 3);
+    assert_eq!(expected.next_note_id, 3);
+    assert_eq!(expected.outstanding_deposits, 3 * note(0).deposit);
+    assert_eq!(expected.root, tree.root());
+    assert_eq!(index.block_transitions().len(), 1);
+    // Rebuild every accepted cut from disk-like history, including the period
+    // after the failed transaction and before the final compact instruction.
+    for cut in 1..=history.len() {
+        let mut restarted = Indexer::new(PROGRAM, POOL);
+        for b in &history[..cut] {
+            restarted.apply_block(b).unwrap();
+        }
+        for b in &history[cut..] {
+            restarted.apply_block(b).unwrap();
+        }
+        reconcile(&mut restarted);
+        assert_eq!(restarted.replay_state().unwrap(), expected);
+        for id in 0..3 {
+            assert_eq!(restarted.path(id).unwrap(), index.path(id).unwrap());
+        }
+    }
+}
+#[test]
+fn compact_wire_length_field_binding_and_unknown_version_fail_closed() {
+    let canonical = payload(&mut Tree::new(), &note(0), Operation::Deposit, 0);
+    let small = compact(&canonical);
+    let mut trailing = small.clone();
+    trailing.push(0);
+    let mut noncanonical = small.clone();
+    noncanonical[4..36].copy_from_slice(&zkapi_layout2::FR_MODULUS);
+    let mut tag = small.clone();
+    tag[179] ^= 1;
+    for (name, bytes) in [
+        ("deposit_compact_v1", small[..435].to_vec()),
+        ("deposit_compact_v1", trailing),
+        ("deposit_compact_v1", canonical),
+        ("deposit_compact_v1", noncanonical),
+        ("deposit_compact_v1", tag),
+        ("deposit", small.clone()),
+        ("deposit_compact_v2", small.clone()),
+    ] {
+        let mut index = initial();
+        let before = index.replay_state().unwrap();
+        assert!(
+            index
+                .apply_block(&block(2, 10, vec![ix(name, bytes, accounts())]))
+                .is_err(),
+            "{name}"
+        );
+        assert_eq!(index.replay_state().unwrap(), before);
+        assert!(!index.is_ready());
+        assert!(index.root().is_err());
+    }
+    // A different authenticated initialization binding must not be replaced by
+    // a value from the compact instruction or inferred from its proof/tag.
+    let mut other_init = init();
+    other_init.data[40] ^= 1;
+    let mut index = Indexer::new(PROGRAM, POOL);
+    index.apply_block(&block(1, 10, vec![other_init])).unwrap();
+    assert!(index
+        .apply_block(&block(
+            2,
+            10,
+            vec![ix("deposit_compact_v1", small, accounts())]
+        ))
+        .is_err());
+    assert_eq!(index.replay_state().unwrap().sequence, 0);
+}
 #[test]
 fn missing_logs_rebuild_buffer_from_generation_chunks_digest_and_success_history() {
     let mut index = initial();

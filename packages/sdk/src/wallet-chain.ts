@@ -2,7 +2,7 @@
  * account cut; a self-reported indexer root alone is never a trust anchor. */
 import { Buffer } from 'buffer';
 import { Connection, PublicKey, SYSVAR_CLOCK_PUBKEY } from '@solana/web3.js';
-import { discriminator, fetchFinalizedBuffer, type BufferState, type UploadPlan } from './transport.ts';
+import { discriminator, fetchFinalizedBuffer, fetchFinalizedBufferObservation, resolvePreparationCommitment, type BufferState, type FinalizedBufferObservation, type UploadPlan, type TransactionPreparationCommitment } from './transport.ts';
 import { hex, u32 } from './layout2.ts';
 import { parseField } from './encoding.ts';
 import { parseStrictJson, verifyPoolConfig, type VerifiedManifest } from './trust.ts';
@@ -14,12 +14,16 @@ export interface WalletSnapshot {
 export interface WalletChain {
   snapshot(noteId?:number, path?:'active'|'zero'|'none', minimumSlot?:number):Promise<WalletSnapshot>;
   buffer(plan:UploadPlan,minimumSlot?:number):Promise<BufferState|null>;
+  /** Required only by explicit expired-create reconciliation. */
+  bufferObservation?(plan:UploadPlan,minimumSlot?:number):Promise<FinalizedBufferObservation>;
   blockhash():Promise<{blockhash:string;lastValidBlockHeight:number}>;
 }
 function integer(value:unknown):bigint { if (typeof value !== 'string' || !/^(0|[1-9][0-9]*)$/.test(value) || BigInt(value)>0xffffffffffffffffn) throw Error('invalid chain integer');return BigInt(value); }
 export class SolanaWalletChain implements WalletChain {
   private readonly connection:Connection; private readonly manifest:VerifiedManifest; private readonly origin:string; private readonly fetcher:typeof fetch;
-  constructor(connection:Connection, manifest:VerifiedManifest, indexerOrigin:string, options:{fetch?:typeof fetch;allowLoopbackHttp?:boolean}={}) {
+  private readonly preparationCommitment:TransactionPreparationCommitment;
+  constructor(connection:Connection, manifest:VerifiedManifest, indexerOrigin:string, options:{fetch?:typeof fetch;allowLoopbackHttp?:boolean;preparationCommitment?:TransactionPreparationCommitment}={}) {
+    this.preparationCommitment=resolvePreparationCommitment(options.preparationCommitment);
     const u=new URL(indexerOrigin);if(u.origin!==indexerOrigin||u.username||u.password||(u.protocol!=='https:'&&!(options.allowLoopbackHttp&&u.protocol==='http:'&&['127.0.0.1','[::1]'].includes(u.hostname)))) throw Error('trusted indexer origin required');
     this.connection=connection;this.manifest=manifest;this.origin=indexerOrigin;this.fetcher=options.fetch??fetch;
   }
@@ -73,5 +77,6 @@ export class SolanaWalletChain implements WalletChain {
     return result;
   }
   buffer(plan:UploadPlan,minimumSlot?:number):Promise<BufferState|null>{return fetchFinalizedBuffer(this.connection,plan,minimumSlot);}
-  blockhash():Promise<{blockhash:string;lastValidBlockHeight:number}>{return this.connection.getLatestBlockhash('finalized');}
+  bufferObservation(plan:UploadPlan,minimumSlot?:number):Promise<FinalizedBufferObservation>{return fetchFinalizedBufferObservation(this.connection,plan,minimumSlot);}
+  blockhash():Promise<{blockhash:string;lastValidBlockHeight:number}>{return this.connection.getLatestBlockhash(this.preparationCommitment);}
 }

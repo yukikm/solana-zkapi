@@ -83,9 +83,15 @@ impl TrustedPool {
             || m["request_vk_hash"] != REQUEST_VK_HASH
             || m["setup_profile"] != "test_only"
             || m["deployment_environment"] != serde_json::to_value(environment).unwrap()
-            || !m["transaction_formats"]
-                .as_array()
-                .is_some_and(|a| a.iter().any(|v| v == "v0_buffer"))
+            || !m["transaction_formats"].as_array().is_some_and(|a| {
+                a.iter().any(|v| v == "v0_buffer")
+                    && a.iter().enumerate().all(|(index, value)| {
+                        matches!(
+                            value.as_str(),
+                            Some("v0_buffer" | "v0_inline" | "v1_inline" | "v0_inline_deposit_v1")
+                        ) && !a[..index].contains(value)
+                    })
+            })
         {
             return Err(invalid("manifest/build profile"));
         }

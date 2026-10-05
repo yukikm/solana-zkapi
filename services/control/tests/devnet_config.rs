@@ -22,6 +22,113 @@ fn repin(config: &mut RuntimeConfig) {
     config.trusted_manifest_hash = hash(&serde_jcs::to_vec(&body).unwrap());
     config.manifest["manifest_hash"] = config.trusted_manifest_hash.clone().into();
 }
+
+#[test]
+fn compact_deposit_capability_keeps_buffer_and_rejects_unknown_or_duplicate_formats() {
+    let dir = tempfile::tempdir().unwrap();
+    for devnet in [false, true] {
+        let mut config = fixture(dir.path(), devnet);
+        config.manifest["transaction_formats"] = json!(["v0_buffer", "v0_inline_deposit_v1"]);
+        repin(&mut config);
+        config.clone().validate().unwrap();
+        for formats in [
+            json!(["v0_inline_deposit_v1"]),
+            json!(["v0_buffer", "v0_inline_deposit_v2"]),
+            json!(["v0_buffer", "v0_inline_deposit_v1", "v0_inline_deposit_v1"]),
+            json!(["v0_buffer", 1]),
+        ] {
+            let mut bad = config.clone();
+            bad.manifest["transaction_formats"] = formats;
+            repin(&mut bad);
+            assert!(bad.validate().is_err());
+        }
+    }
+}
+
+fn replace_devnet_idl(config: &mut RuntimeConfig, idl: &Value) {
+    let devnet = config.devnet.as_mut().unwrap();
+    let bytes = serde_json::to_vec(idl).unwrap();
+    let idl_hash = hash(&bytes);
+    std::fs::write(&devnet.idl_file, bytes).unwrap();
+    let mut build: Value =
+        serde_json::from_slice(&std::fs::read(&devnet.build_manifest_file).unwrap()).unwrap();
+    build["idl_sha256"] = idl_hash.clone().into();
+    let bytes = serde_json::to_vec(&build).unwrap();
+    let build_hash = hash(&bytes);
+    std::fs::write(&devnet.build_manifest_file, bytes).unwrap();
+    devnet.trusted_build_manifest_hash = build_hash.clone();
+    config.manifest["idl_hash"] = idl_hash.into();
+    config.manifest["artifact_digests"]["devnet_build_manifest"] = build_hash.into();
+    repin(config);
+}
+
+#[test]
+fn exact_legacy_idl_keeps_old_manifest_pins_without_enabling_compact() {
+    // Exact artifact from 94b4116728d3e9ee111dd161d16f50eeba592e46, not an
+    // old-looking IDL synthesized from the new implementation under test.
+    let legacy = include_bytes!("fixtures/legacy-buffer-vault-idl.json");
+    let legacy_hash = hash(legacy);
+    assert_eq!(
+        legacy_hash,
+        "73b6fa42aeba639589d59d1c2264653c8cda6a4c4ac0ca67a96653a8db9fb594"
+    );
+    let dir = tempfile::tempdir().unwrap();
+    for devnet in [false, true] {
+        let mut config = fixture(dir.path(), devnet);
+        // New IDL still supports buffer-only manifests.
+        config.clone().validate().unwrap();
+        if devnet {
+            let mut idl: Value = serde_json::from_slice(legacy).unwrap();
+            idl["address"] = config.manifest["program_id"].clone();
+            replace_devnet_idl(&mut config, &idl);
+        } else {
+            config.manifest["idl_hash"] = legacy_hash.clone().into();
+            repin(&mut config);
+        }
+        let manifest_before = config.manifest.clone();
+        let validated = config.clone().validate().unwrap();
+        assert_eq!(validated.runtime.manifest, manifest_before);
+        assert_eq!(
+            validated.runtime.trusted_manifest_hash,
+            config.trusted_manifest_hash
+        );
+        let mut compact = config.clone();
+        compact.manifest["transaction_formats"] = json!(["v0_buffer", "v0_inline_deposit_v1"]);
+        repin(&mut compact);
+        assert!(compact.validate().is_err());
+
+        // Even freshly authenticated pins cannot change any existing contract
+        // field, erase another instruction, or inject an unknown instruction.
+        if devnet {
+            let mut idl: Value = serde_json::from_slice(legacy).unwrap();
+            idl["address"] = config.manifest["program_id"].clone();
+            for mutation in ["args", "accounts", "missing", "unknown"] {
+                let mut changed = idl.clone();
+                let instructions = changed["instructions"].as_array_mut().unwrap();
+                let deposit = instructions
+                    .iter_mut()
+                    .find(|instruction| instruction["name"] == "deposit")
+                    .unwrap();
+                match mutation {
+                    "args" => deposit["args"][0]["type"] = "u64".into(),
+                    "accounts" => deposit["accounts"][0]["accounts"][0]["writable"] = true.into(),
+                    "missing" => {
+                        instructions.retain(|instruction| instruction["name"] != "deposit")
+                    }
+                    "unknown" => instructions.push(json!({"name":"deposit_compact_v2"})),
+                    _ => unreachable!(),
+                }
+                let mut bad = config.clone();
+                replace_devnet_idl(&mut bad, &changed);
+                assert!(bad.validate().is_err(), "{mutation}");
+            }
+        } else {
+            config.manifest["idl_hash"] = "00".repeat(32).into();
+            repin(&mut config);
+            assert!(config.validate().is_err());
+        }
+    }
+}
 fn fixture(dir: &Path, devnet: bool) -> RuntimeConfig {
     std::fs::set_permissions(dir, std::fs::Permissions::from_mode(0o700)).unwrap();
     let mut manifest: Value =

@@ -36,12 +36,12 @@ const oaEvidence = () => ({ verifier_url: oaPin.base, station_id: oaPin.stationI
   key_valid_till: 230, station_signature: 'ab'.repeat(64), org_signature: 'CD'.repeat(64) });
 const oaStatus = () => ({ ...status('direct_oa'), expires_at: '210', provider_key: 'oa-secret',
   provider_api_origin: context.inference_api_origin, provider_key_verification: oaEvidence() });
-async function setup(t: TestContext) {
+async function setup(t: TestContext, schema: 1 | 2 = 1) {
   const directory = await mkdtemp(join(tmpdir(), 'zkapi-control-test-')); t.after(() => rm(directory, { recursive: true, force: true }));
   const store = await NativeJournalStore.open(directory), key = await importJournalKey(new Uint8Array(32).fill(15));
   let failStorage = false;
   const journal = new EncryptedJournal<NoteJournal>({ read: key => store.read(key), withLock: (key, action) => store.withLock(key, action), compareAndSwap: async (key, revision, next) => { if (failStorage) throw new Error('fixture disk full'); await store.compareAndSwap(key, revision, next); } }, key, { deploymentId: context.deployment_id, pool: context.pool }, validateNoteJournal);
-  await journal.create('note', { schema: 1, state: initial(), pending: null, history: [] });
+  await journal.create('note', { schema, state: initial(), pending: null, history: [] });
   const calls: Call[] = [];
   let handler: (call: Call) => Promise<Response> = async () => response(status());
   let prepareFailure = false, settleFailure = false;
@@ -561,4 +561,16 @@ test('possibly-sent authorization cannot be cancelled and recovers identical byt
   assert.equal(h.calls.length, 2); assert.equal(h.calls[0].init.body, h.calls[1].init.body);
   assert.deepEqual(h.calls[0].init.headers, h.calls[1].init.headers);
   await assert.rejects(expired.cancelUnsent('note'), /possibly sent/);
+});
+
+
+test('schema 2 survives every ControlClient authorization, inference, recovery and settlement writer', async t => {
+  const h=await setup(t,2),check=async()=>assert.equal((await h.journal.read('note'))!.value.schema,2);
+  await h.client.prepare('note',prepared(),field(14));await check();
+  await h.client.submit('note');await check();
+  await h.client.prepareOperation('note',operationId,'/v1/chat/completions',new TextEncoder().encode('{}'));await check();
+  h.setHandler(async()=>response({result:'fixture'}));await h.client.sendOperation('note',operationId);await check();
+  h.setHandler(async call=>response(call.url.endsWith('/receipts')?{receipts:[],next_cursor:null}:{...status('proxy','SETTLED'),settlement:settlement()}));
+  await h.restart().close('note');await check();
+  const saved=(await h.journal.read('note'))!.value;assert.equal(saved.pending,null);assert.equal(saved.history.length,1);assert.deepEqual(saved.state,successor());
 });

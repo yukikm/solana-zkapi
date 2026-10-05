@@ -1,0 +1,24 @@
+   Compiling zkapi-layout2 v0.1.0 (/private/var/folders/d5/cmyw7m5n7fzc9dq4ttm4kn9m0000gn/T/zkapi-compact-commit-sved3mpc/repo/crates/zkapi-layout2)
+   Compiling zkapi-types v0.1.0 (/private/var/folders/d5/cmyw7m5n7fzc9dq4ttm4kn9m0000gn/T/zkapi-compact-commit-sved3mpc/repo/vendor/ethereum-zkapi/protocol/rust/crates/zkapi-types)
+   Compiling zkapi-poseidon v0.1.0 (/private/var/folders/d5/cmyw7m5n7fzc9dq4ttm4kn9m0000gn/T/zkapi-compact-commit-sved3mpc/repo/crates/zkapi-poseidon)
+   Compiling zkapi-solana-types v0.1.0 (/private/var/folders/d5/cmyw7m5n7fzc9dq4ttm4kn9m0000gn/T/zkapi-compact-commit-sved3mpc/repo/crates/zkapi-solana-types)
+   Compiling zkapi-core v0.1.0 (/private/var/folders/d5/cmyw7m5n7fzc9dq4ttm4kn9m0000gn/T/zkapi-compact-commit-sved3mpc/repo/vendor/ethereum-zkapi/protocol/rust/crates/zkapi-core)
+   Compiling zkapi-solana-crypto v0.1.0 (/private/var/folders/d5/cmyw7m5n7fzc9dq4ttm4kn9m0000gn/T/zkapi-compact-commit-sved3mpc/repo/crates/zkapi-solana-crypto)
+   Compiling zkapi-proof v0.1.0 (/private/var/folders/d5/cmyw7m5n7fzc9dq4ttm4kn9m0000gn/T/zkapi-compact-commit-sved3mpc/repo/vendor/ethereum-zkapi/protocol/rust/crates/zkapi-proof)
+   Compiling zkapi-tree-prover v0.1.0 (/private/var/folders/d5/cmyw7m5n7fzc9dq4ttm4kn9m0000gn/T/zkapi-compact-commit-sved3mpc/repo/crates/zkapi-tree-prover)
+   Compiling zkapi-control v0.1.0 (/private/var/folders/d5/cmyw7m5n7fzc9dq4ttm4kn9m0000gn/T/zkapi-compact-commit-sved3mpc/repo/services/control)
+    Finished `test` profile [optimized + debuginfo] target(s) in 37.61s
+     Running tests/devnet_config.rs (services/control/target/debug/deps/devnet_config-0a48b70044aa9e4e)
+
+running 8 tests
+test dispatcher_refuses_same_pool_database_with_other_manifest_or_deployment ... ignored, requires disposable Unix ZKAPI_TEST_DATABASE_URL; no RPC/provider call
+test devnet_chain_profile_checks_binding_and_transport_independently ... ok
+test local_default_and_explicit_devnet_test_profiles_validate_without_network ... ok
+test public_provider_dispatcher_requires_pinned_devnet_and_prohibits_fixture_egress ... ok
+test compact_deposit_capability_keeps_buffer_and_rejects_unknown_or_duplicate_formats ... ok
+test deployment_setup_chain_and_live_service_policy_cannot_be_reinterpreted ... ok
+test public_build_idl_program_and_role_pin_changes_are_rejected ... ok
+test exact_legacy_idl_keeps_old_manifest_pins_without_enabling_compact ... ok
+
+test result: ok. 7 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 0.02s
+

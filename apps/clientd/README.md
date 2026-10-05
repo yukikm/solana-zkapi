@@ -1,6 +1,8 @@
 # Solana clientd
 
-The Go daemon exposes the supported inference routes, count_tokens, SSE and wallet management on **127.0.0.1:8787**. Note, authorization, billing and recovery state belongs to the existing encrypted SDK journal. Go has no second financial state machine. `runtime.ts` connects the journal to the real native prover/verifier, finalized RPC/indexer observations and mandatory v0 buffers.
+The Go daemon exposes the supported inference routes, count_tokens, SSE and wallet management on **127.0.0.1:8787**. Note, authorization, billing and recovery state belongs to the existing encrypted SDK journal. Go has no second financial state machine. `runtime.ts` connects the journal to the real native prover/verifier, finalized RPC/indexer observations, v0 buffers and authenticated compact deposits.
+
+New compact deposits are selected by the same `WalletClient` as the browser. The manifest must advertise `v0_inline_deposit_v1`, and the independently installed runtime `policy.build.transactionFormats` must allow it along with `v0_buffer`; IDL and distribution hashes must match the new build. Omission keeps legacy deployments on buffers. Rebuild the distribution with the updated SDK before enabling this capability. Existing journals retain their transport and trust pins, and unknown inline sends remain unresolved until the exact receipt is finalized. See the [SDK contract](../../packages/sdk/README.md#single-signature-deposit).
 
 The browser uses the same `ControlClient`, `WalletClient` and original circuits through a WASM worker. The native prover is an offline stdin/stdout alternative. All three PK/VK pairs and executable hashes are pinned. There is no success-on-unavailable verifier, remote secret prover or implicit proxy fallback.
 

@@ -78,11 +78,14 @@ manifest = {
     'artifact_digests':{},'db_schema_version':'1','proving_keys_base_url':'https://example.invalid/',
     'tree_proof_artifacts':tree,'authorities':{'admin':authority,'upgrade':authority}}
 case('Manifest',manifest,True)
+case('Manifest',{**manifest,'transaction_formats':['v0_buffer','v0_inline_deposit_v1']},True)
 for changes in [
     {'tree_backend':'sbf_poseidon'}, {'tree_tag_policy':'recompute'},
     {'protocol_layout_version':1}, {'tree_proof_artifacts':None},
     {'tree_proof_artifacts':{**tree,'public_inputs':10}},
     {'transaction_formats':['v1_inline']}, {'transaction_formats':['v0_buffer','v0_buffer']},
+    {'transaction_formats':['v0_inline_deposit_v1']},
+    {'transaction_formats':['v0_buffer','v0_inline_deposit_v2']},
     {'deployment_environment':'mainnet'}, {'setup_profile':'ceremony_verified'},
 ]:
     case('Manifest',{**manifest,**changes},False)

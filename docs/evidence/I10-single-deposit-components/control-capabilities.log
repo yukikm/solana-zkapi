@@ -1,0 +1,15 @@
+   Compiling zkapi-control v0.1.0 (/Users/yukikimura/work/solana-zkapi/services/control)
+    Finished `test` profile [optimized + debuginfo] target(s) in 7.10s
+     Running tests/devnet_config.rs (services/control/target/debug/deps/devnet_config-da32655ef67401eb)
+
+running 7 tests
+test dispatcher_refuses_same_pool_database_with_other_manifest_or_deployment ... ignored, requires disposable Unix ZKAPI_TEST_DATABASE_URL; no RPC/provider call
+test devnet_chain_profile_checks_binding_and_transport_independently ... ok
+test local_default_and_explicit_devnet_test_profiles_validate_without_network ... ok
+test public_provider_dispatcher_requires_pinned_devnet_and_prohibits_fixture_egress ... ok
+test compact_deposit_capability_keeps_buffer_and_rejects_unknown_or_duplicate_formats ... ok
+test deployment_setup_chain_and_live_service_policy_cannot_be_reinterpreted ... ok
+test public_build_idl_program_and_role_pin_changes_are_rejected ... ok
+
+test result: ok. 6 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 0.02s
+

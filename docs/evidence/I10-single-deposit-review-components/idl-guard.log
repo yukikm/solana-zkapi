@@ -1,0 +1,2 @@
+PASS: 16 instruction layouts and account metas, fixed errors, account discriminators and event order
+NOT ESTABLISHED: wallet support, buffer lifecycle, production deployment

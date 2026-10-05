@@ -85,6 +85,76 @@
   },
   "buffer_payload_includes_discriminator": false,
   "mandatory_transport": "v0_buffer",
+  "compact_deposit": {
+    "name": "deposit_compact_v1",
+    "capability": "v0_inline_deposit_v1",
+    "discriminator_hex": "adee5c1edb1f80e9",
+    "payload_bytes": 436,
+    "instruction_data_bytes": 444,
+    "canonical_payload_bytes": 692,
+    "args": [
+      {
+        "name": "expected_id",
+        "type": "u32",
+        "bytes": 4
+      },
+      {
+        "name": "expected_root",
+        "type": "F",
+        "bytes": 32
+      },
+      {
+        "name": "expiry",
+        "type": "u64",
+        "bytes": 8
+      },
+      {
+        "name": "commitment",
+        "type": "F",
+        "bytes": 32
+      },
+      {
+        "name": "amount",
+        "type": "u64",
+        "bytes": 8
+      },
+      {
+        "name": "new_root",
+        "type": "F",
+        "bytes": 32
+      },
+      {
+        "name": "new_leaf",
+        "type": "F",
+        "bytes": 32
+      },
+      {
+        "name": "transition_tag",
+        "type": "F",
+        "bytes": 32
+      },
+      {
+        "name": "tree_proof",
+        "type": "Proof",
+        "bytes": 256
+      }
+    ],
+    "public_inputs": [
+      "verified_pool.vault_binding",
+      "expected_root",
+      "new_root",
+      "Fr(expected_id)",
+      "Fr(0)",
+      "new_leaf",
+      "commitment",
+      "Fr(amount)",
+      "Fr(expiry)",
+      "Fr(0)",
+      "transition_tag"
+    ],
+    "accounts": "DepositAccounts",
+    "buffer_operation": false
+  },
   "instructions": [
     {
       "name": "deposit",

@@ -5,7 +5,7 @@ import { generateKeyPairSync, sign, createHash } from 'node:crypto';
 import { PublicKey } from '@solana/web3.js';
 import bs58 from 'bs58';
 import { vaultBinding, parseField } from '../src/encoding.ts';
-import { parseStrictJson, jcsBytes, sha256Hex, manifestDigest, circuitProfileDigest, verifyManifest, verifyPoolConfig, verifyArtifactBundle } from '../src/trust.ts';
+import { parseStrictJson, jcsBytes, sha256Hex, manifestDigest, circuitProfileDigest, verifyManifest, verifyPoolConfig, verifyArtifactBundle, supportsInlineDeposit } from '../src/trust.ts';
 import { verifiedClientBundle, verifiedClientContext } from '../src/control.ts';
 import type { Manifest, ManifestTrustPolicy, ArtifactBundle, FinalizedPoolAccount, VerifiedManifest } from '../src/trust.ts';
 
@@ -244,6 +244,55 @@ async function artifactFixture() {
   await resign(manifest); const verified = await verifyManifest(jcsBytes(manifest), policyFor(manifest));
   return { manifest, bundle, verified };
 }
+
+test('compact deposit requires authenticated capability and an independent build capability pin', async () => {
+  const { manifest, policy } = await fixture();
+  const legacy = await verifyManifest(jcsBytes(manifest), policy);
+  assert.equal(supportsInlineDeposit(legacy), false);
+  assert.throws(() => supportsInlineDeposit(manifest as unknown as VerifiedManifest), /not verified/);
+  manifest.transaction_formats.push('v0_inline_deposit_v1');
+  await resign(manifest);
+  await assert.rejects(verifyManifest(jcsBytes(manifest), policy), /build capability pin/);
+  const build = { ...policy.build, transactionFormats: ['v0_buffer', 'v0_inline_deposit_v1'] as const };
+  const current = await verifyManifest(jcsBytes(manifest), { ...policy, build });
+  assert.equal(supportsInlineDeposit(current), true);
+  assert.equal(current.circuit_profile_hash, legacy.circuit_profile_hash);
+  await assert.rejects(verifyManifest(jcsBytes(manifest), { ...policy, build: { ...build, idlHash: '00'.repeat(32) } }), /IDL\/setup build pin/);
+  for (const formats of [['v0_inline_deposit_v1'], ['v0_buffer', 'v0_inline_deposit_v2'], ['v0_buffer', 'v0_inline_deposit_v1', 'v0_inline_deposit_v1']]) {
+    const changed = { ...manifest, transaction_formats: formats } as Mutable<Manifest>;
+    await resign(changed);
+    await assert.rejects(verifyManifest(jcsBytes(changed), { ...policy, build }));
+  }
+});
+
+test('compact capability rejects a pinned but incompatible IDL before any wallet signing', async () => {
+  const { manifest, bundle } = await artifactFixture();
+  manifest.transaction_formats.push('v0_inline_deposit_v1');
+  const originalIdl = JSON.parse(new TextDecoder().decode(bundle.idl));
+  const verify = async (idl: unknown) => {
+    const bytes = jcsBytes(idl);
+    manifest.idl_hash = await sha256Hex(bytes);
+    manifest.artifact_digests.vault_idl = manifest.idl_hash;
+    await resign(manifest);
+    const policy = policyFor(manifest);
+    const verified = await verifyManifest(jcsBytes(manifest), { ...policy, build: { ...policy.build,
+      transactionFormats: ['v0_buffer', 'v0_inline_deposit_v1'] } });
+    return verifyArtifactBundle(verified, { ...bundle, idl: bytes, additional: { vault_idl: bytes } });
+  };
+  await verify(originalIdl);
+  const missing = structuredClone(originalIdl);
+  missing.instructions = missing.instructions.filter((i: { name: string }) => i.name !== 'deposit_compact_v1');
+  await assert.rejects(verify(missing), /compact deposit IDL instruction/);
+  for (const mutation of ['discriminator', 'args', 'accounts', 'duplicate']) {
+    const bad = structuredClone(originalIdl);
+    const instruction = bad.instructions.find((i: { name: string }) => i.name === 'deposit_compact_v1');
+    if (mutation === 'discriminator') instruction.discriminator[0] ^= 1;
+    if (mutation === 'args') instruction.args.pop();
+    if (mutation === 'accounts') instruction.accounts[1].signer = false;
+    if (mutation === 'duplicate') bad.instructions.push(instruction);
+    await assert.rejects(verify(bad), /compact deposit IDL/);
+  }
+});
 
 test('hashes exact artifact bytes, rejects each changed/missing artifact, and returns detached copies', async () => {
   const { bundle, verified } = await artifactFixture();

@@ -1,0 +1,143 @@
+{
+  "schema": 1,
+  "scope": "Selected compact-deposit commit snapshot; unrelated pre-existing demo/readiness work excluded; local only",
+  "selected_tree": "bc410f0c74bbed34855316c96568e749158ca350",
+  "source_count": 440,
+  "files": [
+    {
+      "original": "target/single-deposit-acceptance/run-x97bxrwy/clientd-types.log",
+      "saved": "docs/evidence/I10-single-deposit-commit-components/clientd-types.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "original": "target/single-deposit-acceptance/run-x97bxrwy/compact-indexer-sbf.log",
+      "saved": "docs/evidence/I10-single-deposit-commit-components/compact-indexer-sbf.log",
+      "sha256": "da47cc9201877136017bd2aa5e50ad47224a389e9cceafa595fea32c5022d70f"
+    },
+    {
+      "original": "target/single-deposit-acceptance/run-x97bxrwy/compact-sbf.log",
+      "saved": "docs/evidence/I10-single-deposit-commit-components/compact-sbf.log",
+      "sha256": "e68e92565d534428a72678cc07cfebf7065c09516d0519fd227d069f33b00cd3"
+    },
+    {
+      "original": "target/single-deposit-acceptance/run-x97bxrwy/compiler-idl.log",
+      "saved": "docs/evidence/I10-single-deposit-commit-components/compiler-idl.log",
+      "sha256": "7facb8d91442dd0cade143c63d87aa7f6e278bcd270f3bdd284cebf47b569825"
+    },
+    {
+      "original": "target/single-deposit-acceptance/run-x97bxrwy/control-capabilities.log",
+      "saved": "docs/evidence/I10-single-deposit-commit-components/control-capabilities.log",
+      "sha256": "46760dead6eeb41fb40cbc4b1b8da291572b78f58027a75088fcda9ffc2c30cb"
+    },
+    {
+      "original": "target/single-deposit-acceptance/run-x97bxrwy/design.log",
+      "saved": "docs/evidence/I10-single-deposit-commit-components/design.log",
+      "sha256": "dd3ed4717a8b200abbb1e568a6581ba3c2aa23f8c68dd759b91cc734d36abc7f"
+    },
+    {
+      "original": "target/single-deposit-acceptance/run-x97bxrwy/diff-check.log",
+      "saved": "docs/evidence/I10-single-deposit-commit-components/diff-check.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "original": "target/single-deposit-acceptance/run-x97bxrwy/format-rust.log",
+      "saved": "docs/evidence/I10-single-deposit-commit-components/format-rust.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "original": "target/single-deposit-acceptance/run-x97bxrwy/generated-vault.json",
+      "saved": "docs/evidence/I10-single-deposit-commit-components/generated-vault.json",
+      "sha256": "0759025148be84d67f95e71ca79057d249a5de3f2574e972ce3295aac530a671"
+    },
+    {
+      "original": "target/single-deposit-acceptance/run-x97bxrwy/idl-guard.log",
+      "saved": "docs/evidence/I10-single-deposit-commit-components/idl-guard.log",
+      "sha256": "cd99bb65e04f1139c0fbea5ea57ce3ea1cd52ecf39e871f24795343d5b41d381"
+    },
+    {
+      "original": "target/single-deposit-acceptance/run-x97bxrwy/idl-mutations.log",
+      "saved": "docs/evidence/I10-single-deposit-commit-components/idl-mutations.log",
+      "sha256": "c03ad8dc54c60d23212758ab6f3a144d3c2280e13a75092cb0db1647107815e4"
+    },
+    {
+      "original": "target/single-deposit-acceptance/run-x97bxrwy/indexer.log",
+      "saved": "docs/evidence/I10-single-deposit-commit-components/indexer.log",
+      "sha256": "d68b4a5c7d3b4614966364b8a2181349ac18da590925256f1277b7f4b70d9da5"
+    },
+    {
+      "original": "target/single-deposit-acceptance/run-x97bxrwy/layout2-unit.log",
+      "saved": "docs/evidence/I10-single-deposit-commit-components/layout2-unit.log",
+      "sha256": "82faa297c3abd1515e4d48688db385ce2e468cb9ed53cece5a0b52802b0f2e45"
+    },
+    {
+      "original": "target/single-deposit-acceptance/run-x97bxrwy/legacy-vault-regression/I03-svm-rejections.json",
+      "saved": "docs/evidence/I10-single-deposit-commit-components/legacy-vault-regression/I03-svm-rejections.json",
+      "sha256": "f980c6d45b668ec427b07a8b1dbeb3879c8a79e01ac0a3b8a0f648ef2cdd0104"
+    },
+    {
+      "original": "target/single-deposit-acceptance/run-x97bxrwy/legacy-vault-regression/I03-svm-results.json",
+      "saved": "docs/evidence/I10-single-deposit-commit-components/legacy-vault-regression/I03-svm-results.json",
+      "sha256": "e91c909a4f773d9005c77bbb388bab36de1d528abcefb75b0971923a811e4bcc"
+    },
+    {
+      "original": "target/single-deposit-acceptance/run-x97bxrwy/legacy-vault-regression/I03-svm-traces.json",
+      "saved": "docs/evidence/I10-single-deposit-commit-components/legacy-vault-regression/I03-svm-traces.json",
+      "sha256": "3651ab83ecdc6735bdf5d32d6c22231ca23de094779567f58bab6ad9ca144d4c"
+    },
+    {
+      "original": "target/single-deposit-acceptance/run-x97bxrwy/legacy-vault-sbf.log",
+      "saved": "docs/evidence/I10-single-deposit-commit-components/legacy-vault-sbf.log",
+      "sha256": "824ee1c0cf63d87b91a62d999a636c1ae6526e243bb38d887b49a9ee11d36122"
+    },
+    {
+      "original": "target/single-deposit-acceptance/run-x97bxrwy/openapi.log",
+      "saved": "docs/evidence/I10-single-deposit-commit-components/openapi.log",
+      "sha256": "6fbbf41b5d72e88251e7bde5586fa916cca04123e929528b19291a7e8682e28c"
+    },
+    {
+      "original": "target/single-deposit-acceptance/run-x97bxrwy/results.json",
+      "saved": "docs/evidence/I10-single-deposit-commit-components/results.json",
+      "sha256": "9f719bb3997de4dea36be7812b2fd053402a79643f3e4f56a34db37a5cfbbb30"
+    },
+    {
+      "original": "target/single-deposit-acceptance/run-x97bxrwy/sbf-build.log",
+      "saved": "docs/evidence/I10-single-deposit-commit-components/sbf-build.log",
+      "sha256": "75b0a4fca4b664c58ad0b95d379c774372182c041ed2504791d6039b77b82d4f"
+    },
+    {
+      "original": "target/single-deposit-acceptance/run-x97bxrwy/sdk-history.json",
+      "saved": "docs/evidence/I10-single-deposit-commit-components/sdk-history.json",
+      "sha256": "9c2e1bc2769bc0bcda1fafaae14623faa8c2c9347759c6822fa0f90dece30cce"
+    },
+    {
+      "original": "target/single-deposit-acceptance/run-x97bxrwy/sdk-tests.log",
+      "saved": "docs/evidence/I10-single-deposit-commit-components/sdk-tests.log",
+      "sha256": "21b89c593057bd661f897c7a42543a3c2dd4c17c4f8efbfea02b072bafaf1e8c"
+    },
+    {
+      "original": "target/single-deposit-acceptance/run-x97bxrwy/sdk-types.log",
+      "saved": "docs/evidence/I10-single-deposit-commit-components/sdk-types.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "original": "target/single-deposit-acceptance/run-x97bxrwy/svm-results.json",
+      "saved": "docs/evidence/I10-single-deposit-commit-components/svm-results.json",
+      "sha256": "6d071762604874e46b41ce009c8c9fc0fd082898da2cf5aa574e6e305bdcd74f"
+    },
+    {
+      "original": "target/single-deposit-acceptance/run-x97bxrwy/ui-tests.log",
+      "saved": "docs/evidence/I10-single-deposit-commit-components/ui-tests.log",
+      "sha256": "9a2d7108d7eb67b0810f051186ae0b32417071274ac0e5c93dfb3bdae1180a2f"
+    },
+    {
+      "original": "target/single-deposit-acceptance/run-x97bxrwy/ui-types.log",
+      "saved": "docs/evidence/I10-single-deposit-commit-components/ui-types.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "original": "target/single-deposit-acceptance/run-x97bxrwy/vault-unit.log",
+      "saved": "docs/evidence/I10-single-deposit-commit-components/vault-unit.log",
+      "sha256": "b7180dd0ea424e69b4437241aebde603869d68a301fb313e9706e98d8f0cfad4"
+    }
+  ]
+}

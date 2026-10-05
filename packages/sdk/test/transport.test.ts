@@ -97,7 +97,7 @@ test('all operation steps use real signed v0 <=1232 bytes with independent fee/p
     const appended = plan.steps.filter(s => s.kind === 'append');
     assert.deepEqual(Buffer.concat(appended.map(s => s.instruction.data.subarray(16))), Buffer.from(plan.payload));
   }
-  assert.equal(maximum, 1232); assert.deepEqual(TRANSACTION_FORMATS, ['v0_buffer']);
+  assert.equal(maximum, 1232); assert.deepEqual(TRANSACTION_FORMATS, ['v0_buffer', 'v0_inline_deposit_v1']);
 });
 
 test('generated instruction discriminators/account flags match compiler-backed IDL', async () => {
@@ -264,7 +264,7 @@ test('finalized buffer decoder rejects every header identity and inconsistent pr
   await assert.rejects(readBuffer(plan, { ...good, slot: plan.snapshot.slot - 1 }), /invalid/);
 });
 
-test('Connection adapter uses history/finalized/v0 and handles actual JSON-RPC send response loss', async () => {
+for (const commitment of [undefined, 'confirmed'] as const) test(`Connection adapter keeps finalized recovery with ${commitment ?? 'default'} preparation and exact send response loss`, async () => {
   const plan = await planFor(), attempt = await attemptFor(plan, 'create');
   const requests: { method: string; params: unknown[] }[] = [];
   let loseSend = true;
@@ -278,7 +278,9 @@ test('Connection adapter uses history/finalized/v0 and handles actual JSON-RPC s
     else throw new Error(`unexpected ${body.method}`);
     return new Response(JSON.stringify({ jsonrpc: '2.0', id: body.id, result }), { headers: { 'content-type': 'application/json' } });
   } });
-  const rpc = connectionTransport(connection);
+  const options: {preparationCommitment?: 'confirmed'|'finalized'} = {preparationCommitment: commitment};
+  const rpc = connectionTransport(connection, options);
+  options.preparationCommitment = commitment === 'confirmed' ? 'finalized' : 'confirmed';
   assert.deepEqual(await recoverAttempt(attempt, rpc, true), { state: 'unknown' }); loseSend = false;
   assert.deepEqual(await recoverAttempt(attempt, rpc, true), { state: 'pending' });
   const reads = requests.filter(r => r.method === 'getTransaction');
@@ -287,7 +289,11 @@ test('Connection adapter uses history/finalized/v0 and handles actual JSON-RPC s
   assert.ok(statuses.every(r => (r.params[1] as { searchTransactionHistory: boolean }).searchTransactionHistory));
   const sends = requests.filter(r => r.method === 'sendTransaction');
   assert.equal(sends.length, 2); assert.equal(sends[0].params[0], sends[1].params[0]);
-  assert.deepEqual(sends[0].params[1], { encoding: 'base64', maxRetries: 0, preflightCommitment: 'finalized' });
+  assert.deepEqual(sends[0].params[1], { encoding: 'base64', maxRetries: 0, preflightCommitment: commitment ?? 'finalized' });
+  assert.ok(requests.filter(r => r.method === 'getBlockHeight').every(r => (r.params[0] as {commitment: string}).commitment === 'finalized'));
+  for (const invalid of ['processed', 'recent', null, 1]) {
+    assert.throws(() => connectionTransport(connection, {preparationCommitment: invalid as never}), /invalid transaction preparation commitment/);
+  }
 });
 
 

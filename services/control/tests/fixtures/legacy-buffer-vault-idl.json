@@ -1,0 +1,1703 @@
+{
+  "address": "3uWi9x2SRpmjztkpkr2WWeBoVq3exjXG2YfDWLvm8KsQ",
+  "metadata": {
+    "name": "zkapi_vault",
+    "version": "0.1.0",
+    "spec": "0.1.0"
+  },
+  "instructions": [
+    {
+      "name": "append_payload",
+      "discriminator": [
+        254,
+        65,
+        54,
+        181,
+        187,
+        35,
+        12,
+        83
+      ],
+      "accounts": [
+        {
+          "name": "payload",
+          "writable": true
+        },
+        {
+          "name": "pool"
+        },
+        {
+          "name": "uploader",
+          "signer": true
+        }
+      ],
+      "args": [
+        {
+          "name": "offset",
+          "type": "u32"
+        },
+        {
+          "name": "bytes",
+          "type": "bytes"
+        }
+      ]
+    },
+    {
+      "name": "challenge_escape",
+      "discriminator": [
+        215,
+        150,
+        224,
+        75,
+        186,
+        18,
+        143,
+        19
+      ],
+      "accounts": [
+        {
+          "name": "pool"
+        },
+        {
+          "name": "tree",
+          "writable": true
+        },
+        {
+          "name": "note",
+          "writable": true
+        },
+        {
+          "name": "pending",
+          "writable": true
+        },
+        {
+          "name": "exit",
+          "writable": true
+        },
+        {
+          "name": "vault_authority"
+        },
+        {
+          "name": "mint"
+        },
+        {
+          "name": "source",
+          "writable": true
+        },
+        {
+          "name": "vault",
+          "writable": true
+        },
+        {
+          "name": "destination_owner"
+        },
+        {
+          "name": "destination",
+          "writable": true
+        },
+        {
+          "name": "treasury_owner"
+        },
+        {
+          "name": "treasury",
+          "writable": true
+        },
+        {
+          "name": "token_owner"
+        },
+        {
+          "name": "payer",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "token_program",
+          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        },
+        {
+          "name": "associated_token_program",
+          "address": "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "note_id",
+          "type": "u32"
+        },
+        {
+          "name": "public",
+          "type": {
+            "array": [
+              {
+                "array": [
+                  "u8",
+                  32
+                ]
+              },
+              12
+            ]
+          }
+        },
+        {
+          "name": "proof",
+          "type": {
+            "array": [
+              "u8",
+              256
+            ]
+          }
+        },
+        {
+          "name": "tree",
+          "type": {
+            "defined": {
+              "name": "TreeUpdate"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "claim_expired",
+      "discriminator": [
+        124,
+        78,
+        197,
+        187,
+        210,
+        66,
+        255,
+        1
+      ],
+      "accounts": [
+        {
+          "name": "pool"
+        },
+        {
+          "name": "tree",
+          "writable": true
+        },
+        {
+          "name": "note",
+          "writable": true
+        },
+        {
+          "name": "pending",
+          "writable": true
+        },
+        {
+          "name": "exit",
+          "writable": true
+        },
+        {
+          "name": "vault_authority"
+        },
+        {
+          "name": "mint"
+        },
+        {
+          "name": "source",
+          "writable": true
+        },
+        {
+          "name": "vault",
+          "writable": true
+        },
+        {
+          "name": "destination_owner"
+        },
+        {
+          "name": "destination",
+          "writable": true
+        },
+        {
+          "name": "treasury_owner"
+        },
+        {
+          "name": "treasury",
+          "writable": true
+        },
+        {
+          "name": "token_owner"
+        },
+        {
+          "name": "payer",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "token_program",
+          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        },
+        {
+          "name": "associated_token_program",
+          "address": "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "note_id",
+          "type": "u32"
+        },
+        {
+          "name": "tree",
+          "type": {
+            "defined": {
+              "name": "TreeUpdate"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "close_payload",
+      "discriminator": [
+        7,
+        12,
+        232,
+        26,
+        198,
+        243,
+        59,
+        136
+      ],
+      "accounts": [
+        {
+          "name": "payload",
+          "writable": true
+        },
+        {
+          "name": "pool"
+        },
+        {
+          "name": "closer",
+          "docs": [
+            "Uploader until expiry; any signer from expiry onward."
+          ],
+          "signer": true
+        },
+        {
+          "name": "rent_payer",
+          "writable": true
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "create_payload",
+      "discriminator": [
+        144,
+        198,
+        8,
+        231,
+        176,
+        85,
+        206,
+        217
+      ],
+      "accounts": [
+        {
+          "name": "payload",
+          "writable": true
+        },
+        {
+          "name": "pool"
+        },
+        {
+          "name": "uploader",
+          "signer": true
+        },
+        {
+          "name": "rent_payer",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "op",
+          "type": "u8"
+        },
+        {
+          "name": "len",
+          "type": "u32"
+        },
+        {
+          "name": "digest",
+          "type": {
+            "array": [
+              "u8",
+              32
+            ]
+          }
+        },
+        {
+          "name": "nonce",
+          "type": {
+            "array": [
+              "u8",
+              32
+            ]
+          }
+        },
+        {
+          "name": "expires",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "deposit",
+      "discriminator": [
+        242,
+        35,
+        198,
+        137,
+        82,
+        225,
+        242,
+        182
+      ],
+      "accounts": [
+        {
+          "name": "financial",
+          "accounts": [
+            {
+              "name": "pool"
+            },
+            {
+              "name": "tree",
+              "writable": true
+            },
+            {
+              "name": "note",
+              "writable": true
+            },
+            {
+              "name": "pending",
+              "writable": true
+            },
+            {
+              "name": "exit",
+              "writable": true
+            },
+            {
+              "name": "vault_authority"
+            },
+            {
+              "name": "mint"
+            },
+            {
+              "name": "source",
+              "writable": true
+            },
+            {
+              "name": "vault",
+              "writable": true
+            },
+            {
+              "name": "destination_owner"
+            },
+            {
+              "name": "destination",
+              "writable": true
+            },
+            {
+              "name": "treasury_owner"
+            },
+            {
+              "name": "treasury",
+              "writable": true
+            },
+            {
+              "name": "token_owner"
+            },
+            {
+              "name": "payer",
+              "writable": true,
+              "signer": true
+            },
+            {
+              "name": "token_program",
+              "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+            },
+            {
+              "name": "associated_token_program",
+              "address": "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"
+            },
+            {
+              "name": "system_program",
+              "address": "11111111111111111111111111111111"
+            }
+          ]
+        },
+        {
+          "name": "token_owner_signer",
+          "signer": true
+        }
+      ],
+      "args": [
+        {
+          "name": "expected_id",
+          "type": "u32"
+        },
+        {
+          "name": "expected_root",
+          "type": {
+            "array": [
+              "u8",
+              32
+            ]
+          }
+        },
+        {
+          "name": "expiry",
+          "type": "u64"
+        },
+        {
+          "name": "commitment",
+          "type": {
+            "array": [
+              "u8",
+              32
+            ]
+          }
+        },
+        {
+          "name": "amount",
+          "type": "u64"
+        },
+        {
+          "name": "tree",
+          "type": {
+            "defined": {
+              "name": "TreeUpdate"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "execute_payload",
+      "discriminator": [
+        200,
+        72,
+        61,
+        238,
+        207,
+        4,
+        57,
+        5
+      ],
+      "accounts": [
+        {
+          "name": "payload",
+          "writable": true
+        },
+        {
+          "name": "uploader",
+          "signer": true
+        },
+        {
+          "name": "rent_payer",
+          "writable": true
+        }
+      ],
+      "args": [
+        {
+          "name": "expected_digest",
+          "type": {
+            "array": [
+              "u8",
+              32
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "finalize_escape",
+      "discriminator": [
+        90,
+        96,
+        119,
+        25,
+        40,
+        90,
+        29,
+        95
+      ],
+      "accounts": [
+        {
+          "name": "pool"
+        },
+        {
+          "name": "tree",
+          "writable": true
+        },
+        {
+          "name": "note",
+          "writable": true
+        },
+        {
+          "name": "pending",
+          "writable": true
+        },
+        {
+          "name": "exit",
+          "writable": true
+        },
+        {
+          "name": "vault_authority"
+        },
+        {
+          "name": "mint"
+        },
+        {
+          "name": "source",
+          "writable": true
+        },
+        {
+          "name": "vault",
+          "writable": true
+        },
+        {
+          "name": "destination_owner"
+        },
+        {
+          "name": "destination",
+          "writable": true
+        },
+        {
+          "name": "treasury_owner"
+        },
+        {
+          "name": "treasury",
+          "writable": true
+        },
+        {
+          "name": "token_owner"
+        },
+        {
+          "name": "payer",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "token_program",
+          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        },
+        {
+          "name": "associated_token_program",
+          "address": "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "note_id",
+          "type": "u32"
+        }
+      ]
+    },
+    {
+      "name": "initialize_pool",
+      "discriminator": [
+        95,
+        180,
+        10,
+        172,
+        84,
+        174,
+        232,
+        40
+      ],
+      "accounts": [
+        {
+          "name": "pool",
+          "writable": true
+        },
+        {
+          "name": "tree",
+          "writable": true
+        },
+        {
+          "name": "vault_authority"
+        },
+        {
+          "name": "mint"
+        },
+        {
+          "name": "vault",
+          "writable": true
+        },
+        {
+          "name": "deployment_authority",
+          "signer": true
+        },
+        {
+          "name": "admin",
+          "signer": true
+        },
+        {
+          "name": "payer",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "token_program",
+          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        },
+        {
+          "name": "associated_token_program",
+          "address": "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "pool_id",
+          "type": {
+            "array": [
+              "u8",
+              32
+            ]
+          }
+        },
+        {
+          "name": "genesis",
+          "type": {
+            "array": [
+              "u8",
+              32
+            ]
+          }
+        },
+        {
+          "name": "state_key",
+          "type": {
+            "array": [
+              "u8",
+              64
+            ]
+          }
+        },
+        {
+          "name": "clearance_key",
+          "type": {
+            "array": [
+              "u8",
+              64
+            ]
+          }
+        },
+        {
+          "name": "ttl",
+          "type": "u64"
+        },
+        {
+          "name": "challenge",
+          "type": "u64"
+        },
+        {
+          "name": "cap",
+          "type": "u64"
+        },
+        {
+          "name": "admin",
+          "type": "pubkey"
+        },
+        {
+          "name": "treasury",
+          "type": "pubkey"
+        }
+      ]
+    },
+    {
+      "name": "initiate_escape",
+      "discriminator": [
+        229,
+        181,
+        163,
+        81,
+        129,
+        93,
+        84,
+        15
+      ],
+      "accounts": [
+        {
+          "name": "pool"
+        },
+        {
+          "name": "tree",
+          "writable": true
+        },
+        {
+          "name": "note",
+          "writable": true
+        },
+        {
+          "name": "pending",
+          "writable": true
+        },
+        {
+          "name": "exit",
+          "writable": true
+        },
+        {
+          "name": "vault_authority"
+        },
+        {
+          "name": "mint"
+        },
+        {
+          "name": "source",
+          "writable": true
+        },
+        {
+          "name": "vault",
+          "writable": true
+        },
+        {
+          "name": "destination_owner"
+        },
+        {
+          "name": "destination",
+          "writable": true
+        },
+        {
+          "name": "treasury_owner"
+        },
+        {
+          "name": "treasury",
+          "writable": true
+        },
+        {
+          "name": "token_owner"
+        },
+        {
+          "name": "payer",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "token_program",
+          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        },
+        {
+          "name": "associated_token_program",
+          "address": "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "public",
+          "type": {
+            "array": [
+              {
+                "array": [
+                  "u8",
+                  32
+                ]
+              },
+              14
+            ]
+          }
+        },
+        {
+          "name": "proof",
+          "type": {
+            "array": [
+              "u8",
+              256
+            ]
+          }
+        },
+        {
+          "name": "tree",
+          "type": {
+            "defined": {
+              "name": "TreeUpdate"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "mutual_close",
+      "discriminator": [
+        26,
+        197,
+        238,
+        156,
+        6,
+        237,
+        69,
+        66
+      ],
+      "accounts": [
+        {
+          "name": "pool"
+        },
+        {
+          "name": "tree",
+          "writable": true
+        },
+        {
+          "name": "note",
+          "writable": true
+        },
+        {
+          "name": "pending",
+          "writable": true
+        },
+        {
+          "name": "exit",
+          "writable": true
+        },
+        {
+          "name": "vault_authority"
+        },
+        {
+          "name": "mint"
+        },
+        {
+          "name": "source",
+          "writable": true
+        },
+        {
+          "name": "vault",
+          "writable": true
+        },
+        {
+          "name": "destination_owner"
+        },
+        {
+          "name": "destination",
+          "writable": true
+        },
+        {
+          "name": "treasury_owner"
+        },
+        {
+          "name": "treasury",
+          "writable": true
+        },
+        {
+          "name": "token_owner"
+        },
+        {
+          "name": "payer",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "token_program",
+          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        },
+        {
+          "name": "associated_token_program",
+          "address": "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "public",
+          "type": {
+            "array": [
+              {
+                "array": [
+                  "u8",
+                  32
+                ]
+              },
+              14
+            ]
+          }
+        },
+        {
+          "name": "proof",
+          "type": {
+            "array": [
+              "u8",
+              256
+            ]
+          }
+        },
+        {
+          "name": "tree",
+          "type": {
+            "defined": {
+              "name": "TreeUpdate"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "pause",
+      "discriminator": [
+        211,
+        22,
+        221,
+        251,
+        74,
+        121,
+        193,
+        47
+      ],
+      "accounts": [
+        {
+          "name": "pool",
+          "writable": true
+        },
+        {
+          "name": "admin",
+          "signer": true
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "seal_payload",
+      "discriminator": [
+        0,
+        206,
+        194,
+        34,
+        150,
+        215,
+        190,
+        144
+      ],
+      "accounts": [
+        {
+          "name": "payload",
+          "writable": true
+        },
+        {
+          "name": "pool"
+        },
+        {
+          "name": "uploader",
+          "signer": true
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "set_treasury",
+      "discriminator": [
+        57,
+        97,
+        196,
+        95,
+        195,
+        206,
+        106,
+        136
+      ],
+      "accounts": [
+        {
+          "name": "pool",
+          "writable": true
+        },
+        {
+          "name": "admin",
+          "signer": true
+        }
+      ],
+      "args": [
+        {
+          "name": "new_owner",
+          "type": "pubkey"
+        }
+      ]
+    },
+    {
+      "name": "unpause",
+      "discriminator": [
+        169,
+        144,
+        4,
+        38,
+        10,
+        141,
+        188,
+        255
+      ],
+      "accounts": [
+        {
+          "name": "pool",
+          "writable": true
+        },
+        {
+          "name": "admin",
+          "signer": true
+        }
+      ],
+      "args": []
+    }
+  ],
+  "accounts": [
+    {
+      "name": "ExitNullifier",
+      "discriminator": [
+        144,
+        109,
+        98,
+        96,
+        177,
+        254,
+        92,
+        115
+      ]
+    },
+    {
+      "name": "Note",
+      "discriminator": [
+        203,
+        75,
+        252,
+        196,
+        81,
+        210,
+        122,
+        126
+      ]
+    },
+    {
+      "name": "PayloadBuffer",
+      "discriminator": [
+        73,
+        163,
+        195,
+        241,
+        185,
+        201,
+        219,
+        229
+      ]
+    },
+    {
+      "name": "PendingWithdrawal",
+      "discriminator": [
+        61,
+        103,
+        179,
+        177,
+        148,
+        199,
+        63,
+        171
+      ]
+    },
+    {
+      "name": "PoolConfig",
+      "discriminator": [
+        26,
+        108,
+        14,
+        123,
+        116,
+        230,
+        129,
+        43
+      ]
+    },
+    {
+      "name": "TreeState",
+      "discriminator": [
+        251,
+        163,
+        240,
+        50,
+        165,
+        217,
+        193,
+        100
+      ]
+    }
+  ],
+  "events": [
+    {
+      "name": "VaultTransitionV1",
+      "discriminator": [
+        65,
+        229,
+        245,
+        228,
+        226,
+        166,
+        130,
+        151
+      ]
+    }
+  ],
+  "errors": [
+    {
+      "code": 6000,
+      "name": "Paused"
+    },
+    {
+      "code": 6001,
+      "name": "InvalidBinding"
+    },
+    {
+      "code": 6002,
+      "name": "InvalidMint"
+    },
+    {
+      "code": 6003,
+      "name": "InvalidTokenAccount"
+    },
+    {
+      "code": 6004,
+      "name": "InvalidField"
+    },
+    {
+      "code": 6005,
+      "name": "InvalidProof"
+    },
+    {
+      "code": 6006,
+      "name": "StaleRoot"
+    },
+    {
+      "code": 6007,
+      "name": "StaleNoteId"
+    },
+    {
+      "code": 6008,
+      "name": "InvalidExpiry"
+    },
+    {
+      "code": 6009,
+      "name": "TreeFull"
+    },
+    {
+      "code": 6010,
+      "name": "InvalidBalance"
+    },
+    {
+      "code": 6011,
+      "name": "ReplayedNullifier"
+    },
+    {
+      "code": 6012,
+      "name": "NoteNotActive"
+    },
+    {
+      "code": 6013,
+      "name": "NotPending"
+    },
+    {
+      "code": 6014,
+      "name": "ChallengeExpired"
+    },
+    {
+      "code": 6015,
+      "name": "ChallengeNotExpired"
+    },
+    {
+      "code": 6016,
+      "name": "NotExpired"
+    },
+    {
+      "code": 6017,
+      "name": "InvalidBuffer"
+    },
+    {
+      "code": 6018,
+      "name": "ArithmeticOverflow"
+    }
+  ],
+  "types": [
+    {
+      "name": "ExitNullifier",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "layout_version",
+            "type": "u8"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          },
+          {
+            "name": "consumed",
+            "type": "bool"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Note",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "layout_version",
+            "type": "u8"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          },
+          {
+            "name": "note_id",
+            "type": "u32"
+          },
+          {
+            "name": "commitment",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "deposit",
+            "type": "u64"
+          },
+          {
+            "name": "expiry",
+            "type": "u64"
+          },
+          {
+            "name": "status",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "PayloadBuffer",
+      "docs": [
+        "Fixed-size upload allocation. Only bytes before next_offset are received;",
+        "the remaining payload bytes are zero-filled until appended."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "layout_version",
+            "type": "u8"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          },
+          {
+            "name": "uploader",
+            "type": "pubkey"
+          },
+          {
+            "name": "op",
+            "type": "u8"
+          },
+          {
+            "name": "payload_len",
+            "type": "u32"
+          },
+          {
+            "name": "digest",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "next_offset",
+            "type": "u32"
+          },
+          {
+            "name": "sealed",
+            "type": "bool"
+          },
+          {
+            "name": "expires",
+            "type": "u64"
+          },
+          {
+            "name": "rent_payer",
+            "type": "pubkey"
+          },
+          {
+            "name": "payload",
+            "type": "bytes"
+          },
+          {
+            "name": "nonce",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "PendingWithdrawal",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "layout_version",
+            "type": "u8"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          },
+          {
+            "name": "exists",
+            "type": "bool"
+          },
+          {
+            "name": "old_root",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "nullifier",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "balance",
+            "type": "u64"
+          },
+          {
+            "name": "destination_owner",
+            "type": "pubkey"
+          },
+          {
+            "name": "deadline",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "PoolConfig",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "layout_version",
+            "type": "u8"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          },
+          {
+            "name": "genesis_hash",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "mint",
+            "type": "pubkey"
+          },
+          {
+            "name": "token_program",
+            "type": "pubkey"
+          },
+          {
+            "name": "decimals",
+            "type": "u8"
+          },
+          {
+            "name": "vault_binding",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "admin",
+            "type": "pubkey"
+          },
+          {
+            "name": "treasury_owner",
+            "type": "pubkey"
+          },
+          {
+            "name": "state_key",
+            "type": {
+              "array": [
+                "u8",
+                64
+              ]
+            }
+          },
+          {
+            "name": "clearance_key",
+            "type": {
+              "array": [
+                "u8",
+                64
+              ]
+            }
+          },
+          {
+            "name": "ttl",
+            "type": "u64"
+          },
+          {
+            "name": "challenge",
+            "type": "u64"
+          },
+          {
+            "name": "cap",
+            "type": "u64"
+          },
+          {
+            "name": "paused",
+            "type": "bool"
+          },
+          {
+            "name": "tree_backend",
+            "type": "u8"
+          },
+          {
+            "name": "tree_tag_policy",
+            "type": "u8"
+          },
+          {
+            "name": "circuit_profile_hash",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "pool_id",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "TreeState",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "layout_version",
+            "type": "u8"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          },
+          {
+            "name": "root",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "next_note_id",
+            "type": "u64"
+          },
+          {
+            "name": "sequence",
+            "type": "u64"
+          },
+          {
+            "name": "outstanding_deposits",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "TreeUpdate",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "public",
+            "type": {
+              "array": [
+                {
+                  "array": [
+                    "u8",
+                    32
+                  ]
+                },
+                11
+              ]
+            }
+          },
+          {
+            "name": "proof",
+            "type": {
+              "array": [
+                "u8",
+                256
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "VaultTransitionV1",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "event_version",
+            "type": "u8"
+          },
+          {
+            "name": "pool",
+            "type": "pubkey"
+          },
+          {
+            "name": "sequence",
+            "type": "u64"
+          },
+          {
+            "name": "op",
+            "type": "u8"
+          },
+          {
+            "name": "note_id",
+            "type": "u32"
+          },
+          {
+            "name": "status",
+            "type": "u8"
+          },
+          {
+            "name": "old_root",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "new_root",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "commitment",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "deposit",
+            "type": "u64"
+          },
+          {
+            "name": "expiry",
+            "type": "u64"
+          },
+          {
+            "name": "exit_nullifier",
+            "type": {
+              "option": {
+                "array": [
+                  "u8",
+                  32
+                ]
+              }
+            }
+          },
+          {
+            "name": "final_balance",
+            "type": {
+              "option": "u64"
+            }
+          },
+          {
+            "name": "destination_owner",
+            "type": {
+              "option": "pubkey"
+            }
+          },
+          {
+            "name": "deadline",
+            "type": {
+              "option": "u64"
+            }
+          }
+        ]
+      }
+    }
+  ]
+}

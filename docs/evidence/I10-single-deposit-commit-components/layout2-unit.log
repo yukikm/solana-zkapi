@@ -1,0 +1,25 @@
+   Compiling zkapi-layout2 v0.1.0 (/private/var/folders/d5/cmyw7m5n7fzc9dq4ttm4kn9m0000gn/T/zkapi-compact-commit-sved3mpc/repo/crates/zkapi-layout2)
+    Finished `test` profile [optimized + debuginfo] target(s) in 0.97s
+     Running unittests src/lib.rs (target/debug/deps/zkapi_layout2-7ffb2097ba4d975a)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/compact.rs (target/debug/deps/compact-65bb4bd546b3c97d)
+
+running 5 tests
+test integer_boundaries_are_zero_extended_and_semantic_checks_remain_with_the_handler ... ok
+test all_omitted_duplicates_constants_and_binding_must_match_before_compression ... ok
+test exact_length_rejects_every_truncation_trailing_bytes_and_legacy_wire ... ok
+test expansion_and_compression_reject_noncanonical_fields_without_reduction ... ok
+test generated_proof_fixtures_roundtrip_without_changing_any_public_input_or_proof_byte ... ok
+
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests zkapi_layout2
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+

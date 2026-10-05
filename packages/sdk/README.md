@@ -1,6 +1,18 @@
 # Solana zkAPI SDK
 
-`./encoding` retains the integer and H2F primitives. `./layout2` encodes the exact layout-2 arguments. `./transport` builds the required v0 buffer path with no ALT, with 1,000,000 CU requested and every serialized transaction limited to 1232 bytes. It advertises only `v0_buffer`; v1 and legacy-only wallet signing are not supported.
+`./encoding` retains the integer and H2F primitives. `./layout2` encodes the exact layout-2 arguments. `./transport` builds v0 buffer operations and the optional single-transaction compact deposit, with no ALT, 1,000,000 CU requested and every serialized transaction limited to 1232 bytes. v1 and legacy-only wallet signing are not supported.
+
+## Single-signature deposit
+
+New deposits use `deposit_compact_v1` only when the authenticated manifest advertises `v0_inline_deposit_v1` and the independently installed `ManifestTrustPolicy.build.transactionFormats` includes both that capability and `v0_buffer`. The verified artifact bundle also checks the exact compact instruction discriminator, arguments and account roles in the pinned IDL. A fetched config cannot enable the capability by itself. Publish new IDL/program/build/distribution hashes together after isolated canary acceptance; do not replace the pins on an existing unresolved journal.
+
+Compact encoding retains the same eleven public inputs, tree proof, verification key, account layout and USDC accounting. A normal self-funded deposit needs one wallet signature and one financial transaction. `beginDeposit` persists the private witness before tree proving; `advance` persists exact signed bytes before the initial send and activates funds only after exact finalized receipt and Note reconciliation. Separate token owner, Note rent payer and transaction fee payer are explicit roles; unused buffer roles are not persisted.
+
+Compact operations use plaintext journal schema 2 within the existing encrypted envelope. Schema 1 buffer journals remain readable and keep their saved transport. Unknown sends, missing history, confirmed-only observations and blockhash expiry cannot authorize a new deposit, rebase or buffer fallback. Recovery observes the stored signature without automatically sending again. A verified finalized rejection permits explicit reproving with the same secret and amount; a new transaction requires a new signature. Withdrawal, escape, challenge and old deposits retain the buffer path.
+
+The selected compact-deposit priority fee, including zero, is saved with the operation before proving. Unsigned snapshot refreshes, proof interruptions and explicit retries after finalized rejection retain that fee across restarts. Changing a client's default fee does not reprice an existing operation.
+
+See [the implementation contract](../../docs/single-signature-deposit-design.md) and [local validation](../../docs/evidence/I10-single-deposit-implementation.md). Public deployment and real Phantom acceptance are separate from local tests.
 
 The caller supplies the pinned program/pool profile, a verified host-prover output, finalized snapshot slot/sequence and explicit wallet roles. Encoding is not proof verification. `vaultAccounts` derives the canonical PDAs/ATAs and inserts the writable payer into unused Financial slots. Uploader, instruction payer, token owner, buffer rent payer and transaction fee payer can all differ.
 

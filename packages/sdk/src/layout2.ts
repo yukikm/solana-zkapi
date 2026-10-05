@@ -49,3 +49,25 @@ export function encodeLayout2Args(args: Layout2Args): Uint8Array {
 export function validatePayload(operation: Operation, payload: Uint8Array): void {
   if (!OPERATIONS[operation] || payload.length !== OPERATIONS[operation].bytes) throw new Error('invalid layout-2 payload length or operation');
 }
+
+/** Compact deposit v1 removes only redundant public inputs. Pool binding is
+ * supplied by the verified manifest/PoolConfig, never accepted from wire. */
+export const COMPACT_DEPOSIT_BYTES = 436;
+function integerField(value: bigint): Uint8Array { return parseField('0x' + value.toString(16).padStart(64, '0')); }
+export function expandCompactDepositPayload(compact: Uint8Array, binding: string): Uint8Array {
+  if (compact.length !== COMPACT_DEPOSIT_BYTES) throw new Error('invalid compact deposit length');
+  const b = compact.slice(), view = new DataView(b.buffer, b.byteOffset, b.byteLength);
+  const fieldAt = (offset: number) => parseField('0x' + hex(b.slice(offset, offset + 32)));
+  const id = view.getUint32(0, true), expiry = view.getBigUint64(36, true), amount = view.getBigUint64(76, true);
+  if (amount === 0n || amount > MAX_MICRO_USDC) throw new Error('invalid deposit amount');
+  const inputs = [parseField(binding), fieldAt(4), fieldAt(84), integerField(BigInt(id)), integerField(0n),
+    fieldAt(116), fieldAt(44), integerField(amount), integerField(expiry), integerField(0n), fieldAt(148)];
+  return concat(b.slice(0, 84), ...inputs, b.slice(180));
+}
+export function compactDepositPayload(payload: Uint8Array, binding: string): Uint8Array {
+  validatePayload('deposit', payload);
+  const compact = concat(payload.slice(0, 84), payload.slice(148, 180), payload.slice(244, 276), payload.slice(404, 436), payload.slice(436));
+  const canonical = expandCompactDepositPayload(compact, binding);
+  if (canonical.some((byte, i) => byte !== payload[i])) throw new Error('deposit public inputs differ from compact expansion');
+  return compact;
+}

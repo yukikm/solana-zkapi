@@ -96,6 +96,38 @@ pub mod zkapi_vault {
         let bytes = (expected_id, expected_root, expiry, commitment, amount, tree).try_to_vec()?;
         handlers::run(&ctx.accounts.financial, Operation::Deposit, &bytes)
     }
+    #[allow(clippy::too_many_arguments)]
+    pub fn deposit_compact_v1(
+        ctx: Context<DepositAccounts>,
+        expected_id: u32,
+        expected_root: [u8; 32],
+        expiry: u64,
+        commitment: [u8; 32],
+        amount: u64,
+        new_root: [u8; 32],
+        new_leaf: [u8; 32],
+        transition_tag: [u8; 32],
+        tree_proof: [u8; 256],
+    ) -> Result<()> {
+        require_keys_eq!(
+            ctx.accounts.token_owner_signer.key(),
+            ctx.accounts.financial.token_owner.key(),
+            VaultError::InvalidTokenAccount
+        );
+        let bytes = (
+            expected_id,
+            expected_root,
+            expiry,
+            commitment,
+            amount,
+            new_root,
+            new_leaf,
+            transition_tag,
+            tree_proof,
+        )
+            .try_to_vec()?;
+        handlers::deposit_compact_v1(&ctx.accounts.financial, &bytes)
+    }
     pub fn mutual_close(
         ctx: Context<Financial>,
         public: [[u8; 32]; 14],
@@ -192,6 +224,10 @@ fn validate_instruction_length(data: &[u8]) -> Result<()> {
     let lengths: &[(&[u8], usize)] = &[
         (instruction::InitializePool::DISCRIMINATOR, 280),
         (instruction::Deposit::DISCRIMINATOR, 692),
+        (
+            instruction::DepositCompactV1::DISCRIMINATOR,
+            zkapi_layout2::DEPOSIT_COMPACT_V1_BYTES,
+        ),
         (instruction::MutualClose::DISCRIMINATOR, 1312),
         (instruction::InitiateEscape::DISCRIMINATOR, 1312),
         (instruction::ChallengeEscape::DISCRIMINATOR, 1252),
@@ -238,6 +274,62 @@ fn checked_entry<'info>(
 mod transport_wire_tests {
     use super::*;
     use anchor_lang::InstructionData;
+    #[test]
+    fn compact_deposit_compiler_wire_matches_codec_and_rejects_nonexact_length() {
+        let instruction = instruction::DepositCompactV1 {
+            expected_id: u32::MAX,
+            expected_root: zkapi_layout2::integer(7),
+            expiry: u64::MAX,
+            commitment: zkapi_layout2::integer(8),
+            amount: 1_000_000,
+            new_root: zkapi_layout2::integer(9),
+            new_leaf: zkapi_layout2::integer(10),
+            transition_tag: zkapi_layout2::integer(11),
+            tree_proof: [42; 256],
+        };
+        let wire = instruction.data();
+        assert_eq!(wire.len(), 444);
+        assert!(validate_instruction_length(&wire).is_ok());
+        let binding = zkapi_layout2::integer(12);
+        let canonical = zkapi_layout2::expand_deposit_compact_v1(&wire[8..], &binding).unwrap();
+        let expected = instruction::Deposit {
+            expected_id: instruction.expected_id,
+            expected_root: instruction.expected_root,
+            expiry: instruction.expiry,
+            commitment: instruction.commitment,
+            amount: instruction.amount,
+            tree: Box::new(TreeUpdate {
+                public: [
+                    binding,
+                    instruction.expected_root,
+                    instruction.new_root,
+                    zkapi_layout2::integer(u64::from(instruction.expected_id)),
+                    [0; 32],
+                    instruction.new_leaf,
+                    instruction.commitment,
+                    zkapi_layout2::integer(instruction.amount),
+                    zkapi_layout2::integer(instruction.expiry),
+                    [0; 32],
+                    instruction.transition_tag,
+                ],
+                proof: instruction.tree_proof,
+            }),
+        }
+        .data();
+        assert_eq!(&canonical[..], &expected[8..]);
+        for cut in 8..wire.len() {
+            assert!(validate_instruction_length(&wire[..cut]).is_err());
+        }
+        for args in [&wire[8..], &expected[8..]] {
+            let mut invalid = wire[..8].to_vec();
+            invalid.extend_from_slice(args);
+            invalid.push(0);
+            assert!(validate_instruction_length(&invalid).is_err());
+        }
+        let mut legacy = wire[..8].to_vec();
+        legacy.extend_from_slice(&expected[8..]);
+        assert!(validate_instruction_length(&legacy).is_err());
+    }
     #[test]
     fn append_rejects_unbounded_truncated_and_trailing_vec_before_decode() {
         let valid = instruction::AppendPayload {
