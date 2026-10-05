@@ -1,0 +1,121 @@
+{
+  "schema": 1,
+  "recorded_at_utc": "2026-10-05T09:54:17.732044+00:00",
+  "scope": "English live SDK UI implementation, focused offline checks, fresh public devnet setup and partial actual Phantom observation",
+  "implementation_complete": false,
+  "live_lifecycle_passed": false,
+  "I10_complete": false,
+  "release_gates_passed": [],
+  "origin": "http://127.0.0.1:19180",
+  "routes": {
+    "/": "live SDK UI",
+    "/live": "live SDK UI",
+    "/demo": "explicit explanatory sample"
+  },
+  "source_sha256": {
+    "scripts/i10-wallet-ui/index.html": "51d0e4d413a2ff99ae74ffcd044f59402bb639e056e49b0c41ff49b2ce29033a",
+    "scripts/i10-wallet-ui/style.css": "026b0fd2dc27d996889936ddba5d06334f2e8e0b438af7291a330d8002e764bd",
+    "scripts/i10-wallet-ui/app.ts": "53db903ca141ae9da23b1213c2ec10da7b68914075bce5c72729e744acd38803",
+    "scripts/i10-wallet-ui/main.ts": "7615233fbd00852ba3540c11c82cee7bf61953051f94b5a0d0be3c0a65cecd89",
+    "scripts/i10-wallet-ui/live-view.ts": "f81beee65a3f1ba31179a8830255c634938c8362fb1eb13cef7db5fbdcfd6e42",
+    "scripts/i10-wallet-ui/live-view.test.ts": "7cf2532db4a2a9956a853e4508435a4db9a61bc7ea45ad4c700d6071c507d153",
+    "scripts/i10-wallet-ui/diagnostics.ts": "e0834cb7ba4c4cf91fdcb313b9415011fb4d922978db0dfce3f487b91009512d",
+    "scripts/i10-wallet-ui/diagnostics.test.ts": "d93dc3b08bb35a5f472cb5b578243a99924918ce47d8964c246d0ccb2042dbeb",
+    "scripts/i10-wallet-ui/host.ts": "2ebd6536e6e4c9ade5a7a6f6fb4b280b1a35168aae77830d1c449dbe82b122e3",
+    "scripts/i10-wallet-ui/host.test.ts": "b42cfa70dbd3cfeda416a57c80eb5a51efe7401cf376bbea6bda02561dcf5008",
+    "scripts/i10-wallet-ui/build.test.ts": "c37bb84b6f0b3035e6718a47a1e3c028a25a113e27b7bd5c5f4fc663aa313325",
+    "scripts/i10-wallet-ui/browser.test.ts": "948b0b1efa22fbc639ed933056d03ba21c7cbfe0ecd6960cc488b16b14269210",
+    "scripts/i10-wallet-ui/provider.ts": "f34fb67ae4e486a2ee0b6ddb474c7bf159bf22559504346381f252967259a468",
+    "scripts/run_i10_devnet_vault.ts": "411d2550d6049db8c53968af527414736400ee4483883ba87f600a34add770cb",
+    "scripts/i10_devnet_pool_instance.ts": "b3c580fb7db243ce93b68a8618008688ec3b23b84a41c3849e9b15934723cf1f",
+    "scripts/i10_devnet_pool_instance.test.ts": "b38c63f161d0d43f3d8d62e07d5fdaa8883e29a3f9cbb4e4b59e7b3dabf26c04"
+  },
+  "focused_tests": {
+    "passed": 37,
+    "failed": 0,
+    "skipped": 0,
+    "duration_ms": 1089.89975,
+    "command": "target/i08-toolchain/bin/node --test scripts/i10-wallet-ui/demo.test.ts scripts/i10-wallet-ui/live-view.test.ts scripts/i10-wallet-ui/diagnostics.test.ts scripts/i10-wallet-ui/build.test.ts scripts/i10-wallet-ui/host.test.ts scripts/i10-wallet-ui/provider.test.ts scripts/i10_devnet_pool_instance.test.ts"
+  },
+  "strict_typescript": {
+    "exit_code": 0,
+    "command": "target/i08-toolchain/bin/node node_modules/typescript/bin/tsc --noEmit --strict --target ES2023 --module NodeNext --moduleResolution NodeNext --allowImportingTsExtensions --resolveJsonModule --lib ES2023,DOM --types node scripts/i10-wallet-ui/*.ts scripts/i10_devnet_pool_instance.ts scripts/i10_devnet_pool_instance.test.ts"
+  },
+  "manual_browser_fixture": {
+    "scope": "synthetic wallet, proof, chain and provider; not public acceptance",
+    "signature_rejection_retained_operation_and_revision": true,
+    "signature_rejection_attempts": 0,
+    "unresolved_synthetic_send_shows_no_available_balance": true,
+    "response_observed_title": "API response received",
+    "response_observed_available_balance": "—",
+    "response_observed_send_disabled": true,
+    "response_observed_withdraw_disabled": true,
+    "settled_balance_usdc": "0.999999",
+    "settled_charge_usdc": "0.000001",
+    "settled_withdraw_enabled": true
+  },
+  "visual_check": {
+    "language": "en",
+    "actual_viewport_width": 508,
+    "document_width": 508,
+    "requested_viewport_overrides_not_effective": [
+      375,
+      768,
+      1280
+    ],
+    "screenshot_local": "target/i10-live-ui-preview.jpg",
+    "screenshot_sha256": "3e8e718edc5000718152193904986964dac9494b61299f783223f192962c382c"
+  },
+  "new_public_devnet_setup": {
+    "pool": "3tByNJBBzqBjhHsNdpsq56XXSj7HckGUfyQMNqEBiTZ5",
+    "manifest_hash": "ee851dbfbb1c75b7ff4b5fabe3407ba9c3a38c42bcb7668d722653afcccb4555",
+    "initialize_receipt": {
+      "signature": "9F5c8bziZeAG9wA1F6swb9TPuzkDxbRz5tkCVnHTZLr2LVYBKTgYyHPoSNmGfZXBD5jTwCpSffVtucLhPRjcz2t",
+      "slot": 507688621,
+      "fee_lamports": "5000",
+      "compute_units": 38765,
+      "wire_sha256": "153b2dafe4c90edd463759379b6b192158cb6f19915554afa0482fbfa698d2ba"
+    },
+    "indexer_http_200_observed": true,
+    "backend_admission_true_observed": true,
+    "availability_limitation": "Indexer reconciliation invalidates a cached root; HTTP503 and backend admission false were also observed. This is not uninterrupted readiness or an SLO.",
+    "same_parent_budget_unchanged": true,
+    "original_config_manifest_and_journals_preserved": true,
+    "old_backend_clean_shutdown": true,
+    "old_indexer_exit_code": 143,
+    "old_indexer_graceful_shutdown_verified": false
+  },
+  "actual_phantom_partial": {
+    "manual_page_open_confirmed_by_user": true,
+    "wallet_discovery_connection_and_explicit_account_observed": true,
+    "actual_wasm_deposit_proof_prepared": true,
+    "signature_requested_and_returned_observed": true,
+    "action_failed_before_signed_attempt_persisted": true,
+    "saved_operation_id": "95396864-0357-4052-ba57-5186d7743346",
+    "journal_revision": 2,
+    "operation_phase": "ready",
+    "signed_attempts": 0,
+    "finalized_transactions": 0,
+    "diagnostic_added_for_followup": true,
+    "source_observation_report": "docs/evidence/I10-live-demo-phantom-initial-observations.json",
+    "source_observation_sha256": "ffa3e47309c0adb4185b8510a97856e8c2bd6f82eb8c92e9e1a734096eb9f994",
+    "full_wallet_UI_verified": false,
+    "live_provider_verified": false
+  },
+  "provider_inference_calls_this_work": 0,
+  "native_lifecycle_substituted_for_phantom": false,
+  "budget_reservations": {
+    "count": 3,
+    "reserved_micro_usdc": "57831",
+    "remaining_micro_usdc": "9942169",
+    "ui_case": "openai-chat-plain",
+    "ui_case_reserved": false
+  },
+  "limitations": [
+    "The actual Phantom deposit/API/settlement/withdrawal lifecycle is incomplete. First signature returned but failed validation or persistence; precise reason awaits current diagnostic.",
+    "Manual fixture success does not establish real cryptographic proof, network, provider or Phantom acceptance.",
+    "No inference was triggered by this work; prior successful OpenRouter tools evidence remains a separate case.",
+    "No response replay, journal reset, campaign reset or mainnet action was performed."
+  ],
+  "live_ui_wiring_implemented": true
+}

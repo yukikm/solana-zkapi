@@ -1,0 +1,98 @@
+{
+  "schema": 1,
+  "observed_at_utc": "2026-10-05T12:38:58.774Z",
+  "scope": "Independent read-only finalized receipts for the pinned Phantom repeat-demo deposit phase",
+  "passed": true,
+  "phase": "deposit",
+  "pool": "3tByNJBBzqBjhHsNdpsq56XXSj7HckGUfyQMNqEBiTZ5",
+  "account": "nHSjCbSd3XD3UwGy5uAAUqEfDf4kBDYaJZ4eF82nCDZ",
+  "manifest_hash": "ee851dbfbb1c75b7ff4b5fabe3407ba9c3a38c42bcb7668d722653afcccb4555",
+  "demo_run": 2,
+  "transactions": [
+    {
+      "signature": "aCp7HykyjbsXvfS9mHU7JhBZZQhm35S17XhzoB4TT4hxq8mqiuJrGdwtxaafWv4uMd8VR5c9uE8e2kdMUu8Pg2x",
+      "slot": 507732668,
+      "instruction": "create_payload",
+      "fee_lamports": 5001,
+      "compute_units": 9644,
+      "wire_bytes": 409,
+      "message_sha256": "0eb267af05e85f466d13f3ae6645b420a11c55372ae9385e1bc878bd3eae788d"
+    },
+    {
+      "signature": "653a5VA39ss768vbexyt2otcDj1jdFzzhmRy6cka4VrWmner1sqMzLystQ1pg7FLTfErDQr5NxzSeMs33TshmzuY",
+      "slot": 507732851,
+      "instruction": "append_payload",
+      "fee_lamports": 5001,
+      "compute_units": 7067,
+      "wire_bytes": 999,
+      "message_sha256": "3ccac9beea6a78d43da4955ee9fc2e7b11bfb12fb3a3350b44bb36210a4c94f6"
+    },
+    {
+      "signature": "zNGbs7xrQRj7AwawNeRQMKJN15XskmpYhNXtF6NuURMrNHRGds2UYdqmu3WAigbDBAyHGCHN2yamzsanjZKhbpy",
+      "slot": 507733168,
+      "instruction": "seal_payload",
+      "fee_lamports": 5001,
+      "compute_units": 7321,
+      "wire_bytes": 298,
+      "message_sha256": "d76ab61862e5d4b54172529751176ae06f7712b67f7efaf32a8b7887410cbc6c"
+    },
+    {
+      "signature": "3z6c2TzaedmGfnZ32qqW175RwD5PCUHjJ2QT51AY8Y2p2LUvALoGfK7sSK8UEnd5xScQTEwcbsPEZnsscc4umVNW",
+      "slot": 507733379,
+      "instruction": "execute_payload",
+      "fee_lamports": 5001,
+      "compute_units": 174566,
+      "wire_bytes": 636,
+      "message_sha256": "af346a7efe1bb49d4e2f810b1198ac0ae3becf439cd06b75d00ee790e6047f83"
+    }
+  ],
+  "uploads": [
+    {
+      "operation": "deposit",
+      "note_id": 1,
+      "amount_micro_usdc": "2000000",
+      "buffer": "4DLCrZpWBKne9fCAtwrtJYepMEZ9XE8C4Qj7rTEhtzkz",
+      "payload_sha256": "d76af8e0bc8e8df438d49d5e93cae5932790ab756478336fd8e19834d38fcd5b",
+      "registration_commitment": "0915f21331a812c81d6a7cca729fbf28e752dbabf8a8ba3c37bc8f81c7caace2",
+      "expiry": "1791244800"
+    }
+  ],
+  "finalized_count": 4,
+  "new_phase_finalized_count": 4,
+  "max_compute_units": 174566,
+  "max_wire_bytes": 999,
+  "total_finalized_fee_lamports": 20004,
+  "finalized_balance_cut_slot": 507734228,
+  "finalized_balance_cut_blockhash": "HqAw7FiYvsCjTCFisRo31N1Ko6hq8TYKtMiUjqEwfBaG",
+  "finalized_balance_cut_block_height": 494978834,
+  "wallet_micro_usdc": "36010000",
+  "vault_micro_usdc": "2000000",
+  "note_id": 1,
+  "note_status": "active",
+  "note_deposit_micro_usdc": "2000000",
+  "outstanding_deposits_micro_usdc": "2000000",
+  "wallet_owner_is_treasury_owner": true,
+  "prior_sdk_verified_charge_micro_usdc": "4",
+  "charge_evidence": "docs/evidence/I10-phantom-openai-success-observation.json",
+  "charge_note": "The wallet also owns the treasury. Its aggregate token balance includes both the remaining note payout and the separately verified 4-micro-USDC charge.",
+  "expired_setup_recoveries": [
+    {
+      "signature": "5QcrxNytuCw6AwPwRBYHDWGobd4syWTePjwcDg2f4LkJr1vqMY5gGd5wPs4fTpVFEpS65oekrRUNvjA34Erji1xg",
+      "buffer": "HFdQeGwHCTRGvXK6atjP9ph9JwV5jkkmmio5Heno3yMR",
+      "slot": 507732497,
+      "blockHeight": 494977127,
+      "blockhash": "Kas2HpjhfX8h74d9exs7RhqutJXKcertFYuMR5jduSc"
+    }
+  ],
+  "historical_expired_withdrawal_observation": "docs/evidence/I10-repeat-demo-withdraw-expired.json",
+  "historical_unverified_create_signature": "5ngFj1eJAQF2TXLU1jftYp6YJ5W886TpyR1nFdRykfC2AVtUjTMYFmeA7h8P2RqC9Z2fD1yoiu6hZaxQYSeSttLb",
+  "historical_attempt_fee_lamports": null,
+  "send_count": null,
+  "automatic_resends": null,
+  "prior_charge_signature_independently_reverified_by_this_collector": false,
+  "new_provider_inference_verified": false,
+  "full_i10": false,
+  "release_gates_passed": [],
+  "observation_sha256": "974fe545422a66edbbc8d7525e7c21397393b75062579c004ea6ff0864c79dfd",
+  "historical_expired_withdrawal_observation_sha256": "5e653c57157e83105a29162d081a2106e54fea54408a5aae526b034518f9252e"
+}

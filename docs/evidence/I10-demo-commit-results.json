@@ -1,0 +1,119 @@
+{
+  "schema_version": 1,
+  "recorded_at_utc": "2026-10-05T17:48:49.901235+00:00",
+  "base_commit": "26ebc274691d979860ac6ec23e089b71f3b36f10",
+  "scope": "Remaining wallet demo, shared provider budget, diagnostics, and bounded control/indexer readiness changes; focused local pre-commit checks.",
+  "checks": [
+    {
+      "name": "ui",
+      "command": "target/i08-toolchain/bin/node --test --test-reporter=tap --test-concurrency=1 scripts/i10-wallet-ui/*.test.ts scripts/i10_devnet_pool_instance.test.ts scripts/i10_devnet_provider_recovery.test.ts scripts/i10_provider_report.test.ts",
+      "exit_code": 0,
+      "log": "docs/evidence/I10-demo-commit-components/ui.log",
+      "log_sha256": "d0ac4c686278e5d855b71297f7ddcad6620678cc47525410c85429bb4e423015",
+      "passed": 152,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "name": "control",
+      "command": "cargo test --locked --manifest-path services/control/Cargo.toml --lib --test binding_chain",
+      "exit_code": 0,
+      "log": "docs/evidence/I10-demo-commit-components/control.log",
+      "log_sha256": "87821b2e9ddf5c0862539e62bce038a44be0fdb8d1bff034a3c884965238fa3a",
+      "passed": 21,
+      "failed": 0,
+      "ignored": 0
+    },
+    {
+      "name": "indexer",
+      "command": "cargo test --locked --manifest-path services/indexer/Cargo.toml",
+      "exit_code": 0,
+      "log": "docs/evidence/I10-demo-commit-components/indexer.log",
+      "log_sha256": "9cc07bb18447351e4ae245b9b66f7363fe7bc440689953af1703488e1f9ad78f",
+      "passed": 45,
+      "failed": 0,
+      "ignored": 1
+    },
+    {
+      "name": "budget",
+      "command": "python3 scripts/test_provider_acceptance.py",
+      "exit_code": 0,
+      "log": "docs/evidence/I10-demo-commit-components/budget.log",
+      "log_sha256": "dd194bdf3a3b7382905d1e142e00b779f05b7e57718c275e030233ad52402e84",
+      "passed": 22,
+      "failed": 0
+    },
+    {
+      "name": "types",
+      "command": "target/i08-toolchain/bin/node node_modules/typescript/bin/tsc --noEmit --strict --target ES2023 --module NodeNext --moduleResolution NodeNext --allowImportingTsExtensions --resolveJsonModule --lib ES2023,DOM --types node scripts/i10-wallet-ui/*.ts",
+      "exit_code": 0,
+      "log": "docs/evidence/I10-demo-commit-components/types.log",
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "name": "format",
+      "command": "rustfmt --edition 2021 --check services/control/src/chain.rs services/control/src/inference.rs services/control/src/inference_diagnostics.rs services/control/tests/binding_chain.rs services/indexer/src/runtime.rs",
+      "exit_code": 0,
+      "log": "docs/evidence/I10-demo-commit-components/format.log",
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "name": "collector-types",
+      "command": "target/i08-toolchain/bin/node node_modules/typescript/bin/tsc --noEmit --strict --target ES2023 --module NodeNext --moduleResolution NodeNext --allowImportingTsExtensions --resolveJsonModule --lib ES2023,DOM --types node scripts/i10_collect_openai_success.ts scripts/i10_collect_phantom_deposit.ts scripts/i10_collect_phantom_repeat.ts scripts/i10_collect_repeat_api.ts scripts/i10_devnet_pool_instance.ts scripts/i10_devnet_provider.ts scripts/i10_devnet_provider_recovery.ts scripts/run_i10_devnet_vault.ts",
+      "exit_code": 0,
+      "log": "docs/evidence/I10-demo-commit-components/collector-types.log",
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  ],
+  "changed_runtime_source_sha256": {
+    "scripts/i10-wallet-ui/app.ts": "6a91337a99abf05fd624ce869c05308e47f0564f1b33ae08cce35929dd234c32",
+    "scripts/i10-wallet-ui/browser.test.ts": "6c093c473bbff8ffc5d0127d5d4e0acfc19d3811ff05d864e7f260a7e5b56e3f",
+    "scripts/i10-wallet-ui/build.test.ts": "c37bb84b6f0b3035e6718a47a1e3c028a25a113e27b7bd5c5f4fc663aa313325",
+    "scripts/i10-wallet-ui/demo-notes.test.ts": "c660b058715ee7f7b43fe25fa77e76c96a1d8183b42296086804b56ac6d68df6",
+    "scripts/i10-wallet-ui/demo-notes.ts": "41058865530ea40a8c5dabf6a13a9c9cde34e4493661b309bbaaab62ed717c6b",
+    "scripts/i10-wallet-ui/demo.html": "9a78ca86557fc7ce812f047e82efbd16620ad9eb1a35b7daf0f186c7ac11a66f",
+    "scripts/i10-wallet-ui/demo.test.ts": "59f697c53b050223b271645def0efb412f95eaa3852eaf0ce84cf479c9bec2fa",
+    "scripts/i10-wallet-ui/demo.ts": "baaedcb5b7a369faa87e19fa046fe88c5c56278d78f7716a166b74a635981399",
+    "scripts/i10-wallet-ui/diagnostics.test.ts": "88a6e545bc972a7ae22fd8a8b3da74873f5e39c997ad0ba31ffde74a632f2b09",
+    "scripts/i10-wallet-ui/diagnostics.ts": "7e19764c308b17469687b3bbce7c942add61cac4a42fec51c9ee4c04b3050e11",
+    "scripts/i10-wallet-ui/fixture.ts": "62ed49dad595446e9f554e0c27f5422e10f1fe4b68b1c95b019ba14b33c546c7",
+    "scripts/i10-wallet-ui/host.test.ts": "9daafc57207cdc10302f9835a0d26624bc3d276e3fd48d1536623b190ab03a18",
+    "scripts/i10-wallet-ui/host.ts": "147e0cbc7bf22aa14f78510e8e9b38a259f9416bf8e1805d11604d0d3141a99a",
+    "scripts/i10-wallet-ui/index.html": "cb11951e8799fbb0166104e189248abbb185899e964197e1e9dbb0f0aba54460",
+    "scripts/i10-wallet-ui/live-view.test.ts": "4e9403ef713f64b7a9f08a0509e371837afd0b3134edabe21deb218efe00c32b",
+    "scripts/i10-wallet-ui/live-view.ts": "ed15e48d90ee72e35e18d690dfcf7d19837e5710313bc6743b90d2e096a037e6",
+    "scripts/i10-wallet-ui/main.ts": "00b69dbfb2f594c1c8a4777972ad421658ad2bede2e1b892541695a19cce3e74",
+    "scripts/i10-wallet-ui/provider-diagnostics.ts": "f19afff30c411bd1ef6b0036708e329b54ba62fba2ad5d6c4731e3328582056b",
+    "scripts/i10-wallet-ui/provider.fixture.ts": "fbfa0b95ddbebc53061ad75038a5236040284a8b8e4c8abdea8d6e28cfb34778",
+    "scripts/i10-wallet-ui/provider.test.ts": "f8fa2179f659df76db078a7b0b6bc3cbb4471ac4336e0d14d88cbec7d6b8557c",
+    "scripts/i10-wallet-ui/provider.ts": "f3d93ae9eab0cbef1c57de69a4f0cfc954439423567877b22a050cfbd1a2ee44",
+    "scripts/i10-wallet-ui/signing-diagnostics.test.ts": "122b06d34b51d4c657b6ef7fbc0c0e6f99a105a3afa86064bdaf8418d93c83bd",
+    "scripts/i10-wallet-ui/signing-diagnostics.ts": "3f3c723929a854d40032b778bfc277af3c57e2257efe0ccc9fbb022affe6335f",
+    "scripts/i10-wallet-ui/style.css": "026b0fd2dc27d996889936ddba5d06334f2e8e0b438af7291a330d8002e764bd",
+    "scripts/i10_collect_openai_success.ts": "29c00ad18bf0664021cdfe474cc88e6fd055fad33bf8074699dcece22337158e",
+    "scripts/i10_collect_phantom_deposit.ts": "153f44aa85d425e4e33233d9f44e1ddb388750f25f8ceb0e4e9f32f393d556a3",
+    "scripts/i10_collect_phantom_repeat.ts": "794221077d5efdb942995d879c5b303a89977f6a8c744e002fc1ece8de9d9d42",
+    "scripts/i10_collect_repeat_api.ts": "cf3592ad675ca1c56ddfc4deff5cadea480d6a5b681bbd981ac97b73d75e4021",
+    "scripts/i10_devnet_pool_instance.test.ts": "b38c63f161d0d43f3d8d62e07d5fdaa8883e29a3f9cbb4e4b59e7b3dabf26c04",
+    "scripts/i10_devnet_pool_instance.ts": "b3c580fb7db243ce93b68a8618008688ec3b23b84a41c3849e9b15934723cf1f",
+    "scripts/i10_devnet_provider.ts": "ac22093df420727b012103e6888a00e2a62979679cf60a13af4ec776130f5ee5",
+    "scripts/i10_devnet_provider_recovery.test.ts": "111e883f49e0c13eb44fe0acc63611fa033a84f22816576dccca873a6305bbe0",
+    "scripts/i10_devnet_provider_recovery.ts": "257a07e8d4883631abe29cad243d635df8cd0060e89b0a68599fae84c76fdb0a",
+    "scripts/i10_provider_report.test.ts": "cbc0b019ad7044eca55c839d2b2add4c1ce6b090b65fd0cf39f09479420ff6a4",
+    "scripts/provider_acceptance.py": "5911ca26cd21a342e6a3f6a29c65088028ffcac2807c3f1366b54db25715b2ae",
+    "scripts/run_i10_devnet_vault.ts": "411d2550d6049db8c53968af527414736400ee4483883ba87f600a34add770cb",
+    "scripts/test_provider_acceptance.py": "7983112a703d77c29194951bf02f87dc05fd3f70d6ce87c7ff7723da4acee5d9",
+    "services/control/src/chain.rs": "f00c8a1aa109a02ffd32a8e1f610b25f9bfc36482a96aa491710d113ab706d2c",
+    "services/control/src/inference.rs": "ad58a97773ac67ad0d10ab24f883ba5540dda767ca1b00556fb6dc64959239a7",
+    "services/control/src/inference_diagnostics.rs": "4de2e5ab3c7b9e6b376c944958de94dc64d27136cbacef759f9db1c4124905e4",
+    "services/control/src/lib.rs": "470fe993cc938b2c5f5d6231ac37359671b588c932ee47b3221d830562687abb",
+    "services/control/tests/binding_chain.rs": "549fb90fa5ee2d93a259f0715689277849b6599378680d2c3abfa115a07668d4",
+    "services/indexer/src/runtime.rs": "c9688a5c582870324603bc4486988e56958ac3e7d11c130bfa998aa447b84f76"
+  },
+  "limitations": [
+    "The existing indexer manual benchmark was ignored.",
+    "No public deployment, service restart, provider request or real Phantom test was performed for this commit.",
+    "Historical public observation files retain their original source snapshots and timestamps. These local checks do not rerun them or establish public compact-deposit acceptance or release gates.",
+    "Temporary review probes under work/single-deposit-review are excluded."
+  ]
+}

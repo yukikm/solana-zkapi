@@ -1,0 +1,37 @@
+{
+  "observed_at_utc": "2026-10-05T10:44:54.693Z",
+  "scope": "read-only finalized balances before expired-create recovery",
+  "wallet": {
+    "context": {
+      "apiVersion": "4.3.0",
+      "slot": 507705600
+    },
+    "value": {
+      "amount": "38010000",
+      "decimals": 6,
+      "uiAmount": 38.01,
+      "uiAmountString": "38.01"
+    }
+  },
+  "vault": {
+    "context": {
+      "apiVersion": "4.3.0",
+      "slot": 507705601
+    },
+    "value": {
+      "amount": "0",
+      "decimals": 6,
+      "uiAmount": 0,
+      "uiAmountString": "0"
+    }
+  },
+  "signature_status": {
+    "context": {
+      "apiVersion": "4.3.0",
+      "slot": 507705604
+    },
+    "value": [
+      null
+    ]
+  }
+}

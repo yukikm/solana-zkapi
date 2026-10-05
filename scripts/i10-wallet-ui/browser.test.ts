@@ -41,7 +41,7 @@ test('production demo runs from the presentation bundle without API/wallet calls
   const c = await Cdp.connect(target.webSocketDebuggerUrl); t.after(() => c.socket.close());
   await c.call('Page.enable');
   const requested: string[] = [], forbidden: string[] = [], interceptionErrors: unknown[] = [];
-  const staticUrls = new Set(['/', '/demo.js', '/demo.css', '/favicon.ico'].map(path => host.origin + path));
+  const staticUrls = new Set(['/demo', '/demo.js', '/demo.css', '/favicon.ico'].map(path => host.origin + path));
   c.socket.addEventListener('message', event => {
     const value = JSON.parse(String(event.data));
     if (value.method !== 'Fetch.requestPaused') return;
@@ -59,7 +59,7 @@ test('production demo runs from the presentation bundle without API/wallet calls
     globalThis.WebSocket = class { constructor() { demoEffects.network++; throw Error('demo socket forbidden'); } };
     globalThis.solana = {connect() { demoEffects.wallet++; throw Error('demo wallet forbidden'); }, signTransaction() { demoEffects.wallet++; throw Error('demo sign forbidden'); }};
   `});
-  await c.call('Page.navigate', {url: host.origin});
+  await c.call('Page.navigate', {url: host.origin + '/demo'});
   await c.wait(`document.querySelector('#demo-workspace')?.dataset.phase === 'ready' && document.querySelector('#demo-balance')?.textContent === '0.000000'`);
   assert.deepEqual(await c.evaluate('globalThis.demoEffects'), {network: 0, wallet: 0});
   assert.equal(await c.evaluate(`document.body.dataset.fixture`), undefined);
@@ -120,8 +120,10 @@ test('Chrome fixtures: wallet rejection/reload and provider one-send/reload/veri
     await c.wait(`document.querySelector('#identity').innerText.includes('Fixture Wallet /')`);
   };
   await connect(); await c.wait(`!document.querySelector('#deposit').disabled`); await c.evaluate(`document.querySelector('#deposit').click()`);
-  await c.wait(`JSON.parse(document.querySelector('#state').innerText).operation?.phase === 'ready' && !document.querySelector('#advance').disabled`);
-  const state = () => c.evaluate(`JSON.parse(document.querySelector('#state').innerText)`);
+  // Public observations live inside a collapsed <details>; innerText may be
+  // empty while the DOM contains a complete snapshot. Read its stored text.
+  await c.wait(`JSON.parse(document.querySelector('#state').textContent).operation?.phase === 'ready' && !document.querySelector('#advance').disabled`);
+  const state = () => c.evaluate(`JSON.parse(document.querySelector('#state').textContent)`);
   const before = await state(); assert.equal(before.operation.attempts, 0);
   await c.evaluate(`document.querySelector('#advance').click()`);
   await c.wait(`document.querySelector('#status').innerText.startsWith('Operation stopped') && !document.querySelector('#advance').disabled`);
@@ -150,10 +152,10 @@ test('Chrome fixtures: wallet rejection/reload and provider one-send/reload/veri
   await c.wait(`!document.querySelector('#provider-prepare').disabled`);
   assert.equal((await state()).wallet_status, 'active');
   await c.evaluate(`document.querySelector('#provider-prepare').click()`);
-  await c.wait(`JSON.parse(document.querySelector('#state').innerText).session?.phase === 'prepared' && !document.querySelector('#provider-send').disabled`);
+  await c.wait(`JSON.parse(document.querySelector('#state').textContent).session?.phase === 'prepared' && !document.querySelector('#provider-send').disabled`);
   assert.equal(await c.evaluate(`document.querySelector('#withdraw').disabled`), true);
   await c.evaluate(`fixtureProviderBehavior.loseAuth = true; document.querySelector('#provider-send').click()`);
-  await c.wait(`document.querySelector('#status').textContent.includes('AUTH の応答を確認できません') && !document.querySelector('#provider-send').disabled`);
+  await c.wait(`document.querySelector('#status').textContent.includes('Authorization could not be confirmed') && !document.querySelector('#provider-send').disabled`);
   assert.equal((await state()).session.phase, 'send_unknown'); assert.deepEqual((await state()).session.operations, []);
   assert.equal((await c.evaluate(`fixtureProviderObservation()`)).inference, 0);
   await c.evaluate(`fixtureProviderBehavior.loseAuth = false; fixtureProviderBehavior.htmlText = true; document.querySelector('#provider-send').click()`);
@@ -170,12 +172,12 @@ test('Chrome fixtures: wallet rejection/reload and provider one-send/reload/veri
   assert.equal(await c.evaluate(`document.querySelector('#provider-send').disabled`), true);
   assert.match(await c.evaluate(`document.querySelector('#provider-response').textContent`), /not retained/);
   await c.evaluate(`fixtureProviderBehavior.rejectSettlement = true; document.querySelector('#provider-close').click()`);
-  await c.wait(`document.querySelector('#status').textContent.startsWith('Operation stopped') && !document.querySelector('#provider-close').disabled`);
-  assert.match(await c.evaluate(`document.querySelector('#status').textContent`), /推論は送信済み、または到達が不明/);
+  await c.wait(`document.querySelector('#status').textContent.includes('The AI request was sent, or its outcome is unknown') && !document.querySelector('#provider-close').disabled`);
+  assert.match(await c.evaluate(`document.querySelector('#status').textContent`), /cannot be sent again/);
   assert.equal((await state()).balance_micro_usdc, '1000000'); assert.equal((await state()).verified_settlements.length, 0);
   assert.equal(await c.evaluate(`document.querySelector('#withdraw').disabled`), true);
   await c.evaluate(`fixtureProviderBehavior.rejectSettlement = false; document.querySelector('#provider-close').click()`);
-  await c.wait(`JSON.parse(document.querySelector('#state').innerText).verified_settlements.length === 1 && !document.querySelector('#withdraw').disabled`);
+  await c.wait(`JSON.parse(document.querySelector('#state').textContent).verified_settlements.length === 1 && !document.querySelector('#withdraw').disabled`);
   const settled = await state(); assert.equal(settled.balance_micro_usdc, '999999'); assert.equal(settled.session, null);
   assert.equal(settled.verified_settlements[0].charge_micro_usdc, '1'); assert.deepEqual(settled.verified_settlements[0].receipt_ids, ['1']);
   assert.equal(await c.evaluate(`document.querySelector('#provider-prepare').disabled`), true);

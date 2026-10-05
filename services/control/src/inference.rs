@@ -2,6 +2,7 @@
 //! disconnect; inference bytes never enter the control ledger.
 use crate::{
     api::App,
+    inference_diagnostics::{self, Stage},
     ledger::{self, NewOperation, OperationOutcome},
     proxy::{self, Endpoint, RelayEvent},
     wire,
@@ -15,7 +16,7 @@ use axum::{
     Json, Router,
 };
 use serde_json::json;
-use std::{convert::Infallible, net::SocketAddr, sync::Arc};
+use std::{convert::Infallible, net::SocketAddr, sync::Arc, time::Instant};
 use subtle::ConstantTimeEq;
 use tokio::sync::mpsc;
 use uuid::Uuid;
@@ -292,7 +293,9 @@ async fn infer(
         let mut downstream = Some(tx);
         let result: anyhow::Result<()> = async {
             let n = zkapi_solana_types::FieldElement::from_bytes(session.nullifier)?;
-            let attempt = worker
+            let started = Instant::now();
+            let mut chain_failure = None;
+            let attempt_result = worker
                 .ledger
                 .begin_dispatch(id, operation, worker.providers.owner(), || async {
                     worker
@@ -300,10 +303,29 @@ async fn infer(
                         .assert_live(n, None)
                         .await
                         .map(|_| ())
-                        .map_err(crate::api::live_error)
+                        .map_err(|error| {
+                            chain_failure = Some(error.clone());
+                            crate::api::live_error(error)
+                        })
                 })
-                .await?;
-            if worker.ledger.claim_dispatch(&attempt).await.is_err() {
+                .await;
+            let attempt = inference_diagnostics::observe(
+                attempt_result,
+                Stage::BeginDispatch,
+                chain_failure.as_ref(),
+                started.elapsed(),
+                |event| eprintln!("{event}"),
+            )?;
+            let claim = worker.ledger.claim_dispatch(&attempt).await;
+            if inference_diagnostics::observe(
+                claim,
+                Stage::ClaimDispatch,
+                None,
+                started.elapsed(),
+                |event| eprintln!("{event}"),
+            )
+            .is_err()
+            {
                 worker
                     .ledger
                     .finish_attempt(

@@ -32,12 +32,14 @@ const wallet = {
 getWallets().register(wallet);
 const manifest = {deployment_environment: 'devnet', setup_profile: 'test_only', genesis_hash: 'EtWTRABZaYq6iMfeYKouRu166VU2xqa1wcaWoxPkrZBG',
   deployment_id: 'i10-ui-offline-fixture', manifest_hash: 'f'.repeat(64), program_id: key(fixture.program_id), pool: key(fixture.pool),
-  mint: '4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU', note_ttl_seconds: String(fixture.ttl)} as VerifiedManifest;
-const providerMode = location.hash === '#provider-fixture';
-mountWalletUi({fixtureOnly: true, targetWallet: wallet.name, runId: providerMode ? 'fixture-provider' : 'fixture', manifest, fee: async () => 5000,
+  mint: '4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU', cap_micro_usdc: '1000000', note_ttl_seconds: String(fixture.ttl)} as VerifiedManifest;
+const repeatProviderMode = location.hash === '#provider-repeat-fixture';
+const providerMode = location.hash === '#provider-fixture' || repeatProviderMode;
+const providerDeposit = repeatProviderMode ? '2000000' : '1000000';
+mountWalletUi({fixtureOnly: true, targetWallet: wallet.name, runId: repeatProviderMode ? 'fixture-provider-repeat' : providerMode ? 'fixture-provider' : 'fixture', manifest, fee: async () => 5000,
   initialize: async (journal, signer) => {
     const state: PrivateState = {balance_micro_usdc: '1000000', balance_blinding: field(3), note_leaf: field(4), commitment: {x: field(5), y: field(6)}, anchor: field(1), state_signature: null};
-    const prover = {deposit: async (note_id: number, amount: string, expiry: string) => ({witness: {secret: field(12345), note_id, deposit_micro_usdc: amount, expiry}, state, registration_commitment: '0x' + fixture.commitment}),
+    const prover = {deposit: async (note_id: number, amount: string, expiry: string) => ({witness: {secret: field(12345), note_id, deposit_micro_usdc: amount, expiry}, state: {...state, balance_micro_usdc: amount}, registration_commitment: '0x' + fixture.commitment}),
       inspect: async () => ({nullifier: fixture.auth.escape.public_inputs[11], registration_commitment: '0x' + fixture.commitment}),
       tree: async () => fixture.trees[0]} as unknown as NoteProver;
     const rpc: TransportRpc = {signatureStatus: async () => null, finalizedReceipt: async () => null, finalizedBlockHeight: async () => 1,
@@ -48,11 +50,12 @@ mountWalletUi({fixtureOnly: true, targetWallet: wallet.name, runId: providerMode
         if (!persistedBeforeSend) throw Error('SDK attempt not durable before send'); sends++; return signature;
       }};
     Object.assign(globalThis, {fixtureObservation: () => ({requests, sends, persistedBeforeSend}), fixtureApprove: () => { rejectNext = false; }});
-    const walletOptions = {manifest, prover, rpc, chain: {snapshot: async () => ({root: fixture.trees[0].public_inputs[1], siblings: Array(32).fill(field(0)), slot: 100, sequence: '0', nextNoteId: 0, clock: String(fixture.now), paused: false, treasuryOwner: signer.publicKey.toBase58(), note: {note_id: 0, registration_commitment: '0x' + fixture.commitment, deposit_micro_usdc: '1000000', expiry: '86400', status: 'active' as const}}),
+    const walletOptions = {manifest, prover, rpc, chain: {snapshot: async () => ({root: fixture.trees[0].public_inputs[1], siblings: Array(32).fill(field(0)), slot: 100, sequence: '0', nextNoteId: 0, clock: String(fixture.now), paused: false, treasuryOwner: signer.publicKey.toBase58(), note: {note_id: 0, registration_commitment: '0x' + fixture.commitment, deposit_micro_usdc: providerMode ? providerDeposit : '2000000', expiry: '86400', status: 'active' as const}}),
       buffer: async () => null, blockhash: async () => ({blockhash: new PublicKey(new Uint8Array(32).fill(7)).toBase58(), lastValidBlockHeight: 1000})}};
     if (providerMode) {
-      if (!await journal.read('wallet-ui-acceptance')) await new WalletClient({...walletOptions, journal, wallets: [signer]}).importFinalized('wallet-ui-acceptance', {secret: field(12345), note_id: 0, deposit_micro_usdc: '1000000', expiry: '86400'}, fixtureState());
+      if (!await journal.read('wallet-ui-acceptance')) await new WalletClient({...walletOptions, journal, wallets: [signer]}).importFinalized('wallet-ui-acceptance', {secret: field(12345), note_id: 0, deposit_micro_usdc: providerDeposit, expiry: '86400'}, {...fixtureState(), balance_micro_usdc: providerDeposit});
       const p = await providerFixture(journal, 'wallet-ui-acceptance');
+      if (repeatProviderMode) p.options.configuration.requestPolicy = 'explicit_demo';
       Object.assign(globalThis, {fixtureProviderObservation: () => p.counts, fixtureProviderBehavior: p.behavior});
       return {...walletOptions, providerOptions: p.options};
     }

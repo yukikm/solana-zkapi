@@ -130,6 +130,33 @@ I06/I07 direct and proxy HTTP adapters are described in [PROVIDERS.md](PROVIDERS
 Run `bash scripts/run_i06_i07.sh` from the repository root for the combined local
 acceptance suite; actual provider authorization/usage remains a separate G3 gate.
 
+Proxy failures before provider egress emit one bounded
+`proxy_pre_dispatch_stopped` diagnostic. Its only fields are `event`, `stage`,
+`reason` and integer `elapsed_ms`. Stages distinguish the ledger's
+`begin_dispatch`, the independent `chain_liveness` check and the final
+`claim_dispatch`. Fixed reasons distinguish unavailable or malformed indexer/RPC
+observations, a root that changed during the check, pause/consumed exit, and
+ledger admission or ownership failures. Raw errors, request/operation IDs,
+credentials, account addresses, prompts and response bodies are never included.
+The diagnostic observes an already-completed check; it neither retries nor
+changes its result. Existing chain checks, durable dispatch ownership and
+single-send rules remain mandatory. Older failures without this event cannot
+be assigned a retrospective cause from a later readiness observation.
+
+Chain readiness checks wait at most 30 seconds for a consistent fresh
+observation. Only an indexer HTTP 503 or a root that changes across the account
+reads permits another read attempt, with a 250 ms delay and at most 120 attempts.
+Each attempt re-reads the root, finalized PoolConfig and the confirmed exit from
+both independent RPC origins, then requires the complete root response to match
+again. No account observation is reused across attempts. Paused pools, consumed
+exits, a mismatched requested root, malformed observations, trust failures,
+other HTTP errors and RPC errors remain terminal. The deadline covers in-flight
+reads and delays; startup has the same total bound. Only indexer GETs have a
+30-second request timeout; the RPC client's 10-second timeout is unchanged.
+These are read-only attempts inside the existing admission check, not AUTH or
+inference retries. Dispatch still requires durable ownership and the existing
+post-check session-expiry validation.
+
 ## I09 local operations runtime
 
 `providers.dispatcher` now connects the shared writer to the separately executed

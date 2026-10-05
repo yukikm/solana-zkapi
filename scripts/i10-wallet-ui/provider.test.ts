@@ -11,12 +11,13 @@ import {UiProvider, uiProviderBody} from './provider.ts';
 import {providerFixture, fixtureState} from './provider.fixture.ts';
 import {providerAcceptanceBody} from '../provider_acceptance_client.ts';
 import type {ProviderAcceptanceCase} from '../provider_acceptance_client.ts';
-async function fixture(t: TestContext) {
+import {failureCode} from './diagnostics.ts';
+async function fixture(t: TestContext, balance = '1000000') {
   const path = await mkdtemp(join(tmpdir(), 'zkapi-provider-ui-')); t.after(() => rm(path, {recursive: true, force: true}));
   const key = await importJournalKey(new Uint8Array(32).fill(55));
   const open = async () => new EncryptedJournal<NoteJournal>(await NativeJournalStore.open(path), key, {deploymentId: 'fixture', pool: 'fixture'}, validateNoteJournal);
   const journal = await open();
-  await journal.create('note', {schema: 1, state: fixtureState(), witness: {secret: '0x' + '01'.padStart(64, '0'), note_id: 0, deposit_micro_usdc: '1000000', expiry: '86400'}, wallet: {status: 'active', history: []}, pending: null, history: []});
+  await journal.create('note', {schema: 1, state: {...fixtureState(), balance_micro_usdc: balance}, witness: {secret: '0x' + '01'.padStart(64, '0'), note_id: 0, deposit_micro_usdc: balance, expiry: '86400'}, wallet: {status: 'active', history: []}, pending: null, history: []});
   const h = await providerFixture(journal, 'note');
   return {...h, journal, open, ui: new UiProvider(h.options)};
 }
@@ -65,4 +66,54 @@ test('two UI intents cannot create two operations; different body or case is rej
   for (const change of [{id: 'other'}, {stream: true}, {max_output_tokens: 129}, {provider: 'anthropic'}]) assert.throws(() => new UiProvider({...h.options, configuration: {...h.options.configuration, testCase: {...h.options.configuration.testCase, ...change}}}));
   const r = (await h.journal.read('note'))!; r.value.pending!.operations[0].bodyBase64 = Buffer.from('{}').toString('base64');
   await h.journal.compareAndSwap('note', r.revision, r.value); await assert.rejects(h.ui.recoverClose('note')); assert.equal(h.counts.close, 0);
+});
+
+test('explicit demo uses a new AUTH and operation only after SDK verified the prior zero-charge successor', async t => {
+  const h = await fixture(t), ui = new UiProvider({...h.options, configuration: {...h.options.configuration, requestPolicy:'explicit_demo'}});
+  await ui.prepare('note'); h.behavior.httpStatus=503; h.behavior.zeroCharge=true;
+  await assert.rejects(ui.sendOnce('note'), e => failureCode(e) === 'api_http_503_operation_unavailable');
+  const previous = structuredClone((await h.journal.read('note'))!.value.pending!);
+  await assert.rejects(ui.prepare('note')); await assert.rejects(ui.sendOnce('note'));
+  assert.equal(h.counts.inference, 1);
+  h.behavior.rejectSettlement=true; await assert.rejects(ui.recoverClose('note')); await assert.rejects(ui.prepare('note'));
+  h.behavior.rejectSettlement=false; await ui.recoverClose('note');
+  const settled = structuredClone((await h.journal.read('note'))!.value.history[0]);
+  const reopened = new UiProvider({...h.options, journal: await h.open(), configuration:{...h.options.configuration, requestPolicy:'explicit_demo'}});
+  await reopened.prepare('note');
+  const next = (await h.journal.read('note'))!.value.pending!;
+  assert.notEqual(next.prepared.request.authorization.request_id, previous.prepared.request.authorization.request_id);
+  h.behavior.httpStatus=200; h.behavior.zeroCharge=false;
+  const response = await reopened.sendOnce('note'); assert.equal(response.text,'ok');
+  assert.notEqual(response.operationId, previous.operations[0].id);
+  await assert.rejects(reopened.sendOnce('note')); await reopened.recoverClose('note');
+  const after=(await h.journal.read('note'))!.value;
+  assert.equal(after.history.length,2); assert.deepEqual(after.history[0],settled); assert.equal(after.state.balance_micro_usdc,'999999');
+  await assert.rejects(reopened.prepare('note')); assert.equal(h.counts.inference,2);
+});
+
+test('a funded repeat demo preserves paid settlements and uses fresh request IDs across journal reopen', async t => {
+  const h = await fixture(t, '2000000');
+  const requestIds = new Set<string>(), operationIds = new Set<string>();
+  let history: NoteJournal['history'] = [];
+  for (let run = 0; run < 3; run++) {
+    const journal = await h.open();
+    const ui = new UiProvider({...h.options, journal, configuration: {...h.options.configuration, requestPolicy: 'explicit_demo'}});
+    await ui.prepare('note');
+    const prepared = (await journal.read('note'))!.value.pending!;
+    const requestId = prepared.prepared.request.authorization.request_id;
+    assert.equal(requestIds.has(requestId), false); requestIds.add(requestId);
+    const response = await ui.sendOnce('note');
+    assert.equal(operationIds.has(response.operationId), false); operationIds.add(response.operationId);
+    assert.equal(response.text, 'ok');
+    await assert.rejects(ui.sendOnce('note'));
+    await assert.rejects(ui.prepare('note'));
+    await ui.recoverClose('note');
+    const saved = (await journal.read('note'))!.value;
+    assert.equal(saved.pending, null);
+    assert.equal(saved.state.balance_micro_usdc, (2_000_000n - BigInt(run + 1)).toString());
+    assert.deepEqual(saved.history.slice(0, run), history);
+    assert.equal(saved.history[run].settlement.charge_micro_usdc, '1');
+    history = structuredClone(saved.history);
+  }
+  assert.deepEqual([h.counts.inference, h.counts.auth, h.counts.quotes, h.counts.verification], [3, 3, 3, 3]);
 });

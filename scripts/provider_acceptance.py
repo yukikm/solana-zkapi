@@ -425,16 +425,62 @@ class Budget:
         data = read_json(state)
         fields(data, ['identity', 'reservations'])
         require(data['identity'] == self.identity() and type(data['reservations']) is list, 'budget state identity mismatch')
-        seen, total = set(), 0
+        seen, sessions, total = set(), set(), 0
         cases = {c['id']: c for c in self.plan['cases']}
         for item in data['reservations']:
-            fields(item, ['case_id', 'max_cost_micro_usdc', 'state'])
-            require(item['case_id'] in cases and item['case_id'] not in seen and item['state'] == 'reserved_no_automatic_replay'
-                    and item['max_cost_micro_usdc'] == cases[item['case_id']]['max_cost_micro_usdc'], 'invalid budget reservation')
+            template = item.get('template_case_id') if item.get('kind') == 'explicit_demo' else item.get('case_id')
+            if item.get('kind') == 'explicit_demo':
+                fields(item, ['case_id', 'kind', 'template_case_id', 'request_id', 'operation_id', 'max_cost_micro_usdc', 'state'])
+                self.demo_case(template)
+                self.demo_ids(item['request_id'], item['operation_id'])
+                require(item['case_id'] == 'demo-' + item['operation_id'] and item['case_id'] not in cases and item['request_id'] not in sessions,
+                        'invalid or repeated demo session')
+                sessions.add(item['request_id'])
+            else:
+                fields(item, ['case_id', 'max_cost_micro_usdc', 'state'])
+            require(template in cases and item['case_id'] not in seen and item['state'] == 'reserved_no_automatic_replay'
+                    and item['max_cost_micro_usdc'] == cases[template]['max_cost_micro_usdc'], 'invalid budget reservation')
             seen.add(item['case_id'])
             total += uint(item['max_cost_micro_usdc'], MAX_BUDGET, True)
         require(total <= int(self.plan['budget_micro_usdc']) and len(seen) <= self.plan['max_requests'], 'budget exceeded')
         return data, total
+
+    def demo_case(self, case_id):
+        # This extends execution of the pinned browser template, never the plan,
+        # tariff, provider/mode or total budget. Each explicit new SDK session
+        # burns its own reservation; an old case's reservation is never reused.
+        case = next((c for c in self.plan['cases'] if c['id'] == case_id), None)
+        require(case is not None and case_id == 'openai-chat-plain'
+                and case['mode'] == 'proxy' and case['provider'] == 'openai'
+                and case['endpoint'] == 'chat_completions' and case['stream'] is False and case['tools'] is False,
+                'demo requires the pinned OpenAI Chat template')
+        return case
+
+    @staticmethod
+    def demo_ids(request_id, operation_id):
+        pattern = r'[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}'
+        require(all(type(value) is str and re.fullmatch(pattern, value) for value in [request_id, operation_id]),
+                'demo requires exact session and operation UUIDs')
+
+    def reserve_demo(self, template_case_id, request_id, operation_id):
+        with self.locked():
+            data, total = self.load()
+            case = self.demo_case(template_case_id)
+            self.demo_ids(request_id, operation_id)
+            case_id = 'demo-' + operation_id
+            require(all(c['id'] != case_id for c in self.plan['cases']), 'demo identity collides with a planned case')
+            require(all(x['case_id'] != case_id and x.get('request_id') != request_id for x in data['reservations']),
+                    'demo session or operation already reserved; no automatic replay or refund')
+            require(total + int(case['max_cost_micro_usdc']) <= int(self.plan['budget_micro_usdc'])
+                    and len(data['reservations']) < self.plan['max_requests'], 'campaign budget exhausted')
+            row = {'case_id': case_id, 'kind': 'explicit_demo', 'template_case_id': template_case_id,
+                   'request_id': request_id, 'operation_id': operation_id,
+                   'max_cost_micro_usdc': case['max_cost_micro_usdc'], 'state': 'reserved_no_automatic_replay'}
+            data['reservations'].append(row)
+            atomic(self.directory / 'budget-state.json', canonical(data))
+            return {**row, 'reserved_micro_usdc': case['max_cost_micro_usdc'],
+                    'remaining_micro_usdc': str(int(self.plan['budget_micro_usdc']) - total - int(case['max_cost_micro_usdc'])),
+                    'plan_sha256': self.identity()['plan_sha256'], 'send_authorized_once': True}
 
     def reserve(self, case_id):
         with self.locked():
@@ -461,17 +507,22 @@ class Budget:
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('command', choices=['preflight', 'prepare', 'budget-init', 'reserve', 'budget-status'])
+    parser.add_argument('command', choices=['preflight', 'prepare', 'budget-init', 'reserve', 'reserve-demo', 'budget-status'])
     parser.add_argument('--plan', type=Path, required=True)
     parser.add_argument('--env-file', type=Path)
     parser.add_argument('--state-dir', type=Path, default=DEFAULT_STATE)
     parser.add_argument('--case', action='append')
     parser.add_argument('--role', choices=sorted(CREDENTIALS))
     parser.add_argument('--profile')
+    parser.add_argument('--request-id')
+    parser.add_argument('--operation-id')
     args = parser.parse_args()
     try:
         plan = read_json(args.plan)
         validate_plan(plan, args.plan.resolve().parent)
+        require((args.command == 'reserve-demo' and args.request_id is not None and args.operation_id is not None)
+                or (args.command != 'reserve-demo' and args.request_id is None and args.operation_id is None),
+                'demo identity arguments require reserve-demo')
         if args.command in ('preflight', 'prepare'):
             if args.command == 'prepare':
                 require(args.state_dir.resolve().is_relative_to(ROOT / 'target'), 'private credential output must be below ignored target directory')
@@ -481,8 +532,8 @@ def main():
                                args.role, args.case, args.profile)
         else:
             require(args.role is None and args.profile is None, 'budget commands always use the full parent plan')
-            require((args.command == 'reserve' and args.case is not None and len(args.case) == 1)
-                    or (args.command != 'reserve' and args.case is None), 'reserve requires exactly one case')
+            require((args.command in ('reserve', 'reserve-demo') and args.case is not None and len(args.case) == 1)
+                    or (args.command not in ('reserve', 'reserve-demo') and args.case is None), 'reserve requires exactly one case')
             budget = Budget(args.state_dir, plan)
             if args.command == 'budget-init':
                 env = load_environment(args.env_file)
@@ -492,6 +543,8 @@ def main():
                 result = budget.status()
             elif args.command == 'reserve':
                 result = budget.reserve(args.case[0])
+            elif args.command == 'reserve-demo':
+                result = budget.reserve_demo(args.case[0], args.request_id, args.operation_id)
             else:
                 result = budget.status()
         print(json.dumps(result, indent=2))

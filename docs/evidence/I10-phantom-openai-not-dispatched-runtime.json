@@ -1,0 +1,148 @@
+{
+  "schema": 1,
+  "collected_at_utc": "2026-10-05T11:22:28.657494+00:00",
+  "fixture_only": false,
+  "request_id": "3019e6e0-0ca7-48a8-844f-fd72bfb9d1fb",
+  "operation_id": "e4db2880-b71f-4a23-a301-f8d066a8f760",
+  "observed_ui_times_utc": {
+    "preparation": "2026-10-05T11:14:40.665Z",
+    "failure": "2026-10-05T11:14:55.489Z",
+    "source": "parent agent observed public UI timeline",
+    "verified_successor_recovery": "2026-10-05T11:20:11.030Z"
+  },
+  "session_summary": {
+    "state": "SETTLED",
+    "close_requested": true,
+    "cap_micro": "1000000",
+    "charged_nano": "0",
+    "reserved_nano": "0",
+    "active_operations": 0
+  },
+  "operation_summary": {
+    "state": "DONE",
+    "reservation_nano": "19276800",
+    "charged_nano": "0",
+    "observed_cost_nano": "0",
+    "operator_loss_nano": "0",
+    "no_dispatched_timestamp": true,
+    "no_provider_request_id": true
+  },
+  "counts": {
+    "committed_dispatch_attempts": 0,
+    "provider_evidence": 0,
+    "receipts": 1,
+    "provider_dispatch_diagnostic_events_entire_current_log": 0
+  },
+  "signed_receipt_summary": {
+    "receipt_id": "b94aa1a7-1ea8-46ae-b35c-764f0e05c52c",
+    "signed": true,
+    "reason": "not_dispatched",
+    "evidence_kind": "NOT_DISPATCHED",
+    "charged_nano_usdc": "0",
+    "usage_entries": 0
+  },
+  "signed_settlement_summary": {
+    "charge_micro": "0",
+    "signed": true
+  },
+  "parent_budget": {
+    "campaign_id": "i10-provider-acceptance",
+    "plan_sha256": "50f3f10040671f27ecd2ff59db3d3d6474a58de67bb0cf38e7a2cd41d7577167",
+    "budget_micro_usdc": "10000000",
+    "reservation_count": 4,
+    "reserved_case_ids": [
+      "openai-responses-plain",
+      "openrouter-proxy-plain",
+      "openrouter-proxy-tools",
+      "openai-chat-plain"
+    ],
+    "reserved_micro_usdc": "77108",
+    "remaining_micro_usdc": "9922892",
+    "selected_case": "openai-chat-plain",
+    "selected_case_max_cost_micro_usdc": "19277",
+    "selected_case_reserved": true,
+    "budget_file_sha256": "80e0261e7dee7a3b774d3f1e96094bcdf315b6bb7129b210f3139dfc305d78a2"
+  },
+  "readiness": {
+    "backend_status": "serving",
+    "backend_report_updated_at_utc": "2026-10-05T11:22:28.221851+00:00",
+    "database_accepting": true,
+    "signer_reconciled": true,
+    "indexer_root_last_observed_http_status": 503,
+    "control_config_last_observed_http_status": 200,
+    "last_fixed_indexer_log": {
+      "next_slot": 507711410,
+      "category": "account inventory changed"
+    },
+    "indexer_log_modified_at_utc": "2026-10-05T11:08:08.415397+00:00",
+    "interpretation": "The service intentionally withdraws readiness during every replay/account-cut refresh. The last fixed inventory-change diagnostic is historical; current HTTP 503 does not prove the same error persists."
+  },
+  "conclusions": {
+    "api_response_success": false,
+    "provider_dispatch_committed_for_this_operation": false,
+    "receipt_reason": "NOT_DISPATCHED",
+    "session_zero_charge_settlement_stored": true,
+    "no_replay_performed_by_collection": true,
+    "parent_reservation_retained": true
+  },
+  "limitations": [
+    "Stored receipt and settlement signature presence was read; this collector did not cryptographically verify the browser successor.",
+    "The parent independently reports UI recovery at journal revision 21, pending null, receipt b94aa1a7-1ea8-46ae-b35c-764f0e05c52c, charge 0, remaining 1000000 micro-USDC.",
+    "No exact pre-dispatch failure reason was retained by current worker diagnostics. Admission/liveness failure is consistent with readiness observations but is not a proven root cause.",
+    "This report does not claim a successful OpenAI response, provider metering acceptance, completed I10 or release gates."
+  ],
+  "methodology": {
+    "database": "Local PostgreSQL SELECT-only queries with default_transaction_read_only=on; only fixed public IDs, state enums, integer totals and signed-presence fields retained. No credential, token, prompt, response text or raw DB rows retained.",
+    "logs": "Only parsed provider_dispatch event count and compile-time allowlisted indexer category/numeric cursor retained; raw logs were not exported.",
+    "source_paths": [
+      "services/control/src/inference.rs",
+      "services/control/src/api.rs",
+      "services/control/src/ledger.rs",
+      "services/indexer/src/runtime.rs"
+    ],
+    "queries": [
+      {
+        "label": "session",
+        "read_only_sql": "SELECT row_to_json(t) FROM (SELECT state,close_requested,cap_micro::text,charged_nano::text,reserved_nano::text,active_operations FROM sessions WHERE request_id='3019e6e0-0ca7-48a8-844f-fd72bfb9d1fb') t"
+      },
+      {
+        "label": "operation",
+        "read_only_sql": "SELECT row_to_json(t) FROM (SELECT state,reservation_nano::text,charged_nano::text,observed_cost_nano::text,operator_loss_nano::text,dispatched_at IS NULL AS no_dispatched_timestamp,provider_request_id IS NULL AS no_provider_request_id FROM operations WHERE request_id='3019e6e0-0ca7-48a8-844f-fd72bfb9d1fb' AND operation_id='e4db2880-b71f-4a23-a301-f8d066a8f760') t"
+      },
+      {
+        "label": "committed_dispatch_attempts",
+        "read_only_sql": "SELECT count(*) FROM dispatch_attempts WHERE request_id='3019e6e0-0ca7-48a8-844f-fd72bfb9d1fb'"
+      },
+      {
+        "label": "provider_evidence",
+        "read_only_sql": "SELECT count(*) FROM provider_evidence WHERE request_id='3019e6e0-0ca7-48a8-844f-fd72bfb9d1fb'"
+      },
+      {
+        "label": "receipts",
+        "read_only_sql": "SELECT count(*) FROM receipts WHERE request_id='3019e6e0-0ca7-48a8-844f-fd72bfb9d1fb'"
+      },
+      {
+        "label": "receipt",
+        "read_only_sql": "SELECT row_to_json(t) FROM (SELECT receipt_id,signature IS NOT NULL AS signed,convert_from(canonical_body,'UTF8')::json->>'reason' AS reason,convert_from(canonical_body,'UTF8')::json->>'evidence_kind' AS evidence_kind,convert_from(canonical_body,'UTF8')::json->>'charged_nano_usdc' AS charged_nano_usdc,json_array_length(convert_from(canonical_body,'UTF8')::json->'usage') AS usage_entries FROM receipts WHERE request_id='3019e6e0-0ca7-48a8-844f-fd72bfb9d1fb' AND operation_id='e4db2880-b71f-4a23-a301-f8d066a8f760') t"
+      },
+      {
+        "label": "settlement",
+        "read_only_sql": "SELECT row_to_json(t) FROM (SELECT charge_micro::text,state_signature IS NOT NULL AS signed FROM settlements WHERE request_id='3019e6e0-0ca7-48a8-844f-fd72bfb9d1fb') t"
+      }
+    ]
+  },
+  "real_provider_or_auth_calls_by_collector": 0,
+  "chain_sends_by_collector": 0,
+  "config_or_journal_mutations_by_collector": 0,
+  "release_gates_passed": [],
+  "parent_observed_ui_recovery": {
+    "journal_revision": 21,
+    "pending": null,
+    "verified_successor": true,
+    "receipt_id": "b94aa1a7-1ea8-46ae-b35c-764f0e05c52c",
+    "charge_micro_usdc": "0",
+    "remaining_micro_usdc": "1000000",
+    "observed_at_utc": "2026-10-05T11:20:11.030Z",
+    "source": "parent agent public UI observation; independent from this read-only database collection"
+  }
+}

@@ -76,10 +76,11 @@ Phantom acceptance, hosted CI, full I10 and release gates remain unverified.
 
 ## Selected commit verification
 
-The commit includes the compact Vault/codec, SDK and required legacy recovery,
+Commit `26ebc27` includes the compact Vault/codec, SDK and required legacy recovery,
 indexer replay, authenticated capability/configuration, review fixes and evidence.
-Pre-existing live-demo UI/provider/diagnostic/readiness changes remain in the
-working tree. The earlier 67-UI/45-indexer results above describe that larger
+Pre-existing live-demo UI/provider/diagnostic/readiness changes were excluded
+from that commit and are recorded separately in the
+[demo commit verification](I10-demo-commit-results.json). The earlier 67-UI/45-indexer results above describe that larger
 mixed source snapshot; UI presentation changes described in the original
 implementation report are not part of this commit.
 

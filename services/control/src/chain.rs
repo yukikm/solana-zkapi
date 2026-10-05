@@ -11,6 +11,42 @@ use solana_pubkey::Pubkey;
 use std::time::Duration;
 use zkapi_solana_types::{FieldElement, MicroUsdc};
 
+const OBSERVATION_TIMEOUT: Duration = Duration::from_secs(30);
+const OBSERVATION_INTERVAL: Duration = Duration::from_millis(250);
+const OBSERVATION_ATTEMPTS: usize = 120;
+
+/// Retry only incomplete indexer publication or a cut that moved during the
+/// reads. The closure contains reads only; no admission or provider action can
+/// be repeated here. One deadline covers every request and delay in the loop.
+async fn consistent_read<T, F, Fut>(
+    timeout: Duration,
+    interval: Duration,
+    attempts: usize,
+    mut read: F,
+) -> Result<T>
+where
+    F: FnMut() -> Fut,
+    Fut: std::future::Future<Output = Result<T>>,
+{
+    tokio::time::timeout(timeout, async {
+        for attempt in 0..attempts {
+            match read().await {
+                Err(error @ ValidationError::Unavailable("indexer not ready"))
+                | Err(error @ ValidationError::Conflict("root changed during observation")) => {
+                    if attempt + 1 == attempts {
+                        return Err(error);
+                    }
+                    tokio::time::sleep(interval).await;
+                }
+                result => return result,
+            }
+        }
+        Err(unavailable("chain observation attempts"))
+    })
+    .await
+    .unwrap_or_else(|_| Err(unavailable("chain observation deadline")))
+}
+
 pub const PROFILE_HASH: &str = "ba688d8a2be7647499c98d52c335c381b86f0471f39fa6539f7d451b76dafca1";
 pub const DEVNET_GENESIS: &str = "EtWTRABZaYq6iMfeYKouRu166VU2xqa1wcaWoxPkrZBG";
 pub const DEVNET_USDC_MINT: &str = "4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU";
@@ -357,6 +393,11 @@ impl ChainClient {
             .ok_or(unavailable("RPC result"))
     }
     pub async fn startup(&self) -> Result<()> {
+        tokio::time::timeout(OBSERVATION_TIMEOUT, self.startup_once())
+            .await
+            .unwrap_or_else(|_| Err(unavailable("chain observation deadline")))
+    }
+    async fn startup_once(&self) -> Result<()> {
         for url in [&self.primary, &self.secondary] {
             if self.rpc(url, "getGenesisHash", json!([])).await? != self.trusted.genesis_hash {
                 return Err(ValidationError::TrustMismatch("RPC genesis"));
@@ -369,17 +410,30 @@ impl ChainClient {
         Ok(())
     }
     pub async fn current_root(&self) -> Result<Root> {
+        consistent_read(
+            OBSERVATION_TIMEOUT,
+            OBSERVATION_INTERVAL,
+            OBSERVATION_ATTEMPTS,
+            || self.current_root_once(),
+        )
+        .await
+    }
+    async fn current_root_once(&self) -> Result<Root> {
         let response = self
             .client
             .get(format!(
                 "{}/zkapi/v1/tree/root",
                 self.indexer.trim_end_matches('/')
             ))
+            .timeout(OBSERVATION_TIMEOUT)
             .send()
             .await
             .map_err(|_| unavailable("indexer transport"))?;
-        if !response.status().is_success() {
+        if response.status() == reqwest::StatusCode::SERVICE_UNAVAILABLE {
             return Err(unavailable("indexer not ready"));
+        }
+        if !response.status().is_success() {
+            return Err(unavailable("indexer HTTP"));
         }
         let bytes = response
             .bytes()
@@ -425,7 +479,31 @@ impl ChainClient {
         validate_pool_account(&self.trusted, &value, slot)
     }
     pub async fn observe(&self, nullifier: FieldElement) -> Result<ChainObservation> {
-        let root = self.current_root().await?;
+        self.observe_bounded(nullifier, None, false).await
+    }
+    async fn observe_bounded(
+        &self,
+        nullifier: FieldElement,
+        expected_root: Option<FieldElement>,
+        require_live: bool,
+    ) -> Result<ChainObservation> {
+        consistent_read(
+            OBSERVATION_TIMEOUT,
+            OBSERVATION_INTERVAL,
+            OBSERVATION_ATTEMPTS,
+            || self.observe_once(nullifier, expected_root, require_live),
+        )
+        .await
+    }
+    async fn observe_once(
+        &self,
+        nullifier: FieldElement,
+        expected_root: Option<FieldElement>,
+        require_live: bool,
+    ) -> Result<ChainObservation> {
+        // Each attempt starts from a fresh root and fresh independent account
+        // reads. Do not call current_root's retry wrapper inside this deadline.
+        let root = self.current_root_once().await?;
         let min = uint(&root.slot)?;
         let (address, _) = exit_address(&self.trusted, nullifier)?;
         let (pool, primary, secondary) = tokio::try_join!(
@@ -433,11 +511,23 @@ impl ChainClient {
             self.account(&self.primary, &address, "confirmed", min),
             self.account(&self.secondary, &address, "confirmed", min)
         )?;
-        if self.current_root().await? != root {
-            return Err(ValidationError::Conflict("root changed during observation"));
-        }
         let exit_consumed = validate_exit_account(&self.trusted, nullifier, &address, &primary.1)?
             | validate_exit_account(&self.trusted, nullifier, &address, &secondary.1)?;
+        // A known denial is terminal even if the indexer moves at the same time.
+        if require_live {
+            if pool.paused {
+                return Err(ValidationError::Conflict("pool paused"));
+            }
+            if exit_consumed {
+                return Err(ValidationError::Conflict("exit consumed"));
+            }
+            if expected_root.is_some_and(|expected| expected != root.root) {
+                return Err(ValidationError::Conflict("stale root"));
+            }
+        }
+        if self.current_root_once().await? != root {
+            return Err(ValidationError::Conflict("root changed during observation"));
+        }
         Ok(ChainObservation {
             root,
             pool,
@@ -453,16 +543,86 @@ impl ChainClient {
         nullifier: FieldElement,
         expected_root: Option<FieldElement>,
     ) -> Result<ChainObservation> {
-        let observation = self.observe(nullifier).await?;
-        if observation.pool.paused {
-            return Err(ValidationError::Conflict("pool paused"));
+        self.observe_bounded(nullifier, expected_root, true).await
+    }
+}
+
+#[cfg(test)]
+mod observation_retry_tests {
+    use super::*;
+    use std::sync::atomic::{AtomicUsize, Ordering};
+
+    #[tokio::test]
+    async fn only_503_and_changed_cut_repeat_and_terminal_failures_do_not() {
+        let reads = AtomicUsize::new(0);
+        let value = consistent_read(Duration::from_secs(1), Duration::ZERO, 3, || {
+            let read = reads.fetch_add(1, Ordering::SeqCst);
+            async move {
+                match read {
+                    0 => Err(unavailable("indexer not ready")),
+                    1 => Err(ValidationError::Conflict("root changed during observation")),
+                    _ => Ok(7),
+                }
+            }
+        })
+        .await
+        .unwrap();
+        assert_eq!(value, 7);
+        assert_eq!(reads.load(Ordering::SeqCst), 3);
+        for error in [
+            unavailable("indexer HTTP"),
+            unavailable("indexer transport"),
+            unavailable("indexer root encoding"),
+            unavailable("RPC stale context slot"),
+            ValidationError::TrustMismatch("PoolConfig layout"),
+            ValidationError::Conflict("pool paused"),
+            ValidationError::Conflict("exit consumed"),
+            ValidationError::Conflict("stale root"),
+        ] {
+            reads.store(0, Ordering::SeqCst);
+            let result = consistent_read(Duration::from_secs(1), Duration::ZERO, 3, || {
+                reads.fetch_add(1, Ordering::SeqCst);
+                let error = error.clone();
+                async move { Err::<(), _>(error) }
+            })
+            .await;
+            assert_eq!(result.unwrap_err(), error);
+            assert_eq!(reads.load(Ordering::SeqCst), 1);
         }
-        if observation.exit_consumed {
-            return Err(ValidationError::Conflict("exit consumed"));
-        }
-        if expected_root.is_some_and(|r| r != observation.root.root) {
-            return Err(ValidationError::Conflict("stale root"));
-        }
-        Ok(observation)
+    }
+
+    #[tokio::test]
+    async fn persistent_unavailability_and_inflight_reads_have_finite_bounds() {
+        let reads = AtomicUsize::new(0);
+        let result = consistent_read(Duration::from_secs(1), Duration::ZERO, 3, || {
+            reads.fetch_add(1, Ordering::SeqCst);
+            async { Err::<(), _>(unavailable("indexer not ready")) }
+        })
+        .await;
+        assert_eq!(result.unwrap_err(), unavailable("indexer not ready"));
+        assert_eq!(reads.load(Ordering::SeqCst), 3);
+        reads.store(0, Ordering::SeqCst);
+        let result = consistent_read(Duration::from_millis(10), Duration::ZERO, 3, || {
+            reads.fetch_add(1, Ordering::SeqCst);
+            std::future::pending::<Result<()>>()
+        })
+        .await;
+        assert_eq!(
+            result.unwrap_err(),
+            unavailable("chain observation deadline")
+        );
+        assert_eq!(reads.load(Ordering::SeqCst), 1);
+        // The deadline also covers delays, not just individual HTTP requests.
+        reads.store(0, Ordering::SeqCst);
+        let result = consistent_read(Duration::from_millis(10), Duration::from_secs(1), 3, || {
+            reads.fetch_add(1, Ordering::SeqCst);
+            async { Err::<(), _>(unavailable("indexer not ready")) }
+        })
+        .await;
+        assert_eq!(
+            result.unwrap_err(),
+            unavailable("chain observation deadline")
+        );
+        assert_eq!(reads.load(Ordering::SeqCst), 1);
     }
 }

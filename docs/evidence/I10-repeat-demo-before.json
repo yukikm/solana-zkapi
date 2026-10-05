@@ -1,0 +1,51 @@
+{
+  "schema": 1,
+  "observed_at_utc": "2026-10-05T11:58:28.136009+00:00",
+  "before_sha256": {
+    "config/provider-acceptance.i10.json": "c26a170b5c4490cf2aeecf2f8f74917bbeeabbea034e1dddb9f36cbe8951001f",
+    "target/i10-provider-acceptance/budget-identity.json": "9780016f4d9858225194c14f5b72259b3847269bdefe2db0b30937a131ed5668",
+    "target/i10-provider-acceptance/budget-state.json": "265c1bfcb3419eaca33843be878b88004b1c7d9e561fa6cb092332a95385987a",
+    "target/i10-live-demo-backend/identity.json": "eb2f21b4cae71b2da2c713860c3fb9a99a179cd4ae4e889b170d33247f7856b0",
+    "target/i10-live-demo-backend/signer.json": "10879509ff63c2cdf6d6d2b0ea6c7fea9ad162116b0b26040423ec01e79a0faa"
+  },
+  "budget": {
+    "identity": {
+      "budget_micro_usdc": "10000000",
+      "campaign_id": "i10-provider-acceptance",
+      "max_requests": 18,
+      "plan_sha256": "50f3f10040671f27ecd2ff59db3d3d6474a58de67bb0cf38e7a2cd41d7577167",
+      "schema": 1
+    },
+    "reservations": [
+      {
+        "case_id": "openai-responses-plain",
+        "max_cost_micro_usdc": "19277",
+        "state": "reserved_no_automatic_replay"
+      },
+      {
+        "case_id": "openrouter-proxy-plain",
+        "max_cost_micro_usdc": "19277",
+        "state": "reserved_no_automatic_replay"
+      },
+      {
+        "case_id": "openrouter-proxy-tools",
+        "max_cost_micro_usdc": "19277",
+        "state": "reserved_no_automatic_replay"
+      },
+      {
+        "case_id": "openai-chat-plain",
+        "max_cost_micro_usdc": "19277",
+        "state": "reserved_no_automatic_replay"
+      },
+      {
+        "case_id": "demo-3158cfca-c7b3-4891-aef0-54b9975b243e",
+        "kind": "explicit_demo",
+        "max_cost_micro_usdc": "19277",
+        "operation_id": "3158cfca-c7b3-4891-aef0-54b9975b243e",
+        "request_id": "4f8434a4-9766-4903-9128-f0f33c3acdae",
+        "state": "reserved_no_automatic_replay",
+        "template_case_id": "openai-chat-plain"
+      }
+    ]
+  }
+}

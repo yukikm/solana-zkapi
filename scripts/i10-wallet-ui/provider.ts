@@ -4,12 +4,13 @@ import {ControlClient, createCredentials, type NoteJournal, type Tariff, type Pr
 import type {EncryptedJournal} from '../../packages/sdk/src/journal.ts';
 import type {NoteProver} from '../../packages/sdk/src/prover.ts';
 import type {WalletChain} from '../../packages/sdk/src/wallet-chain.ts';
-import {parseStrictJson} from '../../packages/sdk/src/trust.ts';
+import {parseStrictJson, sha256Hex} from '../../packages/sdk/src/trust.ts';
+import {ProviderResponseError} from './provider-diagnostics.ts';
 
 export interface UiProviderConfiguration {
   testCase: {id: string; mode: string; provider: string; model: string; endpoint: string; stream: boolean; tools: boolean;
     max_output_tokens: number; max_cost_micro_usdc: string; session_ttl_seconds: number};
-  tariff: Tariff; planSha256: string;
+  tariff: Tariff; planSha256: string; requestPolicy?: 'explicit_demo';
 }
 export interface UiProviderOptions {
   configuration: UiProviderConfiguration; journal: EncryptedJournal<NoteJournal>; client: ControlClient;
@@ -18,6 +19,7 @@ export interface UiProviderOptions {
 function requireTrue(value: unknown): asserts value { if (!value) throw Error('fixed OpenAI acceptance state required'); }
 export function uiProviderBody(configuration: UiProviderConfiguration): Uint8Array {
   const c = configuration.testCase;
+  requireTrue(configuration.requestPolicy === undefined || configuration.requestPolicy === 'explicit_demo');
   requireTrue(c.id === 'openai-chat-plain' && c.mode === 'proxy' && c.provider === 'openai'
     && c.endpoint === 'chat_completions' && c.stream === false && c.tools === false
     && typeof c.model === 'string' && /^[\x21-\x7e]{1,200}$/.test(c.model) && c.model !== '*'
@@ -43,11 +45,11 @@ export class UiProvider {
   }
   private async record(noteId: string) {
     const r = await this.o.journal.read(noteId); requireTrue(r?.value.witness && r.value.wallet);
-    requireTrue(r.value.history.length <= 1);
+    if (this.configuration.requestPolicy !== 'explicit_demo') requireTrue(r.value.history.length <= 1);
     for (const h of r.value.history) this.checkPrepared(h.prepared);
     if (r.value.pending) {
       this.checkPrepared(r.value.pending.prepared);
-      requireTrue(r.value.history.length === 0 && r.value.pending.operations.length <= 1);
+      requireTrue((this.configuration.requestPolicy === 'explicit_demo' || r.value.history.length === 0) && r.value.pending.operations.length <= 1);
       for (const op of r.value.pending.operations) requireTrue(op.path === '/v1/chat/completions'
         && op.anthropicVersion === '' && op.bodyBase64 === Buffer.from(this.body).toString('base64'));
     }
@@ -61,18 +63,19 @@ export class UiProvider {
   async prepare(noteId: string): Promise<void> {
     return this.locked(noteId, async () => {
       const r = await this.record(noteId), v = r.value;
-      requireTrue(v.pending === null && v.history.length === 0 && v.wallet!.status === 'active'
+      requireTrue(v.pending === null && (this.configuration.requestPolicy === 'explicit_demo' || v.history.length === 0) && v.wallet!.status === 'active'
         && !v.wallet!.operation && !v.wallet!.clearance);
       // Capture the coherent chain view before the signed quote's 120s clock starts.
       const snapshot = await this.o.chain.snapshot(v.witness!.note_id, 'active');
       const c = this.configuration.testCase;
       const quote = await this.o.client.quote({mode: 'proxy', provider: 'openai', models: [c.model], session_ttl_seconds: String(c.session_ttl_seconds)}, this.configuration.tariff);
+      requireTrue(BigInt(v.state.balance_micro_usdc) >= BigInt(quote.body.cap_micro_usdc));
       const prepared = await this.o.prover.prepareSession(v.witness!, v.state, snapshot.root, snapshot.siblings,
         quote, this.configuration.tariff, await createCredentials('proxy'));
       await this.o.client.prepare(noteId, prepared, snapshot.root);
     });
   }
-  async sendOnce(noteId: string): Promise<{text: string; operationId: string}> {
+  async sendOnce(noteId: string): Promise<{text: string; operationId: string; httpStatus: 200; responseBytes: number; responseSha256: string}> {
     return this.locked(noteId, async () => {
       let r = await this.record(noteId); requireTrue(r.value.pending && !r.value.pending.closeRequested);
       requireTrue(r.value.pending.operations.every(op => op.phase === 'prepared'));
@@ -84,16 +87,19 @@ export class UiProvider {
       const response = await this.o.client.sendOperation(noteId, operationId);
       const reader = response.body?.getReader();
       try {
-        if (!response.ok || !reader) throw Error('provider response unavailable; close and recover the saved session');
+        if (response.status !== 200) throw new ProviderResponseError(response.status, response.headers.get('x-zkapi-error-code'));
+        if (!reader) throw Error('provider response body missing');
         const chunks: Uint8Array[] = []; let length = 0;
         for (;;) { const {done, value} = await reader.read(); if (done) break; length += value.length;
           if (length > 1024 * 1024) throw Error('provider response limit'); chunks.push(value); }
-        const result = parseStrictJson(new Uint8Array(Buffer.concat(chunks))) as {choices?: {message?: {role?: unknown; content?: unknown; refusal?: unknown}; finish_reason?: unknown}[]};
+        const bytes = new Uint8Array(Buffer.concat(chunks));
+        let result: {choices?: {message?: {role?: unknown; content?: unknown; refusal?: unknown}; finish_reason?: unknown}[]};
+        try { result = parseStrictJson(bytes) as typeof result; } catch { throw Error('provider response invalid'); }
         const choice = result?.choices?.[0];
-        requireTrue(Array.isArray(result?.choices) && result.choices.length === 1 && choice?.message?.role === 'assistant'
+        if (!(Array.isArray(result?.choices) && result.choices.length === 1 && choice?.message?.role === 'assistant'
           && typeof choice.message.content === 'string' && choice.message.content.length > 0
-          && !choice.message.refusal && choice.finish_reason === 'stop');
-        return {text: choice.message.content, operationId};
+          && !choice.message.refusal && choice.finish_reason === 'stop')) throw Error('provider response invalid');
+        return {text: choice.message.content, operationId, httpStatus: 200, responseBytes: length, responseSha256: await sha256Hex(bytes)};
       } finally { await reader?.cancel().catch(() => {}); }
     });
   }

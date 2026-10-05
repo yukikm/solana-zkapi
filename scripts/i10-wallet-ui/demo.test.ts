@@ -18,7 +18,7 @@ test('fixed demo projections conserve integer USDC and charge only on settlement
     assert.equal(view.steps.filter(step => step === 'current').length, index === 4 ? 0 : 1);
     assert.equal(view.steps.filter(step => step === 'done').length, Math.min(index, 4));
     assert.equal(view.response === DEMO_RESPONSE, index >= 2);
-    assert.match(view.receiptBody, index >= 3 ? /サンプル.*実際の署名済み明細ではありません/ : /サンプル/);
+    assert.match(view.receiptBody, index >= 3 ? /Sample only\. This is not a signed receipt\./ : /sample/);
   }
   assert.equal(demoView(3).paid, '0.000018');
   assert.equal(demoView(4).returned, '0.999982');

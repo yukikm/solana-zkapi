@@ -117,6 +117,25 @@ test('caller mutation during asynchronous verification cannot substitute accepte
   }};const report=await verifySettledProviderCase(h.input);assert.equal(report.case_id,'openrouter-proxy-plain');assert.equal(report.charge_micro_usdc,'0');
 });
 
+test('later explicit demo reservations count globally without replacing acceptance-case recovery evidence',async()=>{
+  const h=fixture(),template=h.input.plan.cases.find(c=>c.id==='openai-chat-plain')!;
+  const demoOperation='12345678-1234-4123-8123-123456789022',demoRequest='12345678-1234-4123-8123-123456789023';
+  const row={case_id:'demo-'+demoOperation,kind:'explicit_demo',template_case_id:template.id,request_id:demoRequest,
+    operation_id:demoOperation,max_cost_micro_usdc:template.max_cost_micro_usdc,state:'reserved_no_automatic_replay'};
+  h.budget.reservations.push(row);
+  h.budget.reserved_micro_usdc=String(BigInt(h.budget.reservations[0].max_cost_micro_usdc)+BigInt(template.max_cost_micro_usdc));
+  h.budget.remaining_micro_usdc=String(BigInt(h.input.plan.budget_micro_usdc)-BigInt(h.budget.reserved_micro_usdc));
+  const report=await verifySettledProviderCase(h.input);
+  assert.equal(report.case_id,'openrouter-proxy-plain');assert.equal(report.provider_acceptance_passed,false);
+  for(const [field,value] of [['max_cost_micro_usdc','1'],['template_case_id','openrouter-proxy-plain'],['kind','acceptance'],
+      ['request_id','invalid'],['operation_id',demoRequest]] as const){
+    const bad=structuredClone({...h.input,verifier:undefined}) as unknown as SettledProviderRecoveryInput;
+    bad.verifier=h.input.verifier;
+    ((bad.budget as typeof h.budget).reservations[1] as unknown as Record<string,unknown>)[field]=value;
+    await assert.rejects(verifySettledProviderCase(bad),/preserve journal and budget/);
+  }
+});
+
 
 function unstartedFixture(){
   const settled=fixture(),{verifier,...input}=settled.input;

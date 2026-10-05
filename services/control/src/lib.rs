@@ -7,6 +7,7 @@ pub mod direct;
 pub mod dispatcher;
 pub mod faults;
 pub mod inference;
+mod inference_diagnostics;
 pub mod ledger;
 pub mod provider_runtime;
 pub mod proxy;

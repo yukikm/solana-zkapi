@@ -5,7 +5,7 @@ import {createHash} from 'node:crypto';
 import {validateNoteJournal, type NoteJournal, type SessionVerifier, type Tariff,
   type VerificationContext} from '../packages/sdk/src/control.ts';
 import {jcsBytes} from '../packages/sdk/src/trust.ts';
-import {validateProviderSelection} from './i10_devnet_provider.ts';
+import {validateProviderSelection,demoBudgetTemplate} from './i10_devnet_provider.ts';
 import {providerAcceptanceBody, type ProviderAcceptanceCase} from './provider_acceptance_client.ts';
 
 export interface ProviderRecoveryPlan {
@@ -49,12 +49,14 @@ function verifyRecoveryCampaign(o:RecoveryCampaignInput,selectedReservationPrese
     &&b.refunds_supported===false&&b.inference_replays_supported===false&&Array.isArray(b.reservations)
     &&b.reservations.length<=o.plan.max_requests);
   const planned=new Map(o.plan.cases.map(row=>[row.id,row]));requireTrue(planned.size===o.plan.cases.length);
-  const seen=new Set<string>();let reserved=0n;
+  const seen=new Set<string>(),demoSessions=new Set<string>();let reserved=0n;
   for(const value of b.reservations){
-    const row=object(value);exact(row,['case_id','max_cost_micro_usdc','state']);
+    const row=object(value),template=demoBudgetTemplate(row);
     requireTrue(typeof row.case_id==='string'&&!seen.has(row.case_id));seen.add(row.case_id);
-    const expected=planned.get(row.case_id);requireTrue(expected&&row.max_cost_micro_usdc===expected.max_cost_micro_usdc
+    if(template){requireTrue(!planned.has(row.case_id)&&!demoSessions.has(row.request_id as string));demoSessions.add(row.request_id as string);}
+    const expected=planned.get(template??row.case_id);requireTrue(expected&&row.max_cost_micro_usdc===expected.max_cost_micro_usdc
     &&row.state==='reserved_no_automatic_replay');
+    if(template)requireTrue(expected.mode==='proxy'&&expected.provider==='openai'&&expected.endpoint==='chat_completions'&&!expected.stream&&!expected.tools);
     const amount=units(row.max_cost_micro_usdc);requireTrue(amount>0n);reserved+=amount;
   }
   requireTrue(seen.has(c.id)===selectedReservationPresent&&reserved<=cap&&units(b.reserved_micro_usdc)===reserved&&units(b.remaining_micro_usdc)===cap-reserved);

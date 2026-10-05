@@ -14,7 +14,7 @@ use serde_json::{json, Value};
 use sha2::{Digest, Sha256};
 use solana_pubkey::Pubkey;
 use std::{collections::BTreeMap, error::Error, path::PathBuf, sync::Arc, time::Duration};
-use tokio::sync::RwLock;
+use tokio::sync::{watch, OwnedRwLockReadGuard, RwLock};
 
 type Result<T> = std::result::Result<T, Box<dyn Error + Send + Sync>>;
 #[derive(Clone, Deserialize)]
@@ -400,11 +400,42 @@ impl ArchiveRpc {
 struct Published {
     index: Indexer,
     available: bool,
+    refreshing: bool,
 }
 #[derive(Clone)]
 struct HttpState {
     state: Arc<RwLock<Published>>,
     config: Arc<Config>,
+    updated: watch::Receiver<()>,
+}
+// Leave headroom under the control client's thirty-second indexer timeout. Waiting
+// adds no RPC calls and never exposes the previous cut while a refresh runs.
+const READY_WAIT: Duration = Duration::from_secs(20);
+async fn ready_state(s: &HttpState, timeout: Duration) -> Option<OwnedRwLockReadGuard<Published>> {
+    let mut updated = s.updated.clone();
+    tokio::time::timeout(timeout, async {
+        loop {
+            let state = s.state.clone().read_owned().await;
+            if updated.has_changed().is_err() {
+                return None;
+            }
+            if state.available {
+                return Some(state);
+            }
+            if !state.refreshing {
+                return None;
+            }
+            drop(state);
+            // watch retains a completed refresh even if publication raced the
+            // state read; a lost wakeup must not turn success into a timeout.
+            if updated.changed().await.is_err() {
+                return None;
+            }
+        }
+    })
+    .await
+    .ok()
+    .flatten()
 }
 fn unavailable() -> Response {
     (StatusCode::SERVICE_UNAVAILABLE,Json(json!({"error":{"code":"indexer_unavailable","message":"Finalized history or account reconciliation is incomplete","retriable":true}}))).into_response()
@@ -413,10 +444,9 @@ fn invalid() -> Response {
     (StatusCode::BAD_REQUEST,Json(json!({"error":{"code":"invalid_path","message":"The requested note path is unavailable","retriable":false}}))).into_response()
 }
 async fn root(State(s): State<HttpState>) -> Response {
-    let state = s.state.read().await;
-    if !state.available {
+    let Some(state) = ready_state(&s, READY_WAIT).await else {
         return unavailable();
-    }
+    };
     match state.index.root() {
         Ok(value) => Json(value).into_response(),
         Err(_) => unavailable(),
@@ -432,10 +462,9 @@ async fn path_response(s: HttpState, id: String, zero: bool) -> Response {
     if parsed.to_string() != id {
         return invalid();
     }
-    let state = s.state.read().await;
-    if !state.available {
+    let Some(state) = ready_state(&s, READY_WAIT).await else {
         return unavailable();
-    }
+    };
     let result = if zero {
         state.index.zero_path(parsed)
     } else {
@@ -456,10 +485,9 @@ async fn zero_path(State(s): State<HttpState>, Path(id): Path<String>) -> Respon
     path_response(s, id, true).await
 }
 async fn snapshot(State(s): State<HttpState>) -> Response {
-    let state = s.state.read().await;
-    if !state.available {
+    let Some(state) = ready_state(&s, READY_WAIT).await else {
         return unavailable();
-    }
+    };
     let Ok(bytes) = state.index.snapshot_bytes() else {
         return unavailable();
     };
@@ -517,25 +545,34 @@ pub async fn serve(cfg: Config) -> Result<()> {
     let state = Arc::new(RwLock::new(Published {
         index: Indexer::new(program, pool),
         available: false,
+        refreshing: false,
     }));
+    let (updated, changes) = watch::channel(());
     let shared = HttpState {
         state: state.clone(),
         config: config.clone(),
+        updated: changes,
     };
     let worker = tokio::spawn(async move {
         let mut index = Indexer::new(program, pool);
         let mut next = config.start_slot;
         loop {
-            state.write().await.available = false;
+            {
+                let mut published = state.write().await;
+                published.available = false;
+                published.refreshing = true;
+            }
             let result = rpc.refresh(&config, &mut index, &mut next).await;
             if result.is_ok() {
                 *state.write().await = Published {
                     index: index.clone(),
                     available: true,
+                    refreshing: false,
                 };
             }
             // Never log raw RPC errors: URLs can contain provider credentials.
             else if let Err(error) = result {
+                state.write().await.refreshing = false;
                 // Typed replay errors contain only compile-time descriptions.
                 // Never interpolate an arbitrary transport error or RPC URL.
                 let category = if let Some(error) = error.downcast_ref::<crate::Error>() {
@@ -559,6 +596,7 @@ pub async fn serve(cfg: Config) -> Result<()> {
                 };
                 eprintln!("indexer paused: next_slot={next} category={category}");
             }
+            updated.send_replace(());
             tokio::time::sleep(Duration::from_secs(2)).await;
         }
     });
@@ -644,12 +682,15 @@ mod http_tests {
         let (index, config) = fixture();
         std::fs::create_dir_all(&config.snapshots_directory).unwrap();
         let directory = config.snapshots_directory.clone();
+        let (_updated, changes) = watch::channel(());
         let shared = HttpState {
             state: Arc::new(RwLock::new(Published {
                 index,
                 available: true,
+                refreshing: false,
             })),
             config: Arc::new(config),
+            updated: changes,
         };
         let root = body(root(State(shared.clone())).await).await;
         assert_eq!(root["sequence"], "4");
@@ -703,12 +744,15 @@ mod http_tests {
     #[tokio::test]
     async fn http_service_is_unavailable_until_reconciled() {
         let (index, config) = fixture();
+        let (_updated, changes) = watch::channel(());
         let shared = HttpState {
             state: Arc::new(RwLock::new(Published {
                 index,
                 available: false,
+                refreshing: false,
             })),
             config: Arc::new(config),
+            updated: changes,
         };
         assert_eq!(
             root(State(shared.clone())).await.status(),
@@ -723,6 +767,110 @@ mod http_tests {
         assert_eq!(
             snapshot(State(shared)).await.status(),
             StatusCode::SERVICE_UNAVAILABLE
+        );
+    }
+
+    #[tokio::test]
+    async fn healthy_refresh_waits_for_reconciled_publication_instead_of_immediate_503() {
+        let (index, config) = fixture();
+        std::fs::create_dir_all(&config.snapshots_directory).unwrap();
+        let directory = config.snapshots_directory.clone();
+        let (updated, changes) = watch::channel(());
+        let shared = HttpState {
+            state: Arc::new(RwLock::new(Published {
+                index,
+                available: false,
+                refreshing: true,
+            })),
+            config: Arc::new(config),
+            updated: changes,
+        };
+        let root_request = tokio::spawn(root(State(shared.clone())));
+        let path_request = tokio::spawn(note_path(State(shared.clone()), Path("0".into())));
+        let snapshot_request = tokio::spawn(snapshot(State(shared.clone())));
+        tokio::time::sleep(Duration::from_millis(20)).await;
+        assert!(!root_request.is_finished());
+        assert!(!path_request.is_finished());
+        assert!(!snapshot_request.is_finished());
+        // The worker publishes only after ArchiveRpc::refresh has checked the
+        // exact captured account cut. HTTP must not use the retained old index.
+        {
+            let mut state = shared.state.write().await;
+            assert!(state.index.is_ready());
+            state.available = true;
+            state.refreshing = false;
+        }
+        updated.send_replace(());
+        for request in [root_request, path_request, snapshot_request] {
+            assert_eq!(request.await.unwrap().status(), StatusCode::OK);
+        }
+        std::fs::remove_dir_all(directory).unwrap();
+    }
+
+    #[tokio::test]
+    async fn failed_refresh_wakes_waiters_without_serving_the_previously_ready_cut() {
+        let (index, config) = fixture();
+        let (updated, changes) = watch::channel(());
+        let shared = HttpState {
+            state: Arc::new(RwLock::new(Published {
+                index,
+                available: false,
+                refreshing: true,
+            })),
+            config: Arc::new(config),
+            updated: changes,
+        };
+        let request = tokio::spawn(root(State(shared.clone())));
+        tokio::time::sleep(Duration::from_millis(20)).await;
+        assert!(!request.is_finished());
+        shared.state.write().await.refreshing = false;
+        updated.send_replace(());
+        assert_eq!(
+            request.await.unwrap().status(),
+            StatusCode::SERVICE_UNAVAILABLE
+        );
+        assert!(
+            shared.state.read().await.index.is_ready(),
+            "retained old data is not an admission source"
+        );
+        assert_eq!(
+            root(State(shared)).await.status(),
+            StatusCode::SERVICE_UNAVAILABLE
+        );
+    }
+
+    #[tokio::test]
+    async fn waiting_is_bounded_and_a_completed_publication_cannot_lose_its_notification() {
+        let (index, config) = fixture();
+        let (updated, changes) = watch::channel(());
+        let shared = HttpState {
+            state: Arc::new(RwLock::new(Published {
+                index,
+                available: false,
+                refreshing: true,
+            })),
+            config: Arc::new(config),
+            updated: changes,
+        };
+        assert!(ready_state(&shared, Duration::from_millis(10))
+            .await
+            .is_none());
+        assert!(!shared.state.read().await.available);
+        {
+            let mut state = shared.state.write().await;
+            state.available = true;
+            state.refreshing = false;
+        }
+        updated.send_replace(());
+        assert!(ready_state(&shared, Duration::from_millis(10))
+            .await
+            .is_some());
+        drop(updated);
+        assert!(
+            ready_state(&shared, Duration::from_millis(10))
+                .await
+                .is_none(),
+            "worker loss withdraws even the retained last successful cut"
         );
     }
 }

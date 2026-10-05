@@ -11,14 +11,14 @@ const field = (n: number) => '0x' + n.toString(16).padStart(64, '0');
 export const fixtureState = (): PrivateState => ({balance_micro_usdc: '1000000', balance_blinding: field(3), note_leaf: field(4), commitment: {x: field(5), y: field(6)}, anchor: field(7), state_signature: null});
 export async function providerFixture(journal: EncryptedJournal<NoteJournal>, noteId: string) {
   const counts = {quotes: 0, auth: 0, inference: 0, close: 0, verification: 0, snapshots: 0};
-  const behavior = {loseAuth: false, loseResponse: false, rejectSettlement: false, absentOperation: false, htmlText: false};
+  const behavior = {loseAuth: false, loseResponse: false, rejectSettlement: false, absentOperation: false, htmlText: false, zeroCharge: false, httpStatus: 200};
   const authBodies: string[] = [];
   const tariffBody: Omit<Tariff, 'tariff_hash'> = {version: '1', provider: 'openai', model: 'fixture-openai', pricing_basis: 'fixed_usage_rates', valid_from: '90', valid_until: '1000', rates: [{unit: 'input_tokens', nano_usdc_numerator: '1', unit_denominator: '1'}, {unit: 'output_tokens', nano_usdc_numerator: '1', unit_denominator: '1'}], operator_fee_micro_usdc: '0'};
   const tariff: Tariff = {...tariffBody, tariff_hash: await sha256Hex(jcsBytes(tariffBody))};
   const configuration: UiProviderConfiguration = {testCase: {id: 'openai-chat-plain', mode: 'proxy', provider: 'openai', model: tariff.model, endpoint: 'chat_completions', stream: false, tools: false, max_output_tokens: 128, max_cost_micro_usdc: '19277', session_ttl_seconds: 300}, tariff, planSha256: 'a'.repeat(64)};
   const keys = await crypto.subtle.generateKey('Ed25519', true, ['sign', 'verify']) as CryptoKeyPair;
   const context: VerificationContext = {deployment_id: 'fixture', pool: 'fixture', vault_binding: field(1), state_key: [field(2), field(3)], cap_micro_usdc: '1000000', control_api_origin: 'https://control.invalid', inference_api_origin: 'https://inference.invalid', quote_public_key: bs58.encode(new Uint8Array(await crypto.subtle.exportKey('raw', keys.publicKey))), receipt_public_key: '00'.repeat(32), request_vk_sha256: '00'.repeat(32), tariff_hashes: [tariff.tariff_hash]};
-  const settlement = (): Settlement => ({charge_micro_usdc: behavior.absentOperation ? '0' : '1', next_commitment: {x: field(5), y: field(6)}, next_anchor: field(8), blind_delta_srv: field(12), next_state_signature: {r_x: field(9), r_y: field(10), s: field(11)}});
+  const settlement = (): Settlement => ({charge_micro_usdc: behavior.absentOperation || behavior.zeroCharge ? '0' : '1', next_commitment: {x: field(5), y: field(6)}, next_anchor: field(8), blind_delta_srv: field(12), next_state_signature: {r_x: field(9), r_y: field(10), s: field(11)}});
   let closed = false;
   const receipt = (id: string): Receipt => ({body: {receipt_id: '1', operation_id: id, billing_effect: 'metered'}, receipt_hash: 'b'.repeat(64), signature: 'fixture-only'});
   const fetcher: typeof fetch = async (input, init) => {
@@ -31,6 +31,7 @@ export async function providerFixture(journal: EncryptedJournal<NoteJournal>, no
     }
     const p = (await journal.read(noteId))!.value.pending!;
     if (url.pathname.endsWith('/sessions')) {
+      closed = false;
       counts.auth++; authBodies.push(String(init?.body));
       if (p.phase !== 'send_unknown' || p.exactRequest !== init?.body) throw Error('fixture AUTH not durable');
       if (behavior.loseAuth) throw TypeError('fixture response lost');
@@ -40,6 +41,7 @@ export async function providerFixture(journal: EncryptedJournal<NoteJournal>, no
       if (p.operations.length !== 1 || p.operations[0].phase !== 'send_unknown'
         || new Headers(init?.headers).get('idempotency-key') !== p.operations[0].id) throw Error('fixture inference not durable');
       if (behavior.loseResponse) throw TypeError('fixture inference response lost');
+      if (behavior.httpStatus !== 200) return Response.json({error:'PRIVATE_PROVIDER_CANARY'}, {status: behavior.httpStatus, headers: {'x-zkapi-error-code':'operation_unavailable'}});
       return Response.json({choices: [{message: {role: 'assistant', content: behavior.htmlText ? '<img src=x onerror="window.fixtureXss=true">' : 'ok'}, finish_reason: 'stop'}]});
     }
     if (url.pathname.includes('/operations/')) return behavior.absentOperation ? Response.json({}, {status: 404}) : Response.json({request_id: p.prepared.request.authorization.request_id, operation_id: p.operations[0].id, response_replayable: false});

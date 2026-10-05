@@ -148,6 +148,21 @@ async function durable(path: string, value: unknown) {
   await rename(path + '.pending', path);
   const directory = await open(dirname(path), 'r'); try { await directory.sync(); } finally { await directory.close(); }
 }
+/** Optional typed rows are explicit new demo operations, never acceptance-case
+ * passes. Legacy reservation rows retain their exact three-field shape. */
+export function demoBudgetTemplate(value: Record<string, unknown>): string | null {
+  if (value.kind === undefined) {
+    exactFields(value, ['case_id', 'max_cost_micro_usdc', 'state']);
+    return null;
+  }
+  exactFields(value, ['case_id', 'kind', 'template_case_id', 'request_id', 'operation_id', 'max_cost_micro_usdc', 'state']);
+  const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
+  requireTrue(value.kind === 'explicit_demo' && value.template_case_id === 'openai-chat-plain'
+    && typeof value.request_id === 'string' && uuid.test(value.request_id)
+    && typeof value.operation_id === 'string' && uuid.test(value.operation_id)
+    && value.case_id === 'demo-' + value.operation_id);
+  return value.template_case_id;
+}
 function validateBudgetSnapshot(value: unknown) {
   const budget = object(value);
   exactFields(budget, ['identity', 'reserved_micro_usdc', 'remaining_micro_usdc', 'reservations', 'refunds_supported', 'inference_replays_supported']);
@@ -163,9 +178,10 @@ function validateBudgetSnapshot(value: unknown) {
     && Number.isSafeInteger(identity.max_requests) && Number(identity.max_requests) > 0 && Number(identity.max_requests) <= 1000
     && budget.refunds_supported === false && budget.inference_replays_supported === false && Array.isArray(budget.reservations)
     && budget.reservations.length <= Number(identity.max_requests));
-  const seen = new Set<string>(); let total = 0n;
+  const seen = new Set<string>(), demoSessions = new Set<string>(); let total = 0n;
   const reservations = budget.reservations.map(value => {
-    const entry = object(value); exactFields(entry, ['case_id', 'max_cost_micro_usdc', 'state']);
+    const entry = object(value), template = demoBudgetTemplate(entry);
+    if (template) { requireTrue(!demoSessions.has(entry.request_id as string)); demoSessions.add(entry.request_id as string); }
     const amount = units(entry.max_cost_micro_usdc);
     requireTrue(typeof entry.case_id === 'string' && /^[a-z0-9][a-z0-9_-]{0,63}$/.test(entry.case_id)
       && !seen.has(entry.case_id) && entry.state === 'reserved_no_automatic_replay' && amount > 0n);
@@ -191,7 +207,7 @@ export async function retainCompletedProviderReport<T extends {budget: unknown; 
       && same(saved.reservations, latest.reservations.slice(0, saved.reservations.length)));
   }
   for (const report of current.cases) requireTrue(saved.reservations.some(entry => entry.case_id === report.case_id
-    && entry.max_cost_micro_usdc === report.reserved_micro_usdc));
+    && entry.kind === undefined && entry.max_cost_micro_usdc === report.reserved_micro_usdc));
   if (previous) return previous as T;
   await durable(path, current); return current;
 }

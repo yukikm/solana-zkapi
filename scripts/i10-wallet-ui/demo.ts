@@ -1,8 +1,8 @@
 /** Presentation only: one fixed sample projected from a slide index.
  * No wallet, SDK, storage, proof, receipt verification, financial state or network.
  * The existing live client owns every real operation. */
-export const DEMO_PROMPT = 'zkAPIの仕組みを、一文で教えて。';
-export const DEMO_RESPONSE = 'USDCを預けてAIを使い、利用料だけを払い、残りはウォレットへ戻せます。';
+export const DEMO_PROMPT = 'Explain zkAPI in one sentence.';
+export const DEMO_RESPONSE = 'zkAPI lets you deposit USDC, use AI, pay for your usage, and withdraw the rest.';
 export const DEMO_DEPOSIT_MICRO_USDC = 1_000_000n;
 export const DEMO_CHARGE_MICRO_USDC = 18n;
 export type DemoPhase = 0 | 1 | 2 | 3 | 4;
@@ -12,39 +12,39 @@ export type DemoNodeState = 'idle' | 'active' | 'done';
 const PHASES = ['ready', 'deposited', 'responded', 'settled', 'withdrawn'] as const;
 const COPY = [
   {
-    title: '預けて、使って、残りを戻す。',
-    description: 'まず1 USDCを預けます。その残高から、AIの利用料だけを支払う流れを見てみましょう。',
-    next: '1 USDCを預ける',
-    explanation: '表示はすべて固定サンプルです。実際の接続、送金、AIへのリクエストは行いません。',
-    status: 'デモの準備ができました。入金から始められます。',
+    title: 'Deposit. Use AI. Get the rest back.',
+    description: 'Start with 1 USDC. See how your balance pays for AI, one request at a time.',
+    next: 'Deposit 1 USDC',
+    explanation: 'This walkthrough uses fixed examples. No wallet connection, transfers, or AI requests.',
+    status: 'Ready to begin. Start with a deposit.',
   },
   {
-    title: '1 USDCを預けました。',
-    description: '次はAIを利用します。支払える残高があることをZK証明で示し、利用する権限を得る流れです。',
-    next: 'AIを使う',
-    explanation: '利用権限の確認にZK証明を使います。プロンプト自体を隠す仕組みではなく、AIの提供元には内容が届きます。',
-    status: '入金の表示が完了しました。次は利用権限の確認とAI利用です。',
+    title: '1 USDC, ready to use.',
+    description: 'Next, use AI. A ZK proof shows you have enough funds and permission to make the request.',
+    next: 'Use AI',
+    explanation: 'ZK proves your right to use the API. Your prompt is still visible to the AI provider.',
+    status: 'Sample deposit complete. Next: use AI.',
   },
   {
-    title: 'AIから返答が届きました。',
-    description: '返答を受け取った段階では、まだ精算前です。利用量を確認してから料金を確定します。',
-    next: '利用料を精算する',
-    explanation: 'このサンプルの利用料は0.000018 USDCです。次のステップで、その金額だけを残高から差し引きます。',
-    status: 'AIの返答サンプルを表示しました。料金はまだ精算していません。',
+    title: 'Your AI response is here.',
+    description: 'The response has arrived. The fee is finalized after usage is recorded.',
+    next: 'Settle usage',
+    explanation: 'The sample fee is 0.000018 USDC. The next step deducts that amount from your balance.',
+    status: 'Sample response shown. The fee is not settled yet.',
   },
   {
-    title: '使った分だけ、精算しました。',
-    description: '利用料は0.000018 USDC。残りの0.999982 USDCを、ウォレットへ戻せます。',
-    next: '残りを引き出す',
-    explanation: '実際の操作では、署名された利用明細と精算後の状態をSDKが検証してから出金へ進みます。ここでは表示例だけを示しています。',
-    status: '0.000018 USDCの精算例を表示しました。残高は0.999982 USDCです。',
+    title: 'Pay only for what you used.',
+    description: 'The fee is 0.000018 USDC. Your remaining 0.999982 USDC is ready to withdraw.',
+    next: 'Withdraw the rest',
+    explanation: 'In the live app, your client verifies the signed receipt and updated balance before withdrawal. This receipt is a sample.',
+    status: 'Sample fee settled: 0.000018 USDC. Remaining: 0.999982 USDC.',
   },
   {
-    title: '残りは、ウォレットへ。',
-    description: '0.999982 USDCを戻して、4つのステップが完了しました。この例のUSDC利用料は0.000018 USDCです。',
-    next: 'デモ完了',
-    explanation: '送信済みか分からないAIリクエストは自動で再送しません。実際の画面では、保存済みの状態を使って確認と精算を進めます。',
-    status: 'デモ完了。利用料0.000018 USDC、返却額0.999982 USDCです。',
+    title: 'The rest is back in your wallet.',
+    description: 'All four steps are complete. You paid 0.000018 USDC and got 0.999982 USDC back in this example.',
+    next: 'Demo complete',
+    explanation: 'If an AI request has an unknown outcome, the live app checks the saved request and settles it without automatically sending it again.',
+    status: 'Demo complete. Paid: 0.000018 USDC. Returned: 0.999982 USDC.',
   },
 ] as const;
 
@@ -71,16 +71,16 @@ export function demoView(phase: DemoPhase) {
   };
   return {
     phase, phaseName: PHASES[phase], ...COPY[phase], steps, nodes,
-    stepLabel: phase === 0 ? '4つのステップでわかる' : `${phase} / 4 ステップ完了`,
+    stepLabel: phase === 0 ? 'FOUR SIMPLE STEPS' : `${phase} / 4 STEPS COMPLETE`,
     prompt: DEMO_PROMPT,
     balanceMicro, paidMicro, returnedMicro, walletMicro,
     balance: demoAmount(balanceMicro), paid: demoAmount(paidMicro), returned: demoAmount(returnedMicro), walletBalance: demoAmount(walletMicro),
-    response: phase >= 2 ? DEMO_RESPONSE : 'AIを利用すると、ここに返答のサンプルを表示します。',
-    responseState: phase >= 2 ? '返答サンプル' : 'まだ利用していません',
-    receiptState: settled ? '精算済みの表示例' : 'まだ精算していません',
+    response: phase >= 2 ? DEMO_RESPONSE : 'Your sample AI response will appear here.',
+    responseState: phase >= 2 ? 'Sample response' : 'Not sent',
+    receiptState: settled ? 'Settled (sample)' : 'Not settled',
     receiptBody: settled
-      ? `預け入れ　${demoAmount(DEMO_DEPOSIT_MICRO_USDC)} USDC\n利用料　　${demoAmount(DEMO_CHARGE_MICRO_USDC)} USDC\n${phase === 4 ? '返却額' : '残高'}　　${demoAmount(remaining)} USDC\nこの表示はサンプルで、実際の署名済み明細ではありません。`
-      : 'AIを利用した後、利用料と残高のサンプルをここに表示します。',
+      ? `Deposit: ${demoAmount(DEMO_DEPOSIT_MICRO_USDC)} USDC\nUsage fee: ${demoAmount(DEMO_CHARGE_MICRO_USDC)} USDC\n${phase === 4 ? 'Returned' : 'Remaining'}: ${demoAmount(remaining)} USDC\nSample only. This is not a signed receipt.`
+      : 'Your sample usage fee and remaining balance will appear here.',
   };
 }
 
@@ -128,7 +128,7 @@ export function mountDemo(document: Document) {
     next.disabled = busy || phase === 4;
     auto.disabled = phase === 4;
     auto.setAttribute('aria-pressed', String(playing));
-    auto.textContent = playing ? '一時停止' : '自動で見る';
+    auto.textContent = playing ? 'Pause' : 'Autoplay';
     for (const [index, state] of view.steps.entries()) {
       const node = document.querySelector<HTMLElement>(`[data-demo-step="${index}"]`);
       if (!node) continue;
@@ -147,7 +147,7 @@ export function mountDemo(document: Document) {
   function advance() {
     if (disposed || busy || phase === 4) return;
     clearTimers(); busy = true;
-    render('次のステップの表示に進んでいます。実際の操作は行っていません。');
+    render('Showing the next step. No real transaction is taking place.');
     const reduced = window!.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false;
     later(() => {
       phase = (phase + 1) as DemoPhase; busy = false;
@@ -158,7 +158,7 @@ export function mountDemo(document: Document) {
   function pause() {
     if (disposed) return;
     clearTimers(); playing = false; busy = false;
-    render('自動再生を一時停止しました。ボタンで続きから進められます。');
+    render('Paused. Continue at your own pace.');
   }
   function restart() {
     if (disposed) return;
@@ -167,7 +167,7 @@ export function mountDemo(document: Document) {
   function toggleAuto() {
     if (disposed || phase === 4) return;
     if (playing) { pause(); return; }
-    playing = true; render('自動再生を開始しました。いつでも一時停止できます。');
+    playing = true; render('Autoplay started. You can pause at any time.');
     if (!busy) advance();
   }
   next.addEventListener('click', advance);

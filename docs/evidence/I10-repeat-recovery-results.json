@@ -1,0 +1,184 @@
+{
+  "schema": 1,
+  "recorded_at_utc": "2026-10-05T12:22:51.128033+00:00",
+  "status": "live_restarted_actual_API_response_and_signed_settlement_verified_next_request_available",
+  "scope": "Expired mutual-close create recovery plus explicit confirmed transaction preparation in the same actual Chrome/Phantom demo",
+  "changes": [
+    "Restrict mutual-close setup recovery to exact expired create-only attempts, verified same-state permanent clearance and finalized unchanged active note with no Pending. Preserve old attempts and durable absence before proof rebuild.",
+    "Use one opt-in confirmed preparation setting for blockhash, both fee estimates and preflight. SDK defaults remain finalized. All proof/account/receipt/expiry/absence reads remain finalized.",
+    "Show recovery action and distinguish requesting a new signature from checking saved transactions."
+  ],
+  "checks": [
+    {
+      "command": "target/i08-toolchain/bin/node --test packages/sdk/test/*.test.ts > target/i10-repeat-recovery-sdk-tests.tap 2>&1",
+      "passed": 186,
+      "failed": 0,
+      "skipped": 0,
+      "duration_ms": 8624.215167,
+      "output": "docs/evidence/I10-repeat-recovery-sdk-tests.tap"
+    },
+    {
+      "command": "target/i08-toolchain/bin/node --test scripts/i10-wallet-ui/demo-notes.test.ts scripts/i10-wallet-ui/live-view.test.ts scripts/i10-wallet-ui/diagnostics.test.ts scripts/i10-wallet-ui/signing-diagnostics.test.ts scripts/i10-wallet-ui/build.test.ts scripts/i10-wallet-ui/host.test.ts scripts/i10-wallet-ui/provider.test.ts > target/i10-repeat-recovery-ui-tests.tap 2>&1",
+      "passed": 61,
+      "failed": 0,
+      "skipped": 0,
+      "duration_ms": 4655.535417,
+      "output": "docs/evidence/I10-repeat-recovery-ui-tests.tap"
+    },
+    {
+      "command": "target/i08-toolchain/bin/node node_modules/typescript/bin/tsc --noEmit -p packages/sdk/tsconfig.json",
+      "exit_code": 0
+    },
+    {
+      "command": "target/i08-toolchain/bin/node node_modules/typescript/bin/tsc --noEmit --strict --target ES2023 --module NodeNext --moduleResolution NodeNext --allowImportingTsExtensions --resolveJsonModule --lib ES2023,DOM --types node scripts/i10-wallet-ui/*.ts scripts/i10_devnet_pool_instance.ts scripts/i10_devnet_pool_instance.test.ts",
+      "exit_code": 0
+    }
+  ],
+  "independent_source_review": {
+    "mutual_close_recovery": "no_blockers_found",
+    "confirmed_preparation": "no_blockers_found"
+  },
+  "configuration_change": {
+    "before_sha256": "44512bf3a128b31baca9e49a22bebfd283d56d313db7ce30fa4d577397bbdf5a",
+    "after_sha256": "454eacde2f37c7164ef8ceb393803b145dae7576a7b5d4ae324f9eeb0660f67b",
+    "changed_fields": [
+      "preparationCommitment"
+    ],
+    "before": null,
+    "after": "confirmed",
+    "all_other_fields_unchanged": true
+  },
+  "source_sha256": {
+    "packages/sdk/src/wallet.ts": "0e73bafd3ba784a9e3c47494475ca873ede96d1c1c3ca700da001651ce65c27c",
+    "packages/sdk/test/wallet-create-expiry.test.ts": "a76707c88fcb35bfa52696ddb8210124619c1bbfe62bd6aa3c4de398be3627ea",
+    "packages/sdk/src/wallet-chain.ts": "0e91694be89427adc1f5200f2f2722422426ff75653061a6e0c3f88ef88b2f65",
+    "packages/sdk/src/transport.ts": "074aad361133c6061c38f15d357ec4f88086026e28bd7fb4eb9b00b4fc72b6b6",
+    "packages/sdk/test/wallet-chain.test.ts": "334f5eb46e7acf691fd0722fc6d6025761232fb7664ac1aca3097898d4fabbce",
+    "packages/sdk/test/transport.test.ts": "53f4ddba91198eaf6f03e3c1c455e35574ba88732da2ad45b10b944fb0bbe0e0",
+    "scripts/i10-wallet-ui/app.ts": "4099a3367300a251bf3e44c6d97a1190f63871246d9634e6889f8ed8d9a19386",
+    "scripts/i10-wallet-ui/live-view.ts": "5dcbee5c12c50148f7a4d6819cef32db1dcba7318a0141488ff183b4bcd6b669",
+    "scripts/i10-wallet-ui/live-view.test.ts": "cc9bdd849179f810f59602ab997073426f2ca4ab6bbcd04b180326b379622dd4",
+    "scripts/i10-wallet-ui/main.ts": "00b69dbfb2f594c1c8a4777972ad421658ad2bede2e1b892541695a19cce3e74",
+    "scripts/i10-wallet-ui/host.ts": "147e0cbc7bf22aa14f78510e8e9b38a259f9416bf8e1805d11604d0d3141a99a",
+    "scripts/i10-wallet-ui/host.test.ts": "9daafc57207cdc10302f9835a0d26624bc3d276e3fd48d1536623b190ab03a18"
+  },
+  "artifact_sha256": {
+    "docs/evidence/I10-repeat-recovery-sdk-tests.tap": "d75f5789adb0fc56b7cfba0dc1b1a09f623abc12ace9cf6441da5df2345ce589",
+    "docs/evidence/I10-repeat-recovery-ui-tests.tap": "893bbcfa6ad25e1b6f96808b6478f33a847e39f1038e52946711657f06cc68b3",
+    "docs/evidence/I10-repeat-demo-withdraw-expired.json": "5e653c57157e83105a29162d081a2106e54fea54408a5aae526b034518f9252e",
+    "docs/evidence/I10-repeat-demo-withdraw-expired-events.json": "54ae0eaad0408dd06c2206bf48b03da2d279f58548b97aec74668a050a1b91b3"
+  },
+  "limitations": [
+    "New note 2 has exactly one actual provider request in this report; repeated same-note provider calls were not executed after the user narrowed the demo objective.",
+    "The next request button is enabled after signed settlement; three repeated SDK/browser fixture cycles remain separate synthetic evidence.",
+    "Original expired CREATE broadcast counts, receipts and fees remain unverified.",
+    "Provider response text is not retained on reload; no inference is replayed to restore it.",
+    "Global 10-USDC/18-request limits and all original reservations remain; 12 new request slots remain at the final checkpoint.",
+    "Full I10/G1-G4 and independent wallet UI acceptance remain incomplete."
+  ],
+  "release_gates_passed": [],
+  "live_recovery": {
+    "public_observation": "docs/evidence/I10-repeat-recovery-prepared.json",
+    "same_operation_id": "9b1bb985-50b0-40f6-8fac-6126207f18f6",
+    "journal_revision": 35,
+    "balance_micro_usdc": "999996",
+    "old_create_absence": {
+      "signature": "5ngFj1eJAQF2TXLU1jftYp6YJ5W886TpyR1nFdRykfC2AVtUjTMYFmeA7h8P2RqC9Z2fD1yoiu6hZaxQYSeSttLb",
+      "buffer": "xdCGd1jWMFJAcstv9QXpPVkWZVP1nEGCfA4djFuzofr",
+      "slot": 507730373,
+      "blockHeight": 494975015,
+      "blockhash": "EapZ4NWhQAbxNvaMu43CmzH9sUdSCCmDjtwjakNH2uqE"
+    },
+    "saved_attempts": 2,
+    "replacement_signature": "2nySbhSguzi2NcGWhBmvVDhFKBR3J3aaT3AT2d2jA8bi7bgrKiqVmKAjiJLTz1sdYeXJaW4mdXpbbhhGZZ47t7qS",
+    "withdrawal_completed": true
+  },
+  "live_withdrawal": {
+    "public_observation": "docs/evidence/I10-repeat-demo-withdrawal-observation.json",
+    "events": "docs/evidence/I10-repeat-demo-withdrawal-events.json",
+    "independent_finalized_receipts": "docs/evidence/I10-repeat-demo-withdrawal-finalized.json",
+    "SDK_journal_revision": 44,
+    "wallet_status": "closed",
+    "new_finalized_transactions": 5,
+    "wallet_micro_usdc": "38010000",
+    "vault_micro_usdc": "0",
+    "wallet_is_treasury_owner": true,
+    "prior_verified_charge_micro_usdc": "4"
+  },
+  "completed_at_utc": "2026-10-05T12:42:00.728708+00:00",
+  "initial_limitations": [
+    "Local tests use synthetic proof/RPC/provider fixtures, not real-provider or Phantom acceptance.",
+    "Live withdrawal, second deposit and repeated actual-provider requests remain incomplete at this checkpoint.",
+    "Original expired CREATE receipt/broadcast/fee remain unverified; no old attempt is deleted or replayed.",
+    "Confirmed preparation gives additional signing margin, not a guarantee against expiry.",
+    "Only UI host restarted; backend/indexer/parent budget and original reservations retained.",
+    "Source hashes are a recorded checkpoint, not an all-workspace test-time hash guard."
+  ],
+  "final_live_demo": {
+    "origin": "http://127.0.0.1:19180/",
+    "public_observation": "docs/evidence/I10-repeat-demo-api-observation.json",
+    "browser_events": "docs/evidence/I10-repeat-demo-api-events.json",
+    "screenshot": "docs/evidence/I10-repeat-demo-api-ready.jpg",
+    "demo_run": 2,
+    "saved_demo_runs": 2,
+    "journal_revision": 20,
+    "wallet_status": "active",
+    "balance_micro_usdc": "1999996",
+    "response_text": "Ok.",
+    "response_observation": {
+      "operation_id": "79a28871-fb7f-4465-b8fd-c677d6577a0d",
+      "http_status": 200,
+      "response_bytes": 809,
+      "response_sha256": "03aface24e3e6efd437c894fd0701329915673904f39997b30bebc2f2cd00f0b"
+    },
+    "verified_settlements": [
+      {
+        "request_id": "db43878a-fd0f-485e-9712-2032a84583b2",
+        "charge_micro_usdc": "4",
+        "balance_before_micro_usdc": "2000000",
+        "receipt_ids": [
+          "b9f57560-ad48-498d-8132-5a6cc5f2b67d"
+        ],
+        "billing_effects": [
+          "charge"
+        ],
+        "operation_ids": [
+          "79a28871-fb7f-4465-b8fd-c677d6577a0d"
+        ]
+      }
+    ],
+    "pending_session": null,
+    "wallet_operation": null,
+    "prepare_next_enabled": true,
+    "wallet_signatures_needed_for_API_only": false,
+    "provider_budget": {
+      "schema": 1,
+      "plan_sha256": "50f3f10040671f27ecd2ff59db3d3d6474a58de67bb0cf38e7a2cd41d7577167",
+      "request_policy": "explicit_demo",
+      "budget_micro_usdc": "10000000",
+      "reserved_micro_usdc": "115662",
+      "remaining_micro_usdc": "9884338",
+      "max_requests": 18,
+      "reserved_requests": 6,
+      "remaining_requests": 12,
+      "request_max_cost_micro_usdc": "19277",
+      "available_requests": 12
+    },
+    "previous_withdrawal": "docs/evidence/I10-repeat-demo-withdrawal-finalized.json",
+    "new_deposit": "docs/evidence/I10-repeat-demo-deposit-finalized.json",
+    "second_deposit_expiry_preserved": "docs/evidence/I10-repeat-demo-second-deposit-expired.json"
+  },
+  "additional_checks": [
+    {
+      "command": "python3 scripts/check_design.py",
+      "exit_code": 0,
+      "JSON_documents": 186,
+      "local_links": 746,
+      "scope": "earlier design check before final public reports were added"
+    },
+    {
+      "command": "git diff --check",
+      "exit_code": 0
+    }
+  ]
+}

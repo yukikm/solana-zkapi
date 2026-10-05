@@ -1,0 +1,167 @@
+{
+  "schema": 1,
+  "recorded_at_utc": "2026-10-05T10:29:28.280822+00:00",
+  "scope": "Actual Phantom message-mutation diagnosis and offline verification of an explicit, journal-bound priority-fee fix; live fix not yet verified at this checkpoint",
+  "live_fix_verified": false,
+  "live_lifecycle_passed": false,
+  "wallet_UI_verified": false,
+  "live_provider_verified": false,
+  "I10_complete": false,
+  "release_gates_passed": [],
+  "source_observation": "docs/evidence/I10-phantom-signing-mutation-observations.json",
+  "source_observation_sha256": "0c63c3217f4d39ad54252098194de2f5b32f37b8616dee13a74265d108db49d3",
+  "earlier_evidence_preserved": [
+    "docs/evidence/I10-live-demo-ui-results.json",
+    "docs/evidence/I10-live-demo-phantom-initial-observations.json"
+  ],
+  "actual_phantom_diagnosis": {
+    "fixture_only": false,
+    "diagnostic": "wallet_message_changed",
+    "journal_revision": 2,
+    "operation_id": "95396864-0357-4052-ba57-5186d7743346",
+    "wallet_status": "unfunded",
+    "operation_kind": "deposit",
+    "operation_phase": "ready",
+    "operation_step": 0,
+    "saved_signed_attempts": 0,
+    "finalized_transactions": 0,
+    "version": {
+      "original": 0,
+      "returned": 0
+    },
+    "header_equal": true,
+    "blockhash_equal": true,
+    "accounts_equal": true,
+    "ALT_equal": true,
+    "original_compute_unit_limit": "1000000",
+    "added_compute_unit_price_micro_lamports": "375000",
+    "original_non_compute_instructions_retained": true,
+    "non_compute_instructions_equal": true,
+    "vault_instruction_data_length": 85,
+    "sdk_exact_message_guard_rejected": true,
+    "sdk_transaction_send_reached": false,
+    "mutation_was_not_accepted_or_broadcast_by_sdk": true,
+    "deposit_completed": false,
+    "provider_session": null,
+    "observation_limitations": [
+      "The signing review records structural equality and public program IDs, not complete transaction/signature bytes.",
+      "The installed Phantom extension version was not recorded; wallet_standard_version 1.0.0 is the interface version.",
+      "The 1000000-micro-USDC private candidate balance is not a finalized deposit or available balance."
+    ]
+  },
+  "fix": {
+    "ui_priority_fee_micro_lamports": "1",
+    "compute_unit_limit": "1000000",
+    "priority_fee_lamports_at_limit": "1",
+    "existing_total_fee_cap_lamports": "10000",
+    "new_upload_plan_option": "WalletOptions.priorityFeeMicroLamports",
+    "existing_unsent_plan_method": "WalletClient.setUnsentPriorityFee",
+    "unsent_guard": [
+      "pending session absent",
+      "ready upload plan",
+      "step 0",
+      "zero saved attempts",
+      "zero finalized transactions",
+      "no current signature",
+      "no finalization operation",
+      "operation matches plan",
+      "unfunded deposit or active withdrawal"
+    ],
+    "preserves": [
+      "operation ID",
+      "proof payload",
+      "nonce",
+      "witness",
+      "private state",
+      "roles and financial accounts",
+      "snapshot context",
+      "previous signed-attempt history"
+    ],
+    "repricing_uses_existing_note_lock_and_encrypted_CAS": true,
+    "repricing_calls_wallet_or_network": false,
+    "new_wire_and_chunk_boundaries_rebuilt_before_signing": true,
+    "signed_or_unresolved_attempts_can_be_repriced": false,
+    "exact_message_and_prior_signature_checks_unchanged": true,
+    "signature_verification_unchanged": true,
+    "durable_before_send_unchanged": true,
+    "default_and_zero_transport_serialization_unchanged": true,
+    "scope_limitation": "The option applies to newly built buffered upload plans; this change does not add fee selection to finalize_escape."
+  },
+  "focused_ui_tests": {
+    "passed": 37,
+    "failed": 0,
+    "skipped": 0,
+    "duration_ms": 862.016208,
+    "command": "target/i08-toolchain/bin/node --test scripts/i10-wallet-ui/diagnostics.test.ts scripts/i10-wallet-ui/signing-diagnostics.test.ts scripts/i10-wallet-ui/live-view.test.ts scripts/i10-wallet-ui/build.test.ts scripts/i10-wallet-ui/host.test.ts scripts/i10-wallet-ui/provider.test.ts",
+    "scope": "Local diagnostics, signing projections, live view, build/host and synthetic provider fixtures; browser.test.ts was not run in this command."
+  },
+  "strict_ui_and_pool_typescript": {
+    "exit_code": 0,
+    "command": "target/i08-toolchain/bin/node node_modules/typescript/bin/tsc --noEmit --strict --target ES2023 --module NodeNext --moduleResolution NodeNext --allowImportingTsExtensions --resolveJsonModule --lib ES2023,DOM --types node scripts/i10-wallet-ui/*.ts scripts/i10_devnet_pool_instance.ts scripts/i10_devnet_pool_instance.test.ts"
+  },
+  "sdk_offline_tests": {
+    "passed": 31,
+    "failed": 0,
+    "skipped": 0,
+    "duration_ms": 892.708792,
+    "strict_typecheck_exit_code": 0,
+    "commands": [
+      "target/i08-toolchain/bin/node --test packages/sdk/test/wallet-priority-fee.test.ts packages/sdk/test/wallet-recovery.test.ts packages/sdk/test/transport.test.ts packages/sdk/test/wallet-standard.test.ts",
+      "target/i08-toolchain/bin/node node_modules/typescript/bin/tsc --noEmit --strict --target ES2023 --module NodeNext --moduleResolution NodeNext --allowImportingTsExtensions --resolveJsonModule --lib ES2023,DOM --types node packages/sdk/src/wallet.ts packages/sdk/test/wallet-priority-fee.test.ts"
+    ],
+    "verified_at_utc": "2026-10-05T10:25:59.665277+00:00",
+    "verified_source_sha256": {
+      "packages/sdk/src/wallet.ts": "53cdf560f5be502ac5efa430c567b1beba883df5a480ab0605b03591eb9ad61d",
+      "packages/sdk/test/wallet-priority-fee.test.ts": "6374e8bbd1fe730434b1fb2adac718d89f339cb742562cc7c6ba8f378365d03d",
+      "packages/sdk/src/transport.ts": "caa5a71d4b8e5b1bae58227f23a350af864bb8fdcbbd3ea47441676b92469a67",
+      "packages/sdk/src/wallet-standard.ts": "2b519f454bca7711e3cc659b001cf15d926b466df070d57e4e2abe60d63d6c44"
+    },
+    "scope": "offline encrypted-journal/real local v0 signature fixtures; no Phantom or public chain acceptance",
+    "observed_wallet_mutation_regression": "Synthetic wallet prepends price375000 when absent: exact-message guard rejects with unchanged journal and zero sends. Explicit unsent price1 preserves the prepared operation; the accepted exact-byte signed attempt is present in a reopened journal before fixture RPC send. Repricing after signing is rejected."
+  },
+  "source_sha256": {
+    "packages/sdk/src/wallet.ts": "53cdf560f5be502ac5efa430c567b1beba883df5a480ab0605b03591eb9ad61d",
+    "packages/sdk/src/transport.ts": "caa5a71d4b8e5b1bae58227f23a350af864bb8fdcbbd3ea47441676b92469a67",
+    "packages/sdk/src/wallet-standard.ts": "2b519f454bca7711e3cc659b001cf15d926b466df070d57e4e2abe60d63d6c44",
+    "packages/sdk/test/wallet-priority-fee.test.ts": "6374e8bbd1fe730434b1fb2adac718d89f339cb742562cc7c6ba8f378365d03d",
+    "packages/sdk/test/wallet-recovery.test.ts": "135ecf9b41e9b455511137dadd62a0b55f0b4636f1a2beb08cdfb991bc8833e3",
+    "packages/sdk/test/transport.test.ts": "8bb90550bacbe02e28c2a261c334a1f1efde333defd6d419622a07055250dd22",
+    "packages/sdk/test/wallet-standard.test.ts": "b11fa61848530f315fab80917feb4e8d475e00357d88a1657e0599401143d8e3",
+    "scripts/i10-wallet-ui/app.ts": "6232480df1717448385e7e55bbd6a9c36822c14441c5c42bb16fd2ab0eac97bf",
+    "scripts/i10-wallet-ui/main.ts": "7615233fbd00852ba3540c11c82cee7bf61953051f94b5a0d0be3c0a65cecd89",
+    "scripts/i10-wallet-ui/live-view.ts": "f81beee65a3f1ba31179a8830255c634938c8362fb1eb13cef7db5fbdcfd6e42",
+    "scripts/i10-wallet-ui/diagnostics.ts": "e0834cb7ba4c4cf91fdcb313b9415011fb4d922978db0dfce3f487b91009512d",
+    "scripts/i10-wallet-ui/signing-diagnostics.ts": "3f3c723929a854d40032b778bfc277af3c57e2257efe0ccc9fbb022affe6335f",
+    "scripts/i10-wallet-ui/signing-diagnostics.test.ts": "122b06d34b51d4c657b6ef7fbc0c0e6f99a105a3afa86064bdaf8418d93c83bd",
+    "scripts/i10-wallet-ui/index.html": "51d0e4d413a2ff99ae74ffcd044f59402bb639e056e49b0c41ff49b2ce29033a",
+    "scripts/i10-wallet-ui/host.ts": "2ebd6536e6e4c9ade5a7a6f6fb4b280b1a35168aae77830d1c449dbe82b122e3",
+    "scripts/i10-wallet-ui/live-view.test.ts": "7cf2532db4a2a9956a853e4508435a4db9a61bc7ea45ad4c700d6071c507d153",
+    "scripts/i10-wallet-ui/diagnostics.test.ts": "d93dc3b08bb35a5f472cb5b578243a99924918ce47d8964c246d0ccb2042dbeb",
+    "scripts/i10-wallet-ui/build.test.ts": "c37bb84b6f0b3035e6718a47a1e3c028a25a113e27b7bd5c5f4fc663aa313325",
+    "scripts/i10-wallet-ui/host.test.ts": "b42cfa70dbd3cfeda416a57c80eb5a51efe7401cf376bbea6bda02561dcf5008",
+    "scripts/i10-wallet-ui/provider.test.ts": "8d34693f480eedb4945c48c5c49e3e5289116647cdd382a41ed483fe0d45b0ca"
+  },
+  "source_hash_scope": "Source snapshot collected when this report was written; SDK verification-source hashes were independently compared to its saved final test report. These are not a claim of a source-before/source-after guard for the UI run.",
+  "historical_ui_snapshot": {
+    "report": "docs/evidence/I10-live-demo-ui-results.json",
+    "passed": 37,
+    "duration_ms": 1089.89975,
+    "preserved": true,
+    "test_matrix_is_different": true,
+    "counts_are_not_additive": true
+  },
+  "scope_boundaries": {
+    "mainnet_actions": 0,
+    "provider_inference_calls_from_fix_or_offline_tests": 0,
+    "provider_auth_replayed": false,
+    "provider_inference_replayed": false,
+    "shared_provider_budget_reset": false,
+    "journal_reset": false,
+    "native_wallet_substituted_for_phantom": false
+  },
+  "limitations": [
+    "Live signing retry with the updated plan is pending at this checkpoint; a local test success does not establish the fix in real Phantom.",
+    "The actual deposit/API/settlement/withdrawal lifecycle remains incomplete at this checkpoint.",
+    "Existing provider results and parent budget remain separate evidence; this diagnosis creates no new provider acceptance."
+  ]
+}

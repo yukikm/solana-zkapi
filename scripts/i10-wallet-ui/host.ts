@@ -10,25 +10,40 @@ import {execFile} from 'node:child_process';
 import {promisify} from 'node:util';
 import {ComputeBudgetProgram, VersionedTransaction} from '@solana/web3.js';
 import {jcsBytes, parseStrictJson, sha256Hex, verifyManifest, type ManifestTrustPolicy, type VerifiedManifest} from '../../packages/sdk/src/trust.ts';
-import {discriminator, verifySignatures} from '../../packages/sdk/src/transport.ts';
+import {discriminator, verifySignatures, resolvePreparationCommitment, type TransactionPreparationCommitment} from '../../packages/sdk/src/transport.ts';
 import type {Tariff} from '../../packages/sdk/src/control.ts';
 import {providerAcceptanceBody, type ProviderAcceptanceCase} from '../provider_acceptance_client.ts';
 import {validatePreparedProviderConfig} from '../i10_devnet_provider.ts';
+import {providerErrorCode} from './provider-diagnostics.ts';
+
+interface UpstreamReply {status: number; bytes: Buffer; serviceErrorCode?: string}
 
 export const GENESIS = 'EtWTRABZaYq6iMfeYKouRu166VU2xqa1wcaWoxPkrZBG';
 export interface HostConfig {
   runId: string; port: number; manifestPath: string; policy: ManifestTrustPolicy; wasmPath: string; wasmSha256: string;
   artifacts: Record<string, string>; rpcUrl: string; indexerUrl: string; controlUrl: string;
+  /** Explicit read-only transaction history endpoint; never used for sends. */
+  historyRpcUrl?: string;
+  /** Match browser blockhash/fee preparation and relay preflight; finality stays finalized. */
+  preparationCommitment?: TransactionPreparationCommitment;
   localCaPath?: string; allowTransactions: boolean;
-  provider?: {planPath: string; configurationDir: string; stateDir: string};
+  provider?: {planPath: string; configurationDir: string; stateDir: string; requestPolicy?: 'explicit_demo'};
 }
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
 const execute = promisify(execFile);
 const same = (a: unknown, b: unknown) => Buffer.from(jcsBytes(a)).equals(Buffer.from(jcsBytes(b)));
-export interface UiProviderPublic {testCase: ProviderAcceptanceCase; tariff: Tariff; planSha256: string}
+export interface UiProviderPublic {testCase: ProviderAcceptanceCase; tariff: Tariff; planSha256: string; requestPolicy?: 'explicit_demo'}
+/** Read-only capacity snapshot; only reserve() grants a one-time send. */
+export interface UiProviderBudget {
+  schema: 1; plan_sha256: string; request_policy: 'explicit_demo' | 'single_acceptance_case';
+  budget_micro_usdc: string; reserved_micro_usdc: string; remaining_micro_usdc: string;
+  max_requests: number; reserved_requests: number; remaining_requests: number;
+  request_max_cost_micro_usdc: string; available_requests: number;
+}
 /** Reads only prepared references, never credential files or .env. Budget
  * reservation remains the existing Python reserve-once coordinator. */
 export async function loadProviderUi(config: NonNullable<HostConfig['provider']>, manifest: VerifiedManifest) {
+  assert.ok(config.requestPolicy === undefined || config.requestPolicy === 'explicit_demo');
   const state = resolve(config.stateDir), directory = resolve(config.configurationDir), planPath = resolve(config.planPath);
   assert.equal(directory, join(state, 'configurations/openai-ui'));
   const privateJson = async (path: string) => {
@@ -48,19 +63,44 @@ export async function loadProviderUi(config: NonNullable<HostConfig['provider']>
   const tariffs = await privateJson(join(directory, 'tariffs.json')); assert.ok(same(tariffs, [models[0].tariff]));
   const tariff = tariffs[0] as Tariff; assert.ok(manifest.tariff_hashes.includes(tariff.tariff_hash));
   validatePreparedProviderConfig({models, cases}, await privateJson(join(directory, 'providers.json')));
-  const coordinator = async (command: 'budget-status' | 'reserve') => {
+  const coordinator = async (command: 'budget-status' | 'reserve' | 'reserve-demo', requestId?: string, operationId?: string) => {
     const env: NodeJS.ProcessEnv = {}; for (const name of ['PATH', 'HOME', 'LANG', 'LC_ALL', 'TMPDIR']) if (process.env[name]) env[name] = process.env[name];
     const args = [join(ROOT, 'scripts/provider_acceptance.py'), command, '--plan', planPath, '--state-dir', state,
-      ...(command === 'reserve' ? ['--case', testCase.id] : [])];
+      ...(command !== 'budget-status' ? ['--case', testCase.id] : []),
+      ...(command === 'reserve-demo' ? ['--request-id', requestId!, '--operation-id', operationId!] : [])];
     try { const result = await execute('python3', args, {cwd: ROOT, env, timeout: 30_000, maxBuffer: 1_048_576}); return parseStrictJson(Buffer.from(result.stdout)) as any; }
     catch { throw Error('provider campaign unavailable'); }
   };
-  const budget = await coordinator('budget-status'); assert.equal(budget.identity.plan_sha256, planSha256);
-  assert.equal(budget.identity.campaign_id, plan.campaign_id); assert.equal(budget.identity.budget_micro_usdc, plan.budget_micro_usdc);
-  return {public: {testCase, tariff, planSha256} satisfies UiProviderPublic, async reserve() {
-    const value = await coordinator('reserve');
-    assert.ok(value.send_authorized_once === true && value.case_id === testCase.id && value.plan_sha256 === planSha256
+  const identity = {schema: 1, campaign_id: plan.campaign_id, plan_sha256: planSha256,
+    budget_micro_usdc: plan.budget_micro_usdc, max_requests: plan.max_requests};
+  const budget = async (): Promise<UiProviderBudget> => {
+    // The coordinator validates every original/demo row under its existing lock.
+    // Recheck the captured identity on every read, then expose totals only.
+    const value = await coordinator('budget-status'); assert.ok(same(value.identity, identity));
+    const amount = (input: unknown): bigint => { assert.ok(typeof input === 'string' && /^(0|[1-9][0-9]{0,7})$/.test(input));
+      const n = BigInt(input); assert.ok(n <= 10_000_000n); return n; };
+    const total = amount(identity.budget_micro_usdc), reserved = amount(value.reserved_micro_usdc), remaining = amount(value.remaining_micro_usdc);
+    const cost = amount(testCase.max_cost_micro_usdc); assert.ok(cost > 0n && reserved + remaining === total);
+    assert.ok(Number.isSafeInteger(identity.max_requests) && identity.max_requests > 0 && identity.max_requests <= 1000
+      && Array.isArray(value.reservations) && value.reservations.length <= identity.max_requests
+      && value.refunds_supported === false && value.inference_replays_supported === false);
+    const reservedRequests = value.reservations.length, remainingRequests = identity.max_requests - reservedRequests;
+    const policy = config.requestPolicy ?? 'single_acceptance_case';
+    const policySlots = policy === 'explicit_demo' ? remainingRequests
+      : value.reservations.some((row: {case_id: string}) => row.case_id === testCase.id) ? 0 : 1;
+    return {schema: 1, plan_sha256: planSha256, request_policy: policy, budget_micro_usdc: total.toString(),
+      reserved_micro_usdc: reserved.toString(), remaining_micro_usdc: remaining.toString(), max_requests: identity.max_requests,
+      reserved_requests: reservedRequests, remaining_requests: remainingRequests, request_max_cost_micro_usdc: cost.toString(),
+      available_requests: Math.min(remainingRequests, policySlots, Number(remaining / cost))};
+  };
+  await budget();
+  return {public: {testCase, tariff, planSha256, ...(config.requestPolicy ? {requestPolicy: config.requestPolicy} : {})} satisfies UiProviderPublic, budget, async reserve(requestId?: string, operationId?: string) {
+    const demo = config.requestPolicy === 'explicit_demo';
+    if (demo) for (const id of [requestId, operationId]) assert.match(id ?? '', /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/);
+    const value = await coordinator(demo ? 'reserve-demo' : 'reserve', requestId, operationId);
+    assert.ok(value.send_authorized_once === true && value.case_id === (demo ? 'demo-' + operationId : testCase.id) && value.plan_sha256 === planSha256
       && value.reserved_micro_usdc === testCase.max_cost_micro_usdc);
+    if (demo) assert.ok(value.request_id === requestId && value.operation_id === operationId && value.template_case_id === testCase.id);
   }};
 }
 const methods = new Set(['getGenesisHash', 'getAccountInfo', 'getMultipleAccounts', 'getBlock', 'getLatestBlockhash',
@@ -73,8 +113,11 @@ async function body(request: IncomingMessage, maximum = 64 * 1024): Promise<Buff
   return Buffer.concat(chunks);
 }
 export async function configuredHost(config: HostConfig, output: string) {
+  const preparationCommitment = resolvePreparationCommitment(config.preparationCommitment);
   assert.ok(/^[a-zA-Z0-9_-]{1,80}$/.test(config.runId)); assert.ok(Number.isInteger(config.port) && config.port >= 1024 && config.port <= 65535);
   assert.ok(typeof config.allowTransactions === 'boolean'); assertHttps(config.rpcUrl);
+  if (config.historyRpcUrl !== undefined) assertHttps(config.historyRpcUrl);
+  const rpcUrl = config.rpcUrl, historyRpcUrl = config.historyRpcUrl;
   for (const origin of [config.indexerUrl, config.controlUrl]) assertLocalService(origin);
   const manifestBytes = new Uint8Array(await readFile(config.manifestPath)), manifest = await verifyManifest(manifestBytes, config.policy);
   assert.equal(manifest.deployment_environment, 'devnet'); assert.equal(manifest.setup_profile, 'test_only'); assert.equal(manifest.genesis_hash, GENESIS);
@@ -95,10 +138,10 @@ export async function configuredHost(config: HostConfig, output: string) {
   }
   assets.set('/manifest', {bytes: Buffer.from(manifestBytes), mime: 'application/json'}); assets.set('/wasm', {bytes: wasm, mime: 'application/wasm'});
   assets.set('/config', {bytes: Buffer.from(JSON.stringify({runId: config.runId, policy: config.policy, wasmSha256: config.wasmSha256,
-    artifactNames: Object.keys(config.artifacts), allowTransactions: config.allowTransactions,
+    artifactNames: Object.keys(config.artifacts), allowTransactions: config.allowTransactions, preparationCommitment,
     ...(provider ? {provider: provider.public} : {})})), mime: 'application/json'});
   const ca = config.localCaPath ? await readFile(config.localCaPath) : undefined;
-  const forward = async (url: string, method: string, data?: Buffer, headers: Record<string,string> = {}, timeout = 30_000): Promise<{status: number; bytes: Buffer}> => {
+  const forward = async (url: string, method: string, data?: Buffer, headers: Record<string,string> = {}, timeout = 30_000): Promise<UpstreamReply> => {
     const u = new URL(url), local = ['127.0.0.1', '[::1]'].includes(u.hostname);
     assert.ok(u.protocol === 'https:' || (u.protocol === 'http:' && local));
     return new Promise((resolve, reject) => {
@@ -106,13 +149,15 @@ export async function configuredHost(config: HostConfig, output: string) {
         headers: {...(data ? {'content-type': 'application/json', 'content-length': String(data.length)} : {}), 'accept': 'application/json', ...headers}}, response => {
         const parts: Buffer[] = []; let size = 0;
         response.on('data', part => { size += part.length; if (size > 4 * 1024 * 1024) { response.destroy(); reject(Error('upstream response bound')); } else parts.push(Buffer.from(part)); });
-        response.on('end', () => resolve({status: response.statusCode ?? 502, bytes: Buffer.concat(parts)})); response.on('error', () => reject(Error('upstream response unavailable')));
+        response.on('end', () => resolve({status: response.statusCode ?? 502, bytes: Buffer.concat(parts),
+          serviceErrorCode: providerErrorCode(response.headers['x-zkapi-error-code'])})); response.on('error', () => reject(Error('upstream response unavailable')));
       });
       request.on('timeout', () => request.destroy()); request.on('error', () => reject(Error('upstream unavailable'))); request.end(data);
     });
   };
-  return startUiHost({port: config.port, output, assets, manifest, allowTransactions: config.allowTransactions,
-    rpc: data => forward(config.rpcUrl, 'POST', data),
+  return startUiHost({port: config.port, output, assets, manifest, allowTransactions: config.allowTransactions, preparationCommitment,
+    rpc: data => forward(rpcUrl, 'POST', data),
+    ...(historyRpcUrl !== undefined ? {historyRpc: (data: Buffer) => forward(historyRpcUrl, 'POST', data)} : {}),
     indexer: path => forward(config.indexerUrl + path, 'GET'),
     clearance: data => forward(config.controlUrl + '/zkapi/v1/withdraw/clearance', 'POST', data),
     ...(provider ? {provider: {...provider,
@@ -122,14 +167,18 @@ export async function configuredHost(config: HostConfig, output: string) {
 
 export interface HostOptions {
   port: number; output: string; assets?: Map<string, {bytes: Buffer; mime: string}>; manifest?: VerifiedManifest; allowTransactions?: boolean;
+  preparationCommitment?: TransactionPreparationCommitment;
   rpc?: (data: Buffer) => Promise<{status: number; bytes: Buffer}>;
+  historyRpc?: (data: Buffer) => Promise<{status: number; bytes: Buffer}>;
   indexer?: (path: string) => Promise<{status: number; bytes: Buffer}>;
   clearance?: (data: Buffer) => Promise<{status: number; bytes: Buffer}>;
-  provider?: {public: UiProviderPublic; reserve(): Promise<void>;
-    control(path: string, method: string, headers: Record<string,string>, data?: Buffer): Promise<{status: number; bytes: Buffer}>;
-    inference(headers: Record<string,string>, data: Buffer): Promise<{status: number; bytes: Buffer}>};
+  provider?: {public: UiProviderPublic; budget?(): Promise<UiProviderBudget>; reserve(requestId?: string, operationId?: string): Promise<void>;
+    control(path: string, method: string, headers: Record<string,string>, data?: Buffer): Promise<UpstreamReply>;
+    inference(headers: Record<string,string>, data: Buffer): Promise<UpstreamReply>};
 }
 export async function startUiHost(options: HostOptions) {
+  const preparationCommitment = resolvePreparationCommitment(options.preparationCommitment);
+  const historyRpc = options.historyRpc;
   const provider = options.provider ? {...options.provider, public: structuredClone(options.provider.public)} : undefined;
   const uuidPattern = '[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}';
   const uuid = new RegExp('^' + uuidPattern + '$');
@@ -158,10 +207,12 @@ export async function startUiHost(options: HostOptions) {
       assets.set('/' + name, {bytes: await readFile(resolve(options.output, name)), mime});
     }
     const presentation = {bytes: demo, mime: 'text/html'};
-    assets.set('/', presentation); assets.set('/demo', presentation);
+    // The default page operates the existing SDK. Samples require the explicit
+    // /demo route, so a visitor never mistakes an animation for a live request.
+    assets.set('/demo', presentation);
   }
   const allowedVault = new Map(await Promise.all(['create_payload', 'append_payload', 'seal_payload', 'execute_payload', 'close_payload'].map(async name => [Buffer.from(await discriminator(name)).toString('hex'), name] as const)));
-  const safeReply = (result: {status:number; bytes:Buffer}, request?: any) => {
+  const safeReply = (result: UpstreamReply, request?: any) => {
     if (result.status < 200 || result.status >= 300) return {...result, bytes: Buffer.from('{"error":"configured upstream unavailable"}')};
     if (!request) return result;
     const value = parseStrictJson(result.bytes) as any; assert.ok(value && value.jsonrpc === '2.0' && value.id === request.id);
@@ -169,9 +220,10 @@ export async function startUiHost(options: HostOptions) {
     return {...result, bytes: Buffer.from(JSON.stringify(envelope))};
   };
   let origin = '', rpcId = 0;
-  const callRpc = async (method: string, params: unknown[]) => {
-    assert.ok(options.rpc); const result = await options.rpc(Buffer.from(JSON.stringify({jsonrpc: '2.0', id: ++rpcId, method, params})));
-    assert.equal(result.status, 200); const parsed = parseStrictJson(result.bytes) as any; assert.ok(!parsed.error); return parsed.result;
+  const callRpc = async (method: string, params: unknown[], rpc = options.rpc) => {
+    assert.ok(rpc); const id = ++rpcId, result = await rpc(Buffer.from(JSON.stringify({jsonrpc: '2.0', id, method, params})));
+    assert.equal(result.status, 200); const parsed = parseStrictJson(result.bytes) as any;
+    assert.ok(parsed && parsed.jsonrpc === '2.0' && parsed.id === id && !parsed.error); return parsed.result;
   };
   const server = createServer(async (request, response) => {
     response.setHeader('cache-control', 'no-store'); response.setHeader('x-content-type-options', 'nosniff');
@@ -182,6 +234,13 @@ export async function startUiHost(options: HostOptions) {
       if (request.headers.origin) assert.equal(request.headers.origin, origin);
       const path = request.url ?? '';
       if (request.method === 'GET' && assets.has(path)) { const asset = assets.get(path)!; response.setHeader('content-type', asset.mime); response.end(asset.bytes); return; }
+      if (request.method === 'GET' && path === '/provider-budget') {
+        for (const name of ['authorization', 'cookie', 'proxy-authorization', 'x-api-key']) assert.equal(request.headers[name], undefined);
+        response.setHeader('content-type', 'application/json');
+        try { assert.ok(provider?.budget); response.end(JSON.stringify(await provider.budget())); }
+        catch { response.statusCode = 503; response.end('{"error":"provider campaign unavailable"}'); }
+        return;
+      }
       if (request.method === 'GET' && /^\/indexer\/zkapi\/v1\/tree\/(root|notes\/\d+\/(path|zero-path))$/.test(path)) {
         assert.ok(options.indexer); const result = safeReply(await options.indexer(path.slice('/indexer'.length))); response.statusCode = result.status; response.setHeader('content-type', 'application/json'); response.end(result.bytes); return;
       }
@@ -190,7 +249,7 @@ export async function startUiHost(options: HostOptions) {
         for (const name of ['cookie', 'proxy-authorization', 'x-api-key', 'anthropic-version']) assert.equal(request.headers[name], undefined);
         assert.ok(request.method === 'GET' || request.method === 'POST');
         if (request.method === 'POST') { assert.equal(request.headers.origin, origin); assert.ok(options.allowTransactions, 'financial writes disabled'); }
-        const data = await body(request); let result: {status:number; bytes:Buffer};
+        const data = await body(request); let result: UpstreamReply;
         if (path === '/inference/v1/chat/completions') {
           assert.equal(request.method, 'POST'); assert.equal(request.headers['content-type'], 'application/json');
           assert.ok(data.equals(Buffer.from(providerAcceptanceBody(provider.public.testCase))));
@@ -198,7 +257,7 @@ export async function startUiHost(options: HostOptions) {
           assert.equal(request.rawHeaders.filter((_, i) => i % 2 === 0 && request.rawHeaders[i].toLowerCase() === 'idempotency-key').length, 1);
           // An uncertain reservation/forward is permanently consumed. Neither
           // this host nor a fresh host process refunds or replays it.
-          await provider.reserve();
+          await provider.reserve(authorization.split('.')[1], operation);
           result = safeReply(await provider.inference({authorization, 'idempotency-key': operation}, data));
         } else {
           const controlPath = path.slice('/control'.length), method = request.method;
@@ -228,6 +287,8 @@ export async function startUiHost(options: HostOptions) {
           }
           result = safeReply(await provider.control(controlPath, method, headers, data.length ? data : undefined));
         }
+        const code = providerErrorCode(result.serviceErrorCode);
+        if (code) response.setHeader('x-zkapi-error-code', code);
         response.statusCode = result.status; response.setHeader('content-type', 'application/json'); response.end(result.bytes); return;
       }
       assert.equal(request.method, 'POST'); assert.equal(request.headers.origin, origin);
@@ -259,11 +320,16 @@ export async function startUiHost(options: HostOptions) {
             }
           }
           assert.equal(vaultCalls, 1);
-          const fee = await callRpc('getFeeForMessage', [Buffer.from(tx.message.serialize()).toString('base64'), {commitment: 'finalized'}]);
+          const fee = await callRpc('getFeeForMessage', [Buffer.from(tx.message.serialize()).toString('base64'), {commitment: preparationCommitment}]);
           assert.ok(Number.isSafeInteger(fee?.value) && fee.value >= 0 && fee.value <= 10_000);
-          json.params[1] = {encoding: 'base64', skipPreflight: false, preflightCommitment: 'finalized', maxRetries: 0};
+          json.params[1] = {encoding: 'base64', skipPreflight: false, preflightCommitment: preparationCommitment, maxRetries: 0};
         }
-        result = safeReply(await options.rpc(Buffer.from(JSON.stringify(json))), json);
+        if (json.method === 'getTransaction' && historyRpc) {
+          // Explicit history routing, with a fresh Devnet pin check. Failure is
+          // never absence, and neither endpoint is retried or substituted.
+          assert.equal(await callRpc('getGenesisHash', [], historyRpc), GENESIS);
+          result = safeReply(await historyRpc(Buffer.from(JSON.stringify(json))), json);
+        } else result = safeReply(await options.rpc(Buffer.from(JSON.stringify(json))), json);
       } else if (path === '/clearance') {
         assert.ok(options.allowTransactions && options.clearance && json && Object.keys(json).join(',') === 'nullifier' && /^0x[0-9a-f]{64}$/.test(json.nullifier));
         result = safeReply(await options.clearance(data));

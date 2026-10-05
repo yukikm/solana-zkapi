@@ -1,0 +1,138 @@
+{
+  "schema": 1,
+  "collected_at_utc": "2026-10-05T12:44:00.749Z",
+  "fixture_only": false,
+  "cases": [
+    {
+      "request_id": "db43878a-fd0f-485e-9712-2032a84583b2",
+      "operation_id": "79a28871-fb7f-4465-b8fd-c677d6577a0d",
+      "session": {
+        "state": "SETTLED",
+        "close_requested": true,
+        "cap_micro": "1000000",
+        "charged_nano": "3300",
+        "reserved_nano": "0",
+        "active_operations": 0
+      },
+      "operation": {
+        "state": "DONE",
+        "reservation_nano": "19276800",
+        "charged_nano": "3300",
+        "observed_cost_nano": "3300",
+        "operator_loss_nano": "0",
+        "dispatched": true,
+        "provider_request_id_present": true
+      },
+      "counts": {
+        "operations": 1,
+        "committed_dispatch_attempts": 1,
+        "finished_dispatch_attempts": 1,
+        "provider_evidence_rows": 0,
+        "receipts": 1
+      },
+      "receipt": {
+        "receipt_id": "b9f57560-ad48-498d-8132-5a6cc5f2b67d",
+        "receipt_hash": "6e564f9501f22f050ef818d7cabb049c9882db8e3fb8b725ba795124fd275f3d",
+        "signature_verified": true,
+        "canonical_digest_verified": true,
+        "request_operation_pool_deployment_binding_verified": true,
+        "evidence_kind": "PROXY_USAGE",
+        "reason": "metered",
+        "billing_effect": "charge",
+        "tariff_hash": "c94948bd49767c812a2d8250c4d5b51197d3656c10c2b7c6d83fe95946f098b5",
+        "model": "gpt-4o-mini-2024-07-18",
+        "usage": [
+          {
+            "count": "0",
+            "unit": "cache_read_tokens"
+          },
+          {
+            "count": "14",
+            "unit": "input_tokens"
+          },
+          {
+            "count": "2",
+            "unit": "output_tokens"
+          }
+        ],
+        "observed_nano_usdc": "3300",
+        "charged_nano_usdc": "3300",
+        "operator_loss_nano_usdc": "0",
+        "fixed_integer_tariff_math_verified": true
+      },
+      "settlement": {
+        "charge_micro": "4",
+        "signed": true,
+        "integer_micro_rounding_verified": true,
+        "successor_signature_cryptographically_verified_by_collector": false
+      },
+      "sdk_projection_match": true,
+      "balance_after_micro_usdc": "1999996"
+    }
+  ],
+  "total_charge_micro_usdc": "4",
+  "starting_micro_usdc": "2000000",
+  "remaining_micro_usdc": "1999996",
+  "ui_cross_check": {
+    "artifact": "docs/evidence/I10-repeat-demo-api-observation.json",
+    "sha256": "67de5d6a190b2e557e9fc2cc12ed24ee8287b9f58fa8f2fbb4d863c5b7b5b71f",
+    "journal_revision": 20,
+    "pending_session": null,
+    "pending_wallet_operation": null,
+    "response_observation": {
+      "operation_id": "79a28871-fb7f-4465-b8fd-c677d6577a0d",
+      "http_status": 200,
+      "response_bytes": 809,
+      "response_sha256": "03aface24e3e6efd437c894fd0701329915673904f39997b30bebc2f2cd00f0b"
+    },
+    "verified_successor_source": "existing browser SDK verification represented by parent-captured public #state"
+  },
+  "parent_budget": {
+    "identity": {
+      "budget_micro_usdc": "10000000",
+      "campaign_id": "i10-provider-acceptance",
+      "max_requests": 18,
+      "plan_sha256": "50f3f10040671f27ecd2ff59db3d3d6474a58de67bb0cf38e7a2cd41d7577167",
+      "schema": 1
+    },
+    "original_five_rows_unchanged": true,
+    "before_artifact": "docs/evidence/I10-repeat-demo-before.json",
+    "immutable_before_file_hashes_verified": true,
+    "reservation_count": 6,
+    "reserved_micro_usdc": "115662",
+    "remaining_micro_usdc": "9884338",
+    "new_explicit_demo_reservations": [
+      {
+        "case_id": "demo-79a28871-fb7f-4465-b8fd-c677d6577a0d",
+        "kind": "explicit_demo",
+        "max_cost_micro_usdc": "19277",
+        "operation_id": "79a28871-fb7f-4465-b8fd-c677d6577a0d",
+        "request_id": "db43878a-fd0f-485e-9712-2032a84583b2",
+        "state": "reserved_no_automatic_replay",
+        "template_case_id": "openai-chat-plain"
+      }
+    ],
+    "budget_file_sha256": "291fb7107b1d29d6fce785620b4621d513787b5cacdbc28f0275f78cacba684c"
+  },
+  "method": {
+    "database": "one SELECT snapshot; default_transaction_read_only=on; statement_timeout=5000; bound exact session/operation UUIDs; no tokens/prompts/credentials/encrypted records read",
+    "receipt": "SHA256 canonical public receipt body, Ed25519 manifest receipt key, request/operation/pool/deployment binding, integer frozen-tariff math and per-session micro rounding",
+    "logs": "not read",
+    "collector_source": "scripts/i10_collect_repeat_api.ts",
+    "collector_source_sha256": "cf3592ad675ca1c56ddfc4deff5cadea480d6a5b681bbd981ac97b73d75e4021",
+    "command": "target/i08-toolchain/bin/node scripts/i10_collect_repeat_api.ts"
+  },
+  "collector_actions": {
+    "provider_or_AUTH_requests": 0,
+    "chain_RPC_or_sends": 0,
+    "PG_mutations": 0,
+    "config_budget_or_journal_mutations": 0
+  },
+  "limitations": [
+    "Dispatch counts come from the immutable ledger, not packet capture.",
+    "Only the latest response observation is retained in the public UI projection; it reports HTTP200 and a body digest, not independently verified provider text.",
+    "The collector verifies receipt signatures and tariff math; successor signature validation remains the existing browser SDK verification, cross-checked through public projection.",
+    "New explicit requests do not replay or modify any prior case. This does not establish withdrawal of the new note, full I10, hosted CI, G3 as a whole or G1-G4."
+  ],
+  "release_gates_passed": []
+}

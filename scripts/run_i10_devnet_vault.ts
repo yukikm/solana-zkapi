@@ -27,10 +27,12 @@ import {runDevnetChallenge,type DevnetChallengeReport,type EscapeReady} from './
 import {runDevnetClearanceRecovery} from './i10_devnet_clearance_recovery.ts';
 import {runDevnetProviderAcceptance,validateProviderSelection,validatePreparedProviderConfig} from './i10_devnet_provider.ts';
 import {verifySettledProviderCase,verifyUnstartedProviderCase} from './i10_devnet_provider_recovery.ts';
+import {devnetPoolInstance} from './i10_devnet_pool_instance.ts';
 const ROOT=resolve('.'),DEPLOYMENT=resolve('target/i10-devnet-vault');
 const poolRun=process.argv.find(arg=>arg.startsWith('--pool='))?.slice(7);
 const providerProfile=process.argv.find(arg=>arg.startsWith('--provider-profile='))?.slice(19);
-const OUT=poolRun?join(DEPLOYMENT,'pools',poolRun,...(providerProfile?[providerProfile]:[])):DEPLOYMENT;
+const poolInstance=devnetPoolInstance(process.argv.slice(2),DEPLOYMENT,poolRun,providerProfile);
+const OUT=poolInstance.output;
 const challengePool=['challenge','challenge-final','challenge-batched','challenge-live'].includes(poolRun??'');
 const port=poolRun==='wallet'?18983:poolRun==='wallet-ui'?19183:poolRun==='provider'?Number(process.argv.find(arg=>arg.startsWith('--provider-port='))?.split('=')[1]??(providerProfile==='openai-ui'?'19383':'19283')):challengePool?19083:18883;
 const daemonChallenge=process.argv.includes('--daemon-challenge');
@@ -92,7 +94,7 @@ async function main(){
   validatePreparedProviderConfig(execution,await json(join(PROVIDER_CONFIGURATION,'providers.json')));
  }
  const executionSource=await read('scripts/run_i10_devnet_vault.ts');
- const helperSources=['scripts/i10_devnet_transport.ts',...(providerPlan?['scripts/i10_devnet_provider.ts','scripts/provider_acceptance_client.ts','scripts/provider_acceptance.py']:[]),...(withdrawSettledProvider||withdrawUnstartedProvider?['scripts/i10_devnet_provider_recovery.ts']:[])];
+ const helperSources=['scripts/i10_devnet_transport.ts','scripts/i10_devnet_pool_instance.ts',...(providerPlan?['scripts/i10_devnet_provider.ts','scripts/provider_acceptance_client.ts','scripts/provider_acceptance.py']:[]),...(withdrawSettledProvider||withdrawUnstartedProvider?['scripts/i10_devnet_provider_recovery.ts']:[])];
  const executionHelperHashes=Object.fromEntries(await Promise.all(helperSources.map(async path=>[path,sha(await read(path))])));
  const challengeSource=daemonChallenge?await read('scripts/i10_devnet_challenge.ts'):null;
  const endpoint=process.env.SOLANA_DEVNET_RPC;assert.ok(endpoint);assert.equal(new URL(endpoint).protocol,'https:');
@@ -155,7 +157,7 @@ async function main(){
  assert.ok(process.argv.includes('--lifecycle')||process.argv.includes('--admin-check')||process.argv.includes('--configure'),'choose --prepare, --deploy, --initialize, --admin-check or --lifecycle');
  stage='manifest';
  const m=structuredClone(base);
- Object.assign(m,{deployment_id:'i10-devnet-'+cfg.program_id+(poolRun?'-'+poolRun:'')+(providerProfile?'-'+providerProfile:''),deployment_environment:'devnet',genesis_hash:GENESIS,program_id:cfg.program_id,pool:cfg.pool,mint:MINT,token_program:TOKEN,control_api_origin:`https://127.0.0.1:${port+2}`,inference_api_origin:`https://127.0.0.1:${port+3}`,proving_keys_base_url:`https://127.0.0.1:${port+2}/keys`,note_ttl_seconds:cfg.ttl_seconds,challenge_seconds:cfg.challenge_seconds,cap_micro_usdc:cfg.cap_micro_usdc,idl_hash:sha(idl),vault_binding:await vaultBinding(bs58.decode(GENESIS),program.toBytes(),pool.toBytes(),new PublicKey(TOKEN).toBytes(),mint.toBytes()),authorities:{admin:{kind:'devnet_test_single_key',authority:owner.toBase58()},upgrade:{kind:'devnet_test_single_key',authority:owner.toBase58()}},artifact_digests:{vault_idl:sha(idl),vault_program:sha(elf),devnet_build_manifest:sha(buildBytes)}});
+ Object.assign(m,{deployment_id:'i10-devnet-'+cfg.program_id+(poolRun?'-'+poolRun:'')+(providerProfile?'-'+providerProfile:'')+poolInstance.deploymentSuffix,deployment_environment:'devnet',genesis_hash:GENESIS,program_id:cfg.program_id,pool:cfg.pool,mint:MINT,token_program:TOKEN,control_api_origin:`https://127.0.0.1:${port+2}`,inference_api_origin:`https://127.0.0.1:${port+3}`,proving_keys_base_url:`https://127.0.0.1:${port+2}/keys`,note_ttl_seconds:cfg.ttl_seconds,challenge_seconds:cfg.challenge_seconds,cap_micro_usdc:cfg.cap_micro_usdc,idl_hash:sha(idl),vault_binding:await vaultBinding(bs58.decode(GENESIS),program.toBytes(),pool.toBytes(),new PublicKey(TOKEN).toBytes(),mint.toBytes()),authorities:{admin:{kind:'devnet_test_single_key',authority:owner.toBase58()},upgrade:{kind:'devnet_test_single_key',authority:owner.toBase58()}},artifact_digests:{vault_idl:sha(idl),vault_program:sha(elf),devnet_build_manifest:sha(buildBytes)}});
  if(providerPlan){const tariffs=await json(join(PROVIDER_CONFIGURATION,'tariffs.json'));assert.ok(Array.isArray(tariffs)&&tariffs.length>0);m.tariff_hashes=tariffs.map(t=>t.tariff_hash);}
  m.manifest_hash=await manifestDigest(m);
  const distributionKey=createPrivateKey({key:Buffer.concat([Buffer.from('302e020100300506032b657004220420','hex'),Buffer.from(key.secretKey.subarray(0,32))]),format:'der',type:'pkcs8'});

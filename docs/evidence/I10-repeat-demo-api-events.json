@@ -1,0 +1,371 @@
+{
+  "fixture_only": false,
+  "wallet": "Phantom",
+  "wallet_standard_version": "1.0.0",
+  "installed_wallet_version": "",
+  "account": "nHSjCbSd3XD3UwGy5uAAUqEfDf4kBDYaJZ4eF82nCDZ",
+  "last_signing_review": {
+    "version": {
+      "original": 0,
+      "returned": 0
+    },
+    "message_equal": true,
+    "header_equal": true,
+    "blockhash_equal": true,
+    "accounts_equal": true,
+    "ALT_equal": true,
+    "original_instructions": [
+      {
+        "programId": "ComputeBudget111111111111111111111111111111",
+        "dataLength": 5,
+        "computeBudget": {
+          "kind": "SetComputeUnitLimit",
+          "value": "1000000"
+        }
+      },
+      {
+        "programId": "ComputeBudget111111111111111111111111111111",
+        "dataLength": 9,
+        "computeBudget": {
+          "kind": "SetComputeUnitPrice",
+          "value": "1"
+        }
+      },
+      {
+        "programId": "64C2qsG8xB5XpnqiJBBDPqJqBc2P8wz73knVhFpi1PDh",
+        "dataLength": 40
+      }
+    ],
+    "returned_instructions": [
+      {
+        "programId": "ComputeBudget111111111111111111111111111111",
+        "dataLength": 5,
+        "computeBudget": {
+          "kind": "SetComputeUnitLimit",
+          "value": "1000000"
+        }
+      },
+      {
+        "programId": "ComputeBudget111111111111111111111111111111",
+        "dataLength": 9,
+        "computeBudget": {
+          "kind": "SetComputeUnitPrice",
+          "value": "1"
+        }
+      },
+      {
+        "programId": "64C2qsG8xB5XpnqiJBBDPqJqBc2P8wz73knVhFpi1PDh",
+        "dataLength": 40
+      }
+    ],
+    "original_non_compute_instructions_retained": true,
+    "non_compute_instructions_equal": true
+  },
+  "journal_revision": 20,
+  "wallet_status": "active",
+  "balance_micro_usdc": "1999996",
+  "permanent_clearance": false,
+  "provider_case": "openai-chat-plain",
+  "provider_request_policy": "explicit_demo",
+  "response_observation": {
+    "operation_id": "79a28871-fb7f-4465-b8fd-c677d6577a0d",
+    "http_status": 200,
+    "response_bytes": 809,
+    "response_sha256": "03aface24e3e6efd437c894fd0701329915673904f39997b30bebc2f2cd00f0b"
+  },
+  "provider_plan_sha256": "50f3f10040671f27ecd2ff59db3d3d6474a58de67bb0cf38e7a2cd41d7577167",
+  "provider_budget": {
+    "schema": 1,
+    "plan_sha256": "50f3f10040671f27ecd2ff59db3d3d6474a58de67bb0cf38e7a2cd41d7577167",
+    "request_policy": "explicit_demo",
+    "budget_micro_usdc": "10000000",
+    "reserved_micro_usdc": "115662",
+    "remaining_micro_usdc": "9884338",
+    "max_requests": 18,
+    "reserved_requests": 6,
+    "remaining_requests": 12,
+    "request_max_cost_micro_usdc": "19277",
+    "available_requests": 12
+  },
+  "demo_run": 2,
+  "saved_demo_runs": 2,
+  "session": null,
+  "verified_settlements": [
+    {
+      "request_id": "db43878a-fd0f-485e-9712-2032a84583b2",
+      "charge_micro_usdc": "4",
+      "balance_before_micro_usdc": "2000000",
+      "receipt_ids": [
+        "b9f57560-ad48-498d-8132-5a6cc5f2b67d"
+      ],
+      "billing_effects": [
+        "charge"
+      ],
+      "operation_ids": [
+        "79a28871-fb7f-4465-b8fd-c677d6577a0d"
+      ]
+    }
+  ],
+  "operation": null,
+  "unresolved_transaction": null,
+  "expired_setup_recoveries": [
+    {
+      "signature": "5QcrxNytuCw6AwPwRBYHDWGobd4syWTePjwcDg2f4LkJr1vqMY5gGd5wPs4fTpVFEpS65oekrRUNvjA34Erji1xg",
+      "buffer": "HFdQeGwHCTRGvXK6atjP9ph9JwV5jkkmmio5Heno3yMR",
+      "slot": 507732497,
+      "blockHeight": 494977127,
+      "blockhash": "Kas2HpjhfX8h74d9exs7RhqutJXKcertFYuMR5jduSc"
+    }
+  ],
+  "finalized_transactions": [
+    {
+      "signature": "aCp7HykyjbsXvfS9mHU7JhBZZQhm35S17XhzoB4TT4hxq8mqiuJrGdwtxaafWv4uMd8VR5c9uE8e2kdMUu8Pg2x",
+      "slot": 507732668
+    },
+    {
+      "signature": "653a5VA39ss768vbexyt2otcDj1jdFzzhmRy6cka4VrWmner1sqMzLystQ1pg7FLTfErDQr5NxzSeMs33TshmzuY",
+      "slot": 507732851
+    },
+    {
+      "signature": "zNGbs7xrQRj7AwawNeRQMKJN15XskmpYhNXtF6NuURMrNHRGds2UYdqmu3WAigbDBAyHGCHN2yamzsanjZKhbpy",
+      "slot": 507733168
+    },
+    {
+      "signature": "3z6c2TzaedmGfnZ32qqW175RwD5PCUHjJ2QT51AY8Y2p2LUvALoGfK7sSK8UEnd5xScQTEwcbsPEZnsscc4umVNW",
+      "slot": 507733379
+    }
+  ],
+  "manifest_hash": "ee851dbfbb1c75b7ff4b5fabe3407ba9c3a38c42bcb7668d722653afcccb4555",
+  "pool": "3tByNJBBzqBjhHsNdpsq56XXSj7HckGUfyQMNqEBiTZ5",
+  "run_id": "openai-ui",
+  "live_provider_verified": false,
+  "wallet_UI_verified": false,
+  "independent_wallet_and_receipt_review_required": true,
+  "release_gates_passed": [],
+  "browser_user_agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/154.0.0.0 Safari/537.36",
+  "events": [
+    {
+      "at": "2026-10-05T12:22:10.057Z",
+      "event": "connected"
+    },
+    {
+      "at": "2026-10-05T12:22:16.493Z",
+      "event": "account_selected"
+    },
+    {
+      "at": "2026-10-05T12:23:08.864Z",
+      "event": "action_failed_expired_upload_buffer_missing"
+    },
+    {
+      "at": "2026-10-05T12:24:11.576Z",
+      "event": "expired_setup_reconciled"
+    },
+    {
+      "at": "2026-10-05T12:24:37.861Z",
+      "event": "signature_requested",
+      "operation_id": "9b1bb985-50b0-40f6-8fac-6126207f18f6",
+      "attempts": 1
+    },
+    {
+      "at": "2026-10-05T12:24:50.219Z",
+      "event": "signature_returned",
+      "operation_id": "9b1bb985-50b0-40f6-8fac-6126207f18f6"
+    },
+    {
+      "at": "2026-10-05T12:24:52.814Z",
+      "event": "sdk_pending"
+    },
+    {
+      "at": "2026-10-05T12:25:22.367Z",
+      "event": "sdk_ready"
+    },
+    {
+      "at": "2026-10-05T12:25:44.862Z",
+      "event": "signature_requested",
+      "operation_id": "9b1bb985-50b0-40f6-8fac-6126207f18f6",
+      "attempts": 2
+    },
+    {
+      "at": "2026-10-05T12:25:47.018Z",
+      "event": "signature_returned",
+      "operation_id": "9b1bb985-50b0-40f6-8fac-6126207f18f6"
+    },
+    {
+      "at": "2026-10-05T12:25:49.000Z",
+      "event": "sdk_pending"
+    },
+    {
+      "at": "2026-10-05T12:26:17.589Z",
+      "event": "sdk_ready"
+    },
+    {
+      "at": "2026-10-05T12:26:42.480Z",
+      "event": "signature_requested",
+      "operation_id": "9b1bb985-50b0-40f6-8fac-6126207f18f6",
+      "attempts": 3
+    },
+    {
+      "at": "2026-10-05T12:26:45.071Z",
+      "event": "signature_returned",
+      "operation_id": "9b1bb985-50b0-40f6-8fac-6126207f18f6"
+    },
+    {
+      "at": "2026-10-05T12:26:47.598Z",
+      "event": "sdk_pending"
+    },
+    {
+      "at": "2026-10-05T12:27:12.806Z",
+      "event": "sdk_ready"
+    },
+    {
+      "at": "2026-10-05T12:27:38.662Z",
+      "event": "signature_requested",
+      "operation_id": "9b1bb985-50b0-40f6-8fac-6126207f18f6",
+      "attempts": 4
+    },
+    {
+      "at": "2026-10-05T12:27:41.322Z",
+      "event": "signature_returned",
+      "operation_id": "9b1bb985-50b0-40f6-8fac-6126207f18f6"
+    },
+    {
+      "at": "2026-10-05T12:27:46.579Z",
+      "event": "sdk_pending"
+    },
+    {
+      "at": "2026-10-05T12:28:15.219Z",
+      "event": "sdk_ready"
+    },
+    {
+      "at": "2026-10-05T12:28:38.617Z",
+      "event": "signature_requested",
+      "operation_id": "9b1bb985-50b0-40f6-8fac-6126207f18f6",
+      "attempts": 5
+    },
+    {
+      "at": "2026-10-05T12:28:41.968Z",
+      "event": "signature_returned",
+      "operation_id": "9b1bb985-50b0-40f6-8fac-6126207f18f6"
+    },
+    {
+      "at": "2026-10-05T12:28:44.395Z",
+      "event": "sdk_pending"
+    },
+    {
+      "at": "2026-10-05T12:29:19.495Z",
+      "event": "sdk_complete"
+    },
+    {
+      "at": "2026-10-05T12:30:12.361Z",
+      "event": "deposit_prepared"
+    },
+    {
+      "at": "2026-10-05T12:30:28.786Z",
+      "event": "signature_requested",
+      "operation_id": "60ce1e87-be0e-4842-bc0a-a60d383b619e",
+      "attempts": 0
+    },
+    {
+      "at": "2026-10-05T12:31:27.968Z",
+      "event": "signature_returned",
+      "operation_id": "60ce1e87-be0e-4842-bc0a-a60d383b619e"
+    },
+    {
+      "at": "2026-10-05T12:31:31.116Z",
+      "event": "action_failed_expired_upload_buffer_missing"
+    },
+    {
+      "at": "2026-10-05T12:32:35.546Z",
+      "event": "expired_setup_reconciled"
+    },
+    {
+      "at": "2026-10-05T12:32:41.328Z",
+      "event": "signature_requested",
+      "operation_id": "60ce1e87-be0e-4842-bc0a-a60d383b619e",
+      "attempts": 1
+    },
+    {
+      "at": "2026-10-05T12:32:42.707Z",
+      "event": "signature_returned",
+      "operation_id": "60ce1e87-be0e-4842-bc0a-a60d383b619e"
+    },
+    {
+      "at": "2026-10-05T12:32:45.016Z",
+      "event": "sdk_pending"
+    },
+    {
+      "at": "2026-10-05T12:32:56.302Z",
+      "event": "sdk_ready"
+    },
+    {
+      "at": "2026-10-05T12:33:24.228Z",
+      "event": "signature_requested",
+      "operation_id": "60ce1e87-be0e-4842-bc0a-a60d383b619e",
+      "attempts": 2
+    },
+    {
+      "at": "2026-10-05T12:33:26.881Z",
+      "event": "signature_returned",
+      "operation_id": "60ce1e87-be0e-4842-bc0a-a60d383b619e"
+    },
+    {
+      "at": "2026-10-05T12:33:29.154Z",
+      "event": "sdk_pending"
+    },
+    {
+      "at": "2026-10-05T12:34:11.124Z",
+      "event": "sdk_ready"
+    },
+    {
+      "at": "2026-10-05T12:34:39.883Z",
+      "event": "signature_requested",
+      "operation_id": "60ce1e87-be0e-4842-bc0a-a60d383b619e",
+      "attempts": 3
+    },
+    {
+      "at": "2026-10-05T12:34:42.355Z",
+      "event": "signature_returned",
+      "operation_id": "60ce1e87-be0e-4842-bc0a-a60d383b619e"
+    },
+    {
+      "at": "2026-10-05T12:34:44.313Z",
+      "event": "sdk_pending"
+    },
+    {
+      "at": "2026-10-05T12:35:02.697Z",
+      "event": "sdk_ready"
+    },
+    {
+      "at": "2026-10-05T12:35:30.453Z",
+      "event": "signature_requested",
+      "operation_id": "60ce1e87-be0e-4842-bc0a-a60d383b619e",
+      "attempts": 4
+    },
+    {
+      "at": "2026-10-05T12:35:32.076Z",
+      "event": "signature_returned",
+      "operation_id": "60ce1e87-be0e-4842-bc0a-a60d383b619e"
+    },
+    {
+      "at": "2026-10-05T12:35:34.548Z",
+      "event": "sdk_pending"
+    },
+    {
+      "at": "2026-10-05T12:37:29.755Z",
+      "event": "sdk_complete"
+    },
+    {
+      "at": "2026-10-05T12:39:10.775Z",
+      "event": "provider_authorization_prepared"
+    },
+    {
+      "at": "2026-10-05T12:39:47.412Z",
+      "event": "provider_response_observed",
+      "operation_id": "79a28871-fb7f-4465-b8fd-c677d6577a0d"
+    },
+    {
+      "at": "2026-10-05T12:40:18.965Z",
+      "event": "provider_control_recovered"
+    }
+  ]
+}

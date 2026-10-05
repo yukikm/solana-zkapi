@@ -1,0 +1,32 @@
+import assert from 'node:assert/strict';
+import {readFile,writeFile} from 'node:fs/promises';
+import {createHash} from 'node:crypto';
+import {PublicKey,VersionedTransaction,ComputeBudgetProgram} from '@solana/web3.js';
+import bs58 from 'bs58';
+import {discriminator,vaultAccounts,verifySignatures,TOKEN_PROGRAM} from '../packages/sdk/src/transport.ts';
+const input='target/i10-phantom-deposit-complete-observation.json';
+const observation=JSON.parse(await readFile(input,'utf8'));
+const genesis='EtWTRABZaYq6iMfeYKouRu166VU2xqa1wcaWoxPkrZBG';
+const read=async(method:string,params:unknown[])=>{const response=await fetch('http://127.0.0.1:19180/rpc',{method:'POST',headers:{Origin:'http://127.0.0.1:19180','Content-Type':'application/json'},body:JSON.stringify({jsonrpc:'2.0',id:1,method,params}),signal:AbortSignal.timeout(30000)});const envelope=await response.json();assert.ok(response.ok&&!envelope.error,'read-only RPC failed');return envelope.result;};
+assert.equal(observation.fixture_only,false);assert.equal(observation.wallet,'Phantom');assert.equal(observation.wallet_status,'active');assert.equal(observation.balance_micro_usdc,'1000000');assert.equal(observation.operation,null);assert.equal(observation.session,null);
+assert.equal(await read('getGenesisHash',[]),genesis);
+const program='64C2qsG8xB5XpnqiJBBDPqJqBc2P8wz73knVhFpi1PDh',pool='3tByNJBBzqBjhHsNdpsq56XXSj7HckGUfyQMNqEBiTZ5';assert.equal(observation.pool,pool);
+const names=new Map(await Promise.all(['create_payload','append_payload','seal_payload','execute_payload'].map(async name=>[Buffer.from(await discriminator(name)).toString('hex'),name] as const)));
+const transactions=[];
+for(const receipt of observation.finalized_transactions){
+  const chain=await read('getTransaction',[receipt.signature,{encoding:'base64',commitment:'finalized',maxSupportedTransactionVersion:1}]);assert.ok(chain&&chain.meta&&chain.meta.err===null);assert.equal(chain.slot,receipt.slot);
+  assert.equal(chain.transaction[1],'base64');const wire=Buffer.from(chain.transaction[0],'base64'),tx=VersionedTransaction.deserialize(wire);assert.equal(tx.version,0);await verifySignatures(tx);assert.equal(bs58.encode(tx.signatures[0]),receipt.signature);assert.ok(wire.length<=1232);assert.equal(tx.message.addressTableLookups.length,0);
+  assert.equal(chain.meta.fee,5001);assert.ok(Number.isSafeInteger(chain.meta.computeUnitsConsumed)&&chain.meta.computeUnitsConsumed<=1000000);
+  const instructions=tx.message.compiledInstructions.map(ix=>{const id=tx.message.staticAccountKeys[ix.programIdIndex].toBase58();assert.ok([program,ComputeBudgetProgram.programId.toBase58()].includes(id));return {id,data:Buffer.from(ix.data),keys:ix.accountKeyIndexes};});
+  assert.equal(instructions.length,3);assert.equal(instructions[0].id,ComputeBudgetProgram.programId.toBase58());assert.equal(instructions[0].data[0],2);assert.equal(instructions[0].data.readUInt32LE(1),1000000);
+  assert.equal(instructions[1].id,ComputeBudgetProgram.programId.toBase58());assert.equal(instructions[1].data[0],3);assert.equal(instructions[1].data.readBigUInt64LE(1),1n);
+  assert.equal(instructions[2].id,program);const name=names.get(instructions[2].data.subarray(0,8).toString('hex'));assert.ok(name);assert.equal(tx.message.staticAccountKeys[instructions[2].keys[name==='execute_payload'?3:1]].toBase58(),pool);
+  transactions.push({signature:receipt.signature,slot:chain.slot,instruction:name,fee_lamports:chain.meta.fee,compute_units:chain.meta.computeUnitsConsumed,wire_bytes:wire.length,message_sha256:createHash('sha256').update(tx.message.serialize()).digest('hex')});
+}
+assert.deepEqual(transactions.map(t=>t.instruction),['create_payload','append_payload','seal_payload','execute_payload']);assert.equal(new Set(transactions.map(t=>t.signature)).size,4);
+const owner=new PublicKey(observation.account),mint=new PublicKey('4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU');
+const accounts=vaultAccounts({programId:new PublicKey(program),pool:new PublicKey(pool),mint,payer:owner,tokenOwner:owner,operation:'deposit',noteId:0});
+const balances=await read('getMultipleAccounts',[ [accounts.source.toBase58(),accounts.vault.toBase58()],{encoding:'base64',commitment:'finalized',minContextSlot:transactions.at(-1)!.slot}]);assert.ok(balances.context.slot>=transactions.at(-1)!.slot);
+const amounts=balances.value.map((account:any)=>{assert.equal(account.owner,TOKEN_PROGRAM.toBase58());assert.equal(account.data[1],'base64');const bytes=Buffer.from(account.data[0],'base64');assert.ok(bytes.length>=165);assert.ok(bytes.subarray(0,32).equals(mint.toBuffer()));return bytes.readBigUInt64LE(64).toString();});assert.deepEqual(amounts,['37010000','1000000']);
+const report={schema:1,observed_at_utc:new Date().toISOString(),scope:'Independent read-only finalized RPC receipts for the actual Chrome/Phantom 1-USDC deposit only',passed:true,pool,account:observation.account,observation_sha256:createHash('sha256').update(await readFile(input)).digest('hex'),transactions,finalized_count:transactions.length,max_compute_units:Math.max(...transactions.map(t=>t.compute_units)),max_wire_bytes:Math.max(...transactions.map(t=>t.wire_bytes)),total_finalized_fee_lamports:transactions.reduce((n,t)=>n+t.fee_lamports,0),finalized_balance_cut_slot:balances.context.slot,wallet_micro_usdc:amounts[0],vault_micro_usdc:amounts[1],expired_setup_recoveries:observation.expired_setup_recoveries,unverified_old_attempt_signature:'nzwTWysmdRnjKEMH3NpSgcGEBzL8MnhVdVnwpFvQdEGMQTGSpPiP8zdNkoAR1TWoakWXKymkhA2nRBdVJm3Pt3P',old_attempt_fee_lamports:null,send_count:null,real_provider_acceptance:false,full_wallet_lifecycle:false,full_i10:false};
+await writeFile('target/i10-phantom-deposit-finalized-results.json',JSON.stringify(report,null,2)+'\n');console.log(JSON.stringify({passed:report.passed,finalized_count:report.finalized_count,max_compute_units:report.max_compute_units,max_wire_bytes:report.max_wire_bytes,wallet_micro_usdc:amounts[0],vault_micro_usdc:amounts[1]}));

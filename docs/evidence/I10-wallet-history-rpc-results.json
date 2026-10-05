@@ -1,0 +1,29 @@
+{
+  "schema": 1,
+  "verified_at_utc": "2026-10-05T11:00:01.164888+00:00",
+  "scope": "offline loopback relay fixtures; no public RPC or wallet/provider operations",
+  "tests": {
+    "passed": 11,
+    "failed": 0,
+    "skipped": 0,
+    "duration_ms": 647.656958
+  },
+  "strict_typecheck_exit_code": 0,
+  "commands": [
+    "target/i08-toolchain/bin/node --test scripts/i10-wallet-ui/host.test.ts",
+    "target/i08-toolchain/bin/node node_modules/typescript/bin/tsc --noEmit --strict --target ES2023 --module NodeNext --moduleResolution NodeNext --allowImportingTsExtensions --resolveJsonModule --lib ES2023,DOM --types node scripts/i10-wallet-ui/host.ts scripts/i10-wallet-ui/host.test.ts"
+  ],
+  "source_sha256": {
+    "scripts/i10-wallet-ui/host.ts": "01defb81cde1d1684013ecafa60a4d8e88e50e07d7101773b66be0a671df5441",
+    "scripts/i10-wallet-ui/host.test.ts": "47cb4d7004ea35a1ba2173bece87205f30592583fad15323844bbc908148ced5"
+  },
+  "explicit_optional_history_config": true,
+  "history_route": "getTransaction only after same-endpoint Devnet getGenesisHash check",
+  "sends_and_other_reads": "primary RPC unchanged",
+  "history_error_to_null_conversion": false,
+  "automatic_fallback_or_retry": false,
+  "rpc_urls_exposed_to_browser": false,
+  "real_wallet_signature_requests": 0,
+  "real_chain_sends": 0,
+  "inference_calls": 0
+}

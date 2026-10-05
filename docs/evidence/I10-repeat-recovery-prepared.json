@@ -1,0 +1,176 @@
+{
+  "observed_at_utc": "2026-10-05T12:25:07.609Z",
+  "status": "SDK result: pending. Continue explicitly if another step remains.",
+  "state": {
+    "fixture_only": false,
+    "wallet": "Phantom",
+    "wallet_standard_version": "1.0.0",
+    "installed_wallet_version": "",
+    "account": "nHSjCbSd3XD3UwGy5uAAUqEfDf4kBDYaJZ4eF82nCDZ",
+    "last_signing_review": {
+      "version": {
+        "original": 0,
+        "returned": 0
+      },
+      "message_equal": true,
+      "header_equal": true,
+      "blockhash_equal": true,
+      "accounts_equal": true,
+      "ALT_equal": true,
+      "original_instructions": [
+        {
+          "programId": "ComputeBudget111111111111111111111111111111",
+          "dataLength": 5,
+          "computeBudget": {
+            "kind": "SetComputeUnitLimit",
+            "value": "1000000"
+          }
+        },
+        {
+          "programId": "ComputeBudget111111111111111111111111111111",
+          "dataLength": 9,
+          "computeBudget": {
+            "kind": "SetComputeUnitPrice",
+            "value": "1"
+          }
+        },
+        {
+          "programId": "64C2qsG8xB5XpnqiJBBDPqJqBc2P8wz73knVhFpi1PDh",
+          "dataLength": 85
+        }
+      ],
+      "returned_instructions": [
+        {
+          "programId": "ComputeBudget111111111111111111111111111111",
+          "dataLength": 5,
+          "computeBudget": {
+            "kind": "SetComputeUnitLimit",
+            "value": "1000000"
+          }
+        },
+        {
+          "programId": "ComputeBudget111111111111111111111111111111",
+          "dataLength": 9,
+          "computeBudget": {
+            "kind": "SetComputeUnitPrice",
+            "value": "1"
+          }
+        },
+        {
+          "programId": "64C2qsG8xB5XpnqiJBBDPqJqBc2P8wz73knVhFpi1PDh",
+          "dataLength": 85
+        }
+      ],
+      "original_non_compute_instructions_retained": true,
+      "non_compute_instructions_equal": true
+    },
+    "journal_revision": 35,
+    "wallet_status": "active",
+    "balance_micro_usdc": "999996",
+    "permanent_clearance": true,
+    "provider_case": "openai-chat-plain",
+    "provider_request_policy": "explicit_demo",
+    "response_observation": null,
+    "provider_plan_sha256": "50f3f10040671f27ecd2ff59db3d3d6474a58de67bb0cf38e7a2cd41d7577167",
+    "provider_budget": {
+      "schema": 1,
+      "plan_sha256": "50f3f10040671f27ecd2ff59db3d3d6474a58de67bb0cf38e7a2cd41d7577167",
+      "request_policy": "explicit_demo",
+      "budget_micro_usdc": "10000000",
+      "reserved_micro_usdc": "96385",
+      "remaining_micro_usdc": "9903615",
+      "max_requests": 18,
+      "reserved_requests": 5,
+      "remaining_requests": 13,
+      "request_max_cost_micro_usdc": "19277",
+      "available_requests": 13
+    },
+    "demo_run": 1,
+    "saved_demo_runs": 1,
+    "session": null,
+    "verified_settlements": [
+      {
+        "request_id": "3019e6e0-0ca7-48a8-844f-fd72bfb9d1fb",
+        "charge_micro_usdc": "0",
+        "balance_before_micro_usdc": "1000000",
+        "receipt_ids": [
+          "b94aa1a7-1ea8-46ae-b35c-764f0e05c52c"
+        ],
+        "billing_effects": [
+          "charge"
+        ],
+        "operation_ids": [
+          "e4db2880-b71f-4a23-a301-f8d066a8f760"
+        ]
+      },
+      {
+        "request_id": "4f8434a4-9766-4903-9128-f0f33c3acdae",
+        "charge_micro_usdc": "4",
+        "balance_before_micro_usdc": "1000000",
+        "receipt_ids": [
+          "c1c54b84-84a7-45ac-b7a4-e6b0c540fd81"
+        ],
+        "billing_effects": [
+          "charge"
+        ],
+        "operation_ids": [
+          "3158cfca-c7b3-4891-aef0-54b9975b243e"
+        ]
+      }
+    ],
+    "operation": {
+      "id": "9b1bb985-50b0-40f6-8fac-6126207f18f6",
+      "kind": "mutual_close",
+      "phase": "ready",
+      "step": 0,
+      "attempts": 2,
+      "unresolved_signature": "2nySbhSguzi2NcGWhBmvVDhFKBR3J3aaT3AT2d2jA8bi7bgrKiqVmKAjiJLTz1sdYeXJaW4mdXpbbhhGZZ47t7qS"
+    },
+    "unresolved_transaction": {
+      "kind": "create",
+      "signature": "2nySbhSguzi2NcGWhBmvVDhFKBR3J3aaT3AT2d2jA8bi7bgrKiqVmKAjiJLTz1sdYeXJaW4mdXpbbhhGZZ47t7qS",
+      "last_valid_block_height": 494975407
+    },
+    "expired_setup_recoveries": [
+      {
+        "signature": "nzwTWysmdRnjKEMH3NpSgcGEBzL8MnhVdVnwpFvQdEGMQTGSpPiP8zdNkoAR1TWoakWXKymkhA2nRBdVJm3Pt3P",
+        "buffer": "5XkHvyVcr8rr1gqsFNzASfm8TuoL7mXhHwLFUubnV89e",
+        "slot": 507709925,
+        "blockHeight": 494954718,
+        "blockhash": "4xjfMHHUwxQcuDdL74H1eF6dLCexy5sG1BLGtPZmmpa8"
+      },
+      {
+        "signature": "5ngFj1eJAQF2TXLU1jftYp6YJ5W886TpyR1nFdRykfC2AVtUjTMYFmeA7h8P2RqC9Z2fD1yoiu6hZaxQYSeSttLb",
+        "buffer": "xdCGd1jWMFJAcstv9QXpPVkWZVP1nEGCfA4djFuzofr",
+        "slot": 507730373,
+        "blockHeight": 494975015,
+        "blockhash": "EapZ4NWhQAbxNvaMu43CmzH9sUdSCCmDjtwjakNH2uqE"
+      }
+    ],
+    "finalized_transactions": [
+      {
+        "signature": "3za4KbPniAkbS7TYn9ghjgdyiFPhANButx6CYs44884uqF4YsfsgPBRshiykZQw6C2P7i7wYw7Ea5TRcP9ftNsfo",
+        "slot": 507710146
+      },
+      {
+        "signature": "5AVcbpjoBJhY2QkKqP8RUtUoPfABKvsw4f7M8RtDcxNfTtM6xhfhaD7fmS4fpCekYwMrNBnT4tfkTj2mqivuuPmq",
+        "slot": 507710504
+      },
+      {
+        "signature": "Q4zLq9KfgGFhzmdLKUph3pB9EBAWAinFa1sJUpVbnkg7YJg8RMtNvJbw6swSTzGyDNUFKaky98GYcfWZHP15SAK",
+        "slot": 507711085
+      },
+      {
+        "signature": "5HPjwdViSwYYtXyoquzBcpKYdqqRprbU9d6E9NtADgFU99XGSs8D6QRMNr2yiR2vz6PanMAsn8W9GwZYiUJh1iSy",
+        "slot": 507711405
+      }
+    ],
+    "manifest_hash": "ee851dbfbb1c75b7ff4b5fabe3407ba9c3a38c42bcb7668d722653afcccb4555",
+    "pool": "3tByNJBBzqBjhHsNdpsq56XXSj7HckGUfyQMNqEBiTZ5",
+    "run_id": "openai-ui",
+    "live_provider_verified": false,
+    "wallet_UI_verified": false,
+    "independent_wallet_and_receipt_review_required": true,
+    "release_gates_passed": []
+  }
+}

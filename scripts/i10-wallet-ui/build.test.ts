@@ -6,7 +6,7 @@ import {join} from 'node:path';
 import {buildUi, directory} from './build.ts';
 import {startUiHost} from './host.ts';
 
-test('production build mounts presentation and preserves live output; reused fixture output removes the presentation', async t => {
+test('production build defaults to live with a separate sample; reused fixture output removes the sample', async t => {
   const output = await mkdtemp(join(tmpdir(), 'zkapi-ui-demo-build-'));
   t.after(() => rm(output, {recursive: true, force: true}));
   await buildUi(output);
@@ -21,7 +21,7 @@ test('production build mounts presentation and preserves live output; reused fix
   assert.doesNotMatch(bundle, /WalletClient|ControlClient|fetch\(|indexedDB|localStorage|sessionStorage/);
   const productionHost = await startUiHost({port: 0, output});
   try {
-    assert.equal(await (await fetch(productionHost.origin + '/')).text(), presentation);
+    assert.equal(await (await fetch(productionHost.origin + '/')).text(), live);
     assert.equal(await (await fetch(productionHost.origin + '/demo')).text(), presentation);
     assert.equal(await (await fetch(productionHost.origin + '/live')).text(), live);
   } finally { await productionHost.close(); }

@@ -46,6 +46,35 @@ test('first completion is durable and a same-snapshot reopen does not rewrite it
   assert.deepEqual(await readFile(path), bytes);
 });
 
+test('explicit demo reservation shares aggregate budget without changing historical acceptance report', async t => {
+  const path = await fixture(t), saved = report();
+  await retainCompletedProviderReport(path, saved); const bytes = await readFile(path);
+  const operation = '12345678-1234-4123-8123-123456789012';
+  const demo = {...reservation('demo-' + operation, '20'), kind: 'explicit_demo', template_case_id: 'openai-chat-plain',
+    request_id: '12345678-1234-4123-8123-123456789013', operation_id: operation};
+  const current = report([reservation('profile-a'), demo]);
+  assert.deepEqual(jcsBytes(await retainCompletedProviderReport(path, current)), jcsBytes(saved));
+  assert.deepEqual(await readFile(path), bytes);
+  assert.equal(current.budget.reserved_micro_usdc, '30');
+  assert.deepEqual(current.cases, saved.cases);
+  for (const mutate of [
+    (r: typeof demo) => { r.operation_id = '12345678-1234-4123-8123-123456789014'; },
+    (r: typeof demo) => { r.request_id = 'invalid'; },
+    (r: typeof demo) => { r.kind = 'acceptance'; },
+    (r: typeof demo) => { r.template_case_id = 'other'; },
+    (r: typeof demo) => { (r as Record<string, unknown>).extra = true; },
+  ]) {
+    const bad = structuredClone(demo); mutate(bad);
+    await assert.rejects(retainCompletedProviderReport(path, report([reservation('profile-a'), bad])));
+    assert.deepEqual(await readFile(path), bytes);
+  }
+  const repeated = {...demo, case_id: 'demo-12345678-1234-4123-8123-123456789014', operation_id: '12345678-1234-4123-8123-123456789014'};
+  await assert.rejects(retainCompletedProviderReport(path, report([reservation('profile-a'), demo, repeated])));
+  const mislabeled = report([demo]);
+  mislabeled.cases[0].case_id = demo.case_id; mislabeled.cases[0].reserved_micro_usdc = demo.max_cost_micro_usdc;
+  await assert.rejects(retainCompletedProviderReport(path + '.demo', mislabeled));
+});
+
 test('budget rollback, substitution, malformed arithmetic and mutable profile evidence fail without changing report', async t => {
   const path = await fixture(t), saved = report([reservation('profile-a'), reservation('profile-b', '20')]);
   await retainCompletedProviderReport(path, saved); const bytes = await readFile(path);

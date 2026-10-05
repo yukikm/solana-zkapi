@@ -263,7 +263,7 @@ async fn dual_rpc_and_ready_indexer_fail_closed_with_real_vault_accounts() {
     };
     use std::sync::{
         atomic::{AtomicU8, AtomicUsize, Ordering},
-        Arc,
+        Arc, Mutex,
     };
     let (f, t) = chain_fixture();
     let path =
@@ -283,6 +283,8 @@ async fn dual_rpc_and_ready_indexer_fail_closed_with_real_vault_accounts() {
     let root_mode = Arc::new(AtomicU8::new(0));
     let (primary_mode, secondary_mode) = (Arc::new(AtomicU8::new(0)), Arc::new(AtomicU8::new(0)));
     let exit_reads = Arc::new(AtomicUsize::new(0));
+    let root_reads = Arc::new(AtomicUsize::new(0));
+    let account_minima = Arc::new(Mutex::new(Vec::new()));
     let mut tasks = vec![];
     let mut rpc_urls = vec![];
     for mode in [&primary_mode, &secondary_mode] {
@@ -291,6 +293,7 @@ async fn dual_rpc_and_ready_indexer_fail_closed_with_real_vault_accounts() {
         let fixture = f.clone();
         let exit = exit.clone();
         let reads = exit_reads.clone();
+        let minima = account_minima.clone();
         let app = Router::new().route(
             "/",
             post(move |Json(request): Json<Value>| {
@@ -299,6 +302,7 @@ async fn dual_rpc_and_ready_indexer_fail_closed_with_real_vault_accounts() {
                 let fixture = fixture.clone();
                 let exit = exit.clone();
                 let reads = reads.clone();
+                let minima = minima.clone();
                 async move {
                     let mode = mode.load(Ordering::SeqCst);
                     if mode == 3 {
@@ -312,7 +316,9 @@ async fn dual_rpc_and_ready_indexer_fail_closed_with_real_vault_accounts() {
                         })
                     } else {
                         assert_eq!(request["method"], "getAccountInfo");
-                        assert_eq!(request["params"][1]["minContextSlot"], 100);
+                        let minimum = request["params"][1]["minContextSlot"].as_u64().unwrap();
+                        assert!(matches!(minimum, 100 | 101));
+                        minima.lock().unwrap().push(minimum);
                         let value = if request["params"][0] == trusted.pool {
                             assert_eq!(request["params"][1]["commitment"], "finalized");
                             let mut account = fixture["pool_account"].clone();
@@ -343,7 +349,7 @@ async fn dual_rpc_and_ready_indexer_fail_closed_with_real_vault_accounts() {
                                 _ => Value::Null,
                             }
                         };
-                        json!({"context":{"slot":if mode==2{99}else{100}},"value":value})
+                        json!({"context":{"slot":if mode==2{99}else{minimum}},"value":value})
                     };
                     Json(json!({"jsonrpc":"2.0","id":1,"result":result}))
                 }
@@ -357,22 +363,33 @@ async fn dual_rpc_and_ready_indexer_fail_closed_with_real_vault_accounts() {
     }
     let root = f["root"].clone();
     let root_state = root_mode.clone();
+    let reads = root_reads.clone();
     let app = Router::new().route(
         "/zkapi/v1/tree/root",
         get(move || {
             let state = root_state.clone();
+            let reads = reads.clone();
             let mut root = root.clone();
             async move {
-                if state.load(Ordering::SeqCst) == 1 {
+                let mode = state.load(Ordering::SeqCst);
+                let read = reads.fetch_add(1, Ordering::SeqCst);
+                if mode == 1 || (mode == 5 && read == 0) {
                     (
                         StatusCode::SERVICE_UNAVAILABLE,
                         Json(json!({"error":"not_ready"})),
                     )
                 } else {
-                    match state.load(Ordering::SeqCst) {
+                    if mode == 7 {
+                        return (
+                            StatusCode::INTERNAL_SERVER_ERROR,
+                            Json(json!({"error":"failure"})),
+                        );
+                    }
+                    match mode {
                         2 => root["slot"] = "0100".into(),
                         3 => root["blockhash"] = "invalid".into(),
                         4 => root["next_note_id"] = "18446744073709551616".into(),
+                        6 if read > 0 => root["slot"] = "101".into(),
                         _ => {}
                     }
                     (StatusCode::OK, Json(root))
@@ -400,7 +417,9 @@ async fn dual_rpc_and_ready_indexer_fail_closed_with_real_vault_accounts() {
             endpoint.store(0, Ordering::SeqCst)
         }
     }
-    for failure in 1..=4 {
+    // Persistent 503/deadline bounds are exercised with the same retry helper's
+    // short unit-test clock; malformed observations must fail immediately here.
+    for failure in 2..=4 {
         root_mode.store(failure, Ordering::SeqCst);
         assert!(matches!(
             client.observe(nullifier).await,
@@ -435,6 +454,57 @@ async fn dual_rpc_and_ready_indexer_fail_closed_with_real_vault_accounts() {
         Err(ValidationError::Conflict("stale root"))
     ));
     client.assert_live(nullifier, Some(expected)).await.unwrap();
+    // Startup/current_root survive only the explicitly transient 503; all other
+    // responses retain their fail-closed behavior.
+    root_mode.store(5, Ordering::SeqCst);
+    root_reads.store(0, Ordering::SeqCst);
+    client.startup().await.unwrap();
+    assert_eq!(root_reads.load(Ordering::SeqCst), 2);
+    root_reads.store(0, Ordering::SeqCst);
+    client.assert_live(nullifier, Some(expected)).await.unwrap();
+    assert_eq!(root_reads.load(Ordering::SeqCst), 3);
+    // The before/after cut changes without any note-root change. Reusing the
+    // first Pool/exit observations would miss the fresh minimum of 101.
+    root_mode.store(6, Ordering::SeqCst);
+    root_reads.store(0, Ordering::SeqCst);
+    account_minima.lock().unwrap().clear();
+    let observation = client.assert_live(nullifier, Some(expected)).await.unwrap();
+    assert_eq!(observation.root.slot, "101");
+    assert_eq!(observation.primary_slot, 101);
+    assert_eq!(observation.secondary_slot, 101);
+    assert_eq!(
+        *account_minima.lock().unwrap(),
+        [100, 100, 100, 101, 101, 101]
+    );
+    assert_eq!(root_reads.load(Ordering::SeqCst), 4);
+    // A terminal denial is not retried even when a next root would change.
+    for (mode, expected_error) in [(7, "pool paused"), (1, "exit consumed")] {
+        primary_mode.store(mode, Ordering::SeqCst);
+        root_reads.store(0, Ordering::SeqCst);
+        assert!(
+            matches!(client.assert_live(nullifier, Some(expected)).await,
+            Err(ValidationError::Conflict(reason)) if reason == expected_error)
+        );
+        assert_eq!(root_reads.load(Ordering::SeqCst), 1);
+    }
+    primary_mode.store(0, Ordering::SeqCst);
+    root_reads.store(0, Ordering::SeqCst);
+    assert!(matches!(
+        client
+            .assert_live(nullifier, Some(FieldElement::ZERO))
+            .await,
+        Err(ValidationError::Conflict("stale root"))
+    ));
+    assert_eq!(root_reads.load(Ordering::SeqCst), 1);
+    root_mode.store(7, Ordering::SeqCst);
+    root_reads.store(0, Ordering::SeqCst);
+    account_minima.lock().unwrap().clear();
+    assert!(matches!(
+        client.observe(nullifier).await,
+        Err(ValidationError::Unavailable("indexer HTTP"))
+    ));
+    assert_eq!(root_reads.load(Ordering::SeqCst), 1);
+    assert!(account_minima.lock().unwrap().is_empty());
     for task in tasks {
         task.abort()
     }
