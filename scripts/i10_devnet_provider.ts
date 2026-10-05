@@ -7,7 +7,7 @@ import {basename, dirname, isAbsolute, join, resolve} from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {promisify} from 'node:util';
 import {Connection, PublicKey} from '@solana/web3.js';
-import {ControlClient, verifiedClientContext, type NoteJournal, type Tariff, type VerificationContext, type SessionVerifier} from '../packages/sdk/src/control.ts';
+import {ControlClient, verifiedClientContext, type ClientOptions, type NoteJournal, type Tariff, type VerificationContext, type SessionVerifier} from '../packages/sdk/src/control.ts';
 import {NativeSessionVerifier} from '../packages/sdk/src/control-node.ts';
 import type {EncryptedJournal} from '../packages/sdk/src/journal.ts';
 import type {NoteProver} from '../packages/sdk/src/prover.ts';
@@ -67,7 +67,7 @@ export function validateProviderSelection(plan: Plan, value: unknown, profileNam
  * calculated from the public plan. Native config validation still checks files.
  */
 export function validatePreparedProviderConfig(plan: Pick<Plan, 'models' | 'cases'>, prepared: unknown):
-  Partial<Record<'direct_oa' | 'direct_openrouter', string>> {
+  Pick<ClientOptions, 'directProviderBases' | 'oaVerifier'> {
   const providers = object(prepared); exactFields(providers, ['direct', 'proxy']);
   requireTrue(Array.isArray(providers.proxy) && Array.isArray(providers.direct));
   const proxyNames = new Set(plan.cases.filter(c => c.mode === 'proxy').map(c => c.provider));
@@ -84,6 +84,7 @@ export function validatePreparedProviderConfig(plan: Pick<Plan, 'models' | 'case
     requireTrue(expected.length > 0 && same(canonicalProfiles(config.models), canonicalProfiles(expected)));
   }
   const bases: Partial<Record<'direct_oa' | 'direct_openrouter', string>> = {};
+  let oaVerifier: ClientOptions['oaVerifier'];
   for (const value of providers.direct) {
     const config = object(value);
     requireTrue((config.provider === 'oa' || config.provider === 'openrouter') && directNames.delete(config.provider));
@@ -95,13 +96,18 @@ export function validatePreparedProviderConfig(plan: Pick<Plan, 'models' | 'case
       bases.direct_openrouter = config.inference_base as string;
     } else {
       exactFields(config, ['provider', 'issuer_base', 'verifier_base', 'inference_base', 'station_id', 'credential_file']);
-      publicHttps(config.issuer_base); publicHttps(config.verifier_base);
+      publicHttps(config.issuer_base);
       requireTrue(typeof config.station_id === 'string' && /^[\x20-\x7e]{1,128}$/.test(config.station_id));
       bases.direct_oa = publicHttps(config.inference_base);
+      const base = publicHttps(config.verifier_base);
+      requireTrue(new URL(base).href.replace(/\/$/, '') === base && !base.includes('?') && !base.includes('#'));
+      oaVerifier = {base, stationId: config.station_id};
     }
   }
   requireTrue(proxyNames.size === 0 && directNames.size === 0);
-  return bases;
+  // This is the independently installed provider profile, never key-response
+  // metadata. Preserve the verifier and station pins in both SDK instances.
+  return {directProviderBases: bases, ...(oaVerifier ? {oaVerifier} : {})};
 }
 export interface DevnetProviderContext {
   manifest: VerifiedManifest;
@@ -281,14 +287,14 @@ export async function runDevnetProviderAcceptance(options: DevnetProviderContext
     const providers = await readJson(join(configurationDir, 'providers.json'));
     const tariffs = await readJson(join(configurationDir, 'tariffs.json')) as Tariff[];
     requireTrue(same(tariffs, execution.models.map(x => x.tariff)));
-    const directProviderBases = validatePreparedProviderConfig(execution, providers);
+    const providerOptions = validatePreparedProviderConfig(execution, providers);
     const genesis = await o.connection.getGenesisHash(); requireTrue(genesis === DEVNET);
     const pool = await o.connection.getAccountInfoAndContext(new PublicKey(o.manifest.pool), 'finalized'); requireTrue(pool.value);
     const context = await verifiedClientContext(o.manifest, genesis, {address: o.manifest.pool, owner: pool.value.owner.toBase58(),
       executable: pool.value.executable, lamports: BigInt(pool.value.lamports), data: pool.value.data,
       slot: BigInt(pool.context.slot), commitment: 'finalized'}, 0n, o.artifacts);
     const verifier = new NativeSessionVerifier(o.verifier.path, o.verifier.sha256);
-    const client = new ControlClient({context, journal: o.journal, verifier, fetch: o.pinnedFetch, directProviderBases});
+    const client = new ControlClient({context, journal: o.journal, verifier, fetch: o.pinnedFetch, ...providerOptions});
     const noteId = o.noteId ?? 'note';
     const sourceHashes: Record<string, string> = {};
     for (const name of ['scripts/provider_acceptance.py', 'scripts/provider_acceptance_client.ts', 'scripts/i10_devnet_provider.ts']) {
@@ -318,7 +324,7 @@ export async function runDevnetProviderAcceptance(options: DevnetProviderContext
       requireTrue(!budget.reservations.some(r => r.case_id === testCase.id));
       let report: CaseReport;
       try { report = await runProviderAcceptanceCase({client, journal: o.journal, prover: o.prover, chain: o.chain,
-        authorizationClient: signal => new ControlClient({context, journal: o.journal, verifier, directProviderBases,
+        authorizationClient: signal => new ControlClient({context, journal: o.journal, verifier, ...providerOptions,
           fetch: (url, init) => o.pinnedFetch(url, {...init, signal: init?.signal ? AbortSignal.any([signal, init.signal]) : signal})}),
         noteId, tariff, testCase, async reserve(c) {
           requireTrue(same(c, testCase));

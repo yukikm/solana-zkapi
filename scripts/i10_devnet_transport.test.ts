@@ -71,3 +71,16 @@ test('direct transport permits only exact HTTPS chat endpoint, refuses redirects
  // A pinned local response redirect is also returned as a generic error, not followed.
  const local=createDevnetPinnedFetch({ca:cert.certificate,indexerOrigin:origin(direct)});await assert.rejects(local(origin(direct)+'/zkapi/v1/tree/root'),/redirect refused/);assert.equal(requests,1);
 });
+test('OA verifier transport permits only its pinned POST and never trusts the devnet service CA', {timeout:15_000}, async t=>{
+ const cert=await certificate(t);let handshakes=0,requests=0;
+ const verifier=await listen(tlsServer({cert:cert.certificate,key:cert.key},(_req,res)=>{requests++;res.end('{"status":"verified"}');}));cleanup(t,verifier);verifier.on('tlsClientError',()=>handshakes++);
+ const endpoint=origin(verifier)+'/api/submit_key';
+ const options={ca:cert.certificate,indexerOrigin:'https://127.0.0.1:1',oaVerifierEndpoints:[endpoint]},f=createDevnetPinnedFetch(options);
+ // Caller mutation cannot expand the independent endpoint allowlist.
+ options.oaVerifierEndpoints.push(origin(verifier)+'/other/submit_key');
+ for(const target of [endpoint+'?new=1',endpoint+'?',endpoint+'#',endpoint+'/extra',origin(verifier)+'/other/submit_key',endpoint.replace('https:','http:')])await assert.rejects(f(target,{method:'POST',body:'{}'}),/pinned service transport/);
+ await assert.rejects(f(endpoint),/pinned service transport/);assert.equal(handshakes,0);assert.equal(requests,0);
+ await assert.rejects(f(endpoint,{method:'POST',headers:{'content-type':'application/json'},body:'{}'}),/pinned service transport/);
+ await delay(100);assert.equal(handshakes,1);assert.equal(requests,0);
+ for(const invalid of [endpoint+'?',endpoint+'#',endpoint.replace('/submit_key','/chat/completions'),endpoint.replace('https:','http:')])assert.throws(()=>createDevnetPinnedFetch({...options,oaVerifierEndpoints:[invalid]}),/pinned service transport/);
+});

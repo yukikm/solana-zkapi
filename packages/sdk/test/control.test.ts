@@ -31,6 +31,11 @@ function prepared(mode: Mode = 'proxy'): PreparedSession {
 const response = (value: unknown, status = 200) => new Response(JSON.stringify(value), { status, headers: { 'Content-Type': 'application/json' } });
 const status = (mode: Mode = 'proxy', state = 'ACTIVE') => ({ request_id: requestId, mode, state, cap_micro_usdc: '100' });
 interface Call { url: string; init: RequestInit }
+const oaPin = { base: 'https://verifier.invalid', stationId: 'pinned-station' };
+const oaEvidence = () => ({ verifier_url: oaPin.base, station_id: oaPin.stationId, station_recently_attested: true,
+  key_valid_till: 230, station_signature: 'ab'.repeat(64), org_signature: 'CD'.repeat(64) });
+const oaStatus = () => ({ ...status('direct_oa'), expires_at: '210', provider_key: 'oa-secret',
+  provider_api_origin: context.inference_api_origin, provider_key_verification: oaEvidence() });
 async function setup(t: TestContext) {
   const directory = await mkdtemp(join(tmpdir(), 'zkapi-control-test-')); t.after(() => rm(directory, { recursive: true, force: true }));
   const store = await NativeJournalStore.open(directory), key = await importJournalKey(new Uint8Array(32).fill(15));
@@ -170,6 +175,156 @@ test('initial direct key remains encrypted in journal and normal GET recovery ne
   await h.restart().recover('note');
   assert.equal((await h.journal.read('note'))?.value.pending?.providerKey, 'provider-secret-once');
   assert.equal(h.calls.length, 2);
+});
+
+test('OA key without independently verifiable evidence is withheld and the same session closes', async t => {
+  const h = await setup(t); await h.client.prepare('note', prepared('direct_oa'), field(14));
+  h.setHandler(async call => response(call.url.endsWith('/close') ? status('direct_oa', 'DRAINING') : {
+    ...status('direct_oa'), expires_at: '210', provider_key: 'unattested-key', provider_api_origin: context.inference_api_origin,
+  }));
+  const result = await h.client.submit('note');
+  assert.equal(result.provider_key, undefined);
+  const pending = (await h.journal.read('note'))!.value.pending!;
+  assert.equal(pending.providerKey, undefined); assert.equal(pending.phase, 'closing');
+  assert.equal(h.calls.length, 2); assert.ok(h.calls[1].url.endsWith(`/sessions/${requestId}/close`));
+  await assert.rejects(h.client.sendDirectOperation('note', operationId, '/v1/responses', new TextEncoder().encode('{}')), /active direct/);
+});
+
+test('OA evidence is checked before key delivery, cached for use and independently rechecked after SDK restart', async t => {
+  const h = await setup(t), client = h.clientWith({ oaVerifier: oaPin });
+  let verifications = 0, inference = 0;
+  h.setHandler(async call => {
+    if (call.url.endsWith('/sessions')) return response(oaStatus());
+    if (call.url === oaPin.base + '/submit_key') {
+      verifications++;
+      const pending = (await h.journal.read('note'))!.value.pending!;
+      if (verifications === 1) { assert.equal(pending.providerKey, undefined); assert.equal(pending.phase, 'send_unknown'); }
+      assert.deepEqual(JSON.parse(call.init.body as string), { station_id: oaPin.stationId, api_key: 'oa-secret',
+        key_valid_till: 230, station_signature: 'ab'.repeat(64), org_signature: 'CD'.repeat(64) });
+      assert.deepEqual(call.init.headers, { 'Content-Type': 'application/json' });
+      assert.equal(call.init.redirect, 'error'); assert.equal(call.init.credentials, 'omit'); assert.equal(call.init.cache, 'no-store');
+      assert.ok(call.init.signal instanceof AbortSignal);
+      return response({ status: 'verified' });
+    }
+    assert.equal(call.url, context.inference_api_origin + '/responses');
+    assert.equal(new Headers(call.init.headers).get('Authorization'), 'Bearer oa-secret');
+    assert.equal((await h.journal.read('note'))!.value.pending!.operations.at(-1)!.phase, 'send_unknown');
+    inference++; return response({ output: 'fixture' });
+  });
+  await client.prepare('note', prepared('direct_oa'), field(14));
+  assert.equal((await client.submit('note')).provider_key, 'oa-secret');
+  const saved = (await h.journal.read('note'))!.value.pending!;
+  assert.deepEqual(saved.oaKeyVerification, { evidence: oaEvidence(), expiresAt: '210' });
+  await client.sendDirectOperation('note', operationId, '/v1/responses', new TextEncoder().encode('{}'));
+  assert.equal(verifications, 1);
+  const restarted = h.clientWith({ oaVerifier: oaPin });
+  await restarted.sendDirectOperation('note', crypto.randomUUID(), '/v1/responses', new TextEncoder().encode('{}'));
+  assert.equal(verifications, 2); assert.equal(inference, 2);
+  await assert.rejects(restarted.sendDirectOperation('note', operationId, '/v1/responses', new TextEncoder().encode('{}')), /cannot be replayed/);
+  assert.equal(verifications, 2); assert.equal(inference, 2);
+});
+
+test('untrusted OA evidence and verifier failures close without exposing or persisting a usable key', async t => {
+  const cases: { name: string; change?: (s: any) => void; noPin?: boolean; reply?: () => Response; crossesExpiry?: boolean }[] = [
+    { name: 'missing independent pin', noPin: true },
+    { name: 'missing evidence', change: s => delete s.provider_key_verification },
+    { name: 'null evidence', change: s => s.provider_key_verification = null },
+    { name: 'injected verifier URL', change: s => s.provider_key_verification.verifier_url = 'https://attacker.invalid' },
+    { name: 'wrong station', change: s => s.provider_key_verification.station_id = 'other-station' },
+    { name: 'malformed signature', change: s => s.provider_key_verification.org_signature = 'zz'.repeat(64) },
+    { name: 'unknown evidence field', change: s => s.provider_key_verification.api_key = 'different-key' },
+    { name: 'wrong attestation flag type', change: s => s.provider_key_verification.station_recently_attested = 'true' },
+    { name: 'string evidence expiry', change: s => s.provider_key_verification.key_valid_till = '230' },
+    { name: 'unsafe evidence expiry', change: s => s.provider_key_verification.key_valid_till = 2 ** 53 },
+    { name: 'fractional evidence expiry', change: s => s.provider_key_verification.key_valid_till = 230.5 },
+    { name: 'numeric lease expiry', change: s => s.expires_at = 210 },
+    { name: 'noncanonical lease expiry', change: s => s.expires_at = '0210' },
+    { name: 'missing lease expiry', change: s => delete s.expires_at },
+    { name: 'expired lease', change: s => { s.expires_at = '150'; s.provider_key_verification.key_valid_till = 150; } },
+    { name: 'evidence expires before lease', change: s => s.provider_key_verification.key_valid_till = 209 },
+    { name: 'excessive expiry skew', change: s => s.provider_key_verification.key_valid_till = 276 },
+    { name: 'verifier rejects substituted key', change: s => s.provider_key = 'substituted-key', reply: () => response({ status: 'rejected' }) },
+    { name: 'HTTP failure with verified body', reply: () => response({ status: 'verified' }, 503) },
+    { name: 'network timeout', reply: () => { throw new Error('fixture timeout'); } },
+    { name: 'duplicate JSON status', reply: () => new Response('{"status":"rejected","status":"verified"}') },
+    { name: 'wrong verifier status type', reply: () => response({ status: true }) },
+    { name: 'expiry crossed during verification', crossesExpiry: true },
+  ];
+  for (const c of cases) await t.test(c.name, async t => {
+    const h = await setup(t); let now = 150n;
+    const client = h.clientWith({ oaVerifier: c.noPin ? undefined : oaPin, now: () => now });
+    const value = oaStatus(); c.change?.(value);
+    h.setHandler(async call => {
+      if (call.url.endsWith('/sessions')) return response(value);
+      if (call.url === oaPin.base + '/submit_key') { if (c.crossesExpiry) now = 210n; return c.reply?.() ?? response({ status: 'verified' }); }
+      assert.ok(call.url.endsWith(`/sessions/${requestId}/close`));
+      const pending = (await h.journal.read('note'))!.value.pending!;
+      assert.equal(pending.phase, 'closing'); assert.equal(pending.providerKey, undefined); assert.equal(pending.oaKeyVerification, undefined);
+      assert.equal(pending.closeRequested, true);
+      return response(status('direct_oa', 'DRAINING'));
+    });
+    await client.prepare('note', prepared('direct_oa'), field(14));
+    const result = await client.submit('note');
+    assert.equal(result.provider_key, undefined); assert.equal(result.provider_key_verification, undefined);
+    assert.equal(h.calls.filter(c => c.url.endsWith('/sessions')).length, 1);
+    assert.equal(h.calls.filter(c => c.url.endsWith('/close')).length, 1);
+    assert.ok(h.calls.every(c => c.url.startsWith(context.control_api_origin) || c.url === oaPin.base + '/submit_key'));
+  });
+});
+
+test('OA verifier pins are detached from mutable caller options and the existing 65-second issuer skew is accepted', async t => {
+  const h = await setup(t), pins = { ...oaPin }, client = h.clientWith({ oaVerifier: pins });
+  pins.base = 'https://attacker.invalid'; pins.stationId = 'attacker';
+  h.setHandler(async call => {
+    if (call.url.endsWith('/sessions')) { const s = oaStatus(); s.provider_key_verification.key_valid_till = 275; return response(s); }
+    assert.equal(call.url, oaPin.base + '/submit_key'); return response({ status: 'verified' });
+  });
+  await client.prepare('note', prepared('direct_oa'), field(14));
+  assert.equal((await client.submit('note')).provider_key, 'oa-secret');
+});
+
+test('OA failed close retains keyless closing state and can settle without verifier access', async t => {
+  const h = await setup(t), client = h.clientWith({ oaVerifier: oaPin });
+  h.setHandler(async call => {
+    if (call.url.endsWith('/sessions')) return response(oaStatus());
+    if (call.url.endsWith('/submit_key')) return response({ status: 'rejected' });
+    assert.ok(call.url.endsWith('/close')); throw Error('close ACK lost');
+  });
+  await client.prepare('note', prepared('direct_oa'), field(14));
+  await assert.rejects(client.submit('note'), /close ACK lost/);
+  const p = (await h.journal.read('note'))!.value.pending!;
+  assert.equal(p.phase, 'closing'); assert.equal(p.providerKey, undefined); assert.equal(p.oaKeyVerification, undefined);
+  h.setHandler(async call => {
+    assert.ok(call.url.startsWith(context.control_api_origin));
+    return response(call.url.endsWith('/receipts') ? { receipts: [], next_cursor: null }
+      : { ...status('direct_oa', 'SETTLED'), settlement: settlement() });
+  });
+  await h.restart().recover('note'); assert.equal((await h.journal.read('note'))!.value.pending, null);
+  assert.equal(h.verified.settlements.length, 1);
+});
+
+test('legacy OA keys and changed saved evidence cannot bypass verification on direct send', async t => {
+  for (const change of ['legacy', 'key', 'evidence', 'expiry', 'pins'] as const) await t.test(change, async t => {
+    const h = await setup(t), client = h.clientWith({ oaVerifier: oaPin });
+    h.setHandler(async call => response(call.url.endsWith('/submit_key') ? { status: 'verified' } : oaStatus()));
+    await client.prepare('note', prepared('direct_oa'), field(14)); await client.submit('note');
+    const record = (await h.journal.read('note'))!, p = record.value.pending!;
+    if (change === 'legacy') delete p.oaKeyVerification;
+    if (change === 'key') p.providerKey = 'different-key';
+    if (change === 'evidence') p.oaKeyVerification!.evidence.station_signature = 'ef'.repeat(64);
+    if (change === 'expiry') p.oaKeyVerification!.expiresAt = '209';
+    await h.journal.compareAndSwap('note', record.revision, record.value);
+    let verifications = 0;
+    h.setHandler(async call => {
+      if (call.url.endsWith('/submit_key')) { verifications++; return response({ status: 'rejected' }); }
+      assert.ok(call.url.endsWith('/close')); return response(status('direct_oa', 'DRAINING'));
+    });
+    const sender = change === 'pins' ? h.clientWith({ oaVerifier: { ...oaPin, stationId: 'other-station' } }) : client;
+    await assert.rejects(sender.sendDirectOperation('note', operationId, '/v1/responses', new TextEncoder().encode('{}')), /OA key verification failed/);
+    const pending = (await h.journal.read('note'))!.value.pending!;
+    assert.equal(pending.providerKey, undefined); assert.equal(pending.phase, 'closing'); assert.equal(pending.operations.length, 0);
+    assert.equal(verifications, ['key', 'evidence', 'expiry'].includes(change) ? 1 : 0);
+  });
 });
 
 test('SETTLED text with failed successor verification preserves old note and unresolved authorization', async t => {

@@ -24,6 +24,7 @@ interface RuntimeConfig {
   verifier:{path:string;sha256:string}; prover:{path:string;sha256:string};
   journal:string; custody:string; note_id:string; mode:Mode; models:string[]; tariff:string; key_reuse_seconds?:number;
   rpc:string; indexer:string; direct_provider_bases?:Partial<Record<'direct_oa'|'direct_openrouter',string>>;
+  oa_verifier?:{base:string;stationId:string};
 }
 async function main(): Promise<void> {
   const [configPath,socketPath,relaySocket] = process.argv.slice(2);
@@ -54,7 +55,7 @@ async function main(): Promise<void> {
   const verifierInfo=await lstat(c.verifier.path);
   if(!verifierInfo.isFile() || (verifierInfo.mode & 0o022)!==0 || await sha256Hex(new Uint8Array(await readFile(c.verifier.path)))!==c.verifier.sha256)throw Error('native verifier artifact mismatch');
   const store=await NativeJournalStore.open(c.journal),journal=new EncryptedJournal<NoteJournal>(store,key,{deploymentId:m.deployment_id,pool:m.pool},validateNoteJournal);
-  const client=new ControlClient({context:bundle.context,journal,verifier:new NativeSessionVerifier(c.verifier.path,c.verifier.sha256),fetch:fetcher,allowLoopbackHttp:m.deployment_environment==='local',directProviderBases:c.direct_provider_bases});
+  const client=new ControlClient({context:bundle.context,journal,verifier:new NativeSessionVerifier(c.verifier.path,c.verifier.sha256),fetch:fetcher,allowLoopbackHttp:m.deployment_environment==='local',directProviderBases:c.direct_provider_bases,oaVerifier:c.oa_verifier});
   const chain=new SolanaWalletChain(connection,m,c.indexer,{fetch:fetcher,allowLoopbackHttp:m.deployment_environment==='local'});
   const wallets:V0Wallet[]=[];
   if(secret.wallet_seed_base64){const seed=Buffer.from(secret.wallet_seed_base64,'base64');if(seed.length!==32||seed.toString('base64')!==secret.wallet_seed_base64)throw Error('invalid wallet seed');const pair=Keypair.fromSeed(seed);seed.fill(0);secret.wallet_seed_base64='';wallets.push({publicKey:pair.publicKey,supportedTransactionVersions:new Set([0]),signTransaction:async(tx:VersionedTransaction)=>{tx.sign([pair]);return tx;}});}

@@ -111,6 +111,7 @@ impl DirectRuntime {
                 id,
                 &created.reference.key_ref,
                 remaining_ttl as i64,
+                provider_expires_at,
                 || async {
                     live_check().await?;
                     if now_seconds() >= provider_expires_at {
@@ -161,6 +162,7 @@ impl DirectRuntime {
                     id,
                     &reference.key_ref,
                     checkpoint.intent.ttl_seconds as i64,
+                    reference.expires_at,
                     || async { Ok(()) },
                 )
                 .await?;

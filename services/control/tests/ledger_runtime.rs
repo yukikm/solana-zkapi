@@ -1104,9 +1104,13 @@ async fn admission_expiry_cursor_and_direct_dispatch_contract() {
     ledger.finish_attempt(&a, [59; 32]).await.unwrap();
     assert_eq!(
         ledger
-            .resolve_direct_key(n.request_id, "management-ref-only", 60, || async {
-                panic!("late direct key cannot activate")
-            })
+            .resolve_direct_key(
+                n.request_id,
+                "management-ref-only",
+                60,
+                (now(&c).await + 60) as u64,
+                || async { panic!("late direct key cannot activate") }
+            )
             .await
             .unwrap()
             .state,
@@ -1267,9 +1271,13 @@ async fn final_dispatch_claim_and_direct_reference_recovery() {
     ledger.claim_dispatch(&direct_attempt).await.unwrap();
     assert!(matches!(
         ledger
-            .resolve_direct_key(direct.request_id, "failed-check-key-ref", 60, || async {
-                Err(LedgerError::Unavailable("chain_unavailable"))
-            })
+            .resolve_direct_key(
+                direct.request_id,
+                "failed-check-key-ref",
+                60,
+                (now(&c).await + 60) as u64,
+                || async { Err(LedgerError::Unavailable("chain_unavailable")) }
+            )
             .await,
         Err(LedgerError::Unavailable("chain_unavailable"))
     ));
@@ -1306,13 +1314,20 @@ async fn final_dispatch_claim_and_direct_reference_recovery() {
     ledger.claim_dispatch(&attempt).await.unwrap();
     let writer = ledger.clone();
     let id = interrupted.request_id;
+    let provider_expires_at = (now(&c).await + 60) as u64;
     let (checking, reached_check) = tokio::sync::oneshot::channel();
     let resolving = tokio::spawn(async move {
         writer
-            .resolve_direct_key(id, "interrupted-key-ref", 60, || async {
-                checking.send(()).unwrap();
-                std::future::pending::<Result<()>>().await
-            })
+            .resolve_direct_key(
+                id,
+                "interrupted-key-ref",
+                60,
+                provider_expires_at,
+                || async {
+                    checking.send(()).unwrap();
+                    std::future::pending::<Result<()>>().await
+                },
+            )
             .await
     });
     reached_check.await.unwrap();
@@ -1331,20 +1346,93 @@ async fn final_dispatch_claim_and_direct_reference_recovery() {
     assert_eq!(ledger.session(id).await.unwrap().state, "ISSUING");
     assert!(matches!(
         ledger
-            .resolve_direct_key(id, "replacement-key-ref", 60, || async {
-                panic!("a different provider reference cannot replace the observed key")
-            })
+            .resolve_direct_key(
+                id,
+                "replacement-key-ref",
+                60,
+                provider_expires_at,
+                || async {
+                    panic!("a different provider reference cannot replace the observed key")
+                }
+            )
             .await,
         Err(LedgerError::Conflict("direct_key_reference_conflict"))
     ));
     let recovered = ledger
-        .resolve_direct_key(id, "interrupted-key-ref", 60, || async {
-            panic!("a recovered key cannot be activated or delivered")
-        })
+        .resolve_direct_key(
+            id,
+            "interrupted-key-ref",
+            60,
+            provider_expires_at,
+            || async { panic!("a recovered key cannot be activated or delivered") },
+        )
         .await
         .unwrap();
     assert_eq!(recovered.state, "DRAINING");
     assert!(recovered.close_requested);
     assert_eq!(recovered.activated_at, None);
     println!("PASS real PostgreSQL: final claim rejects paused pool and UNKNOWN operation; issued key reference survives failed or cancelled final check and retries only drain");
+}
+
+#[tokio::test]
+#[ignore = "requires an isolated PostgreSQL admin connection"]
+async fn delayed_direct_activation_caps_expiry_and_drains_expired_keys() {
+    let (url, c) = database().await;
+    let identity = identity();
+    let runtime_url = runtime_writer_url(&url, &c).await;
+    let ledger = Ledger::connect(&runtime_url, &identity).await.unwrap();
+    ledger.set_accepting(true).await.unwrap();
+    let tariff = tariff(&ledger).await;
+    for (nullifier, provider_ttl) in [(84, 60), (85, 1)] {
+        let q = quote(&ledger, tariff, now(&c).await + 120).await;
+        let mut direct = new_session(&q, [nullifier; 32]);
+        direct.mode = "direct_oa".into();
+        direct.provider = "oa".into();
+        direct.proxy_secret_hash = None;
+        ledger
+            .reserve_session(&direct, || async { Ok(()) })
+            .await
+            .unwrap();
+        let attempt = ledger
+            .begin_direct_issuance(direct.request_id, Uuid::new_v4(), || async { Ok(()) })
+            .await
+            .unwrap();
+        ledger.claim_dispatch(&attempt).await.unwrap();
+        let before_check = now(&c).await;
+        let provider_expires_at = (before_check + provider_ttl) as u64;
+        let resolved = ledger
+            .resolve_direct_key(
+                direct.request_id,
+                "delayed-provider-key",
+                provider_ttl,
+                provider_expires_at,
+                || async {
+                    // At least one database-clock second passes after the TTL
+                    // was computed, reproducing a slow final chain observation.
+                    tokio::time::sleep(Duration::from_millis(1_100)).await;
+                    Ok(())
+                },
+            )
+            .await
+            .unwrap();
+        assert_eq!(
+            ledger
+                .provider_key_ref(direct.request_id)
+                .await
+                .unwrap()
+                .as_deref(),
+            Some("delayed-provider-key")
+        );
+        if provider_ttl == 60 {
+            assert_eq!(resolved.state, "ACTIVE");
+            assert!(resolved.activated_at.unwrap() > before_check);
+            assert_eq!(resolved.expires_at, Some(provider_expires_at as i64));
+            assert!(resolved.expires_at.unwrap() > resolved.activated_at.unwrap());
+        } else {
+            assert_eq!(resolved.state, "DRAINING");
+            assert!(resolved.close_requested);
+            assert_eq!(resolved.activated_at, None);
+            assert_eq!(resolved.expires_at, None);
+        }
+    }
 }

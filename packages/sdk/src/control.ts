@@ -86,9 +86,17 @@ export interface Operation {
   id: string; path: string; anthropicVersion: string; bodyBase64: string;
   phase: 'prepared' | 'send_unknown' | 'response_received' | 'not_accepted';
 }
+/** OA's signed key evidence. The verifier and station are independently pinned
+ * in ClientOptions; these response fields never select a network destination. */
+export interface OaKeyVerification {
+  verifier_url: string; station_id: string; station_recently_attested: boolean;
+  key_valid_till: number; station_signature: string; org_signature: string;
+}
 export interface PendingSession {
   prepared: PreparedSession; exactRequest: string; phase: 'prepared' | 'send_unknown' | 'active' | 'closing';
   providerKey?: string; serverState?: string; operations: Operation[];
+  /** Evidence, not a persisted assertion of trust. A new client re-verifies it. */
+  oaKeyVerification?: { evidence: OaKeyVerification; expiresAt: string };
   /** Preserve close intent while an unacknowledged create still needs exact POST recovery. */
   closeRequested?: boolean;
 }
@@ -103,6 +111,7 @@ export interface SessionStatus {
   request_id: string; mode: Mode; state: string; cap_micro_usdc: string;
   issued_at?: string; expires_at?: string; settlement?: Settlement;
   provider_key?: string; provider_api_origin?: string; last_error_code?: string;
+  provider_key_verification?: OaKeyVerification;
 }
 const states = new Set(['RESERVED', 'ISSUING', 'ISSUANCE_UNKNOWN', 'ACTIVE', 'DRAINING', 'RECONCILING', 'SIGN_PENDING', 'SETTLED']);
 const routes = new Set(['/v1/chat/completions', '/v1/responses', '/v1/messages', '/v1/messages/count_tokens']);
@@ -178,6 +187,9 @@ export interface ClientOptions {
    * Absent entries refuse key delivery and close the session; never infer a
    * destination from an untrusted response or fall back to proxy. */
   directProviderBases?: Partial<Record<'direct_oa' | 'direct_openrouter', string>>;
+  /** Installed independently of control responses/attestation. Missing pins
+   * disable OA key use while leaving close and settlement available. */
+  oaVerifier?: { base: string; stationId: string };
 }
 export class ControlHttpError extends Error {
   readonly status: number;
@@ -210,8 +222,10 @@ export async function createCredentials(mode: Mode): Promise<{
 export class ControlClient {
   private readonly config: VerificationContext;
   private readonly options: ClientOptions;
+  private readonly verifiedOaKeys = new Map<string, string>();
   constructor(options: ClientOptions) {
-    this.options = { ...options, directProviderBases: { ...options.directProviderBases } }; this.config = structuredClone(options.context);
+    this.options = { ...options, directProviderBases: { ...options.directProviderBases },
+      oaVerifier: options.oaVerifier && { ...options.oaVerifier } }; this.config = structuredClone(options.context);
     for (const origin of [this.config.control_api_origin, this.config.inference_api_origin]) {
       const u = new URL(origin);
       requireTrue(u.origin === origin && !u.username && !u.password && !u.search && !u.hash && u.pathname === '/', 'canonical origin required');
@@ -219,6 +233,14 @@ export class ControlClient {
     }
     for (const base of Object.values(this.options.directProviderBases ?? {})) {
       const u = new URL(base); requireTrue(u.protocol === 'https:' && !u.username && !u.password && !u.search && !u.hash, 'invalid direct provider base');
+    }
+    if (this.options.oaVerifier) {
+      const { base, stationId } = this.options.oaVerifier, u = new URL(base);
+      requireTrue(u.protocol === 'https:' && !u.username && !u.password && !u.search && !u.hash
+        && !base.includes('?') && !base.includes('#')
+        && (u.href === base || u.origin === base) && !base.endsWith('/'), 'canonical OA verifier base required');
+      requireTrue(typeof stationId === 'string' && stationId.length > 0 && new TextEncoder().encode(stationId).length <= 128
+        && !/[\u0000-\u001f\u007f-\u009f]/.test(stationId), 'invalid OA station pin');
     }
   }
   private async record(noteId: string): Promise<JournalRecord<NoteJournal>> {
@@ -244,6 +266,54 @@ export class ControlClient {
     });
   }
   private path(p: PendingSession): string { return `/zkapi/v1/sessions/${p.prepared.request.authorization.request_id}`; }
+  private async verifyOaKey(p: PendingSession, key: string, evidence: unknown, expiresAt: unknown): Promise<void> {
+    const pin = this.options.oaVerifier; requireTrue(pin, 'OA verifier pin required');
+    object(evidence);
+    requireTrue(Object.keys(evidence).sort().join(',') === 'key_valid_till,org_signature,station_id,station_recently_attested,station_signature,verifier_url', 'invalid OA evidence fields');
+    requireTrue(evidence.verifier_url === pin.base && evidence.station_id === pin.stationId
+      && typeof evidence.station_recently_attested === 'boolean', 'OA evidence pin mismatch');
+    for (const signature of [evidence.station_signature, evidence.org_signature])
+      requireTrue(typeof signature === 'string' && /^[0-9a-fA-F]{128}$/.test(signature), 'invalid OA signature');
+    requireTrue(typeof key === 'string' && key.length > 0 && key.length <= 4096 && !/\s/.test(key), 'invalid OA key');
+    requireTrue(typeof expiresAt === 'string' && /^(0|[1-9][0-9]{0,19})$/.test(expiresAt), 'invalid OA lease expiry');
+    requireTrue(typeof evidence.key_valid_till === 'number' && Number.isSafeInteger(evidence.key_valid_till)
+      && evidence.key_valid_till > 0, 'invalid OA evidence expiry');
+    const expiry = BigInt(expiresAt), validTill = BigInt(evidence.key_valid_till);
+    // Preserve the existing issuer adapter's maximum 65-second clock allowance.
+    requireTrue(validTill >= expiry && validTill - expiry <= 65n, 'OA evidence does not cover lease');
+    const fresh = () => requireTrue(expiry > (this.options.now?.() ?? BigInt(Math.floor(Date.now() / 1000))), 'OA lease expired');
+    fresh();
+    const id = p.prepared.request.authorization.request_id;
+    const binding = await sha256Hex(jcsBytes({ key, evidence, expiresAt, pin,
+      requestId: id, providerBase: this.options.directProviderBases?.direct_oa ?? null }));
+    if (this.verifiedOaKeys.get(id) !== binding) {
+      const response = await (this.options.fetch ?? globalThis.fetch)(pin.base + '/submit_key', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ station_id: evidence.station_id, api_key: key, key_valid_till: evidence.key_valid_till,
+          station_signature: evidence.station_signature, org_signature: evidence.org_signature }),
+        redirect: 'error', credentials: 'omit', cache: 'no-store', signal: AbortSignal.timeout(60_000),
+      });
+      if (!response.ok) { await response.body?.cancel(); throw new Error('OA verifier unavailable'); }
+      const verified = await this.json(response); object(verified);
+      requireTrue(verified.status === 'verified', 'OA verifier rejected key');
+      fresh();
+      this.verifiedOaKeys.set(id, binding);
+    }
+    fresh();
+  }
+  private discardDirectKey(p: PendingSession): void {
+    delete p.providerKey; delete p.oaKeyVerification;
+    this.verifiedOaKeys.delete(p.prepared.request.authorization.request_id);
+    p.phase = 'closing'; p.closeRequested = true;
+  }
+  private async closePending(noteId: string, r: JournalRecord<NoteJournal>): Promise<SessionStatus | undefined> {
+    const p = r.value.pending!;
+    const response = await this.fetch(this.path(p) + '/close', 'POST', p.prepared.control_token);
+    if (!response.ok) throw new ControlHttpError(response.status);
+    const closed = await this.json(response); object(closed);
+    // No recursive polling. A later explicit recover resumes a pending close.
+    if (closed.state === 'SETTLED') return this.accept(noteId, r, closed, false);
+  }
   async quote(request: { mode: Mode; provider: Quote['body']['provider']; models: string[]; session_ttl_seconds?: string }, tariff: Tariff): Promise<Quote> {
     const wanted = structuredClone(request), frozenTariff = structuredClone(tariff);
     object(wanted);
@@ -347,16 +417,25 @@ export class ControlClient {
   private async accept(noteId: string, r: JournalRecord<NoteJournal>, raw: unknown, initial: boolean): Promise<SessionStatus> {
     object(raw); const status = raw as unknown as SessionStatus; const p = r.value.pending!;
     const q = p.prepared.request.quote.body;
-    requireTrue(Object.keys(raw).every(k => ['request_id','mode','state','cap_micro_usdc','issued_at','expires_at','settlement','provider_key','provider_api_origin','last_error_code'].includes(k)), 'unknown session field');
+    requireTrue(Object.keys(raw).every(k => ['request_id','mode','state','cap_micro_usdc','issued_at','expires_at','settlement','provider_key','provider_api_origin','provider_key_verification','last_error_code'].includes(k)), 'unknown session field');
     requireTrue(status.request_id === p.prepared.request.authorization.request_id && status.mode === q.mode
       && status.cap_micro_usdc === q.cap_micro_usdc && states.has(status.state), 'session identity mismatch');
     p.serverState = status.state;
+    requireTrue(status.provider_key_verification === undefined || initial && q.mode === 'direct_oa' && status.provider_key !== undefined, 'unexpected OA evidence');
     if (status.provider_key !== undefined) {
       requireTrue(initial && p.prepared.request.authorization.mode !== 'proxy' && status.state === 'ACTIVE'
         && typeof status.provider_key === 'string' && status.provider_key.length > 0 && status.provider_key.length <= 8192, 'unexpected provider key');
-      if (p.closeRequested || p.phase === 'closing') { delete status.provider_key; delete status.provider_api_origin; }
-      else if (status.provider_api_origin === this.options.directProviderBases?.[p.prepared.request.authorization.mode]) p.providerKey = status.provider_key;
-      else { p.phase = 'closing'; delete status.provider_key; delete status.provider_api_origin; }
+      if (p.closeRequested || p.phase === 'closing'
+        || !this.options.directProviderBases?.[p.prepared.request.authorization.mode]
+        || status.provider_api_origin !== this.options.directProviderBases?.[p.prepared.request.authorization.mode]) this.discardDirectKey(p);
+      else if (q.mode === 'direct_oa') {
+        try {
+          await this.verifyOaKey(p, status.provider_key, status.provider_key_verification, status.expires_at);
+          p.oaKeyVerification = { evidence: structuredClone(status.provider_key_verification!), expiresAt: status.expires_at! };
+          p.providerKey = status.provider_key;
+        } catch { this.discardDirectKey(p); }
+      } else p.providerKey = status.provider_key;
+      if (!p.providerKey) { delete status.provider_key; delete status.provider_api_origin; delete status.provider_key_verification; }
     }
     if (status.state === 'SETTLED') {
       requireTrue(status.settlement && !status.provider_key, 'missing settlement');
@@ -376,19 +455,17 @@ export class ControlClient {
       }
       r.value.history.push({ previous: r.value.state, prepared: p.prepared, settlement: status.settlement, receipts, operations: p.operations });
       r.value.state = next; r.value.pending = null; await this.save(noteId, r);
+      this.verifiedOaKeys.delete(p.prepared.request.authorization.request_id);
       return status;
     }
     requireTrue(status.settlement === undefined, 'premature settlement');
+    // Legacy key-only journals remain readable for recovery, never for OA use.
+    if (q.mode === 'direct_oa' && p.providerKey && !p.oaKeyVerification) this.discardDirectKey(p);
     const closeRequired = p.closeRequested === true || p.phase === 'closing' || q.mode !== 'proxy' && !p.providerKey;
     p.phase = closeRequired ? 'closing' : 'active'; r = await this.save(noteId, r);
     if (closeRequired) {
       // Losing a direct key is not permission to issue another key or change mode.
-      const response = await this.fetch(this.path(p) + '/close', 'POST', p.prepared.control_token);
-      if (!response.ok) throw new ControlHttpError(response.status);
-      const closed = await this.json(response); object(closed);
-      // A close response may already contain the signed successor. Avoid recursive
-      // polling; persist closing and let caller schedule the next explicit recover.
-      if (closed.state === 'SETTLED') return this.accept(noteId, r, closed, false);
+      const closed = await this.closePending(noteId, r); if (closed) return closed;
     }
     return status;
   }
@@ -458,6 +535,15 @@ export class ControlClient {
       requireTrue(mode !== 'direct_openrouter' || path === '/v1/chat/completions', 'unsupported direct route');
       const base = this.options.directProviderBases?.[mode]; requireTrue(base, 'pinned direct provider required');
       requireTrue(!p.operations.some(o => o.id === operationId) && !r.value.history.some(h => h.operations.some(o => o.id === operationId)), 'direct inference cannot be replayed');
+      if (mode === 'direct_oa') {
+        try { await this.verifyOaKey(p, p.providerKey, p.oaKeyVerification?.evidence, p.oaKeyVerification?.expiresAt); }
+        catch {
+          this.discardDirectKey(p); const saved = await this.save(noteId, r);
+          await this.closePending(noteId, saved);
+          throw new Error('OA key verification failed; session closing');
+        }
+      }
+      signal?.throwIfAborted();
       p.operations.push({ id: operationId, path, anthropicVersion: '', bodyBase64: Buffer.from(bytes).toString('base64'), phase: 'send_unknown' });
       await this.save(noteId, r);
       return { base, key: p.providerKey };

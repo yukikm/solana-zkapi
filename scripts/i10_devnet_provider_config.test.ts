@@ -19,7 +19,7 @@ function fixture() {
       credential_file: '/fixture/openrouter-management.credential', settlement_grace_seconds: 60}]};
   return {plan, providers};
 }
-const expected = {direct_openrouter: 'https://openrouter.ai/api/v1'};
+const expected = {directProviderBases: {direct_openrouter: 'https://openrouter.ai/api/v1'}};
 const refused = /Provider acceptance incomplete/;
 
 test('normalizer profile projection matches canonically independent of provider/model/object-key order', () => {
@@ -89,12 +89,23 @@ test('an explicitly planned OA direct entry preserves exact normalizer fields an
   const oa = {provider: 'oa', issuer_base: 'https://issuer.invalid/api', verifier_base: 'https://verifier.invalid/api',
     inference_base: 'https://inference.invalid/v1', station_id: 'public-fixture', credential_file: '/fixture/oa.credential'};
   (providers.direct as any[]).push(oa);
-  assert.deepEqual(validatePreparedProviderConfig(plan, providers), {...expected, direct_oa: oa.inference_base});
+  assert.deepEqual(validatePreparedProviderConfig(plan, providers), {
+    directProviderBases: {...expected.directProviderBases, direct_oa: oa.inference_base},
+    oaVerifier: {base: oa.verifier_base, stationId: oa.station_id},
+  });
   for (const key of ['issuer_base', 'verifier_base', 'inference_base']) {
     for (const invalid of ['http://127.0.0.1:12345', 'https://user:secret@fixture.invalid', 'https://fixture.invalid?override=1']) {
       const changed = structuredClone(providers); (changed.direct[1] as any)[key] = invalid;
       assert.throws(() => validatePreparedProviderConfig(plan, changed), refused);
     }
+  }
+  for (const invalid of ['https://verifier.invalid/api/', 'https://VERIFIER.invalid/api', 'https://verifier.invalid:443/api', 'https://verifier.invalid/other/../api', 'https://verifier.invalid/api?', 'https://verifier.invalid/api#']) {
+    const changed = structuredClone(providers); (changed.direct[1] as any).verifier_base = invalid;
+    assert.throws(() => validatePreparedProviderConfig(plan, changed), refused, 'verifier base must be canonical');
+  }
+  for (const invalid of ['', 'trusted\nstation', 'x'.repeat(129)]) {
+    const changed = structuredClone(providers); (changed.direct[1] as any).station_id = invalid;
+    assert.throws(() => validatePreparedProviderConfig(plan, changed), refused, 'station pin must be valid before RPC or AUTH');
   }
 });
 
@@ -111,7 +122,7 @@ test('selected native and UI cases retain the full parent identity and exact sel
   assert.equal(native.models.length, 1); assert.equal(native.models[0].tariff.provider, 'openai');
   assert.equal(native.models[0].tariff.tariff_hash, plan.models[0].tariff.tariff_hash);
   const prepared = {direct: [], proxy: providers.proxy.filter(p => p.provider === 'openai')};
-  assert.deepEqual(validatePreparedProviderConfig(native, prepared), {});
+  assert.deepEqual(validatePreparedProviderConfig(native, prepared), {directProviderBases: {}});
   assert.throws(() => validatePreparedProviderConfig(native, providers), refused, 'full parent config cannot leak into subset');
   const ui = validateProviderSelection(plan, {...selection, profile: 'openai-ui', case_ids: ['openai-chat-plain']}, 'openai-ui');
   assert.deepEqual(ui.cases.map(c => c.id), ['openai-chat-plain']);

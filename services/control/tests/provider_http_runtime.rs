@@ -1,5 +1,6 @@
 //! I06/I07 full HTTP path with local provider wire fixtures, real PostgreSQL,
 //! request proofs, signed receipts, and the isolated sign-once settlement signer.
+//! The OA delivery tests explicitly use synthetic RPC accounts, not SBF exports.
 //! No live provider credentials or public RPC are used.
 #[path = "support/operations.rs"]
 mod operations;
@@ -202,6 +203,18 @@ impl Drop for Fixture {
     }
 }
 async fn fixture_app(provider_origin: &str, direct: bool) -> Result<Fixture> {
+    fixture_app_for_mode(
+        provider_origin,
+        if direct { "direct_openrouter" } else { "proxy" },
+        None,
+    )
+    .await
+}
+async fn fixture_app_for_mode(
+    provider_origin: &str,
+    mode: &str,
+    chain: Option<Value>,
+) -> Result<Fixture> {
     let base = std::env::var("ZKAPI_TEST_DATABASE_URL")?;
     let admin = db(&base).await;
     let name = format!("i07_http_{}", Uuid::new_v4().simple());
@@ -217,7 +230,10 @@ async fn fixture_app(provider_origin: &str, direct: bool) -> Result<Fixture> {
     let dir = directory.path();
     std::fs::set_permissions(dir, std::fs::Permissions::from_mode(0o700))?;
     let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
-    let chain: Value = serde_json::from_slice(&std::fs::read(root.join("target/i05/chain.json"))?)?;
+    let chain: Value = match chain {
+        Some(chain) => chain,
+        None => serde_json::from_slice(&std::fs::read(root.join("target/i05/chain.json"))?)?,
+    };
     let mut tasks = vec![];
     let mut rpc = vec![];
     let monitoring_fault = Arc::new(AtomicUsize::new(0));
@@ -287,8 +303,12 @@ async fn fixture_app(provider_origin: &str, direct: bool) -> Result<Fixture> {
             }],
         }],
     };
-    if direct {
-        tariff.provider = wire::Provider::Openrouter;
+    if mode != "proxy" {
+        tariff.provider = if mode == "direct_oa" {
+            wire::Provider::Oa
+        } else {
+            wire::Provider::Openrouter
+        };
         tariff.model = "*".into();
         tariff.pricing_basis = "provider_reported_usd".into();
         tariff.rates.clear();
@@ -297,11 +317,21 @@ async fn fixture_app(provider_origin: &str, direct: bool) -> Result<Fixture> {
         config.providers = ProviderConfig {
             dispatcher: None,
             proxy: vec![],
-            direct: vec![zkapi_control::direct::DirectConfig::Openrouter {
-                api_base: format!("{provider_origin}/api/v1"),
-                credential_file: dir.join("provider.key"),
-                inference_base: format!("{provider_origin}/api/v1"),
-                settlement_grace_seconds: 0,
+            direct: vec![if mode == "direct_oa" {
+                zkapi_control::direct::DirectConfig::Oa {
+                    issuer_base: provider_origin.into(),
+                    verifier_base: provider_origin.into(),
+                    credential_file: dir.join("provider.key"),
+                    inference_base: format!("{provider_origin}/api/v1"),
+                    station_id: "pinned-station".into(),
+                }
+            } else {
+                zkapi_control::direct::DirectConfig::Openrouter {
+                    api_base: format!("{provider_origin}/api/v1"),
+                    credential_file: dir.join("provider.key"),
+                    inference_base: format!("{provider_origin}/api/v1"),
+                    settlement_grace_seconds: 0,
+                }
             }],
         };
     }
@@ -769,6 +799,7 @@ async fn direct_http_one_time_key_and_durable_usage_before_lost_delete() -> Resu
     )
     .await;
     assert_eq!(created["provider_key"], "I06_PLAINTEXT_KEY_CANARY");
+    assert!(created.get("provider_key_verification").is_none());
     assert_eq!(created["state"], "ACTIVE");
     let retry = response(
         client
@@ -779,6 +810,7 @@ async fn direct_http_one_time_key_and_durable_usage_before_lost_delete() -> Resu
     )
     .await;
     assert!(retry.get("provider_key").is_none());
+    assert!(retry.get("provider_key_verification").is_none());
     let state = response(
         client
             .get(format!("{sessions}/{id}"))
@@ -787,6 +819,7 @@ async fn direct_http_one_time_key_and_durable_usage_before_lost_delete() -> Resu
     )
     .await;
     assert!(state.get("provider_key").is_none());
+    assert!(state.get("provider_key_verification").is_none());
     fixture.app.ledger.close(id).await?;
     // First finalization obtains final usage and then loses deletion confirmation.
     for _ in 0..10 {
@@ -837,11 +870,233 @@ async fn direct_http_one_time_key_and_durable_usage_before_lost_delete() -> Resu
     Ok(())
 }
 
-async fn direct_request(fixture: &Fixture) -> Result<(wire::SessionCreate, String)> {
+struct OaDirectFixture {
+    fixture: Fixture,
+    evidence: Arc<tokio::sync::Mutex<Value>>,
+    creates: Arc<AtomicUsize>,
+    verifies: Arc<AtomicUsize>,
+}
+/// Explicit synthetic RPC input for OA HTTP delivery tests only. Real request
+/// proofs and the unchanged chain account validator still run; this is not a
+/// Vault/SBF execution result and must never replace target/i05/chain.json.
+fn synthetic_oa_chain() -> Value {
+    use base64::engine::general_purpose::STANDARD;
+    use solana_pubkey::Pubkey;
+    let fixture = fixture();
+    let request = &fixture["auth"]["request"]["public_inputs"];
+    let withdrawal = &fixture["auth"]["withdrawal"]["public_inputs"];
+    let program = Pubkey::new_from_array([43; 32]);
+    let (pool, bump) = Pubkey::find_program_address(&[b"pool", &[2; 32]], &program);
+    assert_eq!(pool.to_string(), local_binding().pool);
+    let mut raw = vec![0u8; 422];
+    raw[..8].copy_from_slice(&wire::sha256(b"account:PoolConfig")[..8]);
+    raw[8] = 2;
+    raw[9] = bump;
+    raw[42..74].copy_from_slice(&[4; 32]);
+    raw[74..106].copy_from_slice(&wire::pubkey(zkapi_control::chain::SPL_TOKEN_PROGRAM).unwrap());
+    raw[106] = 6;
+    for (offset, value) in [
+        (107, &request[2]),
+        (203, &request[4]),
+        (235, &request[5]),
+        (267, &withdrawal[6]),
+        (299, &withdrawal[7]),
+    ] {
+        let field: zkapi_solana_types::FieldElement = value.as_str().unwrap().parse().unwrap();
+        raw[offset..offset + 32].copy_from_slice(field.as_bytes());
+    }
+    raw[331..339].copy_from_slice(&2_592_000u64.to_le_bytes());
+    raw[339..347].copy_from_slice(&86_400u64.to_le_bytes());
+    raw[347..355].copy_from_slice(&1_000_000u64.to_le_bytes());
+    raw[356..358].copy_from_slice(&[1, 1]);
+    raw[358..390].copy_from_slice(&wire::hash(zkapi_control::chain::PROFILE_HASH).unwrap());
+    raw[390..422].copy_from_slice(&[2; 32]);
+    json!({"scope":"synthetic RPC accounts for OA delivery tests; no SBF execution",
+        "pool":pool.to_string(),
+        "pool_account":{"owner":program.to_string(),"executable":false,"lamports":100000000,
+            "data":[STANDARD.encode(raw),"base64"]},
+        // No monitoring/tree snapshot is exercised by these OA delivery tests.
+        "tree_account":null,
+        "root":{"pool":pool.to_string(),"root":request[3],"slot":"100",
+            "blockhash":bs58::encode([1;32]).into_string(),"sequence":"1","next_note_id":"1"}})
+}
+async fn oa_direct_fixture(verified: bool) -> Result<OaDirectFixture> {
+    use axum::http::HeaderMap;
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await?;
+    let origin = format!("http://{}", listener.local_addr()?);
+    let creates = Arc::new(AtomicUsize::new(0));
+    let verifies = Arc::new(AtomicUsize::new(0));
+    let evidence = Arc::new(tokio::sync::Mutex::new(Value::Null));
+    let create_count = creates.clone();
+    let verify_count = verifies.clone();
+    let create_evidence = evidence.clone();
+    let verify_evidence = evidence.clone();
+    let issuer = origin.clone();
+    let router = Router::new()
+        .route("/api/zkapi/request_key", post(move |headers: HeaderMap, Json(body): Json<Value>| {
+            let count = create_count.clone();
+            let saved = create_evidence.clone();
+            let issuer = issuer.clone();
+            async move {
+                assert_eq!(headers["authorization"], "Bearer fixture-provider-secret");
+                count.fetch_add(1, Ordering::SeqCst);
+                let expiry = std::time::SystemTime::now()
+                    .duration_since(std::time::UNIX_EPOCH).unwrap().as_secs() + 60;
+                let proof = json!({"verifier_url":issuer,"station_id":"pinned-station",
+                    "station_recently_attested":true,"key_valid_till":expiry,
+                    "station_signature":"ab".repeat(64),"org_signature":"cd".repeat(64)});
+                *saved.lock().await = proof.clone();
+                Json(json!({"source":"oa_org","key":"OA_HTTP_KEY_CANARY","key_hash":"oa-management-reference",
+                    "credit_limit":body["credit_limit"],"duration_minutes":body["duration_minutes"],
+                    "expires_at_unix":expiry,"station_id":proof["station_id"],
+                    "station_recently_attested":proof["station_recently_attested"],
+                    "station_signature":proof["station_signature"],"org_signature":proof["org_signature"],
+                    "verifier_url":proof["verifier_url"],"openrouter_api_base":format!("{issuer}/api/v1")}))
+            }
+        }))
+        .route("/submit_key", post(move |headers: HeaderMap, Json(body): Json<Value>| {
+            let count = verify_count.clone();
+            let saved = verify_evidence.clone();
+            async move {
+                assert!(!headers.contains_key("authorization"));
+                let proof = saved.lock().await;
+                assert_eq!(body, json!({"api_key":"OA_HTTP_KEY_CANARY","station_id":proof["station_id"],
+                    "key_valid_till":proof["key_valid_till"],"station_signature":proof["station_signature"],
+                    "org_signature":proof["org_signature"]}));
+                count.fetch_add(1, Ordering::SeqCst);
+                Json(json!({"status":if verified {"verified"} else {"rejected"}}))
+            }
+        }));
+    let task = tokio::spawn(async move { axum::serve(listener, router).await.unwrap() });
+    let mut fixture =
+        fixture_app_for_mode(&origin, "direct_oa", Some(synthetic_oa_chain())).await?;
+    fixture.tasks.push(task);
+    Ok(OaDirectFixture {
+        fixture,
+        evidence,
+        creates,
+        verifies,
+    })
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+#[ignore = "requires disposable PostgreSQL; explicit synthetic RPC accounts, no SBF"]
+async fn oa_http_first_delivery_includes_original_evidence_without_replay() -> Result<()> {
+    let OaDirectFixture {
+        fixture,
+        evidence,
+        creates,
+        verifies,
+    } = oa_direct_fixture(true).await?;
+    let (request, control) = direct_request_for(&fixture, "direct_oa", "oa").await?;
     let client = reqwest::Client::new();
-    let quote:wire::Quote=serde_json::from_value(response(client.post(format!("{}/zkapi/v1/quotes",fixture.origin)).json(&json!({"mode":"direct_openrouter","provider":"openrouter","models":["*"],"session_ttl_seconds":"60"})),200).await)?;
+    let sessions = format!("{}/zkapi/v1/sessions", fixture.origin);
+    let created = response(
+        client
+            .post(&sessions)
+            .header("authorization", &control)
+            .json(&request),
+        201,
+    )
+    .await;
+    assert_eq!(created["state"], "ACTIVE");
+    assert_eq!(created["provider_key"], "OA_HTTP_KEY_CANARY");
+    assert_eq!(created["provider_key_verification"], *evidence.lock().await);
+    assert_eq!(verifies.load(Ordering::SeqCst), 1);
+    let retry = response(
+        client
+            .post(&sessions)
+            .header("authorization", &control)
+            .json(&request),
+        200,
+    )
+    .await;
+    let state = response(
+        client
+            .get(format!("{sessions}/{}", request.authorization.request_id))
+            .header("authorization", &control),
+        200,
+    )
+    .await;
+    for value in [retry, state] {
+        assert_eq!(value["state"], "ACTIVE");
+        assert!(value.get("provider_key").is_none());
+        assert!(value.get("provider_key_verification").is_none());
+        assert!(!value.to_string().contains("OA_HTTP_KEY_CANARY"));
+    }
+    assert_eq!(creates.load(Ordering::SeqCst), 1);
+    assert_eq!(verifies.load(Ordering::SeqCst), 1);
+    let id = wire::uuid(&request.authorization.request_id)?;
+    let checkpoint = fixture.app.ledger.direct_checkpoint(id).await?.unwrap();
+    assert!(!checkpoint.to_string().contains("OA_HTTP_KEY_CANARY"));
+    assert!(checkpoint.get("verification").is_none());
+    Ok(())
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+#[ignore = "requires disposable PostgreSQL; explicit synthetic RPC accounts, no SBF"]
+async fn oa_http_server_verifier_rejection_never_delivers_key_or_evidence() -> Result<()> {
+    let OaDirectFixture {
+        fixture,
+        creates,
+        verifies,
+        ..
+    } = oa_direct_fixture(false).await?;
+    let (request, control) = direct_request_for(&fixture, "direct_oa", "oa").await?;
+    let client = reqwest::Client::new();
+    let sessions = format!("{}/zkapi/v1/sessions", fixture.origin);
+    let created = response(
+        client
+            .post(&sessions)
+            .header("authorization", &control)
+            .json(&request),
+        201,
+    )
+    .await;
+    let retry = response(
+        client
+            .post(&sessions)
+            .header("authorization", &control)
+            .json(&request),
+        200,
+    )
+    .await;
+    let state = response(
+        client
+            .get(format!("{sessions}/{}", request.authorization.request_id))
+            .header("authorization", &control),
+        200,
+    )
+    .await;
+    for value in [created, retry, state] {
+        assert_eq!(value["state"], "DRAINING");
+        assert!(value.get("provider_key").is_none());
+        assert!(value.get("provider_key_verification").is_none());
+        assert!(!value.to_string().contains("OA_HTTP_KEY_CANARY"));
+    }
+    let id = wire::uuid(&request.authorization.request_id)?;
+    assert!(fixture.app.ledger.session(id).await?.close_requested);
+    assert_eq!(
+        fixture.app.ledger.provider_key_ref(id).await?.as_deref(),
+        Some("oa-management-reference")
+    );
+    assert_eq!(creates.load(Ordering::SeqCst), 1);
+    assert_eq!(verifies.load(Ordering::SeqCst), 1);
+    Ok(())
+}
+
+async fn direct_request(fixture: &Fixture) -> Result<(wire::SessionCreate, String)> {
+    direct_request_for(fixture, "direct_openrouter", "openrouter").await
+}
+async fn direct_request_for(
+    fixture: &Fixture,
+    mode: &str,
+    provider: &str,
+) -> Result<(wire::SessionCreate, String)> {
+    let client = reqwest::Client::new();
+    let quote:wire::Quote=serde_json::from_value(response(client.post(format!("{}/zkapi/v1/quotes",fixture.origin)).json(&json!({"mode":mode,"provider":provider,"models":["*"],"session_ttl_seconds":"60"})),200).await)?;
     let (mut auth, control) = authorization(&quote);
-    auth.mode = wire::Mode::DirectOpenrouter;
+    auth.mode = quote.body.mode.clone();
     auth.proxy_secret_hash = None;
     Ok((bound_request(auth, quote, genesis_state()), control))
 }

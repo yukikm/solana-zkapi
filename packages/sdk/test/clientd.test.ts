@@ -20,18 +20,26 @@ async function fixture(t:TestContext,mode:Mode='proxy',reuse=60){
   const journal=new EncryptedJournal<NoteJournal>(store,key,{deploymentId:'fixture',pool:'pool'},validateNoteJournal);
   const state={balance_micro_usdc:'100',balance_blinding:field(3),note_leaf:field(4),commitment:{x:field(5),y:field(6)},anchor:field(7),state_signature:null};
   await journal.create('note',{schema:1,state,pending:null,history:[]});
-  let now=100n,creates=0,closes=0,sends=0,controlRequests=0,loss=false,direct202=false,missingSettlement=false,controlUnavailable=false;
+  let now=100n,creates=0,closes=0,sends=0,controlRequests=0,oaVerifications=0,oaRejected=false,loss=false,direct202=false,missingSettlement=false,controlUnavailable=false;
   let pendingInference: ((signal: AbortSignal) => Promise<Response>) | undefined;
   let pendingPreparation: (()=>Promise<void>) | undefined;
-  const status=async(settled=false)=>{const p=(await journal.read('note'))!.value.pending!;return{request_id:p.prepared.request.authorization.request_id,mode,state:settled?'SETTLED':'ACTIVE',cap_micro_usdc:'100',...(settled?{settlement:{charge_micro_usdc:'0',next_commitment:state.commitment,next_anchor:field(8),blind_delta_srv:field(9),next_state_signature:{r_x:field(2),r_y:field(3),s:field(4)}}}:{})};};
+  const status=async(settled=false)=>{const p=(await journal.read('note'))!.value.pending!;return{request_id:p.prepared.request.authorization.request_id,mode,state:settled?'SETTLED':'ACTIVE',cap_micro_usdc:'100',issued_at:String(now),expires_at:String(now+60n),...(settled?{settlement:{charge_micro_usdc:'0',next_commitment:state.commitment,next_anchor:field(8),blind_delta_srv:field(9),next_state_signature:{r_x:field(2),r_y:field(3),s:field(4)}}}:{})};};
   const http:typeof fetch=async(url,init)=>{
     const u=new URL(String(url));
     if(u.pathname.startsWith('/zkapi/')){controlRequests++;if(controlUnavailable)return new Response(null,{status:503});}
-    if(u.pathname==='/zkapi/v1/sessions'){creates++;assert.equal((await journal.read('note'))!.value.pending!.phase,'send_unknown');return Response.json({...await status(),...(mode==='proxy'||direct202?{}:{provider_key:'provider-secret',provider_api_origin:'https://direct.invalid/v1'})},{status:direct202?202:200});}
+    if(u.pathname==='/zkapi/v1/sessions'){creates++;assert.equal((await journal.read('note'))!.value.pending!.phase,'send_unknown');return Response.json({...await status(),...(mode==='proxy'||direct202?{}:{provider_key:'provider-secret',provider_api_origin:'https://direct.invalid/v1',...(mode==='direct_oa'?{provider_key_verification:{verifier_url:'https://verifier.invalid/api',station_id:'trusted-station',station_recently_attested:true,key_valid_till:Number(now+60n),station_signature:'11'.repeat(64),org_signature:'22'.repeat(64)}}:{})})},{status:direct202?202:200});}
     if(u.pathname.endsWith('/close')){closes++;return Response.json(await status(true));}
     if(u.pathname.endsWith('/receipts'))return Response.json({receipts:[],next_cursor:null});
     if(u.pathname.includes('/operations/')){assert.equal(new Headers(init!.headers).get('Authorization'),`Bearer ${(await journal.read('note'))!.value.pending!.prepared.control_token}`);return new Response(null,{status:404});}
     if(u.pathname.startsWith('/zkapi/v1/sessions/'))return Response.json(await status(missingSettlement));
+    if(u.origin==='https://verifier.invalid'){
+      oaVerifications++;assert.equal(u.pathname,'/api/submit_key');assert.equal(init!.method,'POST');
+      const headers=new Headers(init!.headers);assert.equal(headers.get('Authorization'),null);assert.equal(headers.get('Content-Type'),'application/json');
+      assert.equal(init!.redirect,'error');assert.equal(init!.credentials,'omit');assert.equal(init!.cache,'no-store');
+      assert.deepEqual(JSON.parse(String(init!.body)),{station_id:'trusted-station',api_key:'provider-secret',key_valid_till:Number(now+60n),station_signature:'11'.repeat(64),org_signature:'22'.repeat(64)});
+      const p=(await journal.read('note'))!.value.pending!;assert.equal(p.providerKey,undefined);assert.deepEqual(p.operations,[]);
+      return Response.json({status:oaRejected?'rejected':'verified'});
+    }
     sends++;const p=(await journal.read('note'))!.value.pending!;assert.equal(p.operations.at(-1)!.phase,'send_unknown');
     if(mode!=='proxy'){assert.equal((init!.headers as any).Authorization,'Bearer provider-secret');assert.equal(u.origin,'https://direct.invalid');}
     if(loss)throw Error('fixture response loss');
@@ -39,13 +47,13 @@ async function fixture(t:TestContext,mode:Mode='proxy',reuse=60){
     return new Response('data: first\n\ndata: [DONE]\n\n',{headers:{'Content-Type':'text/event-stream'}});
   };
   const verifier:SessionVerifier={async prepare(){},async settle(_c,s,_p,_s,_r,operations){if(mode!=='proxy')assert.deepEqual(operations,[]);if(missingSettlement&&operations.length)throw Error('fixture missing operation receipt');return{...s,anchor:field(8)};}};
-  const clientOptions={context,journal,verifier,fetch:http,now:()=>now,directProviderBases:{direct_oa:'https://direct.invalid/v1',direct_openrouter:'https://direct.invalid/v1'}};
+  const clientOptions={context,journal,verifier,fetch:http,now:()=>now,directProviderBases:{direct_oa:'https://direct.invalid/v1',direct_openrouter:'https://direct.invalid/v1'},oaVerifier:{base:'https://verifier.invalid/api',stationId:'trusted-station'}};
   const client=new ControlClient(clientOptions);
   const options={client,journal,noteId:'note',mode,models:['m'],keyReuseSeconds:reuse,now:()=>now,prepare:async(_model:string,c:any)=>{
     await pendingPreparation?.();
     const p:PreparedSession={request:{authorization:{version:'1',deployment_id:'fixture',pool:'pool',request_id:c.requestId,quote_hash:'00'.repeat(32),mode,control_secret_hash:c.controlHash,proxy_secret_hash:c.proxyHash},quote:{body:{quote_id:crypto.randomUUID(),deployment_id:'fixture',pool:'pool',mode,provider:mode==='direct_oa'?'oa':'openrouter',models:[mode==='proxy'?'m':'*'],tariff_hash:'33'.repeat(32),cap_micro_usdc:'100',issued_at:String(now),expires_at:String(now+120n),session_ttl_seconds:'60',max_concurrency:'4',control_api_origin:context.control_api_origin,inference_api_origin:context.inference_api_origin},quote_hash:'00'.repeat(32),signature:'fixture'},public_inputs:Array(12).fill(field(1)),proof:{backend:'groth16_bn254',proof:'fixture'}},control_token:c.controlToken,proxy_token:c.proxyToken,tariff:{tariff_hash:'33'.repeat(32),version:'1',provider:'openrouter',model:'m',pricing_basis:'fixture',valid_from:'0',valid_until:'1000',rates:[],operator_fee_micro_usdc:'0'},rerandomization:field(2)};return{prepared:p,root:field(2)};}};
   const service=new ClientDaemon(options);await service.start();
-  return{service,journal,dir,pendingPreparation:(handler:()=>Promise<void>)=>{pendingPreparation=handler;},pendingInference:(handler:(signal:AbortSignal)=>Promise<Response>)=>{pendingInference=handler;},restart:()=>{const recoveredJournal=new EncryptedJournal<NoteJournal>(store,key,{deploymentId:'fixture',pool:'pool'},validateNoteJournal);return new ClientDaemon({...options,journal:recoveredJournal,client:new ControlClient({...clientOptions,journal:recoveredJournal})});},prepareUnsent:async()=>{const p=await options.prepare('m',await createCredentials(mode));await client.prepare('note',p.prepared,p.root);},counts:()=>({creates,closes,sends}),controlRequests:()=>controlRequests,advance:()=>{now+=61n;},lose:(value=true)=>{loss=value;},directUnknown:()=>{direct202=true;},missingSettlement:(value=true)=>{missingSettlement=value;},controlUnavailable:(value=true)=>{controlUnavailable=value;}};
+  return{service,journal,dir,pendingPreparation:(handler:()=>Promise<void>)=>{pendingPreparation=handler;},pendingInference:(handler:(signal:AbortSignal)=>Promise<Response>)=>{pendingInference=handler;},restart:()=>{const recoveredJournal=new EncryptedJournal<NoteJournal>(store,key,{deploymentId:'fixture',pool:'pool'},validateNoteJournal);return new ClientDaemon({...options,journal:recoveredJournal,client:new ControlClient({...clientOptions,journal:recoveredJournal})});},prepareUnsent:async()=>{const p=await options.prepare('m',await createCredentials(mode));await client.prepare('note',p.prepared,p.root);},counts:()=>({creates,closes,sends}),oaVerifications:()=>oaVerifications,rejectOa:()=>{oaRejected=true;},controlRequests:()=>controlRequests,advance:()=>{now+=61n;},lose:(value=true)=>{loss=value;},directUnknown:()=>{direct202=true;},missingSettlement:(value=true)=>{missingSettlement=value;},controlUnavailable:(value=true)=>{controlUnavailable=value;}};
 }
 const body=new TextEncoder().encode('{"model":"m","stream":true}');
 test('clientd shares encrypted journal, streams once, reuses 60-second session and closes idle',async t=>{
@@ -96,6 +104,21 @@ test('expired never-sent authorization has explicit admin cancellation; uncertai
 });
 test('direct 202 with missing key closes without inference or proxy fallback',async t=>{
   const f=await fixture(t,'direct_oa');f.directUnknown();await assert.rejects(f.service.infer('/v1/responses',body),DaemonConflict);assert.deepEqual(f.counts(),{creates:1,closes:1,sends:0});
+});
+test('OA key is independently verified before clientd inference and reused only within the same session',async t=>{
+  const f=await fixture(t,'direct_oa');
+  for(let i=0;i<2;i++)assert.match(await(await f.service.infer('/v1/responses',body)).text(),/DONE/);
+  assert.equal(f.oaVerifications(),1);assert.deepEqual(f.counts(),{creates:1,closes:0,sends:2});
+  assert.equal((await f.journal.read('note'))!.value.pending!.providerKey,'provider-secret');
+});
+test('OA verifier rejection closes the same authorization without saving a key or sending inference',async t=>{
+  const f=await fixture(t,'direct_oa');f.rejectOa();
+  await assert.rejects(f.service.infer('/v1/responses',body),DaemonConflict);
+  assert.equal(f.oaVerifications(),1);assert.deepEqual(f.counts(),{creates:1,closes:1,sends:0});
+  const saved=(await f.journal.read('note'))!.value;
+  assert.equal(saved.pending,null);assert.equal(saved.history.length,1);assert.deepEqual(saved.history[0].operations,[]);
+  assert.equal(JSON.stringify(saved).includes('provider-secret'),false);
+  await f.restart().start();assert.deepEqual(f.counts(),{creates:1,closes:1,sends:0});
 });
 test('stream cancel still closes reuse-zero session, unsupported direct modalities never authorize',async t=>{
   const f=await fixture(t,'direct_oa',0);await assert.rejects(f.service.infer('/v1/responses',new TextEncoder().encode('{"model":"m","input":[{"type":"input_image"}]}')));assert.equal(f.counts().creates,0);

@@ -1056,11 +1056,13 @@ impl Ledger {
     /// Store only the provider's management reference. Persist it before the final
     /// chain check so cancellation cannot strand an issued key without its recovery
     /// reference. Unknown/closed issuance and a failed final check always drain.
+    /// Activation never extends the provider's absolute key expiry.
     pub async fn resolve_direct_key<F, Fut>(
         &self,
         id: Uuid,
         key_ref: &str,
         ttl_seconds: i64,
+        provider_expires_at: u64,
         live_check: F,
     ) -> Result<SessionRecord>
     where
@@ -1074,6 +1076,10 @@ impl Ledger {
         {
             return Err(LedgerError::Invalid("invalid_direct_key_reference"));
         }
+        // Invalid provider metadata must not prevent retirement of a stored
+        // management reference. A zero deadline drains; values beyond SQL's
+        // timestamp integer range are bounded without extending a valid lease.
+        let provider_expires_at = i64::try_from(provider_expires_at).unwrap_or(i64::MAX);
         let mut c = self.inner.client.lock().await;
         let tx = c.transaction().await?;
         self.lock_pool(&tx).await?;
@@ -1106,9 +1112,11 @@ impl Ledger {
         } else {
             None
         };
-        let active = eligible && check_error.is_none();
-        let state = if active { "ACTIVE" } else { "DRAINING" };
-        tx.execute("WITH t AS MATERIALIZED (SELECT floor(extract(epoch FROM clock_timestamp()))::bigint AS current_second) UPDATE sessions SET state=$3,provider_key_ref=$4,close_requested=close_requested OR NOT $5,activated_at=CASE WHEN $5 THEN t.current_second ELSE NULL END,expires_at=CASE WHEN $5 THEN t.current_second+$6 ELSE NULL END,updated_at=clock_timestamp() FROM t WHERE pool=$1 AND request_id=$2",&[&&self.inner.pool[..],&id,&state,&key_ref,&active,&ttl_seconds]).await?;
+        let eligible = eligible && check_error.is_none();
+        // The final RPC check and ledger lock can consume part of the provider
+        // lease. Use one database clock observation to both reject an expired
+        // key and cap the advertised session expiry to the signed deadline.
+        tx.execute("WITH t AS MATERIALIZED (SELECT floor(extract(epoch FROM clock_timestamp()))::bigint AS current_second), decision AS (SELECT current_second,$4::boolean AND current_second<$6::bigint AS active FROM t) UPDATE sessions SET state=CASE WHEN d.active THEN 'ACTIVE' ELSE 'DRAINING' END,provider_key_ref=$3,close_requested=close_requested OR NOT d.active,activated_at=CASE WHEN d.active THEN d.current_second ELSE NULL END,expires_at=CASE WHEN d.active THEN LEAST(d.current_second+$5,$6) ELSE NULL END,updated_at=clock_timestamp() FROM decision d WHERE pool=$1 AND request_id=$2",&[&&self.inner.pool[..],&id,&key_ref,&eligible,&ttl_seconds,&provider_expires_at]).await?;
         let s = session_row(
             &tx.query_one(SESSION_SELECT, &[&&self.inner.pool[..], &id])
                 .await?,

@@ -75,14 +75,34 @@ sch['SessionCreate'] = obj({'authorization': ref('Authorization'), 'quote': ref(
     'public_inputs': ref('RequestInputs'), 'proof': ref('Proof')})
 sch['Settlement'] = obj({'charge_micro_usdc': U, 'next_commitment': ref('Point'),
     'next_anchor': F, 'blind_delta_srv': ref('Scalar'), 'next_state_signature': ref('SchnorrSignature')})
+sch['ProviderKeyVerification'] = obj({
+    'verifier_url': {'type':'string','format':'uri'},
+    'station_id': {'type':'string','minLength':1,'maxLength':128},
+    'station_recently_attested': B,
+    'key_valid_till': {'type':'integer','minimum':1,'maximum':9007199254740991,
+        'description':'Unix seconds retained from the OA verifier wire contract.'},
+    'station_signature': {'type':'string','pattern':'^[0-9a-fA-F]{128}$'},
+    'org_signature': {'type':'string','pattern':'^[0-9a-fA-F]{128}$'}})
+sch['ProviderKeyVerification']['description'] = ('Initial OA key-delivery evidence. The client must validate '
+    'the verifier and station against independently configured pins and submit the exact key/signatures '
+    'to that verifier before provider use. Server verification does not replace client verification.')
 session_props = {'request_id': ID, 'mode': MODE,
     'state': {'type':'string','enum':['RESERVED','ISSUING','ISSUANCE_UNKNOWN','ACTIVE',
         'DRAINING','RECONCILING','SIGN_PENDING','SETTLED']},
     'cap_micro_usdc': U, 'issued_at': U, 'expires_at': U,
     'settlement': ref('Settlement'), 'provider_key': S, 'provider_api_origin': S,
+    'provider_key_verification': ref('ProviderKeyVerification'),
     'last_error_code': S}
 sch['SessionCreated'] = obj(session_props, ['request_id','mode','state','cap_micro_usdc'])
-sch['SessionStatus'] = obj({k:v for k,v in session_props.items() if k != 'provider_key'},
+sch['SessionCreated']['allOf'] = [
+    {'if':{'required':['provider_key_verification']},
+     'then':{'properties':{'mode':{'const':'direct_oa'},'state':{'const':'ACTIVE'}},
+             'required':['provider_key','provider_api_origin','expires_at']}},
+    {'if':{'properties':{'mode':{'const':'direct_oa'}},'required':['mode','provider_key']},
+     'then':{'required':['provider_key_verification']}}
+]
+sch['SessionStatus'] = obj({k:v for k,v in session_props.items()
+    if k not in ('provider_key','provider_key_verification')},
     ['request_id','mode','state','cap_micro_usdc'])
 sch['OperationStatus'] = obj({'operation_id': ID, 'request_id': ID,
     'state': {'type':'string','enum':['RESERVED','DISPATCHING','STREAMING','USAGE_UNKNOWN',
@@ -254,8 +274,8 @@ add('/zkapi/v1/attestation','get','attestation','Attestation')
 add('/zkapi/v1/tariffs/{tariff_hash}','get','tariff','Tariff',params=[parameter('tariff_hash',H)])
 add('/zkapi/v1/quotes','post','quote','Quote','QuoteRequest')
 created = add('/zkapi/v1/sessions','post','createSession','SessionCreated','SessionCreate','ControlToken',code='201',
-    description='Exact body retry only. First direct creation may contain provider_key. It is never replayed. Control token hash must match proof-bound authorization.')
-created['responses']['200'] = response('SessionStatus','Idempotent existing result, no provider key')
+    description='Exact body retry only. First direct creation may contain provider_key; direct_oa also requires provider_key_verification for independent client verification. Neither field is replayed. Control token hash must match proof-bound authorization.')
+created['responses']['200'] = response('SessionStatus','Idempotent existing result, no provider key or verification evidence')
 created['responses']['202'] = response('SessionStatus','Proxy may become ACTIVE; direct closes delivery channel, persists close_requested and drains any late key.')
 add('/zkapi/v1/sessions/{request_id}','get','sessionStatus','SessionStatus',auth='ControlToken',params=[request_param])
 add('/zkapi/v1/sessions/{request_id}/close','post','closeSession','SessionStatus',auth='ControlToken',params=[request_param],code='202')

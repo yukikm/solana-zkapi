@@ -74,8 +74,17 @@ Only explicit numeric loopback HTTP fixture origins may override proxy targets.
 OA configuration uses `provider: "oa"`, `issuer_base`, `verifier_base`,
 `inference_base`, `station_id`, and `credential_file`. The issuer/verifier pins
 are exposed through `/zkapi/v1/attestation`; the issued key must verify at the
-pinned verifier before initial delivery. OA lease durations are whole minutes
-(60, 120, 180, 240 or 300 seconds). Receipt identity/amount/signature encoding
+pinned verifier before initial delivery. Initial OA delivery also includes
+`provider_key_verification`: the original verifier URL, station ID, recent
+attestation flag, key expiry in numeric Unix seconds, and both signatures. The
+client must check the evidence against its independently configured verifier and
+station pins, then submit the exact key and evidence to that pinned verifier
+before inference. `/attestation` and response-provided URLs cannot establish
+those client trust pins. OA lease durations are whole minutes
+(60, 120, 180, 240 or 300 seconds). Direct session activation caps its expiry at
+the provider's absolute key deadline after the final chain check and ledger
+wait; an already-expired key drains without activation or delivery.
+Receipt identity/amount/signature encoding
 checks preserve the pinned upstream contract; they do not establish a new
 independent cryptographic receipt verifier. See the I06 evidence for this limit.
 
@@ -104,7 +113,10 @@ request is issued. A slow/disconnected consumer cannot stop upstream metering.
 The 600-second deadline is bounded independently from the admission TTL.
 
 Direct keys appear only in the initial `SessionCreated.provider_key`. GET and
-repeated POST cannot recover plaintext. They can close the saved management
+repeated POST cannot recover plaintext or OA verification evidence. Verification
+evidence is never included in OpenRouter or proxy responses. Clients close and
+recover the existing session if independent OA verification fails, without key
+reissuance or a proxy fallback. They can close the saved management
 reference. Issuance uncertainty never creates a replacement key. OpenRouter is
 disabled, then exact USD is observed twice over the configured drain intervals,
 then final usage is checkpointed before deletion. This operational stabilization

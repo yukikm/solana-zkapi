@@ -696,6 +696,12 @@ async fn create_session(
         if let Some(key) = key {
             status["provider_key"] = key.runtime_key.into();
             status["provider_api_origin"] = key.inference_base.into();
+            if r.authorization.mode == wire::Mode::DirectOa {
+                // The client independently submits this evidence to its pinned
+                // verifier before using the key. Like the key itself, evidence
+                // belongs only to this first delivery, never status or retries.
+                status["provider_key_verification"] = key.verification.ok_or_else(unavailable)?;
+            }
             return direct_response(delivery.expect("key delivery guard"), status);
         }
         return Ok((StatusCode::CREATED, Json(status)).into_response());

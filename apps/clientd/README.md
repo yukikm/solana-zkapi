@@ -44,7 +44,7 @@ Example network configuration (placeholder origins, not deployed services):
 }
 ```
 
-Mode must explicitly be `direct` or `tor`. For direct provider sessions add the independently configured provider origin/API path. Tor uses SOCKS5 domain-name addresses, no direct fallback and no redirect following. **Control, provider, indexer and RPC** use this same private Unix relay. Companion/prover processes are offline and receive secrets through stdin with a cleared environment. This is not a promise of complete anonymity.
+Mode must explicitly be `direct` or `tor`. For direct provider sessions add the independently configured provider origin/API path. For `direct_oa`, also allow the separately trusted verifier's `/submit_key` path: for `oa_verifier.base: "https://verifier.example/api"`, add `{"origin":"https://verifier.example","prefix":"/api/submit_key"}`. Tor uses SOCKS5 domain-name addresses, no direct fallback and no redirect following. **Control, provider, OA verifier, indexer and RPC** use this same private Unix relay. Companion/prover processes are offline and receive secrets through stdin with a cleared environment. This is not a promise of complete anonymity.
 
 `runtime.json` follows the `RuntimeConfig` interface in `runtime.ts`:
 
@@ -52,6 +52,7 @@ Mode must explicitly be `direct` or `tor`. For direct provider sessions add the 
 - `prover` and `verifier`, each `{path, sha256}`.
 - Private `journal` directory, `custody` envelope file, local `note_id`.
 - Explicit `mode` (`proxy`, `direct_oa`, `direct_openrouter`), `models` allowlist, `tariff` file, `rpc` URL, `indexer` origin, optional `direct_provider_bases`.
+- For `direct_oa`, independently install `oa_verifier: {"base":"https://verifier.example/api","stationId":"trusted-station"}`. Use the canonical HTTPS base without a trailing slash; do not derive these pins from the control server or key response. The SDK verifies the received key and its signed evidence directly with this verifier before saving or using the key. Missing pins, mismatched evidence or verifier rejection close the same session without inference or mode fallback.
 - `key_reuse_seconds`: default 60, range 0–300. Zero closes after each request; server TTL remains 60 seconds.
 
 The runtime checks actual finalized PoolConfig/genesis/keys/profile/artifact hashes before serving. Custody's parent directory must be mode 0700. Never reset missing/corrupt custody automatically.

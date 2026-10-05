@@ -113,6 +113,7 @@ export async function startDevnetFrontend(options: DevnetFrontendOptions): Promi
 export interface DevnetPinnedFetchOptions {
   ca: Buffer; indexerOrigin: string; controlOrigin?: string; inferenceOrigin?: string;
   directChatEndpoints?: readonly string[];
+  oaVerifierEndpoints?: readonly string[];
   onClearanceStatus?(status: number): void;
 }
 export function createDevnetPinnedFetch(options: DevnetPinnedFetchOptions): typeof fetch {
@@ -125,17 +126,25 @@ export function createDevnetPinnedFetch(options: DevnetPinnedFetchOptions): type
     if (url.protocol !== 'https:' || url.username || url.password || url.search || url.hash || !url.pathname.endsWith('/chat/completions')) fail();
     direct.add(url.href);
   }
+  const oaVerifiers = new Set<string>();
+  for (const endpoint of options.oaVerifierEndpoints ?? []) {
+    let url: URL; try { url = new URL(endpoint); } catch { return fail(); }
+    if (url.protocol !== 'https:' || url.username || url.password || endpoint.includes('?') || endpoint.includes('#')
+      || url.href !== endpoint || !url.pathname.endsWith('/submit_key')) fail();
+    oaVerifiers.add(url.href);
+  }
   return async (input, init) => {
     let target: URL; try { target = new URL(typeof input === 'string' ? input : input instanceof URL ? input.href : input.url); } catch { return fail(); }
     if (target.username || target.password || target.hash) fail();
     const source = input instanceof Request ? input : undefined, method = init?.method ?? source?.method ?? 'GET';
-    const isDirect = direct.has(target.href), kind = services.get(target.origin);
-    if (isDirect ? method !== 'POST' : !kind || !pathAllowed(kind, target.pathname + target.search, method)) fail();
+    const isDirect = direct.has(target.href), isOaVerifier = oaVerifiers.has(target.href), kind = services.get(target.origin);
+    const external = isDirect || isOaVerifier;
+    if (external ? method !== 'POST' : !kind || !pathAllowed(kind, target.pathname + target.search, method)) fail();
     const headers: Record<string,string> = {};
-    new Headers(init?.headers ?? source?.headers).forEach((value, name) => { if (requestHeaders.includes(name)) headers[name] = value; });
+    new Headers(init?.headers ?? source?.headers).forEach((value, name) => { if (isOaVerifier ? name === 'content-type' : requestHeaders.includes(name)) headers[name] = value; });
     const body = requestBody(init?.body ?? (source && !['GET','HEAD'].includes(method) ? await source.arrayBuffer() : undefined));
     const result = await requestOnce(target, {method, headers, body, signal: init?.signal ?? source?.signal,
-      ...(!isDirect ? {ca: options.ca} : {}), maximum: isDirect || kind === 'inference' ? INFERENCE_LIMIT : 65536});
+      ...(!external ? {ca: options.ca} : {}), maximum: !isOaVerifier && (isDirect || kind === 'inference') ? INFERENCE_LIMIT : 65536});
     if (kind === 'control' && target.pathname === '/zkapi/v1/withdraw/clearance') options.onClearanceStatus?.(result.status);
     return result;
   };

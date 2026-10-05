@@ -191,10 +191,10 @@ async function main(){
  const installedIndexerHash=sha(await read('services/indexer/target/release/indexerd'));
  const indexer=process.argv.includes('--external-indexer')?null:spawn(resolve('services/indexer/target/release/indexerd'),[indexerConfig],{cwd:ROOT,stdio:['ignore','pipe','pipe']});let indexerLines=0;
  indexer?.stdout.on('data',()=>{});let indexerLogTail='';indexer?.stderr.on('data',chunk=>{const lines=(indexerLogTail+String(chunk)).split('\n');indexerLogTail=lines.pop()!;indexerLines+=lines.filter(line=>line.startsWith('indexer paused:')).length;for(const line of lines)if(/^indexer replay (start|progress): [a-z0-9_= ]+$/.test(line))console.error(line);});
- const directPaths=new Set<string>();
- if(providerPlan){for(const item of (await json(join(PROVIDER_CONFIGURATION,'providers.json'))).direct){const base=String(item.inference_base);assert.equal(new URL(base).protocol,'https:');directPaths.add(base.replace(/\/$/,'')+'/chat/completions');}}
+ const directPaths=new Set<string>(),oaVerifierPaths=new Set<string>();
+ if(providerPlan){for(const item of (await json(join(PROVIDER_CONFIGURATION,'providers.json'))).direct){const base=String(item.inference_base);assert.equal(new URL(base).protocol,'https:');directPaths.add(base.replace(/\/$/,'')+'/chat/completions');if(item.provider==='oa')oaVerifierPaths.add(String(item.verifier_base)+'/submit_key');}}
  const pinnedFetch=createDevnetPinnedFetch({ca,indexerOrigin:INDEXER,controlOrigin:mutual?m.control_api_origin:undefined,
-  inferenceOrigin:providerPlan?m.inference_api_origin:undefined,directChatEndpoints:[...directPaths],onClearanceStatus:status=>{lastClearanceHttpStatus=status;}});
+  inferenceOrigin:providerPlan?m.inference_api_origin:undefined,directChatEndpoints:[...directPaths],oaVerifierEndpoints:[...oaVerifierPaths],onClearanceStatus:status=>{lastClearanceHttpStatus=status;}});
  try{
   await frontend(port+1,INDEXER_INTERNAL);
  if(mutual)await frontend(port+2,`http://127.0.0.1:${port+4}`,'control');
