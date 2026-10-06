@@ -1,0 +1,31 @@
+✔ Chat SSE accepts UTF-8, comments, CRLF splits, usage events and multiline data at every byte boundary (14.611792ms)
+✔ SSE rejects truncated streams, provider errors, bad UTF-8 and oversized frames (1.351958ms)
+✖ SSE accepts CR-only event endings, including a final CR at EOF (0.157167ms)
+✔ breaking delta iteration cancels unread response; HTTP errors are bounded and redacted (0.444333ms)
+✔ text helper accepts one text choice and refuses tool-only, malformed and oversized responses (2.003292ms)
+✔ reader and cancellation failures never expose private errors from text or SSE helpers (1.601209ms)
+✔ SSE cancellation failures after DONE or early exit are redacted (0.198083ms)
+ℹ tests 7
+ℹ suites 0
+ℹ pass 6
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 85.084917
+
+✖ failing tests:
+
+test at packages/sdk/test/chat.test.ts:21:1
+✖ SSE accepts CR-only event endings, including a final CR at EOF (0.157167ms)
+  Error [ChatResponseError]: Chat incomplete_stream; inspect SDK status before sending a new request.
+      at failure (file:///Users/yukikimura/work/solana-zkapi/packages/sdk/src/chat.ts:12:10)
+      at readChatDeltas (file:///Users/yukikimura/work/solana-zkapi/packages/sdk/src/chat.ts:65:85)
+      at async text (file:///Users/yukikimura/work/solana-zkapi/packages/sdk/test/chat.test.ts:10:77)
+      at async TestContext.<anonymous> (file:///Users/yukikimura/work/solana-zkapi/packages/sdk/test/chat.test.ts:23:68)
+      at async Test.run (node:internal/test_runner/test:1389:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:960:7) {
+    code: 'incomplete_stream',
+    operationId: 'test-operation',
+    status: 200
+  }

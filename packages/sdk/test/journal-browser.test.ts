@@ -48,9 +48,11 @@ test('real browser journal: atomic cross-tab CAS, encrypted restart, Web Locks a
   const directory = await mkdtemp(join(tmpdir(), 'zkapi-browser-journal-'));
   const source = await readFile(new URL('../src/journal.ts', import.meta.url), 'utf8');
   const javascript = ts.transpileModule(source, { compilerOptions: { target: ts.ScriptTarget.ES2023, module: ts.ModuleKind.ES2022 } }).outputText;
+  const custodySource = (await readFile(new URL('../src/browser-storage.ts', import.meta.url), 'utf8')).replace("'./journal.ts'", "'./journal.js'");
+  const custodyJs = ts.transpileModule(custodySource, { compilerOptions: { target: ts.ScriptTarget.ES2023, module: ts.ModuleKind.ES2022 } }).outputText;
   const server = createServer((request, response) => {
-    response.setHeader('Content-Type', request.url === '/journal.js' ? 'text/javascript' : 'text/html');
-    response.end(request.url === '/journal.js' ? javascript : '<!doctype html><title>zkAPI journal verification</title>');
+    response.setHeader('Content-Type', request.url?.endsWith('.js') ? 'text/javascript' : 'text/html');
+    response.end(request.url === '/journal.js' ? javascript : request.url === '/custody.js' ? custodyJs : '<!doctype html><title>zkAPI journal verification</title>');
   });
   server.listen(0, '127.0.0.1'); await once(server, 'listening');
   t.after(() => new Promise<void>(resolve => server.close(() => resolve())));
@@ -102,4 +104,21 @@ test('real browser journal: atomic cross-tab CAS, encrypted restart, Web Locks a
   const restarted = await createTab();
   const state = await restarted.cdp.evaluate(`journal.read('note')`);
   assert.equal(state.revision, 2); assert.deepEqual(state.value, { token: 'SECRET_TOKEN_TWO', bytes: '7b20227d' });
+  const custodyResult = await restarted.cdp.evaluate(`(async () => {
+    const {openBrowserStorage} = await import('/custody.js');
+    let missing=false;try{await openBrowserStorage('app-custody');}catch(e){missing=e.name==='BrowserStorageMissing';}
+    const [a,b]=await Promise.all([openBrowserStorage('app-custody',{initialize:true}),openBrowserStorage('app-custody',{initialize:true})]);
+    const ja=new mod.EncryptedJournal(a.store,a.key,{deploymentId:'app',pool:'pool'},validate);
+    await ja.create('note',{token:'PRIVATE_APP_TOKEN',bytes:'a'});
+    const jb=new mod.EncryptedJournal(b.store,b.key,{deploymentId:'app',pool:'pool'},validate);
+    const same=(await jb.read('note')).value.token==='PRIVATE_APP_TOKEN';const extractable=a.key.extractable;a.close();b.close();
+    const reopened=await openBrowserStorage('app-custody');
+    const jr=new mod.EncryptedJournal(reopened.store,reopened.key,{deploymentId:'app',pool:'pool'},validate);
+    const restored=(await jr.read('note')).value.token==='PRIVATE_APP_TOKEN';reopened.close();
+    const db=await new Promise(r=>{const q=indexedDB.open('zkapi-browser-custody-v1',1);q.onsuccess=()=>r(q.result);});
+    await new Promise((resolve,reject)=>{const tx=db.transaction('keys','readwrite');tx.objectStore('keys').delete('app-custody');tx.oncomplete=resolve;tx.onerror=reject;});db.close();
+    let refused=false;try{await openBrowserStorage('app-custody',{initialize:true});}catch(e){refused=e.message.includes('without its key');}
+    return {missing,same,extractable,restored,refused};
+  })()`);
+  assert.deepEqual(custodyResult,{missing:true,same:true,extractable:false,restored:true,refused:true});
 });

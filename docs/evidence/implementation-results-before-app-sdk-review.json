@@ -25,7 +25,7 @@
     ".gitmodules": "7d9599d23ebc360e13c86fa80a25a4622be63f48f3dc2ebe0779807e21df3528",
     ".go-version": "32112436a82effc1d958644a972f2a81e829e5ff08beb71305473cf6d41ca956",
     ".node-version": "7e8a2fa94951112b894a3dbe3d05efef5e9263741fa49125f0a70f40fedab4cc",
-    "AGENTS.md": "c7b556952ca51d0bf9d3155b88686657728c3a147fb252a967d475734466559f",
+    "AGENTS.md": "f7c5e5b4647f4c39bc1148b1157d4872281f42253a3ea40506f3e228125756e0",
     "Cargo.lock": "e4489876e3ee37a9a67647a272729444535aa3d6279ae15807d5ae0535113291",
     "Cargo.toml": "051013c25855f1fa7eae9b0149dc35cf962bf0dc5e7f780f5583d93f7dd65873",
     "README.md": "8ac75be7de82f58f83eac6bd3db5353eaad3fe2c2b0471bb0f42dbd431c3b528",
@@ -426,7 +426,7 @@
     "docs/evidence/I10-wallet-ui-local-results.json": "75ab4ef90a640219fd9066d3b14f91076046b5f92640900c0ad0bd79c1a67464",
     "docs/evidence/I10-wallet-ui-provider-local-results.json": "310f158c582b1f09669b7a08f88778eeedd5a5df98e203bb2e37848278eba28f",
     "docs/evidence/I10-wallet-ui-provider-phase-results.json": "1c2d8bed0c451c2605fa24ef8628bbba0fd498998e2389423fbd92ca551ba49c",
-    "docs/evidence/I10.md": "311cf0289e4f94f65719cd794630d4f52dad1e8659610a93746cbcb0d9f92fb9",
+    "docs/evidence/I10.md": "b6745fbf3bd3de91a2e873ea24886d45f8c3eaeaabfe2720fbfa16a2a3f40eed",
     "docs/evidence/ci-baseline.json": "6d24c5387804fe16e067102ad442b6a41047f2d758d31604f2d4babbd64d88ad",
     "docs/evidence/implementation-results-before-single-deposit-review.json": "56c79439a454a704a76a3eafbf421c15f089a66d88370e81064094161e5032bb",
     "docs/evidence/implementation-results-before-single-deposit.json": "4086cce2d26a6af7362b8f27f84a4e11969bdb6c5e12814cd1dc3aa35f0556f5",
@@ -801,12 +801,12 @@
     "vendor/README.md": "0bb8c3fcb1af88ef9aa51eb928343a6b874ad24844936639168196fc3d33ce23",
     "CONTRIBUTING.md": "141f39bd05f37dab360a7c4810400d290479b6429a0948bb123f5bc13a18b719",
     "packages/sdk/INTERNALS.md": "e44bdcd1d6070b9f1dcc4fb43e37630dc294df8502c252c033e7f23bbdc4b2cb",
-    "packages/sdk/src/client.ts": "d6b61623ece9f0ef5b012c278e669e9ec7924ed0b45ab629c3c491e4630f52cb",
-    "packages/sdk/src/chat.ts": "01d1f9a3da292e7ca93e926975a6335218b5182f6f51f971492efb1108449779",
+    "packages/sdk/src/client.ts": "33c555ae14f566699c52e7d16a95cada38ac9359f86edc1a87f91a240d613c97",
+    "packages/sdk/src/chat.ts": "328be6c6172281b7a3183666084a212b18daab56360fb3906a39752ba5feaff2",
     "packages/sdk/src/browser.ts": "4d11dc8562935a3223bb6957d733aa12a44ae43b8118203d451c5fc6729f4a4b",
     "packages/sdk/src/browser-storage.ts": "062eafa65bd25fb9cfec21b0ed1be095784febbc56d900750a71cb2c7df302ad",
-    "packages/sdk/test/client.test.ts": "b62afcd9cf69dade4d1dbbf2c67634a2abd0c26cdefbd5519a9485c209ce2a30",
-    "packages/sdk/test/chat.test.ts": "a530d309fb4692a16b1e922a283e73b6cd052d0851ff285a4e53dbf2b9165a85",
+    "packages/sdk/test/client.test.ts": "2a0d7e062623c5edd669377d4483e87c4cc6cfbfd07a5e56b2f74fbb0483f4ff",
+    "packages/sdk/test/chat.test.ts": "ebb519826f1ea48ae122ea45be4edef7e90c0b8bf743b414b0c2f6fb784e0446",
     "scripts/run_app_sdk_acceptance.py": "d9c0c618f0560175d250db5a5ba698435989181475281d03402ed58ced1f1110",
     "docs/evidence/I10-app-sdk.md": "f98da3f7f646599bf86925d887172ae16b5c2fb61bf3c6ef75fb3970b3ddf562",
     "docs/evidence/I10-app-sdk-results.json": "194c2303f0108553858f8010e5fadf3005168cbba69755a4f54355169ac06ab6",
@@ -832,7 +832,6 @@
     "docs/evidence/I10-app-sdk-components/example-typecheck.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
   },
   "limitations": [
-    "2026-10-06 application SDK review: 237 SDK tests and six local stages passed with 477 unchanged source inputs. Earlier 233-test and public/provider reports retain their original source hashes. Current inventory hashes do not establish live acceptance or release readiness.",
     "2026-10-06 remaining-demo commit: focused local checks passed (Node 152, control 21, indexer 45 with one existing manual benchmark ignored, Python budget 22, type and format checks). Current artifact hashes match staged files; original historical reports remain unchanged. This is not a rerun of public/provider/Phantom acceptance.",
     "2026-10-06 compact deposit review: fixed legacy-IDL startup compatibility and persisted priority fees. Fresh 20-stage local acceptance passed with 456 unchanged source inputs (214 SDK/67 UI). This file-hash inventory does not rerun historical public/provider evidence. Public compact deployment/Phantom and release gates remain unverified.",
     "2026-10-06 compact deposit: 20-stage local aggregate passed with 455 source inputs unchanged. That implementation-time source snapshot included pre-existing demo work and is not a rerun of historical provider/public acceptance. Historical runtime reports retain their original source hashes. Public compact deployment/Phantom/finality, full I10 and release gates remain unverified. See docs/evidence/I10-single-deposit-implementation.md.",
@@ -3025,21 +3024,5 @@
       "runtime_tests_rerun": false,
       "original_runtime_report_preserved": true
     }
-  },
-  "app_sdk_review": {
-    "report": "docs/evidence/I10-app-sdk-review-results.json",
-    "summary": "docs/evidence/I10-app-sdk-review.md",
-    "archive": "docs/evidence/I10-app-sdk-review-components/archive.json",
-    "previous_source_inventory": "docs/evidence/implementation-results-before-app-sdk-review.json",
-    "source_inputs": 477,
-    "sdk_tests": 237,
-    "I10_complete": false,
-    "release_gates_passed": [],
-    "fixed_findings": [
-      "pending-read cancellation lock lifetime",
-      "redacted response cleanup failures",
-      "CR-only SSE EOF"
-    ],
-    "scope": "Local fixture lifecycle, actual headless Chrome custody, typechecks and example build; no live provider, public chain, funded state or service changes"
   }
 }

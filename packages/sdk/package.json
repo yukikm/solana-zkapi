@@ -4,6 +4,10 @@
   "private": true,
   "type": "module",
   "exports": {
+    ".": "./src/client.ts",
+    "./browser": "./src/browser.ts",
+    "./chat": "./src/chat.ts",
+    "./prover-worker": "./src/prover-worker.ts",
     "./encoding": "./src/encoding.ts",
     "./layout2": "./src/layout2.ts",
     "./transport": "./src/transport.ts",

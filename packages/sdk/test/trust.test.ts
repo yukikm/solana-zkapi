@@ -8,6 +8,10 @@ import { vaultBinding, parseField } from '../src/encoding.ts';
 import { parseStrictJson, jcsBytes, sha256Hex, manifestDigest, circuitProfileDigest, verifyManifest, verifyPoolConfig, verifyArtifactBundle, supportsInlineDeposit } from '../src/trust.ts';
 import { verifiedClientBundle, verifiedClientContext } from '../src/control.ts';
 import type { Manifest, ManifestTrustPolicy, ArtifactBundle, FinalizedPoolAccount, VerifiedManifest } from '../src/trust.ts';
+import { createZkApiClient, type CreateClientOptions } from '../src/client.ts';
+import { createBrowserClient } from '../src/browser.ts';
+import { importJournalKey } from '../src/journal.ts';
+import type { Connection } from '@solana/web3.js';
 
 type Mutable<T> = { -readonly [K in keyof T]: T[K] extends readonly (infer U)[] ? U[] : T[K] extends object ? Mutable<T[K]> : T[K] };
 const utf8 = (text: string) => new TextEncoder().encode(text);
@@ -244,6 +248,29 @@ async function artifactFixture() {
   await resign(manifest); const verified = await verifyManifest(jcsBytes(manifest), policyFor(manifest));
   return { manifest, bundle, verified };
 }
+
+test('application factory authenticates independent pins, tariffs and finalized pool without sending or running proofs', async () => {
+  const { manifest, bundle } = await artifactFixture();
+  const body = {version:'1',provider:'openrouter',model:'fixture',pricing_basis:'fixed_usage_rates',valid_from:'0',valid_until:'9999999999',rates:[],operator_fee_micro_usdc:'0'};
+  const tariff = {...body,tariff_hash:await sha256Hex(jcsBytes(body))};manifest.tariff_hashes=[tariff.tariff_hash];await resign(manifest);
+  const pool=await poolAccount(manifest);let reads=0;
+  const options:CreateClientOptions={deployment:{manifest:jcsBytes(manifest),trust:policyFor(manifest),artifacts:bundle,indexerOrigin:'http://127.0.0.1:8790',
+    connection:{getGenesisHash:async()=>{reads++;return manifest.genesis_hash;},getAccountInfoAndContext:async()=>{reads++;return {context:{slot:123},value:{owner:new PublicKey(manifest.program_id),executable:false,lamports:1,data:pool.data}};}} as unknown as Connection},
+    storage:{key:await importJournalKey(new Uint8Array(32).fill(2)),store:{read:async()=>null,compareAndSwap:async()=>{throw Error('unexpected write');},withLock:async(_key,action)=>action()}},
+    prover:{run:async()=>{throw Error('unexpected proof');}},wallet:{publicKey:new PublicKey(key(10)),supportedTransactionVersions:new Set([0]),signTransaction:async()=>{throw Error('unexpected signature');}},
+    mode:'proxy',noteId:'first',models:[{id:'fixture',provider:'openrouter',apis:['chat'],tariff}]};
+  const client=await createZkApiClient(options);assert.equal((await client.status()).wallet,'empty');assert.equal(reads,2);
+  const tampered=structuredClone(options.deployment.artifacts);tampered.requestPk[0]^=1;
+  await assert.rejects(createZkApiClient({...options,deployment:{...options.deployment,artifacts:tampered}}),/artifact mismatch/);
+  await assert.rejects(createZkApiClient({...options,models:[{...options.models[0],tariff:{...tariff,operator_fee_micro_usdc:'1'}}]}),/tariff/);
+  const wrongTrust={...options.deployment.trust,expected:{...options.deployment.trust.expected,pool:key(5)}};
+  await assert.rejects(createZkApiClient({...options,deployment:{...options.deployment,trust:wrongTrust}}),/trust/);
+  const corruptStore={...options.storage.store,read:async()=>({schema:1 as const,revision:1,ivHex:'00'.repeat(12),ciphertextHex:'00'.repeat(20)})};
+  await assert.rejects(createZkApiClient({...options,storage:{...options.storage,store:corruptStore}}),/journal/);
+  const wrongConnection={...options.deployment.connection,getGenesisHash:async()=>key(11)} as Connection;
+  await assert.rejects(createZkApiClient({...options,deployment:{...options.deployment,connection:wrongConnection}}),/genesis/);
+  await assert.rejects(createBrowserClient({...options,storageName:'test',createWorker:()=>{throw Error('must not create worker');},wasm:new Uint8Array([1]),wasmSha256:'00'.repeat(32)}),/WASM hash mismatch/);
+});
 
 test('compact deposit requires authenticated capability and an independent build capability pin', async () => {
   const { manifest, policy } = await fixture();

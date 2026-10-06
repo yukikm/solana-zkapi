@@ -1,0 +1,86 @@
+# Deployment inputs for app maintainers
+
+This configuration is installed once by the application maintainer. Users
+choose a wallet and use the app; they do not assemble cryptographic pins.
+Until reviewed bundles are distributed, an integration requires access to a
+configured operator. This guide does not advertise a public production service.
+
+## Public bundle
+
+The [example loader](../../examples/browser-chat/load-deployment.ts) accepts a
+`ReviewedBrowserProfile` containing:
+
+| Input | Source and checks |
+|---|---|
+| `trust` | Independently reviewed `ManifestTrustPolicy`, compiled into the app or separately authenticated distribution |
+| `manifestUrl` | Raw manifest; its canonical digest/signature must match the independent trust anchor |
+| `artifacts.idl` | Compiler-backed Vault IDL |
+| `artifacts.requestPk`, `requestVk` | Request proving/verifying keys |
+| `artifacts.withdrawalPk`, `withdrawalVk` | Withdrawal keys |
+| `artifacts.treePk`, `treeVk` | Layout-2 transition keys |
+| `artifacts.treeSourceBundle`, `treeVerifierConstants` | Pinned source archive and verifier constants |
+| `artifacts.additional` | Exactly the manifest's additional artifact digest entries |
+| `wasmUrl`, `wasmSha256` | Offline prover WASM and independently installed build hash |
+| `models` | Reviewed model/API/provider configurations and pinned tariff objects |
+| `rpcUrl` | Public browser-safe RPC or controlled relay; no secret URL in client assets |
+| `indexerOrigin` | Independently configured indexer HTTPS origin |
+
+The factory authenticates the bundle, RPC genesis and actual finalized
+PoolConfig. A trust policy fetched alongside an untrusted manifest is not an
+independent trust root. Do not derive the trust anchor/build pins from whatever
+the server returned. Protect the JS worker through your trusted app build too.
+
+`ArtifactBundle` and `ManifestTrustPolicy` in [trust.ts](../../packages/sdk/src/trust.ts)
+are the exact contracts. The existing [operator services](../../services/control/README.md)
+and [deployment operations](../../deploy/operations/README.md) produce and run
+these components. The [browser host](../../scripts/i10-wallet-ui/README.md)
+demonstrates same-origin relays without exposing private RPC credentials.
+
+## Model configuration
+
+Each `ModelConfiguration` contains `id`, optional display `label`, `provider`,
+supported `apis` and a complete tariff. Allowed native combinations are:
+
+| Mode/provider | API |
+|---|---|
+| Proxy / OpenAI | `chat`, `responses` |
+| Proxy / OpenRouter | `chat` |
+| Proxy / Anthropic | `messages` |
+| Direct OpenRouter | `chat` |
+| Direct OA | `chat`, `responses` |
+
+Proxy tariffs bind a single model and fixed integer usage rates. Direct tariffs
+use `model: "*"` and provider-reported USD accounting, while the application's
+model list still explicitly restricts selectable IDs. The factory checks each
+tariff hash against the manifest; `ControlClient` verifies every signed quote
+and tariff binding again. The backend must actually configure the same tariff.
+Adding a model to the UI alone does not enable it or establish compatibility.
+
+Modes are `proxy`, `direct_openrouter`, or `direct_oa`. Direct configuration
+must supply an independently trusted `directProviderBases` entry. OA also needs
+`oaVerifier: {base, stationId}`. The SDK does not infer these from key responses.
+Configuration never permits fallback from direct to proxy.
+
+## Hosting and custody
+
+Serve over HTTPS (localhost for development), with module Worker, IndexedDB,
+Web Locks and Web Crypto support. Allow the intended worker/connect destinations
+in CSP. Control/indexer/inference endpoints need suitable CORS or a narrowly
+routed app relay. The example uses no relay; configure one in your app if needed.
+
+Custom `deployment.fetch` must preserve `credentials: 'omit'`, redirect refusal,
+abort signals, exact request bodies and the no-retry policy. Configure RPC
+transport separately through the supplied `Connection`; `deployment.fetch` does
+not replace `Connection`'s internal fetch. Do not attach chat-account cookies,
+private note IDs, wallet addresses or logs to control requests.
+
+The default transaction preparation commitment is `finalized`. Applications may
+explicitly configure `confirmed` for blockhash/preflight preparation; proof cuts,
+funding acceptance and financial receipts remain finalized. Choose an explicit
+priority fee policy and inspect fees in the wallet. API charges remain USDC;
+fees/rent remain SOL.
+
+Do not update deployment/IDL/build pins on funded or unresolved journals. A new
+deployment requires an explicit migration procedure, not a configuration refresh.
+Existing I10 demo state stays in its existing origin/profile and schema.
+The new browser factory does not import or migrate that demo's custody namespace.

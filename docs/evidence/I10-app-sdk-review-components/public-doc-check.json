@@ -1,0 +1,19 @@
+{
+  "passed": true,
+  "scope": "English-only application documentation and local file links; historical evidence language retained",
+  "files": [
+    "README.md",
+    "CONTRIBUTING.md",
+    "vendor/README.md",
+    "packages/sdk/README.md",
+    "packages/sdk/INTERNALS.md",
+    "examples/browser-chat/README.md",
+    "docs/sdk/README.md",
+    "docs/sdk/api.md",
+    "docs/sdk/deployment.md",
+    "docs/sdk/quickstart.md",
+    "docs/sdk/recovery.md",
+    "docs/sdk/status.md"
+  ],
+  "local_links_checked": 62
+}

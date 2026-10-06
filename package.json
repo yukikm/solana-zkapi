@@ -6,6 +6,7 @@
   "workspaces": ["packages/sdk"],
   "scripts": {
     "typecheck": "tsc --noEmit -p packages/sdk/tsconfig.json",
+    "typecheck:examples": "tsc --noEmit -p examples/browser-chat/tsconfig.json",
     "test": "node --test packages/sdk/test/*.test.ts"
   },
   "devDependencies": { "typescript": "5.9.3", "@types/node": "24.10.0" }

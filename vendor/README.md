@@ -17,7 +17,8 @@ These are upstream single-party test setup artifacts, not a production ceremony.
 
 Intentional differences live outside this directory: Solana H2F bindings,
 micro-USDC integer accounting and the Groth16 wire adapter. Circuit constraints,
-Poseidon domains/parameters and state signatures are unchanged. The SDK package
-currently provides encoding primitives only; the wallet/prover/session APIs are
-not implemented yet. No Ethereum native-asset deployment configuration is reused
-as a Solana production configuration.
+Poseidon domains/parameters and state signatures are unchanged. Wallet, prover,
+session and application APIs are implemented outside the upstream submodule;
+see the [SDK guide](../docs/sdk/README.md) for their current verification limits.
+No Ethereum native-asset deployment configuration is reused as a Solana
+production configuration.

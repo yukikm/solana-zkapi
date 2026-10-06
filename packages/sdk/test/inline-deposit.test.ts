@@ -9,6 +9,8 @@ import {join} from 'node:path';
 import {Keypair,PublicKey,VersionedTransaction} from '@solana/web3.js';
 import bs58 from 'bs58';
 import {WalletClient,type WalletOptions} from '../src/wallet.ts';
+import {ZkApiClient} from '../src/client.ts';
+import type {ControlClient} from '../src/control.ts';
 import {EncryptedJournal,importJournalKey,type AtomicJournalStore} from '../src/journal.ts';
 import {NativeJournalStore} from '../src/journal-node.ts';
 import {validateNoteJournal,type NoteJournal,type PrivateState} from '../src/control.ts';
@@ -54,8 +56,21 @@ async function setup(t:TestContext,inline=true,begin=true){
   const signed=async()=>{const a=(await open().read('note'))!.value.wallet!.operation!.attempts.at(-1)!;assert.equal(a.kind,'deposit_inline');return a as InlineDepositAttempt;};
   const receipt=async(err:unknown=null)=>{const a=await signed();return {signature:a.signature,message:VersionedTransaction.deserialize(Buffer.from(a.wireHex,'hex')).message.serialize(),slot:30,err};};
   const fund=async()=>{const r=(await open().read('note'))!;snapshot.slot=30;snapshot.note={note_id:r.value.witness!.note_id,registration_commitment:'0x'+fixture.commitment,deposit_micro_usdc:String(fixture.deposit),expiry:r.value.witness!.expiry,status:'active'};behavior.receipt=await receipt();};
-  return {client,restart,options,journal,open,behavior,counts,snapshot,roles,signed,receipt,fund};
+  return {client,restart,options,journal,store,open,behavior,counts,snapshot,roles,signed,receipt,fund};
 }
+
+test('application facade preserves compact durable sign-once and read-only unknown-send recovery',async t=>{
+  const h=await setup(t,true,false);
+  const create=()=>new ZkApiClient({wallet:{...h.options,journal:h.open()},store:h.store,noteId:'note',mode:'proxy',
+    control:{} as ControlClient,models:[{id:'fixture',provider:'openrouter',apis:['chat'],tariff:{tariff_hash:'00'.repeat(32),version:'1',provider:'openrouter',model:'fixture',pricing_basis:'fixed_usage_rates',valid_from:'0',valid_until:'9999999999',rates:[],operator_fee_micro_usdc:'0'}}]});
+  const client=create();assert.equal((await client.status()).wallet,'empty');
+  await client.prepareDeposit(String(fixture.deposit));assert.equal(h.counts.sign,0);
+  await client.advanceWallet();assert.equal(h.counts.sign,1);assert.equal(h.counts.send,1);
+  const reopened=create();await reopened.status();await reopened.advanceWallet();
+  assert.equal(h.counts.sign,1);assert.equal(h.counts.send,1);
+  await h.fund();assert.deepEqual(await reopened.advanceWallet(),{state:'complete'});
+  assert.equal((await reopened.status()).wallet,'active');assert.equal((await h.open().read('note'))!.value.schema,2);
+});
 
 test('compact encoding exactly expands original canonical proof and refuses mismatched redundant fields',()=>{
   const original=payload(),binding=fixture.trees[0].public_inputs[0],compact=compactDepositPayload(original,binding);

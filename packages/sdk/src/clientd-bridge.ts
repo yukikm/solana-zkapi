@@ -142,7 +142,7 @@ export class ClientDaemon {
       const reader = response.body?.getReader();
       if (!reader) { await finish(); return new Response(null,{status:response.status,headers}); }
       const body = new ReadableStream<Uint8Array>({
-        async pull(controller) { try { const next = await reader.read(); if (next.done) { await finish(); controller.close(); } else controller.enqueue(next.value); } catch { controller.error(new Error('upstream stream interrupted; no replay')); await finish(); } },
+        async pull(controller) { try { const next = await reader.read(); if (next.done) { await finish(); controller.close(); } else controller.enqueue(next.value); } catch { await finish(); controller.error(new Error('upstream stream interrupted; no replay')); } },
         async cancel() { try { await reader.cancel(); } finally { await finish(); } },
       });
       return new Response(body,{status:response.status,headers});

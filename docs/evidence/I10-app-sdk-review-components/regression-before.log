@@ -1,0 +1,73 @@
+✔ Chat SSE accepts UTF-8, comments, CRLF splits, usage events and multiline data at every byte boundary (27.261625ms)
+✔ SSE rejects truncated streams, provider errors, bad UTF-8 and oversized frames (1.43275ms)
+✔ breaking delta iteration cancels unread response; HTTP errors are bounded and redacted (0.488375ms)
+✔ text helper accepts one text choice and refuses tool-only, malformed and oversized responses (2.81175ms)
+✖ reader and cancellation failures never expose private errors from text or SSE helpers (0.862791ms)
+✔ one chat call quotes, proves, authorizes, sends once and verifies settlement; model switch uses its tariff (282.316291ms)
+✔ lists and notifications are detached and omit secrets, prompt bodies and provider keys (114.234959ms)
+✔ quote rejection never reaches proof, AUTH or inference (13.422292ms)
+✔ reopening pending AUTH is read-only; new sends are blocked and recovery sends only saved AUTH (107.569375ms)
+✔ response loss and failed settlement retain operation; restarting never replays it (282.766875ms)
+✔ an unverified successor never becomes available balance (153.496667ms)
+✔ stream holds action lock; cancellation closes shared lifecycle and releases the client (111.298542ms)
+✔ stream helpers finish settlement before returning to the next send (377.405708ms)
+✔ stream errors await the existing close finalizer before releasing the application lock (114.384958ms)
+✖ cancelling a pending read retains the application lock through settlement (111.829209ms)
+✔ separate instances share a note lock through body consumption (283.745083ms)
+✔ invalid model, API, ID and body cannot start an authorization; abort-before-send is side-effect free (10.705458ms)
+✔ expired, cleared, closed and insufficient notes cannot start chat (84.698084ms)
+✔ dispose does not settle or erase storage and refuses later actions (12.074542ms)
+ℹ tests 19
+ℹ suites 0
+ℹ pass 17
+ℹ fail 2
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 2228.655667
+
+✖ failing tests:
+
+test at packages/sdk/test/chat.test.ts:33:1
+✖ reader and cancellation failures never expose private errors from text or SSE helpers (0.862791ms)
+  AssertionError [ERR_ASSERTION]: The validation function is expected to return "true". Received false
+  
+  Caught error:
+  
+  Error: PRIVATE upstream failure
+      at async TestContext.<anonymous> (file:///Users/yukikimura/work/solana-zkapi/packages/sdk/test/chat.test.ts:43:7)
+      at async Test.run (node:internal/test_runner/test:1389:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:960:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: Error: PRIVATE upstream failure
+        at Object.start (file:///Users/yukikimura/work/solana-zkapi/packages/sdk/test/chat.test.ts:38:44)
+        at setupReadableStreamDefaultController (node:internal/webstreams/readablestream:2659:23)
+        at setupReadableStreamDefaultControllerFromSource (node:internal/webstreams/readablestream:2706:3)
+        at new ReadableStream (node:internal/webstreams/readablestream:275:7)
+        at TestContext.<anonymous> (file:///Users/yukikimura/work/solana-zkapi/packages/sdk/test/chat.test.ts:36:37)
+        at Test.runInAsyncScope (node:async_hooks:227:14)
+        at Test.run (node:internal/test_runner/test:1382:25)
+        at Test.processPendingSubtests (node:internal/test_runner/test:960:18)
+        at Test.postRun (node:internal/test_runner/test:1522:19)
+        at Test.run (node:internal/test_runner/test:1447:12),
+    operator: 'rejects',
+    diff: 'simple'
+  }
+
+test at packages/sdk/test/client.test.ts:183:1
+✖ cancelling a pending read retains the application lock through settlement (111.829209ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  
+  false !== true
+  
+      at TestContext.<anonymous> (file:///Users/yukikimura/work/solana-zkapi/packages/sdk/test/client.test.ts:197:12)
+      at async Test.run (node:internal/test_runner/test:1389:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:960:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: false,
+    expected: true,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }

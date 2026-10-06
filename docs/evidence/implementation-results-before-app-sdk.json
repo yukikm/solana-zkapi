@@ -1,6 +1,6 @@
 {
   "date_jst": "2026-10-06",
-  "scope": "I01_I09_local_acceptance_and_I10_expanded_local_regressions_partial_public_devnet_and_one_real_OpenRouter_proxy_case; full_I10_and_release_gates_unverified; OA_client_verification_local_fix; compact_deposit_local_implementation_and_acceptance_public_rollout_unverified; application_SDK_and_OSS_docs_locally_verified_no_new_public_acceptance",
+  "scope": "I01_I09_local_acceptance_and_I10_expanded_local_regressions_partial_public_devnet_and_one_real_OpenRouter_proxy_case; full_I10_and_release_gates_unverified; OA_client_verification_local_fix; compact_deposit_local_implementation_and_acceptance_public_rollout_unverified",
   "toolchain": {
     "rust": "1.90.0",
     "go": "1.25.0",
@@ -25,10 +25,10 @@
     ".gitmodules": "7d9599d23ebc360e13c86fa80a25a4622be63f48f3dc2ebe0779807e21df3528",
     ".go-version": "32112436a82effc1d958644a972f2a81e829e5ff08beb71305473cf6d41ca956",
     ".node-version": "7e8a2fa94951112b894a3dbe3d05efef5e9263741fa49125f0a70f40fedab4cc",
-    "AGENTS.md": "c7b556952ca51d0bf9d3155b88686657728c3a147fb252a967d475734466559f",
+    "AGENTS.md": "dc94ebb1e29d374375447d708aae23287be9735fc4d73f86750518e2bb4486bb",
     "Cargo.lock": "e4489876e3ee37a9a67647a272729444535aa3d6279ae15807d5ae0535113291",
     "Cargo.toml": "051013c25855f1fa7eae9b0149dc35cf962bf0dc5e7f780f5583d93f7dd65873",
-    "README.md": "8ac75be7de82f58f83eac6bd3db5353eaad3fe2c2b0471bb0f42dbd431c3b528",
+    "README.md": "44554c32b5c409b58bc02439a8ed881805340fad672b0ef86a0cf60ab7965f43",
     "apps/clientd/README.md": "c8d40861751cc3fe3c1cc3a68ceddb6050b7e436b3227437d512598499c441f6",
     "apps/clientd/cmd/clientd/main.go": "94ef462d92514c25c12e80dccbb60426207b7bb18faa542af98e9e3928080cea",
     "apps/clientd/cmd/clientd/main_test.go": "fc160b3450015cac9914d683dfe4e3555ab741adce387d800e81598277583be0",
@@ -426,7 +426,7 @@
     "docs/evidence/I10-wallet-ui-local-results.json": "75ab4ef90a640219fd9066d3b14f91076046b5f92640900c0ad0bd79c1a67464",
     "docs/evidence/I10-wallet-ui-provider-local-results.json": "310f158c582b1f09669b7a08f88778eeedd5a5df98e203bb2e37848278eba28f",
     "docs/evidence/I10-wallet-ui-provider-phase-results.json": "1c2d8bed0c451c2605fa24ef8628bbba0fd498998e2389423fbd92ca551ba49c",
-    "docs/evidence/I10.md": "311cf0289e4f94f65719cd794630d4f52dad1e8659610a93746cbcb0d9f92fb9",
+    "docs/evidence/I10.md": "632922114025f3147f912b570b9a75316e29f576b7bcd529142b6f3ce5b1bf3a",
     "docs/evidence/ci-baseline.json": "6d24c5387804fe16e067102ad442b6a41047f2d758d31604f2d4babbd64d88ad",
     "docs/evidence/implementation-results-before-single-deposit-review.json": "56c79439a454a704a76a3eafbf421c15f089a66d88370e81064094161e5032bb",
     "docs/evidence/implementation-results-before-single-deposit.json": "4086cce2d26a6af7362b8f27f84a4e11969bdb6c5e12814cd1dc3aa35f0556f5",
@@ -447,19 +447,19 @@
     "docs/specs/protocol-solana.md": "f583496de4c363722c0cb03fe862468c5e726bb8430c9fe2424f26acce1b5adc",
     "docs/specs/tree-transition.md": "eafe562109ff41dd977c07d2b4c605647b420d8e2e74b170c208746a5291803d",
     "package-lock.json": "f20927b629c1a7700b90999783e052c8ef683c28d648415eb13d05caebecb2aa",
-    "package.json": "72adb51e48c4dbaafbf4f89a1bce26b3aa704681aee3c0b566433c1219805f53",
-    "packages/sdk/README.md": "dce9da0ec84e3a9465d21b9b85cc714e9b8cd7e85ac04bde7cef439b575ac424",
-    "packages/sdk/package.json": "9c7031395337ca266df93f0484501c29dea38fdeb0bbc2d616ca9b474a36a136",
+    "package.json": "a906a4adfa465834221a76d45da37192a2f1de72218f0b06eff38406d2a37301",
+    "packages/sdk/README.md": "e44bdcd1d6070b9f1dcc4fb43e37630dc294df8502c252c033e7f23bbdc4b2cb",
+    "packages/sdk/package.json": "04720ae81b55d8c2eb3c2141edc82a1f0c4672bd7ca838f48acb4f68d4ceeb2b",
     "packages/sdk/src/challenger-cli.ts": "4d6af7d7f668155e6a30d91d2cd60843128c65276db8ba9106f6c59d341cd647",
     "packages/sdk/src/challenger.ts": "444c80d62925b1bf3f3474d96ea0ceda556672fa6858836105197df6896a1d7e",
-    "packages/sdk/src/clientd-bridge.ts": "6254f20538533f1114cd5ea928ee29b76df468c3b12d53213e9bf0a21938f9bb",
+    "packages/sdk/src/clientd-bridge.ts": "67534423fc4c49b22b02ebbd2d593727f22d5539f452b491bf3ed008e9d99dc3",
     "packages/sdk/src/clientd-network.ts": "b4ee5d17d2520ca78fbe85b32870d543a97f1b3dd92b3f89f140852a687023aa",
     "packages/sdk/src/control-node.ts": "b1cd1c08972d364310a1cfd5cfd32b30b47a9adeffad1f44c8612b07f6cd685f",
     "packages/sdk/src/control-prover.ts": "b2373dd39c4e7dec1bb6fc2dc15be201f93719f9f46290862bc3e20d124dfd64",
     "packages/sdk/src/control.ts": "f09c7607546683f857642d6dbafdc0bb3ffb2028f0a5d9d1a181c6d9ecaef043",
     "packages/sdk/src/encoding.ts": "7301ea7c7f93dcd4ae02f760d07829d342bc2c0d042ace67bc5a41a8d68aeee4",
     "packages/sdk/src/journal-node.ts": "c93ee69fe01488ad8cdbdbdc88d1f046b1c821c179ce7d755250e81b9bbabb6d",
-    "packages/sdk/src/journal.ts": "bb7980e86150f5e6d2a91a1772e46df69326cf51fa07e959eee5dd893c2eeec6",
+    "packages/sdk/src/journal.ts": "5c6d7ea7b9e5ee10f8c4e30ac4ce1f204851a52208a56e1bd1e84c112b4ac9c5",
     "packages/sdk/src/layout2.ts": "98c4cee2117fa83248cb70efbb27833bc1589393d332855b194aeb5c77dd95fc",
     "packages/sdk/src/prover-node.ts": "2bbcbc09a047c938c3c16bf2d28daae8ccf2a8934676d7db7ff4a9ee8f02cfcc",
     "packages/sdk/src/prover-runtime.ts": "3c4d7e15984613307c4137d16200b5d75d236e616de50db482d1c1a3ad6e4ff4",
@@ -479,15 +479,15 @@
     "packages/sdk/test/control.test.ts": "85168ff56e4fb139922ab48308e6f10f7a1faa4a077403153b4271796571689b",
     "packages/sdk/test/encoding.test.ts": "6ad5f94b9d8581c8c6e9d71793c061c1b50ed9ebc95bdbfd3d6cb3291534d73a",
     "packages/sdk/test/i10-e2e.ts": "eb2b08ae58e13a0d5c8d8e5eac906a5c9d7d1eabf3c70a24dd23ba54442ca808",
-    "packages/sdk/test/inline-deposit.test.ts": "f9dc6122d605de7737e7a5ed7addd35047e50a4419ca58309e88e7ce21a4e91b",
-    "packages/sdk/test/journal-browser.test.ts": "380d6c350c37d6aa92f5690c9c21b56565f6b0df5795396a60bd6df9a5d4cdb6",
+    "packages/sdk/test/inline-deposit.test.ts": "df8f3eb8c9c55c3988917e781c64d6788f761891a624ed6b62d1bc8042f5e5e3",
+    "packages/sdk/test/journal-browser.test.ts": "b66bcf0eee6441369461b13da11b9da547d926f4bd3daf9107f5078ac150a179",
     "packages/sdk/test/journal.test.ts": "2b950e49d010b8b4b1ba96552f851fcf46ca0f67c926f1ae68f4ef9634f64fca",
     "packages/sdk/test/native-integration.ts": "6b48c0634bcdff20ef99350271641f5e66d22200a776b85853e7663cde5b626c",
     "packages/sdk/test/prover-browser.ts": "904aa638b693f88f638ead9855d4f59a74cdf147646789c9b1f428a8e1f6e988",
     "packages/sdk/test/prover-sbf.ts": "d3c3d7e3ffcab10f9d44708e9c5d113ad48fe73b6b80b7429331ca794bed9363",
     "packages/sdk/test/sbf-transactions.ts": "b97b06d90865a12b708960bda5386913246b7ba75dc09f8a3df9cfde4c24d59d",
     "packages/sdk/test/transport.test.ts": "e631ca487041c7848b0f9d05a0c928b03f8a1d6277a081f5f34cf73f402a3831",
-    "packages/sdk/test/trust.test.ts": "c67e7a31da1e957aac627c5b1220d0fa222bf3d2ad1f3f61b01839629b5927da",
+    "packages/sdk/test/trust.test.ts": "861d332456feb273a9abcc6533cd94db52e6aa161174998d967c120fce6c553b",
     "packages/sdk/test/wallet-chain.test.ts": "334f5eb46e7acf691fd0722fc6d6025761232fb7664ac1aca3097898d4fabbce",
     "packages/sdk/test/wallet-clearance.test.ts": "3621936f8302d71c0dd0647cfca6781bd94263bcbab4f8be04e0cb67a2d2e871",
     "packages/sdk/test/wallet-create-expiry.test.ts": "a76707c88fcb35bfa52696ddb8210124619c1bbfe62bd6aa3c4de398be3627ea",
@@ -797,48 +797,15 @@
     "tools/vault-idl/README.md": "73bd32bbcc889fdfc0bb44df7b419265631837829852876c47567270247dec82",
     "tools/vault-idl/src/main.rs": "51de0f4b8fcd3a57ae09a9b737dcdbe9bad9087004208a0391134d15ab139654",
     "vendor/upstream-lock.json": "b9e2033baf11181a6f75148587ec73fcedbdccd6ad2a07e16e9f0b1d3787d3b2",
-    "work/design/generate_contracts.py": "12628f01b563fc81ff4f90c032d4e2b3c408dc856756456f4851ba6e384d25b3",
-    "vendor/README.md": "0bb8c3fcb1af88ef9aa51eb928343a6b874ad24844936639168196fc3d33ce23",
-    "CONTRIBUTING.md": "141f39bd05f37dab360a7c4810400d290479b6429a0948bb123f5bc13a18b719",
-    "packages/sdk/INTERNALS.md": "e44bdcd1d6070b9f1dcc4fb43e37630dc294df8502c252c033e7f23bbdc4b2cb",
-    "packages/sdk/src/client.ts": "d6b61623ece9f0ef5b012c278e669e9ec7924ed0b45ab629c3c491e4630f52cb",
-    "packages/sdk/src/chat.ts": "01d1f9a3da292e7ca93e926975a6335218b5182f6f51f971492efb1108449779",
-    "packages/sdk/src/browser.ts": "4d11dc8562935a3223bb6957d733aa12a44ae43b8118203d451c5fc6729f4a4b",
-    "packages/sdk/src/browser-storage.ts": "062eafa65bd25fb9cfec21b0ed1be095784febbc56d900750a71cb2c7df302ad",
-    "packages/sdk/test/client.test.ts": "b62afcd9cf69dade4d1dbbf2c67634a2abd0c26cdefbd5519a9485c209ce2a30",
-    "packages/sdk/test/chat.test.ts": "a530d309fb4692a16b1e922a283e73b6cd052d0851ff285a4e53dbf2b9165a85",
-    "scripts/run_app_sdk_acceptance.py": "d9c0c618f0560175d250db5a5ba698435989181475281d03402ed58ced1f1110",
-    "docs/evidence/I10-app-sdk.md": "f98da3f7f646599bf86925d887172ae16b5c2fb61bf3c6ef75fb3970b3ddf562",
-    "docs/evidence/I10-app-sdk-results.json": "194c2303f0108553858f8010e5fadf3005168cbba69755a4f54355169ac06ab6",
-    "docs/evidence/I10-readme-before-app-sdk.md": "a1c8a79a698fe8d2b8d9c40136e98ff6855c44157ae24977c4a1877c67e87f1a",
-    "docs/evidence/implementation-results-before-app-sdk.json": "6612cf865fd3fd5570323237c9943110c8af2cfee136ab58990f5beeb1a0c466",
-    "docs/sdk/api.md": "fb3a5035a1ae22c27f4218853fab3d8df4a4f7cebda3ac5abe42f729b9b90be1",
-    "docs/sdk/status.md": "67c16723a40e16b6ef2a4fae919f09160bf078fe8bbdf0ab7d7915fb7ed428c6",
-    "docs/sdk/quickstart.md": "98916ac80c8eb5f7ad27ecf25bfc0ab0de3c1eb70f08adc7b0456721b63d8e5f",
-    "docs/sdk/README.md": "b9d67ceedea3e6a13ae24785c232df262cd05123e55e86e0d506442a75e0415e",
-    "docs/sdk/recovery.md": "be30f579738efc85257c2f284d9c98ba4087d8d59a70a038d80187d40ed5ad2c",
-    "docs/sdk/deployment.md": "7d1587deb9cd392f3efec1dd670870b4dcdda886cd693f9b992b5f2571492009",
-    "examples/browser-chat/load-deployment.ts": "9b5a2aed2ee9efb2f5e85ef4e9bd0b9033bf24b43682ad0ae2ebc66b5eb50be8",
-    "examples/browser-chat/integration.ts": "4b6c226edc63f286dc7e724d7bb047e72e61feb86baf86266fa68e340f61ef72",
-    "examples/browser-chat/README.md": "4c63a525a2951ea9b366f811f837efcf9616dba461b93cfeefc194a657db64c8",
-    "examples/browser-chat/build.mjs": "4674e1b1ea08d0902f80671560d239278a518ab9d427c85e81f1921d086472a6",
-    "examples/browser-chat/tsconfig.json": "bd3b1175375f6b6088a09abf404c3269798e0214982307e7de2aa9bba31d79c9",
-    "docs/evidence/I10-app-sdk-components/archive.json": "096b6d06d20f9e3fbd598a402d974375615a6d859b77e9dd7599b963528389b7",
-    "docs/evidence/I10-app-sdk-components/sdk-typecheck.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-    "docs/evidence/I10-app-sdk-components/diff-check.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-    "docs/evidence/I10-app-sdk-components/sdk-tests.log": "7d6f2a475ec44338fd7f749eb75fa2104f157d1915eca0c2344a770d20baea3d",
-    "docs/evidence/I10-app-sdk-components/design-doc-links.log": "10f150993693b2d419647ff27ddba470a6492c3a4dcb45c7ce32a91cf9d0649c",
-    "docs/evidence/I10-app-sdk-components/browser-example-build.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-    "docs/evidence/I10-app-sdk-components/example-typecheck.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    "work/design/generate_contracts.py": "12628f01b563fc81ff4f90c032d4e2b3c408dc856756456f4851ba6e384d25b3"
   },
   "limitations": [
-    "2026-10-06 application SDK review: 237 SDK tests and six local stages passed with 477 unchanged source inputs. Earlier 233-test and public/provider reports retain their original source hashes. Current inventory hashes do not establish live acceptance or release readiness.",
     "2026-10-06 remaining-demo commit: focused local checks passed (Node 152, control 21, indexer 45 with one existing manual benchmark ignored, Python budget 22, type and format checks). Current artifact hashes match staged files; original historical reports remain unchanged. This is not a rerun of public/provider/Phantom acceptance.",
     "2026-10-06 compact deposit review: fixed legacy-IDL startup compatibility and persisted priority fees. Fresh 20-stage local acceptance passed with 456 unchanged source inputs (214 SDK/67 UI). This file-hash inventory does not rerun historical public/provider evidence. Public compact deployment/Phantom and release gates remain unverified.",
     "2026-10-06 compact deposit: 20-stage local aggregate passed with 455 source inputs unchanged. That implementation-time source snapshot included pre-existing demo work and is not a rerun of historical provider/public acceptance. Historical runtime reports retain their original source hashes. Public compact deployment/Phantom/finality, full I10 and release gates remain unverified. See docs/evidence/I10-single-deposit-implementation.md.",
     "OA client verification follow-up: 159 focused local JS/Rust tests passed; live OA, public devnet, full SDK artifact-dependent wallet-chain and full SBF regressions were not rerun. Current artifact hashes identify this source snapshot, not a rerun of historical acceptance reports. See docs/evidence/I08-oa-client-verification.md.",
     "I10 expanded local five-mode/provider and 28 API case acceptance, repeat faults and bounded load passed. Historical seven-stage regression before the OA client verification fix after provider/Phantom/shutdown additions passed in 498.224 seconds. Historical 458.202, 438.686 and 399.016-second runs and the intervening disk-space failure are preserved. Full I10 remains incomplete.",
-    "Actual public devnet Vault deployment/admin, deposit→escape→finalize with saved-signature recovery, clearance→mutual withdrawal and independent native challenge→mutual withdrawal are verified. Two later bounded read-only daemon stops exited cleanly and retained the same journal; they did not complete a scan or verify public unknown-send crash recovery. The earlier financial challenge run retains clean_shutdown=false. Native-keypair and local UI fixture tests do not establish actual Phantom acceptance.",
+    "Actual public devnet Vault deployment/admin, deposit\u2192escape\u2192finalize with saved-signature recovery, clearance\u2192mutual withdrawal and independent native challenge\u2192mutual withdrawal are verified. Two later bounded read-only daemon stops exited cleanly and retained the same journal; they did not complete a scan or verify public unknown-send crash recovery. The earlier financial challenge run retains clean_shutdown=false. Native-keypair and local UI fixture tests do not establish actual Phantom acceptance.",
     "The user authorized a total 10 USDC provider test budget and selected Chrome + Phantom. Real provider credentials/rights/inference/billing/expiry and hosted CI remain unverified; API/management credential fields were empty at the last preflight. Actual Chrome navigation is blocked with ERR_BLOCKED_BY_CLIENT, with no Phantom connection or financial signature. Provider spend remains zero.",
     "Known deterministic test circuit setup/signing keys and devnet test authority profile are never production eligible; actual devnet mint is Circle test USDC.",
     "Production cloud KMS, network egress policy, independent fault domains, external witness custody and human notification delivery remain deployment gates, not a reason to stop feasible I10 devnet work.",
@@ -890,10 +857,10 @@
     "I01-sdk.log": {
       "sha256": "55359daf7ce5908d7e4d9fe3afbca4af79af3eb1abe23b433392b2bce9643622",
       "test_results": [
-        "ℹ tests 309",
-        "ℹ pass 309",
-        "ℹ fail 0",
-        "ℹ skipped 0"
+        "\u2139 tests 309",
+        "\u2139 pass 309",
+        "\u2139 fail 0",
+        "\u2139 skipped 0"
       ]
     },
     "I02-clippy.log": {
@@ -918,10 +885,10 @@
     "I02-typescript.log": {
       "sha256": "136c80ac569e8d379c796018219c749cca41380c6df9f2f91319b1967ea6414c",
       "test_results": [
-        "ℹ tests 4",
-        "ℹ pass 4",
-        "ℹ fail 0",
-        "ℹ skipped 0"
+        "\u2139 tests 4",
+        "\u2139 pass 4",
+        "\u2139 fail 0",
+        "\u2139 skipped 0"
       ]
     }
   },
@@ -950,10 +917,10 @@
     "review-typescript.log": {
       "sha256": "f0ef028a107957c41d0b51ca85907a90b49f71fd34b19ae088dc76487cbc2a5e",
       "test_results": [
-        "ℹ tests 6",
-        "ℹ pass 6",
-        "ℹ fail 0",
-        "ℹ skipped 0"
+        "\u2139 tests 6",
+        "\u2139 pass 6",
+        "\u2139 fail 0",
+        "\u2139 skipped 0"
       ]
     },
     "review-upstream-protocol.log": {
@@ -974,10 +941,10 @@
     "review-upstream-sdk.log": {
       "sha256": "e43e57f5c721d9dee8204292fb4c6052f2e9d08047b5dd4169f2c77b2b332120",
       "test_results": [
-        "ℹ tests 309",
-        "ℹ pass 309",
-        "ℹ fail 0",
-        "ℹ skipped 0"
+        "\u2139 tests 309",
+        "\u2139 pass 309",
+        "\u2139 fail 0",
+        "\u2139 skipped 0"
       ]
     },
     "review-upstream-services.log": {
@@ -3006,40 +2973,5 @@
     "indexer_manual_benchmark_ignored": 1,
     "budget_tests_passed": 22,
     "public_deployment_or_provider_or_phantom_rerun": false
-  },
-  "app_sdk": {
-    "report": "docs/evidence/I10-app-sdk-results.json",
-    "summary": "docs/evidence/I10-app-sdk.md",
-    "previous_source_inventory": "docs/evidence/implementation-results-before-app-sdk.json",
-    "source_inputs": 478,
-    "sdk_tests": 233,
-    "I10_complete": false,
-    "release_gates_passed": [],
-    "scope": "Local fixtures, real Chrome custody, example compile/build and docs; no migration or public/provider sends",
-    "documentation_follow_up": {
-      "language": "English",
-      "summary": "docs/evidence/I10-app-sdk.md",
-      "public_documents_checked": 11,
-      "local_links_checked": 61,
-      "implementation_and_test_inputs_unchanged": true,
-      "runtime_tests_rerun": false,
-      "original_runtime_report_preserved": true
-    }
-  },
-  "app_sdk_review": {
-    "report": "docs/evidence/I10-app-sdk-review-results.json",
-    "summary": "docs/evidence/I10-app-sdk-review.md",
-    "archive": "docs/evidence/I10-app-sdk-review-components/archive.json",
-    "previous_source_inventory": "docs/evidence/implementation-results-before-app-sdk-review.json",
-    "source_inputs": 477,
-    "sdk_tests": 237,
-    "I10_complete": false,
-    "release_gates_passed": [],
-    "fixed_findings": [
-      "pending-read cancellation lock lifetime",
-      "redacted response cleanup failures",
-      "CR-only SSE EOF"
-    ],
-    "scope": "Local fixture lifecycle, actual headless Chrome custody, typechecks and example build; no live provider, public chain, funded state or service changes"
   }
 }

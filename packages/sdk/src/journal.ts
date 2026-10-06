@@ -206,6 +206,14 @@ export class IndexedDbJournalStore implements AtomicJournalStore {
     return new IndexedDbJournalStore(database, locks, name);
   }
   close(): void { this.database.close(); }
+  /** Custody initialization must never replace the missing key of existing ciphertext. */
+  async isEmpty(): Promise<boolean> {
+    return new Promise((resolve, reject) => {
+      const tx = this.database.transaction('records'), request = tx.objectStore('records').count();
+      tx.oncomplete = () => resolve(request.result === 0);
+      tx.onabort = tx.onerror = () => reject(new JournalIntegrityError('cannot inspect existing journal'));
+    });
+  }
   async read(key: string): Promise<EncryptedRecord | null> {
     return new Promise((resolve, reject) => {
       const transaction = this.database.transaction('records', 'readonly'), request = transaction.objectStore('records').get(key);
