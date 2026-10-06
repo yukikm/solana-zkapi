@@ -24,7 +24,7 @@ fn main() {
     let id = Pubkey::new_from_array([42; 32]);
     let payer = Keypair::new();
     svm.airdrop(&payer.pubkey(), 1_000_000_000).unwrap();
-    svm.add_program(id, &elf);
+    svm.add_program(id, &elf).expect("load SBF fixture");
     let mut rows = vec![];
     for n in [0u8, 1, 2, 3, 5, 11] {
         if syscall && n == 0 {

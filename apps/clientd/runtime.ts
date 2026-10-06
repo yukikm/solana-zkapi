@@ -13,6 +13,7 @@ import { EncryptedJournal, importJournalKey } from '../../packages/sdk/src/journ
 import { unlockJournalKey, initializeJournalKey } from '../../packages/sdk/src/secret-custody.ts';
 import { relayFetch, writeNodeResponse } from '../../packages/sdk/src/clientd-network.ts';
 import { ClientDaemon } from '../../packages/sdk/src/clientd-bridge.ts';
+import { loadDaemonModels, type DaemonModelSource } from '../../packages/sdk/src/clientd-models.ts';
 import { NativeProver } from '../../packages/sdk/src/prover-node.ts';
 import { NoteProver } from '../../packages/sdk/src/prover.ts';
 import { SolanaWalletChain } from '../../packages/sdk/src/wallet-chain.ts';
@@ -22,7 +23,7 @@ import { connectionTransport, type V0Wallet } from '../../packages/sdk/src/trans
 interface RuntimeConfig {
   manifest: string; policy: ManifestTrustPolicy; artifacts: Record<Exclude<keyof ArtifactBundle,'additional'>,string> & {additional:Record<string,string>};
   verifier:{path:string;sha256:string}; prover:{path:string;sha256:string};
-  journal:string; custody:string; note_id:string; mode:Mode; models:string[]; tariff:string; key_reuse_seconds?:number;
+  journal:string; custody:string; note_id:string; mode:Mode; models:(string | DaemonModelSource)[]; tariff?:string; key_reuse_seconds?:number;
   rpc:string; indexer:string; direct_provider_bases?:Partial<Record<'direct_oa'|'direct_openrouter',string>>;
   oa_verifier?:{base:string;stationId:string};
 }
@@ -42,6 +43,7 @@ async function main(): Promise<void> {
   const raw = secret.initialize_key ? await initializeJournalKey(c.custody,passphrase) : await unlockJournalKey(c.custody,passphrase);passphrase.fill(0);
   const key = await importJournalKey(raw); raw.fill(0);
   const m = await verifyManifest(new Uint8Array(await readFile(c.manifest)),c.policy);
+  const models = await loadDaemonModels(c,m.tariff_hashes,async path => parseStrictJson(new Uint8Array(await readFile(path))) as unknown as Tariff);
   const artifacts:any = {additional:{}};
   for (const [name,path] of Object.entries(c.artifacts)) if (name!=='additional') artifacts[name]=new Uint8Array(await readFile(path as string));
   for (const [name,path] of Object.entries(c.artifacts.additional)) artifacts.additional[name]=new Uint8Array(await readFile(path));
@@ -61,10 +63,15 @@ async function main(): Promise<void> {
   if(secret.wallet_seed_base64){const seed=Buffer.from(secret.wallet_seed_base64,'base64');if(seed.length!==32||seed.toString('base64')!==secret.wallet_seed_base64)throw Error('invalid wallet seed');const pair=Keypair.fromSeed(seed);seed.fill(0);secret.wallet_seed_base64='';wallets.push({publicKey:pair.publicKey,supportedTransactionVersions:new Set([0]),signTransaction:async(tx:VersionedTransaction)=>{tx.sign([pair]);return tx;}});}
   const rpc=connectionTransport(connection);
   const wallet=new WalletClient({manifest:m,prover,journal,chain,rpc,wallets,fetch:fetcher});
-  const tariff=parseStrictJson(new Uint8Array(await readFile(c.tariff))) as unknown as Tariff;
-  const service=new ClientDaemon({client,journal,noteId:c.note_id,mode:c.mode,models:c.models,keyReuseSeconds:c.key_reuse_seconds,
-    prepare:async(model,credentials)=>{const current=await journal.read(c.note_id);if(!current?.value.witness)throw Error('full finalized note required');const snap=await chain.snapshot(current.value.witness.note_id,'active');const quote=await client.quote({mode:c.mode,provider:tariff.provider as any,models:[c.mode==='proxy'?model:'*'],session_ttl_seconds:String(c.key_reuse_seconds===0?60:c.key_reuse_seconds??60)},tariff);return{prepared:await prover.prepareSession(current.value.witness,current.value.state,snap.root,snap.siblings,quote,tariff,credentials),root:snap.root};},
-    wallet:async(command:any)=>{if(!command||typeof command!=='object')throw Error('wallet command required');switch(command.action){case'deposit':await wallet.beginDeposit(c.note_id,command.amount,command.roles as WalletRoles);break;case'withdraw':await wallet.beginWithdrawal(c.note_id,command.mode,command.destination_owner,command.roles);break;case'escape':await wallet.fallbackToEscape(c.note_id);break;case'finalize':await wallet.beginFinalize(c.note_id,command.roles);break;case'advance':return wallet.advance(c.note_id);case'prove':await wallet.resumeProof(c.note_id);break;case'retry-rejected':await wallet.retryRejected(c.note_id);break;default:throw Error('unsupported wallet action');}return{saved:true};},
+  const service=new ClientDaemon({client,journal,noteId:c.note_id,mode:c.mode,models,keyReuseSeconds:c.key_reuse_seconds,
+    prepare:async(model,credentials)=>{
+      const selected=models.find(configured=>configured.id===model);if(!selected)throw Error('model not configured');
+      const current=await journal.read(c.note_id);if(!current?.value.witness)throw Error('full finalized note required');
+      const snap=await chain.sessionSnapshot(current.value.witness.note_id,prover);
+      const quote=await client.quote({mode:c.mode,provider:selected.provider,models:[c.mode==='proxy'?model:'*'],session_ttl_seconds:String(c.key_reuse_seconds===0?60:c.key_reuse_seconds??60)},selected.tariff);
+      return{prepared:await prover.prepareSession(current.value.witness,current.value.state,snap.root,snap.siblings,quote,selected.tariff,credentials),root:snap.root};
+    },
+    wallet:async(command:any)=>{if(!command||typeof command!=='object')throw Error('wallet command required');switch(command.action){case'deposit':await wallet.beginDeposit(c.note_id,command.amount,command.roles as WalletRoles);break;case'withdraw':await wallet.beginWithdrawal(c.note_id,command.mode,command.destination_owner,command.roles);break;case'escape':await wallet.fallbackToEscape(c.note_id);break;case'clear-unaccepted-auth':await wallet.reconcileUnacceptedAuthorization(c.note_id);break;case'emergency-escape':await wallet.beginEmergencyEscape(c.note_id,command.destination_owner,command.roles);break;case'reconcile-challenge':await wallet.reconcileChallengedEscape(c.note_id);break;case'finalize':await wallet.beginFinalize(c.note_id,command.roles);break;case'advance':return wallet.advance(c.note_id);case'prove':await wallet.resumeProof(c.note_id);break;case'recover-expired-setup':await wallet.reconcileExpiredCreation(c.note_id);break;case'retry-rejected':await wallet.retryRejected(c.note_id);break;default:throw Error('unsupported wallet action');}return{saved:true};},
   });
   await store.withLock(`daemon:${c.note_id}`,async()=>{
     // Missing notes are allowed solely for the management deposit workflow.

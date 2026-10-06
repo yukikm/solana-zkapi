@@ -15,7 +15,7 @@ research-dot-product = ["zkapi-poseidon/research-dot-product"]
 research-proof-bound-tag = []
 research-syscall = ["dep:solana-poseidon"]
 [dependencies]
-solana-program = "=2.2.1"
+solana-program = "=2.3.0"
 groth16-solana = "=0.2.0"
 zkapi-poseidon = { path = "../../crates/zkapi-poseidon" }
 ark-bn254 = { version = "=0.5.0", default-features = false, features = ["scalar_field"] }

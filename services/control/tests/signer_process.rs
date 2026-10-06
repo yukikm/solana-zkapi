@@ -98,6 +98,7 @@ fn config() -> SignerConfig {
     let state_key =
         PublicKey::from_wire(&CompactSigner::from_seed(&Felt252::from_u64(31)).public_key());
     SignerConfig {
+        public_devnet_profile: None,
         authorization: zkapi_control::quote::BindingConfig {
             deployment_id: "signer-process-test".into(),
             pool: bs58::encode([42u8; 32]).into_string(),

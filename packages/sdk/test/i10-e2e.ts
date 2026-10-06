@@ -255,7 +255,7 @@ try {
     const mode:Mode=tariff.model==='*'?(tariff.provider==='oa'?'direct_oa':'direct_openrouter'):'proxy';
     const before=(await journal.read('note'))!.value;
     const quote=await client.quote({mode,provider:tariff.provider as any,models:[tariff.model],session_ttl_seconds:'60'},tariff);
-    const snapshot=await chain.snapshot(witness.note_id,'active');
+    const snapshot=await chain.sessionSnapshot(witness.note_id,prover);
     const prepared=await prover.prepareSession(witness,before.state,snapshot.root,snapshot.siblings,quote,tariff,await createCredentials(mode));
     await client.prepare('note',prepared,snapshot.root);
     const status=await client.submit('note');assert.equal(status.state,'ACTIVE');

@@ -114,18 +114,21 @@ pub struct World {
 }
 impl World {
     pub fn new(elf: &[u8]) -> Self {
+        let id = zkapi_vault::ID;
+        assert_eq!(id.to_bytes(), [43; 32]);
+        Self::new_for(elf, id, Pubkey::new_from_array([4; 32]))
+    }
+    /// Explicit alternate test deployment; transaction signatures remain enabled.
+    pub fn new_for(elf: &[u8], id: Pubkey, mint: Pubkey) -> Self {
         let payer = Keypair::from_seed(&[1; 32]).unwrap();
         let attacker = Keypair::from_seed(&[10; 32]).unwrap();
         let mut svm = LiteSVM::new().with_transaction_history(0);
         svm.airdrop(&payer.pubkey(), 20_000_000_000).unwrap();
         svm.airdrop(&attacker.pubkey(), 1_000_000_000).unwrap();
-        let id = zkapi_vault::ID;
-        assert_eq!(id.to_bytes(), [43; 32]);
-        svm.add_program(id, elf);
+        svm.add_program(id, elf).expect("load SBF fixture");
         let pool = Pubkey::find_program_address(&[b"pool", &[2; 32]], &id).0;
         let tree = Pubkey::find_program_address(&[b"tree", pool.as_ref()], &id).0;
         let authority = Pubkey::find_program_address(&[b"vault", pool.as_ref()], &id).0;
-        let mint = Pubkey::new_from_array([4; 32]);
         let destination_owner = Pubkey::new_from_array([7; 32]);
         let treasury_owner = Pubkey::new_from_array([8; 32]);
         let mut world = Self {

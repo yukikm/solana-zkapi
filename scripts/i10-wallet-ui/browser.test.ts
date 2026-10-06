@@ -154,6 +154,17 @@ test('Chrome fixtures: wallet rejection/reload and provider one-send/reload/veri
   await c.evaluate(`document.querySelector('#provider-prepare').click()`);
   await c.wait(`JSON.parse(document.querySelector('#state').textContent).session?.phase === 'prepared' && !document.querySelector('#provider-send').disabled`);
   assert.equal(await c.evaluate(`document.querySelector('#withdraw').disabled`), true);
+  // A page kept open across note expiry must not dispatch the prepared request,
+  // even if an old event handler is invoked directly. Recovery remains usable.
+  const callsBeforeExpiry = await c.evaluate(`fixtureProviderObservation()`);
+  await c.evaluate(`fixtureSetPresentationClock('86400'); document.querySelector('#provider-send').onclick()`);
+  await c.wait(`document.querySelector('#status').textContent.includes('note has expired') && !document.querySelector('#provider-close').disabled`);
+  assert.equal(await c.evaluate(`document.querySelector('#provider-send').disabled`), true);
+  assert.equal(await c.evaluate(`document.querySelector('#provider-prepare').disabled`), true);
+  assert.match(await c.evaluate(`document.querySelector('#note-expiry').textContent`), /entire principal.*treasury/);
+  assert.deepEqual(await c.evaluate(`fixtureProviderObservation()`), callsBeforeExpiry);
+  await c.evaluate(`fixtureSetPresentationClock('100'); document.querySelector('#wallet').dispatchEvent(new Event('change'))`);
+  await c.wait(`!document.querySelector('#provider-send').disabled`);
   await c.evaluate(`fixtureProviderBehavior.loseAuth = true; document.querySelector('#provider-send').click()`);
   await c.wait(`document.querySelector('#status').textContent.includes('Authorization could not be confirmed') && !document.querySelector('#provider-send').disabled`);
   assert.equal((await state()).session.phase, 'send_unknown'); assert.deepEqual((await state()).session.operations, []);
@@ -183,4 +194,18 @@ test('Chrome fixtures: wallet rejection/reload and provider one-send/reload/veri
   assert.equal(await c.evaluate(`document.querySelector('#provider-prepare').disabled`), true);
   assert.equal((await c.evaluate(`fixtureProviderObservation()`)).inference, 0);
   assert.equal(settled.live_provider_verified, false); assert.equal(settled.wallet_UI_verified, false);
+  // A failed operator clearance leaves the real SDK's unsigned mutual operation.
+  // Only an explicit fallback action changes it into the existing escape flow.
+  await c.evaluate(`document.querySelector('#withdraw').click()`);
+  await c.wait(`JSON.parse(document.querySelector('#state').textContent).operation?.kind === 'mutual_close' && !document.querySelector('#fallback-escape').disabled`);
+  const mutual = (await state()).operation;
+  assert.equal(mutual.attempts, 0);
+  assert.equal(await c.evaluate(`document.querySelector('#escape').disabled`), true);
+  assert.equal(await c.evaluate(`document.querySelector('#finalize-escape').disabled`), true);
+  await c.evaluate(`document.querySelector('#fallback-escape').click()`);
+  await c.wait(`JSON.parse(document.querySelector('#state').textContent).operation?.kind === 'initiate_escape' && !document.querySelector('#advance').disabled`);
+  const escape = (await state()).operation;
+  assert.notEqual(escape.id, mutual.id); assert.equal(escape.phase, 'ready'); assert.equal(escape.attempts, 0);
+  assert.equal((await c.evaluate(`fixtureObservation()`)).sends, 0);
+  assert.equal((await c.evaluate(`fixtureProviderObservation()`)).inference, 0);
 });

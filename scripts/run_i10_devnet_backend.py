@@ -31,6 +31,7 @@ import tempfile
 import time
 import urllib.parse
 import urllib.request
+from public_devnet_profile import read_public_profile, private_role_seeds, ProfileError
 
 ROOT = Path(__file__).resolve().parents[1]
 GENESIS = 'EtWTRABZaYq6iMfeYKouRu166VU2xqa1wcaWoxPkrZBG'
@@ -278,9 +279,30 @@ class Backend:
             require(manifest[field] == deployment[field], 'public deployment/manifest mismatch')
         build_value = json.loads(build.read_bytes())
         require(build_value['deployment_authority'] == deployment['initializer'], 'initializer/build mismatch')
+        public_directory = getattr(self.args, 'public_devnet_profile', None)
+        public_hash = getattr(self.args, 'public_devnet_profile_sha256', None)
+        public_profile = None
+        if public_directory is not None:
+            require(not getattr(self.args, 'allow_legacy_devnet_fixtures', False), 'public and legacy profiles are mutually exclusive')
+            public_profile = read_public_profile(public_directory, public_hash)
+            require(build_value.get('schema') == 2 and build_value.get('public_profile_sha256') == public_hash
+                    and build_value.get('tree_setup') == 'single_party_os_random', 'public build profile binding required')
+            from public_devnet_profile import PROFILE_FIELDS
+            for field in (*PROFILE_FIELDS, 'circuit_profile_hash', 'state_key', 'clearance_key',
+                          'quote_public_key', 'receipt_public_key'):
+                require(manifest.get(field) == public_profile[field], 'public deployment role/profile mismatch')
+            for field in ('state_key', 'clearance_key', 'circuit_profile_hash'):
+                require(build_value.get(field) == public_profile[field], 'public build role/profile mismatch')
+        else:
+            require(public_hash is None and getattr(self.args, 'allow_legacy_devnet_fixtures', False),
+                    'select a fresh public profile or explicitly allow legacy devnet fixtures')
+            require(build_value.get('schema') == 1 and 'public_profile_sha256' not in build_value,
+                    'public deployment cannot use legacy role seeds')
         identity = {'schema': 1, 'deployment_id': manifest['deployment_id'], 'pool': manifest['pool'],
                     'manifest_hash': manifest['manifest_hash'], 'build_manifest_sha256': digest(build),
                     'idl_sha256': digest(idl), 'program_sha256': digest(elf)}
+        if public_profile is not None:
+            identity['public_profile_sha256'] = public_hash
         providers, tariffs = {}, []
         if self.args.provider_state is not None:
             require(not self.args.local_adapter, 'synthetic and public provider profiles cannot be combined')
@@ -299,8 +321,10 @@ class Backend:
         # Write-once identity protects restarts from changing the pool or its trust
         # pins underneath persistent nullifiers and the sign-once journal.
         save(self.out / 'identity.json', identity, immutable=True)
-        for role, seed in {'quote': bytes([11]) * 32, 'receipt': bytes([12]) * 32,
-                           'state': (31).to_bytes(32, 'big'), 'clearance': (37).to_bytes(32, 'big')}.items():
+        role_seeds = (private_role_seeds(public_directory) if public_profile is not None else
+                      {'quote': bytes([11]) * 32, 'receipt': bytes([12]) * 32,
+                       'state': (31).to_bytes(32, 'big'), 'clearance': (37).to_bytes(32, 'big')})
+        for role, seed in role_seeds.items():
             save(self.out / (role + '.seed'), seed, immutable=True)
         tariff = local_tariff()
         if self.args.local_adapter:
@@ -314,6 +338,9 @@ class Backend:
                   'receipt_seed_file': str(self.out / 'receipt.seed'),
                   'enable_local_adapter': self.args.local_adapter, 'providers': providers,
                   'tariffs': [tariff] if self.args.local_adapter else tariffs}
+        if public_profile is not None:
+            config['devnet'].update(public_profile_file=str(public_directory / 'public-profile.json'),
+                                    trusted_public_profile_hash=public_hash)
         if not self.args.no_build:
             print('Building control and signer binaries.', flush=True)
             run(['cargo', 'build', '--locked', '--manifest-path', 'services/control/Cargo.toml',
@@ -592,13 +619,24 @@ def arguments():
     parser.add_argument('--pg-port', type=int, default=55446)
     parser.add_argument('--local-adapter', action='store_true', help='explicit synthetic I05 request-proof test adapter')
     parser.add_argument('--provider-state', type=Path, help='private output from provider_acceptance.py prepare')
+    parser.add_argument('--public-devnet-profile', type=Path, help='new independently pinned OS-random profile directory')
+    parser.add_argument('--public-devnet-profile-sha256', help='independently retained SHA256 of public-profile.json')
+    parser.add_argument('--allow-legacy-devnet-fixtures', action='store_true',
+                        help='explicitly retain the historical known-public test keys and setup; never use for a public profile')
     parser.add_argument('--no-build', action='store_true', help='use already built binaries; report records their hashes')
     args = parser.parse_args()
+    public_mode = args.public_devnet_profile is not None
+    require(public_mode == (args.public_devnet_profile_sha256 is not None),
+            'public profile directory and independent SHA256 must be supplied together')
+    require(public_mode != args.allow_legacy_devnet_fixtures,
+            'select a fresh public profile or explicitly allow legacy devnet fixtures')
     for name in ('output', 'deployment', 'program', 'env_file'):
         setattr(args, name, getattr(args, name).resolve())
     if args.provider_state is not None:
         args.provider_state = args.provider_state.resolve()
         private_directory(args.provider_state)
+    if args.public_devnet_profile is not None:
+        args.public_devnet_profile = args.public_devnet_profile.resolve()
     require(1024 <= args.port <= 65535 and 1024 <= args.pg_port <= 65535, 'unprivileged port required')
     url = urllib.parse.urlsplit(args.indexer)
     try:
@@ -648,7 +686,7 @@ def main():
     except Exception as error:
         # Parse/OS/HTTP errors may contain sensitive values; only our static
         # Failure messages may leave this process.
-        message = str(error) if isinstance(error, Failure) else 'backend preparation/runtime failed; private state preserved'
+        message = str(error) if isinstance(error, (Failure, ProfileError)) else 'backend preparation/runtime failed; private state preserved'
         print(message, file=sys.stderr)
         return 1
 

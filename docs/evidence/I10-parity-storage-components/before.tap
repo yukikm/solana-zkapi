@@ -1,0 +1,17 @@
+TAP version 13
+# Subtest: real browser journal: atomic cross-tab CAS, encrypted restart, Web Locks and tab crash recovery
+ok 1 - real browser journal: atomic cross-tab CAS, encrypted restart, Web Locks and tab crash recovery
+  ---
+  duration_ms: 1901.055705
+  type: 'test'
+  ...
+# Runtime browser: Chrome/151.0.7922.173
+1..1
+# tests 1
+# suites 0
+# pass 1
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 2558.448198

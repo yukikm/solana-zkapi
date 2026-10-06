@@ -3,12 +3,14 @@ import { WorkerProver } from './prover-runtime.ts';
 import { openBrowserStorage } from './browser-storage.ts';
 import { sha256Hex } from './trust.ts';
 export { openBrowserStorage, BrowserStorageMissing } from './browser-storage.ts';
+export type { BrowserStoragePersistence } from './browser-storage.ts';
 export { walletStandardAdapter } from './wallet-standard.ts';
 export type { StandardWallet, StandardAccount } from './wallet-standard.ts';
 
 export interface CreateBrowserClientOptions extends Omit<CreateClientOptions, 'prover' | 'storage'> {
   storageName: string;
-  /** Only on the user's explicit first-wallet creation. Normal reload omits this. */
+  /** Explicit first-wallet creation; also requests persistent origin storage.
+   * Normal reload omits this and does not request storage permission. */
   initializeStorage?: boolean;
   /** Application-bundled worker entry, independent of fetched configuration. */
   createWorker(): Worker;
@@ -32,6 +34,7 @@ export async function createBrowserClient(options: CreateBrowserClientOptions) {
     engine = new WorkerProver(createWorker(), wasm, sha256);
     const client = await createZkApiClient({ ...input, storage, prover: engine });
     const ownedEngine = engine;
-    return { client, dispose() { client.dispose(); ownedEngine.terminate(); storage.close(); } };
+    return { client, persistence: storage.persistence,
+      dispose() { client.dispose(); ownedEngine.terminate(); storage.close(); } };
   } catch (error) { engine?.terminate(); storage.close(); throw error; }
 }

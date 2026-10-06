@@ -1,0 +1,30 @@
+{
+  "schema": 1,
+  "scope": "local emergency and ordinary escape expired-create recovery follow-up; synthetic proof/chain/provider adapters, real encrypted journal and v0 signatures",
+  "commands": [
+    "npm run typecheck",
+    "node --test --test-reporter=spec packages/sdk/test/wallet-create-expiry.test.ts packages/sdk/test/wallet-emergency-escape.test.ts packages/sdk/test/wallet-clearance.test.ts packages/sdk/test/wallet-recovery.test.ts packages/sdk/test/control*.test.ts"
+  ],
+  "result": "passed",
+  "tests": 125,
+  "passed": 125,
+  "failed": 0,
+  "skipped": 0,
+  "duration_ms": 12967.227363,
+  "runtime_source_sha256": {
+    "packages/sdk/src/wallet.ts": "4e1c4f3ee7446a24779e2921898ef1957c4293a63990619f26f26e565bf349eb",
+    "packages/sdk/src/control.ts": "ccf19016cc048a9406c26ac4c8e64bc97fc0d0467c360b8e278cc12c493bce54",
+    "packages/sdk/src/clientd-bridge.ts": "28e2025929fdd59d41bd5f9c8dd419a345da1b302599a13eec2325e16df2e200",
+    "packages/sdk/test/wallet-create-expiry.test.ts": "d1487d5c14479d8b1b6c703d523900dab52b8b6808325e504e9d652efeabb489",
+    "packages/sdk/test/wallet-emergency-escape.test.ts": "798c89cc677b8f1def46b2d8eb982e1974ad67e825c5a100e0e4b139f2b71150",
+    "packages/sdk/test/wallet-clearance.test.ts": "3621936f8302d71c0dd0647cfca6781bd94263bcbab4f8be04e0cb67a2d2e871",
+    "packages/sdk/test/wallet-recovery.test.ts": "135ecf9b41e9b455511137dadd62a0b55f0b4636f1a2beb08cdfb991bc8833e3",
+    "packages/sdk/test/control.test.ts": "85168ff56e4fb139922ab48308e6f10f7a1faa4a077403153b4271796571689b"
+  },
+  "log": "docs/evidence/I10-parity-emergency-escape-components/expired-create-followup.txt",
+  "log_sha256": "58b8571fb28bbc195c4d4ea6e0f66eb1c9403146b0d9185047c15e419ba34d8f",
+  "public_rpc": false,
+  "actual_provider": false,
+  "mainnet": false,
+  "release_gates_passed": []
+}

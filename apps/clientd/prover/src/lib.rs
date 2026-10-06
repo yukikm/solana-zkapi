@@ -16,6 +16,7 @@ use sha2::{Digest, Sha256};
 use zkapi_proof::groth16::*;
 use zkapi_solana_types::{binding, FieldElement, MicroUsdc, Scalar, CHAIN_NAMESPACE};
 use zkapi_tree_prover::TreeRequest;
+mod snapshot;
 
 // Recompile the exact shared wire/accounting/verifier implementation for WASM.
 // These modules are pure: no ledger, signer, provider client, Tokio, or DB.
@@ -114,6 +115,12 @@ pub struct State {
 #[derive(Deserialize)]
 #[serde(tag = "kind", rename_all = "snake_case", deny_unknown_fields)]
 pub enum Command {
+    SnapshotPath {
+        root: FieldElement,
+        next_note_id: String,
+        active_notes: Vec<snapshot::SnapshotNote>,
+        note_id: u32,
+    },
     Verify {
         command: verifier::Command,
     },
@@ -305,6 +312,7 @@ fn deposit_state(witness: Witness) -> Result<Value> {
 }
 pub fn execute(command: Command) -> Result<Value> {
     match command {
+        Command::SnapshotPath { root, next_note_id, active_notes, note_id } => snapshot::path(root, next_note_id, active_notes, note_id),
         Command::Verify { command } => verifier::execute(command),
         Command::Deposit {
             note_id,

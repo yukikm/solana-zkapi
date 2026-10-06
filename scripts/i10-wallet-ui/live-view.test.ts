@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import type {NoteJournal, PendingSession, PreparedSession} from '../../packages/sdk/src/control.ts';
 import type {WalletOperation} from '../../packages/sdk/src/wallet.ts';
 import type {Attempt} from '../../packages/sdk/src/transport.ts';
-import {liveView, canRefreshExpiredSetup, canRetryRejected, providerPrepareHint} from './live-view.ts';
+import {liveView, canRefreshExpiredSetup, canRetryRejected, providerPrepareHint, noteExpiry, escapeActions} from './live-view.ts';
 
 const field = '0x' + '01'.padStart(64, '0');
 const signature = {r_x: field, r_y: field, s: field};
@@ -40,6 +40,42 @@ function settle(j: NoteJournal, charge = '18', evidence = 'PROXY_USAGE'): void {
   j.state.state_signature = signature;
 }
 const view = (j: NoteJournal | null, extra = {}) => liveView({journal: j, connected: true, providerConfigured: true, ...extra});
+
+test('note expiry warns before its boundary and forbids suggesting another API request after it', () => {
+  const j = journal();
+  j.witness = {secret: field, note_id: 0, deposit_micro_usdc: '1000000', expiry: '700000'};
+  assert.equal(noteExpiry(j, 0n)?.severity, 'normal');
+  assert.equal(noteExpiry(j, 100000n)?.severity, 'seven_days');
+  assert.equal(noteExpiry(j, 699999n)?.severity, 'one_day');
+  assert.equal(noteExpiry(j, 700000n)?.severity, 'expired');
+  assert.match(noteExpiry(j, 700000n)!.message, /entire principal.*treasury/);
+  assert.match(providerPrepareHint({journal: j, connected: true, providerConfigured: true, nowSeconds: 700000n}), /expired.*disabled/);
+  const expired = view(j, {nowSeconds: 700000n, newRequestAvailable: true});
+  assert.match(expired.title, /expired/); assert.equal(expired.stepIndex, 3);
+  assert.match(expired.nextAction, /withdrawal/);
+  assert.equal(escapeActions(j).begin, true, 'expiry does not hide the explicit recovery action');
+  j.pending = pending('send_unknown', 'send_unknown');
+  assert.match(view(j, {nowSeconds: 700000n}).nextAction, /Recover or close/);
+  assert.equal(escapeActions(j).begin, false, 'pending financial session must be recovered first');
+});
+
+test('escape UI permits only explicit idle, never-signed fallback, or pending-escape finalization paths', () => {
+  const j = journal();
+  assert.deepEqual(escapeActions(j), {begin: true, fallback: false, finalize: false});
+  j.wallet!.operation = {...operation('mutual_close', 'proving'), destinationOwner: 'fixture'};
+  assert.equal(escapeActions(j).fallback, false, 'saved clearance intent is required');
+  j.wallet!.clearance = {nullifier: field, phase: 'requested'};
+  assert.deepEqual(escapeActions(j), {begin: false, fallback: true, finalize: false});
+  j.wallet!.operation.attempts.push(attempt('create'));
+  assert.equal(escapeActions(j).fallback, false, 'even an unresolved setup signature prevents path replacement');
+  j.wallet!.operation.attempts = []; j.wallet!.operation.phase = 'failed';
+  assert.equal(escapeActions(j).fallback, false);
+  delete j.wallet!.operation; j.wallet!.status = 'pending_escape';
+  assert.deepEqual(escapeActions(j), {begin: false, fallback: false, finalize: true});
+  assert.match(view(j).nextAction, /Check deadline.*final withdrawal/);
+  j.pending = pending('active');
+  assert.deepEqual(escapeActions(j), {begin: false, fallback: false, finalize: false});
+});
 
 test('compact deposit offers one signature and explicit rejection recovery, never expired-setup recovery', () => {
   const j = journal(); j.schema = 2; j.wallet!.status = 'unfunded';
@@ -113,6 +149,33 @@ test('expired mutual-close setup is offered only with verified clearance and cre
   ];
   for (const change of cases) { const copy = structuredClone(j); change(copy); assert.equal(canRefreshExpiredSetup(copy), false); }
   assert.equal(JSON.stringify(j), before);
+});
+
+test('expired ordinary and emergency escape setup offer only the same unresolved create-only recovery', () => {
+  for (const emergency of [false, true]) {
+    const j = journal(), a = attempt('create'); a.plan.operation = 'initiate_escape';
+    const op = {...operation('initiate_escape'), destinationOwner: 'saved-destination', plan: a.plan, attempts: [a], current: a.signature};
+    j.wallet!.operation = op;
+    if (emergency) j.wallet!.emergencyEscapes = [{ pending: pending('closing', 'send_unknown'), previous: structuredClone(j.state),
+      nullifier: field, operationId: op.id, phase: 'escaping' }];
+    const before = JSON.stringify(j);
+    assert.equal(canRefreshExpiredSetup(j), true, 'escape does not require operator clearance');
+    const cases: Array<(copy: NoteJournal) => void> = [
+      c => { c.wallet!.status = 'pending_escape'; },
+      c => { delete c.wallet!.operation!.destinationOwner; },
+      c => { c.pending = pending('send_unknown'); },
+      c => { c.wallet!.operation!.phase = 'proving'; },
+      c => { c.wallet!.operation!.step = 1; },
+      c => { c.wallet!.operation!.plan!.operation = 'mutual_close'; },
+      c => { c.wallet!.operation!.attempts.unshift(attempt('append')); },
+      c => { c.wallet!.operation!.attempts.push(attempt('execute')); },
+      c => { c.wallet!.operation!.finalized.push({signature: a.signature, slot: 5}); },
+      c => { delete c.wallet!.operation!.current; },
+      c => { c.wallet!.operation!.current = 'different-signature'; },
+    ];
+    for (const change of cases) { const copy = structuredClone(j); change(copy); assert.equal(canRefreshExpiredSetup(copy), false); }
+    assert.equal(JSON.stringify(j), before);
+  }
 });
 
 test('unfunded or disconnected state never presents candidate deposit as usable money', () => {

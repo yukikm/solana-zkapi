@@ -1,0 +1,41 @@
+TAP version 13
+# Subtest: browser cleanup does not await an already observed signal exit
+ok 1 - browser cleanup does not await an already observed signal exit
+  ---
+  duration_ms: 90.548091
+  type: 'test'
+  ...
+# Subtest: browser cleanup escalates when a process ignores TERM
+ok 2 - browser cleanup escalates when a process ignores TERM
+  ---
+  duration_ms: 1541.867279
+  type: 'test'
+  ...
+# Subtest: real browser journal: atomic cross-tab CAS, encrypted restart, Web Locks and tab crash recovery
+not ok 3 - real browser journal: atomic cross-tab CAS, encrypted restart, Web Locks and tab crash recovery
+  ---
+  duration_ms: 468.908843
+  type: 'test'
+  location: '/workspace/solana-zkapi/packages/sdk/test/journal-browser.test.ts:91:1'
+  failureType: 'testCodeFailure'
+  error: |-
+    Chromium exited: chrome_crashpad_handler: --database is required
+    Try 'chrome_crashpad_handler --help' for more information.
+    [52070:52070:1006/053303.926249:ERROR:third_party/crashpad/crashpad/util/file/filesystem_posix.cc:63] mkdir : No such file or directory (2)
+    [52070:52070:1006/053303.956436:FATAL:sandbox/linux/suid/client/setuid_sandbox_host.cc:166] The SUID sandbox helper binary was found, but is not configured correctly. Rather than run without sandboxing I'm aborting now. You need to make sure that /usr/lib/chromium/chrome-sandbox is owned by root and has mode 4755.
+    
+  code: 'ERR_TEST_FAILURE'
+  stack: |-
+    TestContext.<anonymous> (file:///workspace/solana-zkapi/packages/sdk/test/journal-browser.test.ts:124:40)
+    async Test.run (node:internal/test_runner/test:1389:7)
+    async Test.processPendingSubtests (node:internal/test_runner/test:960:7)
+  ...
+1..3
+# tests 3
+# suites 0
+# pass 2
+# fail 1
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 2787.874105

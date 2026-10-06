@@ -11,7 +11,7 @@ fn main() {
   let mut svm=LiteSVM::new().with_transaction_history(0);
   if diagnostic { svm=svm.with_compute_budget(ComputeBudget{compute_unit_limit:100_000_000,..ComputeBudget::default()}); }
   let id=Pubkey::new_from_array([42;32]);let payer=Keypair::from_seed(&[1; 32]).unwrap();
-  svm.airdrop(&payer.pubkey(),1_000_000_000).unwrap();svm.add_program(id,&elf);
+  svm.airdrop(&payer.pubkey(),1_000_000_000).unwrap();svm.add_program(id,&elf).expect("load SBF fixture");
   let tx=Transaction::new_signed_with_payer(&[ComputeBudgetInstruction::set_compute_unit_limit(1_000_000),Instruction{program_id:id,accounts:vec![],data:fields[..2*n].concat()}],Some(&payer.pubkey()),&[&payer],svm.latest_blockhash());
   match svm.send_transaction(tx) {Ok(m)=>println!("diagnostic={diagnostic}, {n} keys: {} CU, {:?}",m.compute_units_consumed,m.logs),Err(e)=>println!("diagnostic={diagnostic}, {n} keys failed: {:?}",e)};
  }

@@ -57,10 +57,10 @@ export async function providerFixture(journal: EncryptedJournal<NoteJournal>, no
     const next = input.command.settlement as Settlement;
     return {...input.command.state, balance_micro_usdc: (BigInt(input.command.state.balance_micro_usdc) - BigInt(next.charge_micro_usdc)).toString(), anchor: next.next_anchor, state_signature: next.next_state_signature};
   }});
-  const prover: Pick<NoteProver, 'prepareSession'> = {async prepareSession(_w, _s, _r, _path, quote, tariff, credentials) {
+  const prover: Pick<NoteProver, 'prepareSession'|'snapshotPath'> = {async snapshotPath(){throw Error('synthetic chain does not reconstruct a real tree');},async prepareSession(_w, _s, _r, _path, quote, tariff, credentials) {
     return {request: {authorization: {version: '1', deployment_id: context.deployment_id, pool: context.pool, request_id: credentials.requestId, quote_hash: quote.quote_hash, mode: 'proxy', control_secret_hash: credentials.controlHash, proxy_secret_hash: credentials.proxyHash}, quote, public_inputs: Array(12).fill(field(1)), proof: {backend: 'groth16_bn254', proof: 'fixture-not-a-proof'}}, control_token: credentials.controlToken, proxy_token: credentials.proxyToken, tariff, rerandomization: field(13)};
   }};
   const options: UiProviderOptions = {configuration, journal, client: new ControlClient({context, journal, verifier, fetch: fetcher, now: () => 150n}), prover,
-    chain: {async snapshot() { counts.snapshots++; return {root: field(14), siblings: Array(32).fill(field(0)), slot: 1, sequence: '0', nextNoteId: 1, clock: '100', paused: false, treasuryOwner: 'fixture'}; }}};
+    chain: {async sessionSnapshot() { counts.snapshots++; return {root: field(14), siblings: Array(32).fill(field(0)), slot: 1, sequence: '0', nextNoteId: 1, clock: '100', paused: false, treasuryOwner: 'fixture'}; }}};
   return {options, counts, behavior, authBodies};
 }

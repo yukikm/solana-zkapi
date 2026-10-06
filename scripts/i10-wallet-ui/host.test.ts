@@ -46,6 +46,22 @@ test('fixture output keeps root and live on the existing document, and partial d
   await assert.rejects(startUiHost({port: 0, output}), /ENOENT/);
 });
 
+test('indexer relay allows common snapshots only through exact bounded digest routes', async t => {
+  const output=await mkdtemp(join(tmpdir(),'zkapi-ui-snapshot-routes-'));t.after(()=>rm(output,{recursive:true,force:true}));
+  for(const file of ['index.html','app.js','style.css'])await writeFile(join(output,file),'fixture');
+  const calls:string[]=[];
+  const host=await startUiHost({port:0,output,indexer:async path=>{calls.push(path);return {status:200,bytes:Buffer.from('{}')};}});
+  t.after(()=>host.close());
+  for(const path of ['/zkapi/v1/tree/snapshot','/zkapi/v1/tree/snapshots/'+ 'ab'.repeat(32)+'.json']){
+    const r=await fetch(host.origin+'/indexer'+path);assert.equal(r.status,200);assert.equal(r.headers.get('cache-control'),'no-store');
+  }
+  assert.equal(calls.length,2);
+  for(const path of ['/snapshot?note=0','/snapshots/'+ 'AB'.repeat(32)+'.json','/snapshots/short.json','/snapshots/'+ 'ab'.repeat(32)+'.json?url=https://elsewhere.invalid','/snapshots/'+ 'ab'.repeat(32)+'.json/']){
+    assert.equal((await fetch(host.origin+'/indexer/zkapi/v1/tree'+path)).status,400,path);
+  }
+  assert.equal(calls.length,2);
+});
+
 test('loopback host denies foreign origins, arbitrary provider/routes/batch RPC and financial sends by default', async t => {
   const output = await mkdtemp(join(tmpdir(), 'zkapi-ui-host-')); t.after(() => rm(output, {recursive: true, force: true}));
   for (const file of ['index.html', 'app.js', 'style.css']) await writeFile(join(output, file), 'fixture');

@@ -29,7 +29,7 @@ impl Runner {
         let payer = Keypair::new();
         let id = Pubkey::new_from_array([42; 32]);
         svm.airdrop(&payer.pubkey(), 1_000_000_000).unwrap();
-        svm.add_program(id, elf);
+        svm.add_program(id, elf).expect("load SBF fixture");
         Self {
             svm,
             payer,

@@ -6,12 +6,13 @@ import { discriminator, fetchFinalizedBuffer, fetchFinalizedBufferObservation, r
 import { hex, u32 } from './layout2.ts';
 import { parseField } from './encoding.ts';
 import { parseStrictJson, verifyPoolConfig, type VerifiedManifest } from './trust.ts';
+import { privateSessionSnapshot, type SessionSnapshot, type SessionSnapshotSource, type SnapshotPathProver } from './session-snapshot.ts';
 export interface WalletNote { note_id:number; registration_commitment:string; deposit_micro_usdc:string; expiry:string; status:'active'|'pending_escape'|'closed' }
 export interface WalletSnapshot {
   root:string; siblings:string[]; slot:number; sequence:string; nextNoteId:number; clock:string; paused:boolean; treasuryOwner:string;
   note?:WalletNote; pending?:{nullifier:string;balance_micro_usdc:string;destinationOwner:string;deadline:string};
 }
-export interface WalletChain {
+export interface WalletChain extends SessionSnapshotSource {
   snapshot(noteId?:number, path?:'active'|'zero'|'none', minimumSlot?:number):Promise<WalletSnapshot>;
   buffer(plan:UploadPlan,minimumSlot?:number):Promise<BufferState|null>;
   /** Required only by explicit expired-create reconciliation. */
@@ -33,6 +34,9 @@ export class SolanaWalletChain implements WalletChain {
     const reader=r.body?.getReader();if(!reader)throw Error('indexer body');let length=0;const parts:Uint8Array[]=[];
     try{for(;;){const {done,value}=await reader.read();if(done)break;length+=value.length;if(length>65536)throw Error('indexer response bound');parts.push(value);}}finally{await reader.cancel();}
     return parseStrictJson(new Uint8Array(Buffer.concat(parts)));
+  }
+  sessionSnapshot(noteId:number,prover:SnapshotPathProver,minimumSlot=0):Promise<SessionSnapshot> {
+    return privateSessionSnapshot(this.connection,this.manifest,this.origin,this.fetcher,noteId,prover,minimumSlot);
   }
   async snapshot(noteId?:number,path:'active'|'zero'|'none'='active',minimumSlot=0):Promise<WalletSnapshot> {
     if(!Number.isSafeInteger(minimumSlot)||minimumSlot<0)throw Error('invalid minimum snapshot slot');

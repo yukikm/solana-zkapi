@@ -11,6 +11,7 @@ import { connectionTransport, type V0Wallet, type TransactionPreparationCommitme
 import { verifyManifest, jcsBytes, sha256Hex, type ArtifactBundle, type ManifestTrustPolicy, type VerifiedManifest } from './trust.ts';
 import { WalletClient, type WalletOptions } from './wallet.ts';
 import { SolanaWalletChain } from './wallet-chain.ts';
+import { authorizationSnapshot } from './session-snapshot.ts';
 
 export type { Mode, Tariff, ManifestTrustPolicy, ArtifactBundle, V0Wallet, ClientProver };
 export type InferenceApi = 'chat' | 'responses' | 'messages';
@@ -58,9 +59,15 @@ export interface ClientStatus {
   settledBalanceMicroUsdc: string;
   authorizationCapMicroUsdc: string;
   canRequest: boolean;
+  /** Visibility hint only. Recovery still verifies the saved AUTH and signed permanent clearance. */
+  canReconcileUnacceptedAuthorization: boolean;
+  /** Explicit challengeable escape remains separate from ordinary withdrawal. */
+  canPrepareEmergencyEscape: boolean;
+  canReconcileChallengedEscape: boolean;
+  emergencyEscape: { phase: 'escaping' | 'challenged' | 'settled' } | null;
   busy: boolean;
   session: { id: string; phase: string; operations: { id: string; phase: string }[] } | null;
-  walletOperation: { kind: string; phase: string; signature: string | null } | null;
+  walletOperation: { kind: string; phase: string; signature: string | null; destinationOwner: string | null } | null;
   expiry: ReturnType<typeof expiryNotice> | null;
   lastSettlement: { chargeMicroUsdc: string; operationIds: string[] } | null;
   privacyNotice: string;
@@ -124,7 +131,7 @@ export class ZkApiClient {
         if (!record?.value.witness) throw new Error('funded note witness required');
         const quote = await this.options.control.quote({ mode: this.options.mode, provider: model.provider,
           models: [this.options.mode === 'proxy' ? model.id : '*'], session_ttl_seconds: '60' }, model.tariff);
-        const snapshot = await this.options.wallet.chain.snapshot(record.value.witness.note_id, 'active');
+        const snapshot = await authorizationSnapshot(this.options.wallet.chain, record.value.witness.note_id, this.options.wallet.prover);
         const prepared = await this.options.wallet.prover.prepareSession(record.value.witness, record.value.state,
           snapshot.root, snapshot.siblings, quote, model.tariff, credentials);
         return { prepared, root: snapshot.root };
@@ -139,14 +146,33 @@ export class ZkApiClient {
     const r = await this.options.wallet.journal.read(this.options.noteId), v = r?.value, w = v?.wallet, p = v?.pending;
     const expiry = v?.witness ? expiryNotice(BigInt(v.witness.expiry), BigInt(Math.floor(Date.now() / 1000))) : null;
     const last = v?.history.at(-1);
+    const emergency = w?.emergencyEscapes?.at(-1), unresolvedEscape = w?.emergencyEscapes?.some(e => e.phase !== 'settled');
+    const escapeOperation = emergency
+      ? w?.operation?.id === emergency.operationId ? w.operation : w?.history.find(o => o.id === emergency.operationId)
+      : undefined;
+    const escapeAttempt = escapeOperation?.attempts.find(a => a.signature === (escapeOperation.current ?? emergency?.escape?.signature));
     return { noteId: this.options.noteId, mode: this.options.mode, wallet: w?.status ?? 'empty',
       settledBalanceMicroUsdc: v?.state.balance_micro_usdc ?? '0', authorizationCapMicroUsdc: this.options.wallet.manifest.cap_micro_usdc,
-      canRequest: !this.disposed && !this.busy && w?.status === 'active' && !w.operation && !w.clearance && !p
+      canRequest: !this.disposed && !this.busy && w?.status === 'active' && !w.operation && !w.clearance && !p && !unresolvedEscape
         && expiry !== null && expiry.severity !== 'expired' && BigInt(v!.state.balance_micro_usdc) >= BigInt(this.options.wallet.manifest.cap_micro_usdc),
+      canReconcileUnacceptedAuthorization: !this.disposed && !this.busy && w?.status === 'active' && !w.operation
+        && p?.phase === 'send_unknown' && p.operations.length === 0 && p.providerKey === undefined && p.serverState === undefined,
+      canPrepareEmergencyEscape: !this.disposed && !this.busy && w?.status === 'active' && !w.operation
+        && !!p && p.phase !== 'prepared' && !unresolvedEscape && !w.clearedAuthorization
+        && (!w.clearance || w.clearance.phase === 'requested' && w.clearance.signature === undefined),
+      canReconcileChallengedEscape: !this.disposed && !this.busy && emergency?.phase === 'escaping' && !p
+        && escapeOperation?.id === emergency.operationId && escapeOperation?.kind === 'initiate_escape' && !!escapeOperation.plan
+        // An existing finalization may have lost a race to a challenge. Offer a
+        // check; the wallet requires every signed finalization to be rejected.
+        && (w?.status === 'pending_escape' && (!w.operation || w.operation.kind === 'finalize_escape')
+          || w?.status === 'active' && w.operation === escapeOperation)
+        && escapeAttempt?.kind === 'execute',
+      emergencyEscape: emergency ? { phase: emergency.phase } : null,
       busy: this.busy,
       session: p ? { id: p.prepared.request.authorization.request_id, phase: p.phase,
         operations: p.operations.map(o => ({ id: o.id, phase: o.phase })) } : null,
-      walletOperation: w?.operation ? { kind: w.operation.kind, phase: w.operation.phase, signature: w.operation.current ?? null } : null,
+      walletOperation: w?.operation ? { kind: w.operation.kind, phase: w.operation.phase, signature: w.operation.current ?? null,
+        destinationOwner: w.operation.destinationOwner ?? null } : null,
       expiry, lastSettlement: last ? { chargeMicroUsdc: last.settlement.charge_micro_usdc, operationIds: last.operations.map(o => o.id) } : null,
       privacyNotice: this.options.mode === 'proxy' ? PROXY_PRIVACY_NOTICE : 'Prompts go to the selected provider. The provider sees content and network metadata.',
     };
@@ -183,10 +209,23 @@ export class ZkApiClient {
   prepareWithdrawal(destinationOwner: string, mode: 'mutual_close' | 'initiate_escape' = 'mutual_close'): Promise<void> {
     return this.action(() => this.walletClient.beginWithdrawal(this.options.noteId, mode, destinationOwner, this.roles()));
   }
+  /** Preserve an unresolved session and prepare an explicit challengeable escape. */
+  prepareEmergencyEscape(destinationOwner: string): Promise<void> {
+    return this.action(() => this.walletClient.beginEmergencyEscape(this.options.noteId, destinationOwner, this.roles()));
+  }
+  /** Authenticate chain restoration before recovering the archived session. No send is replayed. */
+  reconcileChallengedEscape(): Promise<void> {
+    return this.action(() => this.walletClient.reconcileChallengedEscape(this.options.noteId));
+  }
   advanceWallet(): ReturnType<WalletClient['advance']> { return this.action(() => this.walletClient.advance(this.options.noteId)); }
   resumeWalletProof(): Promise<void> { return this.action(() => this.walletClient.resumeProof(this.options.noteId)); }
   retryRejectedWalletOperation(): Promise<void> { return this.action(() => this.walletClient.retryRejected(this.options.noteId)); }
   recoverExpiredWalletSetup(): Promise<void> { return this.action(() => this.walletClient.reconcileExpiredCreation(this.options.noteId)); }
+  /** Explicitly fence a possibly sent AUTH with no observed acceptance or inference.
+   * Only verified permanent clearance releases it; expiry or missing rows do not. */
+  reconcileUnacceptedAuthorization(): Promise<void> {
+    return this.action(() => this.walletClient.reconcileUnacceptedAuthorization(this.options.noteId));
+  }
   fallbackToEscape(): Promise<void> { return this.action(() => this.walletClient.fallbackToEscape(this.options.noteId)); }
   prepareFinalizeEscape(): Promise<void> { return this.action(() => this.walletClient.beginFinalize(this.options.noteId, this.roles())); }
   private roles() {
@@ -227,7 +266,8 @@ export class ZkApiClient {
         const s = await this.status();
         // action() sets busy, so inspect durable fields directly here.
         const r = await this.options.wallet.journal.read(this.options.noteId);
-        if (s.wallet !== 'active' || s.session || s.walletOperation || r?.value.wallet?.clearance || !s.expiry || s.expiry.severity === 'expired'
+        if (s.wallet !== 'active' || s.session || s.walletOperation || r?.value.wallet?.clearance
+          || r?.value.wallet?.emergencyEscapes?.some(e => e.phase !== 'settled') || !s.expiry || s.expiry.severity === 'expired'
           || BigInt(s.settledBalanceMicroUsdc) < BigInt(s.authorizationCapMicroUsdc)) {
           throw new ClientActionError('not_ready', 'Fund the note or recover its saved operation before a new request.');
         }

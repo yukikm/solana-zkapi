@@ -3,10 +3,11 @@
 import { ControlClient, createCredentials, expiryNotice, PROXY_PRIVACY_NOTICE, type Mode, type NoteJournal, type PreparedSession } from './control.ts';
 import { JournalConflictError, JournalIntegrityError, type EncryptedJournal } from './journal.ts';
 import { parseStrictJson } from './trust.ts';
+import { daemonApiPaths, validateDaemonModelPolicy, type DaemonModelPolicy } from './clientd-models.ts';
 
 export interface DaemonOptions {
   client: ControlClient; journal: EncryptedJournal<NoteJournal>; noteId: string; mode: Mode;
-  models: string[]; keyReuseSeconds?: number; now?: () => bigint;
+  models: readonly (string | DaemonModelPolicy)[]; keyReuseSeconds?: number; now?: () => bigint;
   prepare(model: string, credentials: Awaited<ReturnType<typeof createCredentials>>): Promise<{ prepared: PreparedSession; root: string }>;
   wallet?(command: unknown): Promise<unknown>;
 }
@@ -18,8 +19,10 @@ export class ClientDaemon {
   private readonly o: DaemonOptions; private readonly reuse: number;
   private serial: Promise<unknown> = Promise.resolve(); private inflight = 0; private stopping = false; private started = false; private recoveryRequired = false; private idleWaiters: (()=>void)[] = [];
   constructor(options: DaemonOptions) {
-    this.o = {...options,models:[...options.models]}; this.reuse = options.keyReuseSeconds ?? 60;
-    if (!['proxy','direct_oa','direct_openrouter'].includes(options.mode) || !Number.isInteger(this.reuse) || this.reuse < 0 || this.reuse > 300 || !this.o.models.length || this.o.models.some(m=>typeof m !== 'string' || !m || m === '*')) throw new Error('explicit mode, pinned models and key reuse 0–300 required');
+    this.o = {...options,models:structuredClone(options.models)}; this.reuse = options.keyReuseSeconds ?? 60;
+    const ids = this.o.models.map(model => typeof model === 'string' ? model : model.id);
+    if (!['proxy','direct_oa','direct_openrouter'].includes(options.mode) || !Number.isInteger(this.reuse) || this.reuse < 0 || this.reuse > 300 || !ids.length || ids.some(id=>typeof id !== 'string' || !/^[\x21-\x7e]{1,200}$/.test(id) || id === '*') || new Set(ids).size !== ids.length) throw new Error('explicit mode, unique pinned models and key reuse 0–300 required');
+    for (const model of this.o.models) if (typeof model !== 'string') validateDaemonModelPolicy(options.mode, model);
   }
   private now(): bigint { return this.o.now?.() ?? BigInt(Math.floor(Date.now()/1000)); }
   private exclusive<T>(fn:()=>Promise<T>): Promise<T> {
@@ -73,10 +76,12 @@ export class ClientDaemon {
   async status(): Promise<unknown> {
     const {value,head} = await this.record();
     const witness = (value as NoteJournal & { witness?: {expiry:string} }).witness;
-    return { mode:this.o.mode, balance_micro_usdc:value.state.balance_micro_usdc, phase:value.pending?.phase ?? 'ready', in_flight:this.inflight, recovery_required:this.recoveryRequired,
+    const emergency=value.wallet?.emergencyEscapes?.find(e=>e.phase!=='settled'),closed=value.wallet?.status==='closed';
+    return { mode:this.o.mode, balance_micro_usdc:value.state.balance_micro_usdc, phase:value.pending?.phase ?? (closed?'closed':emergency?'emergency_escape':'ready'), in_flight:this.inflight, recovery_required:(!closed||!!value.pending)&&(this.recoveryRequired||!!emergency),
       unresolved_operations:value.pending?.operations.filter(o=>o.phase==='send_unknown').map(o=>({id:o.id,response_replayable:false})) ?? [],
       key_reuse_seconds:this.reuse, journal_head:head, privacy_notice:PROXY_PRIVACY_NOTICE,
       wallet_status:value.wallet?.status ?? 'legacy_import', wallet_operation:value.wallet?.operation ? {kind:value.wallet.operation.kind,phase:value.wallet.operation.phase} : null,
+      wallet_emergency_escape:emergency?{phase:emergency.phase,funds_withdrawn:closed}:null,
       ...(witness ? {expiry:expiryNotice(BigInt(witness.expiry),this.now())} : {}) };
   }
   async management(action: 'close' | 'recover' | 'reconcile' | 'cancel-unsent' | 'wallet', body?: unknown): Promise<unknown> {
@@ -99,7 +104,10 @@ export class ClientDaemon {
     signal?.throwIfAborted();
     if (!routes.has(path) || !uuid.test(operationId) || bytes.length > 1024*1024) throw new Error('unsupported inference');
     const body = parseStrictJson(bytes);
-    if (!body || typeof body !== 'object' || Array.isArray(body) || typeof body.model !== 'string' || !this.o.models.includes(body.model)) throw new Error('model is not in the pinned allowlist');
+    if (!body || typeof body !== 'object' || Array.isArray(body) || typeof body.model !== 'string') throw new Error('model is not in the pinned allowlist');
+    const model = this.o.models.find(model => (typeof model === 'string' ? model : model.id) === body.model);
+    if (!model) throw new Error('model is not in the pinned allowlist');
+    if (typeof model !== 'string' && !model.apis.some(api => daemonApiPaths[api] === path)) throw new Error('model API is not configured');
     if (this.o.mode !== 'proxy') {
       if (path.startsWith('/v1/messages') || this.o.mode === 'direct_openrouter' && path !== '/v1/chat/completions') throw new Error('unsupported direct endpoint');
       // Direct adapters are text/client-tool only in this release as well.
@@ -116,11 +124,18 @@ export class ClientDaemon {
       signal?.throwIfAborted();
       if (!this.started || this.stopping || this.inflight >= (this.reuse === 0 ? 1 : 4)) throw new DaemonConflict();
       let r = await this.record();
+      if(r.value.wallet?.emergencyEscapes?.some(e=>e.phase!=='settled'))throw new DaemonConflict();
       if (r.value.history.some(h=>h.operations.some(o=>o.id===operationId)) || r.value.pending?.operations.some(o=>o.id===operationId)) throw new DaemonConflict();
       let p = r.value.pending;
       if (p && (p.phase !== 'active' || p.closeRequested || this.now() >= BigInt(p.prepared.request.quote.body.issued_at)+BigInt(this.reuse) || p.prepared.request.authorization.mode !== this.o.mode || this.o.mode === 'proxy' && p.prepared.request.quote.body.models[0] !== body.model)) {
-        if (!this.inflight) await this.o.client.close(this.o.noteId);
-        throw new DaemonConflict();
+        // This new operation has not been dispatched. Preserve its exact intent
+        // while closing an incompatible/expired session; never replay an old one.
+        if (this.inflight) throw new DaemonConflict();
+        await this.o.client.close(this.o.noteId);
+        r = await this.record(); p = r.value.pending;
+        if (p) throw new DaemonConflict();
+        signal?.throwIfAborted();
+        if (this.stopping) throw new DaemonConflict();
       }
       if (!p) {
         const credentials = await createCredentials(this.o.mode);
@@ -150,7 +165,7 @@ export class ClientDaemon {
   }
   async handle(method: string, path: string, bytes: Uint8Array, headers: Headers, signal?: AbortSignal): Promise<Response> {
     try {
-      if (method === 'GET' && path === '/v1/models') return json({object:'list',data:this.o.models.map(id=>({id,object:'model',owned_by:'configured-provider'}))});
+      if (method === 'GET' && path === '/v1/models') return json({object:'list',data:this.o.models.map(model=>({id:typeof model === 'string' ? model : model.id,object:'model',owned_by:typeof model === 'string' ? 'configured-provider' : model.provider}))});
       if (method === 'GET' && path === '/admin/status') return json(await this.status());
       if (method === 'POST' && ['/admin/close','/admin/recover','/admin/reconcile','/admin/cancel-unsent','/admin/wallet'].includes(path)) return json(await this.management(path.slice(7) as 'close'|'recover'|'reconcile'|'cancel-unsent'|'wallet',bytes.length?parseStrictJson(bytes):undefined));
       if (method === 'POST' && routes.has(path)) return await this.infer(path,bytes,headers.get('Idempotency-Key') ?? undefined,headers.get('anthropic-version') ?? '',signal);

@@ -13,11 +13,13 @@ wallet, control, journal and session lifecycle. It validates manifest,
 PoolConfig and artifacts; the prover runs the existing cryptographic verifier.
 The factory provides no caller-supplied “always accept” verifier.
 
-`createBrowserClient(options): Promise<{client, dispose}>` replaces `storage`
+`createBrowserClient(options): Promise<{client, persistence, dispose}>` replaces `storage`
 and `prover` with `storageName`, optional `initializeStorage`, `createWorker`,
 WASM bytes and independent `wasmSha256`. Custody is scoped by app name, selected
 account, deployment ID and pool. The installed worker is part of your trusted
 app build. Disposal rejects while an action/response is active.
+`persistence` reports `persistent`, `best_effort` or `unknown`; show the retention
+warning described in [recovery](recovery.md) before funding.
 
 Existing advanced hosts can use `new ZkApiClient(components)` with already
 verified components. It is not a trust-checking factory: control, wallet,
@@ -36,6 +38,7 @@ Use the factory for new apps. No additional financial journal is created.
 | `settle()` | Ask saved session to close; inspect status afterward |
 | `recover()` | Reconcile/close saved AUTH; never replay inference |
 | `cancelUnsentAuthorization()` | Cancel an AUTH proven locally never sent |
+| `reconcileUnacceptedAuthorization()` | Verify permanent signed clearance for an uncertain AUTH with no observed acceptance or inference; archive it without replay or wallet signing |
 | `reconcileAbsentOperations()` | Explicit terminal-session reconciliation with receipt/successor verification |
 | `dispose()` | Disable new actions/observers; preserve journal and caller-owned dependencies |
 
@@ -56,6 +59,8 @@ established adapters. There is no cross-provider conversion or mode fallback.
 |---|---|
 | `prepareDeposit(amountMicroUsdc)` | Save witness/prepare proof; no signing or sending |
 | `prepareWithdrawal(destinationOwner, mode = 'mutual_close')` | Prepare mutual close or explicit `initiate_escape` |
+| `prepareEmergencyEscape(destinationOwner)` | Preserve an unresolved session and prepare a challengeable escape from the last verified state |
+| `reconcileChallengedEscape()` | Verify the exact escape receipt and authenticated chain restoration before restoring the archived session for settlement |
 | `advanceWallet()` | One existing wallet sign/recovery step; returns transport result |
 | `resumeWalletProof()` | Resume saved proof work |
 | `retryRejectedWalletOperation()` | Explicit finalized-rejection recovery |
@@ -76,6 +81,19 @@ during a session. `canRequest` also checks wallet state, pending work, clearance
 expiry and the cap. It does not guarantee availability or that a request fits
 its cap. `lastSettlement.chargeMicroUsdc` is verified; do not bill from response
 token counts or an answer on screen.
+
+`canReconcileUnacceptedAuthorization` enables the explicit clearance action only
+for an active note with an uncertain AUTH, no observed acceptance or inference,
+and no wallet operation or local action in progress. It is a visibility hint;
+the method rechecks the journal and verifies permanent signed clearance. Expiry
+does not disable this recovery, and clearance does not enable new inference.
+
+`emergencyEscape` exposes only the latest archive's phase (`escaping`,
+`challenged`, `settled`). `canPrepareEmergencyEscape` and
+`canReconcileChallengedEscape` are visibility hints for their explicit actions;
+the wallet rechecks all durable and chain evidence. An unresolved escape archive
+blocks new inference. The archive's original AUTH, inference bytes and state
+remain private in the encrypted journal.
 
 Status omits secrets, proofs, signed wire, prompts and keys. It is a snapshot;
 call again for another tab's changes. Subscriptions are local notifications,

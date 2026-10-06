@@ -1,0 +1,267 @@
+{
+  "destination_micro_usdc": 5000000,
+  "max_cu": 335201,
+  "max_transaction_bytes": 1232,
+  "rows": [
+    {
+      "cu": 12875,
+      "error": null,
+      "logs": [
+        "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+        "Program ComputeBudget111111111111111111111111111111 success",
+        "Program 3uWi9x2SRpmjztkpkr2WWeBoVq3exjXG2YfDWLvm8KsQ invoke [1]",
+        "Program log: Instruction: CreatePayload",
+        "Program 11111111111111111111111111111111 invoke [2]",
+        "Program 11111111111111111111111111111111 success",
+        "Program 3uWi9x2SRpmjztkpkr2WWeBoVq3exjXG2YfDWLvm8KsQ consumed 12725 of 999850 compute units",
+        "Program 3uWi9x2SRpmjztkpkr2WWeBoVq3exjXG2YfDWLvm8KsQ success"
+      ],
+      "signature": "2CSk65Cmc6CpGcFNcy8J2zS28Sm3vbYxabByA2Xm7NjULoSbTwBW5x8y4UbvtkQ9VovhmoyTfBGC5UMd1eFTZSNT",
+      "transaction_bytes": 397
+    },
+    {
+      "cu": 10241,
+      "error": null,
+      "logs": [
+        "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+        "Program ComputeBudget111111111111111111111111111111 success",
+        "Program 3uWi9x2SRpmjztkpkr2WWeBoVq3exjXG2YfDWLvm8KsQ invoke [1]",
+        "Program log: Instruction: AppendPayload",
+        "Program 3uWi9x2SRpmjztkpkr2WWeBoVq3exjXG2YfDWLvm8KsQ consumed 10091 of 999850 compute units",
+        "Program 3uWi9x2SRpmjztkpkr2WWeBoVq3exjXG2YfDWLvm8KsQ success"
+      ],
+      "signature": "4dvUCsd61JKc3DShVckL7VhkzBNHcg5T1q91xakDnVDFy8hnviibAugNRdSYQhuYi2P7uckt5BqTvYpF4JJMVG9Y",
+      "transaction_bytes": 987
+    },
+    {
+      "cu": 10495,
+      "error": null,
+      "logs": [
+        "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+        "Program ComputeBudget111111111111111111111111111111 success",
+        "Program 3uWi9x2SRpmjztkpkr2WWeBoVq3exjXG2YfDWLvm8KsQ invoke [1]",
+        "Program log: Instruction: SealPayload",
+        "Program 3uWi9x2SRpmjztkpkr2WWeBoVq3exjXG2YfDWLvm8KsQ consumed 10345 of 999850 compute units",
+        "Program 3uWi9x2SRpmjztkpkr2WWeBoVq3exjXG2YfDWLvm8KsQ success"
+      ],
+      "signature": "3VjT2HnnCY31VPdWnJaauX6D8UUhJPZpf8nBBDWcEEEfL93Pj12TA7vbMeGSL7FgLgv6dpJQcgTt93LM7LRtcUHz",
+      "transaction_bytes": 286
+    },
+    {
+      "cu": 180734,
+      "error": null,
+      "logs": [
+        "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+        "Program ComputeBudget111111111111111111111111111111 success",
+        "Program 3uWi9x2SRpmjztkpkr2WWeBoVq3exjXG2YfDWLvm8KsQ invoke [1]",
+        "Program log: Instruction: ExecutePayload",
+        "Program 11111111111111111111111111111111 invoke [2]",
+        "Program 11111111111111111111111111111111 success",
+        "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA invoke [2]",
+        "Program log: Instruction: TransferChecked",
+        "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA consumed 6174 of 830910 compute units",
+        "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA success",
+        "Program data: QeX15OKmgpcBKRA+vxENv+jnvSE4djfeBH9QFFe7vcYoBTDeDad5i9oBAAAAAAAAAAAAAAAAASu0N1nCRmXZijOvqNUJSBfTWdXkxypFtFoqVjF203kzHJJ/2L4Af4dN/aN0u253z9Iy0HwIM1d/GbwbZOB40pYR2dJhs/kWL4wK9Qtr9O4VTLRlVSD9BbvlUJAZyW9tB0BLTAAAAAAAgPH4sgAAAAAAAAAA",
+        "Program 3uWi9x2SRpmjztkpkr2WWeBoVq3exjXG2YfDWLvm8KsQ consumed 180584 of 999850 compute units",
+        "Program 3uWi9x2SRpmjztkpkr2WWeBoVq3exjXG2YfDWLvm8KsQ success"
+      ],
+      "signature": "3VUJaccuGen2ofD2mjUz2dArCQ9gVXUPr6cSqhs2a8NixunMsNGhf439mQv5gzoZss6kqyEEDsKiAuHBXUJnRkA5",
+      "transaction_bytes": 624
+    },
+    {
+      "cu": 14375,
+      "error": null,
+      "logs": [
+        "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+        "Program ComputeBudget111111111111111111111111111111 success",
+        "Program 3uWi9x2SRpmjztkpkr2WWeBoVq3exjXG2YfDWLvm8KsQ invoke [1]",
+        "Program log: Instruction: CreatePayload",
+        "Program 11111111111111111111111111111111 invoke [2]",
+        "Program 11111111111111111111111111111111 success",
+        "Program 3uWi9x2SRpmjztkpkr2WWeBoVq3exjXG2YfDWLvm8KsQ consumed 14225 of 999850 compute units",
+        "Program 3uWi9x2SRpmjztkpkr2WWeBoVq3exjXG2YfDWLvm8KsQ success"
+      ],
+      "signature": "62oLWovmR3EimRy8ehxAGWz5siGt3jNnhnx8K5H9UsW5aWQ9ft5cu2QFbPvRk2Y1GZAkuwBHDVkTU5UvBH3DqbyA",
+      "transaction_bytes": 397
+    },
+    {
+      "cu": 11741,
+      "error": null,
+      "logs": [
+        "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+        "Program ComputeBudget111111111111111111111111111111 success",
+        "Program 3uWi9x2SRpmjztkpkr2WWeBoVq3exjXG2YfDWLvm8KsQ invoke [1]",
+        "Program log: Instruction: AppendPayload",
+        "Program 3uWi9x2SRpmjztkpkr2WWeBoVq3exjXG2YfDWLvm8KsQ consumed 11591 of 999850 compute units",
+        "Program 3uWi9x2SRpmjztkpkr2WWeBoVq3exjXG2YfDWLvm8KsQ success"
+      ],
+      "signature": "31xgygB5s8eJkcuuBhNFx6FhW9dBuxVLpwHL1G6HpTPUMHj1PkV8RvA6sxhGLuntiK9uaMy1evaZHw6zWeuhZuE7",
+      "transaction_bytes": 1232
+    },
+    {
+      "cu": 11741,
+      "error": null,
+      "logs": [
+        "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+        "Program ComputeBudget111111111111111111111111111111 success",
+        "Program 3uWi9x2SRpmjztkpkr2WWeBoVq3exjXG2YfDWLvm8KsQ invoke [1]",
+        "Program log: Instruction: AppendPayload",
+        "Program 3uWi9x2SRpmjztkpkr2WWeBoVq3exjXG2YfDWLvm8KsQ consumed 11591 of 999850 compute units",
+        "Program 3uWi9x2SRpmjztkpkr2WWeBoVq3exjXG2YfDWLvm8KsQ success"
+      ],
+      "signature": "5KB11qSq2Uof5WkVkjaGjdcBNoHiwes7M4HR5VZAvHhYqY8E4oE4yfgYvWZAqPoTiYwDkitWe5Q1XWEn4ZKYejT",
+      "transaction_bytes": 670
+    },
+    {
+      "cu": 12305,
+      "error": null,
+      "logs": [
+        "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+        "Program ComputeBudget111111111111111111111111111111 success",
+        "Program 3uWi9x2SRpmjztkpkr2WWeBoVq3exjXG2YfDWLvm8KsQ invoke [1]",
+        "Program log: Instruction: SealPayload",
+        "Program 3uWi9x2SRpmjztkpkr2WWeBoVq3exjXG2YfDWLvm8KsQ consumed 12155 of 999850 compute units",
+        "Program 3uWi9x2SRpmjztkpkr2WWeBoVq3exjXG2YfDWLvm8KsQ success"
+      ],
+      "signature": "5JF3w6tegx7sCUvgRNX4jF6QY6L3HvJv9ukTdT2Und73kxZCTqzQNTmykkc4TAqnXi42HiWiSi9ggfZTstjkNinW",
+      "transaction_bytes": 286
+    },
+    {
+      "cu": 335201,
+      "error": null,
+      "logs": [
+        "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+        "Program ComputeBudget111111111111111111111111111111 success",
+        "Program 3uWi9x2SRpmjztkpkr2WWeBoVq3exjXG2YfDWLvm8KsQ invoke [1]",
+        "Program log: Instruction: ExecutePayload",
+        "Program 11111111111111111111111111111111 invoke [2]",
+        "Program 11111111111111111111111111111111 success",
+        "Program 11111111111111111111111111111111 invoke [2]",
+        "Program 11111111111111111111111111111111 success",
+        "Program data: QeX15OKmgpcBKRA+vxENv+jnvSE4djfeBH9QFFe7vcYoBTDeDad5i9oCAAAAAAAAAAIAAAAAAhySf9i+AH+HTf2jdLtud8/SMtB8CDNXfxm8G2TgeNKWK7Q3WcJGZdmKM6+o1QlIF9NZ1eTHKkW0WipWMXbTeTMR2dJhs/kWL4wK9Qtr9O4VTLRlVSD9BbvlUJAZyW9tB0BLTAAAAAAAgPH4sgAAAAABAcq4Azv9zg7owt5c0iQ/uV0d2W2jjNOt4sUyqIwfwp8BQEtMAAAAAAABBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcBgK/RsgAAAAA=",
+        "Program 3uWi9x2SRpmjztkpkr2WWeBoVq3exjXG2YfDWLvm8KsQ consumed 335051 of 999850 compute units",
+        "Program 3uWi9x2SRpmjztkpkr2WWeBoVq3exjXG2YfDWLvm8KsQ success"
+      ],
+      "signature": "2RxqNMJJsj8C4kxKYr5SYBHZQBxze2HRXC9FeJ3mLi27qxD5FU1qazBDevmPiRGwzJYLkQRUoCzgjdfDs9boPPZS",
+      "transaction_bytes": 688
+    },
+    {
+      "cu": 114003,
+      "error": null,
+      "logs": [
+        "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+        "Program ComputeBudget111111111111111111111111111111 success",
+        "Program 3uWi9x2SRpmjztkpkr2WWeBoVq3exjXG2YfDWLvm8KsQ invoke [1]",
+        "Program log: Instruction: FinalizeEscape",
+        "Program ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL invoke [2]",
+        "Program log: CreateIdempotent",
+        "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA invoke [3]",
+        "Program log: Instruction: GetAccountDataSize",
+        "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA consumed 1596 of 969694 compute units",
+        "Program return: TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA pQAAAAAAAAA=",
+        "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA success",
+        "Program 11111111111111111111111111111111 invoke [3]",
+        "Program 11111111111111111111111111111111 success",
+        "Program log: Initialize the associated token account",
+        "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA invoke [3]",
+        "Program log: Instruction: InitializeImmutableOwner",
+        "Program log: Please upgrade to SPL Token 2022 for immutable owner support",
+        "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA consumed 1405 of 963080 compute units",
+        "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA success",
+        "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA invoke [3]",
+        "Program log: Instruction: InitializeAccount3",
+        "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA consumed 4215 of 959196 compute units",
+        "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA success",
+        "Program ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL consumed 20500 of 975177 compute units",
+        "Program ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL success",
+        "Program ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL invoke [2]",
+        "Program log: CreateIdempotent",
+        "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA invoke [3]",
+        "Program log: Instruction: GetAccountDataSize",
+        "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA consumed 1596 of 923111 compute units",
+        "Program return: TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA pQAAAAAAAAA=",
+        "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA success",
+        "Program 11111111111111111111111111111111 invoke [3]",
+        "Program 11111111111111111111111111111111 success",
+        "Program log: Initialize the associated token account",
+        "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA invoke [3]",
+        "Program log: Instruction: InitializeImmutableOwner",
+        "Program log: Please upgrade to SPL Token 2022 for immutable owner support",
+        "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA consumed 1405 of 916497 compute units",
+        "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA success",
+        "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA invoke [3]",
+        "Program log: Instruction: InitializeAccount3",
+        "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA consumed 4215 of 912613 compute units",
+        "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA success",
+        "Program ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL consumed 26500 of 934594 compute units",
+        "Program ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL success",
+        "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA invoke [2]",
+        "Program log: Instruction: TransferChecked",
+        "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA consumed 6174 of 897964 compute units",
+        "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA success",
+        "Program data: QeX15OKmgpcBKRA+vxENv+jnvSE4djfeBH9QFFe7vcYoBTDeDad5i9oDAAAAAAAAAAQAAAAAAyu0N1nCRmXZijOvqNUJSBfTWdXkxypFtFoqVjF203kzK7Q3WcJGZdmKM6+o1QlIF9NZ1eTHKkW0WipWMXbTeTMR2dJhs/kWL4wK9Qtr9O4VTLRlVSD9BbvlUJAZyW9tB0BLTAAAAAAAgPH4sgAAAAABAcq4Azv9zg7owt5c0iQ/uV0d2W2jjNOt4sUyqIwfwp8BQEtMAAAAAAABBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcBgK/RsgAAAAA=",
+        "Program 3uWi9x2SRpmjztkpkr2WWeBoVq3exjXG2YfDWLvm8KsQ consumed 113853 of 999850 compute units",
+        "Program 3uWi9x2SRpmjztkpkr2WWeBoVq3exjXG2YfDWLvm8KsQ success"
+      ],
+      "signature": "63KgEK5nar1TP1FKjeurFTJ2br3cDbCXVvp3PviXB95bJfzXuK21Nw5F2r5KYefFz6p9xGN5AzXAFq68LQjqk3Vm",
+      "transaction_bytes": 689
+    }
+  ],
+  "scope": "Production SDK encrypted pending AUTH/inference archive, native request/withdrawal/tree proofs, signed v0 escape/finalize and actual Vault SBF; local HTTP/RPC/finality fixtures only",
+  "source_micro_usdc": 95000000,
+  "treasury_micro_usdc": 0,
+  "vault_micro_usdc": 0,
+  "passed": true,
+  "authorization_requests": 1,
+  "inference_requests": 1,
+  "inference_replays": 0,
+  "financial_exact_signature_resends": 0,
+  "real_request_proof_verified": true,
+  "exact_pending_archive_survived_restart": true,
+  "escape_execute_ack_loss_recovered": true,
+  "elf_sha256": "906110e3aba857ddb0dd3063c127a330220505f3fb6cee3f32ce443a1ebe190d",
+  "native_prover_sha256": "1b38f2d84bdeca8deccc0fd59964606b4a46e572b48f07ed987bfef033766efe",
+  "limits": [
+    "Local synthetic AUTH admission and provider failure, no real provider",
+    "Known public local-test setup and signing keys",
+    "No fresh-public-profile deployment or public finality",
+    "No challenged-escape successor settlement in this focused run"
+  ],
+  "schema": 1,
+  "recorded_at_utc": "2026-10-06T06:02:02.582481+00:00",
+  "test_counts": {
+    "tests": 1,
+    "passed": 1,
+    "failed": 0,
+    "skipped": 0
+  },
+  "duration_seconds": 20.349631226,
+  "source_sha256_at_recording": {
+    "packages/sdk/test/wallet-pending-escape-sbf.ts": "8057b5bb986744b71dbbd26ef9a8bf2e7e1b3f6bfbd2b7d7ec34ae4b3792c997",
+    "tests/svm/src/bin/wallet.rs": "516362b86e6762610b7fc7e4165132f9bed3f2ec74c29ee220309d16cc6a1d3f",
+    "tests/svm/src/vault_support.rs": "494c0f2871fb2f444f08201221d75b1a3a8e2dd025f34811a112e55312446836",
+    "packages/sdk/src/wallet.ts": "0a9d4903a256d67ebf821f9d9860697cdf4834fab67a6321b89e31b6c4af639c",
+    "packages/sdk/src/control.ts": "ccf19016cc048a9406c26ac4c8e64bc97fc0d0467c360b8e278cc12c493bce54",
+    "packages/sdk/src/prover.ts": "8bef115d98f7783cc6d05c0d060409ea9f866de56eb9c03f4fb004dfac4d494c",
+    "packages/sdk/src/prover-node.ts": "2bbcbc09a047c938c3c16bf2d28daae8ccf2a8934676d7db7ff4a9ee8f02cfcc",
+    "packages/sdk/src/control-prover.ts": "b2373dd39c4e7dec1bb6fc2dc15be201f93719f9f46290862bc3e20d124dfd64",
+    "apps/clientd/prover/src/lib.rs": "89e4684e737d6f1aacb9a35ae937e00b53f7708b21960ef74eb6d6b50667ba8a",
+    "apps/clientd/companion/src/lib.rs": "8ee7ce8775f2e0ee69c14c651f75b5d0d34e9a3edba491255aa6dd2bc9029a15",
+    "tests/svm/Cargo.lock": "6720616201af9bbbe14026419b067ef063ebb0d4899c443e59e3b07779e97f9d",
+    "apps/clientd/prover/Cargo.lock": "270bf7787e6d0863de0f681d42f62cd2c2c9d733db42ddb556cb44eb972711d9"
+  },
+  "prerequisites": {
+    "tree_setup_generation_test": "tests::generates_a_new_real_challenge_proof_using_pinned_test_setup",
+    "tree_setup_test_counts": {
+      "passed": 1,
+      "failed": 0,
+      "ignored": 0
+    },
+    "tree_pk_sha256": "c01b31f6806ce59114fe8befa210967415e20229b0a998018d4955a726fd0f80",
+    "source_bundle_sha256": "49659e9933a61d05051ed4377ce95d915840f484f3f7f8ce4c6c1b7ca07fa56e"
+  },
+  "preliminary_observations": [
+    "The first tree-generation invocation used an incomplete exact test name and ran zero tests; the fully qualified invocation ran one test successfully.",
+    "Initial integration fixtures were corrected to use distinct quote/receipt keys, a canonical RPC URL comparison and the explicit local HTTP policy; only the final complete run is a pass."
+  ]
+}

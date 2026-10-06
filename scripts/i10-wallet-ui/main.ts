@@ -24,7 +24,7 @@ async function main() {
     const url = new URL(typeof input === 'string' ? input : input instanceof URL ? input.href : input.url);
     let path: string;
     if (url.origin === logicalRpc && url.pathname === '/' && !url.search) path = '/rpc';
-    else if (url.origin === logicalIndexer && /^\/zkapi\/v1\/tree\/(root|notes\/\d+\/(path|zero-path))$/.test(url.pathname) && !url.search) path = '/indexer' + url.pathname;
+    else if (url.origin === logicalIndexer && /^\/zkapi\/v1\/tree\/(root|snapshot|snapshots\/[0-9a-f]{64}\.json|notes\/\d+\/(path|zero-path))$/.test(url.pathname) && !url.search) path = '/indexer' + url.pathname;
     else if (url.origin === manifest.control_api_origin && url.pathname === '/zkapi/v1/withdraw/clearance' && !url.search) path = '/clearance';
     else if (config.provider && url.origin === manifest.control_api_origin && url.pathname.startsWith('/zkapi/v1/') && !url.hash) path = '/control' + url.pathname + url.search;
     else if (config.provider && url.origin === manifest.inference_api_origin && url.pathname === '/v1/chat/completions' && !url.search && !url.hash) path = '/inference' + url.pathname;
@@ -53,13 +53,12 @@ async function main() {
       const chain = new SolanaWalletChain(connection, manifest, logicalIndexer, {fetch: proxyFetch, preparationCommitment});
       // Bound retries only for coherent read snapshots; signed attempts retain
       // the existing SDK recovery policy and require an explicit UI action.
-      const rawSnapshot = chain.snapshot.bind(chain);
-      chain.snapshot = async (...args) => {
+      const boundedSnapshot = <A extends unknown[], R>(read: (...args: A) => Promise<R>) => async (...args: A): Promise<R> => {
         const deadline = performance.now() + 300_000, controller = new AbortController();
         const timer = setTimeout(() => controller.abort(), 300_000); snapshotSignal = controller.signal;
         try {
           for (;;) {
-            try { const result = await rawSnapshot(...args); if (performance.now() >= deadline) throw Error('snapshot wait expired'); return result; }
+            try { const result = await read(...args); if (performance.now() >= deadline) throw Error('snapshot wait expired'); return result; }
             catch (error) {
               if (!(error instanceof Error) || !['finalized indexer unavailable', 'RPC/indexer finalized cut changed; retry snapshot', 'untrusted indexer root'].includes(error.message) || performance.now() >= deadline) throw error;
               await new Promise(resolve => setTimeout(resolve, Math.min(500, Math.max(0, deadline - performance.now()))));
@@ -67,6 +66,8 @@ async function main() {
           }
         } finally { snapshotSignal = undefined; controller.abort(); clearTimeout(timer); }
       };
+      chain.snapshot = boundedSnapshot(chain.snapshot.bind(chain));
+      chain.sessionSnapshot = boundedSnapshot(chain.sessionSnapshot.bind(chain));
       return {manifest, prover, chain, rpc: connectionTransport(connection, {preparationCommitment}), fetch: proxyFetch,
         ...(config.provider ? {providerOptions: {configuration: config.provider, prover, chain,
           client: new ControlClient({context: bundle.context, journal, verifier: new ProverSessionVerifier(engine), fetch: proxyFetch})}} : {})};

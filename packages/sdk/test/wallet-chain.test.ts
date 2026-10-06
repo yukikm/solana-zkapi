@@ -6,12 +6,12 @@ import {Connection,PublicKey,SYSVAR_CLOCK_PUBKEY} from '@solana/web3.js';
 import {SolanaWalletChain} from '../src/wallet-chain.ts';
 import {discriminator, type TransactionPreparationCommitment} from '../src/transport.ts';
 import {u32} from '../src/layout2.ts';
-import {json,walletFixture} from './wallet-fixture.ts';
+import {chainFixture} from './chain-fixture.ts';
 
 const key=(n:number)=>new PublicKey(new Uint8Array(32).fill(n)).toBase58();
 const field=(n:number)=>'0x'+BigInt(n).toString(16).padStart(64,'0');
 async function fixture(status:'active'|'pending'|'closed'|'deposit'='active',preparationCommitment?:TransactionPreparationCommitment){
-  const {manifest}=await walletFixture(), exported=await json('target/i05/chain.json');
+  const {manifest,poolData}=await chainFixture();
   const program=new PublicKey(manifest.program_id),pool=new PublicKey(manifest.pool);
   const derive=(name:string,suffix?:Uint8Array)=>PublicKey.findProgramAddressSync([Buffer.from(name),pool.toBytes(),...(suffix?[suffix]:[])],program);
   const [tree,treeBump]=derive('tree'),[note,noteBump]=derive('note',u32(0)),[pending,pendingBump]=derive('pending',u32(0));
@@ -19,7 +19,7 @@ async function fixture(status:'active'|'pending'|'closed'|'deposit'='active',pre
   const root={pool:manifest.pool,root:field(1),slot:'100',blockhash:key(8),sequence:'7',next_note_id:status==='deposit'?'0':'1'};
   const account=(data:Buffer,owner=manifest.program_id)=>({owner,executable:false,lamports:1,rentEpoch:0,data});
   const bytes=async(name:string,length:number,bump:number)=>{const b=Buffer.alloc(length);b.set(await discriminator(name,'account'));b[8]=2;b[9]=bump;return b;};
-  const poolAccount=account(Buffer.from(exported.pool_account.data[0],'base64'));
+  const poolAccount=account(poolData);
   const treeData=await bytes('TreeState',66,treeBump);treeData.set(Buffer.from(root.root.slice(2),'hex'),10);treeData.writeBigUInt64LE(BigInt(root.next_note_id),42);treeData.writeBigUInt64LE(7n,50);
   const noteData=await bytes('Note',63,noteBump);noteData.writeUInt32LE(0,10);noteData.set(Buffer.from(field(2).slice(2),'hex'),14);noteData.writeBigUInt64LE(100n,46);noteData.writeBigUInt64LE(3000000000n,54);noteData[62]=status==='pending'?2:status==='closed'?3:1;
   const pendingData=await bytes('PendingWithdrawal',123,pendingBump);pendingData[10]=1;pendingData.set(Buffer.from(field(3).slice(2),'hex'),11);pendingData.set(Buffer.from(field(4).slice(2),'hex'),43);pendingData.writeBigUInt64LE(90n,75);pendingData.set(new PublicKey(key(11)).toBytes(),83);pendingData.writeBigUInt64LE(2500n,115);

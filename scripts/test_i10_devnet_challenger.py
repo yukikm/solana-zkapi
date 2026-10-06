@@ -12,7 +12,7 @@ os.environ['SOLANA_DEVNET_SECONDARY_RPC']='https://secondary.invalid'
 tmp=tempfile.TemporaryDirectory(prefix='i10-ch-',dir='/tmp')
 p=pathlib.Path(tmp.name).resolve()
 backend.private_directory(p/'backend')
-args=argparse.Namespace(output=p/'backend',deployment=ROOT/'target/i10-devnet-vault',program=ROOT/'target/i10-devnet-sbf/zkapi_vault.so',env_file=p/'no-env-file',indexer='http://127.0.0.1:18883',port=19887,pg_port=55496,local_adapter=True,no_build=True,mode='check-local')
+args=argparse.Namespace(output=p/'backend',deployment=ROOT/'target/i10-devnet-vault',program=ROOT/'target/i10-devnet-sbf/zkapi_vault.so',env_file=p/'no-env-file',indexer='http://127.0.0.1:18883',port=19887,pg_port=55496,local_adapter=True,no_build=True,mode='check-local',allow_legacy_devnet_fixtures=True)
 b=backend.Backend(args)
 results=[]
 try:

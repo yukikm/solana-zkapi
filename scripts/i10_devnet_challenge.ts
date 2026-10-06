@@ -1,3 +1,4 @@
+import {authorizationSnapshot} from '../packages/sdk/src/session-snapshot.ts';
 /** Test-only orchestration over the existing SDK journals. The caller gates an
  * external native challengerd on escape-ready.json; this helper never constructs
  * a challenge, finalizes an escape, or rewrites financial journal state. */
@@ -210,7 +211,7 @@ export async function runDevnetChallenge(o: DevnetChallengeContext): Promise<Dev
     if (main.history.length === 0 && main.pending === null) {
       assert.ok(JSON.stringify(main.state) === JSON.stringify(old.state), 'pre-session state mismatch');
       assert.equal(old.wallet.status, 'active'); assert.equal(old.wallet.operation, undefined);
-      const snapshot = await o.chain.snapshot(old.witness.note_id, 'active');
+      const snapshot = await authorizationSnapshot(o.chain,old.witness.note_id,o.prover);
       const quote = await client.quote({mode: 'proxy', provider: 'openai', models: [o.tariff.model], session_ttl_seconds: '60'}, o.tariff);
       const prepared = await o.prover.prepareSession(old.witness, main.state, snapshot.root,
         snapshot.siblings, quote, o.tariff, await createCredentials('proxy'));
@@ -258,7 +259,7 @@ export async function runDevnetChallenge(o: DevnetChallengeContext): Promise<Dev
     assert.ok(main.state.anchor !== old.state.anchor, 'successor anchor did not advance');
     const historicalRoot = settled.prepared.request.public_inputs[3]; parseField(historicalRoot);
     if (old.wallet.status === 'active' && !old.wallet.operation) {
-      const snapshot = await o.chain.snapshot(old.witness.note_id, 'active');
+      const snapshot = await authorizationSnapshot(o.chain,old.witness.note_id,o.prover);
       assert.equal(snapshot.root, historicalRoot, 'dedicated pool changed before stale escape');
       await staleWallet.beginWithdrawal(NOTE, 'initiate_escape', destination, o.roles);
     }

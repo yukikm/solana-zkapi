@@ -13,6 +13,6 @@ devnet = ["zkapi-vault/devnet"]
 
 [dependencies]
 anchor-lang-idl = { version = "=0.1.4", features = ["build"] }
-anchor-lang = "=0.31.1"
+anchor-lang = "=0.31.2"
 zkapi-vault = { path = "../../programs/zkapi-vault", default-features = false, features = ["no-entrypoint", "idl-build"] }
 serde_json = "=1.0.149"

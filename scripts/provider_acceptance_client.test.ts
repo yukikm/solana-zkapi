@@ -143,8 +143,8 @@ async function setup(t: TestContext, variant: 'plain' | 'sse' | 'unknown' | 'mis
     authorizationClient: (signal: AbortSignal) => new ControlClient({...clientOptions,
       fetch: (url, init) => clientOptions.fetch!(url, {...init, signal: init?.signal ? AbortSignal.any([signal, init.signal]) : signal})}),
     testCase: {...testCase, stream: variant === 'sse' || variant === 'sse_fake_tool', tools: variant === 'sse_fake_tool'},
-    chain: {async snapshot() {snapshots++; return {slot: 200, root: field(14), sequence: '1', siblings: [], nextNoteId: 1, clock: '150', paused: false, treasuryOwner: 'fixture'};}},
-    prover: {async prepareSession(_witness: unknown, _state: unknown, _root: unknown, _siblings: unknown, quote: Quote, price: Tariff,
+    chain: {async sessionSnapshot() {snapshots++; return {slot: 200, root: field(14), sequence: '1', siblings: [], nextNoteId: 1, clock: '150', paused: false, treasuryOwner: 'fixture'};}},
+    prover: {async snapshotPath(){throw Error('synthetic chain does not reconstruct a real tree');},async prepareSession(_witness: unknown, _state: unknown, _root: unknown, _siblings: unknown, quote: Quote, price: Tariff,
       credentials: {requestId: string; controlToken: string; proxyToken: string | null; controlHash: string; proxyHash: string | null}): Promise<PreparedSession> {
       proofs++;
       return {request: {authorization: {version: '1', deployment_id: context.deployment_id, pool: context.pool,

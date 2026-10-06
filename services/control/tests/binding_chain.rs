@@ -193,6 +193,7 @@ fn chain_fixture() -> (Value, TrustedPool) {
         .unwrap();
     let key = |range: std::ops::Range<usize>| bs58::encode(&raw[range]).into_string();
     let trusted = TrustedPool {
+        public_devnet_profile_hash: None,
         deployment_environment: Default::default(),
         program_id: fixture["pool_account"]["owner"].as_str().unwrap().into(),
         pool: fixture["pool"].as_str().unwrap().into(),

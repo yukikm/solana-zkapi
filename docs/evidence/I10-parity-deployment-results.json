@@ -1,0 +1,180 @@
+{
+  "schema": 1,
+  "recorded_at_utc": "2026-10-06T05:38:58.176130+00:00",
+  "scope": "Fresh offline OS-random experimental-devnet preparation and public-artifact/build guard acceptance",
+  "passed": true,
+  "generation_runs": [
+    {
+      "public_profile_sha256": "3546c78a8c24070d25c70f431839c02b2fbbe36e4eb98f5d2863478cbcc28a45",
+      "circuit_profile_hash": "54a77420d689f20ce0ee617f691a408a109d5d9f0923b05f5df129237adf56ed",
+      "tree_setup": "single_party_os_random",
+      "tree_pk_sha256": "a481daecb724e3a3c7c6a1edf8c86104c073b268cc1e33895ceb5e0bf8ef9656",
+      "tree_vk_sha256": "c2d05f20125214edfb79b55677e5c5cc7a66f5083629008be9ca9b66edafe762",
+      "self_verified_proof_sha256": "6e46b5a1caf7e130c6bb415c83a6b8f0b24b953bc111bbd3dc9c1adfc922cbe4",
+      "private_directory_mode": "0o700",
+      "private_role_file_modes": {
+        "state": "0o600",
+        "clearance": "0o600",
+        "quote": "0o600",
+        "receipt": "0o600"
+      }
+    },
+    {
+      "public_profile_sha256": "eccc6e04fa0fe0989b990af200f0fd35809e4b8d16b82ab74dad125ec0b2a34a",
+      "circuit_profile_hash": "ff26100c8a912ee5c27207dcad33912643c0976a37b4644dff271da2241a1dca",
+      "tree_setup": "single_party_os_random",
+      "tree_pk_sha256": "787b1cf0ede9da02c007ddc38bbeeceea67524ff30eca238087379a5e46d47c7",
+      "tree_vk_sha256": "ee5b159764d6d8396f032a76c7ccf13a7040d61dd1eff6af4f9a222e93bf6234",
+      "self_verified_proof_sha256": "dd93ee0d523f4bc94695387b39a9c4ac9968cd03fb1d6f9fbd9df4d1e5d05898",
+      "private_directory_mode": "0o700",
+      "private_role_file_modes": {
+        "state": "0o600",
+        "clearance": "0o600",
+        "quote": "0o600",
+        "receipt": "0o600"
+      }
+    }
+  ],
+  "checks": {
+    "artifact_guards": {
+      "passed": true,
+      "scope": "fresh offline public-profile identity/tamper and private-file guard checks; no chain or provider calls",
+      "checks": [
+        "authentic_generated_profile_and_all_public_artifacts",
+        "backend_missing_profile_fails_before_environment_access",
+        "backend_profile_requires_independent_hash",
+        "backend_public_and_legacy_flags_cannot_mix",
+        "independent_descriptor_pin_rejects_tampering",
+        "relabelled_setup_rejected_even_with_new_descriptor_hash",
+        "fixture_state_signing_key_rejected",
+        "fixture_clearance_key_in_state_role_rejected",
+        "shared_signing_roles_rejected",
+        "shared_ed25519_roles_rejected",
+        "fixture_ed25519_public_key_rejected",
+        "tampered_tree_vk_rejected",
+        "symlink_artifact_rejected",
+        "private_role_files_are_explicitly_loaded_without_disclosure",
+        "zero_seed_rejected",
+        "fixture_scalar_rejected",
+        "fixture_ed25519_seed_rejected",
+        "world_readable_seed_rejected",
+        "symlink_seed_rejected"
+      ],
+      "count": 19,
+      "public_profile_sha256": "3546c78a8c24070d25c70f431839c02b2fbbe36e4eb98f5d2863478cbcc28a45",
+      "production_eligible": false
+    },
+    "host_build_guards": {
+      "passed": true,
+      "scope": "fresh offline host build and expected-failure public cryptographic pin checks; no SBF execution or chain transactions",
+      "count": 10,
+      "checks": [
+        {
+          "name": "independent_os_random_generations_have_distinct_all_role_and_tree_keys",
+          "passed": true
+        },
+        {
+          "name": "fresh_profile_actual_host_build",
+          "passed": true,
+          "expected_exit": "success"
+        },
+        {
+          "name": "independent_descriptor_pin_mismatch",
+          "passed": true,
+          "expected_exit": "rejection"
+        },
+        {
+          "name": "fixture_state_key_even_with_rehashed_descriptor",
+          "passed": true,
+          "expected_exit": "rejection"
+        },
+        {
+          "name": "duplicate_signing_roles",
+          "passed": true,
+          "expected_exit": "rejection"
+        },
+        {
+          "name": "deterministic_tree_vk_even_with_rehashed_profile",
+          "passed": true,
+          "expected_exit": "rejection"
+        },
+        {
+          "name": "individually_valid_other_setup_pk_with_wrong_vk",
+          "passed": true,
+          "expected_exit": "rejection"
+        },
+        {
+          "name": "public_and_legacy_modes_cannot_mix",
+          "passed": true,
+          "expected_exit": "rejection"
+        },
+        {
+          "name": "devnet_without_explicit_profile_refused",
+          "passed": true,
+          "expected_exit": "rejection"
+        },
+        {
+          "name": "explicit_legacy_profile_remains_buildable",
+          "passed": true,
+          "expected_exit": "success"
+        }
+      ],
+      "public_profile_sha256": "3546c78a8c24070d25c70f431839c02b2fbbe36e4eb98f5d2863478cbcc28a45",
+      "second_public_profile_sha256": "eccc6e04fa0fe0989b990af200f0fd35809e4b8d16b82ab74dad125ec0b2a34a",
+      "production_eligible": false
+    }
+  },
+  "source_sha256_at_recording": {
+    "programs/zkapi-vault/build.rs": "44bc7a7be1f92c04ef0cce04b29e28fbfa5f914ee224021ed6050e2f2da44cff",
+    "programs/zkapi-vault/build_profile.rs": "1dcc5fff3ac3ae4ce5837d12bf79561f2eb1ecf2901944faafad9a6cfb199e4f",
+    "programs/zkapi-vault/src/lib.rs": "60bc0b7ea51b797f47ea433ec05577ec30d464a1fed9e7456394b855cdfaf85c",
+    "crates/zkapi-tree-prover/examples/public_devnet_setup.rs": "7b627f5e596405c66683122da730c79537acbf2a66909abaf3969ea5e45b0b2d",
+    "scripts/public_devnet_profile.py": "75ed728ab007dff72b1458cc308da1aeea5547051eab4b7dbdffed2808a990f0",
+    "scripts/prepare_public_devnet_profile.py": "ebb2b3b457346b41b296e690ff2db7dcdefb5cd996ed4ceb7d4370dcf7c04ab8",
+    "scripts/check_public_devnet_profile.py": "a58db47eb4d819108ae5bfde741d84cf31b892ad1cb3473a51042f7a39d904c1",
+    "scripts/check_public_devnet_build.py": "28b2f79f3424c4265c42894ffd00f3bfb92e871e6aa9b130c8794c4da4a29b33",
+    "scripts/run_i10_devnet_backend.py": "520189f44cd915f341ebe617ec0b7d5ea0a6779e0eb2ee584c7ed45a1ad92f08",
+    "services/control/src/signer.rs": "420a011829a7f2fbf3e0e37dfd0b17d2f03a837c660e816fa6c5dff7beceee3d"
+  },
+  "public_deployment_verified": false,
+  "live_provider_verified": false,
+  "mainnet_eligible": false,
+  "third_party_audit": false,
+  "historical_evidence_modified": false,
+  "fresh_public_sbf_build": {
+    "passed": true,
+    "scope": "Actual SBF build with fresh profile and synthetic public test addresses; no deployment or SVM execution",
+    "elf_sha256": "44101e7b898d66b1ecfafaaea67b674d4e20149dfa472257192adad03c239515",
+    "elf_bytes": 380728,
+    "public_profile_sha256": "3546c78a8c24070d25c70f431839c02b2fbbe36e4eb98f5d2863478cbcc28a45",
+    "program_id": "9ZKaPRLwKibNaMpsz46iC7bpHQ9RoHsBbRuBFTBaHSp2",
+    "initializer": "8qbHbw2BbbTHBW1sbeqakYXV5RKr6cF9sXByS3DxqroS",
+    "cargo_build_sbf": "4.1.0",
+    "platform_tools": "1.54",
+    "arch": "v0",
+    "stack_exceeded_warnings": false,
+    "public_transaction_submitted": false
+  },
+  "fresh_public_sbf_runtime": {
+    "passed": true,
+    "scope": "Fresh public-profile actual SBF/LiteSVM initialization, compact deposit and expiry with real tree proofs, signatures and Token CPI; no public RPC/transaction or private role key reads",
+    "elf_sha256": "e7fb90c69a845172b441b9b7e75473c234b9aaf0ef2405c8101bb269fab9d5a9",
+    "elf_bytes": 380760,
+    "program_id": "9ZKaPRLwKibNaMpsz46iC7bpHQ9RoHsBbRuBFTBaHSp2",
+    "initializer": "AKnL4NNf3DGWZJS6cPknBuEGnVsV4A4m5tgebLHaRSZ9",
+    "public_profile_sha256": "3546c78a8c24070d25c70f431839c02b2fbbe36e4eb98f5d2863478cbcc28a45",
+    "circuit_profile_hash": "54a77420d689f20ce0ee617f691a408a109d5d9f0923b05f5df129237adf56ed",
+    "cases": 8,
+    "max_cu": 205191,
+    "max_transaction_bytes": 1202,
+    "scope_limits": [
+      "SPL mint/balances and Clock are local fixtures",
+      "No fresh-profile request/withdrawal state signature or escape/challenge lifecycle exercised",
+      "No public finality, deployment, provider acceptance or audit"
+    ],
+    "public_transaction_submitted": false,
+    "private_role_seeds_read": false,
+    "evidence_file": "I10-parity-public-devnet-svm-results.json",
+    "evidence_sha256": "2a3818f6b067a3bc9c36f012699f6a47fc49daaece3b8a13b1cee60abc535e6c"
+  }
+}

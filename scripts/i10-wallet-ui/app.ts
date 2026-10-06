@@ -9,7 +9,7 @@ import type {VerifiedManifest} from '../../packages/sdk/src/trust.ts';
 import type {V0Wallet} from '../../packages/sdk/src/transport.ts';
 import {journalKey} from './storage.ts';
 import {UiProvider, type UiProviderOptions} from './provider.ts';
-import {liveView, canRefreshExpiredSetup, canRetryRejected, providerPrepareHint} from './live-view.ts';
+import {liveView, canRefreshExpiredSetup, canRetryRejected, providerPrepareHint, noteExpiry, escapeActions} from './live-view.ts';
 import {failureCode} from './diagnostics.ts';
 import {signingDiagnostics} from './signing-diagnostics.ts';
 import {beginNextDemoDeposit, canStartDemo, checkedProviderBudget, latestDemoNote, legacyDemoNoteId, type UiProviderBudget} from './demo-notes.ts';
@@ -20,6 +20,8 @@ export interface UiOptions {
   fee(transaction: VersionedTransaction): Promise<number>;
   /** Read-only availability; the host still reserves each new request atomically. */
   providerBudget?(): Promise<UiProviderBudget>;
+  /** Synthetic presentation clock. Refused by the real deployment entry. */
+  fixtureNowSeconds?(): bigint;
 }
 const element = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
 const walletSelect = () => element<HTMLSelectElement>('wallet');
@@ -31,6 +33,8 @@ const priorityFeeMicroLamports = 1n;
 /** UI intent only. All financial state lives in the existing SDK NoteJournal. */
 export function mountWalletUi(options: UiOptions): void {
   const {manifest: m} = options, registry = getWallets();
+  if (options.fixtureNowSeconds && !options.fixtureOnly) throw Error('fixture clock is not allowed for live wallets');
+  const nowSeconds = () => options.fixtureNowSeconds?.() ?? BigInt(Math.floor(Date.now() / 1000));
   if (m.deployment_environment !== 'devnet' || m.setup_profile !== 'test_only'
     || m.genesis_hash !== 'EtWTRABZaYq6iMfeYKouRu166VU2xqa1wcaWoxPkrZBG'
     || m.mint !== '4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU') throw Error('explicit Circle USDC devnet test profile required');
@@ -77,6 +81,7 @@ export function mountWalletUi(options: UiOptions): void {
       last_signing_review: lastSigningReview,
       journal_revision: r?.revision ?? null, wallet_status: w?.status ?? null,
       balance_micro_usdc: r?.value.state.balance_micro_usdc ?? null, permanent_clearance: !!w?.clearance,
+      note_expiry_seconds: r?.value.witness?.expiry ?? null,
       provider_case: provider?.configuration.testCase.id ?? null,
       provider_request_policy: provider?.configuration.requestPolicy ?? 'single_acceptance_case',
       response_observation: responseObservation,
@@ -103,8 +108,15 @@ export function mountWalletUi(options: UiOptions): void {
   const refresh = async () => {
     const {journal: saved, observation: s} = await summary(); element('state').textContent = JSON.stringify(s, null, 2);
     const connected = options.financialEnabled !== false && !!(client && account && wallet?.accounts.includes(account));
+    const expiry = noteExpiry(saved, nowSeconds());
+    const expired = expiry?.severity === 'expired';
+    const expiryElement = element('note-expiry');
+    expiryElement.textContent = saved?.wallet?.status === 'closed' ? 'This note is closed. No deposited balance remains.'
+      : expiry ? `${expiry.severity === 'expired' ? 'Expired. ' : expiry.severity === 'one_day' ? 'Expires within one day. ' : expiry.severity === 'seven_days' ? 'Expires within seven days. ' : ''}${expiry.message} Withdraw before expiry. The SDK verifies chain state before acting.`
+      : 'After funding, the note expiry appears here. Expiry does not automatically return your deposit.';
+    expiryElement.dataset.severity = expiry?.severity ?? 'unknown';
     const view = liveView({journal: saved, connected: !!(client && account && wallet?.accounts.includes(account)),
-      providerConfigured: !!provider, busy, authorizationCapMicroUsdc: m.cap_micro_usdc,
+      providerConfigured: !!provider, busy, authorizationCapMicroUsdc: m.cap_micro_usdc, nowSeconds: nowSeconds(),
       newRequestAvailable: provider?.configuration.requestPolicy === 'explicit_demo'
         && budgetAvailable() && !!saved && BigInt(saved.state.balance_micro_usdc) >= BigInt(m.cap_micro_usdc),
       responseObserved: events.some(event => event.event === 'provider_response_observed'
@@ -125,10 +137,10 @@ export function mountWalletUi(options: UiOptions): void {
       : providerBudget.available_requests > 0 ? `${providerBudget.available_requests} more AI request${providerBudget.available_requests === 1 ? '' : 's'} available in this demo. Availability is checked again before sending.`
       : 'This demo has no more API requests available. Recover any saved session, then withdraw your remaining Devnet USDC.';
     const prepareHint = document.getElementById('provider-prepare-hint');
-    if (prepareHint) prepareHint.textContent = providerPrepareHint({journal: saved, connected, providerConfigured: !!provider, busy, authorizationCapMicroUsdc: m.cap_micro_usdc});
+    if (prepareHint) prepareHint.textContent = providerPrepareHint({journal: saved, connected, providerConfigured: !!provider, busy, authorizationCapMicroUsdc: m.cap_micro_usdc, nowSeconds: nowSeconds()});
     const waitingForBudget = connected && !busy && !!provider && !budgetAvailable()
       && (!saved || saved.pending === null && !saved.wallet?.operation && (!saved.wallet?.clearance || saved.wallet.status === 'closed'));
-    if (waitingForBudget) {
+    if (waitingForBudget && !expired && saved?.wallet?.status !== 'pending_escape') {
       const message = providerBudget ? 'This demo has no more API requests available. Withdraw any remaining Devnet USDC; saved records are retained.'
         : 'Check API availability again before starting a new request or deposit. Recovery and withdrawal remain available.';
       if (prepareHint) prepareHint.textContent = message;
@@ -183,12 +195,16 @@ export function mountWalletUi(options: UiOptions): void {
     createRecovery.hidden = !expiredCreate;
     createRecovery.disabled = busy || !connected || !expiredCreate;
     element<HTMLButtonElement>('withdraw').disabled = busy || !connected || s.wallet_status !== 'active' || !!s.operation || !!s.session;
+    const escape = escapeActions(saved);
+    element<HTMLButtonElement>('escape').disabled = busy || !connected || !escape.begin;
+    element<HTMLButtonElement>('fallback-escape').disabled = busy || !connected || !escape.fallback;
+    element<HTMLButtonElement>('finalize-escape').disabled = busy || !connected || !escape.finalize;
     const noteAvailable = connected && s.wallet_status === 'active' && !s.operation && !s.permanent_clearance;
     const repeatable = provider?.configuration.requestPolicy === 'explicit_demo';
-    element<HTMLButtonElement>('provider-prepare').disabled = busy || !provider || !budgetAvailable() || !noteAvailable || !!s.session
+    element<HTMLButtonElement>('provider-prepare').disabled = busy || expired || !provider || !budgetAvailable() || !noteAvailable || !!s.session
       || (s.verified_settlements.length !== 0 && !repeatable) || BigInt(s.balance_micro_usdc ?? '0') < BigInt(m.cap_micro_usdc);
     element('provider-prepare').textContent = repeatable && s.verified_settlements.length ? 'Prepare new AI request' : 'Prepare AI authorization';
-    element<HTMLButtonElement>('provider-send').disabled = busy || !provider || !budgetAvailable() || !noteAvailable || !s.session || s.session.close_requested
+    element<HTMLButtonElement>('provider-send').disabled = busy || expired || !provider || !budgetAvailable() || !noteAvailable || !s.session || s.session.close_requested
       || s.session.phase === 'closing' || s.session.operations.some(o => o.phase !== 'prepared');
     element<HTMLButtonElement>('provider-close').disabled = busy || !provider || !connected || !s.session;
     element<HTMLButtonElement>('provider-reconcile').disabled = busy || !provider || !connected || s.session?.phase !== 'closing'
@@ -203,7 +219,9 @@ export function mountWalletUi(options: UiOptions): void {
     catch (error) {
       let message = 'Operation stopped. Your saved state is preserved. Check the connection and wallet, then continue the saved operation.';
       try {
-        const pending = (await journal?.read(noteId))?.value.pending;
+        const saved = (await journal?.read(noteId))?.value, pending = saved?.pending;
+        if (noteExpiry(saved, nowSeconds())?.severity === 'expired')
+          message = 'This note has expired. New AI requests are disabled. Recover any saved session, then check withdrawal; the chain may already have swept an expired active note.';
         if (pending?.phase === 'send_unknown' && !pending.closeRequested && pending.operations.length === 0)
           message = 'Authorization could not be confirmed. No AI request has been sent. "Send saved request once" checks the same saved authorization before the first request. "Recover / close session" closes without sending an AI request.';
         else if (pending?.operations.some(op => op.phase === 'send_unknown'))
@@ -318,12 +336,32 @@ export function mountWalletUi(options: UiOptions): void {
     status('Setup refreshed. Continue the saved operation and review the new signature in Phantom.');
   });
   element('withdraw').onclick = run(async () => { status('Verifying clearance and preparing withdrawal locally…'); await client!.beginWithdrawal(noteId, 'mutual_close', account!.address, roles()); recordEvent('withdrawal_prepared'); status('Mutual close prepared for the selected account.'); });
-  element('provider-prepare').onclick = run(async () => { await requireBudget(); status('Preparing a new OpenAI authorization proof locally…');
+  element('escape').onclick = run(async () => {
+    status('Preparing the explicitly selected escape withdrawal to this wallet…');
+    await client!.beginWithdrawal(noteId, 'initiate_escape', account!.address, roles());
+    recordEvent('escape_prepared'); status('Escape withdrawal prepared. Continue the saved operation, wait for its challenge deadline, then finalize.');
+  });
+  element('fallback-escape').onclick = run(async () => {
+    status('Checking that the saved mutual withdrawal has never been signed…');
+    await client!.fallbackToEscape(noteId);
+    recordEvent('unsigned_withdrawal_escape_selected'); status('Escape selected explicitly. Continue the saved operation; the original clearance intent is retained.');
+  });
+  element('finalize-escape').onclick = run(async () => {
+    status('Checking the finalized chain state and escape deadline…');
+    await client!.beginFinalize(noteId, roles());
+    recordEvent('escape_finalization_prepared'); status('Final withdrawal prepared after the SDK checked the deadline. Continue the saved operation to review its signature.');
+  });
+  const requireUnexpiredNote = async () => {
+    const current = (await journal!.read(noteId))?.value;
+    if (!current?.witness || noteExpiry(current, nowSeconds())?.severity === 'expired')
+      throw Error('note expiry prevents new API requests; use recovery and withdrawal');
+  };
+  element('provider-prepare').onclick = run(async () => { await requireUnexpiredNote(); await requireBudget(); status('Preparing a new OpenAI authorization proof locally…');
     try { await provider!.prepare(noteId); } finally { await updateProviderBudget(); }
     responseObservation = null;
     element('provider-response').textContent = 'No response for this new request yet.';
     recordEvent('provider_authorization_prepared'); status('New authorization saved. Send promptly; a never-sent quote expires after 120 seconds.'); });
-  element('provider-send').onclick = run(async () => { await requireBudget(); status('Submitting the saved authorization and one OpenAI request…');
+  element('provider-send').onclick = run(async () => { await requireUnexpiredNote(); await requireBudget(); status('Submitting the saved authorization and one OpenAI request…');
     let result: Awaited<ReturnType<UiProvider['sendOnce']>>;
     try { result = await provider!.sendOnce(noteId); } finally { await updateProviderBudget(); }
     responseObservation = {operation_id: result.operationId, http_status: result.httpStatus, response_bytes: result.responseBytes, response_sha256: result.responseSha256};
@@ -342,5 +380,8 @@ export function mountWalletUi(options: UiOptions): void {
     const link = document.createElement('a'), url = URL.createObjectURL(new Blob([JSON.stringify(report, null, 2)], {type: 'application/json'}));
     link.href = url; link.download = options.fixtureOnly ? 'wallet-ui-fixture-observations.json' : 'wallet-ui-observations.json'; link.click(); URL.revokeObjectURL(url);
   });
+  // Refresh expiry while the page remains open; this never advances or sends.
+  const expiryTimer = setInterval(() => { if (!busy) void refresh().catch(() => {}); }, 15_000);
+  addEventListener('pagehide', () => clearInterval(expiryTimer), {once: true});
   status('Choose Phantom to connect.'); void refresh();
 }

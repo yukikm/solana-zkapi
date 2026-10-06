@@ -6,8 +6,8 @@ edition = "2021"
 [lib]
 crate-type = ["cdylib", "lib"]
 [dependencies]
-anchor-lang = "=0.31.1"
-solana-program = "=2.2.1"
+anchor-lang = "=0.31.2"
+solana-program = "=2.3.0"
 ark-ed-on-bn254 = { version = "=0.5.0", default-features = false }
 ark-ec = { version = "=0.5.0", default-features = false }
 ark-ff = { version = "=0.5.0", default-features = false }

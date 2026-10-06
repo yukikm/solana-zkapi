@@ -4,7 +4,7 @@ import { PublicKey, VersionedTransaction, type TransactionInstruction } from '@s
 import { EncryptedJournal, type JournalRecord } from './journal.ts';
 import type { NoteJournal, PendingSession, PrivateState, StateSignature } from './control.ts';
 import { NoteProver, type NoteWitness, type PublicNote } from './prover.ts';
-import { parseField, parseMicroUsdc } from './encoding.ts';
+import { parseField, parseMicroUsdc, destinationBinding } from './encoding.ts';
 import { encodeLayout2Args, fromHex, u64 } from './layout2.ts';
 import { parseStrictJson, supportsInlineDeposit, type VerifiedManifest } from './trust.ts';
 import { buildUploadPlan, snapshotPlan, restorePlan, prepareAttempt, recoverAttempt, closePayload, finalizeEscape,
@@ -28,12 +28,20 @@ export type WalletOperation = WalletOperationBase & (
   {transport?:'v0_buffer';plan?:PlanRecord;inlinePlan?:never;inlineContext?:never} |
   {transport:'v0_inline_deposit_v1';kind:'deposit';plan?:never;inlinePlan?:InlineDepositPlanRecord;inlineContext:InlineContext;priorityFeeMicroLamports?:string}
 );
+export interface EmergencyEscape {
+  /** The original unresolved request and inference bytes never change. */
+  pending:PendingSession;previous:PrivateState;nullifier:string;operationId:string;
+  phase:'escaping'|'challenged'|'settled';
+  escape?:{signature:string;slot:number;sequence:string};
+  challenge?:{slot:number;sequence:string};
+}
 export interface WalletJournal {
   status:'unfunded'|'active'|'pending_escape'|'closed';
   clearance?:{nullifier:string;phase:'requested'|'verified';signature?:StateSignature};
   /** Exact uncertain AUTH retained after a signed permanent clearance fences its N.
    * This is not a settlement and does not change the private balance/state. */
   clearedAuthorization?:{pending:PendingSession;previous:PrivateState};
+  emergencyEscapes?:EmergencyEscape[];
   operation?:WalletOperation;history:WalletOperation[];
 }
 export interface WalletOptions {
@@ -109,7 +117,7 @@ export class WalletClient {
   async beginWithdrawal(id:string,mode:'mutual_close'|'initiate_escape',destinationOwner:string,roles:WalletRoles):Promise<void>{
     requireTrue(mode==='mutual_close'||mode==='initiate_escape','explicit withdrawal mode');new PublicKey(destinationOwner);roles=this.roles(roles);
     await this.o.journal.withNoteLock(id,async()=>{
-      let r=await this.record(id);requireTrue(!r.value.pending&&!r.value.wallet!.operation&&r.value.wallet!.status==='active','note unavailable for withdrawal');
+      let r=await this.record(id);requireTrue(!r.value.pending&&!r.value.wallet!.operation&&r.value.wallet!.status==='active'&&!r.value.wallet!.emergencyEscapes?.some(e=>e.phase!=='settled'),'note unavailable for withdrawal');
       r.value.wallet!.operation={id:crypto.randomUUID(),kind:mode,phase:'proving',roles,destinationOwner,step:0,attempts:[],finalized:[]};
       if(mode==='mutual_close'){
         const {nullifier}=await this.o.prover.inspect(r.value.witness!,r.value.state);
@@ -117,6 +125,85 @@ export class WalletClient {
         r.value.wallet!.clearance??={nullifier,phase:'requested'};
       }
       r=await this.save(id,r);await this.build(id,r);
+    });
+  }
+  /** Explicit challengeable escape from the last verified state during an
+   * unresolved session. Archive every AUTH/inference byte before proving; this
+   * is not clearance, settlement, cancellation, or permission to replay a send. */
+  async beginEmergencyEscape(id:string,destinationOwner:string,roles:WalletRoles):Promise<void>{
+    new PublicKey(destinationOwner);roles=this.roles(roles);
+    await this.o.journal.withNoteLock(id,async()=>{
+      let r=await this.record(id);const w=r.value.wallet!,p=r.value.pending;
+      requireTrue(w.status==='active'&&!w.operation&&p&&p.phase!=='prepared'
+        &&!w.emergencyEscapes?.some(e=>e.phase!=='settled')&&!w.clearedAuthorization,
+        'unresolved authorization on an active note required');
+      const request=p.prepared.request,q=request.quote.body,m=this.o.manifest;
+      requireTrue(p.exactRequest===JSON.stringify(request)&&request.authorization.deployment_id===m.deployment_id
+        &&request.authorization.pool===m.pool&&q.deployment_id===m.deployment_id&&q.pool===m.pool
+        &&request.authorization.mode===q.mode&&q.control_api_origin===m.control_api_origin
+        &&q.inference_api_origin===m.inference_api_origin,'escape authorization deployment mismatch');
+      requireTrue(request.public_inputs.length===12,'escape authorization inputs');request.public_inputs.forEach(parseField);
+      const {nullifier}=await this.o.prover.inspect(r.value.witness!,r.value.state);
+      requireTrue(request.public_inputs[8]===nullifier,'escape authorization nullifier mismatch');
+      requireTrue(!w.clearance||w.clearance.phase==='requested'&&w.clearance.signature===undefined
+        &&w.clearance.nullifier===nullifier,'escape conflicts with permanent clearance');
+      const operationId=crypto.randomUUID();
+      (w.emergencyEscapes??=[]).push({pending:structuredClone(p),previous:structuredClone(r.value.state),
+        nullifier,operationId,phase:'escaping'});
+      r.value.pending=null;
+      w.operation={id:operationId,kind:'initiate_escape',phase:'proving',roles,destinationOwner,step:0,attempts:[],finalized:[]};
+      r=await this.save(id,r);await this.build(id,r);
+    });
+  }
+  /** Reconcile an actual finalized challenge before recovering the old session.
+   * Exact escape receipt plus a later authenticated Active/absent-Pending cut
+   * establish restoration; absence alone never releases the financial fence.
+   * Also handles challenge landing before the execute ACK/account observation. */
+  async reconcileChallengedEscape(id:string):Promise<void>{
+    await this.o.journal.withNoteLock(id,async()=>{
+      const r=await this.record(id),w=r.value.wallet!,e=w.emergencyEscapes?.at(-1);
+      requireTrue(e?.phase==='escaping'&&r.value.pending===null,'unresolved emergency escape required');
+      const finalize=w.operation?.kind==='finalize_escape'?w.operation:undefined;
+      const op=w.operation?.id===e.operationId?w.operation:w.history.find(o=>o.id===e.operationId);
+      requireTrue(op?.id===e.operationId&&op.kind==='initiate_escape'&&op.plan
+        &&(w.status==='pending_escape'&&(!w.operation||finalize)||w.status==='active'&&w.operation===op),
+        'escape execute must be reconciled before challenge recovery');
+      const finalizationRejections=async()=>{
+        if(!finalize)return;
+        requireTrue(!finalize.current||finalize.attempts.some(a=>a.signature===finalize.current),'missing finalization attempt');
+        for(const a of finalize.attempts){
+          requireTrue(a.kind==='finalize','invalid finalization history');
+          requireTrue((await recoverFinalizationAttempt(a as FinalizationAttempt,this.o.rpc)).state==='rejected',
+            'signed finalization must be finalized rejected before challenge recovery');
+        }
+      };
+      await finalizationRejections();
+      const attempt=op.attempts.find(a=>a.signature===(op.current??e.escape?.signature));
+      requireTrue(attempt?.kind==='execute','saved escape execution required');
+      const result=await recoverAttempt(attempt as Attempt,this.o.rpc);
+      requireTrue(result.state==='finalized','exact escape execution is not finalized');
+      requireTrue(!e.escape||e.escape.signature===attempt.signature&&e.escape.slot===result.slot,'escape receipt changed');
+      const s=await this.o.chain.snapshot(r.value.witness!.note_id,'active',Math.max(result.slot,e.escape?.slot??0));
+      await this.note(r,s);
+      const sequence=e.escape?.sequence??(BigInt(op.plan.snapshotSequence)+1n).toString();
+      requireTrue(Number.isSafeInteger(s.slot)&&s.slot>=result.slot&&s.slot>=(e.escape?.slot??0)
+        &&s.note!.status==='active'&&!s.pending&&BigInt(s.sequence)>BigInt(sequence),
+        'finalized challenge restoration not established');
+      const {nullifier}=await this.o.prover.inspect(r.value.witness!,r.value.state);
+      requireTrue(nullifier===e.nullifier,'escape state changed');
+      // Recheck the exact receipt after the chain read; no new transaction is sent.
+      const again=await recoverAttempt(attempt as Attempt,this.o.rpc);
+      requireTrue(again.state==='finalized'&&again.slot===result.slot,'escape receipt changed');
+      await finalizationRejections();
+      if(finalize){finalize.phase='cancelled';delete finalize.current;w.history.push(finalize);delete w.operation;}
+      if(w.operation===op){
+        if(!op.finalized.some(f=>f.signature===attempt.signature))op.finalized.push({signature:attempt.signature,slot:result.slot});
+        delete op.current;w.history.push(op);delete w.operation;
+      }
+      e.escape??={signature:attempt.signature,slot:result.slot,sequence};
+      e.challenge={slot:s.slot,sequence:s.sequence};e.phase='challenged';w.status='active';
+      r.value.pending={...structuredClone(e.pending),phase:'closing',closeRequested:true};
+      await this.save(id,r);
     });
   }
   /** Resolve an unacknowledged AUTH only with the server's signed permanent N
@@ -187,6 +274,7 @@ export class WalletClient {
   private async build(id:string,record:JournalRecord<NoteJournal>,snapshot?:WalletSnapshot):Promise<JournalRecord<NoteJournal>>{
     let r=record;let op=r.value.wallet!.operation!;requireTrue(op.phase==='proving'&&!op.current,'proof cannot replace unresolved transaction');
     if(op.kind==='mutual_close'&&(op.expiredCreations?.length??0)>0)await this.verifyMutualSetupRecovery(r);
+    if(op.kind==='initiate_escape'&&(op.expiredCreations?.length??0)>0)await this.verifyEscapeSetupRecovery(r);
     let minimumSlot=0;
     if(op.transport==='v0_inline_deposit_v1'){
       this.inlinePins(op.inlineContext);
@@ -208,7 +296,7 @@ export class WalletClient {
     }
     for(const evidence of op.expiredCreations??[]){
       const attempt=op.attempts.find(a=>a.signature===evidence.signature);
-      requireTrue((op.kind==='deposit'||op.kind==='mutual_close')&&attempt?.kind==='create'&&evidence.buffer===(attempt as Attempt).buffer
+      requireTrue((op.kind==='deposit'||op.kind==='mutual_close'||op.kind==='initiate_escape')&&attempt?.kind==='create'&&evidence.buffer===(attempt as Attempt).buffer
         &&Number.isSafeInteger(evidence.slot)&&evidence.slot>=(attempt as Attempt).plan.snapshotSlot
         &&Number.isSafeInteger(evidence.blockHeight)&&evidence.blockHeight>attempt.lastValidBlockHeight,
         'invalid creation recovery evidence');
@@ -225,7 +313,7 @@ export class WalletClient {
       }
       const identity=await this.o.prover.inspect(r.value.witness!,r.value.state);note={note_id:s.nextNoteId,registration_commitment:identity.registration_commitment,deposit_micro_usdc:r.value.witness!.deposit_micro_usdc,expiry};
     }else{note=await this.note(r,s);requireTrue(s.note!.status==='active','note not active');
-      if(op.kind==='mutual_close'&&(op.expiredCreations?.length??0)>0)requireTrue(!s.pending,'note not active');}
+      if((op.kind==='mutual_close'||op.kind==='initiate_escape')&&(op.expiredCreations?.length??0)>0)requireTrue(!s.pending,'note not active');}
     if(op.kind==='mutual_close'){r=await this.clearance(id,r);op=r.value.wallet!.operation!;}
     const tree=await this.o.prover.tree(note,s.root,s.siblings,op.kind==='deposit'?0:1);
     let nullifier:string|undefined;
@@ -260,18 +348,45 @@ export class WalletClient {
     requireTrue(w.clearance.nullifier===identity.nullifier,'clearance state mismatch');
     await this.o.prover.verifyClearance(w.clearance.nullifier,w.clearance.signature);
   }
-  /** Explicit deposit/mutual-close setup recovery, without signing or sending. Every old
+  /** Match the current authenticated private state and selected destination to
+   * every signed escape payload, including after a crash interrupted reproof.
+   * A never-landed buffer create still commits to that immutable payload hash. */
+  private async verifyEscapeSetupRecovery(r:JournalRecord<NoteJournal>):Promise<void>{
+    const w=r.value.wallet!,op=w.operation,m=this.o.manifest,witness=r.value.witness!;
+    requireTrue(r.value.pending===null&&w.status==='active'&&op?.kind==='initiate_escape'&&op.destinationOwner
+      &&op.attempts.length>0,'same-state escape setup required');
+    const identity=await this.o.prover.inspect(witness,r.value.state),destination=new PublicKey(op.destinationOwner);
+    const expectedDestination=await destinationBinding(destination.toBytes());
+    const financial=vaultAccounts({programId:new PublicKey(m.program_id),pool:new PublicKey(m.pool),mint:new PublicKey(m.mint),
+      payer:new PublicKey(op.roles.payer),noteId:witness.note_id,operation:'initiate_escape',destinationOwner:destination,nullifier:parseField(identity.nullifier)});
+    const integer=(n:string|number)=>'0x'+BigInt(n).toString(16).padStart(64,'0');
+    for(const saved of op.attempts){
+      requireTrue(saved.kind!=='deposit_inline'&&saved.kind!=='finalize','invalid escape attempt');
+      const plan=await restorePlan(saved.plan),at=(index:number)=>'0x'+saved.plan.payloadHex.slice(index*64,(index+1)*64);
+      requireTrue(plan.operation==='initiate_escape'&&plan.programId.toBase58()===m.program_id&&plan.pool.toBase58()===m.pool
+        &&plan.uploader.toBase58()===op.roles.uploader&&plan.rentPayer.toBase58()===op.roles.rentPayer
+        &&plan.feePayer.toBase58()===op.roles.feePayer
+        &&Object.entries(financial).every(([key,value])=>plan.financial[key as keyof typeof financial].equals(value)),
+        'escape destination or financial roles changed');
+      requireTrue(at(8)===integer(witness.note_id)&&at(9)===integer(r.value.state.balance_micro_usdc)
+        &&at(10)===expectedDestination&&at(11)===identity.nullifier&&at(12)===integer(0)
+        &&at(22+6)===identity.registration_commitment&&at(22+7)===integer(witness.deposit_micro_usdc)
+        &&at(22+8)===integer(witness.expiry),'signed escape state changed');
+    }
+  }
+  /** Explicit deposit/withdrawal setup recovery, without signing or sending. Every old
    * create must be finalized-expired with no receipt and an absent buffer at a
    * finalized block beyond its validity. Preserve each signed attempt and the
    * absence evidence before rebuilding the proof and buffer expiry. */
   async reconcileExpiredCreation(id:string):Promise<void>{
     await this.o.journal.withNoteLock(id,async()=>{
       let r=await this.record(id);const w=r.value.wallet!,op=w.operation;
-      requireTrue(r.value.pending===null&&op&&((w.status==='unfunded'&&op.kind==='deposit')||(w.status==='active'&&op.kind==='mutual_close'))&&op.phase==='ready'
+      requireTrue(r.value.pending===null&&op&&((w.status==='unfunded'&&op.kind==='deposit')||(w.status==='active'&&(op.kind==='mutual_close'||op.kind==='initiate_escape')))&&op.phase==='ready'
         &&op.step===0&&op.finalized.length===0&&op.finalization===undefined&&op.plan&&op.current
         &&op.attempts.length>0&&op.attempts.at(-1)!.signature===op.current
-        &&op.attempts.every(a=>a.kind==='create'),'unresolved deposit or mutual-close creation required');
+        &&op.attempts.every(a=>a.kind==='create'),'unresolved deposit or withdrawal creation required');
       if(op.kind==='mutual_close')await this.verifyMutualSetupRecovery(r);
+      if(op.kind==='initiate_escape')await this.verifyEscapeSetupRecovery(r);
       requireTrue(this.o.chain.bufferObservation,'finalized buffer observation unavailable');
       const current=op.attempts.at(-1)! as Attempt,active=await restorePlan(op.plan);
       requireTrue(JSON.stringify(snapshotPlan(active))===JSON.stringify(snapshotPlan(await restorePlan(current.plan))),
@@ -297,7 +412,7 @@ export class WalletClient {
       }
       const snapshot=await this.o.chain.snapshot(op.kind==='deposit'?undefined:r.value.witness!.note_id,op.kind==='deposit'?'zero':'active',minimumSlot);
       requireTrue(Number.isSafeInteger(snapshot.slot)&&snapshot.slot>=minimumSlot,'stale creation recovery snapshot');
-      if(op.kind==='mutual_close'){await this.note(r,snapshot);requireTrue(snapshot.note!.status==='active'&&!snapshot.pending,'note not active');}
+      if(op.kind==='mutual_close'||op.kind==='initiate_escape'){await this.note(r,snapshot);requireTrue(snapshot.note!.status==='active'&&!snapshot.pending,'note not active');}
       op.expiredCreations=[...(op.expiredCreations??[]),...evidence];op.phase='proving';delete op.current;delete op.plan;op.step=0;
       r=await this.save(id,r);
       await this.build(id,r,snapshot);
@@ -422,6 +537,8 @@ export class WalletClient {
       if(status==='pending_escape'){
         const identity=await this.o.prover.inspect(r.value.witness!,r.value.state);
         requireTrue(snapshot.pending?.nullifier===identity.nullifier&&snapshot.pending.destinationOwner===op!.destinationOwner&&snapshot.pending.balance_micro_usdc===r.value.state.balance_micro_usdc,'finalized Pending mismatch');
+        const emergency=r.value.wallet!.emergencyEscapes?.find(e=>e.operationId===op!.id);
+        if(emergency){requireTrue(emergency.phase==='escaping'&&emergency.nullifier===identity.nullifier,'emergency escape identity mismatch');emergency.escape={signature:attempt.signature,slot:recovery.slot,sequence:snapshot.sequence};}
       }
       r.value.wallet!.status=status;r.value.wallet!.history.push(op!);delete r.value.wallet!.operation;await this.save(id,r);return {state:'complete'};
     });

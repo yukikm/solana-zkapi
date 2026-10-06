@@ -133,7 +133,9 @@ fn main() {
         .unwrap_err();
         collect(w, &mut rows);
         let mut w = active(&elf, &a);
-        w.svm.add_program(w.id, &wrong_elf);
+        w.svm
+            .add_program(w.id, &wrong_elf)
+            .expect("load wrong-VK fixture");
         w.execute(
             "wrong-vk/withdrawal-close",
             &a,
@@ -143,7 +145,9 @@ fn main() {
         .unwrap_err();
         collect(w, &mut rows);
         let mut w = pending(&elf, &a);
-        w.svm.add_program(w.id, &wrong_elf);
+        w.svm
+            .add_program(w.id, &wrong_elf)
+            .expect("load wrong-VK fixture");
         w.execute(
             "wrong-vk/request-challenge",
             &a,

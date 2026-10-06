@@ -1,0 +1,139 @@
+{
+  "schema": 1,
+  "collected_at_utc": "2026-10-06T05:45:42.030115+00:00",
+  "scope": "local actual SBF regression for coordinated Solana 2.3 dependency update; not public devnet, finality, provider or wallet-extension acceptance",
+  "versions": {
+    "web3.js": "1.99.0",
+    "anchor-lang": "0.31.2",
+    "solana-program": "2.3.0",
+    "solana-sdk": "2.3.1",
+    "solana-pubkey_host": "2.4.0",
+    "litesvm": "0.7.1",
+    "solana-compute-budget": "2.3.13",
+    "solana-keypair": "2.2.3",
+    "groth16-solana": "0.2.0",
+    "host_rust": "1.90.0",
+    "cargo-build-sbf": "4.1.0 (local cache-location-only patch)",
+    "platform-tools": "v1.54",
+    "sbf_rust": "1.89.0",
+    "sbf_arch": "v0"
+  },
+  "artifacts": {
+    "local": {
+      "path": "/workspace/work/parity-sbf/normal/zkapi_vault.so",
+      "bytes": 379800,
+      "sha256": "906110e3aba857ddb0dd3063c127a330220505f3fb6cee3f32ce443a1ebe190d"
+    },
+    "wrong_vk": {
+      "path": "/workspace/work/parity-sbf/wrong-vk/zkapi_vault.so",
+      "bytes": 381216,
+      "sha256": "d76e137faf3b60cdae9a4d3561de18230896c1c12387222852b5280d4f7db768"
+    },
+    "public_profile_build": {
+      "path": "/workspace/work/parity-public-devnet-sbf/zkapi_vault.so",
+      "bytes": 380728,
+      "sha256": "44101e7b898d66b1ecfafaaea67b674d4e20149dfa472257192adad03c239515"
+    },
+    "public_profile_local_svm": {
+      "path": "/workspace/work/parity-public-devnet-sbf-svm/zkapi_vault.so",
+      "bytes": 380760,
+      "sha256": "e7fb90c69a845172b441b9b7e75473c234b9aaf0ef2405c8101bb269fab9d5a9",
+      "initializer": "AKnL4NNf3DGWZJS6cPknBuEGnVsV4A4m5tgebLHaRSZ9"
+    }
+  },
+  "compiler_idl": {
+    "path": "docs/contracts/zkapi_vault.json",
+    "sha256": "0759025148be84d67f95e71ca79057d249a5de3f2574e972ce3295aac530a671",
+    "byte_identical": true
+  },
+  "compact": {
+    "cases": 61,
+    "status": "pass",
+    "max_cu": 179147,
+    "sdk_cu": 178542,
+    "sdk_sign_requests": 1,
+    "sdk_transaction_bytes": 1007
+  },
+  "legacy_vault": {
+    "transactions": 366,
+    "successful_transactions": 203,
+    "expected_rejections": 163,
+    "max_cu": 426839,
+    "max_transaction_bytes": 863,
+    "i04_full_buffer_lifecycle": false
+  },
+  "other_checks": {
+    "vault_lib_pass": 9,
+    "focused_sdk_transaction_wallet_pass": 28,
+    "vault_cargo_check": "pass",
+    "svm_all_targets_cargo_check": "pass",
+    "sdk_typecheck": "pass",
+    "examples_typecheck": "pass",
+    "key_validation_diagnostic_host_locked_check": "pass",
+    "key_validation_diagnostic_program_locked_check": "pass",
+    "i02_harness_locked_check": "pass",
+    "i02_layout2_locked_check": "pass"
+  },
+  "runtime_commands": [
+    [
+      "cargo",
+      "build",
+      "--locked",
+      "--manifest-path",
+      "tests/svm/Cargo.toml",
+      "--bin",
+      "compact_deposit",
+      "--bin",
+      "vault"
+    ],
+    [
+      "compact_deposit",
+      "/workspace/work/parity-sbf/normal/zkapi_vault.so",
+      "/workspace/work/parity-sbf/compact-results.json"
+    ],
+    [
+      "vault",
+      "/workspace/work/parity-sbf/normal/zkapi_vault.so",
+      "/workspace/work/parity-sbf/wrong-vk/zkapi_vault.so",
+      "/workspace/work/parity-sbf/legacy-regression"
+    ]
+  ],
+  "reports": {
+    "compact-sbf.json": {
+      "sha256": "ced4b516c7343f7195a3db3c8c071dfa53cacebcae4ef1fcf10fc7584036327b",
+      "bytes": 100677
+    },
+    "legacy-vault-sbf.json": {
+      "sha256": "f5174286999f0067a2970a34a0ab591d15aaa81f10f385e5e9a88351dfb09226",
+      "bytes": 651689
+    },
+    "legacy-rejections.json": {
+      "sha256": "f980c6d45b668ec427b07a8b1dbeb3879c8a79e01ac0a3b8a0f648ef2cdd0104",
+      "bytes": 1915
+    },
+    "legacy-traces.json": {
+      "sha256": "3651ab83ecdc6735bdf5d32d6c22231ca23de094779567f58bab6ad9ca144d4c",
+      "bytes": 24356
+    }
+  },
+  "limits": [
+    "no public deployment or finalized RPC receipts",
+    "no inference or provider spend",
+    "legacy harness retains sealed-buffer I04 boundary",
+    "no migration of existing journals or funded deployment pins",
+    "new major Solana/Anchor/SDK and new SBF compiler are not validated by these results"
+  ],
+  "public_profile_initial_attempt": {
+    "initializer": "nHSjCbSd3XD3UwGy5uAAUqEfDf4kBDYaJZ4eF82nCDZ",
+    "elf_sha256": "a3c6689dae6d20f3c9647e1e45e4c140609b342f78546f2ee4ffa058692fa4fd",
+    "result": "harness initializer assertion rejected setup before transaction execution"
+  },
+  "fresh_public_profile_sbf": {
+    "cases": 8,
+    "status": "pass",
+    "max_cu": 205191,
+    "max_transaction_bytes": 1202,
+    "report": "docs/evidence/I10-parity-public-devnet-svm-results.json",
+    "scope": "local actual SBF fresh setup execution; no public deployment"
+  }
+}

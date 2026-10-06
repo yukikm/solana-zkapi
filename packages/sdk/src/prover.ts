@@ -6,6 +6,7 @@ import { verifyArtifactBundle, type ArtifactBundle, type VerifiedManifest } from
 import type { PrivateState, Quote, Tariff, PreparedSession, StateSignature, createCredentials } from './control.ts';
 import type { PublicProof } from './layout2.ts';
 import type { ClientProver } from './prover-runtime.ts';
+import type { SnapshotNote, SnapshotPath } from './session-snapshot.ts';
 export type { ClientProver } from './prover-runtime.ts';
 export interface NoteWitness { secret: string; note_id: number; deposit_micro_usdc: string; expiry: string }
 export interface DepositCandidate { witness: NoteWitness; state: PrivateState; registration_commitment: string }
@@ -38,6 +39,12 @@ export class NoteProver {
     return new NoteProver(manifest, await verifyArtifactBundle(manifest, artifacts), engine);
   }
   private run(command: object): Promise<unknown> { return this.engine.run(structuredClone(command)); }
+  /** Reconstruct the original sparse tree locally; never send the selected ID. */
+  async snapshotPath(root:string,nextNoteId:string,notes:readonly SnapshotNote[],noteId:number):Promise<SnapshotPath> {
+    const result=await this.run({kind:'snapshot_path',root,next_note_id:nextNoteId,active_notes:notes,note_id:noteId}) as SnapshotPath;
+    if(!result||result.root!==root||result.note_id!==noteId||!Array.isArray(result.siblings)||result.siblings.length!==32)throw Error('invalid local snapshot path');
+    result.siblings.forEach(parseField);return result;
+  }
   async deposit(noteId: number, amount: string, expiry: string): Promise<DepositCandidate> {
     const result = await this.run({kind:'deposit',note_id:noteId,amount,expiry}) as DepositCandidate;
     validateWitness(result.witness); return result;

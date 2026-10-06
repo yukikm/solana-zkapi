@@ -1,3 +1,4 @@
+import {authorizationSnapshot} from '../../packages/sdk/src/session-snapshot.ts';
 /** Browser orchestration only; the SDK NoteJournal owns every financial transition. */
 import {Buffer} from 'buffer';
 import {ControlClient, createCredentials, type NoteJournal, type Tariff, type PreparedSession} from '../../packages/sdk/src/control.ts';
@@ -14,7 +15,7 @@ export interface UiProviderConfiguration {
 }
 export interface UiProviderOptions {
   configuration: UiProviderConfiguration; journal: EncryptedJournal<NoteJournal>; client: ControlClient;
-  prover: Pick<NoteProver, 'prepareSession'>; chain: Pick<WalletChain, 'snapshot'>;
+  prover: Pick<NoteProver, 'prepareSession'|'snapshotPath'>; chain: Pick<WalletChain, 'sessionSnapshot'>;
 }
 function requireTrue(value: unknown): asserts value { if (!value) throw Error('fixed OpenAI acceptance state required'); }
 export function uiProviderBody(configuration: UiProviderConfiguration): Uint8Array {
@@ -66,7 +67,7 @@ export class UiProvider {
       requireTrue(v.pending === null && (this.configuration.requestPolicy === 'explicit_demo' || v.history.length === 0) && v.wallet!.status === 'active'
         && !v.wallet!.operation && !v.wallet!.clearance);
       // Capture the coherent chain view before the signed quote's 120s clock starts.
-      const snapshot = await this.o.chain.snapshot(v.witness!.note_id, 'active');
+      const snapshot = await authorizationSnapshot(this.o.chain,v.witness!.note_id,this.o.prover);
       const c = this.configuration.testCase;
       const quote = await this.o.client.quote({mode: 'proxy', provider: 'openai', models: [c.model], session_ttl_seconds: String(c.session_ttl_seconds)}, this.configuration.tariff);
       requireTrue(BigInt(v.state.balance_micro_usdc) >= BigInt(quote.body.cap_micro_usdc));

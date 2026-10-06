@@ -149,7 +149,7 @@ export function validateNoteJournal(value: unknown): asserts value is NoteJourna
     const w = value.wallet as WalletJournal;
     requireTrue(w && ['unfunded','active','pending_escape','closed'].includes(w.status) && Array.isArray(w.history), 'invalid wallet journal');
     requireTrue(value.witness !== undefined, 'wallet witness missing');
-    if(value.schema===2)allowedFields(w,['status','clearance','clearedAuthorization','operation','history']);
+    if(value.schema===2)allowedFields(w,['status','clearance','clearedAuthorization','emergencyEscapes','operation','history']);
     if (w.clearance) { parseField(w.clearance.nullifier); requireTrue(['requested','verified'].includes(w.clearance.phase), 'invalid clearance journal'); }
     if (w.clearedAuthorization !== undefined) {
       const archived = w.clearedAuthorization; object(archived);
@@ -205,6 +205,65 @@ export function validateNoteJournal(value: unknown): asserts value is NoteJourna
     }
   }
   if (value.pending !== null) pendingSession(value.pending as PendingSession);
+  if (value.wallet) validateEmergencyEscapes(value as unknown as NoteJournal);
+}
+function sameJson(a:unknown,b:unknown):boolean { return Buffer.from(jcsBytes(a)).equals(Buffer.from(jcsBytes(b))); }
+/** An archive is evidence, never an unchecked permission bit. Every phase is
+ * joined to its original state/request, financial history and chain barrier. */
+function validateEmergencyEscapes(note:NoteJournal):void {
+  const w=note.wallet!,archives=w.emergencyEscapes;if(archives===undefined)return;
+  requireTrue(Array.isArray(archives),'invalid emergency escape archive');
+  const ids=new Set<string>(),requests=new Set<string>();
+  for(const [index,e] of archives.entries()){
+    allowedFields(e,['pending','previous','nullifier','operationId','phase','escape','challenge']);
+    pendingSession(e.pending);privateState(e.previous);parseField(e.nullifier);uuid(e.operationId);
+    const p=e.pending,request=p.prepared.request,q=request.quote.body,requestId=request.authorization.request_id;
+    requireTrue(p.phase!=='prepared'&&['escaping','challenged','settled'].includes(e.phase)
+      &&!ids.has(e.operationId)&&!requests.has(requestId),'invalid emergency escape identity');
+    ids.add(e.operationId);requests.add(requestId);
+    requireTrue(request.public_inputs.length===12&&request.public_inputs[8]===e.nullifier
+      &&request.authorization.deployment_id===q.deployment_id&&request.authorization.pool===q.pool
+      &&request.authorization.mode===q.mode,'emergency authorization binding changed');
+    request.public_inputs.forEach(parseField);
+    const operation=[...w.history,...(w.operation?[w.operation]:[])].filter(o=>o.id===e.operationId);
+    requireTrue(operation.length===1&&operation[0].kind==='initiate_escape','emergency escape operation missing');
+    const op=operation[0];
+    if(op.plan)requireTrue(op.plan.operation==='initiate_escape'&&op.plan.pool===request.authorization.pool,'emergency escape plan binding changed');
+    if(e.escape){
+      allowedFields(e.escape,['signature','slot','sequence']);
+      requireTrue(typeof e.escape.signature==='string'&&Number.isSafeInteger(e.escape.slot)&&e.escape.slot>=0
+        &&typeof e.escape.sequence==='string'&&/^(0|[1-9][0-9]*)$/.test(e.escape.sequence)
+        &&BigInt(e.escape.sequence)<=0xffffffffffffffffn,'invalid finalized escape evidence');
+      requireTrue(w.history.includes(op)&&op.attempts.some(a=>a.kind==='execute'&&a.signature===e.escape!.signature)
+        &&op.finalized.some(f=>f.signature===e.escape!.signature&&f.slot===e.escape!.slot),'escape receipt history missing');
+    }
+    if(e.phase==='escaping'){
+      requireTrue(e.challenge===undefined&&note.pending===null&&sameJson(e.previous,note.state)
+        &&(e.escape?w.status==='pending_escape'||w.status==='closed':w.status==='active'&&w.operation===op),
+        'invalid unresolved emergency escape');
+    }else{
+      requireTrue(e.escape&&e.challenge,'challenge evidence required');
+      allowedFields(e.challenge,['slot','sequence']);
+      requireTrue(Number.isSafeInteger(e.challenge.slot)&&e.challenge.slot>=e.escape.slot
+        &&typeof e.challenge.sequence==='string'&&/^(0|[1-9][0-9]*)$/.test(e.challenge.sequence)
+        &&BigInt(e.challenge.sequence)<=0xffffffffffffffffn&&BigInt(e.challenge.sequence)>BigInt(e.escape.sequence),
+        'invalid finalized challenge evidence');
+      if(e.phase==='challenged'){
+        const current=note.pending;
+        requireTrue(w.status==='active'&&!w.operation&&sameJson(e.previous,note.state)&&current
+          &&current.phase==='closing'&&current.closeRequested===true&&sameJson(current.prepared,p.prepared)
+          &&current.exactRequest===p.exactRequest&&current.operations.length===p.operations.length
+          &&current.operations.every((o,i)=>sameJson({...o,phase:p.operations[i].phase},p.operations[i])
+            &&(o.phase===p.operations[i].phase||o.phase==='not_accepted')),'challenged authorization changed');
+      }else {
+        const settled=note.history.filter(h=>h.prepared.request.authorization.request_id===requestId);
+        requireTrue(settled.length===1&&sameJson(settled[0].previous,e.previous)&&sameJson(settled[0].prepared,p.prepared),
+          'emergency successor settlement missing or duplicated');
+      }
+    }
+    if(e.phase!=='settled')requireTrue(index===archives.length-1&&!w.clearedAuthorization
+      &&!note.history.some(h=>h.prepared.request.authorization.request_id===requestId),'multiple unresolved emergency escapes');
+  }
 }
 
 function validateInlineWalletOperation(op: WalletOperation, active: boolean): void {
@@ -425,7 +484,7 @@ export class ControlClient {
     const copy = structuredClone(prepared);
     await this.options.journal.withNoteLock(noteId, async () => {
       const r = await this.record(noteId); requireTrue(r.value.pending === null, 'note already has an unresolved authorization');
-      requireTrue(!r.value.wallet || r.value.wallet.status === 'active' && !r.value.wallet.operation && !r.value.wallet.clearance, 'note has an unresolved financial operation or permanent clearance intent');
+      requireTrue(!r.value.wallet || r.value.wallet.status === 'active' && !r.value.wallet.operation && !r.value.wallet.clearance && !r.value.wallet.emergencyEscapes?.some(e=>e.phase!=='settled'), 'note has an unresolved financial operation or permanent clearance intent');
       const id = copy.request.authorization.request_id;
       requireTrue(!r.value.history.some(h => h.prepared.request.authorization.request_id === id), 'request already settled');
       await this.options.verifier.prepare(this.config, r.value.state, copy, (this.options.now?.() ?? BigInt(Math.floor(Date.now() / 1000))).toString(), finalizedRoot);
@@ -440,6 +499,7 @@ export class ControlClient {
    * replayable even when close was requested before the server acknowledged it. */
   private async submitPending(noteId: string, record: JournalRecord<NoteJournal>): Promise<SessionStatus> {
     let r = record; const p = r.value.pending; requireTrue(p, 'no pending authorization');
+    requireTrue(!r.value.wallet?.emergencyEscapes?.some(e=>e.phase!=='settled'),'emergency escape forbids authorization replay');
     requireTrue(p.phase === 'prepared' || p.phase === 'send_unknown', 'use recover for existing session');
     if (p.phase === 'prepared') {
       const now = this.options.now?.() ?? BigInt(Math.floor(Date.now() / 1000));
@@ -456,6 +516,7 @@ export class ControlClient {
   async cancelUnsent(noteId: string): Promise<void> {
     await this.options.journal.withNoteLock(noteId, async () => {
       const r = await this.record(noteId);
+      requireTrue(!r.value.wallet?.emergencyEscapes?.some(e=>e.phase!=='settled'),'emergency escape fences session changes');
       requireTrue(r.value.pending?.phase === 'prepared' && r.value.pending.operations.length === 0, 'cannot cancel a possibly sent authorization');
       r.value.pending = null; await this.save(noteId, r);
     });
@@ -487,6 +548,8 @@ export class ControlClient {
   private async accept(noteId: string, r: JournalRecord<NoteJournal>, raw: unknown, initial: boolean): Promise<SessionStatus> {
     object(raw); const status = raw as unknown as SessionStatus; const p = r.value.pending!;
     const q = p.prepared.request.quote.body;
+    const emergency=r.value.wallet?.emergencyEscapes?.find(e=>e.phase!=='settled');
+    requireTrue(!emergency||emergency.phase==='challenged'&&p.phase==='closing'&&p.closeRequested===true, 'emergency escape requires finalized challenge reconciliation');
     requireTrue(Object.keys(raw).every(k => ['request_id','mode','state','cap_micro_usdc','issued_at','expires_at','settlement','provider_key','provider_api_origin','provider_key_verification','last_error_code'].includes(k)), 'unknown session field');
     requireTrue(status.request_id === p.prepared.request.authorization.request_id && status.mode === q.mode
       && status.cap_micro_usdc === q.cap_micro_usdc && states.has(status.state), 'session identity mismatch');
@@ -524,7 +587,7 @@ export class ControlClient {
         delete r.value.wallet!.clearance;
       }
       r.value.history.push({ previous: r.value.state, prepared: p.prepared, settlement: status.settlement, receipts, operations: p.operations });
-      r.value.state = next; r.value.pending = null; await this.save(noteId, r);
+      r.value.state = next; r.value.pending = null; if(emergency)emergency.phase='settled'; await this.save(noteId, r);
       this.verifiedOaKeys.delete(p.prepared.request.authorization.request_id);
       return status;
     }
@@ -563,6 +626,7 @@ export class ControlClient {
     const bodyBase64 = Buffer.from(body).toString('base64');
     await this.options.journal.withNoteLock(noteId, async () => {
       const r = await this.record(noteId); const p = r.value.pending;
+      requireTrue(!r.value.wallet?.emergencyEscapes?.some(e=>e.phase!=='settled'),'emergency escape fences inference');
       requireTrue(p && p.phase === 'active' && p.serverState === 'ACTIVE' && p.prepared.request.authorization.mode === 'proxy', 'proxy session required');
       const old = p.operations.find(o => o.id === operationId);
       if (old) { requireTrue(old.path === path && old.bodyBase64 === bodyBase64 && old.anthropicVersion === anthropicVersion, 'idempotency conflict'); return; }
@@ -574,6 +638,7 @@ export class ControlClient {
     uuid(operationId);
     const dispatch = await this.options.journal.withNoteLock(noteId, async () => {
       const r = await this.record(noteId); const p = r.value.pending;
+      requireTrue(!r.value.wallet?.emergencyEscapes?.some(e=>e.phase!=='settled'),'emergency escape fences inference');
       requireTrue(p && p.phase === 'active' && p.serverState === 'ACTIVE' && p.prepared.proxy_token, 'active proxy session required');
       const operation = p.operations.find(o => o.id === operationId); requireTrue(operation, 'operation must be saved before sending');
       if (operation.phase !== 'prepared') throw new ResponseNotReplayable(operationId, this.path(p) + `/operations/${operationId}`);
@@ -599,6 +664,7 @@ export class ControlClient {
     const bytes = new Uint8Array(body);
     const dispatch = await this.options.journal.withNoteLock(noteId, async () => {
       const r = await this.record(noteId); const p = r.value.pending;
+      requireTrue(!r.value.wallet?.emergencyEscapes?.some(e=>e.phase!=='settled'),'emergency escape fences inference');
       requireTrue(p && p.phase === 'active' && p.serverState === 'ACTIVE' && p.providerKey && !p.closeRequested, 'active direct session required');
       const mode = p.prepared.request.authorization.mode;
       requireTrue(mode === 'direct_oa' || mode === 'direct_openrouter', 'explicit direct mode required');

@@ -58,6 +58,10 @@ pub struct DevnetConfig {
     pub program_file: PathBuf,
     pub build_manifest_file: PathBuf,
     pub trusted_build_manifest_hash: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub public_profile_file: Option<PathBuf>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub trusted_public_profile_hash: Option<String>,
 }
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -75,14 +79,27 @@ struct DevnetBuildManifest {
     state_key: Value,
     clearance_key: Value,
     circuit_profile_hash: String,
+    #[serde(default)]
+    public_profile_sha256: Option<String>,
+    #[serde(default)]
+    tree_setup: Option<String>,
 }
 impl DevnetConfig {
     /// Shared offline trust boundary for local test services attached to devnet.
     /// Callers must also authenticate the public manifest against their own
     /// distribution pin. This never reads service or wallet signing keys.
     pub fn validate_manifest(&self, manifest: &Value) -> Result<TrustedPool> {
-        self.validate(manifest)?;
-        let trusted = TrustedPool::from_devnet_manifest(manifest)?;
+        let profile = self.validate(manifest)?;
+        let trusted = match profile {
+            Some(profile) => TrustedPool::from_public_devnet_manifest(
+                manifest,
+                &profile,
+                self.trusted_public_profile_hash
+                    .as_deref()
+                    .context("public profile hash")?,
+            )?,
+            None => TrustedPool::from_devnet_manifest(manifest)?,
+        };
         for name in [
             "control_api_origin",
             "inference_api_origin",
@@ -105,7 +122,7 @@ impl DevnetConfig {
         Ok(trusted)
     }
 
-    fn validate(&self, manifest: &Value) -> Result<()> {
+    fn validate(&self, manifest: &Value) -> Result<Option<Value>> {
         let build_bytes = std::fs::read(&self.build_manifest_file)?;
         let build_hash = hex::encode(wire::sha256(&build_bytes));
         wire::hash(&self.trusted_build_manifest_hash)?;
@@ -116,13 +133,42 @@ impl DevnetConfig {
         );
         let build: DevnetBuildManifest = serde_json::from_slice(&build_bytes)?;
         ensure!(
-            build.schema == 1
+            matches!(build.schema, 1 | 2)
                 && build.deployment_environment == "devnet"
                 && build.setup_profile == "test_only"
                 && manifest["deployment_environment"] == "devnet"
                 && manifest["setup_profile"] == "test_only",
             "devnet test build profile"
         );
+        let public_profile = match (&self.public_profile_file, &self.trusted_public_profile_hash) {
+            (Some(path), Some(trusted_hash)) => {
+                wire::hash(trusted_hash)?;
+                let bytes = std::fs::read(path)?;
+                ensure!(
+                    hex::encode(wire::sha256(&bytes)) == *trusted_hash
+                        && build.schema == 2
+                        && build.public_profile_sha256.as_ref() == Some(trusted_hash)
+                        && build.tree_setup.as_deref() == Some("single_party_os_random")
+                        && manifest["artifact_digests"]["public_devnet_profile"] == *trusted_hash,
+                    "independent public-devnet profile/build pin"
+                );
+                let profile: Value = serde_json::from_slice(&bytes)?;
+                crate::chain::validate_public_devnet_profile(&profile)?;
+                Some(profile)
+            }
+            (None, None) => {
+                ensure!(
+                    build.schema == 1
+                        && build.public_profile_sha256.is_none()
+                        && build.tree_setup.is_none(),
+                    "public-devnet build requires explicit profile trust pins"
+                );
+                None
+            }
+            _ => anyhow::bail!(
+                "public-devnet profile and independent hash must be supplied together"
+            ),
+        };
         ensure!(
             wire::pubkey(&build.deployment_authority)? != [0; 32],
             "devnet initializer pin"
@@ -174,7 +220,7 @@ impl DevnetConfig {
             idl == local_idl,
             "devnet IDL must preserve build wire contract"
         );
-        Ok(())
+        Ok(public_profile)
     }
 }
 pub struct ValidatedConfig {
@@ -264,6 +310,16 @@ impl RuntimeConfig {
             hash == self.trusted_manifest_hash && self.manifest["manifest_hash"] == hash,
             "trusted manifest hash mismatch"
         );
+        if self
+            .devnet
+            .as_ref()
+            .is_some_and(|d| d.public_profile_file.is_some())
+        {
+            ensure!(
+                !self.enable_local_adapter,
+                "public-devnet profile prohibits synthetic local adapter"
+            );
+        }
         let trusted = if let Some(devnet) = &self.devnet {
             devnet.validate_manifest(&self.manifest)?
         } else {
@@ -327,6 +383,16 @@ impl RuntimeConfig {
             quote_key: quote_key.verifying_key().to_bytes(),
         };
         let signer = SignerConfig {
+            public_devnet_profile: self.devnet.as_ref().and_then(|devnet| {
+                devnet
+                    .public_profile_file
+                    .as_ref()
+                    .zip(devnet.trusted_public_profile_hash.as_ref())
+                    .map(|(file, sha256)| crate::signer::PublicDevnetProfilePin {
+                        file: file.clone(),
+                        sha256: sha256.clone(),
+                    })
+            }),
             authorization: binding.clone(),
             pool: wire::pubkey(&trusted.pool)?,
             binding: *trusted.vault_binding.as_bytes(),
@@ -340,6 +406,8 @@ impl RuntimeConfig {
             },
             receipt_key: receipt_key.verifying_key().to_bytes(),
         };
+        // Validate the independently pinned signer boundary before any service starts.
+        signer.validate()?;
         let allowed = self.manifest["tariff_hashes"]
             .as_array()
             .context("tariff hashes")?;

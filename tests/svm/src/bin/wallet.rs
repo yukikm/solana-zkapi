@@ -88,7 +88,13 @@ fn snapshot(w: &World, id: u32, slot: u64) -> Value {
 }
 fn main() {
     let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
-    let elf = fs::read(root.join("target/i04-sbf/zkapi_vault.so")).unwrap();
+    // An explicit local ELF lets focused integration runs reuse their separately
+    // hashed build without copying over another acceptance run's artifact.
+    let elf_path = std::env::args()
+        .nth(1)
+        .map(std::path::PathBuf::from)
+        .unwrap_or_else(|| root.join("target/i04-sbf/zkapi_vault.so"));
+    let elf = fs::read(elf_path).unwrap();
     let mut w = World::new(&elf);
     w.initialize(&read(root.join("tests/fixtures/vault/genesis-a.json")));
     let mut slot = 100u64;
@@ -170,7 +176,15 @@ fn main() {
             "report" => {
                 let report = json!({"scope":"actual Vault SBF with SDK wallet signed v0 transactions; simulated finality RPC","rows":rows,"max_cu":rows.iter().map(|r|r["cu"].as_u64().unwrap()).max(),"max_transaction_bytes":rows.iter().map(|r|r["transaction_bytes"].as_u64().unwrap()).max(),"vault_micro_usdc":w.amount(w.vault),"destination_micro_usdc":w.svm.get_account(&w.destination).filter(|a|!a.data.is_empty()).map(|_|w.amount(w.destination)).unwrap_or(0),"source_micro_usdc":w.amount(w.source),"treasury_micro_usdc":w.svm.get_account(&w.treasury).filter(|a|!a.data.is_empty()).map(|_|w.amount(w.treasury)).unwrap_or(0)});
                 let name = command["name"].as_str().unwrap_or("wallet");
-                assert!(["wallet", "wasm-close", "wasm-escape", "clientd", "i10"].contains(&name));
+                assert!([
+                    "wallet",
+                    "wasm-close",
+                    "wasm-escape",
+                    "clientd",
+                    "i10",
+                    "pending-escape"
+                ]
+                .contains(&name));
                 fs::write(
                     if name == "i10" {
                         root.join("target/i10/vault-sbf-results.json")

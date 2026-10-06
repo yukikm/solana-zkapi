@@ -1,6 +1,6 @@
 /** App-owned public asset loader. Trust pins are compiled into the app separately. */
 import { Connection } from '@solana/web3.js';
-import type { ArtifactBundle, ClientDeployment, ManifestTrustPolicy, ModelConfiguration } from '@zkapi/solana-sdk';
+import type { ArtifactBundle, ClientDeployment, CreateClientOptions, ManifestTrustPolicy, ModelConfiguration, Mode } from '@zkapi/solana-sdk';
 import { parseStrictJson } from '@zkapi/solana-sdk/trust';
 
 export interface ReviewedBrowserProfile {
@@ -13,6 +13,15 @@ export interface ReviewedBrowserProfile {
   /** Public RPC endpoint or an app-owned relay; never embed a private RPC credential. */
   rpcUrl: string;
   indexerOrigin: string;
+  directProviderBases?: CreateClientOptions['directProviderBases'];
+  oaVerifier?: CreateClientOptions['oaVerifier'];
+}
+/** One independently reviewed route. Selection is explicit; failures never change it. */
+export interface ReviewedChatProfile extends ReviewedBrowserProfile {
+  id: string;
+  label: string;
+  chain: 'solana:devnet';
+  mode: Mode;
 }
 async function read(url: string, maximum: number): Promise<Uint8Array> {
   const response = await fetch(url, { credentials: 'omit', cache: 'no-store', redirect: 'error', signal: AbortSignal.timeout(120_000) });
@@ -38,5 +47,6 @@ export async function loadDeployment(profile: ReviewedBrowserProfile) {
   for (const [name, url] of Object.entries(p.artifacts.additional)) additional[name] = await read(url, 64 * 1024 * 1024);
   const deployment: ClientDeployment = { manifest, trust: p.trust, artifacts: { ...artifacts, additional } as unknown as ArtifactBundle,
     connection: new Connection(p.rpcUrl, { commitment: 'finalized', disableRetryOnRateLimit: true }), indexerOrigin: p.indexerOrigin };
-  return { deployment, models: p.models, wasm: await read(p.wasmUrl, 64 * 1024 * 1024), wasmSha256: p.wasmSha256 };
+  return { deployment, models: p.models, wasm: await read(p.wasmUrl, 64 * 1024 * 1024), wasmSha256: p.wasmSha256,
+    directProviderBases: p.directProviderBases, oaVerifier: p.oaVerifier };
 }

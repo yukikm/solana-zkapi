@@ -52,6 +52,8 @@ fn fixture(dir: &Path) -> (Value, DevnetConfig) {
     let idl = serde_json::to_vec(&idl).unwrap();
     let program = b"\x7fELFoffline-challenger-hash-fixture";
     let mut devnet = DevnetConfig {
+        public_profile_file: None,
+        trusted_public_profile_hash: None,
         idl_file: dir.join("idl.json"),
         program_file: dir.join("vault.so"),
         build_manifest_file: dir.join("build.json"),

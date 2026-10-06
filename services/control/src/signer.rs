@@ -12,7 +12,7 @@ use std::{
     collections::BTreeMap,
     fs::{File, OpenOptions},
     io::{Read, Seek, SeekFrom, Write},
-    path::Path,
+    path::{Path, PathBuf},
 };
 use tokio_postgres::{Client, IsolationLevel, NoTls, Transaction};
 use uuid::Uuid;
@@ -50,7 +50,16 @@ impl PublicKey {
 }
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(deny_unknown_fields)]
+pub struct PublicDevnetProfilePin {
+    pub file: PathBuf,
+    pub sha256: String,
+}
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(deny_unknown_fields)]
 pub struct SignerConfig {
+    /// Absent on historical fixtures so their immutable journal digest remains unchanged.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub public_devnet_profile: Option<PublicDevnetProfilePin>,
     pub authorization: crate::quote::BindingConfig,
     pub pool: [u8; 32],
     pub binding: [u8; 32],
@@ -78,15 +87,55 @@ impl SignerConfig {
             self.state_key != self.clearance_key,
             "state and clearance keys must be separate"
         );
-        ensure!(
-            self.state_key.x.as_slice() == &crate::crypto::deployment_keys::STATE_KEY[..32]
-                && self.state_key.y.as_slice() == &crate::crypto::deployment_keys::STATE_KEY[32..]
-                && self.clearance_key.x.as_slice()
-                    == &crate::crypto::deployment_keys::CLEARANCE_KEY[..32]
-                && self.clearance_key.y.as_slice()
-                    == &crate::crypto::deployment_keys::CLEARANCE_KEY[32..],
-            "signer public keys differ from role-specific build pins"
-        );
+        if let Some(pin) = &self.public_devnet_profile {
+            ensure!(
+                std::fs::symlink_metadata(&pin.file)?.file_type().is_file(),
+                "regular public signer profile required"
+            );
+            let bytes = std::fs::read(&pin.file)?;
+            ensure!(
+                crate::wire::hash(&pin.sha256)? == hash(&bytes),
+                "independent signer profile hash mismatch"
+            );
+            let profile: Value = serde_json::from_slice(&bytes)?;
+            crate::chain::validate_public_devnet_profile(&profile)?;
+            for (name, key) in [
+                ("state_key", &self.state_key),
+                ("clearance_key", &self.clearance_key),
+            ] {
+                ensure!(
+                    profile[name]["x"].as_str()
+                        == Some(format!("0x{}", hex::encode(key.x)).as_str())
+                        && profile[name]["y"].as_str()
+                            == Some(format!("0x{}", hex::encode(key.y)).as_str()),
+                    "signer public role differs from pinned profile"
+                );
+            }
+            ensure!(
+                crate::wire::pubkey(
+                    profile["quote_public_key"]
+                        .as_str()
+                        .context("profile quote key")?
+                )? == self.authorization.quote_key
+                    && crate::wire::pubkey(
+                        profile["receipt_public_key"]
+                            .as_str()
+                            .context("profile receipt key")?
+                    )? == self.receipt_key,
+                "signer Ed25519 roles differ from pinned profile"
+            );
+        } else {
+            ensure!(
+                self.state_key.x.as_slice() == &crate::crypto::deployment_keys::STATE_KEY[..32]
+                    && self.state_key.y.as_slice()
+                        == &crate::crypto::deployment_keys::STATE_KEY[32..]
+                    && self.clearance_key.x.as_slice()
+                        == &crate::crypto::deployment_keys::CLEARANCE_KEY[..32]
+                    && self.clearance_key.y.as_slice()
+                        == &crate::crypto::deployment_keys::CLEARANCE_KEY[32..],
+                "signer public keys differ from role-specific build pins"
+            );
+        }
         VerifyingKey::from_bytes(&self.receipt_key)?;
         VerifyingKey::from_bytes(&self.authorization.quote_key)?;
         ensure!(
@@ -1054,6 +1103,7 @@ mod tests {
         let state_key =
             PublicKey::from_wire(&CompactSigner::from_seed(&Felt252::from_u64(31)).public_key());
         SignerConfig {
+            public_devnet_profile: None,
             authorization: crate::quote::BindingConfig {
                 deployment_id: "signer-unit".into(),
                 pool: pool_text(&[42; 32]),

@@ -39,18 +39,21 @@ const status = await client.status(); // verified balance and pending settlement
 
 This excerpt assumes a funded, available note. Always consume or cancel the
 response, inspect pending settlement, and recover saved work before a new send.
-The SDK never automatically retries inference. See the [checked integration
-example](examples/browser-chat/README.md) and [API reference](docs/sdk/api.md).
+The SDK never automatically retries inference. See the [standalone browser chat
+application](examples/browser-chat/README.md) and [API reference](docs/sdk/api.md).
+The application includes model/API selection, conversation history, streaming
+and recovery controls. Install a reviewed deployment bundle before real use.
 
 ## Choose an integration
 
 | You want to… | Start here |
 |---|---|
 | Build a browser chat app | [Application SDK quickstart](docs/sdk/quickstart.md) |
+| Run the provided chat interface | [Browser application](examples/browser-chat/README.md) |
 | Connect a local OpenAI-compatible client | [clientd](apps/clientd/README.md) |
 | Operate a deployment | [Operator configuration](docs/sdk/deployment.md), [control service](services/control/README.md), [operations](deploy/operations/README.md) |
 | Understand or change the protocol | [Implementation contract](docs/implementation-ready.md), [implementation plan](docs/implementation-plan.md) |
-| Inspect what was actually verified | [Current boundaries](docs/sdk/status.md), [I10 evidence](docs/evidence/I10.md) |
+| Inspect what was actually verified | [Current boundaries](docs/sdk/status.md), [parity follow-up](docs/evidence/I10-parity.md), [historical I10 evidence](docs/evidence/I10.md) |
 
 In **direct** mode, prompts go to the selected provider using a short-lived key.
 In **proxy** mode, the operator relays requests and can read prompts and responses.

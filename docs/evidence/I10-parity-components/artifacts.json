@@ -1,0 +1,25 @@
+{
+  "scope": "Local follow-up components; no public provider or devnet transactions. SDK suite reflects source before later independent-review follow-ups.",
+  "artifacts": [
+    {
+      "path": "docs/evidence/I10-parity-components/sdk-all.log",
+      "sha256": "6815c24826f320ed8a70fb82a62fda4fda7c217ddab571b22bcb218b22a3f4bc",
+      "bytes": 26191
+    },
+    {
+      "path": "docs/evidence/I10-parity-components/private-snapshot-transport.log",
+      "sha256": "be3c7bc077b2e56c03f3e16371b87c0e99376a9e2c65648a2296ea0d0e097710",
+      "bytes": 2783
+    },
+    {
+      "path": "docs/evidence/I10-parity-components/private-snapshot-rust.log",
+      "sha256": "eef62204b36aa98b1a9d4158573a949e016c1f10f3486063313fc81f16e49107",
+      "bytes": 708
+    },
+    {
+      "path": "docs/evidence/I10-parity-components/private-snapshot-native-wasm.log",
+      "sha256": "cd84765b3332a24d579c5681956112ac0b679ec377713ea817cc365e604575f6",
+      "bytes": 445
+    }
+  ]
+}

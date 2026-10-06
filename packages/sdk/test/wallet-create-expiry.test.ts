@@ -22,7 +22,7 @@ const key=(value:string)=>new PublicKey(Buffer.from(value,'hex'));
 const field=(value:number)=>'0x'+value.toString(16).padStart(64,'0');
 const hash=(value:number)=>new PublicKey(new Uint8Array(32).fill(value)).toBase58();
 
-async function setup(t:TestContext,kind:'deposit'|'mutual_close'='deposit'){
+async function setup(t:TestContext,kind:'deposit'|'mutual_close'|'initiate_escape'|'emergency_escape'='deposit'){
   const directory=await mkdtemp(join(tmpdir(),'zkapi-create-expiry-'));t.after(()=>rm(directory,{recursive:true,force:true}));
   const store=await NativeJournalStore.open(directory),aes=await importJournalKey(new Uint8Array(32).fill(15));
   const open=()=>new EncryptedJournal<NoteJournal>(store,aes,{deploymentId:'fixture',pool:key(fixture.pool).toBase58()},validateNoteJournal);
@@ -30,22 +30,22 @@ async function setup(t:TestContext,kind:'deposit'|'mutual_close'='deposit'){
   const state:PrivateState={balance_micro_usdc:String(kind==='deposit'?fixture.deposit:fixture.balance),balance_blinding:field(3),note_leaf:field(4),commitment:{x:field(5),y:field(6)},anchor:field(1),state_signature:null};
   const witness={secret:field(2),note_id:0,deposit_micro_usdc:String(fixture.deposit),expiry:String(fixture.expiry)};
   const nullifier=fixture.auth.withdrawal.public_inputs[11],clearance={nullifier,phase:'verified' as const,signature:{r_x:field(9),r_y:field(10),s:field(11)}};
-  const manifest={program_id:key(fixture.program_id).toBase58(),pool:key(fixture.pool).toBase58(),mint:key(fixture.mint).toBase58(),note_ttl_seconds:String(fixture.ttl)} as VerifiedManifest;
+  const manifest={deployment_id:'fixture',control_api_origin:'https://control.invalid',inference_api_origin:'https://inference.invalid',program_id:key(fixture.program_id).toBase58(),pool:key(fixture.pool).toBase58(),mint:key(fixture.mint).toBase58(),note_ttl_seconds:String(fixture.ttl)} as VerifiedManifest;
   const snapshot:WalletSnapshot={root:fixture.trees[0].public_inputs[1],siblings:Array(32).fill(field(0)),slot:20,sequence:'1',nextNoteId:kind==='deposit'?0:1,clock:String(fixture.now),paused:false,treasuryOwner:owner,
-    ...(kind==='mutual_close'?{note:{note_id:0,registration_commitment:'0x'+fixture.commitment,deposit_micro_usdc:witness.deposit_micro_usdc,expiry:witness.expiry,status:'active' as const}}:{})};
+    ...(kind!=='deposit'?{note:{note_id:0,registration_commitment:'0x'+fixture.commitment,deposit_micro_usdc:witness.deposit_micro_usdc,expiry:witness.expiry,status:'active' as const}}:{})};
   const behavior={height:101,status:null as SignatureStatus|null,receipt:null as FinalizedReceipt|null,failHistory:false,failProof:false,failClearance:false,hash:hash(7),lastValid:100,observationSlot:120,observationHeight:110};
   const counts={signatures:0,sends:0,history:0,proofs:0,rebase:0,clearanceChecks:0};
   const observed:string[]=[],minimums:number[]=[];
   let inspect:(value:FinalizedBufferObservation)=>FinalizedBufferObservation=output=>output;
   const prover={deposit:async(note_id:number,amount:string,expiry:string)=>({state:structuredClone(state),witness:{secret:field(2),note_id,deposit_micro_usdc:amount,expiry}}),
     rebaseDeposit:async(witness:NonNullable<NoteJournal['witness']>,note_id:number,expiry:string)=>{counts.rebase++;return {state:structuredClone(state),witness:{...witness,note_id,expiry}};},
-    inspect:async()=>({registration_commitment:'0x'+fixture.commitment,nullifier}),
+    inspect:async(_w:unknown,s:PrivateState)=>({registration_commitment:'0x'+fixture.commitment,nullifier:s.anchor===state.anchor?nullifier:field(123)}),
     verifyClearance:async(value:string)=>{counts.clearanceChecks++;assert.equal(value,nullifier);if(behavior.failClearance)throw Error('synthetic invalid clearance');},
-    withdrawal:async()=>structuredClone(fixture.auth.withdrawal),
+    withdrawal:async()=>structuredClone(fixture.auth[kind==='mutual_close'?'withdrawal':'escape']),
     tree:async(note:{note_id:number})=>{counts.proofs++;if(counts.proofs>1){const op=(await open().read('note'))!.value.wallet!.operation!;assert.equal(op.phase,'proving');assert.equal(op.current,undefined);assert.equal(op.plan,undefined);assert.ok(op.expiredCreations!.length>0,'anchored absence is durable before proving');assert.ok(op.attempts.length>0,'old signed bytes remain durable before proving');}if(behavior.failProof)throw Error('synthetic proof interrupted');const proof=structuredClone(fixture.trees[kind==='deposit'?0:1]);proof.public_inputs[3]=field(note.note_id);return proof;}} as unknown as NoteProver;
   const wallet:V0Wallet={publicKey:pair.publicKey,supportedTransactionVersions:new Set([0]),async signTransaction(tx){counts.signatures++;tx.sign([pair]);return tx;}};
   const options:WalletOptions={manifest,prover,journal,wallets:[wallet],priorityFeeMicroLamports:1n,
-    chain:{snapshot:async(id,path,minimum=0)=>{if(kind==='mutual_close'){assert.equal(id,witness.note_id);assert.equal(path,'active');}minimums.push(minimum);return structuredClone(snapshot);},buffer:async()=>null,
+    chain:{snapshot:async(id,path,minimum=0)=>{if(kind!=='deposit'){assert.equal(id,witness.note_id);assert.equal(path,'active');}minimums.push(minimum);return structuredClone(snapshot);},buffer:async()=>null,
       blockhash:async()=>({blockhash:behavior.hash,lastValidBlockHeight:behavior.lastValid}),
       bufferObservation:async(plan,minimum)=>{assert.ok((minimum??0)>=plan.snapshot.slot);observed.push(plan.buffer.toBase58());return inspect({address:plan.buffer.toBase58(),account:null,slot:behavior.observationSlot,blockHeight:behavior.observationHeight,blockhash:hash(9),commitment:'finalized'});}},
     rpc:{signatureStatus:async()=>{counts.history++;if(behavior.failHistory)throw Error('unavailable');return behavior.status;},finalizedReceipt:async()=>behavior.receipt,finalizedBlockHeight:async()=>behavior.height,
@@ -54,8 +54,14 @@ async function setup(t:TestContext,kind:'deposit'|'mutual_close'='deposit'){
   const roles={uploader:owner,rentPayer:owner,feePayer:owner,payer:owner,tokenOwner:owner};
   if(kind==='deposit')await client.beginDeposit('note',String(fixture.deposit),roles);
   else{
-    await journal.create('note',{schema:1,state,witness,pending:null,history:[],wallet:{status:'active',history:[],clearance}});
-    await client.beginWithdrawal('note','mutual_close',key(fixture.destination_owner).toBase58(),roles);
+    const request={authorization:{version:'1',request_id:crypto.randomUUID(),deployment_id:'fixture',pool:manifest.pool,mode:'proxy'},
+      quote:{body:{deployment_id:'fixture',pool:manifest.pool,mode:'proxy',control_api_origin:manifest.control_api_origin,inference_api_origin:manifest.inference_api_origin}},
+      public_inputs:Array.from({length:12},(_,i)=>i===8?nullifier:field(1))};
+    const pending=kind==='emergency_escape'?{phase:'closing',prepared:{request,control_token:'zkc1.fixture',proxy_token:'zkp1.fixture'},
+      exactRequest:JSON.stringify(request),operations:[{id:crypto.randomUUID(),path:'/v1/responses',anthropicVersion:'',bodyBase64:'e30=',phase:'send_unknown'}]} as unknown as NoteJournal['pending']:null;
+    await journal.create('note',{schema:1,state,witness,pending,history:[],wallet:{status:'active',history:[],...(kind==='mutual_close'?{clearance}:{})}});
+    if(kind==='emergency_escape')await client.beginEmergencyEscape('note',key(fixture.destination_owner).toBase58(),roles);
+    else await client.beginWithdrawal('note',kind,key(fixture.destination_owner).toBase58(),roles);
   }
   await assert.rejects(client.advance('note'),/missing buffer: finalized history reconciliation required/);
   snapshot.slot=120;snapshot.clock=String(fixture.now+4000);
@@ -160,7 +166,7 @@ test('interrupted mutual-close rebuild resumes with the same clearance and durab
 });
 
 test('pending, unknown, non-expired and finalized receipts cannot authorize a replacement',async t=>{
-  for(const kind of ['deposit','mutual_close'] as const){
+  for(const kind of ['deposit','mutual_close','initiate_escape','emergency_escape'] as const){
   for(const outcome of ['pending','unknown','height','success','rejected','changed-after-observation']){
     const h=await setup(t,kind),before=(await h.journal.read('note'))!,attempt=before.value.wallet!.operation!.attempts[0];
     if(outcome==='pending')h.behavior.status={slot:90,confirmationStatus:'confirmed',err:null};
@@ -175,7 +181,7 @@ test('pending, unknown, non-expired and finalized receipts cannot authorize a re
 });
 
 test('absent account must be the exact PDA at a finalized safe block height beyond validity',async t=>{
-  for(const kind of ['deposit','mutual_close'] as const){
+  for(const kind of ['deposit','mutual_close','initiate_escape','emergency_escape'] as const){
   for(const fault of ['wrong-address','present','confirmed','old-slot','unsafe-slot','old-height','unsafe-height','missing-hash']){
     const h=await setup(t,kind),before=(await h.journal.read('note'))!;
     h.setObservation(value=>{if(fault==='wrong-address')value.address=hash(12);if(fault==='present')value.account={} as NonNullable<typeof value.account>;if(fault==='confirmed')value.commitment='confirmed' as 'finalized';if(fault==='old-slot')value.slot=19;if(fault==='unsafe-slot')value.slot=Infinity;if(fault==='old-height')value.blockHeight=100;if(fault==='unsafe-height')value.blockHeight=Infinity;if(fault==='missing-hash')value.blockhash='';return value;});
@@ -199,7 +205,7 @@ test('non-create, advanced, pending, altered-plan and resolved journal states ar
 });
 
 test('repeated expiry rechecks every saved create and distinct buffer, preserving all signed records',async t=>{
-  for(const kind of ['deposit','mutual_close'] as const){
+  for(const kind of ['deposit','mutual_close','initiate_escape','emergency_escape'] as const){
   const h=await setup(t,kind);await h.client.reconcileExpiredCreation('note');
   h.behavior.hash=hash(8);h.behavior.lastValid=200;h.behavior.height=201;
   await assert.rejects(h.client.advance('note'),/missing buffer/);
@@ -225,4 +231,46 @@ test('RPC absence observation anchors the returned account slot to its own final
   assert.deepEqual(await fetchFinalizedBufferObservation(connection,plan,100),{address:plan.buffer.toBase58(),account:null,slot:120,blockHeight:110,blockhash:hash(9),commitment:'finalized'});
   assert.deepEqual(calls,['getAccountInfo','getBlock']);
   for(const fault of ['stale-slot','missing-block','null-height','invalid-hash']){behavior.slot=fault==='stale-slot'?99:120;behavior.missing=fault==='missing-block';behavior.height=fault==='null-height'?null:110;behavior.hash=fault==='invalid-hash'?'invalid':hash(9);await assert.rejects(fetchFinalizedBufferObservation(connection,plan,100));}
+});
+
+ test('ordinary and emergency escape expired-create recovery retain state, roles, destination and exact evidence without sending',async t=>{
+  for(const kind of ['initiate_escape','emergency_escape'] as const)await t.test(kind,async sub=>{
+    const h=await setup(sub,kind),before=(await h.open().read('note'))!.value,counts={...h.counts};
+    await h.restart().reconcileExpiredCreation('note');const after=(await h.open().read('note'))!.value,op=after.wallet!.operation!,old=before.wallet!.operation!;
+    assert.equal(op.kind,'initiate_escape');assert.equal(op.id,old.id);assert.equal(op.phase,'ready');assert.equal(op.current,undefined);
+    assert.deepEqual(after.state,before.state);assert.deepEqual(after.witness,before.witness);assert.deepEqual(op.roles,old.roles);
+    assert.equal(op.destinationOwner,old.destinationOwner);assert.deepEqual(op.attempts,old.attempts);assert.equal(op.expiredCreations!.length,1);
+    assert.deepEqual(after.wallet!.emergencyEscapes,before.wallet!.emergencyEscapes);assert.equal(after.pending,null);
+    assert.notEqual(op.plan!.nonceHex,old.plan!.nonceHex);assert.equal(op.plan!.expires,String(fixture.now+7600));
+    assert.equal(h.counts.sends,counts.sends);assert.equal(h.counts.signatures,counts.signatures);assert.equal(h.counts.rebase,0);
+  });
+});
+
+ test('escape create recovery rejects changed signed state, destination, roles, advanced attempts and inactive note',async t=>{
+  const h=await setup(t,'initiate_escape'),base=(await h.open().read('note'))!.value;
+  const plan=await restorePlan(base.wallet!.operation!.plan!),execute=await prepareAttempt(plan,plan.steps.find(s=>s.kind==='execute')!,
+    {blockhash:hash(7),lastValidBlockHeight:100},[h.wallet],{save:async()=>{}});
+  const cases:[string,(v:NoteJournal)=>void][]=[
+    ['balance',v=>{v.state.balance_micro_usdc='1';}],['anchor',v=>{v.state.anchor=field(123);}],
+    ['witness',v=>{v.witness!.deposit_micro_usdc='1';}],['destination',v=>{v.wallet!.operation!.destinationOwner=hash(8);}],
+    ['payer',v=>{v.wallet!.operation!.roles.payer=hash(8);}],['uploader',v=>{v.wallet!.operation!.roles.uploader=hash(8);}],
+    ['fee payer',v=>{v.wallet!.operation!.roles.feePayer=hash(8);}],['rent payer',v=>{v.wallet!.operation!.roles.rentPayer=hash(8);}],
+    ['execute exists',v=>{v.wallet!.operation!.attempts.unshift(execute);}],
+  ];
+  for(const [name,change] of cases){const value=structuredClone(base);change(value);await h.journal.create(name,value);
+    const before=await h.open().read(name);await assert.rejects(h.restart().reconcileExpiredCreation(name),name);assert.deepEqual(await h.open().read(name),before);}
+  const before=await h.open().read('note');h.snapshot.note!.status='pending_escape';
+  await assert.rejects(h.restart().reconcileExpiredCreation('note'),/note not active/);assert.deepEqual(await h.open().read('note'),before);
+  assert.equal(h.counts.sends,0);assert.equal(h.counts.signatures,2,'only the two deliberate fixture signatures exist');
+});
+
+ test('interrupted emergency escape setup recovery resumes from durable absence without changing the archive',async t=>{
+  const h=await setup(t,'emergency_escape'),before=(await h.open().read('note'))!.value;h.behavior.failProof=true;
+  await assert.rejects(h.restart().reconcileExpiredCreation('note'),/proof interrupted/);
+  const stopped=(await h.open().read('note'))!.value;assert.equal(stopped.wallet!.operation!.phase,'proving');
+  assert.deepEqual(stopped.wallet!.emergencyEscapes,before.wallet!.emergencyEscapes);assert.deepEqual(stopped.wallet!.operation!.attempts,before.wallet!.operation!.attempts);
+  h.behavior.failProof=false;h.snapshot.slot=119;await assert.rejects(h.restart().resumeProof('note'),/stale creation recovery snapshot/);
+  h.snapshot.slot=120;await h.restart().resumeProof('note');const after=(await h.open().read('note'))!.value;
+  assert.equal(after.wallet!.operation!.phase,'ready');assert.deepEqual(after.wallet!.emergencyEscapes,before.wallet!.emergencyEscapes);
+  assert.equal(h.counts.sends,0);assert.equal(h.counts.signatures,1);assert.equal(h.counts.rebase,0);
 });

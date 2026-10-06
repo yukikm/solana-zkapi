@@ -97,6 +97,12 @@
             <div class="section-heading"><span class="section-number">04</span><h3 id="withdraw-heading">Withdraw the rest</h3></div>
             <p>Prepare withdrawal of the remaining test USDC to the same wallet account. Then use “Continue saved operation” above to approve each transaction. Once withdrawal is finalized, “Start another demo” prepares a fresh 2 USDC deposit and keeps your previous records.</p>
             <div class="button-row"><button id="withdraw" class="primary-button" type="button" disabled>Prepare withdrawal <span aria-hidden="true">→</span></button></div>
+            <details class="recovery-details"><summary>Escape withdrawal and finalization</summary>
+              <p>If the operator cannot provide clearance, explicitly choose escape withdrawal. The chain challenge period must end before final withdrawal. A saved session must be recovered first, and signed transactions must be reconciled before changing withdrawal paths.</p>
+              <div class="button-row"><button id="escape" class="secondary-button" type="button" disabled>Prepare escape withdrawal</button><button id="fallback-escape" class="secondary-button" type="button" disabled>Switch unsigned withdrawal to escape</button></div>
+              <button id="finalize-escape" type="button" disabled>Check deadline and prepare final withdrawal</button>
+              <p class="helper">Each action uses the existing saved wallet operation. It never replays an AI request or automatically switches withdrawal paths.</p>
+            </details>
           </section>
         </div>
 
@@ -111,6 +117,7 @@
             <div><dt>Returned to wallet</dt><dd><span id="live-returned">—</span> <span>USDC</span></dd></div>
           </dl>
           <p class="amount-note">Amounts appear from your saved session after verification.</p>
+          <div class="session-note"><strong>Note expiry</strong><p id="note-expiry" role="status">After funding, the note expiry appears here. Withdraw before expiry; expiry does not automatically return your deposit.</p></div>
 
           <div class="verification-card">
             <span class="eyebrow">VERIFICATION</span>

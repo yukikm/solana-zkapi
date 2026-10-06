@@ -223,6 +223,8 @@ fn fixture(dir: &Path, devnet: bool) -> RuntimeConfig {
         config.manifest["artifact_digests"] =
             json!({"vault_program":hash(program),"devnet_build_manifest":build_hash});
         config.devnet = Some(DevnetConfig {
+            public_profile_file: None,
+            trusted_public_profile_hash: None,
             idl_file: dir.join("devnet-idl.json"),
             program_file: dir.join("vault.so"),
             build_manifest_file: dir.join("build.json"),
@@ -631,5 +633,188 @@ async fn dispatcher_refuses_same_pool_database_with_other_manifest_or_deployment
             "direct unavailable"
         );
         assert!(!config.claims_directory.exists());
+    }
+}
+
+// Synthetic public-profile metadata exercises the offline trust boundary only.
+// These alternate test keys and fake ELF/tree hashes are never a deployable setup.
+fn public_profile_fixture(dir: &Path) -> RuntimeConfig {
+    use ark_ed_on_bn254::Fr as Scalar;
+    use zkapi_proof::groth16::StateSigningKey;
+    use zkapi_solana_types::FieldElement;
+    let mut config = fixture(dir, true);
+    let mut profile: Value =
+        serde_json::from_str(include_str!("../../../tests/fixtures/layout2/profile.json")).unwrap();
+    for (name, byte) in [
+        ("pk_hash", 91),
+        ("vk_hash", 92),
+        ("verifier_constants_hash", 93),
+    ] {
+        profile["tree_proof_artifacts"][name] = hex::encode([byte; 32]).into();
+    }
+    let mut body = profile.clone();
+    body.as_object_mut().unwrap().remove("circuit_profile_hash");
+    profile["circuit_profile_hash"] = hash(&serde_jcs::to_vec(&body).unwrap()).into();
+    let circuit = profile.clone();
+    profile["schema"] = 1.into();
+    profile["kind"] = "public_devnet".into();
+    profile["tree_setup"] = "single_party_os_random".into();
+    profile["production_eligible"] = false.into();
+    profile["limitations"] = json!(["Synthetic offline validation fixture; not deployable"]);
+    for (role, scalar) in [("state_key", 41u64), ("clearance_key", 43u64)] {
+        let point = StateSigningKey::from_secret(Scalar::from(scalar)).public;
+        profile[role] = json!({"x":FieldElement::from(point.x),"y":FieldElement::from(point.y)});
+    }
+    for (role, seed, filename) in [
+        ("quote_public_key", 21, "quote.seed"),
+        ("receipt_public_key", 22, "receipt.seed"),
+    ] {
+        profile[role] = bs58::encode(
+            SigningKey::from_bytes(&[seed; 32])
+                .verifying_key()
+                .to_bytes(),
+        )
+        .into_string()
+        .into();
+        std::fs::write(dir.join(filename), [seed; 32]).unwrap();
+    }
+    let tree = profile["tree_proof_artifacts"].clone();
+    profile["artifact_hashes"] = json!({"tree.pk":tree["pk_hash"],"tree.vk":tree["vk_hash"],
+        "tree-vk-wire.bin":tree["verifier_constants_hash"],"circuit-source.tar":tree["source_bundle_hash"],
+        "request.pk":profile["request_pk_hash"],"request.vk":profile["request_vk_hash"],
+        "withdrawal.pk":profile["withdrawal_pk_hash"],"withdrawal.vk":profile["withdrawal_vk_hash"],
+        "profile.json":hash(&serde_json::to_vec(&circuit).unwrap())});
+    config
+        .manifest
+        .as_object_mut()
+        .unwrap()
+        .extend(circuit.as_object().unwrap().clone());
+    for role in [
+        "state_key",
+        "clearance_key",
+        "quote_public_key",
+        "receipt_public_key",
+    ] {
+        config.manifest[role] = profile[role].clone();
+    }
+    let profile_bytes = serde_json::to_vec(&profile).unwrap();
+    let digest = hash(&profile_bytes);
+    let profile_file = dir.join("public-profile.json");
+    std::fs::write(&profile_file, profile_bytes).unwrap();
+    let devnet = config.devnet.as_mut().unwrap();
+    devnet.public_profile_file = Some(profile_file);
+    devnet.trusted_public_profile_hash = Some(digest.clone());
+    let mut build: Value =
+        serde_json::from_slice(&std::fs::read(&devnet.build_manifest_file).unwrap()).unwrap();
+    build["schema"] = 2.into();
+    build["public_profile_sha256"] = digest.clone().into();
+    build["tree_setup"] = "single_party_os_random".into();
+    for name in ["state_key", "clearance_key", "circuit_profile_hash"] {
+        build[name] = profile[name].clone();
+    }
+    let bytes = serde_json::to_vec(&build).unwrap();
+    devnet.trusted_build_manifest_hash = hash(&bytes);
+    std::fs::write(&devnet.build_manifest_file, bytes).unwrap();
+    config.manifest["artifact_digests"]["devnet_build_manifest"] =
+        devnet.trusted_build_manifest_hash.clone().into();
+    config.manifest["artifact_digests"]["public_devnet_profile"] = digest.into();
+    repin(&mut config);
+    config
+}
+
+#[test]
+fn public_profile_requires_independent_pin_and_preserves_legacy_identity() {
+    let dir = tempfile::tempdir().unwrap();
+    let config = public_profile_fixture(dir.path());
+    let validated = config.clone().validate().unwrap();
+    assert_eq!(
+        validated.trusted.public_devnet_profile_hash,
+        config.devnet.as_ref().unwrap().trusted_public_profile_hash
+    );
+    assert_eq!(validated.runtime.manifest, config.manifest);
+    assert!(TrustedPool::from_devnet_manifest(&config.manifest).is_err());
+    for mutation in [
+        "missing-file",
+        "missing-pin",
+        "wrong-pin",
+        "downgrade",
+        "manifest-pin",
+        "synthetic-adapter",
+    ] {
+        let mut bad = config.clone();
+        match mutation {
+            "missing-file" => bad.devnet.as_mut().unwrap().public_profile_file = None,
+            "missing-pin" => bad.devnet.as_mut().unwrap().trusted_public_profile_hash = None,
+            "wrong-pin" => {
+                bad.devnet.as_mut().unwrap().trusted_public_profile_hash = Some("00".repeat(32))
+            }
+            "downgrade" => {
+                bad.devnet.as_mut().unwrap().public_profile_file = None;
+                bad.devnet.as_mut().unwrap().trusted_public_profile_hash = None;
+            }
+            "manifest-pin" => {
+                bad.manifest["artifact_digests"]["public_devnet_profile"] = "00".repeat(32).into();
+                repin(&mut bad);
+            }
+            _ => bad.enable_local_adapter = true,
+        }
+        assert!(bad.validate().is_err(), "{mutation}");
+    }
+    // An old explicitly pinned deployment remains byte-for-byte on its old profile.
+    let legacy = fixture(dir.path(), true);
+    let snapshot = legacy.manifest.clone();
+    let loaded = legacy.validate().unwrap();
+    assert_eq!(loaded.runtime.manifest, snapshot);
+    assert!(loaded.trusted.public_devnet_profile_hash.is_none());
+}
+
+#[test]
+fn public_profile_rejects_fixture_material_even_under_a_new_hash() {
+    let dir = tempfile::tempdir().unwrap();
+    let config = public_profile_fixture(dir.path());
+    let profile: Value = serde_json::from_slice(
+        &std::fs::read(
+            config
+                .devnet
+                .as_ref()
+                .unwrap()
+                .public_profile_file
+                .as_ref()
+                .unwrap(),
+        )
+        .unwrap(),
+    )
+    .unwrap();
+    let legacy = fixture(dir.path(), true);
+    for mutation in [
+        "state_key",
+        "clearance_key",
+        "quote_public_key",
+        "receipt_public_key",
+        "tree",
+        "provenance",
+        "ceremony",
+        "point",
+        "same-roles",
+        "artifact-binding",
+    ] {
+        let mut bad = profile.clone();
+        match mutation {
+            "state_key" | "clearance_key" | "quote_public_key" | "receipt_public_key" => {
+                bad[mutation] = legacy.manifest[mutation].clone()
+            }
+            "tree" => bad["tree_proof_artifacts"] = legacy.manifest["tree_proof_artifacts"].clone(),
+            "provenance" => bad["tree_setup"] = "deterministic_test".into(),
+            "ceremony" => bad["setup_profile"] = "ceremony_verified".into(),
+            "point" => {
+                bad["state_key"] = json!({"x":"0x0000000000000000000000000000000000000000000000000000000000000000","y":"0x0000000000000000000000000000000000000000000000000000000000000001"})
+            }
+            "same-roles" => bad["state_key"] = bad["clearance_key"].clone(),
+            _ => bad["artifact_hashes"]["tree.pk"] = "00".repeat(32).into(),
+        }
+        assert!(
+            zkapi_control::chain::validate_public_devnet_profile(&bad).is_err(),
+            "{mutation}"
+        );
     }
 }

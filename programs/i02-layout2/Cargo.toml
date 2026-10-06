@@ -10,7 +10,7 @@ crate-type = ["cdylib", "lib"]
 [features]
 wrong-vk = []
 [dependencies]
-solana-program = "=2.2.1"
+solana-program = "=2.3.0"
 groth16-solana = "=0.2.0"
 spl-token = { version = "=8.0.0", features = ["no-entrypoint"] }
 zkapi-layout2 = { path = "../../crates/zkapi-layout2" }

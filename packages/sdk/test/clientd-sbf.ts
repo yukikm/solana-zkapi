@@ -22,6 +22,9 @@ test('installed Go clientd drives encrypted native wallet deposit and withdrawal
   const call=(value:object)=>new Promise<any>((resolve,reject)=>{queue.push({resolve,reject});svm.stdin.write(JSON.stringify(value)+'\n');});
   t.after(async()=>{if(svm.exitCode===null){const exited=once(svm,'exit');svm.stdin.end();await exited;}});
   const {manifest:base,artifacts}=await walletFixture();const manifest=structuredClone(base) as any;
+  const testTariff=JSON.parse(await readFile('target/i08/prepare-command.json','utf8')).prepared.tariff;
+  // The generated wallet-only fixture must also truthfully pin its advertised API tariff.
+  manifest.tariff_hashes=[testTariff.tariff_hash];
   let hideReceipt=false;let sends=0;const sent:string[]=[];
   const upstream=createServer(async(req,res)=>{try{
     const parts:Buffer[]=[];for await(const chunk of req)parts.push(chunk);const body=Buffer.concat(parts);
@@ -55,8 +58,8 @@ test('installed Go clientd drives encrypted native wallet deposit and withdrawal
   const artifactPaths:any={additional:{}};for(const[name,value]of Object.entries(artifacts))if(name!=='additional'){const path=join(directory,name);await writeFile(path,value as Uint8Array);artifactPaths[name]=path;}for(const[name,value]of Object.entries(artifacts.additional)){const path=join(directory,'additional-'+name);await writeFile(path,value);artifactPaths.additional[name]=path;}
   const built=JSON.parse(await readFile('target/i08-clientd/distribution-result.json','utf8')),release=JSON.parse(await readFile(built.distribution,'utf8')),installed=resolve('target/i08-clientd/distribution');
   const policy={anchor:{kind:'hash',sha256:manifest.manifest_hash},expected:{deployment_id:manifest.deployment_id,deployment_environment:manifest.deployment_environment,genesis_hash:manifest.genesis_hash,program_id:manifest.program_id,pool:manifest.pool,mint:manifest.mint,token_program:manifest.token_program,control_api_origin:origin,inference_api_origin:origin},build:{stateKey:manifest.state_key,clearanceKey:manifest.clearance_key,circuitProfileHash:manifest.circuit_profile_hash,idlHash:manifest.idl_hash,setupProfile:manifest.setup_profile}};
-  const tariffPath=join(directory,'tariff.json');await writeFile(tariffPath,JSON.stringify(JSON.parse(await readFile('target/i08/prepare-command.json','utf8')).prepared.tariff));
-  const runtime={manifest:manifestPath,policy,artifacts:artifactPaths,verifier:{path:join(installed,'bin/zkapi-client-verify'),sha256:release.files['bin/zkapi-client-verify']},prover:{path:join(installed,'bin/zkapi-client-prover'),sha256:release.files['bin/zkapi-client-prover']},journal:join(directory,'journal'),custody:join(directory,'custody.json'),note_id:'local-note',mode:'proxy',models:['fixture'],tariff:tariffPath,rpc:origin+'/rpc',indexer:origin};
+  const tariffPath=join(directory,'tariff.json');await writeFile(tariffPath,JSON.stringify(testTariff));
+  const runtime={manifest:manifestPath,policy,artifacts:artifactPaths,verifier:{path:join(installed,'bin/zkapi-client-verify'),sha256:release.files['bin/zkapi-client-verify']},prover:{path:join(installed,'bin/zkapi-client-prover'),sha256:release.files['bin/zkapi-client-prover']},journal:join(directory,'journal'),custody:join(directory,'custody.json'),note_id:'local-note',mode:'proxy',models:[testTariff.model],tariff:tariffPath,rpc:origin+'/rpc',indexer:origin};
   const runtimePath=join(directory,'runtime.json');await writeFile(runtimePath,JSON.stringify(runtime));
   const free=createServer();await new Promise<void>(resolve=>free.listen(0,'127.0.0.1',resolve));const listenPort=(free.address() as any).port;await new Promise<void>(resolve=>free.close(()=>resolve()));
   const config={distribution:built.distribution,distribution_sha256:built.distribution_sha256,node:built.node,node_sha256:built.node_sha256,runtime:built.runtime,runtime_sha256:built.runtime_sha256,runtime_config:runtimePath,listen:`127.0.0.1:${listenPort}`,network:{mode:'direct',routes:[{origin,prefix:'/'}],allow_local_http:true}};
@@ -67,7 +70,7 @@ test('installed Go clientd drives encrypted native wallet deposit and withdrawal
   const stop=async(signal:NodeJS.Signals='SIGTERM')=>{if(child?.exitCode===null&&child?.signalCode===null){const done=once(child,'exit');child.kill(signal);await done;}};t.after(()=>stop());
   await start(true);
   const request=async(path:string,body?:unknown,credential='m')=>{const response=await fetch(`http://127.0.0.1:${listenPort}${path}`,{method:body===undefined?'GET':'POST',headers:{Authorization:'Bearer '+credential.repeat(40),'Content-Type':'application/json'},body:body===undefined?undefined:JSON.stringify(body)});const result=await response.json();assert.equal(response.status,200,JSON.stringify(result));return result as any;};
-  assert.equal((await request('/v1/models',undefined,'i')).data[0].id,'fixture');
+  assert.equal((await request('/v1/models',undefined,'i')).data[0].id,testTariff.model);
   const payer=Keypair.fromSeed(new Uint8Array(32).fill(1)).publicKey.toBase58(),roles={payer,uploader:payer,feePayer:payer,rentPayer:payer,tokenOwner:payer};
   await request('/admin/wallet',{action:'deposit',amount:'5000000',roles});
   // Abruptly kill only the Go supervisor while its SDK owns the journal lock

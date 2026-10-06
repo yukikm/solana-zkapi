@@ -1,7 +1,7 @@
 //! Authorization reads the ready I04 HTTP root and authenticates the actual
 //! Vault accounts. Historical replay checkpoints are never an admission source.
 use crate::{
-    crypto::{deployment_keys, role_key, REQUEST_VK_HASH},
+    crypto::{deployment_keys, role_key, validate_point, REQUEST_VK_HASH},
     wire::*,
 };
 use base64::{engine::general_purpose::STANDARD, Engine};
@@ -75,24 +75,46 @@ pub struct TrustedPool {
     pub note_ttl_seconds: String,
     pub challenge_seconds: String,
     pub circuit_profile_hash: String,
+    /// Independently authenticated public-devnet profile; absent for legacy fixtures.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub public_devnet_profile_hash: Option<String>,
 }
 impl TrustedPool {
     /// The input must already be operator trusted (signature verification belongs
     /// to manifest distribution). All authorization settings are extracted here.
     pub fn from_manifest(m: &Value) -> Result<Self> {
-        Self::from_manifest_for(m, DeploymentEnvironment::Local)
+        Self::from_manifest_for(m, DeploymentEnvironment::Local, None)
     }
     /// Explicit test-only public-devnet profile; runtime separately pins the
     /// exact public IDL, ELF and operator-trusted build manifest.
     pub fn from_devnet_manifest(m: &Value) -> Result<Self> {
-        Self::from_manifest_for(m, DeploymentEnvironment::Devnet)
+        Self::from_manifest_for(m, DeploymentEnvironment::Devnet, None)
     }
-    fn from_manifest_for(m: &Value, environment: DeploymentEnvironment) -> Result<Self> {
-        let profile: Value =
+    /// The caller must authenticate profile bytes against an independent installation pin.
+    pub fn from_public_devnet_manifest(
+        m: &Value,
+        profile: &Value,
+        profile_hash: &str,
+    ) -> Result<Self> {
+        hash(profile_hash)?;
+        validate_public_devnet_profile(profile)?;
+        Self::from_manifest_for(
+            m,
+            DeploymentEnvironment::Devnet,
+            Some((profile, profile_hash)),
+        )
+    }
+    fn from_manifest_for(
+        m: &Value,
+        environment: DeploymentEnvironment,
+        public: Option<(&Value, &str)>,
+    ) -> Result<Self> {
+        let fixture: Value =
             serde_json::from_str(include_str!("../../../tests/fixtures/layout2/profile.json"))
                 .expect("build profile");
-        for (name, value) in profile.as_object().expect("build profile object") {
-            if m.get(name) != Some(value) {
+        let profile = public.map(|(profile, _)| profile).unwrap_or(&fixture);
+        for name in fixture.as_object().expect("build profile object").keys() {
+            if m.get(name) != profile.get(name) {
                 return Err(invalid("manifest artifact/profile build pin"));
             }
         }
@@ -149,7 +171,20 @@ impl TrustedPool {
             note_ttl_seconds: get("note_ttl_seconds")?.into(),
             challenge_seconds: get("challenge_seconds")?.into(),
             circuit_profile_hash: get("circuit_profile_hash")?.into(),
+            public_devnet_profile_hash: public.map(|(_, digest)| digest.to_owned()),
         };
+        if public.is_some() {
+            for name in [
+                "state_key",
+                "clearance_key",
+                "quote_public_key",
+                "receipt_public_key",
+            ] {
+                if m.get(name) != profile.get(name) {
+                    return Err(invalid("public devnet role pin"));
+                }
+            }
+        }
         result.validate()?;
         Ok(result)
     }
@@ -169,11 +204,27 @@ impl TrustedPool {
                     && program != [43; 32]
             }
         };
+        let fixture_state = role_key(&deployment_keys::STATE_KEY)?;
+        let fixture_clearance = role_key(&deployment_keys::CLEARANCE_KEY)?;
+        let role_profile_matches = if let Some(profile_hash) = &self.public_devnet_profile_hash {
+            hash(profile_hash)?;
+            hash(&self.circuit_profile_hash)?;
+            validate_point(self.state_key)?;
+            validate_point(self.clearance_key)?;
+            self.deployment_environment == DeploymentEnvironment::Devnet
+                && self.circuit_profile_hash != PROFILE_HASH
+                && self.state_key != self.clearance_key
+                && [self.state_key, self.clearance_key]
+                    .iter()
+                    .all(|key| *key != fixture_state && *key != fixture_clearance)
+        } else {
+            self.state_key == fixture_state
+                && self.clearance_key == fixture_clearance
+                && self.circuit_profile_hash == PROFILE_HASH
+        };
         if self.vault_binding
             != zkapi_solana_types::binding::vault_binding(&genesis, &program, &pool, &token, &mint)
-            || self.state_key != role_key(&deployment_keys::STATE_KEY)?
-            || self.clearance_key != role_key(&deployment_keys::CLEARANCE_KEY)?
-            || self.circuit_profile_hash != PROFILE_HASH
+            || !role_profile_matches
             || !deployment_matches
             || self.cap_micro_usdc == MicroUsdc::ZERO
             || uint(&self.note_ttl_seconds)? == 0
@@ -184,6 +235,149 @@ impl TrustedPool {
         Ok(())
     }
 }
+
+/// Validate the public profile schema and deny known deterministic fixture keys.
+/// This checks identity/consistency, not proof of entropy erasure or an audit.
+pub fn validate_public_devnet_profile(profile: &Value) -> Result<()> {
+    let fixture: Value =
+        serde_json::from_str(include_str!("../../../tests/fixtures/layout2/profile.json")).unwrap();
+    if profile["schema"] != 1
+        || profile["kind"] != "public_devnet"
+        || profile["tree_setup"] != "single_party_os_random"
+        || profile["production_eligible"] != false
+        || profile["setup_profile"] != "test_only"
+        || profile["setup_transcript_hashes"] != fixture["setup_transcript_hashes"]
+        || !profile["limitations"]
+            .as_array()
+            .is_some_and(|a| !a.is_empty() && a.iter().all(Value::is_string))
+    {
+        return Err(invalid("public devnet experimental provenance"));
+    }
+    for name in [
+        "circuit_id",
+        "protocol_layout_version",
+        "request_pk_hash",
+        "request_vk_hash",
+        "withdrawal_pk_hash",
+        "withdrawal_vk_hash",
+        "tree_backend",
+        "tree_tag_policy",
+    ] {
+        if profile[name] != fixture[name] {
+            return Err(invalid("public devnet unchanged circuit pin"));
+        }
+    }
+    let tree = &profile["tree_proof_artifacts"];
+    if tree["circuit_id"] != "solana.zkapi.tree.v1"
+        || tree["public_inputs"] != 11
+        || !tree["setup_transcript_hash"].is_null()
+    {
+        return Err(invalid("public devnet tree profile"));
+    }
+    for name in [
+        "source_bundle_hash",
+        "pk_hash",
+        "vk_hash",
+        "verifier_constants_hash",
+    ] {
+        hash(
+            tree[name]
+                .as_str()
+                .ok_or(invalid("public devnet tree digest"))?,
+        )?;
+        if name != "source_bundle_hash" && tree[name] == fixture["tree_proof_artifacts"][name] {
+            return Err(invalid("public devnet deterministic tree artifact"));
+        }
+    }
+    let mut body = serde_json::Map::new();
+    for name in fixture
+        .as_object()
+        .unwrap()
+        .keys()
+        .filter(|name| name.as_str() != "circuit_profile_hash")
+    {
+        body.insert(name.clone(), profile[name].clone());
+    }
+    if profile["circuit_profile_hash"]
+        != hex::encode(sha256(
+            &serde_jcs::to_vec(&body).map_err(|_| invalid("public devnet profile JSON"))?,
+        ))
+        || profile["circuit_profile_hash"] == PROFILE_HASH
+    {
+        return Err(invalid("public devnet circuit profile hash"));
+    }
+    let point = |name: &str| -> Result<[FieldElement; 2]> {
+        Ok([
+            profile[name]["x"]
+                .as_str()
+                .ok_or(invalid("public role point"))?
+                .parse()
+                .map_err(|_| invalid("public role point"))?,
+            profile[name]["y"]
+                .as_str()
+                .ok_or(invalid("public role point"))?
+                .parse()
+                .map_err(|_| invalid("public role point"))?,
+        ])
+    };
+    let state = point("state_key")?;
+    let clearance = point("clearance_key")?;
+    validate_point(state)?;
+    validate_point(clearance)?;
+    let fixture_state = role_key(&deployment_keys::STATE_KEY)?;
+    let fixture_clearance = role_key(&deployment_keys::CLEARANCE_KEY)?;
+    if state == clearance
+        || [state, clearance]
+            .iter()
+            .any(|key| *key == fixture_state || *key == fixture_clearance)
+    {
+        return Err(invalid("public devnet fixture signing role"));
+    }
+    let quote = pubkey(
+        profile["quote_public_key"]
+            .as_str()
+            .ok_or(invalid("public quote key"))?,
+    )?;
+    let receipt = pubkey(
+        profile["receipt_public_key"]
+            .as_str()
+            .ok_or(invalid("public receipt key"))?,
+    )?;
+    let fixture_quote = ed25519_dalek::SigningKey::from_bytes(&[11; 32])
+        .verifying_key()
+        .to_bytes();
+    let fixture_receipt = ed25519_dalek::SigningKey::from_bytes(&[12; 32])
+        .verifying_key()
+        .to_bytes();
+    if quote == receipt
+        || [quote, receipt]
+            .iter()
+            .any(|key| *key == [0; 32] || *key == fixture_quote || *key == fixture_receipt)
+    {
+        return Err(invalid("public devnet fixture receipt/quote key"));
+    }
+    for (name, expected) in [
+        ("request.pk", &profile["request_pk_hash"]),
+        ("request.vk", &profile["request_vk_hash"]),
+        ("withdrawal.pk", &profile["withdrawal_pk_hash"]),
+        ("withdrawal.vk", &profile["withdrawal_vk_hash"]),
+        ("tree.pk", &tree["pk_hash"]),
+        ("tree.vk", &tree["vk_hash"]),
+        ("tree-vk-wire.bin", &tree["verifier_constants_hash"]),
+        ("circuit-source.tar", &tree["source_bundle_hash"]),
+    ] {
+        if &profile["artifact_hashes"][name] != expected {
+            return Err(invalid("public devnet artifact hash binding"));
+        }
+    }
+    hash(
+        profile["artifact_hashes"]["profile.json"]
+            .as_str()
+            .ok_or(invalid("public circuit artifact hash"))?,
+    )?;
+    Ok(())
+}
+
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct PoolObservation {
     pub paused: bool,

@@ -6,7 +6,7 @@ import { mkdtemp, readFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { createServer } from 'node:http';
-import { spawn } from 'node:child_process';
+import { spawn, type ChildProcess } from 'node:child_process';
 import { once } from 'node:events';
 import { setTimeout as delay } from 'node:timers/promises';
 import ts from 'typescript';
@@ -15,27 +15,68 @@ const chrome = process.env.ZKAPI_TEST_CHROME ?? [
   '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome', '/usr/bin/chromium', '/usr/bin/chromium-browser', '/usr/bin/google-chrome',
 ].find(existsSync);
 
+function debuggerPort(contents: string): number | undefined {
+  // Chrome creates the file before filling it. Require the complete first line.
+  const match = /^([1-9][0-9]{0,4})\r?\n/.exec(contents);
+  const port = match ? Number(match[1]) : 0;
+  return port > 0 && port <= 65535 ? port : undefined;
+}
+/** A signal-terminated process has exitCode === null even after its exit event. */
+function running(child: ChildProcess): boolean { return child.pid !== undefined && child.exitCode === null && child.signalCode === null; }
+async function stopChrome(child: ChildProcess): Promise<void> {
+  try {
+    if (!running(child)) return;
+    const exited = once(child, 'exit').then(() => true);
+    child.kill('SIGTERM');
+    if (await Promise.race([exited, delay(1500, false, { ref: false })])) return;
+    child.kill('SIGKILL');
+    if (!await Promise.race([exited, delay(1500, false, { ref: false })])) {
+      child.unref(); throw new Error('Chromium did not exit after bounded TERM/KILL cleanup');
+    }
+  } finally {
+    // A crashed browser's descendants can retain inherited pipe descriptors.
+    child.stdin?.destroy(); child.stdout?.destroy(); child.stderr?.destroy();
+  }
+}
+
 class Cdp {
   socket: WebSocket; next = 1;
-  pending = new Map<number, { resolve: (value: any) => void; reject: (error: unknown) => void }>();
+  pending = new Map<number, { resolve: (value: any) => void; reject: (error: unknown) => void; timer: ReturnType<typeof setTimeout> }>();
   constructor(socket: WebSocket) {
     this.socket = socket;
     socket.addEventListener('message', event => {
       const message = JSON.parse(String(event.data));
       const request = this.pending.get(message.id);
-      if (request) { this.pending.delete(message.id); message.error ? request.reject(new Error(message.error.message)) : request.resolve(message.result); }
+      if (request) { this.pending.delete(message.id); clearTimeout(request.timer); message.error ? request.reject(new Error(message.error.message)) : request.resolve(message.result); }
     });
-    socket.addEventListener('close', () => { for (const request of this.pending.values()) request.reject(new Error('browser target closed')); this.pending.clear(); });
+    socket.addEventListener('close', () => this.rejectPending());
   }
+  private rejectPending(): void {
+    for (const request of this.pending.values()) { clearTimeout(request.timer); request.reject(new Error('browser target closed')); }
+    this.pending.clear();
+  }
+  close(): void { this.rejectPending(); this.socket.close(); }
   static async connect(url: string): Promise<Cdp> {
     const socket = new WebSocket(url), cdp = new Cdp(socket);
-    await new Promise<void>((resolve, reject) => { socket.addEventListener('open', () => resolve(), { once: true }); socket.addEventListener('error', reject, { once: true }); });
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    try {
+      await new Promise<void>((resolve, reject) => {
+        timer = setTimeout(() => reject(new Error('browser debugger connection timed out')), 5000);
+        socket.addEventListener('open', () => resolve(), { once: true }); socket.addEventListener('error', reject, { once: true });
+      });
+    } catch (error) { socket.close(); throw error; }
+    finally { clearTimeout(timer); }
     return cdp;
   }
   async call(method: string, params: object = {}): Promise<any> {
     const id = this.next++;
-    const response = new Promise((resolve, reject) => this.pending.set(id, { resolve, reject }));
-    this.socket.send(JSON.stringify({ id, method, params })); return response;
+    const response = new Promise((resolve, reject) => {
+      const timer = setTimeout(() => { this.pending.delete(id); reject(new Error(`browser debugger timed out: ${method}`)); }, 15_000);
+      this.pending.set(id, { resolve, reject, timer });
+    });
+    try { this.socket.send(JSON.stringify({ id, method, params })); }
+    catch (error) { const request = this.pending.get(id)!; this.pending.delete(id); clearTimeout(request.timer); request.reject(error); }
+    return response;
   }
   async evaluate(expression: string): Promise<any> {
     const response = await this.call('Runtime.evaluate', { expression, awaitPromise: true, returnByValue: true });
@@ -43,6 +84,25 @@ class Cdp {
     return response.result.value;
   }
 }
+
+test('browser readiness ignores empty or partially written DevTools port files', () => {
+  for (const value of ['', '12345', '0\n', '65536\n', 'not-a-port\n']) assert.equal(debuggerPort(value), undefined);
+  assert.equal(debuggerPort('12345\n/devtools/browser/fixture'), 12345);
+  assert.equal(debuggerPort('12345\r\n/devtools/browser/fixture'), 12345);
+});
+test('browser cleanup does not await an already observed signal exit', { timeout: 5000 }, async () => {
+  const child = spawn(process.execPath, ['-e', 'process.kill(process.pid, "SIGTERM")'], { stdio: ['ignore', 'pipe', 'pipe'] });
+  await once(child, 'exit');
+  assert.equal(child.exitCode, null); assert.equal(child.signalCode, 'SIGTERM');
+  await stopChrome(child);
+  assert.equal(child.stdout!.destroyed, true); assert.equal(child.stderr!.destroyed, true);
+});
+test('browser cleanup escalates when a process ignores TERM', { timeout: 5000 }, async t => {
+  const child = spawn(process.execPath, ['-e', 'process.on("SIGTERM",()=>{});process.stdout.write("ready");setInterval(()=>{},1000)'], { stdio: ['ignore', 'pipe', 'ignore'] });
+  t.after(() => { if (running(child)) child.kill('SIGKILL'); });
+  await once(child.stdout!, 'data'); await stopChrome(child);
+  assert.equal(child.signalCode, 'SIGKILL');
+});
 
 test('real browser journal: atomic cross-tab CAS, encrypted restart, Web Locks and tab crash recovery', { skip: !chrome && 'Set ZKAPI_TEST_CHROME to a Chromium executable', timeout: 25_000 }, async t => {
   const directory = await mkdtemp(join(tmpdir(), 'zkapi-browser-journal-'));
@@ -54,23 +114,40 @@ test('real browser journal: atomic cross-tab CAS, encrypted restart, Web Locks a
     response.setHeader('Content-Type', request.url?.endsWith('.js') ? 'text/javascript' : 'text/html');
     response.end(request.url === '/journal.js' ? javascript : request.url === '/custody.js' ? custodyJs : '<!doctype html><title>zkAPI journal verification</title>');
   });
+  let child: ChildProcess | undefined;
+  const debuggers: Cdp[] = [];
+  // One ordered hook closes debugger sockets/browser before the HTTP listener.
+  // A startup failure is cleaned up too, including a previously observed signal exit.
+  t.after(async () => {
+    for (const cdp of debuggers) cdp.close();
+    try { if (child) await stopChrome(child); }
+    finally {
+      if (server.listening) {
+        const closed = new Promise<void>(resolve => server.close(() => resolve()));
+        server.closeAllConnections(); await closed;
+      }
+      await rm(directory, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 });
+    }
+  });
   server.listen(0, '127.0.0.1'); await once(server, 'listening');
-  t.after(() => new Promise<void>(resolve => server.close(() => resolve())));
   const address = server.address() as { port: number }, origin = `http://127.0.0.1:${address.port}`;
-  const child = spawn(chrome!, ['--headless=new', '--disable-gpu', '--no-first-run', '--disable-default-apps', '--disable-background-networking', '--remote-debugging-port=0', `--user-data-dir=${directory}`, 'about:blank'], { stdio: ['ignore', 'ignore', 'pipe'] });
+  child = spawn(chrome!, ['--headless=new', '--disable-gpu', '--no-first-run', '--disable-default-apps', '--disable-background-networking', '--remote-debugging-port=0', `--user-data-dir=${directory}`, 'about:blank'], { stdio: ['ignore', 'ignore', 'pipe'] });
   let diagnostics = ''; child.stderr!.on('data', chunk => { diagnostics = (diagnostics + chunk).slice(-3000); });
-  t.after(async () => { if (child.exitCode === null) { const exited = once(child, 'exit'); child.kill('SIGTERM'); await exited; } await rm(directory, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 }); });
+  child.on('error', error => { diagnostics = error.message; });
   let port: number | undefined;
   for (let i = 0; i < 150; i++) {
-    try { port = Number((await readFile(join(directory, 'DevToolsActivePort'), 'utf8')).split('\n')[0]); break; }
-    catch { if (child.exitCode !== null) throw new Error(`Chromium exited: ${diagnostics}`); await delay(30); }
+    try { port = debuggerPort(await readFile(join(directory, 'DevToolsActivePort'), 'utf8')); if (port) break; }
+    catch { /* Not yet created; a partial/empty file is also not ready. */ }
+    if (!running(child)) throw new Error(`Chromium exited: ${diagnostics}`);
+    await delay(30);
   }
   assert.ok(port, `Chromium did not start: ${diagnostics}`);
   const debuggerOrigin = `http://127.0.0.1:${port}`;
-  t.diagnostic(`Runtime browser: ${(await (await fetch(`${debuggerOrigin}/json/version`)).json() as { Browser: string }).Browser}`);
+  const browserFetch = (url: string, init: RequestInit = {}) => fetch(url, { ...init, signal: AbortSignal.timeout(5000) });
+  t.diagnostic(`Runtime browser: ${(await (await browserFetch(`${debuggerOrigin}/json/version`)).json() as { Browser: string }).Browser}`);
   const createTab = async () => {
-    const target = await (await fetch(`${debuggerOrigin}/json/new?${encodeURIComponent(origin)}`, { method: 'PUT' })).json() as { id: string; webSocketDebuggerUrl: string };
-    const cdp = await Cdp.connect(target.webSocketDebuggerUrl); t.after(() => cdp.socket.close());
+    const target = await (await browserFetch(`${debuggerOrigin}/json/new?${encodeURIComponent(origin)}`, { method: 'PUT' })).json() as { id: string; webSocketDebuggerUrl: string };
+    const cdp = await Cdp.connect(target.webSocketDebuggerUrl); debuggers.push(cdp);
     await cdp.evaluate(`(async () => {
       globalThis.mod = await import(${JSON.stringify(`${origin}/journal.js`)});
       globalThis.store = await mod.IndexedDbJournalStore.open('zkapi-test-journal');
@@ -99,7 +176,7 @@ test('real browser journal: atomic cross-tab CAS, encrypted restart, Web Locks a
   await second.cdp.evaluate(`globalThis.entered = false; globalThis.locked = journal.withNoteLock('note', async () => { globalThis.entered = true; return 'recovered'; }); 'queued'`);
   assert.equal(await second.cdp.evaluate('globalThis.entered'), false);
   // Closing the owning renderer releases the browser-owned lock without a timeout lease.
-  await fetch(`${debuggerOrigin}/json/close/${first.id}`);
+  await browserFetch(`${debuggerOrigin}/json/close/${first.id}`);
   assert.equal(await second.cdp.evaluate('globalThis.locked'), 'recovered');
   const restarted = await createTab();
   const state = await restarted.cdp.evaluate(`journal.read('note')`);
@@ -108,6 +185,7 @@ test('real browser journal: atomic cross-tab CAS, encrypted restart, Web Locks a
     const {openBrowserStorage} = await import('/custody.js');
     let missing=false;try{await openBrowserStorage('app-custody');}catch(e){missing=e.name==='BrowserStorageMissing';}
     const [a,b]=await Promise.all([openBrowserStorage('app-custody',{initialize:true}),openBrowserStorage('app-custody',{initialize:true})]);
+    const persistence=a.persistence;
     const ja=new mod.EncryptedJournal(a.store,a.key,{deploymentId:'app',pool:'pool'},validate);
     await ja.create('note',{token:'PRIVATE_APP_TOKEN',bytes:'a'});
     const jb=new mod.EncryptedJournal(b.store,b.key,{deploymentId:'app',pool:'pool'},validate);
@@ -118,7 +196,45 @@ test('real browser journal: atomic cross-tab CAS, encrypted restart, Web Locks a
     const db=await new Promise(r=>{const q=indexedDB.open('zkapi-browser-custody-v1',1);q.onsuccess=()=>r(q.result);});
     await new Promise((resolve,reject)=>{const tx=db.transaction('keys','readwrite');tx.objectStore('keys').delete('app-custody');tx.oncomplete=resolve;tx.onerror=reject;});db.close();
     let refused=false;try{await openBrowserStorage('app-custody',{initialize:true});}catch(e){refused=e.message.includes('without its key');}
-    return {missing,same,extractable,restored,refused};
+    return {missing,same,extractable,restored,refused,persistence};
   })()`);
-  assert.deepEqual(custodyResult,{missing:true,same:true,extractable:false,restored:true,refused:true});
+  const { persistence, ...custodyChecks } = custodyResult;
+  assert.deepEqual(custodyChecks,{missing:true,same:true,extractable:false,restored:true,refused:true});
+  assert.ok(['persistent','best_effort','unknown'].includes(persistence));
+  t.diagnostic(`Actual isolated browser storage retention: ${persistence}`);
+  const persistenceChecks = await restarted.cdp.evaluate(`(async () => {
+    const {openBrowserStorage} = await import('/custody.js');
+    const storage=navigator.storage, originalPersist=Object.getOwnPropertyDescriptor(storage,'persist'), originalPersisted=Object.getOwnPropertyDescriptor(storage,'persisted');
+    let requests=0, granted=false;
+    const set=(name,value)=>Object.defineProperty(storage,name,{configurable:true,value});
+    try {
+      set('persisted',async()=>granted);set('persist',async()=>{requests++;return granted;});
+      let missing=false;try{await openBrowserStorage('persistence-denied');}catch(e){missing=e.name==='BrowserStorageMissing';}
+      const beforeInitialization=requests;
+      const [a,b]=await Promise.all([openBrowserStorage('persistence-denied',{initialize:true}),openBrowserStorage('persistence-denied',{initialize:true})]);
+      const denied=[a.persistence,b.persistence];a.close();b.close();const afterInitialization=requests;
+      const reopened=await openBrowserStorage('persistence-denied');const reopenStatus=reopened.persistence;reopened.close();
+      const explicitExisting=await openBrowserStorage('persistence-denied',{initialize:true});explicitExisting.close();
+      const afterReopens=requests;
+      set('persist',async()=>{requests++;granted=true;return true;});
+      const allowed=await openBrowserStorage('persistence-granted',{initialize:true});const allowedStatus=allowed.persistence;allowed.close();
+      const afterGrant=requests;
+      const existing=await openBrowserStorage('persistence-granted');const existingStatus=existing.persistence;existing.close();
+      const alreadyPersistent=await openBrowserStorage('persistence-already-granted',{initialize:true});alreadyPersistent.close();
+      const afterPersistent=requests;
+      set('persisted',async()=>{throw Error('browser policy');});set('persist',async()=>{requests++;throw Error('browser policy');});
+      const failed=await openBrowserStorage('persistence-query-failed',{initialize:true});const failedStatus=failed.persistence;failed.close();
+      set('persisted',undefined);set('persist',undefined);
+      const unavailable=await openBrowserStorage('persistence-unavailable',{initialize:true});const unavailableStatus=unavailable.persistence;unavailable.close();
+      return {missing,beforeInitialization,denied,afterInitialization,reopenStatus,afterReopens,allowedStatus,afterGrant,existingStatus,afterPersistent,failedStatus,unavailableStatus};
+    } finally {
+      if(originalPersist)Object.defineProperty(storage,'persist',originalPersist);else delete storage.persist;
+      if(originalPersisted)Object.defineProperty(storage,'persisted',originalPersisted);else delete storage.persisted;
+    }
+  })()`);
+  assert.deepEqual(persistenceChecks,{
+    missing:true,beforeInitialization:0,denied:['best_effort','best_effort'],afterInitialization:1,
+    reopenStatus:'best_effort',afterReopens:1,allowedStatus:'persistent',afterGrant:2,
+    existingStatus:'persistent',afterPersistent:2,failedStatus:'unknown',unavailableStatus:'unknown',
+  });
 });

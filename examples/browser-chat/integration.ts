@@ -2,7 +2,7 @@
 import { Buffer } from 'buffer';
 import { createBrowserClient, walletStandardAdapter, type StandardWallet, type StandardAccount } from '@zkapi/solana-sdk/browser';
 import { readChatText, readChatDeltas } from '@zkapi/solana-sdk/chat';
-import type { ChatRequest, ZkApiClient } from '@zkapi/solana-sdk';
+import type { ChatRequest, Mode, ZkApiClient } from '@zkapi/solana-sdk';
 import { loadDeployment, type ReviewedBrowserProfile } from './load-deployment.ts';
 
 export async function connectChat(options: {
@@ -12,6 +12,7 @@ export async function connectChat(options: {
   chain: string;
   storageName: string;
   noteId: string;
+  mode: Mode;
   initializeStorage?: boolean;
 }) {
   // Browser web3 consumers need the same pinned Buffer polyfill as the SDK.
@@ -19,8 +20,8 @@ export async function connectChat(options: {
   const deployment = await loadDeployment(options.profile);
   return createBrowserClient({ ...deployment, wallet: walletStandardAdapter(options.wallet, options.account, options.chain),
     storageName: options.storageName, noteId: options.noteId, initializeStorage: options.initializeStorage,
-    mode: 'proxy', // show the proxy privacy notice before the user chooses this integration
-    createWorker: () => new Worker('/zkapi/worker.js', { type: 'module' }), priorityFeeMicroLamports: 1n });
+    mode: options.mode,
+    createWorker: () => new Worker(new URL('./worker.js', import.meta.url), { type: 'module' }), priorityFeeMicroLamports: 1n });
 }
 
 /** Call once for a user-created operation ID. There is intentionally no retry loop. */

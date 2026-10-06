@@ -1,4 +1,4 @@
-import type {NoteJournal} from '../../packages/sdk/src/control.ts';
+import {expiryNotice, type NoteJournal} from '../../packages/sdk/src/control.ts';
 import type {WalletOperation} from '../../packages/sdk/src/wallet.ts';
 
 export interface LiveViewInput {
@@ -13,6 +13,8 @@ export interface LiveViewInput {
   newRequestAvailable?: boolean;
   /** Pool-bound authorization reserve, not a proposed charge. */
   authorizationCapMicroUsdc?: string;
+  /** Presentation clock only. Financial checks remain in the existing SDK. */
+  nowSeconds?: bigint;
 }
 export interface LiveView {
   stepIndex: 0 | 1 | 2 | 3;
@@ -27,10 +29,29 @@ export interface LiveView {
   nextAction: string;
 }
 
+/** A browser clock never proves chain expiry or authorizes a withdrawal. */
+export function noteExpiry(journal: NoteJournal | null | undefined, nowSeconds = BigInt(Math.floor(Date.now() / 1000))) {
+  return journal?.witness ? expiryNotice(BigInt(journal.witness.expiry), nowSeconds) : null;
+}
+
+/** Visibility only: WalletClient repeats all checks under its journal lock. */
+export function escapeActions(journal: NoteJournal | null | undefined) {
+  const w = journal?.wallet, op = w?.operation;
+  const idle = !!journal && journal.pending === null;
+  return {
+    begin: idle && w?.status === 'active' && !op,
+    fallback: idle && w?.status === 'active' && op?.kind === 'mutual_close'
+      && ['proving', 'ready'].includes(op.phase) && op.attempts.length === 0 && !op.current
+      && !!op.destinationOwner && !!w.clearance,
+    finalize: idle && w?.status === 'pending_escape' && !op,
+  };
+}
+
 /** Visibility only; the SDK separately verifies finalized expiry and absence. */
 export function canRefreshExpiredSetup(journal: NoteJournal | null | undefined): boolean {
   const wallet = journal?.wallet, operation = wallet?.operation;
   const setup = wallet?.status === 'unfunded' && operation?.kind === 'deposit'
+    || wallet?.status === 'active' && operation?.kind === 'initiate_escape' && !!operation.destinationOwner
     || wallet?.status === 'active' && operation?.kind === 'mutual_close' && !!operation.destinationOwner
       && wallet.clearance?.phase === 'verified' && !!wallet.clearance.signature;
   return journal?.pending === null && setup && !!operation
@@ -54,7 +75,7 @@ export function amount(micro: string | bigint): string {
 }
 
 /** Explain the same conservative UI guards; this never authorizes an SDK send. */
-export function providerPrepareHint({journal: j, connected, providerConfigured, busy = false, authorizationCapMicroUsdc = '1000000'}: LiveViewInput): string {
+export function providerPrepareHint({journal: j, connected, providerConfigured, busy = false, authorizationCapMicroUsdc = '1000000', nowSeconds}: LiveViewInput): string {
   if (!connected) return 'Connect Phantom and select the original Devnet account to reopen your saved demo.';
   if (busy) return 'Wait for the current step to finish.';
   if (!providerConfigured) return 'The live API connection is unavailable. Wallet recovery and withdrawal remain available.';
@@ -64,6 +85,8 @@ export function providerPrepareHint({journal: j, connected, providerConfigured, 
   if (j.wallet?.status === 'closed') return 'This demo has been withdrawn. Start another demo with a new 2 USDC deposit; previous records are retained.';
   if (j.wallet?.clearance) return 'This note is reserved for withdrawal. Finish the saved withdrawal before starting another demo.';
   if (j.wallet?.status !== 'active') return 'Finish the saved deposit or withdrawal before preparing an API request.';
+  if (noteExpiry(j, nowSeconds)?.severity === 'expired')
+    return 'This note has expired. New API requests are disabled. Recover any saved session and check withdrawal immediately; an expired active note can be swept to the treasury.';
   if (BigInt(j.state.balance_micro_usdc) < BigInt(authorizationCapMicroUsdc))
     return `Remaining balance ${amount(j.state.balance_micro_usdc)} USDC is below the ${amount(authorizationCapMicroUsdc)} USDC authorization reserve. Withdraw it, then start another demo with 2 USDC. The reserve is not an API fee.`;
   return `A new request uses a fresh authorization. The ${amount(authorizationCapMicroUsdc)} USDC authorization reserve is not an API fee; only verified usage is charged.`;
@@ -77,7 +100,7 @@ function finalizedMutualClose(op: WalletOperation): boolean {
 
 /** Presentation only. The SDK owns state transitions and verification; this
  * projection must be recomputed from its current, authenticated journal. */
-export function liveView({journal: j, connected, providerConfigured, busy = false, responseObserved = false, newRequestAvailable = false, authorizationCapMicroUsdc}: LiveViewInput): LiveView {
+export function liveView({journal: j, connected, providerConfigured, busy = false, responseObserved = false, newRequestAvailable = false, authorizationCapMicroUsdc, nowSeconds}: LiveViewInput): LiveView {
   const w = j?.wallet, pending = j?.pending, op = w?.operation;
   const observedPendingResponse = responseObserved && pending?.operations.length === 1
     && pending.operations[0].phase === 'send_unknown';
@@ -141,7 +164,7 @@ export function liveView({journal: j, connected, providerConfigured, busy = fals
     view.title = 'Escape withdrawal pending';
     view.description = 'The note is in its escape period. Funds have not been confirmed returned.';
     view.proofStatus = 'Escape initiated; final withdrawal pending.';
-    view.nextAction = 'Wait for the escape deadline, then finalize through the existing wallet recovery flow.';
+    view.nextAction = 'Select Check deadline and prepare final withdrawal. The SDK checks the finalized chain deadline before requesting a signature.';
   } else if (pending) {
     view.stepIndex = 1;
     view.title = 'Authorization prepared';
@@ -220,7 +243,13 @@ export function liveView({journal: j, connected, providerConfigured, busy = fals
       view.nextAction = 'Continue the saved withdrawal recovery.';
     } else if (providerConfigured && authorizationCapMicroUsdc && BigInt(j!.state.balance_micro_usdc) < BigInt(authorizationCapMicroUsdc)) {
       view.nextAction = 'Withdraw the remaining Devnet USDC, then start another demo with a new 2 USDC deposit.';
-      view.description = providerPrepareHint({journal: j, connected: true, providerConfigured, authorizationCapMicroUsdc});
+      view.description = providerPrepareHint({journal: j, connected: true, providerConfigured, authorizationCapMicroUsdc, nowSeconds});
+    }
+    if (noteExpiry(j, nowSeconds)?.severity === 'expired') {
+      view.stepIndex = 3;
+      view.title = 'Note expired — withdrawal needs attention';
+      view.description = 'New API requests are disabled. Expiry does not automatically return funds: the entire principal of an active note can be swept to the treasury.';
+      view.nextAction = 'Check withdrawal now. If clearance is unavailable, choose the explicit escape withdrawal; the SDK verifies current chain state.';
     }
   } else if (connected) {
     view.title = 'Ready to deposit';

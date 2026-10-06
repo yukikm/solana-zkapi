@@ -1,3 +1,4 @@
+import {authorizationSnapshot} from '../packages/sdk/src/session-snapshot.ts';
 /** Real-provider acceptance orchestration over the existing SDK state machine.
  * No credentials, alternate ledger, wallet transaction construction, inference
  * retry, or billing decisions live here. The caller supplies a verified native
@@ -29,8 +30,8 @@ export interface ProviderAcceptanceContext {
    * fetch for quote and AUTH. Bounds HTTP without abandoning a journal commit. */
   authorizationClient(signal: AbortSignal): ControlClient;
   journal: EncryptedJournal<NoteJournal>;
-  prover: Pick<NoteProver, 'prepareSession'>;
-  chain: Pick<WalletChain, 'snapshot'>;
+  prover: Pick<NoteProver, 'prepareSession'|'snapshotPath'>;
+  chain: Pick<WalletChain, 'sessionSnapshot'>;
   noteId: string;
   tariff: Tariff;
   testCase: ProviderAcceptanceCase;
@@ -342,7 +343,7 @@ export async function runProviderAcceptanceCase(options: ProviderAcceptanceConte
     requireTrue(before?.witness && before.pending === null && before.wallet?.status === 'active' && !before.wallet.operation);
     requireTrue(o.tariff.provider === c.provider && o.tariff.model === (c.mode === 'proxy' ? c.model : '*'));
     diagnostic.stage = 'snapshot';
-    const snapshot = await o.chain.snapshot(before.witness.note_id, 'active');
+    const snapshot = await authorizationSnapshot(o.chain,before.witness.note_id,o.prover);
     diagnostic.stage = 'quote';
     const {quote, attempts: quoteRequestAttempts} = await obtainQuote(o);
     // A direct lease may spend its entire upstream cap; one small prompt is not

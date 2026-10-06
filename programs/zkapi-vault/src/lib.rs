@@ -17,13 +17,28 @@ use zkapi_layout2::Operation;
 mod buffers;
 #[path = "accounts.rs"]
 pub mod contexts;
+#[cfg(feature = "local-test")]
 pub mod deployment_keys;
+#[cfg(all(feature = "devnet", not(feature = "local-test")))]
+pub mod deployment_keys {
+    include!(concat!(env!("OUT_DIR"), "/selected_deployment_keys.rs"));
+}
 mod handlers;
 mod keys;
+#[cfg(feature = "local-test")]
 pub mod profile;
+#[cfg(all(feature = "devnet", not(feature = "local-test")))]
+pub mod profile {
+    include!(concat!(env!("OUT_DIR"), "/selected_profile.rs"));
+}
 pub mod state;
 #[path = "../../i02-harness/src/tree_vk.rs"]
+#[cfg(feature = "local-test")]
 mod tree_vk;
+#[cfg(all(feature = "devnet", not(feature = "local-test")))]
+mod tree_vk {
+    include!(concat!(env!("OUT_DIR"), "/selected_tree_vk.rs"));
+}
 mod verify;
 #[path = "../../i02-harness/src/vk.rs"]
 mod vk;

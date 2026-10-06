@@ -241,7 +241,7 @@ export async function startUiHost(options: HostOptions) {
         catch { response.statusCode = 503; response.end('{"error":"provider campaign unavailable"}'); }
         return;
       }
-      if (request.method === 'GET' && /^\/indexer\/zkapi\/v1\/tree\/(root|notes\/\d+\/(path|zero-path))$/.test(path)) {
+      if (request.method === 'GET' && /^\/indexer\/zkapi\/v1\/tree\/(root|snapshot|snapshots\/[0-9a-f]{64}\.json|notes\/\d+\/(path|zero-path))$/.test(path)) {
         assert.ok(options.indexer); const result = safeReply(await options.indexer(path.slice('/indexer'.length))); response.statusCode = result.status; response.setHeader('content-type', 'application/json'); response.end(result.bytes); return;
       }
       if (path.startsWith('/control/') || path.startsWith('/inference/')) {

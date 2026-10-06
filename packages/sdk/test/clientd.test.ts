@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import { mkdtemp, rm, readFile, writeFile, chmod, readdir } from 'node:fs/promises';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
-import { ClientDaemon, DaemonConflict } from '../src/clientd-bridge.ts';
+import { ClientDaemon, DaemonConflict, type DaemonOptions } from '../src/clientd-bridge.ts';
 import { ControlClient, createCredentials, validateNoteJournal, type Mode, type NoteJournal, type PreparedSession, type VerificationContext, type SessionVerifier } from '../src/control.ts';
 import { EncryptedJournal, importJournalKey, JournalIntegrityError } from '../src/journal.ts';
 import { NativeJournalStore } from '../src/journal-node.ts';
@@ -13,22 +13,24 @@ import { writeNodeResponse } from '../src/clientd-network.ts';
 import { createServer, request } from 'node:http';
 
 const field=(n:number)=>'0x'+n.toString(16).padStart(64,'0');
-async function fixture(t:TestContext,mode:Mode='proxy',reuse=60){
+async function fixture(t:TestContext,mode:Mode='proxy',reuse=60,models:DaemonOptions['models']=['m','n']){
   const dir=await mkdtemp(join(tmpdir(),'zkapi-clientd-'));t.after(()=>rm(dir,{recursive:true,force:true}));
   const key=await importJournalKey(new Uint8Array(32).fill(4)),store=await NativeJournalStore.open(dir);
   const context:VerificationContext={deployment_id:'fixture',pool:'pool',vault_binding:field(1),state_key:[field(2),field(3)],cap_micro_usdc:'100',control_api_origin:'https://control.invalid',inference_api_origin:'https://proxy.invalid',quote_public_key:'00'.repeat(32),receipt_public_key:'11'.repeat(32),request_vk_sha256:'22'.repeat(32),tariff_hashes:['33'.repeat(32)]};
   const journal=new EncryptedJournal<NoteJournal>(store,key,{deploymentId:'fixture',pool:'pool'},validateNoteJournal);
   const state={balance_micro_usdc:'100',balance_blinding:field(3),note_leaf:field(4),commitment:{x:field(5),y:field(6)},anchor:field(7),state_signature:null};
   await journal.create('note',{schema:1,state,pending:null,history:[]});
-  let now=100n,creates=0,closes=0,sends=0,controlRequests=0,oaVerifications=0,oaRejected=false,loss=false,direct202=false,missingSettlement=false,controlUnavailable=false;
+  let now=100n,creates=0,closes=0,sends=0,controlRequests=0,oaVerifications=0,oaRejected=false,loss=false,direct202=false,missingSettlement=false,controlUnavailable=false,closeDraining=false,settlementRejected=false;
   let pendingInference: ((signal: AbortSignal) => Promise<Response>) | undefined;
   let pendingPreparation: (()=>Promise<void>) | undefined;
+  let beforeClose: (()=>Promise<void>) | undefined;
+  const sentRequests:{id:string;path:string;body:string}[]=[];
   const status=async(settled=false)=>{const p=(await journal.read('note'))!.value.pending!;return{request_id:p.prepared.request.authorization.request_id,mode,state:settled?'SETTLED':'ACTIVE',cap_micro_usdc:'100',issued_at:String(now),expires_at:String(now+60n),...(settled?{settlement:{charge_micro_usdc:'0',next_commitment:state.commitment,next_anchor:field(8),blind_delta_srv:field(9),next_state_signature:{r_x:field(2),r_y:field(3),s:field(4)}}}:{})};};
   const http:typeof fetch=async(url,init)=>{
     const u=new URL(String(url));
     if(u.pathname.startsWith('/zkapi/')){controlRequests++;if(controlUnavailable)return new Response(null,{status:503});}
     if(u.pathname==='/zkapi/v1/sessions'){creates++;assert.equal((await journal.read('note'))!.value.pending!.phase,'send_unknown');return Response.json({...await status(),...(mode==='proxy'||direct202?{}:{provider_key:'provider-secret',provider_api_origin:'https://direct.invalid/v1',...(mode==='direct_oa'?{provider_key_verification:{verifier_url:'https://verifier.invalid/api',station_id:'trusted-station',station_recently_attested:true,key_valid_till:Number(now+60n),station_signature:'11'.repeat(64),org_signature:'22'.repeat(64)}}:{})})},{status:direct202?202:200});}
-    if(u.pathname.endsWith('/close')){closes++;return Response.json(await status(true));}
+    if(u.pathname.endsWith('/close')){closes++;await beforeClose?.();return Response.json(closeDraining?{...await status(),state:'DRAINING'}:await status(true));}
     if(u.pathname.endsWith('/receipts'))return Response.json({receipts:[],next_cursor:null});
     if(u.pathname.includes('/operations/')){assert.equal(new Headers(init!.headers).get('Authorization'),`Bearer ${(await journal.read('note'))!.value.pending!.prepared.control_token}`);return new Response(null,{status:404});}
     if(u.pathname.startsWith('/zkapi/v1/sessions/'))return Response.json(await status(missingSettlement));
@@ -41,21 +43,91 @@ async function fixture(t:TestContext,mode:Mode='proxy',reuse=60){
       return Response.json({status:oaRejected?'rejected':'verified'});
     }
     sends++;const p=(await journal.read('note'))!.value.pending!;assert.equal(p.operations.at(-1)!.phase,'send_unknown');
+    sentRequests.push({id:p.operations.at(-1)!.id,path:u.pathname,body:new TextDecoder().decode(init!.body as Uint8Array)});
     if(mode!=='proxy'){assert.equal((init!.headers as any).Authorization,'Bearer provider-secret');assert.equal(u.origin,'https://direct.invalid');}
     if(loss)throw Error('fixture response loss');
     if(pendingInference)return pendingInference(init!.signal!);
     return new Response('data: first\n\ndata: [DONE]\n\n',{headers:{'Content-Type':'text/event-stream'}});
   };
-  const verifier:SessionVerifier={async prepare(){},async settle(_c,s,_p,_s,_r,operations){if(mode!=='proxy')assert.deepEqual(operations,[]);if(missingSettlement&&operations.length)throw Error('fixture missing operation receipt');return{...s,anchor:field(8)};}};
+  const verifier:SessionVerifier={async prepare(){},async settle(_c,s,_p,_s,_r,operations){if(mode!=='proxy')assert.deepEqual(operations,[]);if(settlementRejected)throw Error('fixture invalid successor signature');if(missingSettlement&&operations.length)throw Error('fixture missing operation receipt');return{...s,anchor:field(8)};}};
   const clientOptions={context,journal,verifier,fetch:http,now:()=>now,directProviderBases:{direct_oa:'https://direct.invalid/v1',direct_openrouter:'https://direct.invalid/v1'},oaVerifier:{base:'https://verifier.invalid/api',stationId:'trusted-station'}};
   const client=new ControlClient(clientOptions);
-  const options={client,journal,noteId:'note',mode,models:['m'],keyReuseSeconds:reuse,now:()=>now,prepare:async(_model:string,c:any)=>{
+  const options={client,journal,noteId:'note',mode,models,keyReuseSeconds:reuse,now:()=>now,prepare:async(_model:string,c:any)=>{
     await pendingPreparation?.();
-    const p:PreparedSession={request:{authorization:{version:'1',deployment_id:'fixture',pool:'pool',request_id:c.requestId,quote_hash:'00'.repeat(32),mode,control_secret_hash:c.controlHash,proxy_secret_hash:c.proxyHash},quote:{body:{quote_id:crypto.randomUUID(),deployment_id:'fixture',pool:'pool',mode,provider:mode==='direct_oa'?'oa':'openrouter',models:[mode==='proxy'?'m':'*'],tariff_hash:'33'.repeat(32),cap_micro_usdc:'100',issued_at:String(now),expires_at:String(now+120n),session_ttl_seconds:'60',max_concurrency:'4',control_api_origin:context.control_api_origin,inference_api_origin:context.inference_api_origin},quote_hash:'00'.repeat(32),signature:'fixture'},public_inputs:Array(12).fill(field(1)),proof:{backend:'groth16_bn254',proof:'fixture'}},control_token:c.controlToken,proxy_token:c.proxyToken,tariff:{tariff_hash:'33'.repeat(32),version:'1',provider:'openrouter',model:'m',pricing_basis:'fixture',valid_from:'0',valid_until:'1000',rates:[],operator_fee_micro_usdc:'0'},rerandomization:field(2)};return{prepared:p,root:field(2)};}};
+    const p:PreparedSession={request:{authorization:{version:'1',deployment_id:'fixture',pool:'pool',request_id:c.requestId,quote_hash:'00'.repeat(32),mode,control_secret_hash:c.controlHash,proxy_secret_hash:c.proxyHash},quote:{body:{quote_id:crypto.randomUUID(),deployment_id:'fixture',pool:'pool',mode,provider:mode==='direct_oa'?'oa':'openrouter',models:[mode==='proxy'?_model:'*'],tariff_hash:'33'.repeat(32),cap_micro_usdc:'100',issued_at:String(now),expires_at:String(now+120n),session_ttl_seconds:'60',max_concurrency:'4',control_api_origin:context.control_api_origin,inference_api_origin:context.inference_api_origin},quote_hash:'00'.repeat(32),signature:'fixture'},public_inputs:Array(12).fill(field(1)),proof:{backend:'groth16_bn254',proof:'fixture'}},control_token:c.controlToken,proxy_token:c.proxyToken,tariff:{tariff_hash:'33'.repeat(32),version:'1',provider:'openrouter',model:'m',pricing_basis:'fixture',valid_from:'0',valid_until:'1000',rates:[],operator_fee_micro_usdc:'0'},rerandomization:field(2)};return{prepared:p,root:field(2)};}};
   const service=new ClientDaemon(options);await service.start();
-  return{service,journal,dir,pendingPreparation:(handler:()=>Promise<void>)=>{pendingPreparation=handler;},pendingInference:(handler:(signal:AbortSignal)=>Promise<Response>)=>{pendingInference=handler;},restart:()=>{const recoveredJournal=new EncryptedJournal<NoteJournal>(store,key,{deploymentId:'fixture',pool:'pool'},validateNoteJournal);return new ClientDaemon({...options,journal:recoveredJournal,client:new ControlClient({...clientOptions,journal:recoveredJournal})});},prepareUnsent:async()=>{const p=await options.prepare('m',await createCredentials(mode));await client.prepare('note',p.prepared,p.root);},counts:()=>({creates,closes,sends}),oaVerifications:()=>oaVerifications,rejectOa:()=>{oaRejected=true;},controlRequests:()=>controlRequests,advance:()=>{now+=61n;},lose:(value=true)=>{loss=value;},directUnknown:()=>{direct202=true;},missingSettlement:(value=true)=>{missingSettlement=value;},controlUnavailable:(value=true)=>{controlUnavailable=value;}};
+  return{service,journal,dir,sentRequests,beforeClose:(handler:()=>Promise<void>)=>{beforeClose=handler;},closeDraining:(value=true)=>{closeDraining=value;},rejectSettlement:(value=true)=>{settlementRejected=value;},pendingPreparation:(handler:()=>Promise<void>)=>{pendingPreparation=handler;},pendingInference:(handler:(signal:AbortSignal)=>Promise<Response>)=>{pendingInference=handler;},restart:()=>{const recoveredJournal=new EncryptedJournal<NoteJournal>(store,key,{deploymentId:'fixture',pool:'pool'},validateNoteJournal);return new ClientDaemon({...options,journal:recoveredJournal,client:new ControlClient({...clientOptions,journal:recoveredJournal})});},prepareUnsent:async()=>{const p=await options.prepare('m',await createCredentials(mode));await client.prepare('note',p.prepared,p.root);},counts:()=>({creates,closes,sends}),oaVerifications:()=>oaVerifications,rejectOa:()=>{oaRejected=true;},controlRequests:()=>controlRequests,advance:()=>{now+=61n;},lose:(value=true)=>{loss=value;},directUnknown:()=>{direct202=true;},missingSettlement:(value=true)=>{missingSettlement=value;},controlUnavailable:(value=true)=>{controlUnavailable=value;}};
 }
 const body=new TextEncoder().encode('{"model":"m","stream":true}');
+const otherBody=new TextEncoder().encode('{"model":"n","messages":[{"role":"user","content":"original new send"}],"stream":true}');
+test('model switch settles the old session and dispatches the original new operation once',async t=>{
+  const f=await fixture(t),oldId=crypto.randomUUID(),newId=crypto.randomUUID();
+  await(await f.service.infer('/v1/chat/completions',body,oldId)).text();
+  const response=await f.service.infer('/v1/chat/completions',otherBody,newId);await response.text();
+  assert.equal(response.headers.get('X-Zkapi-Operation-Id'),newId);
+  assert.deepEqual(f.counts(),{creates:2,closes:1,sends:2});
+  assert.deepEqual(f.sentRequests.map(request=>request.id),[oldId,newId]);
+  assert.equal(f.sentRequests[1].body,new TextDecoder().decode(otherBody));
+  const saved=(await f.journal.read('note'))!.value;
+  assert.equal(saved.history[0].operations[0].id,oldId);
+  assert.equal(saved.pending!.prepared.request.quote.body.models[0],'n');
+  await assert.rejects(f.service.infer('/v1/chat/completions',body,oldId),DaemonConflict);
+  await assert.rejects(f.service.infer('/v1/chat/completions',otherBody,newId),DaemonConflict);
+  assert.deepEqual(f.counts(),{creates:2,closes:1,sends:2});
+});
+test('model switch cannot close a session with an active response',async t=>{
+  const f=await fixture(t),response=await f.service.infer('/v1/chat/completions',body),id=crypto.randomUUID();
+  await assert.rejects(f.service.infer('/v1/chat/completions',otherBody,id),DaemonConflict);
+  assert.deepEqual(f.counts(),{creates:1,closes:0,sends:1});
+  await response.text();await(await f.service.infer('/v1/chat/completions',otherBody,id)).text();
+  assert.deepEqual(f.counts(),{creates:2,closes:1,sends:2});
+});
+test('unfinished or unverifiable close blocks new-model authorization without replay',async t=>{
+  for(const failure of ['draining','outage','signature']) {
+    const f=await fixture(t);await(await f.service.infer('/v1/chat/completions',body)).text();
+    if(failure==='draining')f.closeDraining();else if(failure==='outage')f.controlUnavailable();else f.rejectSettlement();
+    const id=crypto.randomUUID();await assert.rejects(f.service.infer('/v1/chat/completions',otherBody,id));
+    assert.equal(f.counts().creates,1);assert.equal(f.counts().sends,1);
+    assert.ok((await f.journal.read('note'))!.value.pending);
+    assert.equal((await f.journal.read('note'))!.value.pending!.operations.some(operation=>operation.id===id),false);
+    f.closeDraining(false);f.controlUnavailable(false);f.rejectSettlement(false);
+    await(await f.service.infer('/v1/chat/completions',otherBody,id)).text();
+    assert.equal(f.counts().creates,2);assert.equal(f.counts().sends,2);
+  }
+});
+test('aborting during old-session settlement never authorizes the new model',async t=>{
+  const f=await fixture(t);await(await f.service.infer('/v1/chat/completions',body)).text();
+  let closing!:()=>void,release!:()=>void;
+  const started=new Promise<void>(resolve=>{closing=resolve;}),blocked=new Promise<void>(resolve=>{release=resolve;});
+  f.beforeClose(async()=>{closing();await blocked;});
+  const abort=new AbortController(),request=f.service.infer('/v1/chat/completions',otherBody,crypto.randomUUID(),'',abort.signal);
+  const rejected=assert.rejects(request,{name:'AbortError'});await started;abort.abort();release();await rejected;
+  assert.deepEqual(f.counts(),{creates:1,closes:1,sends:1});assert.equal((await f.journal.read('note'))!.value.pending,null);
+});
+test('shutdown during model-switch settlement closes without admitting the new send',async t=>{
+  const f=await fixture(t);await(await f.service.infer('/v1/chat/completions',body)).text();
+  let closing!:()=>void,release!:()=>void;
+  const started=new Promise<void>(resolve=>{closing=resolve;}),blocked=new Promise<void>(resolve=>{release=resolve;});
+  f.beforeClose(async()=>{closing();await blocked;});
+  const request=f.service.infer('/v1/chat/completions',otherBody),rejected=assert.rejects(request,DaemonConflict);
+  await started;const stopped=f.service.shutdown();release();await Promise.all([rejected,stopped]);
+  assert.deepEqual(f.counts(),{creates:1,closes:1,sends:1});assert.equal((await f.journal.read('note'))!.value.pending,null);
+});
+test('reuse expiry and a concurrent maintenance tick admit a new request once after settlement',async t=>{
+  const f=await fixture(t);await(await f.service.infer('/v1/chat/completions',body)).text();f.advance();
+  const id=crypto.randomUUID();const [response]=await Promise.all([f.service.infer('/v1/chat/completions',body,id),f.service.maintenance()]);
+  await response.text();assert.deepEqual(f.counts(),{creates:2,closes:1,sends:2});assert.equal(f.sentRequests[1].id,id);
+});
+test('validated model policies drive the advertised provider and reject unsupported APIs before AUTH',async t=>{
+  const models:DaemonOptions['models']=[{id:'m',provider:'openrouter',apis:['chat']},{id:'n',provider:'anthropic',apis:['messages','count_tokens']}];
+  const f=await fixture(t,'proxy',60,models);
+  const response=await f.service.handle('GET','/v1/models',new Uint8Array(),new Headers());
+  assert.deepEqual((await response.json()).data,[{id:'m',object:'model',owned_by:'openrouter'},{id:'n',object:'model',owned_by:'anthropic'}]);
+  await assert.rejects(f.service.infer('/v1/responses',body),/model API/);
+  await assert.rejects(f.service.infer('/v1/chat/completions',otherBody),/model API/);
+  assert.deepEqual(f.counts(),{creates:0,closes:0,sends:0});
+  await(await f.service.infer('/v1/chat/completions',body)).text();assert.equal(f.counts().sends,1);
+});
 test('clientd shares encrypted journal, streams once, reuses 60-second session and closes idle',async t=>{
   const f=await fixture(t);for(let i=0;i<2;i++)assert.match(await(await f.service.infer('/v1/chat/completions',body)).text(),/DONE/);
   assert.deepEqual(f.counts(),{creates:1,closes:0,sends:2});f.advance();await f.service.maintenance();assert.deepEqual(f.counts(),{creates:1,closes:1,sends:2});assert.equal((await f.journal.read('note'))!.value.pending,null);

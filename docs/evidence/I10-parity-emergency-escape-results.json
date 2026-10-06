@@ -1,0 +1,29 @@
+{
+  "schema": 1,
+  "scope": "local same-journal emergency escape regression; real encryption and signed v0 transport, synthetic chain/prover/provider adapters",
+  "commands": [
+    "npm run typecheck",
+    "node --test --test-reporter=spec packages/sdk/test/wallet-emergency-escape.test.ts packages/sdk/test/wallet-clearance.test.ts packages/sdk/test/wallet-recovery.test.ts packages/sdk/test/control*.test.ts"
+  ],
+  "result": "passed",
+  "tests": 110,
+  "passed": 110,
+  "failed": 0,
+  "skipped": 0,
+  "duration_ms": 11775.145754,
+  "runtime_source_sha256": {
+    "packages/sdk/src/wallet.ts": "0a9d4903a256d67ebf821f9d9860697cdf4834fab67a6321b89e31b6c4af639c",
+    "packages/sdk/src/control.ts": "ccf19016cc048a9406c26ac4c8e64bc97fc0d0467c360b8e278cc12c493bce54",
+    "packages/sdk/src/clientd-bridge.ts": "965eed7d7ddb3ce376be69a9f84cfb80ec4b4b242450f6b4dd3ecc816042594a",
+    "packages/sdk/test/wallet-emergency-escape.test.ts": "de55a1161c08eebe7a6af4bf6f36aac6d0710106a15589cc074707e3444bacc4",
+    "packages/sdk/test/wallet-clearance.test.ts": "3621936f8302d71c0dd0647cfca6781bd94263bcbab4f8be04e0cb67a2d2e871",
+    "packages/sdk/test/wallet-recovery.test.ts": "135ecf9b41e9b455511137dadd62a0b55f0b4636f1a2beb08cdfb991bc8833e3",
+    "packages/sdk/test/control.test.ts": "85168ff56e4fb139922ab48308e6f10f7a1faa4a077403153b4271796571689b"
+  },
+  "log": "docs/evidence/I10-parity-emergency-escape-components/focused.txt",
+  "log_sha256": "f77e20780676fb049b637d30bfc6850b7d9c88dd4614951bee3e605f5c72a1f0",
+  "public_rpc": false,
+  "actual_provider": false,
+  "mainnet": false,
+  "release_gates_passed": []
+}

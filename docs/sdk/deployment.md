@@ -74,6 +74,18 @@ transport separately through the supplied `Connection`; `deployment.fetch` does
 not replace `Connection`'s internal fetch. Do not attach chat-account cookies,
 private note IDs, wallet addresses or logs to control requests.
 
+Authorization downloads the pool-wide `/zkapi/v1/tree/snapshot` descriptor and
+its content-addressed snapshot through the configured indexer origin. It reads
+only the shared PoolConfig, TreeState and Clock accounts, authenticates the
+finalized root/sequence/next-ID cut and reconstructs the selected path locally
+in the pinned native/WASM prover. Relays must allow both exact snapshot routes.
+The initial reader bounds are 4 MiB and 16,384 combined active/pending records;
+larger snapshots fail closed without falling back to a selected-note query.
+Custom authorization adapters must implement `sessionSnapshot`. The separate
+financial recovery `snapshot` still verifies individual Note/Pending accounts.
+Network addresses, timing and publicly visible funding/withdrawal remain visible;
+this change does not provide network anonymity.
+
 The default transaction preparation commitment is `finalized`. Applications may
 explicitly configure `confirmed` for blockhash/preflight preparation; proof cuts,
 funding acceptance and financial receipts remain finalized. Choose an explicit
