@@ -1,0 +1,59 @@
+{
+  "schema": 1,
+  "date_jst": "2026-10-08",
+  "verified_at_utc": "2026-10-07T22:40:09.600970+00:00",
+  "scope": "Local formatting-only offline proof verifier example; no new proof or hosted acceptance",
+  "parent_source": "169e929d534b0ea6961cbf084c43db90c7401421",
+  "path": "crates/zkapi-tree-prover/examples/verify_public_bundle.rs",
+  "before_sha256": "bbc39295b49fdfcd99af5b4d2145cc68119f2278f41e7b902043f6e6f95d9aec",
+  "after_sha256": "d2c4c4a96d234087a7a4df20b60a0be6953229a96519b388846aad10ff2cf616",
+  "formatter": "rustfmt +1.90.0 --edition 2021",
+  "token_check": {
+    "passed": true,
+    "changes": "whitespace and two trailing commas only",
+    "all_literal_and_comment_bytes_exact": true,
+    "report_sha256": "b917f3eb38000acbe7b74e612e1d7be9334a4225dcf236edd8b8476dbbb91a12"
+  },
+  "local_validation": {
+    "root_workspace_format": {
+      "command": [
+        "cargo",
+        "+1.90.0",
+        "fmt",
+        "--all",
+        "--",
+        "--check"
+      ],
+      "exit_code": 0,
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "root_workspace_clippy": {
+      "command": [
+        "cargo",
+        "+1.90.0",
+        "clippy",
+        "--locked",
+        "--offline",
+        "--all-targets",
+        "--",
+        "-D",
+        "warnings"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 17.15,
+      "log_sha256": "865bbb990f5c4c3f0d49aa0970ed94261f1c52e4b8d24afc381d41b99809ffc4"
+    },
+    "validation_result_sha256": "5d570f30d374a557e76b5e7ed88f941aedcd3328c9d39c125283a143cc100742"
+  },
+  "preserved_build": {
+    "manifest_sha256": "b624cf278f184e3a5892de82ab36eacdd55fa3ead80a7d3759106ec8dd3ae90a",
+    "source_count": 187,
+    "all_copied_source_hashes_unchanged": true,
+    "installed_binary_sha256": "7b2a41955e8a280a74235611388225a1b459b8bea73dfc2a4cd0b5ca955afce8",
+    "release_artifact_rebuilt_or_replaced": false
+  },
+  "new_proof_execution": false,
+  "hosted_ci_success": false,
+  "runtime_or_financial_policy_change": false,
+  "release_gates_passed": []
+}
