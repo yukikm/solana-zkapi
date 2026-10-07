@@ -13,6 +13,7 @@ import { verifyManifest, jcsBytes, sha256Hex, type ArtifactBundle, type Manifest
 import { WalletClient, type WalletOptions } from './wallet.ts';
 import { SolanaWalletChain } from './wallet-chain.ts';
 import { authorizationSnapshot } from './session-snapshot.ts';
+import { validateDaemonModelPolicy, validateModelRequestCapabilities } from './clientd-models.ts';
 
 export type { Mode, Tariff, ManifestTrustPolicy, ArtifactBundle, V0Wallet, ClientProver };
 export type InferenceApi = 'chat' | 'responses' | 'messages';
@@ -25,6 +26,7 @@ export interface ModelConfiguration {
   provider: Quote['body']['provider'];
   apis: readonly InferenceApi[];
   tariff: Tariff;
+  capabilities?: { streaming: boolean; tools: boolean };
 }
 export type ModelInfo = Omit<ModelConfiguration, 'tariff'>;
 export interface ClientStorage { store: AtomicJournalStore; key: CryptoKey }
@@ -121,11 +123,11 @@ export class ZkApiClient {
   constructor(options: ClientComponents) {
     if (!options.noteId || options.noteId.length > 1024 || !options.wallet.wallets.length) throw new Error('stable note ID and selected wallet required');
     this.models = structuredClone([...options.models]);
-    checkModels(options.mode, this.models);
+    validateModelConfigurations(options.mode, this.models);
     this.options = { ...options, wallet: { ...options.wallet, wallets: [...options.wallet.wallets] } };
     this.walletClient = new WalletClient(this.options.wallet);
     this.daemon = new ClientDaemon({ client: options.control, journal: options.wallet.journal,
-      noteId: options.noteId, mode: options.mode, models: this.models.map(m => m.id), keyReuseSeconds: 0,
+      noteId: options.noteId, mode: options.mode, models: this.models, keyReuseSeconds: 0,
       prepare: async (id, credentials) => {
         const model = this.models.find(m => m.id === id)!;
         const record = await this.options.wallet.journal.read(this.options.noteId);
@@ -257,6 +259,7 @@ export class ZkApiClient {
         || (request.api === 'messages' ? !/^[\x20-\x7e]+$/.test(request.anthropicVersion ?? '') : request.anthropicVersion !== undefined)) {
         throw new ClientActionError('invalid_request', 'Choose a configured model/API and a stable operation UUID; model belongs outside body. Messages requires anthropicVersion.');
       }
+      validateModelRequestCapabilities(model, request.body);
       body = jcsBytes({ ...request.body, model: request.model });
       if (body.length > 1024 * 1024) throw new ClientActionError('invalid_request', 'Request exceeds 1 MiB.');
     } catch (error) { return Promise.reject(error); }
@@ -316,9 +319,10 @@ export class ZkApiClient {
   }
 }
 
-function checkModels(mode: Mode, models: ModelConfiguration[]): void {
+export function validateModelConfigurations(mode: Mode, models: readonly ModelConfiguration[]): void {
   if (!['proxy', 'direct_oa', 'direct_openrouter'].includes(mode) || !models.length || new Set(models.map(m => m.id)).size !== models.length) throw new Error('explicit mode and unique models required');
   for (const m of models) {
+    validateDaemonModelPolicy(mode, m);
     const supported: InferenceApi[] = m.provider === 'anthropic' ? ['messages'] : m.provider === 'openrouter' ? ['chat'] : ['chat', 'responses'];
     if (!/^[\x21-\x7e]{1,200}$/.test(m.id) || m.id === '*' || !m.apis.length || m.apis.some(a => !supported.includes(a))
       || m.tariff.provider !== m.provider || (mode === 'proxy'
@@ -336,7 +340,7 @@ export async function createZkApiClient(options: CreateClientOptions): Promise<Z
   const wallet = options.wallet, storage = { ...options.storage }, engine = options.prover;
   const connection = d.connection, fetcher = d.fetch, indexerOrigin = d.indexerOrigin, preparationCommitment = d.preparationCommitment;
   const directProviderBases = structuredClone(options.directProviderBases), oaVerifier = structuredClone(options.oaVerifier), priorityFeeMicroLamports = options.priorityFeeMicroLamports;
-  checkModels(mode, models);
+  validateModelConfigurations(mode, models);
   if (mode !== 'proxy' && !directProviderBases?.[mode]) throw new Error('independently installed direct provider base required');
   if (mode === 'direct_oa' && !oaVerifier) throw new Error('independently installed OA verifier required');
   const manifest: VerifiedManifest = await verifyManifest(manifestBytes, trust);

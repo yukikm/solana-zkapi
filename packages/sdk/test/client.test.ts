@@ -405,3 +405,13 @@ test('dispose does not settle or erase storage and refuses later actions', async
   const f = await setup(t), before = await f.journal.read('note'); f.client.dispose();
   await assert.rejects(f.client.chat(chat()), /disposed/); assert.deepEqual(await f.journal.read('note'), before); assert.equal(f.counts.auth, 0);
 });
+
+test('reviewed model restrictions reject streaming and tools before quote, proof or AUTH', async t => {
+  const f = await setup(t);
+  f.models[0].capabilities = { streaming: false, tools: false };
+  const client = f.restart();
+  await assert.rejects(client.chat({ ...chat(), stream: true }), /capability is not configured/);
+  await assert.rejects(client.request({ operationId: crypto.randomUUID(), model: 'first', api: 'chat', body: { tools: [] } }), /capability is not configured/);
+  assert.deepEqual(f.order, []); assert.equal((await f.journal.read('note'))!.value.pending, null);
+  await readChatText(await client.chat(chat())); assert.equal(f.counts.sends, 1);
+});

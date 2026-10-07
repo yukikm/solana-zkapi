@@ -84,7 +84,7 @@ From the repository root, install the pinned build dependencies and run:
 npm ci
 mkdir -p target/sdk-distribution
 npm pack --workspace @zkapi/solana-sdk --pack-destination target/sdk-distribution
-shasum -a 256 target/sdk-distribution/zkapi-solana-sdk-0.2.0-devnet.1.tgz
+shasum -a 256 target/sdk-distribution/zkapi-solana-sdk-0.2.0-devnet.2.tgz
 python3 scripts/run_external_sdk_acceptance.py
 ```
 
@@ -105,8 +105,9 @@ An operator can package the authenticated public assets once with the offline
 `package_sdk_distribution_assets.mjs` tool in the source checkout. Its input has
 only these fields: `schema: 1`, `trust` (the independently reviewed
 `ManifestTrustPolicy`), `manifest` (a path), `artifacts` (the `ArtifactBundle`
-field names with file paths, including `additional`), and
-`wasm: {path, sha256}`. Paths are relative to the input JSON. The output directory
+field names with file paths, including `additional`),
+`wasm: {path, sha256}`, and optional `notices` mapping public output filenames
+to source file paths. Paths are relative to the input JSON. The output directory
 must be new. No wallet, provider, RPC credential or journal configuration belongs
 in this input.
 
@@ -122,6 +123,43 @@ is bounded to 1 MiB and its combined public assets to 512 MiB. Nothing is upload
 by the packager. Program deployment, service endpoints and model tariffs remain
 operator configuration.
 
+The `0.2.0-devnet.2` candidate adds descriptor **schema 2** when `notices` is
+present. Its `notices` object maps labels to files, and the ordinary `files`
+table authenticates every notice's size and SHA-256. Both labels and filenames
+must match `[a-zA-Z0-9][a-zA-Z0-9.-]{0,127}`, exclude `bundle.json`, and filenames
+must not collide with any manifest, proof artifact or WASM file. There must be
+1–32 notices, each nonempty and at most 1 MiB, with at most 4 MiB combined.
+The packager uses each configured output filename as its label. Without
+`notices`, it retains the exact schema 1 format. Earlier released SDKs do not
+support schema 2; use a separately authenticated compatible SDK candidate or
+release. This source feature does not imply that a new release is published.
+
+For the four unchanged upstream request/withdrawal setup files, include the
+five documents in [upstream-notices](../../deploy/public-devnet/upstream-notices/PROVENANCE.md).
+The [exact-file distribution decision](../../deploy/public-devnet/upstream-setup-distribution.json)
+records their source hashes and selected Apache-2.0 option. It is limited to
+those four files; the complete bundle still needs its own per-file review.
+
+Before public upload, also run the read-only distribution review gate:
+
+```sh
+python3 scripts/check_public_bundle_release.py --bundle public-assets \
+  --bundle-sha256 REVIEWED_BUNDLE_SHA256 --review reviewed-distribution.json
+```
+
+The review JSON has `schema: 1`, `bundle_sha256`, `reviewer`, ISO date
+`reviewed_at`, and `files`. The latter maps every descriptor file **and
+`bundle.json`** to `{sha256, decision, source, terms, notices}`. `source` and
+`terms` are authoritative public HTTPS URLs; `notices` names files included
+in the same bundle. Every decision must explicitly be `approved`. Unresolved
+or missing entries, altered bytes, extra files and symlinks fail. Keep the
+review outside the upload directory. This validates a review record; it does
+not determine legal sufficiency, authenticate the reviewer's identity, upload
+anything, or replace actual downloadable-byte/proof checks. The
+[upstream redistribution follow-up](../../docs/evidence/PD-02-redistribution-followup.md)
+records the original root license declaration that resolved the earlier
+missing-evidence reason for omitting the four unchanged files.
+
 Independent browser applications can now load this bundle without importing any
 reference UI code:
 
@@ -133,12 +171,16 @@ const assets = await loadDeploymentAssets('https://your-app.example/zkapi/bundle
 });
 // Supply assets.manifest, assets.trust and assets.artifacts in ClientDeployment.
 // For createBrowserClient also supply assets.wasm and assets.wasmSha256.
+// Retain assets.notices when distributing or installing the verified assets.
 // The app still owns its Kit RPC client, indexer origin, models, wallet and storage.
 ```
 
 The loader uses only flat files in the descriptor's directory. It authenticates
 the descriptor before following its paths, verifies sizes and hashes, and invokes
-the existing manifest/artifact checks. Fetches omit credentials and reject
+the existing manifest/artifact checks. Schema 2 requires downloading and
+verifying every notice; missing or changed notice bytes fail the entire load.
+`assets.notices` contains the verified byte arrays by label (empty for schema 1).
+Fetches omit credentials and reject
 redirects. The default overall deadline is 120 seconds, configurable up to 300
 seconds with `timeoutMs`; `signal` permits caller cancellation. Failures expose a
 redacted `DeploymentAssetsError`. Its download checks do not establish finalized

@@ -6,6 +6,8 @@ import { pathToFileURL } from 'node:url';
 import { parseStrictJson, sha256Hex, verifyManifest, verifyArtifactBundle } from '@zkapi/solana-sdk/trust';
 
 const artifactNames = ['idl', 'requestPk', 'requestVk', 'withdrawalPk', 'withdrawalVk', 'treePk', 'treeVk', 'treeSourceBundle', 'treeVerifierConstants'];
+const noticeName = /^[a-zA-Z0-9][a-zA-Z0-9.-]{0,127}$/;
+const maximumNoticeBytes = 1024 * 1024, maximumTotalNoticeBytes = 4 * 1024 * 1024;
 function exact(value, required, optional = []) {
   assert.ok(value && typeof value === 'object' && !Array.isArray(value));
   assert.ok(required.every(key => Object.hasOwn(value, key)));
@@ -23,14 +25,16 @@ function publicTrust(value) {
 
 export async function packageDeploymentAssets(configuration, output) {
   const configPath = resolve(configuration), base = dirname(configPath);
-  const read = async path => {
+  const read = async (path, maximum = 512 * 1024 * 1024) => {
     assert.equal(typeof path, 'string');
     const resolved = resolve(base, path), info = await lstat(resolved);
-    assert.ok(info.isFile() && !info.isSymbolicLink() && info.size > 0 && info.size <= 512 * 1024 * 1024);
-    return new Uint8Array(await readFile(resolved));
+    assert.ok(info.isFile() && !info.isSymbolicLink() && info.size > 0 && info.size <= maximum);
+    const bytes = new Uint8Array(await readFile(resolved));
+    assert.ok(bytes.length > 0 && bytes.length <= maximum);
+    return bytes;
   };
   const config = parseStrictJson(new Uint8Array(await readFile(configPath)));
-  exact(config, ['schema', 'trust', 'manifest', 'artifacts', 'wasm']);
+  exact(config, ['schema', 'trust', 'manifest', 'artifacts', 'wasm'], ['notices']);
   assert.equal(config.schema, 1);
   exact(config.artifacts, [...artifactNames, 'additional']); exact(config.wasm, ['path', 'sha256']);
   assert.ok(config.artifacts.additional && typeof config.artifacts.additional === 'object' && !Array.isArray(config.artifacts.additional));
@@ -44,11 +48,25 @@ export async function packageDeploymentAssets(configuration, output) {
   assert.match(config.wasm.sha256, /^[0-9a-f]{64}$/);
   assert.equal(await sha256Hex(wasm), config.wasm.sha256);
   assert.ok(WebAssembly.validate(wasm));
+  const notices = Object.create(null), noticePayloads = Object.create(null);
+  if (config.notices !== undefined) {
+    assert.ok(config.notices && typeof config.notices === 'object' && !Array.isArray(config.notices));
+    const names = Object.keys(config.notices).sort();
+    assert.ok(names.length > 0 && names.length <= 32);
+    let total = 0;
+    for (const name of names) {
+      assert.ok(noticeName.test(name) && name !== 'bundle.json');
+      const bytes = await read(config.notices[name], maximumNoticeBytes);
+      total += bytes.length; assert.ok(total <= maximumTotalNoticeBytes);
+      notices[name] = name; noticePayloads[name] = bytes;
+    }
+  }
 
   // Build and bound the complete descriptor before creating the new directory.
   // Never overwrite a funded deployment; outputs contain no source paths.
   const files = Object.create(null), payloads = Object.create(null), entries = { additional: Object.create(null) };
   const add = async (name, bytes) => {
+    assert.ok(!Object.hasOwn(payloads, name) && name !== 'bundle.json', 'public file collision');
     payloads[name] = bytes;
     files[name] = { sha256: await sha256Hex(bytes), bytes: bytes.length };
     return name;
@@ -61,7 +79,11 @@ export async function packageDeploymentAssets(configuration, output) {
     entries.additional[name] = await add(`additional-${index++}.bin`, verified.additional[name]);
   }
   const wasmFile = await add('prover.wasm', wasm);
-  const descriptor = { schema: 1, trust, manifest: manifestFile, artifacts: entries, wasm: { path: wasmFile, sha256: config.wasm.sha256 }, files };
+  for (const [name, bytes] of Object.entries(noticePayloads)) await add(name, bytes);
+  // Schema 1 remains byte-for-byte unchanged when no notices are requested.
+  // Schema 2 explicitly authenticates and requires every public notice file.
+  const descriptor = { schema: config.notices === undefined ? 1 : 2, trust, manifest: manifestFile, artifacts: entries,
+    wasm: { path: wasmFile, sha256: config.wasm.sha256 }, files, ...(config.notices === undefined ? {} : {notices}) };
   const bytes = new TextEncoder().encode(JSON.stringify(descriptor, null, 2) + '\n');
   assert.ok(bytes.length <= 1024 * 1024);
   assert.ok(Object.values(files).reduce((sum, f) => sum + f.bytes, 0) <= 512 * 1024 * 1024);

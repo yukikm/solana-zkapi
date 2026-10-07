@@ -96,3 +96,11 @@ test('model configuration and returned tariffs do not retain mutable caller-owne
   const models = await loading; saved.model = 'changed';
   assert.equal(models[0].id, 'm'); assert.equal(models[0].tariff.model, 'm');
 });
+
+test('public profile model capability restrictions survive tariff loading and reject ambiguous fields', async () => {
+  const saved=await tariff('*','openrouter',true);
+  const model:DaemonModelSource={id:'m',provider:'openrouter',apis:['chat'],tariff:'m.json',capabilities:{streaming:true,tools:false}};
+  const models=await loadDaemonModels({mode:'direct_openrouter',models:[model]},[saved.tariff_hash],async()=>saved);
+  assert.deepEqual(models[0].capabilities,{streaming:true,tools:false});model.capabilities!.tools=true;assert.equal(models[0].capabilities!.tools,false);
+  await assert.rejects(loadDaemonModels({mode:'direct_openrouter',models:[{...model,capabilities:{streaming:'true',tools:false} as any}]},[saved.tariff_hash],async()=>saved),/capabilities/);
+});

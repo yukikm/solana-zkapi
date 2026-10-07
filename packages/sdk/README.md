@@ -10,8 +10,9 @@ Applications keep control of their UI, conversation history and provider mode.
 
 Install the reviewed npm tarball with compiled ES modules and TypeScript
 declarations from an independent application. See [distribution and artifact
-setup](DISTRIBUTION.md). The package is version `0.2.0-devnet.1`, with `private: true` to
-prevent accidental npm publication. Node integrations use Node 24.19.0; browser
+setup](DISTRIBUTION.md). This checkout is the unreleased `0.2.0-devnet.2` candidate;
+the immutable published preview remains `0.2.0-devnet.1`. The package uses
+`private: true` to prevent accidental npm publication. Node integrations use Node 24.19.0; browser
 integrations bundle the browser entry points. Do not install an unrelated
 registry package just because it has this name.
 
@@ -27,6 +28,7 @@ The SDK is [MIT licensed](LICENSE). Its dependencies retain their own licenses.
 | `@zkapi/solana-sdk` | `createZkApiClient`, `ZkApiClient`, application types |
 | `@zkapi/solana-sdk/browser` | Browser factory, durable custody, Wallet Standard adapter |
 | `@zkapi/solana-sdk/deployment` | Download and verify an independently pinned public artifact bundle |
+| `@zkapi/solana-sdk/public-profile` | Authenticate a versioned deployment profile and run read-only preflight (unreleased candidate) |
 | `@zkapi/solana-sdk/chat` | Bounded text and streaming response readers |
 | `@zkapi/solana-sdk/prover-worker` | Entry point to bundle as a module Worker |
 | Existing subpaths (`./wallet`, `./control`, etc.) | Advanced integration; preserved |

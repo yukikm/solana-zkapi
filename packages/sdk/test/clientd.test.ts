@@ -23,7 +23,7 @@ test('new native profile reports unfunded status without creating a note or cont
   assert.equal(status.journal_head,null);assert.equal(status.recovery_required,false);assert.deepEqual(status.unresolved_operations,[]);
   assert.equal(await journal.read('new-note'),null);assert.deepEqual(await readdir(dir),[]);
 });
-async function fixture(t:TestContext,mode:Mode='proxy',reuse=60,models:DaemonOptions['models']=['m','n']){
+async function fixture(t:TestContext,mode:Mode='proxy',reuse=60,models:DaemonOptions['models']=['m','n'],settings:Pick<DaemonOptions,'settlementWaitMs'>={}){
   const dir=await mkdtemp(join(tmpdir(),'zkapi-clientd-'));t.after(()=>rm(dir,{recursive:true,force:true}));
   const key=await importJournalKey(new Uint8Array(32).fill(4)),store=await NativeJournalStore.open(dir);
   const context:VerificationContext={deployment_id:'fixture',pool:'pool',vault_binding:field(1),state_key:[field(2),field(3)],cap_micro_usdc:'100',control_api_origin:'https://control.invalid',inference_api_origin:'https://proxy.invalid',quote_public_key:'00'.repeat(32),receipt_public_key:'11'.repeat(32),request_vk_sha256:'22'.repeat(32),tariff_hashes:['33'.repeat(32)]};
@@ -62,7 +62,7 @@ async function fixture(t:TestContext,mode:Mode='proxy',reuse=60,models:DaemonOpt
   const verifier:SessionVerifier={async prepare(){},async settle(_c,s,_p,_s,_r,operations){if(mode!=='proxy')assert.deepEqual(operations,[]);if(settlementRejected)throw Error('fixture invalid successor signature');if(missingSettlement&&operations.length)throw Error('fixture missing operation receipt');return{...s,anchor:field(8)};}};
   const clientOptions={context,journal,verifier,fetch:http,now:()=>now,directProviderBases:{direct_oa:'https://direct.invalid/v1',direct_openrouter:'https://direct.invalid/v1'},oaVerifier:{base:'https://verifier.invalid/api',stationId:'trusted-station'}};
   const client=new ControlClient(clientOptions);
-  const options={client,journal,noteId:'note',mode,models,keyReuseSeconds:reuse,now:()=>now,prepare:async(_model:string,c:any)=>{
+  const options={client,journal,noteId:'note',mode,models,keyReuseSeconds:reuse,now:()=>now,...settings,prepare:async(_model:string,c:any)=>{
     await pendingPreparation?.();
     const p:PreparedSession={request:{authorization:{version:'1',deployment_id:'fixture',pool:'pool',request_id:c.requestId,quote_hash:'00'.repeat(32),mode,control_secret_hash:c.controlHash,proxy_secret_hash:c.proxyHash},quote:{body:{quote_id:crypto.randomUUID(),deployment_id:'fixture',pool:'pool',mode,provider:mode==='direct_oa'?'oa':'openrouter',models:[mode==='proxy'?_model:'*'],tariff_hash:'33'.repeat(32),cap_micro_usdc:'100',issued_at:String(now),expires_at:String(now+120n),session_ttl_seconds:'60',max_concurrency:'4',control_api_origin:context.control_api_origin,inference_api_origin:context.inference_api_origin},quote_hash:'00'.repeat(32),signature:'fixture'},public_inputs:Array(12).fill(field(1)),proof:{backend:'groth16_bn254',proof:'fixture'}},control_token:c.controlToken,proxy_token:c.proxyToken,tariff:{tariff_hash:'33'.repeat(32),version:'1',provider:'openrouter',model:'m',pricing_basis:'fixture',valid_from:'0',valid_until:'1000',rates:[],operator_fee_micro_usdc:'0'},rerandomization:field(2)};return{prepared:p,root:field(2)};}};
   const service=new ClientDaemon(options);await service.start();
@@ -223,6 +223,91 @@ test('reuse zero closes after every request and duplicate operation cannot cross
   const f=await fixture(t,'proxy',0),id=crypto.randomUUID();await(await f.service.infer('/v1/responses',body,id)).text();
   await assert.rejects(f.service.infer('/v1/responses',body,id),DaemonConflict);await(await f.service.infer('/v1/responses',body)).text();assert.deepEqual(f.counts(),{creates:2,closes:2,sends:2});
 });
+test('opt-in native wait admits exact new tool continuation once only after verified prior settlement',async t=>{
+  const f=await fixture(t,'direct_openrouter',0,['m'],{settlementWaitMs:3_000});f.closeDraining();
+  const firstId=crypto.randomUUID(),nextId=crypto.randomUUID();
+  await(await f.service.infer('/v1/chat/completions',body,firstId)).text();
+  let observed!:()=>void;const firstPoll=new Promise<void>(resolve=>{observed=resolve;});
+  f.beforeClose(async()=>{observed();});
+  const continuation=new TextEncoder().encode(JSON.stringify({model:'m',stream:true,messages:[{role:'tool',tool_call_id:'read-one',content:'public fixture'}]}));
+  const exact=new TextDecoder().decode(continuation),request=f.service.infer('/v1/chat/completions',continuation,nextId);
+  continuation.fill(0);await firstPoll;
+  assert.equal(f.counts().creates,1);assert.equal(f.counts().sends,1);
+  assert.equal((await f.journal.read('note'))!.value.pending!.operations.some(o=>o.id===nextId),false);
+  // The provider clock advances across its grace; no inference is replayed to wait.
+  f.advance();f.closeDraining(false);
+  const response=await request;await response.text();
+  assert.equal(response.headers.get('X-Zkapi-Operation-Id'),nextId);
+  assert.equal(f.counts().creates,2);assert.equal(f.counts().sends,2);
+  assert.deepEqual(f.sentRequests.map(r=>r.id),[firstId,nextId]);assert.equal(f.sentRequests[1].body,exact);
+  assert.equal((await f.journal.read('note'))!.value.pending,null);
+  await assert.rejects(f.service.infer('/v1/chat/completions',body,nextId),DaemonConflict);
+});
+test('native settlement wait fails closed on deadline, unavailable control or invalid signed successor',async t=>{
+  for(const failure of ['deadline','outage','signature']) {
+    const f=await fixture(t,'direct_openrouter',0,['m'],{settlementWaitMs:100});f.closeDraining();
+    await(await f.service.infer('/v1/chat/completions',body)).text();
+    if(failure==='outage')f.controlUnavailable();
+    if(failure==='signature'){f.closeDraining(false);f.rejectSettlement();}
+    const id=crypto.randomUUID();await assert.rejects(f.service.infer('/v1/chat/completions',body,id),DaemonConflict);
+    assert.equal(f.counts().creates,1);assert.equal(f.counts().sends,1);
+    assert.ok((await f.journal.read('note'))!.value.pending);
+    assert.equal((await f.journal.read('note'))!.value.pending!.operations.some(o=>o.id===id),false);
+    // Failure consumes the volatile completion marker; another request cannot
+    // restart automatic polling. An explicit recovery decision is required.
+    const calls=f.controlRequests();await assert.rejects(f.service.infer('/v1/chat/completions',body,id),DaemonConflict);
+    assert.equal(f.controlRequests(),calls);
+  }
+});
+test('initial post-response close failure requires explicit recovery before native settlement wait',async t=>{
+  const f=await fixture(t,'direct_openrouter',0,['m'],{settlementWaitMs:3_000});f.rejectSettlement();
+  await(await f.service.infer('/v1/chat/completions',body)).text();
+  assert.ok((await f.journal.read('note'))!.value.pending);
+  f.rejectSettlement(false);const calls=f.controlRequests();
+  await assert.rejects(f.service.infer('/v1/chat/completions',body),DaemonConflict);
+  assert.equal(f.controlRequests(),calls);assert.equal(f.counts().creates,1);assert.equal(f.counts().sends,1);
+  await f.service.management('recover');assert.equal((await f.journal.read('note'))!.value.pending,null);
+});
+test('native settlement wait cancels or shuts down without admitting its queued operation',async t=>{
+  for(const stop of ['abort','shutdown']) {
+    const f=await fixture(t,'direct_openrouter',0,['m'],{settlementWaitMs:3_000});f.closeDraining();
+    await(await f.service.infer('/v1/chat/completions',body)).text();
+    let observed!:()=>void;const firstPoll=new Promise<void>(resolve=>{observed=resolve;});f.beforeClose(async()=>{observed();});
+    const abort=new AbortController(),id=crypto.randomUUID(),request=f.service.infer('/v1/chat/completions',body,id,'',abort.signal);
+    const rejected=assert.rejects(request,stop==='abort'?{name:'AbortError'}:DaemonConflict);
+    await firstPoll;if(stop==='abort')abort.abort();else await f.service.shutdown();await rejected;
+    assert.equal(f.counts().creates,1);assert.equal(f.counts().sends,1);
+    assert.ok((await f.journal.read('note'))!.value.pending);
+  }
+});
+test('native wait does not authorize after unknown response, cancellation, restart or disabled opt-in',async t=>{
+  for(const boundary of ['unknown','canceled','restart','default']) {
+    const f=await fixture(t,'direct_openrouter',0,['m'],boundary==='default'?{}:{settlementWaitMs:3_000});f.closeDraining();
+    if(boundary==='unknown'){f.lose();await assert.rejects(f.service.infer('/v1/chat/completions',body));}
+    else if(boundary==='canceled'){
+      f.pendingInference(async()=>new Response(new ReadableStream({start(c){c.enqueue(new Uint8Array([1]));}})));
+      const response=await f.service.infer('/v1/chat/completions',body);await response.body!.cancel();
+    } else await(await f.service.infer('/v1/chat/completions',body)).text();
+    const service=boundary==='restart'?f.restart():f.service;if(boundary==='restart')await service.start();
+    const calls=f.controlRequests();await assert.rejects(service.infer('/v1/chat/completions',body),DaemonConflict);
+    assert.equal(f.counts().creates,1);assert.equal(f.counts().sends,1);
+    if(boundary!=='default')assert.equal(f.controlRequests(),calls);
+  }
+});
+test('settlement-wait policy rejects incompatible modes, reuse and invalid bounds before AUTH',async t=>{
+  for(const [mode,reuse,settlementWaitMs] of [['proxy',0,1],['direct_oa',0,1],['direct_openrouter',60,1],
+    ['direct_openrouter',0,-1],['direct_openrouter',0,180001],['direct_openrouter',0,1.5]] as const)
+    await assert.rejects(fixture(t,mode,reuse,['m'],{settlementWaitMs}),/settlement wait requires/);
+});
+test('disconnect during native new-operation preparation prevents its AUTH and inference',async t=>{
+  const f=await fixture(t,'direct_openrouter',0,['m'],{settlementWaitMs:3_000});
+  let observed!:()=>void,release!:()=>void;
+  const started=new Promise<void>(resolve=>{observed=resolve;}),blocked=new Promise<void>(resolve=>{release=resolve;});
+  f.pendingPreparation(async()=>{observed();await blocked;});
+  const abort=new AbortController(),request=f.service.infer('/v1/chat/completions',body,crypto.randomUUID(),'',abort.signal);
+  const rejected=assert.rejects(request,{name:'AbortError'});await started;abort.abort();release();await rejected;
+  assert.deepEqual(f.counts(),{creates:0,closes:0,sends:0});assert.equal((await f.journal.read('note'))!.value.pending,null);
+});
 test('uncertain direct inference is never replayed after restart; volatile key, same mode',async t=>{
   const f=await fixture(t,'direct_openrouter'),id=crypto.randomUUID();f.lose();await assert.rejects(f.service.infer('/v1/chat/completions',body,id));
   assert.equal((await f.journal.read('note'))!.value.pending!.providerKey,undefined);const resumed=f.restart();await resumed.start();
@@ -358,4 +443,12 @@ test('already disconnected Unix response cancels a late body without waiting for
   const req=request({socketPath:socket,path:'/'});req.on('error',()=>{});req.end();await requestReceived;
   req.destroy();await disconnected;release();
   await Promise.race([complete,new Promise((_,reject)=>setTimeout(()=>reject(Error('late body was not canceled')),1000))]);assert.equal(canceled,true);
+});
+
+test('native reviewed streaming and tool restrictions fail before AUTH and preserve the journal', async t => {
+  const f=await fixture(t,'direct_openrouter',0,[{id:'m',provider:'openrouter',apis:['chat'],capabilities:{streaming:false,tools:false}}]);
+  for(const extra of [{stream:true},{tools:[]},{tool_choice:'none'},{functions:[]},{parallel_tool_calls:false}]) {
+    await assert.rejects(f.service.infer('/v1/chat/completions',new TextEncoder().encode(JSON.stringify({model:'m',...extra}))),/capability is not configured/);
+  }
+  assert.deepEqual(f.counts(),{creates:0,closes:0,sends:0});assert.equal((await f.journal.read('note'))!.value.pending,null);
 });

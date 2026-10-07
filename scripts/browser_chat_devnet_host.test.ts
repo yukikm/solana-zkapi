@@ -73,6 +73,76 @@ test('direct AUTH rejects schema, mode, key, proof, quote signature and cap tamp
   assert.equal(reserves,0);assert.equal(forwards,0);
 });
 
+test('suspended direct admission passes exact recovery policy and preserves close/clearance routes',async t=>{
+  const f=await fixture(), path=await output(t), allowed:boolean[]=[], forwarded:string[]=[];
+  const relay=directControlRelay({...f,budget:{async reserve(_request,_digest,allowNew){allowed.push(allowNew!);}},
+    async forward(path){forwarded.push(path);return{status:200,bytes:Buffer.from('{}')};}});
+  const host=await startUiHost({port:0,output:path,application:'browser-chat',allowTransactions:true,allowNewAdmissions:false,controlRelay:relay});t.after(()=>host.close());
+  assert.equal((await post(host.origin,'/control/zkapi/v1/sessions',Buffer.from(jcsBytes(f.auth)),{authorization:f.authorization})).status,200);
+  assert.deepEqual(allowed,[false]);
+  assert.equal((await post(host.origin,'/control/zkapi/v1/sessions/'+id+'/close',Buffer.alloc(0),{authorization:f.authorization})).status,200);
+  assert.equal((await post(host.origin,'/control/zkapi/v1/withdraw/clearance',Buffer.from(jcsBytes({nullifier:field})))).status,200);
+  assert.equal(forwarded.length,3);
+  const status=await(await fetch(host.origin+'/relay-status')).json() as any;
+  assert.equal(status.admission,'suspended');assert.equal(status.recovery,'enabled');assert.equal(status.readiness,'not_checked');
+  assert.equal(status.routes.rpc,'missing');assert.equal(status.routes.control,'configured');
+  assert.equal(status.signer,'not_checked');assert.equal(status.provider_credit,'not_checked');
+});
+
+test('public AUTH requires invitation for a new reservation and preserves exact recovery without it',async t=>{
+  const f=await fixture(), invitation=Buffer.alloc(32,61).toString('base64url'), wrong=Buffer.alloc(32,62).toString('base64url');
+  const admissionTokenSha256=await sha256Hex(Buffer.from(invitation)), reservations=new Map<string,string>();
+  const forwarded:Array<{path:string;headers:Record<string,string>}>=[], allowNewValues:boolean[]=[];
+  const relay=directControlRelay({...f,budget:{async reserve(requestId,digest,allowNew){
+    allowNewValues.push(allowNew!);const previous=reservations.get(requestId);
+    if(previous!==undefined)assert.equal(previous,digest);else{assert.equal(allowNew,true,'new admission requires invitation');reservations.set(requestId,digest);}
+  }},async forward(path,_method,headers){forwarded.push({path,headers});return{status:200,bytes:Buffer.from('{}')};}});
+  const publicOrigin='https://operator.example.com', browserOrigin='https://chat.example.com';
+  const host=await startUiHost({port:0,application:'public-api',publicOrigin,allowedBrowserOrigins:[browserOrigin],allowNativeRequests:true,
+    allowTransactions:true,allowNewAdmissions:true,admissionTokenSha256,controlRelay:relay});t.after(()=>host.close());
+  const address=host.server.address();assert.ok(address&&typeof address==='object');const base='http://127.0.0.1:'+address.port;
+  const headers={host:new URL(publicOrigin).host,origin:browserOrigin,authorization:f.authorization};const data=Buffer.from(jcsBytes(f.auth));
+  for(const token of [undefined,wrong,'invalid']){
+    const result=await post(base,'/zkapi/v1/sessions',data,{...headers,...(token?{'x-zkapi-admission':token}:{})});
+    assert.equal(result.status,400);assert.equal(reservations.size,0);assert.equal(forwarded.length,0);assert.ok(!result.body.includes(token??invitation));
+  }
+  assert.equal((await post(base,'/zkapi/v1/sessions',data,{...headers,'x-zkapi-admission':invitation})).status,200);
+  assert.equal(reservations.size,1);assert.equal(forwarded.length,1);assert.deepEqual(forwarded[0].headers,{authorization:f.authorization});
+  for(const token of [undefined,wrong])assert.equal((await post(base,'/zkapi/v1/sessions',data,{...headers,...(token?{'x-zkapi-admission':token}:{})})).status,200);
+  assert.deepEqual(allowNewValues,[false,false,false,true,false,false]);assert.equal(reservations.size,1);assert.equal(forwarded.length,3);
+  assert.equal((await post(base,'/zkapi/v1/sessions',Buffer.from(JSON.stringify(f.auth,null,2)),headers)).status,400);assert.equal(forwarded.length,3);
+  assert.equal((await post(base,'/zkapi/v1/sessions/'+id+'/close',Buffer.alloc(0),{...headers,'x-zkapi-admission':invitation})).status,400);
+  assert.equal((await post(base,'/zkapi/v1/sessions/'+id+'/close',Buffer.alloc(0),headers)).status,200);
+  assert.ok(!JSON.stringify(forwarded).includes(invitation));assert.ok(!JSON.stringify(forwarded).includes(admissionTokenSha256));
+  await assert.rejects(startUiHost({port:0,application:'public-api',publicOrigin,allowedBrowserOrigins:[browserOrigin],allowNativeRequests:true,
+    allowTransactions:true,allowNewAdmissions:true,controlRelay:relay}),/invitation digest/);
+});
+
+test('public HTTPS origin is explicit and same-origin only behind the loopback listener',async t=>{
+  const path=await output(t), publicOrigin='https://chat.example';let calls=0;
+  const host=await startUiHost({port:0,output:path,application:'browser-chat',publicOrigin,allowTransactions:true,allowNewAdmissions:false,
+    controlRelay:async()=>{calls++;return{status:200,bytes:Buffer.from('{}')};}});t.after(()=>host.close());
+  assert.equal(host.origin,publicOrigin);
+  const address=host.server.address();assert.ok(address&&typeof address==='object');
+  const transport='http://127.0.0.1:'+address.port;
+  const headers={host:'chat.example',origin:publicOrigin};
+  assert.equal((await post(transport,'/control/zkapi/v1/quotes',Buffer.from('{}'),headers)).status,200);assert.equal(calls,1);
+  for(const extra of [{host:'attacker.example'},{origin:'https://attacker.example'},{'sec-fetch-site':'cross-site'},{'x-forwarded-host':'chat.example',host:'attacker.example'}])
+    assert.equal((await post(transport,'/control/zkapi/v1/quotes',Buffer.from('{}'),{...headers,...extra})).status,400);
+  assert.equal(calls,1);
+  // Native fetch can replace a caller-supplied Host with the URL authority.
+  // Model the TLS proxy's actual HTTP forwarding with an exact native Host.
+  const status=await new Promise<{status:number;cors:string|undefined}>((ok,fail)=>{
+    const r=request(transport+'/relay-status',{headers:{host:'chat.example'}},res=>{
+      res.resume();res.on('end',()=>ok({status:res.statusCode!,cors:res.headers['access-control-allow-origin'] as string|undefined}));
+    });r.on('error',fail);r.end();
+  });assert.equal(status.status,200);assert.equal(status.cors,undefined);
+  for(const url of ['http://chat.example','https://chat.example/path','https://user:secret@chat.example','https://chat.example?token=secret'])
+    await assert.rejects(startUiHost({port:0,output:path,application:'browser-chat',publicOrigin:url,allowNewAdmissions:false}));
+  await assert.rejects(startUiHost({port:0,output:path,application:'browser-chat',publicOrigin}));
+  await assert.rejects(startUiHost({port:0,output:path,publicOrigin,allowNewAdmissions:false}));
+});
+
 test('budget exhaustion blocks AUTH but permits exact control reads, close and withdrawal clearance',async()=>{
   const f=await fixture(), calls:string[]=[];let reserves=0;
   const relay=directControlRelay({...f,budget:{async reserve(){reserves++;throw Error('budget exhausted');}},async forward(path){calls.push(path);return{status:200,bytes:Buffer.from('{}')};}});
@@ -150,6 +220,12 @@ test('direct budget status exposes totals only, counts all legacy rows, and exac
   const before=await readFile(join(stateDir,'budget-state.json')), initial=await budget.status();
   assert.deepEqual(await readFile(join(stateDir,'budget-state.json')),before);assert.equal(initial.reserved_requests,1);assert.equal(initial.available_requests,9);
   await budget.reserve(id,digest);await budget.reserve(id,digest);
+  const suspended=await loadBrowserChatBudget(config,manifest,tariff,'openai/gpt-4o-mini',true,false);
+  assert.equal((await suspended.status()).available_requests,0);assert.equal((await suspended.status()).allowTransactions,true);
+  await suspended.reserve(id,digest);
+  const beforeSuspended=await readFile(join(stateDir,'budget-state.json'));
+  await assert.rejects(suspended.reserve('12345678-1234-4123-8123-999999999998',digest));
+  assert.deepEqual(await readFile(join(stateDir,'budget-state.json')),beforeSuspended);
   await assert.rejects(budget.reserve(id,'cd'.repeat(32)));assert.equal((await budget.status()).reserved_requests,2);
   for(let i=0;i<8;i++)await budget.reserve('12345678-1234-4123-8123-'+String(i).padStart(12,'0'),digest);
   assert.equal((await budget.status()).available_requests,0);await budget.reserve(id,digest);

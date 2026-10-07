@@ -50,7 +50,8 @@ def main() -> None:
     started = time.monotonic()
     source_paths = [*sorted((ROOT / 'packages/sdk/src').glob('*.ts')),
                     *[ROOT / 'packages/sdk' / name for name in ['package.json', 'build.mjs', 'tsconfig.json', 'tsconfig.build.json', 'README.md', 'DISTRIBUTION.md', 'INTERNALS.md', 'LICENSE']],
-                    *[ROOT / 'packages/sdk/test' / name for name in ['client.test.ts', 'chat.test.ts', 'clientd-models.test.ts', 'trust.test.ts', 'deployment.test.ts', 'session-snapshot-runtime.ts', 'kit-helpers.ts']],
+                    *[ROOT / 'packages/sdk/test' / name for name in ['client.test.ts', 'chat.test.ts', 'clientd-models.test.ts', 'trust.test.ts', 'deployment.test.ts', 'public-profile.test.ts', 'public-profile-fixture.ts', 'chain-fixture.ts', 'session-snapshot-runtime.ts', 'kit-helpers.ts']],
+                    *sorted((ROOT / 'tools/public-devnet-consumer').glob('*.*')),
                     Path(__file__).resolve()]
     source_inputs = {str(path.relative_to(ROOT)): sha(path) for path in source_paths}
     report = {'schema': 1, 'scope': 'Actual npm tarball in an independent temporary application; local fixtures, no live provider or chain actions',
@@ -123,13 +124,14 @@ def main() -> None:
             run('declarations', ['node', 'node_modules/typescript/bin/tsc', '-p', 'tsconfig.json'], consumer)
             # Reuse source tests but redirect every runtime library import to the
             # installed package. Fixtures are explicit local copies, not imports.
-            test_names = ['client.test.ts', 'chat.test.ts', 'clientd-models.test.ts', 'trust.test.ts', 'deployment.test.ts', 'kit-helpers.ts']
+            test_names = ['client.test.ts', 'chat.test.ts', 'clientd-models.test.ts', 'trust.test.ts', 'deployment.test.ts', 'public-profile.test.ts', 'public-profile-fixture.ts', 'chain-fixture.ts', 'kit-helpers.ts']
             if args.real_provers:
                 test_names.append('session-snapshot-runtime.ts')
             for name in test_names:
                 content = (ROOT / 'packages/sdk/test' / name).read_text()
                 content = re.sub(r"(['\"])\.\./src/([a-z0-9-]+)\.ts\1", lambda m: "'@zkapi/solana-sdk" + ('' if m[2] == 'client' else '/' + m[2]) + "'", content)
                 content = content.replace("new URL('../../../' + path, import.meta.url)", "new URL('./fixtures/' + path, import.meta.url)")
+                content = content.replace("new URL('../../../'+p,import.meta.url)", "new URL('./fixtures/'+p,import.meta.url)")
                 for name_in_fixture in re.findall(r"(?<![.\w])read\('([^']+)'\)", content):
                     path = consumer / 'fixtures' / name_in_fixture
                     path.parent.mkdir(parents=True, exist_ok=True)
@@ -140,6 +142,70 @@ def main() -> None:
             counts = {key: int(value) for key, value in re.findall(r'^# (tests|pass|fail|cancelled|skipped|todo) (\d+)$', test_output, re.MULTILINE)}
             assert set(counts) == {'tests', 'pass', 'fail', 'cancelled', 'skipped', 'todo'} and counts['pass'] > 0 and counts['tests'] == counts['pass'] and all(counts[key] == 0 for key in ['fail', 'cancelled', 'skipped', 'todo']), 'installed suite must execute every test without skips'
             report['installed_tests'] = counts
+            example = consumer / 'public-consumer'
+            example.mkdir()
+            for source in sorted((ROOT / 'tools/public-devnet-consumer').glob('*.*')):
+                shutil.copyfile(source, example / source.name)
+            run('public-consumer-help', ['node', 'public-consumer/cli.mjs', '--help'], consumer)
+            run('public-consumer-network', ['node', '--test', 'public-consumer/native-inputs.test.mjs'], consumer)
+            run('public-consumer-browser-adapter', ['node', '--experimental-test-module-mocks', '--test',
+                'public-consumer/browser.test.mjs'], consumer)
+            (consumer / 'public-consumer-install.test.mjs').write_text("""import test from 'node:test';
+import assert from 'node:assert/strict';
+import { mkdtemp, readFile, stat, realpath, symlink } from 'node:fs/promises';
+import { join } from 'node:path';
+import { tmpdir } from 'node:os';
+import { publicProfileFixture } from './public-profile-fixture.ts';
+import { loadPublicDeploymentProfile } from '@zkapi/solana-sdk/public-profile';
+import { jcsBytes, sha256Hex } from '@zkapi/solana-sdk/trust';
+import { installNativeInputs } from './public-consumer/native-inputs.mjs';
+for (const schema of [1,2]) test('native schema '+schema+' files retain authenticated notices; no financial sends or overwrite', async () => {
+  const f = await publicProfileFixture();
+  const notice=new TextEncoder().encode('Synthetic upstream license notice');
+  if(schema===2) {
+    const descriptor={...f.descriptor,schema:2,notices:{'runtime.json':'NOTICE.txt'},files:{...f.descriptor.files,
+      'NOTICE.txt':{sha256:await sha256Hex(notice),bytes:notice.length}}};
+    const bytes=jcsBytes(descriptor);f.files.set('https://assets.example.com/NOTICE.txt',notice);
+    f.files.set(f.profile.bundle.url,bytes);f.profile.bundle.sha256=await sha256Hex(bytes);
+  }
+  const loaded = await loadPublicDeploymentProfile(f.profileUrl, {profileSha256: await f.profileSha256(), fetch:f.fetcher});
+  if(schema===2)loaded.assets.notices['runtime.json'].fill(0);
+  const root = await realpath(await mkdtemp(join(tmpdir(),'zkapi-profile-install-'))), destination=join(root,'inputs');
+  const before=f.calls.length;
+  const receipt=await installNativeInputs(loaded,destination,{mode:'direct'});
+  assert.equal(f.calls.length,before); assert.equal(receipt.custodyInitialized,false); assert.equal(receipt.funded,false);
+  const runtimeBytes=await readFile(receipt.runtime), runtime=JSON.parse(runtimeBytes);
+  assert.equal(await sha256Hex(runtimeBytes),receipt.runtimeSha256);
+  assert.equal(runtime.key_reuse_seconds,0); assert.deepEqual(runtime.models[0].capabilities,{streaming:true,tools:false});
+  assert.equal(runtime.settlement_wait_ms,120000);
+  assert.equal(runtime.models[0].tariff,join(destination,'tariff-0.json'));
+  assert.equal(runtime.rpc,f.profile.rpcUrl); assert.equal(runtime.indexer,f.profile.indexerOrigin);
+  assert.deepEqual(runtime.policy,f.trust); assert.equal(runtime.mode,'direct_openrouter');
+  assert.equal((await stat(destination)).mode & 0o777,0o700); assert.equal((await stat(receipt.runtime)).mode & 0o777,0o600);
+  const noticeIndexBytes=await readFile(receipt.notices), noticeIndex=JSON.parse(noticeIndexBytes);
+  assert.equal(await sha256Hex(noticeIndexBytes),receipt.noticesSha256);
+  assert.equal(noticeIndex.schema,1);
+  if(schema===1)assert.deepEqual(noticeIndex.notices,{});
+  else {
+    assert.deepEqual(noticeIndex.notices,{'runtime.json':{file:'notice-0.bin',sha256:await sha256Hex(notice),bytes:notice.length}});
+    const noticePath=join(destination,noticeIndex.notices['runtime.json'].file);
+    assert.deepEqual(new Uint8Array(await readFile(noticePath)),notice);
+    assert.equal((await stat(noticePath)).mode & 0o777,0o600);
+  }
+  assert(!('journal' in runtime)); assert(!('custody' in runtime));
+  await assert.rejects(installNativeInputs(loaded,destination,{mode:'direct'}));
+  assert.deepEqual(await readFile(receipt.runtime),runtimeBytes);
+  await assert.rejects(installNativeInputs({...loaded},join(root,'forged'),{mode:'direct'}));
+  await symlink(root,join(root,'alias'));
+  await assert.rejects(installNativeInputs(loaded,join(root,'alias','other'),{mode:'direct'}));
+});
+""")
+            run('public-consumer-install', ['node', '--test', 'public-consumer-install.test.mjs'], consumer)
+            (consumer / 'public-consumer.tsconfig.json').write_text(json.dumps({'compilerOptions': {
+                'target': 'ES2023', 'module': 'NodeNext', 'moduleResolution': 'NodeNext', 'strict': True,
+                'noEmit': True, 'lib': ['ES2023', 'DOM'], 'types': ['node']},
+                'files': ['public-consumer/browser.ts', 'public-consumer/worker.ts']}))
+            run('public-consumer-types', ['node', 'node_modules/typescript/bin/tsc', '-p', 'public-consumer.tsconfig.json'], consumer)
             if args.real_provers:
                 artifacts = consumer / 'provers'
                 artifacts.mkdir()
@@ -157,7 +223,7 @@ def main() -> None:
                 counts = {key: int(value) for key, value in re.findall(r'^# (tests|pass|fail|cancelled|skipped|todo) (\d+)$', prover_output, re.MULTILINE)}
                 assert counts == {'tests': 1, 'pass': 1, 'fail': 0, 'cancelled': 0, 'skipped': 0, 'todo': 0}
                 report['real_prover_tests'] = counts
-            (consumer / 'browser.ts').write_text("export { createZkApiClient } from '@zkapi/solana-sdk';\nexport { createBrowserClient } from '@zkapi/solana-sdk/browser';\nexport { readChatText, readChatDeltas } from '@zkapi/solana-sdk/chat';\nexport { loadDeploymentAssets } from '@zkapi/solana-sdk/deployment';\n")
+            (consumer / 'browser.ts').write_text("export { createZkApiClient } from '@zkapi/solana-sdk';\nexport { createBrowserClient } from '@zkapi/solana-sdk/browser';\nexport { readChatText, readChatDeltas } from '@zkapi/solana-sdk/chat';\nexport { loadDeploymentAssets } from '@zkapi/solana-sdk/deployment';\nexport { loadPublicDeploymentProfile, preflightPublicDeployment } from '@zkapi/solana-sdk/public-profile';\nexport { openChat } from './public-consumer/browser.ts';\n")
             (consumer / 'worker.ts').write_text("import '@zkapi/solana-sdk/prover-worker';\n")
             (consumer / 'build.mjs').write_text("""import { build } from 'esbuild';
 import assert from 'node:assert/strict';

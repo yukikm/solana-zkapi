@@ -15,10 +15,16 @@ generated third-party material or the separately pinned upstream repository.
   include the bundled Node.js LICENSE, Go LICENSE/PATENTS, and an inventory of
   Rust dependency license declarations and available notices. Declaration-only
   crate entries are identified explicitly; no copyright holders are invented.
-- The four upstream request/withdrawal PK/VK files under `protocol/setup/v2` have
-  no separately established redistribution terms in this review. The Devnet
-  Preview release does not redistribute the prepared complete deployment bundle.
-  This does not change any existing deployment pins or local test assets.
+- The exact four upstream request/withdrawal PK/VK files under
+  `protocol/setup/v2` are now reviewed under the Apache-2.0 option of their
+  original upstream `MIT OR Apache-2.0` declaration. The
+  [four-file distribution record](deploy/public-devnet/upstream-setup-distribution.json)
+  pins their unchanged bytes, upstream revisions and required notices; the
+  [review follow-up](docs/evidence/PD-02-redistribution-followup.md) explains the
+  scope. This decision does not license other upstream directories or establish
+  a new setup ceremony. The immutable `v0.1.0-devnet.1` and `v0.2.0-devnet.1`
+  releases continue to omit the complete deployment bundle. Their assets and
+  existing deployment pins are unchanged.
 
 The SDK tarball includes its MIT LICENSE. A deployment operator must supply
 reviewed, appropriately licensed proof assets and configuration separately.

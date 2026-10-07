@@ -1,6 +1,6 @@
 {
   "name": "@zkapi/solana-sdk",
-  "version": "0.2.0-devnet.1",
+  "version": "0.2.0-devnet.2",
   "private": true,
   "type": "module",
   "exports": {
@@ -111,6 +111,10 @@
     "./solana-rpc": {
       "types": "./dist/solana-rpc.d.ts",
       "import": "./dist/solana-rpc.js"
+    },
+    "./public-profile": {
+      "types": "./dist/public-profile.d.ts",
+      "import": "./dist/public-profile.js"
     }
   },
   "dependencies": {

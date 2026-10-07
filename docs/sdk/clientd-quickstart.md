@@ -49,6 +49,31 @@ packages need separate builds and verification.
 
 ## Create a private profile
 
+For the unreleased capability-aware candidate, the
+[public-profile consumer](../../tools/public-devnet-consumer/README.md#derive-native-setup-files)
+derives the files below from one independently authenticated public profile and
+its verified assets into a new directory. Use its recorded runtime digest with
+`clientd setup`. This requires a matching candidate native build; do not assume
+the immutable historical release includes the new profile/capability support.
+
+The candidate public gateway requires an invitation for new AUTH reservations.
+The new native candidate supports a private admission token file through
+`network.json`'s optional `admission: {origin, token_file}` configuration; the
+consumer helper accepts its path with `--admission-token-file`. Keep that file
+owner-only and separate from public profiles, runtime artifacts and logs. The
+egress adapter sends the invitation only to the exact configured gateway
+session-creation POST. This candidate integration does not modify the immutable
+historical release or establish the PD-09 live public-transport lifecycle,
+which remains unverified.
+
+For direct OpenRouter, the helper's zero-reuse runtime also sets
+`settlement_wait_ms: 120000`. A new explicit request can wait for signed
+settlement of a fully consumed same-process response before its first AUTH.
+Unknown or canceled responses and restarts still require explicit recovery.
+The optional setting defaults to zero in existing runtimes; it does not change
+historical profiles or retry inference. Configure the external application's
+response-header timeout to accommodate the wait and proof preparation.
+
 Obtain from the deployment maintainer:
 
 - A reviewed `runtime.json` and its independently reviewed SHA-256, including

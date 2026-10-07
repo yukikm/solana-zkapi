@@ -8,6 +8,8 @@ export interface DaemonModelPolicy {
   id: string;
   provider: Quote['body']['provider'];
   apis: readonly DaemonApi[];
+  /** Optional legacy-compatible restrictions from a reviewed public profile. */
+  capabilities?: { streaming: boolean; tools: boolean };
 }
 export interface DaemonModel extends DaemonModelPolicy { tariff: Tariff }
 export interface DaemonModelSource extends DaemonModelPolicy { tariff: string }
@@ -31,6 +33,18 @@ export function validateDaemonModelPolicy(mode: Mode, model: DaemonModelPolicy):
     || !Array.isArray(model.apis) || !model.apis.length || new Set(model.apis).size !== model.apis.length
     || model.apis.some(api => !supportedDaemonApis(mode, model.provider).includes(api))) {
     throw new Error('unique supported APIs and a concrete model ID are required');
+  }
+  if (model.capabilities !== undefined && (!model.capabilities ||
+    Object.keys(model.capabilities).sort().join(',') !== 'streaming,tools' ||
+    typeof model.capabilities.streaming !== 'boolean' || typeof model.capabilities.tools !== 'boolean')) {
+    throw new Error('explicit streaming and tools capabilities required');
+  }
+}
+
+export function validateModelRequestCapabilities(model: Pick<DaemonModelPolicy, 'capabilities'>, body: Record<string, unknown>): void {
+  if (model.capabilities && (!model.capabilities.streaming && body.stream === true ||
+    !model.capabilities.tools && ['tools', 'tool_choice', 'parallel_tool_calls', 'functions', 'function_call'].some(key => Object.hasOwn(body, key)))) {
+    throw new Error('request capability is not configured for this model');
   }
 }
 
@@ -56,8 +70,9 @@ export async function loadDaemonModels(config: {
       model = { id: source, provider, apis: supportedDaemonApis(input.mode, provider), tariff };
     } else {
       if (!source || typeof source.tariff !== 'string' || !source.tariff
-        || Object.keys(source).sort().join(',') !== 'apis,id,provider,tariff') throw new Error('complete per-model configuration required');
-      model = { id: source.id, provider: source.provider, apis: [...source.apis], tariff: structuredClone(await readTariff(source.tariff)) };
+        || !['apis,id,provider,tariff', 'apis,capabilities,id,provider,tariff'].includes(Object.keys(source).sort().join(','))) throw new Error('complete per-model configuration required');
+      model = { id: source.id, provider: source.provider, apis: [...source.apis], tariff: structuredClone(await readTariff(source.tariff)),
+        ...(source.capabilities === undefined ? {} : { capabilities: structuredClone(source.capabilities) }) };
     }
     validateDaemonModelPolicy(input.mode, model);
     const { tariff_hash: hash, ...body } = model.tariff;

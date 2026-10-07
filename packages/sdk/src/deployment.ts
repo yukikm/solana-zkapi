@@ -4,6 +4,8 @@ import { parseStrictJson, sha256Hex, verifyManifest, verifyArtifactBundle,
 
 const artifactNames = ['idl', 'requestPk', 'requestVk', 'withdrawalPk', 'withdrawalVk', 'treePk', 'treeVk', 'treeSourceBundle', 'treeVerifierConstants'] as const;
 const maximumTotalBytes = 512 * 1024 * 1024;
+const maximumNoticeBytes = 1024 * 1024, maximumTotalNoticeBytes = 4 * 1024 * 1024;
+const noticeName = /^[a-zA-Z0-9][a-zA-Z0-9.-]{0,127}$/;
 export interface LoadedDeploymentAssets {
   manifest: Uint8Array;
   trust: ManifestTrustPolicy;
@@ -11,6 +13,8 @@ export interface LoadedDeploymentAssets {
   wasm: Uint8Array;
   wasmSha256: string;
   verifiedManifest: VerifiedManifest;
+  /** Authenticated schema-2 public license/provenance files; empty for schema 1. */
+  notices: Record<string, Uint8Array>;
 }
 export interface LoadDeploymentAssetsOptions {
   /** Independently installed SHA-256 of exact bundle.json bytes. */
@@ -86,15 +90,28 @@ export async function loadDeploymentAssets(bundleUrl: string | URL, options: Loa
     const descriptorBytes = await get(url, 1024 * 1024);
     requireValue(await sha256Hex(descriptorBytes) === expected);
     const descriptor: unknown = parseStrictJson(descriptorBytes);
-    exact(descriptor, ['schema', 'trust', 'manifest', 'artifacts', 'wasm', 'files']);
-    requireValue(descriptor.schema === 1);
+    object(descriptor);
+    requireValue(descriptor.schema === 1 || descriptor.schema === 2);
+    exact(descriptor, ['schema', 'trust', 'manifest', 'artifacts', 'wasm', 'files', ...(descriptor.schema === 2 ? ['notices'] : [])]);
     object(descriptor.trust); exact(descriptor.artifacts, [...artifactNames, 'additional']);
     object(descriptor.artifacts.additional); exact(descriptor.wasm, ['path', 'sha256']); object(descriptor.files);
+    const noticeFiles: Record<string, string> = descriptor.schema === 2 ? descriptor.notices : {};
+    object(noticeFiles);
+    const noticeNames = Object.keys(noticeFiles);
+    requireValue(descriptor.schema === 1 || noticeNames.length > 0 && noticeNames.length <= 32);
+    requireValue(noticeNames.every(name => noticeName.test(name) && name !== 'bundle.json'));
     const names = [descriptor.manifest, ...artifactNames.map(name => descriptor.artifacts[name]),
-      ...Object.values(descriptor.artifacts.additional), descriptor.wasm.path];
+      ...Object.values(descriptor.artifacts.additional), descriptor.wasm.path, ...Object.values(noticeFiles)];
     requireValue(names.every(name => typeof name === 'string' && /^[a-zA-Z0-9][a-zA-Z0-9.-]*$/.test(name) && name !== '.' && name !== '..'));
     requireValue(new Set(names).size === names.length);
     requireValue(Object.keys(descriptor.files).length === names.length && names.every(name => Object.hasOwn(descriptor.files, name)));
+    let noticeTotal = 0;
+    for (const name of Object.values(noticeFiles)) {
+      requireValue(noticeName.test(name) && name !== 'bundle.json');
+      const file = descriptor.files[name]; object(file);
+      requireValue(Number.isSafeInteger(file.bytes) && file.bytes > 0 && file.bytes <= maximumNoticeBytes);
+      noticeTotal += file.bytes; requireValue(noticeTotal <= maximumTotalNoticeBytes);
+    }
     let total = 0;
     for (const file of Object.values(descriptor.files)) {
       exact(file, ['sha256', 'bytes']);
@@ -114,8 +131,10 @@ export async function loadDeploymentAssets(bundleUrl: string | URL, options: Loa
     const artifacts = await verifyArtifactBundle(verifiedManifest, bundle as ArtifactBundle);
     const wasm = await read(descriptor.wasm.path), wasmSha256 = descriptor.wasm.sha256;
     requireValue(typeof wasmSha256 === 'string' && /^[0-9a-f]{64}$/.test(wasmSha256) && await sha256Hex(wasm) === wasmSha256 && WebAssembly.validate(new Uint8Array(wasm)));
+    const notices: Record<string, Uint8Array> = Object.create(null);
+    for (const [name, file] of Object.entries(noticeFiles)) notices[name] = await read(file);
     signal.throwIfAborted();
-    return { manifest, trust, artifacts, wasm, wasmSha256, verifiedManifest };
+    return { manifest, trust, artifacts, wasm, wasmSha256, verifiedManifest, notices };
   } catch { throw new DeploymentAssetsError(); }
   finally { if (timer !== undefined) clearTimeout(timer); }
 }

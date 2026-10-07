@@ -7,6 +7,7 @@ import (
 	"crypto/sha256"
 	"crypto/tls"
 	"crypto/x509"
+	"encoding/base64"
 	"encoding/hex"
 	"errors"
 	"io"
@@ -18,6 +19,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"syscall"
 	"time"
 )
 
@@ -26,19 +28,99 @@ type Route struct {
 	Prefix string `json:"prefix"`
 }
 type Config struct {
-	Mode           string    `json:"mode"`
-	SOCKS5         string    `json:"socks5"`
-	Routes         []Route   `json:"routes"`
-	AllowLocalHTTP bool      `json:"allow_local_http"`
-	ExtraCA        *PinnedCA `json:"extra_ca,omitempty"`
+	Mode           string     `json:"mode"`
+	SOCKS5         string     `json:"socks5"`
+	Routes         []Route    `json:"routes"`
+	AllowLocalHTTP bool       `json:"allow_local_http"`
+	ExtraCA        *PinnedCA  `json:"extra_ca,omitempty"`
+	Admission      *Admission `json:"admission,omitempty"`
+}
+
+// Admission is a consumer-private invitation for one reviewed control origin.
+// Only its file reference is configuration; token bytes stay inside the relay.
+type Admission struct {
+	Origin    string `json:"origin"`
+	TokenFile string `json:"token_file"`
 }
 type PinnedCA struct {
 	Path   string `json:"path"`
 	SHA256 string `json:"sha256"`
 }
 type Relay struct {
-	client *http.Client
-	routes []Route
+	client          *http.Client
+	routes          []Route
+	admissionOrigin string
+	admissionToken  string
+}
+
+func routeAllows(route Route, origin, targetPath string) bool {
+	return origin == route.Origin && (route.Prefix == "/" || targetPath == strings.TrimSuffix(route.Prefix, "/") || strings.HasPrefix(targetPath, strings.TrimSuffix(route.Prefix, "/")+"/"))
+}
+
+func privateAdmissionFile(info os.FileInfo) bool {
+	if info == nil || !info.Mode().IsRegular() || info.Mode().Perm()&0077 != 0 || info.Size() < 43 || info.Size() > 44 {
+		return false
+	}
+	stat, ok := info.Sys().(*syscall.Stat_t)
+	return ok && stat.Uid == uint32(os.Getuid())
+}
+
+func loadAdmission(config *Admission, routes []Route) (string, string, error) {
+	if config == nil {
+		return "", "", nil
+	}
+	rejected := errors.New("invalid private admission configuration")
+	u, err := url.Parse(config.Origin)
+	if err != nil || u.Scheme != "https" || u.User != nil || u.Opaque != "" || u.Hostname() == "" || u.Path != "" || u.RawPath != "" || u.RawQuery != "" || u.ForceQuery || u.Fragment != "" || u.RawFragment != "" || u.Host != strings.ToLower(u.Host) || u.Port() == "443" || config.Origin != u.Scheme+"://"+u.Host || u.String() != config.Origin {
+		return "", "", rejected
+	}
+	if strings.HasSuffix(u.Host, ":") {
+		return "", "", rejected
+	}
+	if port := u.Port(); port != "" {
+		n, err := strconv.Atoi(port)
+		if err != nil || n < 1 || n > 65535 || strconv.Itoa(n) != port {
+			return "", "", rejected
+		}
+	}
+	allowed := false
+	for _, route := range routes {
+		if routeAllows(route, config.Origin, "/zkapi/v1/sessions") {
+			allowed = true
+		}
+	}
+	if !allowed || !filepath.IsAbs(config.TokenFile) || filepath.Clean(config.TokenFile) != config.TokenFile {
+		return "", "", rejected
+	}
+	real, err := filepath.EvalSymlinks(config.TokenFile)
+	if err != nil || real != config.TokenFile {
+		return "", "", rejected
+	}
+	info, err := os.Lstat(config.TokenFile)
+	if err != nil || !privateAdmissionFile(info) {
+		return "", "", rejected
+	}
+	file, err := os.Open(config.TokenFile)
+	if err != nil {
+		return "", "", rejected
+	}
+	defer file.Close()
+	actual, err := file.Stat()
+	if err != nil || !privateAdmissionFile(actual) || !os.SameFile(info, actual) {
+		return "", "", rejected
+	}
+	raw, err := io.ReadAll(io.LimitReader(file, 45))
+	if err != nil || len(raw) > 44 {
+		return "", "", rejected
+	}
+	defer clear(raw)
+	token := strings.TrimSuffix(string(raw), "\n")
+	decoded, err := base64.RawURLEncoding.Strict().DecodeString(token)
+	defer clear(decoded)
+	if err != nil || len(token) != 43 || len(decoded) != 32 || base64.RawURLEncoding.EncodeToString(decoded) != token {
+		return "", "", rejected
+	}
+	return config.Origin, token, nil
 }
 
 func New(config Config) (*Relay, error) {
@@ -56,6 +138,10 @@ func New(config Config) (*Relay, error) {
 		if u.Scheme != "https" && !(config.AllowLocalHTTP && u.Scheme == "http" && net.ParseIP(u.Hostname()) != nil && net.ParseIP(u.Hostname()).IsLoopback()) {
 			return nil, errors.New("HTTPS required")
 		}
+	}
+	admissionOrigin, admissionToken, err := loadAdmission(config.Admission, config.Routes)
+	if err != nil {
+		return nil, err
 	}
 	dial := (&net.Dialer{Timeout: 20 * time.Second}).DialContext
 	if config.Mode == "tor" {
@@ -104,7 +190,7 @@ func New(config Config) (*Relay, error) {
 		tlsConfig.RootCAs = roots
 	}
 	t := &http.Transport{Proxy: nil, DialContext: dial, TLSClientConfig: tlsConfig, TLSHandshakeTimeout: 20 * time.Second, ResponseHeaderTimeout: 60 * time.Second, DisableCompression: true, ForceAttemptHTTP2: true}
-	return &Relay{client: &http.Client{Transport: t, Timeout: 10 * time.Minute, CheckRedirect: func(_ *http.Request, _ []*http.Request) error { return http.ErrUseLastResponse }}, routes: append([]Route(nil), config.Routes...)}, nil
+	return &Relay{client: &http.Client{Transport: t, Timeout: 10 * time.Minute, CheckRedirect: func(_ *http.Request, _ []*http.Request) error { return http.ErrUseLastResponse }}, routes: append([]Route(nil), config.Routes...), admissionOrigin: admissionOrigin, admissionToken: admissionToken}, nil
 }
 
 func (e *Relay) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -119,7 +205,7 @@ func (e *Relay) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	allowed := false
 	for _, route := range e.routes {
-		if u.Scheme+"://"+u.Host == route.Origin && (route.Prefix == "/" || u.Path == strings.TrimSuffix(route.Prefix, "/") || strings.HasPrefix(u.Path, strings.TrimSuffix(route.Prefix, "/")+"/")) {
+		if routeAllows(route, u.Scheme+"://"+u.Host, u.Path) {
 			allowed = true
 		}
 	}
@@ -136,6 +222,11 @@ func (e *Relay) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		if value := r.Header.Get(key); value != "" {
 			out.Header.Set(key, value)
 		}
+	}
+	// Never copy this header from the SDK request. The private invitation is
+	// scoped to the exact AUTH endpoint and cannot follow a redirect.
+	if e.admissionToken != "" && r.Method == http.MethodPost && u.Scheme+"://"+u.Host == e.admissionOrigin && u.Path == "/zkapi/v1/sessions" && u.RawQuery == "" && !u.ForceQuery {
+		out.Header.Set("X-Zkapi-Admission", e.admissionToken)
 	}
 	out.ContentLength = r.ContentLength
 	response, err := e.client.Do(out)

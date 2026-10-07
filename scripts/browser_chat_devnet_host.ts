@@ -31,11 +31,11 @@ const uint = (value: unknown) => {
 export interface DirectDemoBudget {
   /** Must durably bind request ID and exact AUTH bytes before admitting its
    * first forward. Same-byte AUTH recovery may reuse the original reservation. */
-  reserve(requestId: string, authorizationSha256: string): Promise<void>;
+  reserve(requestId: string, authorizationSha256: string, allowNew?: boolean): Promise<void>;
 }
 export interface DirectControlOptions {
   manifest: VerifiedManifest; tariff: Tariff; budget: DirectDemoBudget;
-  forward(path: string, method: 'GET' | 'POST', headers: Record<string, string>, data?: Buffer): Promise<UpstreamReply>;
+  forward(path: string, method: 'GET' | 'POST', headers: Record<string, string>, data?: Buffer, signal?: AbortSignal): Promise<UpstreamReply>;
 }
 
 /** Pure route/admission boundary. The outer host checks numeric loopback,
@@ -51,7 +51,7 @@ export function directControlRelay(options: DirectControlOptions): NonNullable<H
     const secret = Buffer.from(match[2], 'base64url'); assert.equal(secret.length, 32); assert.equal(secret.toString('base64url'), match[2]);
     return secret;
   };
-  return async ({path, method, authorization, data}) => {
+  return async ({path, method, authorization, data, allowNewAdmissions, newAdmissionAuthorized, signal}) => {
     assert.ok(!path.includes('#') && !path.includes('%') && !path.includes('\\'));
     const headers: Record<string, string> = {};
     if (path === '/zkapi/v1/quotes') {
@@ -89,7 +89,8 @@ export function directControlRelay(options: DirectControlOptions): NonNullable<H
       assert.equal(proof.length, 256); assert.equal(proof.toString('base64'), request.proof.proof);
       // The server/SDK verify the proof itself. Reserve the entire allowed lease,
       // not an estimated prompt cost. Never retry forwarding here.
-      await budget.reserve(auth.request_id, await sha256Hex(data));
+      signal?.throwIfAborted();
+      await budget.reserve(auth.request_id, await sha256Hex(data), allowNewAdmissions !== false && newAdmissionAuthorized !== false);
     } else if (path === '/zkapi/v1/withdraw/clearance') {
       assert.equal(method, 'POST'); assert.equal(authorization, undefined);
       const value = parseStrictJson(data) as any; exact(value, ['nullifier']); parseField(value.nullifier);
@@ -101,7 +102,8 @@ export function directControlRelay(options: DirectControlOptions): NonNullable<H
       assert.equal(method, route[2] ? 'POST' : 'GET'); assert.equal(data.length, 0);
       if (route[4]) assert.ok(BigInt(route[4]) <= 0x7fffffffffffffffn);
     }
-    return forward(path, method, headers, data.length ? data : undefined);
+    signal?.throwIfAborted();
+    return forward(path, method, headers, data.length ? data : undefined, signal);
   };
 }
 
@@ -110,13 +112,18 @@ export interface BrowserChatDevnetHostConfig {
   manifestPath: string; wasmPath: string; artifacts: Record<string, string>;
   rpcUrl: string; historyRpcUrl?: string; indexerUrl: string; controlUrl: string; localCaPath?: string;
   allowTransactions: boolean;
+  /** Optional exact HTTPS origin served by a local TLS reverse proxy. */
+  publicOrigin?: string;
+  /** Stop new deposits/AUTH while retaining recovery; explicit for public hosting. */
+  allowNewAdmissions?: boolean;
   budget: {planPath: string; stateDir: string; caseId: 'openrouter-direct-plain' | 'openrouter-direct-sse'};
 }
 
 /** Fixed native forwarding; bounded bytes and time, no redirects, environment
  * proxy, retry, cookies, provider inference, or upstream error logging. */
 export function localForwarder(ca?: Buffer) {
-  return async (url: string, method: 'GET' | 'POST', data?: Buffer, headers: Record<string, string> = {}, maximum = 4 * 1024 * 1024): Promise<UpstreamReply> => {
+  return async (url: string, method: 'GET' | 'POST', data?: Buffer, headers: Record<string, string> = {}, maximum = 4 * 1024 * 1024, signal?: AbortSignal): Promise<UpstreamReply> => {
+    signal?.throwIfAborted();
     const target = new URL(url), local = ['127.0.0.1', '[::1]'].includes(target.hostname);
     assert.ok(!target.username && !target.password && !target.hash && (target.protocol === 'https:' || target.protocol === 'http:' && local));
     return new Promise((ok, fail) => {
@@ -134,13 +141,18 @@ export function localForwarder(ca?: Buffer) {
         response.on('end', () => { clearTimeout(timer); ok({status: response.statusCode ?? 502, bytes: Buffer.concat(parts)}); });
         response.on('error', () => { clearTimeout(timer); fail(Error('configured upstream response unavailable')); });
       });
-      request.on('error', () => { clearTimeout(timer); fail(Error('configured upstream unavailable')); }); request.end(data);
+      const abort = () => request.destroy(Error('configured upstream aborted'));
+      const cleanup = () => { clearTimeout(timer); signal?.removeEventListener('abort',abort); };
+      request.once('close',cleanup);
+      request.on('error', () => { cleanup(); fail(Error('configured upstream unavailable')); });
+      signal?.addEventListener('abort',abort,{once:true});
+      if (signal?.aborted) abort(); else request.end(data);
     });
   };
 }
 
 export async function loadBrowserChatBudget(config: BrowserChatDevnetHostConfig['budget'], manifest: VerifiedManifest, tariff: Tariff, model: string,
-  allowTransactions: boolean): Promise<DirectDemoBudget & {status(): Promise<UiDirectProviderBudget>}> {
+  allowTransactions: boolean, allowNewAdmissions = allowTransactions): Promise<DirectDemoBudget & {status(): Promise<UiDirectProviderBudget>}> {
   assert.ok(['openrouter-direct-plain', 'openrouter-direct-sse'].includes(config.caseId));
   const planPath = resolve(config.planPath), stateDir = resolve(config.stateDir), plan = parseStrictJson(await readFile(planPath)) as any;
   const planSha256 = await sha256Hex(jcsBytes(plan));
@@ -149,10 +161,10 @@ export async function loadBrowserChatBudget(config: BrowserChatDevnetHostConfig[
     && selected.model === model && selected.endpoint === 'chat_completions' && !selected.tools
     && uint(selected.max_cost_micro_usdc) >= uint(manifest.cap_micro_usdc) && selected.session_ttl_seconds >= 60);
   assert.ok(plan.models.some((m: any) => same(m.tariff, tariff)));
-  const coordinator = async (command: 'budget-status' | 'reserve-direct-demo', requestId?: string, digest?: string) => {
+  const coordinator = async (command: 'budget-status' | 'reserve-direct-demo', requestId?: string, digest?: string, allowNew = true) => {
     const env: NodeJS.ProcessEnv = {}; for (const key of ['PATH', 'HOME', 'LANG', 'LC_ALL', 'TMPDIR']) if (process.env[key]) env[key] = process.env[key];
     const args = [join(ROOT, 'scripts/provider_demo_budget.py'), command, '--plan', planPath, '--state-dir', stateDir,
-      ...(command === 'reserve-direct-demo' ? ['--case', config.caseId, '--request-id', requestId!, '--authorization-sha256', digest!] : [])];
+      ...(command === 'reserve-direct-demo' ? ['--case', config.caseId, '--request-id', requestId!, '--authorization-sha256', digest!, ...(!allowNew ? ['--no-new-reservations'] : [])] : [])];
     try {
       const result = await execute('python3', args, {cwd: ROOT, env, timeout: 30_000, maxBuffer: 1_048_576});
       return parseStrictJson(Buffer.from(result.stdout)) as any;
@@ -171,12 +183,12 @@ export async function loadBrowserChatBudget(config: BrowserChatDevnetHostConfig[
     const count = value.reservations.length, slots = identity.max_requests - count;
     return {schema: 1, allowTransactions, budget_micro_usdc: total.toString(), reserved_micro_usdc: reserved.toString(),
       remaining_micro_usdc: remaining.toString(), max_requests: identity.max_requests, reserved_requests: count,
-      remaining_requests: slots, request_max_cost_micro_usdc: cost.toString(), available_requests: allowTransactions ? Math.min(slots, Number(remaining / cost)) : 0};
+      remaining_requests: slots, request_max_cost_micro_usdc: cost.toString(), available_requests: allowTransactions && allowNewAdmissions ? Math.min(slots, Number(remaining / cost)) : 0};
   };
   await status();
-  return {status, async reserve(requestId, authorizationSha256) {
+  return {status, async reserve(requestId, authorizationSha256, allowNew = true) {
     assert.ok(uuid.test(requestId) && hash.test(authorizationSha256));
-    const reservation = await coordinator('reserve-direct-demo', requestId, authorizationSha256);
+    const reservation = await coordinator('reserve-direct-demo', requestId, authorizationSha256, allowNewAdmissions && allowNew);
     assert.ok(reservation.auth_forward_allowed === true && reservation.request_id === requestId
       && reservation.authorization_sha256 === authorizationSha256 && reservation.template_case_id === config.caseId
       && reservation.plan_sha256 === planSha256 && reservation.reserved_micro_usdc === selected.max_cost_micro_usdc);
@@ -218,10 +230,10 @@ export async function configuredBrowserChatHost(config: BrowserChatDevnetHostCon
       && ['http:', 'https:'].includes(u.protocol) && !u.username && !u.password);
   }
   assert.equal(profile.models.length, 1);
-  const model = profile.models[0], budget = await loadBrowserChatBudget(config.budget, manifest, model.tariff, model.id, config.allowTransactions);
+  const model = profile.models[0], budget = await loadBrowserChatBudget(config.budget, manifest, model.tariff, model.id, config.allowTransactions, config.allowNewAdmissions ?? config.allowTransactions);
   const forward = localForwarder(config.localCaPath ? await readFile(config.localCaPath) : undefined);
   return startUiHost({port: config.port, output: config.output, application: 'browser-chat', directProviderOrigin: 'https://openrouter.ai',
-    assets, manifest, allowTransactions: config.allowTransactions, preparationCommitment: profile.preparationCommitment,
+    assets, manifest, allowTransactions: config.allowTransactions, allowNewAdmissions: config.allowNewAdmissions, publicOrigin: config.publicOrigin, preparationCommitment: profile.preparationCommitment,
     directBudget: budget.status,
     rpc: data => forward(config.rpcUrl, 'POST', data),
     ...(config.historyRpcUrl ? {historyRpc: (data: Buffer) => forward(config.historyRpcUrl!, 'POST', data)} : {}),

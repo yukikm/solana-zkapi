@@ -1,0 +1,7 @@
+{
+  "name": "zkapi-public-devnet-consumer",
+  "private": true,
+  "type": "module",
+  "engines": { "node": ">=24.19.0 <25" },
+  "scripts": { "preflight": "node cli.mjs preflight", "test": "node --test native-inputs.test.mjs" }
+}

@@ -73,7 +73,8 @@ class DemoBudget(original.Budget):
         original.require(total <= int(self.plan['budget_micro_usdc']) and len(seen) <= self.plan['max_requests'], 'budget exceeded')
         return data, total
 
-    def reserve_direct_demo(self, template_case_id, request_id, authorization_sha256):
+    def reserve_direct_demo(self, template_case_id, request_id, authorization_sha256, *, allow_new=True):
+        original.require(type(allow_new) is bool, 'explicit admission policy required')
         with self.locked():
             data, total = self.load()
             case = self.direct_case(template_case_id)
@@ -86,6 +87,7 @@ class DemoBudget(original.Budget):
             original.require(not matching or matching == [row], 'demo request already bound to different AUTH or template')
             newly_reserved = not matching
             if newly_reserved:
+                original.require(allow_new, 'new provider admission suspended')
                 original.require(row['case_id'] not in {c['id'] for c in self.plan['cases']}, 'demo identity collides with a planned case')
                 original.require(total + int(case['max_cost_micro_usdc']) <= int(self.plan['budget_micro_usdc'])
                                  and len(data['reservations']) < self.plan['max_requests'], 'campaign budget exhausted')
@@ -110,6 +112,7 @@ def main():
     parser.add_argument('--request-id')
     parser.add_argument('--operation-id')
     parser.add_argument('--authorization-sha256')
+    parser.add_argument('--no-new-reservations', action='store_true', help='Permit only identical previously reserved direct AUTH recovery')
     args = parser.parse_args()
     try:
         plan = original.read_json(args.plan)
@@ -119,9 +122,10 @@ def main():
                     'reserve': (False, False, False), 'budget-status': (False, False, False)}[args.command]
         original.require(tuple(value is not None for value in (args.request_id, args.operation_id, args.authorization_sha256)) == expected,
                          'reservation identity arguments mismatch')
+        original.require(not args.no_new_reservations or args.command == 'reserve-direct-demo', 'suspension policy requires direct AUTH recovery')
         budget = DemoBudget(args.state_dir, plan)
         if args.command == 'reserve-direct-demo':
-            result = budget.reserve_direct_demo(args.case, args.request_id, args.authorization_sha256)
+            result = budget.reserve_direct_demo(args.case, args.request_id, args.authorization_sha256, allow_new=not args.no_new_reservations)
         elif args.command == 'reserve-demo':
             result = budget.reserve_demo(args.case, args.request_id, args.operation_id)
         elif args.command == 'reserve':

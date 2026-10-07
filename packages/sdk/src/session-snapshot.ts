@@ -55,9 +55,8 @@ async function read(fetcher: typeof fetch, url: string, max: number): Promise<Ui
   return new Uint8Array(Buffer.concat(parts));
 }
 
-export async function privateSessionSnapshot(connection: Rpc<SolanaRpcApi>, manifest: VerifiedManifest, origin: string,
-  fetcher: typeof fetch, noteId: number, prover: SnapshotPathProver, minimumSlot = 0): Promise<SessionSnapshot> {
-  requireTrue(Number.isSafeInteger(noteId) && noteId >= 0 && noteId <= 0xffffffff, 'snapshot note ID');
+async function sharedSessionSnapshot(connection: Rpc<SolanaRpcApi>, manifest: VerifiedManifest, origin: string,
+  fetcher: typeof fetch, minimumSlot = 0) {
   requireTrue(Number.isSafeInteger(minimumSlot) && minimumSlot >= 0, 'invalid minimum snapshot slot');
   const descriptor:any=parseStrictJson(await read(fetcher, origin+'/zkapi/v1/tree/snapshot', 65536));
   record(descriptor, ['snapshot','sha256','download_url']); rootView(descriptor.snapshot,manifest.pool);
@@ -115,11 +114,28 @@ export async function privateSessionSnapshot(connection: Rpc<SolanaRpcApi>, mani
   requireTrue('0x'+hex(treeAccount.data.subarray(10,42))===root.root&&t.getBigUint64(42,true)===next&&t.getBigUint64(50,true)===uint(root.sequence),'untrusted indexer root');
   requireTrue(clock.owner==='Sysvar1111111111111111111111111111111111111'&&!clock.executable&&clock.data.length===40,'invalid Clock');
   const time=new DataView(clock.data.buffer,clock.data.byteOffset,clock.data.length).getBigInt64(32,true);requireTrue(time>=0n,'invalid Clock time');
+  return {root:root.root as string,slot,sequence:root.sequence as string,nextNoteId:Number(next),clock:time.toString(),paused:checked.paused,
+    sourceSlot, activeNotes:file.active_notes as SnapshotNote[], active, pendingCount:file.pending_withdrawals.length as number};
+}
+
+/** Read-only shared snapshot compatibility check. Does not select a note, open
+ * custody or run a proof. Authorization still reconstructs membership locally. */
+export async function inspectSessionSnapshot(connection: Rpc<SolanaRpcApi>, manifest: VerifiedManifest, origin: string,
+  fetcher: typeof fetch, minimumSlot = 0) {
+  const { activeNotes, active: _active, ...view } = await sharedSessionSnapshot(connection,manifest,origin,fetcher,minimumSlot);
+  return { ...view, activeCount:activeNotes.length };
+}
+
+export async function privateSessionSnapshot(connection: Rpc<SolanaRpcApi>, manifest: VerifiedManifest, origin: string,
+  fetcher: typeof fetch, noteId: number, prover: SnapshotPathProver, minimumSlot = 0): Promise<SessionSnapshot> {
+  requireTrue(Number.isSafeInteger(noteId) && noteId >= 0 && noteId <= 0xffffffff, 'snapshot note ID');
+  const shared = await sharedSessionSnapshot(connection,manifest,origin,fetcher,minimumSlot);
+  const {active,activeNotes,slot,sequence,nextNoteId,clock,paused}=shared;
   // Membership selection happens after all shared network reads. Both success
   // and missing-note failures expose the same pool/snapshot selectors.
   requireTrue(active.has(noteId),'active snapshot membership');
-  const local=await prover.snapshotPath(root.root,root.next_note_id,file.active_notes,noteId);
-  requireTrue(local.root===root.root&&local.note_id===noteId&&Array.isArray(local.siblings)&&local.siblings.length===32,'local snapshot path identity');
+  const local=await prover.snapshotPath(shared.root,String(nextNoteId),activeNotes,noteId);
+  requireTrue(local.root===shared.root&&local.note_id===noteId&&Array.isArray(local.siblings)&&local.siblings.length===32,'local snapshot path identity');
   local.siblings.forEach(parseField);
-  return {root:root.root,siblings:local.siblings,slot,sequence:root.sequence,nextNoteId:Number(next),clock:time.toString(),paused:checked.paused};
+  return {root:shared.root,siblings:local.siblings,slot,sequence,nextNoteId,clock,paused};
 }

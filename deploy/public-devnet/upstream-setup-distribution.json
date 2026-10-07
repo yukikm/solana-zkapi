@@ -1,0 +1,123 @@
+{
+  "schema": 1,
+  "scope": "Exact four unchanged upstream setup files only; not a complete bundle publication review",
+  "reviewed_at": "2026-10-07",
+  "review_evidence": "docs/evidence/PD-02-redistribution-followup.md",
+  "upstream_license_declaration": "MIT OR Apache-2.0",
+  "selected_license": "Apache-2.0",
+  "license_basis": "https://github.com/mingyech/zkAPI/blob/8b2d4e3da921f956e1eb6b93afbf722a877c060c/README.md#L97",
+  "notices": {
+    "mingyech-README-8b2d4e3.md": {
+      "source": "https://github.com/mingyech/zkAPI/blob/8b2d4e3da921f956e1eb6b93afbf722a877c060c/README.md",
+      "git_blob_sha1": "ca95243310e93d907a5d9e55a54139951f2cbb9e",
+      "sha256": "f93dcf61244ca2c3de783aa68355cb263024f5b5da3ec9fd40ac26cbee157846",
+      "bytes": 3301,
+      "modification": "unchanged"
+    },
+    "mingyech-setup-README-8b2d4e3.md": {
+      "source": "https://github.com/mingyech/zkAPI/blob/8b2d4e3da921f956e1eb6b93afbf722a877c060c/setup/v2/README.md",
+      "git_blob_sha1": "139676f13b06bfe200671428d33e973f8de076e9",
+      "sha256": "22b8ab79c6e8c985447c2a20b55d9253b5c2dab932cbd50927538f3571ffcf5d",
+      "bytes": 894,
+      "modification": "unchanged"
+    },
+    "ethereum-VENDORED-045b444.md": {
+      "source": "https://github.com/ethereum/zkapi/blob/045b444ea1b52538d1b40273c7cb6ed09468a052/protocol/VENDORED.md",
+      "git_blob_sha1": "24f1a94de025d10af8e6172f25b4bc755887501e",
+      "sha256": "12e597fefcdb430f28a1ca16c1fe917e0bd2513958aa8523e1e1610bb947fce3",
+      "bytes": 2208,
+      "modification": "unchanged"
+    },
+    "Apache-2.0.txt": {
+      "source": "https://github.com/spdx/license-list-data/blob/31ba1a50e5397e00a304dbadc76531740e89ee48/text/Apache-2.0.txt",
+      "git_blob_sha1": "137069b823873b8bcf42979bcf8e9371052d26a2",
+      "sha256": "074e6e32c86a4c0ef8b3ed25b721ca23aca83df277cd88106ef7177c354615ff",
+      "bytes": 10280,
+      "modification": "unchanged"
+    },
+    "PROVENANCE.md": {
+      "source_path": "deploy/public-devnet/upstream-notices/PROVENANCE.md",
+      "sha256": "2b2fd1dd5baf7baf8fe0947987c56b8465c64b63e179d461f7a12f190b834aed",
+      "bytes": 3682,
+      "modification": "added by Solana zkAPI; not an upstream NOTICE"
+    }
+  },
+  "files": {
+    "requestPk.bin": {
+      "original_path": "setup/v2/request.pk",
+      "bytes": 5935783,
+      "sha256": "c894b261a13f571d0df36be29734aabf2a8cd7162baddc5e08a50341aa076584",
+      "git_blob_sha1": "5fb7bd7e5c8db0426f293228187c16ce994b341d",
+      "decision": "approved",
+      "selected_license": "Apache-2.0",
+      "source": "https://github.com/mingyech/zkAPI/blob/8b2d4e3da921f956e1eb6b93afbf722a877c060c/setup/v2/request.pk",
+      "imported_source": "https://github.com/ethereum/zkapi/blob/045b444ea1b52538d1b40273c7cb6ed09468a052/protocol/setup/v2/request.pk",
+      "terms": "https://github.com/mingyech/zkAPI/blob/8b2d4e3da921f956e1eb6b93afbf722a877c060c/README.md#L97",
+      "modification": "unchanged bytes; distribution filename changed",
+      "notices": [
+        "mingyech-README-8b2d4e3.md",
+        "mingyech-setup-README-8b2d4e3.md",
+        "ethereum-VENDORED-045b444.md",
+        "Apache-2.0.txt",
+        "PROVENANCE.md"
+      ]
+    },
+    "requestVk.bin": {
+      "original_path": "setup/v2/request.vk",
+      "bytes": 671,
+      "sha256": "8011244c99fa1a8524870906462d430fc86366b8ad821736c5fa726b479e6d97",
+      "git_blob_sha1": "33666441aa6d5553d174f64df62874dd5f1f77d5",
+      "decision": "approved",
+      "selected_license": "Apache-2.0",
+      "source": "https://github.com/mingyech/zkAPI/blob/8b2d4e3da921f956e1eb6b93afbf722a877c060c/setup/v2/request.vk",
+      "imported_source": "https://github.com/ethereum/zkapi/blob/045b444ea1b52538d1b40273c7cb6ed09468a052/protocol/setup/v2/request.vk",
+      "terms": "https://github.com/mingyech/zkAPI/blob/8b2d4e3da921f956e1eb6b93afbf722a877c060c/README.md#L97",
+      "modification": "unchanged bytes; distribution filename changed",
+      "notices": [
+        "mingyech-README-8b2d4e3.md",
+        "mingyech-setup-README-8b2d4e3.md",
+        "ethereum-VENDORED-045b444.md",
+        "Apache-2.0.txt",
+        "PROVENANCE.md"
+      ]
+    },
+    "withdrawalPk.bin": {
+      "original_path": "setup/v2/withdrawal.pk",
+      "bytes": 7783719,
+      "sha256": "8e41398092fdd02b9ff86c6ccbecbd7ce2402e6f22ec162e6124d1d04fe0a668",
+      "git_blob_sha1": "5f8e4cb5e8086215f6f7d6a26616ee4834b9e393",
+      "decision": "approved",
+      "selected_license": "Apache-2.0",
+      "source": "https://github.com/mingyech/zkAPI/blob/8b2d4e3da921f956e1eb6b93afbf722a877c060c/setup/v2/withdrawal.pk",
+      "imported_source": "https://github.com/ethereum/zkapi/blob/045b444ea1b52538d1b40273c7cb6ed09468a052/protocol/setup/v2/withdrawal.pk",
+      "terms": "https://github.com/mingyech/zkAPI/blob/8b2d4e3da921f956e1eb6b93afbf722a877c060c/README.md#L97",
+      "modification": "unchanged bytes; distribution filename changed",
+      "notices": [
+        "mingyech-README-8b2d4e3.md",
+        "mingyech-setup-README-8b2d4e3.md",
+        "ethereum-VENDORED-045b444.md",
+        "Apache-2.0.txt",
+        "PROVENANCE.md"
+      ]
+    },
+    "withdrawalVk.bin": {
+      "original_path": "setup/v2/withdrawal.vk",
+      "bytes": 735,
+      "sha256": "2a8ea7f07176e369a93d1d816124192a798d1466c99fd6dc47850ba82094b679",
+      "git_blob_sha1": "3f0dc9b5652989e327293627e53641b865b73c0a",
+      "decision": "approved",
+      "selected_license": "Apache-2.0",
+      "source": "https://github.com/mingyech/zkAPI/blob/8b2d4e3da921f956e1eb6b93afbf722a877c060c/setup/v2/withdrawal.vk",
+      "imported_source": "https://github.com/ethereum/zkapi/blob/045b444ea1b52538d1b40273c7cb6ed09468a052/protocol/setup/v2/withdrawal.vk",
+      "terms": "https://github.com/mingyech/zkAPI/blob/8b2d4e3da921f956e1eb6b93afbf722a877c060c/README.md#L97",
+      "modification": "unchanged bytes; distribution filename changed",
+      "notices": [
+        "mingyech-README-8b2d4e3.md",
+        "mingyech-setup-README-8b2d4e3.md",
+        "ethereum-VENDORED-045b444.md",
+        "Apache-2.0.txt",
+        "PROVENANCE.md"
+      ]
+    }
+  }
+}

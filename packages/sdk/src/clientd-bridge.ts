@@ -3,11 +3,14 @@
 import { ControlClient, createCredentials, expiryNotice, PROXY_PRIVACY_NOTICE, type Mode, type NoteJournal, type PreparedSession } from './control.ts';
 import { JournalConflictError, JournalIntegrityError, type EncryptedJournal } from './journal.ts';
 import { parseStrictJson } from './trust.ts';
-import { daemonApiPaths, validateDaemonModelPolicy, type DaemonModelPolicy } from './clientd-models.ts';
+import { daemonApiPaths, validateDaemonModelPolicy, validateModelRequestCapabilities, type DaemonModelPolicy } from './clientd-models.ts';
 
 export interface DaemonOptions {
   client: ControlClient; journal: EncryptedJournal<NoteJournal>; noteId: string; mode: Mode;
   models: readonly (string | DaemonModelPolicy)[]; keyReuseSeconds?: number; now?: () => bigint;
+  /** Opt-in wait for a completed same-process direct response to settle before
+   * the next explicit operation. Default 0; no response or inference replay. */
+  settlementWaitMs?: number;
   prepare(model: string, credentials: Awaited<ReturnType<typeof createCredentials>>): Promise<{ prepared: PreparedSession; root: string }>;
   wallet?(command: unknown): Promise<unknown>;
 }
@@ -16,12 +19,17 @@ const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{1
 function json(value: unknown, status = 200): Response { return new Response(JSON.stringify(value),{status,headers:{'Content-Type':'application/json','Cache-Control':'no-store'}}); }
 export class DaemonConflict extends Error { constructor() { super('Unresolved session or operation. Inspect status; inference was not replayed.'); } }
 export class ClientDaemon {
-  private readonly o: DaemonOptions; private readonly reuse: number;
+  private readonly o: DaemonOptions; private readonly reuse: number; private readonly settlementWait: number;
+  private readonly stoppingController = new AbortController();
+  private completedDirectResponse?: { requestId: string; operationId: string };
   private serial: Promise<unknown> = Promise.resolve(); private inflight = 0; private stopping = false; private started = false; private recoveryRequired = false; private idleWaiters: (()=>void)[] = [];
   constructor(options: DaemonOptions) {
     this.o = {...options,models:structuredClone(options.models)}; this.reuse = options.keyReuseSeconds ?? 60;
+    this.settlementWait = options.settlementWaitMs ?? 0;
     const ids = this.o.models.map(model => typeof model === 'string' ? model : model.id);
     if (!['proxy','direct_oa','direct_openrouter'].includes(options.mode) || !Number.isInteger(this.reuse) || this.reuse < 0 || this.reuse > 300 || !ids.length || ids.some(id=>typeof id !== 'string' || !/^[\x21-\x7e]{1,200}$/.test(id) || id === '*') || new Set(ids).size !== ids.length) throw new Error('explicit mode, unique pinned models and key reuse 0–300 required');
+    if (!Number.isSafeInteger(this.settlementWait) || this.settlementWait < 0 || this.settlementWait > 180_000
+      || this.settlementWait > 0 && (options.mode !== 'direct_openrouter' || this.reuse !== 0)) throw new Error('settlement wait requires zero-reuse direct OpenRouter and 0–180000 milliseconds');
     for (const model of this.o.models) if (typeof model !== 'string') validateDaemonModelPolicy(options.mode, model);
   }
   private now(): bigint { return this.o.now?.() ?? BigInt(Math.floor(Date.now()/1000)); }
@@ -29,11 +37,51 @@ export class ClientDaemon {
     const task = this.serial.then(fn,fn); this.serial = task.catch(()=>{}); return task;
   }
   private async record() { const r = await this.o.journal.read(this.o.noteId); if (!r) throw new Error('finalized note required'); return r; }
+  private canWaitForSettlement(p: NonNullable<NoteJournal['pending']>): boolean {
+    const completed = this.completedDirectResponse;
+    return !!completed && p.phase === 'closing' && p.closeRequested === true
+      && p.prepared.request.authorization.mode === 'direct_openrouter'
+      && p.prepared.request.authorization.request_id === completed.requestId
+      && ['ACTIVE','DRAINING','RECONCILING','SIGN_PENDING'].includes(p.serverState ?? '')
+      && p.operations.length === 1 && p.operations[0].id === completed.operationId && p.operations[0].phase === 'send_unknown';
+  }
+  private async waitForSettlement(p: NonNullable<NoteJournal['pending']>, caller?: AbortSignal): Promise<void> {
+    // This marker only survives a fully consumed successful response in this
+    // process. An unknown send, canceled body or restart requires explicit recovery.
+    if (!this.canWaitForSettlement(p)) throw new DaemonConflict();
+    const deadline = new AbortController(), timer = setTimeout(()=>deadline.abort(),this.settlementWait);
+    const signal = AbortSignal.any([deadline.signal,this.stoppingController.signal,...(caller ? [caller] : [])]);
+    try {
+      for (;;) {
+        signal.throwIfAborted();
+        // The verified closing phase prevents recover from taking its AUTH path.
+        // Existing close/status/receipt checks alone may clear the old session.
+        await this.o.client.recover(this.o.noteId,signal);
+        const pending = (await this.record()).value.pending;
+        signal.throwIfAborted();
+        if (!pending) { this.completedDirectResponse = undefined; return; }
+        if (!this.canWaitForSettlement(pending)) throw new DaemonConflict();
+        await new Promise<void>((resolve,reject)=>{
+          const done = () => { signal.removeEventListener('abort',aborted); resolve(); };
+          const next = setTimeout(done,1_000);
+          const aborted = () => { clearTimeout(next); signal.removeEventListener('abort',aborted); reject(signal.reason); };
+          signal.addEventListener('abort',aborted,{once:true});
+          if (signal.aborted) aborted();
+        });
+      }
+    } catch (error) {
+      this.completedDirectResponse = undefined;
+      caller?.throwIfAborted();
+      if (error instanceof JournalIntegrityError || error instanceof JournalConflictError) throw error;
+      throw new DaemonConflict();
+    } finally { clearTimeout(timer); }
+  }
   async start(): Promise<void> {
     await this.exclusive(async()=>{
       // A restart recovers and closes the old session before accepting NEW work.
       // An unknown create may need its exact authorization POST, never inference.
       this.started = false;
+      this.completedDirectResponse = undefined;
       const r = await this.record();
       const recover = async(action:()=>Promise<unknown>):Promise<boolean>=>{
         try { await action(); return true; }
@@ -67,6 +115,7 @@ export class ClientDaemon {
   }
   async shutdown(): Promise<void> {
     this.stopping = true;
+    this.stoppingController.abort();
     // Authorization/proof preparation runs under serial before incrementing
     // inflight. Drain that admission boundary before deciding we are idle.
     await this.exclusive(async()=>{});
@@ -112,6 +161,7 @@ export class ClientDaemon {
     const model = this.o.models.find(model => (typeof model === 'string' ? model : model.id) === body.model);
     if (!model) throw new Error('model is not in the pinned allowlist');
     if (typeof model !== 'string' && !model.apis.some(api => daemonApiPaths[api] === path)) throw new Error('model API is not configured');
+    if (typeof model !== 'string') validateModelRequestCapabilities(model, body);
     if (this.o.mode !== 'proxy') {
       if (path.startsWith('/v1/messages') || this.o.mode === 'direct_openrouter' && path !== '/v1/chat/completions') throw new Error('unsupported direct endpoint');
       // Upstream clientd strips these identity/transport fields. Reject them
@@ -147,6 +197,7 @@ export class ClientDaemon {
       }; check(body);
     }
     const snapshot = new Uint8Array(bytes);
+    let requestId: string | undefined;
     await this.exclusive(async()=>{
       signal?.throwIfAborted();
       if (!this.started || this.stopping || this.inflight >= (this.reuse === 0 ? 1 : 4)) throw new DaemonConflict();
@@ -158,7 +209,8 @@ export class ClientDaemon {
         // This new operation has not been dispatched. Preserve its exact intent
         // while closing an incompatible/expired session; never replay an old one.
         if (this.inflight) throw new DaemonConflict();
-        await this.o.client.close(this.o.noteId);
+        if (this.settlementWait > 0) await this.waitForSettlement(p,signal);
+        else await this.o.client.close(this.o.noteId);
         r = await this.record(); p = r.value.pending;
         if (p) throw new DaemonConflict();
         signal?.throwIfAborted();
@@ -166,18 +218,28 @@ export class ClientDaemon {
       }
       if (!p) {
         const credentials = await createCredentials(this.o.mode);
+        signal?.throwIfAborted();
         const prepared = await this.o.prepare(body.model as string,credentials);
+        signal?.throwIfAborted();
         if (prepared.prepared.request.authorization.mode !== this.o.mode) throw new Error('mode changed during preparation');
         await this.o.client.prepare(this.o.noteId,prepared.prepared,prepared.root);
-        await this.o.client.submit(this.o.noteId);
+        signal?.throwIfAborted();
+        await this.o.client.submit(this.o.noteId,signal);
         r = await this.record(); p = r.value.pending;
       }
       if (!p || p.phase !== 'active' || p.serverState !== 'ACTIVE') throw new DaemonConflict();
+      requestId = p.prepared.request.authorization.request_id;
+      this.completedDirectResponse = undefined;
       if (this.o.mode === 'proxy') await this.o.client.prepareOperation(this.o.noteId,operationId,path,snapshot,anthropicVersion);
       this.inflight++;
     });
     let finishing: Promise<void> | undefined;
-    const finish = () => finishing ??= (async() => { this.inflight--; if(this.inflight===0)for(const resolve of this.idleWaiters.splice(0))resolve(); await this.maintenance().catch(()=>{}); })();
+    const finish = (complete = false) => finishing ??= (async() => {
+      if (complete && this.settlementWait > 0 && requestId && !signal?.aborted)
+        this.completedDirectResponse = {requestId,operationId};
+      this.inflight--; if(this.inflight===0)for(const resolve of this.idleWaiters.splice(0))resolve();
+      await this.maintenance().catch(()=>{ this.completedDirectResponse = undefined; });
+    })();
     try {
       const response = this.o.mode === 'proxy' ? await this.o.client.sendOperation(this.o.noteId,operationId,signal) : await this.o.client.sendDirectOperation(this.o.noteId,operationId,path,snapshot,signal);
       // An upstream response must not set cookies, enable CORS or attach an
@@ -197,7 +259,7 @@ export class ClientDaemon {
             // cancel() resolves an outstanding read before its asynchronous
             // finalizer completes. Cancellation alone owns admission release.
             if (canceling) return;
-            if (next.done) { await finish(); controller.close(); } else controller.enqueue(next.value);
+            if (next.done) { await finish(response.ok); controller.close(); } else controller.enqueue(next.value);
           } catch {
             if (canceling) return;
             await finish(); controller.error(new Error('upstream stream interrupted; no replay'));

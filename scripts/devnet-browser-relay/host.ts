@@ -1,6 +1,7 @@
 /** Numeric loopback-only acceptance host. No wallet key or .env is read.
  * RPC credentials stay in the private launch configuration, never /config. */
 import assert from 'node:assert/strict';
+import {createHash, timingSafeEqual} from 'node:crypto';
 import {createServer, request as requestHttp, type IncomingMessage} from 'node:http';
 import {request as requestHttps} from 'node:https';
 import {readFile, lstat} from 'node:fs/promises';
@@ -173,18 +174,26 @@ export async function configuredHost(config: HostConfig, output: string) {
 }
 
 export interface HostOptions {
-  port: number; output: string; assets?: Map<string, {bytes: Buffer; mime: string}>; manifest?: VerifiedManifest; allowTransactions?: boolean;
+  port: number; output?: string; assets?: Map<string, {bytes: Buffer; mime: string}>; manifest?: VerifiedManifest; allowTransactions?: boolean;
   /** Explicit standalone application integration; defaults preserve the wallet host. */
-  application?: 'browser-chat';
+  application?: 'browser-chat' | 'public-api';
+  allowedBrowserOrigins?: readonly string[];
+  allowNativeRequests?: boolean;
+  /** SHA-256 of canonical 43-character base64url invitation text; operator-private. */
+  admissionTokenSha256?: string;
+  /** Exact HTTPS origin behind a TLS reverse proxy on this loopback listener. */
+  publicOrigin?: string;
+  /** Omission preserves historical admission. Recovery stays under allowTransactions. */
+  allowNewAdmissions?: boolean;
   directProviderOrigin?: 'https://openrouter.ai';
   /** Only /control is delegated, after the same loopback/origin/header/write guards.
    * The installed application must enforce its exact native routes and budget. */
-  controlRelay?: (input: {path: string; method: 'GET' | 'POST'; authorization?: string; data: Buffer}) => Promise<UpstreamReply>;
+  controlRelay?: (input: {path: string; method: 'GET' | 'POST'; authorization?: string; data: Buffer; allowNewAdmissions?: boolean; newAdmissionAuthorized?: boolean; signal?: AbortSignal}) => Promise<UpstreamReply>;
   directBudget?: () => Promise<UiDirectProviderBudget>;
   preparationCommitment?: TransactionPreparationCommitment;
-  rpc?: (data: Buffer) => Promise<{status: number; bytes: Buffer}>;
-  historyRpc?: (data: Buffer) => Promise<{status: number; bytes: Buffer}>;
-  indexer?: (path: string) => Promise<{status: number; bytes: Buffer}>;
+  rpc?: (data: Buffer, signal?: AbortSignal) => Promise<{status: number; bytes: Buffer}>;
+  historyRpc?: (data: Buffer, signal?: AbortSignal) => Promise<{status: number; bytes: Buffer}>;
+  indexer?: (path: string, signal?: AbortSignal) => Promise<{status: number; bytes: Buffer}>;
   clearance?: (data: Buffer) => Promise<{status: number; bytes: Buffer}>;
   provider?: {public: UiProviderPublic; budget?(): Promise<UiProviderBudget>; reserve(requestId?: string, operationId?: string): Promise<void>;
     control(path: string, method: string, headers: Record<string,string>, data?: Buffer): Promise<UpstreamReply>;
@@ -192,10 +201,27 @@ export interface HostOptions {
 }
 export async function startUiHost(options: HostOptions) {
   const preparationCommitment = resolvePreparationCommitment(options.preparationCommitment);
-  assert.ok(options.application === undefined || options.application === 'browser-chat');
+  assert.ok(options.allowNewAdmissions === undefined || typeof options.allowNewAdmissions === 'boolean');
+  const allowNewAdmissions = options.allowNewAdmissions ?? options.allowTransactions === true;
+  const publicOrigin = options.publicOrigin, publicApi = options.application === 'public-api';
+  const browserOrigins = new Set(options.allowedBrowserOrigins ?? []);
+  const nativeRequests = options.allowNativeRequests === true;
+  const admissionTokenSha256 = options.admissionTokenSha256;
+  if (publicApi) {
+    assert.ok(publicOrigin && Array.isArray(options.allowedBrowserOrigins) && browserOrigins.size === options.allowedBrowserOrigins.length
+      && browserOrigins.size <= 32 && typeof options.allowNativeRequests === 'boolean' && !options.provider && !options.assets);
+    if (allowNewAdmissions || admissionTokenSha256 !== undefined) assert.match(admissionTokenSha256 ?? '', /^[0-9a-f]{64}$/, 'public admission invitation digest required');
+    for (const value of browserOrigins) { const u = new URL(value); assert.ok(u.protocol === 'https:' && u.origin === value && !u.username && !u.password); }
+  } else assert.ok(options.allowedBrowserOrigins === undefined && options.allowNativeRequests === undefined && admissionTokenSha256 === undefined);
+  if (publicOrigin !== undefined) {
+    const url = new URL(publicOrigin);
+    assert.ok((options.application === 'browser-chat' || publicApi) && publicOrigin === url.origin && url.protocol === 'https:'
+      && !url.username && !url.password && typeof options.allowNewAdmissions === 'boolean', 'explicit public HTTPS origin and admission policy required');
+  }
+  assert.ok(options.application === undefined || options.application === 'browser-chat' || publicApi);
   assert.ok(options.directProviderOrigin === undefined || options.application === 'browser-chat' && options.directProviderOrigin === 'https://openrouter.ai');
-  assert.ok(!options.controlRelay || options.application === 'browser-chat' && !options.provider);
-  assert.ok(!options.directBudget || options.application === 'browser-chat' && !options.provider && options.controlRelay);
+  assert.ok(!options.controlRelay || (options.application === 'browser-chat' || publicApi) && !options.provider);
+  assert.ok(!options.directBudget || (options.application === 'browser-chat' || publicApi) && !options.provider && options.controlRelay);
   const directProviderOrigin = options.directProviderOrigin, controlRelay = options.controlRelay, directBudget = options.directBudget;
   const historyRpc = options.historyRpc;
   const provider = options.provider ? {...options.provider, public: structuredClone(options.provider.public)} : undefined;
@@ -211,6 +237,8 @@ export async function startUiHost(options: HostOptions) {
   const quoteRequest = provider && {mode: 'proxy', provider: 'openai', models: [provider.public.testCase.model], session_ttl_seconds: String(provider.public.testCase.session_ttl_seconds)};
   const exactFields = (value: any, fields: string[]) => { assert.ok(value && typeof value === 'object' && !Array.isArray(value)); assert.deepEqual(Object.keys(value).sort(), fields.sort()); };
   const assets = new Map(options.assets);
+  if (!publicApi) {
+  assert.ok(options.output);
   for (const [name, mime] of [['index.html', 'text/html'], ['app.js', 'text/javascript'], [options.application === 'browser-chat' ? 'styles.css' : 'style.css', 'text/css'], ['worker.js', 'text/javascript']]) {
     // The standalone packager already authenticates these exact bytes. Do not
     // re-read a changed file after checking its build digest.
@@ -233,6 +261,7 @@ export async function startUiHost(options: HostOptions) {
     // /demo route, so a visitor never mistakes an animation for a live request.
     assets.set('/demo', presentation);
   }
+  }
   const allowedVault = new Map(await Promise.all(['create_payload', 'append_payload', 'seal_payload', 'execute_payload', 'close_payload', 'finalize_escape', 'deposit_compact_v1'].map(async name => [Buffer.from(await discriminator(name)).toString('hex'), name] as const)));
   const safeReply = (result: UpstreamReply, request?: any) => {
     if (result.status < 200 || result.status >= 300) return {...result, bytes: Buffer.from('{"error":"configured upstream unavailable"}')};
@@ -242,20 +271,81 @@ export async function startUiHost(options: HostOptions) {
     return {...result, bytes: Buffer.from(JSON.stringify(envelope))};
   };
   let origin = '', rpcId = 0;
-  const callRpc = async (method: string, params: unknown[], rpc = options.rpc) => {
-    assert.ok(rpc); const id = ++rpcId, result = await rpc(Buffer.from(JSON.stringify({jsonrpc: '2.0', id, method, params})));
+  const callRpc = async (method: string, params: unknown[], rpc = options.rpc, signal?: AbortSignal) => {
+    assert.ok(rpc); const id = ++rpcId, result = await rpc(Buffer.from(JSON.stringify({jsonrpc: '2.0', id, method, params})), signal);
     assert.equal(result.status, 200); const parsed = parseStrictJson(result.bytes) as any;
     assert.ok(parsed && parsed.jsonrpc === '2.0' && parsed.id === id && !parsed.error); return parsed.result;
   };
+  const gatewayMethod = (path: string): 'GET' | 'POST' | undefined => {
+    if (['/rpc','/zkapi/v1/quotes','/zkapi/v1/sessions','/zkapi/v1/withdraw/clearance'].includes(path)
+      || new RegExp(`^/zkapi/v1/sessions/${uuidPattern}/close$`).test(path)) return 'POST';
+    if (['/relay-status','/provider-budget','/zkapi/v1/config','/zkapi/v1/catalog','/zkapi/v1/attestation'].includes(path)
+      || /^\/zkapi\/v1\/tariffs\/[0-9a-f]{64}$/.test(path)
+      || /^\/zkapi\/v1\/tree\/(root|snapshot|snapshots\/[0-9a-f]{64}\.json)$/.test(path)
+      || new RegExp(`^/zkapi/v1/sessions/${uuidPattern}(?:/receipts(?:\\?cursor=[1-9][0-9]{0,18})?|/operations/${uuidPattern})?$`).test(path)) return 'GET';
+  };
   const server = createServer(async (request, response) => {
+    const cancellation = new AbortController();
+    request.once('aborted', () => cancellation.abort());
+    response.once('close', () => { if (!response.writableEnded) cancellation.abort(); });
+    const signal = cancellation.signal;
     response.setHeader('cache-control', 'no-store'); response.setHeader('x-content-type-options', 'nosniff');
     response.setHeader('content-security-policy', `default-src 'none'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self'; connect-src 'self'${directProviderOrigin ? ' ' + directProviderOrigin : ''}; worker-src 'self'; img-src 'self' data:; frame-ancestors 'none'; base-uri 'none'; form-action 'none'`);
     try {
       assert.equal(request.headers.host, new URL(origin).host); assert.ok(['127.0.0.1', '::ffff:127.0.0.1'].includes(request.socket.remoteAddress ?? ''));
-      assert.ok(!request.headers['sec-fetch-site'] || ['same-origin', 'none'].includes(String(request.headers['sec-fetch-site'])));
-      if (request.headers.origin) assert.equal(request.headers.origin, origin);
-      const path = request.url ?? '';
+      let path = request.url ?? '', newAdmissionAuthorized = !publicApi;
+      if (publicApi) {
+        for (const name of ['cookie','proxy-authorization','x-api-key','anthropic-version','idempotency-key','x-forwarded-host','x-forwarded-for','x-forwarded-proto']) assert.equal(request.headers[name], undefined);
+        for (const name of ['host','origin','authorization','content-type','x-zkapi-admission']) assert.ok(request.rawHeaders.filter((v,i) => i % 2 === 0 && v.toLowerCase() === name).length <= 1);
+        const invitation = request.headers['x-zkapi-admission'];
+        if (invitation !== undefined) assert.ok(path === '/zkapi/v1/sessions' && request.method === 'POST', 'invitation is only accepted on AUTH');
+        if (typeof invitation === 'string' && /^[A-Za-z0-9_-]{43}$/.test(invitation) && admissionTokenSha256 !== undefined) {
+          const bytes = Buffer.from(invitation,'base64url');
+          if (bytes.length === 32 && bytes.toString('base64url') === invitation)
+            newAdmissionAuthorized = timingSafeEqual(createHash('sha256').update(invitation,'utf8').digest(),Buffer.from(admissionTokenSha256,'hex'));
+        }
+        const browserOrigin = request.headers.origin;
+        if (browserOrigin !== undefined) {
+          assert.ok(browserOrigins.has(browserOrigin));
+          response.setHeader('access-control-allow-origin', browserOrigin); response.setHeader('vary','Origin');
+          response.setHeader('access-control-expose-headers','x-zkapi-error-code');
+        } else {
+          // Same-origin browser GETs omit Origin. Fetch Metadata is supplied by
+          // the browser and this path is enabled only for the reviewed origin.
+          const sameOriginBrowser = browserOrigins.has(origin) && request.headers['sec-fetch-site'] === 'same-origin'
+            && ['cors','same-origin'].includes(String(request.headers['sec-fetch-mode']))
+            && (!request.headers['sec-fetch-dest'] || request.headers['sec-fetch-dest'] === 'empty');
+          assert.ok(sameOriginBrowser || nativeRequests && !Object.keys(request.headers).some(name => name.startsWith('sec-fetch-')), 'explicit native transport required');
+        }
+        const method = gatewayMethod(path); assert.ok(method, 'unsupported public route');
+        if (request.method === 'OPTIONS') {
+          assert.ok(browserOrigin && request.headers['access-control-request-method'] === method && !request.headers.authorization);
+          assert.ok(!request.headers['transfer-encoding'] && (!request.headers['content-length'] || request.headers['content-length'] === '0'));
+          const requested = String(request.headers['access-control-request-headers'] ?? '').toLowerCase().split(',').map(v => v.trim()).filter(Boolean);
+          const allowedHeaders = ['authorization','content-type', ...(path === '/zkapi/v1/sessions' ? ['x-zkapi-admission'] : [])];
+          assert.ok(new Set(requested).size === requested.length && requested.every(v => allowedHeaders.includes(v)));
+          response.setHeader('access-control-allow-methods',method); response.setHeader('access-control-allow-headers',allowedHeaders.join(', '));
+          response.setHeader('access-control-max-age','300'); response.statusCode=204; response.end(); return;
+        }
+        assert.equal(request.method,method);
+        if (path === '/rpc' || path.startsWith('/zkapi/v1/tree/')) assert.equal(request.headers.authorization,undefined);
+        if (path.startsWith('/zkapi/v1/tree/')) path='/indexer'+path;
+        else if (path.startsWith('/zkapi/v1/')) path='/control'+path;
+      } else {
+        assert.ok(!request.headers['sec-fetch-site'] || ['same-origin', 'none'].includes(String(request.headers['sec-fetch-site'])));
+        if (request.headers.origin) assert.equal(request.headers.origin, origin);
+      }
       if (request.method === 'GET' && assets.has(path)) { const asset = assets.get(path)!; response.setHeader('content-type', asset.mime); response.end(asset.bytes); return; }
+      if (request.method === 'GET' && path === '/relay-status') {
+        for (const name of ['authorization', 'cookie', 'proxy-authorization', 'x-api-key']) assert.equal(request.headers[name], undefined);
+        response.setHeader('content-type', 'application/json');
+        response.end(JSON.stringify({schema: 1, scope: 'relay_configuration_only', readiness: 'not_checked',
+          admission: options.allowTransactions && allowNewAdmissions ? 'enabled' : 'suspended',
+          recovery: options.allowTransactions ? 'enabled' : 'disabled',
+          routes: {rpc: options.rpc ? 'configured' : 'missing', indexer: options.indexer ? 'configured' : 'missing',
+            control: controlRelay || provider ? 'configured' : 'missing'},
+          signer: 'not_checked', provider_credit: 'not_checked', finalized_pool: 'not_checked'})); return;
+      }
       if (request.method === 'GET' && path === '/provider-budget') {
         for (const name of ['authorization', 'cookie', 'proxy-authorization', 'x-api-key']) assert.equal(request.headers[name], undefined);
         response.setHeader('content-type', 'application/json');
@@ -264,28 +354,29 @@ export async function startUiHost(options: HostOptions) {
         return;
       }
       if (request.method === 'GET' && /^\/indexer\/zkapi\/v1\/tree\/(root|snapshot|snapshots\/[0-9a-f]{64}\.json|notes\/\d+\/(path|zero-path))$/.test(path)) {
-        assert.ok(options.indexer); const result = safeReply(await options.indexer(path.slice('/indexer'.length))); response.statusCode = result.status; response.setHeader('content-type', 'application/json'); response.end(result.bytes); return;
+        assert.ok(options.indexer); const result = safeReply(await options.indexer(path.slice('/indexer'.length),signal)); response.statusCode = result.status; response.setHeader('content-type', 'application/json'); response.end(result.bytes); return;
       }
       if (path.startsWith('/control/') && controlRelay) {
         for (const name of ['cookie', 'proxy-authorization', 'x-api-key', 'anthropic-version', 'idempotency-key']) assert.equal(request.headers[name], undefined);
         assert.ok(request.method === 'GET' || request.method === 'POST');
         assert.ok(request.rawHeaders.filter((_, i) => i % 2 === 0 && request.rawHeaders[i].toLowerCase() === 'authorization').length <= 1);
         if (request.method === 'POST') {
-          assert.equal(request.headers.origin, origin); assert.ok(options.allowTransactions, 'financial writes disabled');
+          if (!publicApi) assert.equal(request.headers.origin, origin); assert.ok(options.allowTransactions, 'financial writes disabled');
         }
         const data = await body(request);
         if (data.length) assert.equal(request.headers['content-type'], 'application/json');
         const result = safeReply(await controlRelay({path: path.slice('/control'.length), method: request.method,
-          authorization: request.headers.authorization, data}));
+          authorization: request.headers.authorization, data, allowNewAdmissions, newAdmissionAuthorized, signal}));
         response.statusCode = result.status; response.setHeader('content-type', 'application/json'); response.end(result.bytes); return;
       }
       if (path.startsWith('/control/') || path.startsWith('/inference/')) {
         assert.ok(provider && options.manifest);
         for (const name of ['cookie', 'proxy-authorization', 'x-api-key', 'anthropic-version']) assert.equal(request.headers[name], undefined);
         assert.ok(request.method === 'GET' || request.method === 'POST');
-        if (request.method === 'POST') { assert.equal(request.headers.origin, origin); assert.ok(options.allowTransactions, 'financial writes disabled'); }
+        if (request.method === 'POST') { if (!publicApi) assert.equal(request.headers.origin, origin); assert.ok(options.allowTransactions, 'financial writes disabled'); }
         const data = await body(request); let result: UpstreamReply;
         if (path === '/inference/v1/chat/completions') {
+          assert.ok(allowNewAdmissions, 'new provider admission suspended');
           assert.equal(request.method, 'POST'); assert.equal(request.headers['content-type'], 'application/json');
           assert.ok(data.equals(Buffer.from(providerAcceptanceBody(provider.public.testCase))));
           const authorization = token(request, 'zkp1'), operation = request.headers['idempotency-key']; assert.ok(typeof operation === 'string' && uuid.test(operation));
@@ -302,6 +393,7 @@ export async function startUiHost(options: HostOptions) {
             assert.equal(method, 'POST'); assert.equal(request.headers['content-type'], 'application/json'); assert.equal(request.headers.authorization, undefined);
             assert.ok(same(parseStrictJson(data), quoteRequest));
           } else if (controlPath === '/zkapi/v1/sessions') {
+            assert.ok(allowNewAdmissions, 'new provider admission suspended');
             assert.equal(method, 'POST'); assert.equal(request.headers['content-type'], 'application/json');
             const value = parseStrictJson(data) as any; exactFields(value, ['authorization', 'quote', 'public_inputs', 'proof']);
             const auth = value.authorization, q = value.quote?.body;
@@ -326,7 +418,7 @@ export async function startUiHost(options: HostOptions) {
         if (code) response.setHeader('x-zkapi-error-code', code);
         response.statusCode = result.status; response.setHeader('content-type', 'application/json'); response.end(result.bytes); return;
       }
-      assert.equal(request.method, 'POST'); assert.equal(request.headers.origin, origin);
+      assert.equal(request.method, 'POST'); if (!publicApi) assert.equal(request.headers.origin, origin);
       const data = await body(request), json = parseStrictJson(data) as any;
       let result: {status: number; bytes: Buffer};
       if (path === '/rpc') {
@@ -334,7 +426,7 @@ export async function startUiHost(options: HostOptions) {
         if (json.method === 'getBlock') assert.ok(json.params[1]?.transactionDetails === 'none');
         if (json.method === 'sendTransaction') {
           assert.ok(options.allowTransactions && options.manifest, 'financial sends disabled');
-          assert.equal(await callRpc('getGenesisHash', []), GENESIS);
+          assert.equal(await callRpc('getGenesisHash', [], options.rpc, signal), GENESIS);
           assert.ok(typeof json.params[0] === 'string' && json.params[1]?.encoding === 'base64');
           const bytes = Buffer.from(json.params[0], 'base64'); assert.equal(bytes.toString('base64'), json.params[0]); assert.ok(bytes.length <= 1232);
           const tx = getTransactionDecoder().decode(bytes), message = getCompiledTransactionMessageDecoder().decode(tx.messageBytes);
@@ -350,9 +442,13 @@ export async function startUiHost(options: HostOptions) {
               const name = allowedVault.get(Buffer.from(ix.data.slice(0, 8)).toString('hex')); assert.ok(name);
               const poolPosition = name === 'execute_payload' ? 3 : name === 'finalize_escape' || name === 'deposit_compact_v1' ? 0 : 1;
               assert.equal(message.staticAccounts[ix.accountIndices![poolPosition]], options.manifest.pool);
-              if (name === 'create_payload') assert.ok(ix.data.length === 85 && [0, 1, 2].includes(ix.data[8]), 'only deposit/mutual-close/escape payload creation');
+              if (name === 'create_payload') {
+                assert.ok(ix.data.length === 85 && [0, 1, 2].includes(ix.data[8]), 'only deposit/mutual-close/escape payload creation');
+                assert.ok(allowNewAdmissions || ix.data[8] !== 0, 'new deposit admission suspended');
+              }
               if (name === 'finalize_escape') assert.equal(ix.data.length, 12, 'canonical escape finalization required');
               if (name === 'deposit_compact_v1') {
+                assert.ok(allowNewAdmissions, 'new deposit admission suspended');
                 // This requires the SDK's authenticated manifest identity and
                 // independent build capability pin, not a caller-supplied flag.
                 assert.ok(supportsInlineDeposit(options.manifest), 'compact deposit capability required');
@@ -369,16 +465,16 @@ export async function startUiHost(options: HostOptions) {
             }
           }
           assert.equal(vaultCalls, 1);
-          const fee = await callRpc('getFeeForMessage', [Buffer.from(tx.messageBytes).toString('base64'), {commitment: preparationCommitment}]);
+          const fee = await callRpc('getFeeForMessage', [Buffer.from(tx.messageBytes).toString('base64'), {commitment: preparationCommitment}],options.rpc,signal);
           assert.ok(Number.isSafeInteger(fee?.value) && fee.value >= 0 && fee.value <= 10_000);
           json.params[1] = {encoding: 'base64', skipPreflight: false, preflightCommitment: preparationCommitment, maxRetries: 0};
         }
         if (json.method === 'getTransaction' && historyRpc) {
           // Explicit history routing, with a fresh Devnet pin check. Failure is
           // never absence, and neither endpoint is retried or substituted.
-          assert.equal(await callRpc('getGenesisHash', [], historyRpc), GENESIS);
-          result = safeReply(await historyRpc(Buffer.from(JSON.stringify(json))), json);
-        } else result = safeReply(await options.rpc(Buffer.from(JSON.stringify(json))), json);
+          assert.equal(await callRpc('getGenesisHash', [], historyRpc, signal), GENESIS);
+          result = safeReply(await historyRpc(Buffer.from(JSON.stringify(json)),signal), json);
+        } else result = safeReply(await options.rpc(Buffer.from(JSON.stringify(json)),signal), json);
       } else if (path === '/clearance') {
         assert.ok(options.allowTransactions && options.clearance && json && Object.keys(json).join(',') === 'nullifier' && /^0x[0-9a-f]{64}$/.test(json.nullifier));
         result = safeReply(await options.clearance(data));
@@ -387,6 +483,6 @@ export async function startUiHost(options: HostOptions) {
     } catch { response.statusCode = 400; response.setHeader('content-type', 'application/json'); response.end('{"error":"local acceptance request refused"}'); }
   });
   await new Promise<void>((resolve, reject) => { server.once('error', reject); server.listen(options.port, '127.0.0.1', resolve); });
-  origin = 'http://127.0.0.1:' + (server.address() as {port: number}).port;
+  origin = publicOrigin ?? 'http://127.0.0.1:' + (server.address() as {port: number}).port;
   return {origin, server, close: () => new Promise<void>(resolve => { server.closeAllConnections(); server.close(() => resolve()); })};
 }

@@ -23,7 +23,7 @@ import { connectionTransport, createSolanaRpcWithFetch, type V0Wallet, type Tran
 interface RuntimeConfig {
   manifest: string; policy: ManifestTrustPolicy; artifacts: Record<Exclude<keyof ArtifactBundle,'additional'>,string> & {additional:Record<string,string>};
   verifier:{path:string;sha256:string}; prover:{path:string;sha256:string};
-  journal:string; custody:string; note_id:string; mode:Mode; models:(string | DaemonModelSource)[]; tariff?:string; key_reuse_seconds?:number;
+  journal:string; custody:string; note_id:string; mode:Mode; models:(string | DaemonModelSource)[]; tariff?:string; key_reuse_seconds?:number; settlement_wait_ms?:number;
   rpc:string; indexer:string; direct_provider_bases?:Partial<Record<'direct_oa'|'direct_openrouter',string>>;
   preparation_commitment?:TransactionPreparationCommitment;
   oa_verifier?:{base:string;stationId:string};
@@ -72,7 +72,7 @@ async function main(): Promise<void> {
   }
   const rpc=connectionTransport(connection,{preparationCommitment:c.preparation_commitment});
   const wallet=new WalletClient({manifest:m,prover,journal,chain,rpc,wallets,fetch:fetcher});
-  const service=new ClientDaemon({client,journal,noteId:c.note_id,mode:c.mode,models,keyReuseSeconds:c.key_reuse_seconds,
+  const service=new ClientDaemon({client,journal,noteId:c.note_id,mode:c.mode,models,keyReuseSeconds:c.key_reuse_seconds,settlementWaitMs:c.settlement_wait_ms,
     prepare:async(model,credentials)=>{
       const selected=models.find(configured=>configured.id===model);if(!selected)throw Error('model not configured');
       const current=await journal.read(c.note_id);if(!current?.value.witness)throw Error('full finalized note required');

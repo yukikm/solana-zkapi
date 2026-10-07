@@ -87,6 +87,22 @@ class DemoBudgetTests(unittest.TestCase):
         self.reserve(request=str(uuid.uuid4()))
         self.assertEqual(self.budget.status()['reserved_micro_usdc'], '2000000')
 
+    def test_admission_suspension_preserves_only_exact_auth_recovery(self):
+        before = (self.directory / 'budget-state.json').read_bytes()
+        with self.assertRaisesRegex(old.Failure, 'admission suspended'):
+            self.budget.reserve_direct_demo('openrouter-direct-plain', self.request, self.digest, allow_new=False)
+        self.assertEqual((self.directory / 'budget-state.json').read_bytes(), before)
+        self.reserve()
+        before = (self.directory / 'budget-state.json').read_bytes()
+        result = self.budget.reserve_direct_demo('openrouter-direct-plain', self.request, self.digest, allow_new=False)
+        self.assertFalse(result['newly_reserved'])
+        self.assertTrue(result['auth_forward_allowed'])
+        with self.assertRaisesRegex(old.Failure, 'different AUTH'):
+            self.budget.reserve_direct_demo('openrouter-direct-plain', self.request, 'cd' * 32, allow_new=False)
+        with self.assertRaisesRegex(old.Failure, 'admission suspended'):
+            self.budget.reserve_direct_demo('openrouter-direct-plain', str(uuid.uuid4()), self.digest, allow_new=False)
+        self.assertEqual((self.directory / 'budget-state.json').read_bytes(), before)
+
     def test_same_lock_serializes_exact_and_conflicting_concurrent_auth(self):
         ctx = multiprocessing.get_context('spawn')
         queue = ctx.Queue()

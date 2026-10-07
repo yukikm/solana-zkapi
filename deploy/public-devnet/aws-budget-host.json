@@ -1,0 +1,974 @@
+{
+  "AWSTemplateFormatVersion": "2010-09-09",
+  "Description": "Unprovisioned low-cost US East Devnet candidate: private 4-GiB operator, stateless NAT instance, generated HTTPS hostname. Paid resources require approval; memory/archive qualification and financial bootstrap are separate. Retains financial state.",
+  "Parameters": {
+    "AmiId": {
+      "Type": "AWS::EC2::Image::Id",
+      "Default": "ami-0d27e0fb3bac4d724",
+      "Description": "Pinned Amazon-owned AL2023 2023.12.20260930 x86_64 in us-east-1. Review package pins together before changing the image."
+    },
+    "AvailabilityZoneId": {
+      "Type": "String",
+      "Default": "use1-az2",
+      "AllowedValues": [
+        "use1-az1",
+        "use1-az2",
+        "use1-az4",
+        "use1-az5",
+        "use1-az6"
+      ],
+      "Description": "Review account availability. use1-az3 is excluded because CloudFront VPC origins do not support it."
+    }
+  },
+  "Rules": {
+    "VirginiaOnly": {
+      "Assertions": [
+        {
+          "Assert": {
+            "Fn::Equals": [
+              {
+                "Ref": "AWS::Region"
+              },
+              "us-east-1"
+            ]
+          },
+          "AssertDescription": "The USD50 candidate is priced only in US East (Northern Virginia)."
+        }
+      ]
+    }
+  },
+  "Resources": {
+    "Vpc": {
+      "Type": "AWS::EC2::VPC",
+      "Properties": {
+        "CidrBlock": "10.79.0.0/16",
+        "EnableDnsSupport": true,
+        "EnableDnsHostnames": true,
+        "Tags": [
+          {
+            "Key": "Name",
+            "Value": {
+              "Fn::Sub": "${AWS::StackName}-private-preview"
+            }
+          }
+        ]
+      }
+    },
+    "InternetGateway": {
+      "Type": "AWS::EC2::InternetGateway",
+      "Properties": {}
+    },
+    "GatewayAttachment": {
+      "Type": "AWS::EC2::VPCGatewayAttachment",
+      "Properties": {
+        "VpcId": {
+          "Ref": "Vpc"
+        },
+        "InternetGatewayId": {
+          "Ref": "InternetGateway"
+        }
+      }
+    },
+    "PublicSubnet": {
+      "Type": "AWS::EC2::Subnet",
+      "Properties": {
+        "VpcId": {
+          "Ref": "Vpc"
+        },
+        "CidrBlock": "10.79.0.0/24",
+        "MapPublicIpOnLaunch": false,
+        "AvailabilityZoneId": {
+          "Ref": "AvailabilityZoneId"
+        }
+      }
+    },
+    "PublicSubnetRoutes": {
+      "Type": "AWS::EC2::RouteTable",
+      "Properties": {
+        "VpcId": {
+          "Ref": "Vpc"
+        }
+      }
+    },
+    "PublicSubnetAssociation": {
+      "Type": "AWS::EC2::SubnetRouteTableAssociation",
+      "Properties": {
+        "SubnetId": {
+          "Ref": "PublicSubnet"
+        },
+        "RouteTableId": {
+          "Ref": "PublicSubnetRoutes"
+        }
+      }
+    },
+    "PrivateSubnet": {
+      "Type": "AWS::EC2::Subnet",
+      "Properties": {
+        "VpcId": {
+          "Ref": "Vpc"
+        },
+        "CidrBlock": "10.79.1.0/24",
+        "MapPublicIpOnLaunch": false,
+        "AvailabilityZoneId": {
+          "Ref": "AvailabilityZoneId"
+        }
+      }
+    },
+    "PrivateSubnetRoutes": {
+      "Type": "AWS::EC2::RouteTable",
+      "Properties": {
+        "VpcId": {
+          "Ref": "Vpc"
+        }
+      }
+    },
+    "PrivateSubnetAssociation": {
+      "Type": "AWS::EC2::SubnetRouteTableAssociation",
+      "Properties": {
+        "SubnetId": {
+          "Ref": "PrivateSubnet"
+        },
+        "RouteTableId": {
+          "Ref": "PrivateSubnetRoutes"
+        }
+      }
+    },
+    "PublicRoute": {
+      "Type": "AWS::EC2::Route",
+      "Properties": {
+        "RouteTableId": {
+          "Ref": "PublicSubnetRoutes"
+        },
+        "DestinationCidrBlock": "0.0.0.0/0",
+        "GatewayId": {
+          "Ref": "InternetGateway"
+        }
+      },
+      "DependsOn": "GatewayAttachment"
+    },
+    "NatAddress": {
+      "Type": "AWS::EC2::EIP",
+      "Properties": {
+        "Domain": "vpc"
+      },
+      "DependsOn": "GatewayAttachment"
+    },
+    "PrivateRoute": {
+      "Type": "AWS::EC2::Route",
+      "Properties": {
+        "RouteTableId": {
+          "Ref": "PrivateSubnetRoutes"
+        },
+        "DestinationCidrBlock": "0.0.0.0/0",
+        "InstanceId": {
+          "Ref": "NatInstance"
+        }
+      },
+      "DependsOn": "NatAddressAssociation"
+    },
+    "OperatorSecurityGroup": {
+      "Type": "AWS::EC2::SecurityGroup",
+      "Properties": {
+        "GroupDescription": "No public ingress; attach only the created CloudFront VPC-origin service security group after provisioning",
+        "VpcId": {
+          "Ref": "Vpc"
+        },
+        "SecurityGroupEgress": [
+          {
+            "IpProtocol": "tcp",
+            "FromPort": 443,
+            "ToPort": 443,
+            "CidrIp": "0.0.0.0/0",
+            "Description": "SSM, authenticated RPC and provider HTTPS"
+          }
+        ]
+      }
+    },
+    "OperatorRole": {
+      "Type": "AWS::IAM::Role",
+      "Properties": {
+        "AssumeRolePolicyDocument": {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Effect": "Allow",
+              "Principal": {
+                "Service": "ec2.amazonaws.com"
+              },
+              "Action": "sts:AssumeRole"
+            }
+          ]
+        },
+        "ManagedPolicyArns": [
+          {
+            "Fn::Sub": "arn:${AWS::Partition}:iam::aws:policy/AmazonSSMManagedInstanceCore"
+          }
+        ]
+      }
+    },
+    "OperatorInstanceProfile": {
+      "Type": "AWS::IAM::InstanceProfile",
+      "Properties": {
+        "Roles": [
+          {
+            "Ref": "OperatorRole"
+          }
+        ]
+      }
+    },
+    "OperatorInstance": {
+      "Type": "AWS::EC2::Instance",
+      "Properties": {
+        "ImageId": {
+          "Ref": "AmiId"
+        },
+        "InstanceType": "t3a.medium",
+        "IamInstanceProfile": {
+          "Ref": "OperatorInstanceProfile"
+        },
+        "SubnetId": {
+          "Ref": "PrivateSubnet"
+        },
+        "SecurityGroupIds": [
+          {
+            "Ref": "OperatorSecurityGroup"
+          }
+        ],
+        "MetadataOptions": {
+          "HttpTokens": "required",
+          "HttpEndpoint": "enabled",
+          "HttpPutResponseHopLimit": 1
+        },
+        "BlockDeviceMappings": [
+          {
+            "DeviceName": "/dev/xvda",
+            "Ebs": {
+              "Encrypted": true,
+              "VolumeType": "gp3",
+              "VolumeSize": 20,
+              "DeleteOnTermination": true
+            }
+          }
+        ],
+        "Tags": [
+          {
+            "Key": "Name",
+            "Value": {
+              "Fn::Sub": "${AWS::StackName}-operator"
+            }
+          }
+        ],
+        "CreditSpecification": {
+          "CPUCredits": "standard"
+        }
+      },
+      "DependsOn": "PrivateRoute",
+      "DeletionPolicy": "Retain",
+      "UpdateReplacePolicy": "Retain"
+    },
+    "OperatorData": {
+      "Type": "AWS::EC2::Volume",
+      "Properties": {
+        "AvailabilityZone": {
+          "Fn::GetAtt": [
+            "PrivateSubnet",
+            "AvailabilityZone"
+          ]
+        },
+        "Encrypted": true,
+        "Size": 20,
+        "VolumeType": "gp3",
+        "Tags": [
+          {
+            "Key": "Name",
+            "Value": {
+              "Fn::Sub": "${AWS::StackName}-durable-state"
+            }
+          }
+        ]
+      },
+      "DeletionPolicy": "Retain",
+      "UpdateReplacePolicy": "Retain"
+    },
+    "DataAttachment": {
+      "Type": "AWS::EC2::VolumeAttachment",
+      "Properties": {
+        "Device": "/dev/sdf",
+        "InstanceId": {
+          "Ref": "OperatorInstance"
+        },
+        "VolumeId": {
+          "Ref": "OperatorData"
+        }
+      },
+      "DeletionPolicy": "Retain",
+      "UpdateReplacePolicy": "Retain"
+    },
+    "Artifacts": {
+      "Type": "AWS::S3::Bucket",
+      "Properties": {
+        "BucketEncryption": {
+          "ServerSideEncryptionConfiguration": [
+            {
+              "ServerSideEncryptionByDefault": {
+                "SSEAlgorithm": "AES256"
+              }
+            }
+          ]
+        },
+        "VersioningConfiguration": {
+          "Status": "Enabled"
+        },
+        "PublicAccessBlockConfiguration": {
+          "BlockPublicAcls": true,
+          "BlockPublicPolicy": true,
+          "IgnorePublicAcls": true,
+          "RestrictPublicBuckets": true
+        },
+        "OwnershipControls": {
+          "Rules": [
+            {
+              "ObjectOwnership": "BucketOwnerEnforced"
+            }
+          ]
+        },
+        "CorsConfiguration": {
+          "CorsRules": [
+            {
+              "AllowedMethods": [
+                "GET",
+                "HEAD"
+              ],
+              "AllowedOrigins": [
+                "*"
+              ],
+              "MaxAge": 3600,
+              "ExposedHeaders": [
+                "ETag"
+              ]
+            }
+          ]
+        }
+      },
+      "DeletionPolicy": "Retain",
+      "UpdateReplacePolicy": "Retain"
+    },
+    "Backups": {
+      "Type": "AWS::S3::Bucket",
+      "Properties": {
+        "BucketEncryption": {
+          "ServerSideEncryptionConfiguration": [
+            {
+              "ServerSideEncryptionByDefault": {
+                "SSEAlgorithm": "AES256"
+              }
+            }
+          ]
+        },
+        "VersioningConfiguration": {
+          "Status": "Enabled"
+        },
+        "PublicAccessBlockConfiguration": {
+          "BlockPublicAcls": true,
+          "BlockPublicPolicy": true,
+          "IgnorePublicAcls": true,
+          "RestrictPublicBuckets": true
+        },
+        "OwnershipControls": {
+          "Rules": [
+            {
+              "ObjectOwnership": "BucketOwnerEnforced"
+            }
+          ]
+        }
+      },
+      "DeletionPolicy": "Retain",
+      "UpdateReplacePolicy": "Retain"
+    },
+    "BackupPolicy": {
+      "Type": "AWS::IAM::Policy",
+      "Properties": {
+        "PolicyName": "append-preview-backups",
+        "Roles": [
+          {
+            "Ref": "OperatorRole"
+          }
+        ],
+        "PolicyDocument": {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Effect": "Allow",
+              "Action": [
+                "s3:PutObject"
+              ],
+              "Resource": {
+                "Fn::Sub": "${Backups.Arn}/encrypted/*"
+              }
+            }
+          ]
+        }
+      }
+    },
+    "ArtifactAccess": {
+      "Type": "AWS::CloudFront::OriginAccessControl",
+      "Properties": {
+        "OriginAccessControlConfig": {
+          "Name": {
+            "Fn::Sub": "${AWS::StackName}-artifacts"
+          },
+          "OriginAccessControlOriginType": "s3",
+          "SigningBehavior": "always",
+          "SigningProtocol": "sigv4"
+        }
+      }
+    },
+    "PrivateOrigin": {
+      "Type": "AWS::CloudFront::VpcOrigin",
+      "Properties": {
+        "VpcOriginEndpointConfig": {
+          "Name": {
+            "Fn::Sub": "${AWS::StackName}-operator"
+          },
+          "Arn": {
+            "Fn::Sub": "arn:${AWS::Partition}:ec2:${AWS::Region}:${AWS::AccountId}:instance/${OperatorInstance}"
+          },
+          "HTTPPort": 8080,
+          "HTTPSPort": 8443,
+          "OriginProtocolPolicy": "http-only",
+          "OriginSSLProtocols": [
+            "TLSv1.2"
+          ]
+        }
+      },
+      "DependsOn": "GatewayAttachment"
+    },
+    "ApiCache": {
+      "Type": "AWS::CloudFront::CachePolicy",
+      "Properties": {
+        "CachePolicyConfig": {
+          "Name": {
+            "Fn::Sub": "${AWS::StackName}-no-api-cache"
+          },
+          "MinTTL": 0,
+          "DefaultTTL": 0,
+          "MaxTTL": 0,
+          "ParametersInCacheKeyAndForwardedToOrigin": {
+            "EnableAcceptEncodingGzip": false,
+            "EnableAcceptEncodingBrotli": false,
+            "CookiesConfig": {
+              "CookieBehavior": "none"
+            },
+            "HeadersConfig": {
+              "HeaderBehavior": "none"
+            },
+            "QueryStringsConfig": {
+              "QueryStringBehavior": "none"
+            }
+          }
+        }
+      }
+    },
+    "ApiRequestPolicy": {
+      "Type": "AWS::CloudFront::OriginRequestPolicy",
+      "Properties": {
+        "OriginRequestPolicyConfig": {
+          "Name": {
+            "Fn::Sub": "${AWS::StackName}-api-headers"
+          },
+          "CookiesConfig": {
+            "CookieBehavior": "none"
+          },
+          "HeadersConfig": {
+            "HeaderBehavior": "whitelist",
+            "Headers": [
+              "Authorization",
+              "Origin",
+              "Content-Type",
+              "Accept",
+              "Access-Control-Request-Method",
+              "Access-Control-Request-Headers",
+              "Sec-Fetch-Site",
+              "Sec-Fetch-Mode",
+              "Sec-Fetch-Dest",
+              "X-Zkapi-Admission"
+            ]
+          },
+          "QueryStringsConfig": {
+            "QueryStringBehavior": "all"
+          }
+        }
+      }
+    },
+    "StaticCache": {
+      "Type": "AWS::CloudFront::CachePolicy",
+      "Properties": {
+        "CachePolicyConfig": {
+          "Name": {
+            "Fn::Sub": "${AWS::StackName}-immutable-files"
+          },
+          "MinTTL": 0,
+          "DefaultTTL": 86400,
+          "MaxTTL": 31536000,
+          "ParametersInCacheKeyAndForwardedToOrigin": {
+            "EnableAcceptEncodingGzip": true,
+            "EnableAcceptEncodingBrotli": true,
+            "CookiesConfig": {
+              "CookieBehavior": "none"
+            },
+            "HeadersConfig": {
+              "HeaderBehavior": "whitelist",
+              "Headers": [
+                "Origin"
+              ]
+            },
+            "QueryStringsConfig": {
+              "QueryStringBehavior": "none"
+            }
+          }
+        }
+      }
+    },
+    "Distribution": {
+      "Type": "AWS::CloudFront::Distribution",
+      "Properties": {
+        "DistributionConfig": {
+          "Enabled": true,
+          "Comment": "Invitation-only Devnet preview; application readiness is a separate gated step",
+          "HttpVersion": "http2and3",
+          "IPV6Enabled": true,
+          "PriceClass": "PriceClass_All",
+          "ViewerCertificate": {
+            "CloudFrontDefaultCertificate": true
+          },
+          "Origins": [
+            {
+              "Id": "artifacts",
+              "DomainName": {
+                "Fn::GetAtt": [
+                  "Artifacts",
+                  "RegionalDomainName"
+                ]
+              },
+              "S3OriginConfig": {
+                "OriginAccessIdentity": ""
+              },
+              "OriginAccessControlId": {
+                "Fn::GetAtt": [
+                  "ArtifactAccess",
+                  "Id"
+                ]
+              },
+              "ConnectionAttempts": 1,
+              "ConnectionTimeout": 5
+            },
+            {
+              "Id": "api",
+              "DomainName": {
+                "Fn::GetAtt": [
+                  "OperatorInstance",
+                  "PrivateDnsName"
+                ]
+              },
+              "VpcOriginConfig": {
+                "VpcOriginId": {
+                  "Fn::GetAtt": [
+                    "PrivateOrigin",
+                    "Id"
+                  ]
+                },
+                "OriginReadTimeout": 60,
+                "OriginKeepaliveTimeout": 5
+              },
+              "ConnectionAttempts": 1,
+              "ConnectionTimeout": 5,
+              "ResponseCompletionTimeout": 65
+            }
+          ],
+          "DefaultCacheBehavior": {
+            "TargetOriginId": "artifacts",
+            "ViewerProtocolPolicy": "https-only",
+            "AllowedMethods": [
+              "GET",
+              "HEAD",
+              "OPTIONS"
+            ],
+            "CachedMethods": [
+              "GET",
+              "HEAD"
+            ],
+            "CachePolicyId": {
+              "Ref": "StaticCache"
+            },
+            "Compress": true
+          },
+          "CacheBehaviors": [
+            {
+              "PathPattern": "/zkapi/v1/*",
+              "TargetOriginId": "api",
+              "ViewerProtocolPolicy": "https-only",
+              "AllowedMethods": [
+                "GET",
+                "HEAD",
+                "OPTIONS",
+                "PUT",
+                "PATCH",
+                "POST",
+                "DELETE"
+              ],
+              "CachedMethods": [
+                "GET",
+                "HEAD"
+              ],
+              "CachePolicyId": {
+                "Ref": "ApiCache"
+              },
+              "OriginRequestPolicyId": {
+                "Ref": "ApiRequestPolicy"
+              },
+              "Compress": false
+            },
+            {
+              "PathPattern": "/rpc",
+              "TargetOriginId": "api",
+              "ViewerProtocolPolicy": "https-only",
+              "AllowedMethods": [
+                "GET",
+                "HEAD",
+                "OPTIONS",
+                "PUT",
+                "PATCH",
+                "POST",
+                "DELETE"
+              ],
+              "CachedMethods": [
+                "GET",
+                "HEAD"
+              ],
+              "CachePolicyId": {
+                "Ref": "ApiCache"
+              },
+              "OriginRequestPolicyId": {
+                "Ref": "ApiRequestPolicy"
+              },
+              "Compress": false
+            },
+            {
+              "PathPattern": "/relay-status",
+              "TargetOriginId": "api",
+              "ViewerProtocolPolicy": "https-only",
+              "AllowedMethods": [
+                "GET",
+                "HEAD",
+                "OPTIONS",
+                "PUT",
+                "PATCH",
+                "POST",
+                "DELETE"
+              ],
+              "CachedMethods": [
+                "GET",
+                "HEAD"
+              ],
+              "CachePolicyId": {
+                "Ref": "ApiCache"
+              },
+              "OriginRequestPolicyId": {
+                "Ref": "ApiRequestPolicy"
+              },
+              "Compress": false
+            },
+            {
+              "PathPattern": "/provider-budget",
+              "TargetOriginId": "api",
+              "ViewerProtocolPolicy": "https-only",
+              "AllowedMethods": [
+                "GET",
+                "HEAD",
+                "OPTIONS",
+                "PUT",
+                "PATCH",
+                "POST",
+                "DELETE"
+              ],
+              "CachedMethods": [
+                "GET",
+                "HEAD"
+              ],
+              "CachePolicyId": {
+                "Ref": "ApiCache"
+              },
+              "OriginRequestPolicyId": {
+                "Ref": "ApiRequestPolicy"
+              },
+              "Compress": false
+            }
+          ],
+          "CustomErrorResponses": [
+            {
+              "ErrorCode": 400,
+              "ErrorCachingMinTTL": 0
+            },
+            {
+              "ErrorCode": 403,
+              "ErrorCachingMinTTL": 0
+            },
+            {
+              "ErrorCode": 404,
+              "ErrorCachingMinTTL": 0
+            },
+            {
+              "ErrorCode": 405,
+              "ErrorCachingMinTTL": 0
+            },
+            {
+              "ErrorCode": 414,
+              "ErrorCachingMinTTL": 0
+            },
+            {
+              "ErrorCode": 416,
+              "ErrorCachingMinTTL": 0
+            },
+            {
+              "ErrorCode": 500,
+              "ErrorCachingMinTTL": 0
+            },
+            {
+              "ErrorCode": 501,
+              "ErrorCachingMinTTL": 0
+            },
+            {
+              "ErrorCode": 502,
+              "ErrorCachingMinTTL": 0
+            },
+            {
+              "ErrorCode": 503,
+              "ErrorCachingMinTTL": 0
+            },
+            {
+              "ErrorCode": 504,
+              "ErrorCachingMinTTL": 0
+            }
+          ]
+        }
+      }
+    },
+    "ArtifactPolicy": {
+      "Type": "AWS::S3::BucketPolicy",
+      "Properties": {
+        "Bucket": {
+          "Ref": "Artifacts"
+        },
+        "PolicyDocument": {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Effect": "Allow",
+              "Principal": {
+                "Service": "cloudfront.amazonaws.com"
+              },
+              "Action": "s3:GetObject",
+              "Resource": {
+                "Fn::Sub": "${Artifacts.Arn}/releases/*"
+              },
+              "Condition": {
+                "StringEquals": {
+                  "AWS:SourceArn": {
+                    "Fn::Sub": "arn:${AWS::Partition}:cloudfront::${AWS::AccountId}:distribution/${Distribution}"
+                  }
+                }
+              }
+            }
+          ]
+        }
+      }
+    },
+    "NatSecurityGroup": {
+      "Type": "AWS::EC2::SecurityGroup",
+      "Properties": {
+        "GroupDescription": "Stateless outbound HTTPS NAT only; no public inbound or SSH",
+        "VpcId": {
+          "Ref": "Vpc"
+        },
+        "SecurityGroupIngress": [
+          {
+            "IpProtocol": "tcp",
+            "FromPort": 443,
+            "ToPort": 443,
+            "CidrIp": "10.79.1.0/24",
+            "Description": "HTTPS forwarded only from this private operator subnet"
+          }
+        ],
+        "SecurityGroupEgress": [
+          {
+            "IpProtocol": "tcp",
+            "FromPort": 443,
+            "ToPort": 443,
+            "CidrIp": "0.0.0.0/0",
+            "Description": "HTTPS egress and SSM only"
+          }
+        ]
+      }
+    },
+    "NatRole": {
+      "Type": "AWS::IAM::Role",
+      "Properties": {
+        "AssumeRolePolicyDocument": {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Effect": "Allow",
+              "Principal": {
+                "Service": "ec2.amazonaws.com"
+              },
+              "Action": "sts:AssumeRole"
+            }
+          ]
+        },
+        "ManagedPolicyArns": [
+          {
+            "Fn::Sub": "arn:${AWS::Partition}:iam::aws:policy/AmazonSSMManagedInstanceCore"
+          }
+        ]
+      }
+    },
+    "NatInstanceProfile": {
+      "Type": "AWS::IAM::InstanceProfile",
+      "Properties": {
+        "Roles": [
+          {
+            "Ref": "NatRole"
+          }
+        ]
+      }
+    },
+    "NatInstance": {
+      "Type": "AWS::EC2::Instance",
+      "DependsOn": [
+        "PublicRoute",
+        "PublicSubnetAssociation"
+      ],
+      "Properties": {
+        "ImageId": {
+          "Ref": "AmiId"
+        },
+        "InstanceType": "t3a.nano",
+        "CreditSpecification": {
+          "CPUCredits": "standard"
+        },
+        "IamInstanceProfile": {
+          "Ref": "NatInstanceProfile"
+        },
+        "SubnetId": {
+          "Ref": "PublicSubnet"
+        },
+        "SecurityGroupIds": [
+          {
+            "Ref": "NatSecurityGroup"
+          }
+        ],
+        "SourceDestCheck": false,
+        "MetadataOptions": {
+          "HttpTokens": "required",
+          "HttpEndpoint": "enabled",
+          "HttpPutResponseHopLimit": 1
+        },
+        "BlockDeviceMappings": [
+          {
+            "DeviceName": "/dev/xvda",
+            "Ebs": {
+              "Encrypted": true,
+              "VolumeType": "gp3",
+              "VolumeSize": 8,
+              "DeleteOnTermination": true
+            }
+          }
+        ],
+        "UserData": {
+          "Fn::Base64": "#!/bin/bash\nset -euo pipefail\numask 077\nsysctl -w net.ipv4.ip_forward=0\ninstall -d -m 0700 /var/tmp/zkapi-nat-rpms-20261008\ncd /var/tmp/zkapi-nat-rpms-20261008\ncurl --proto '=https' --tlsv1.2 -fsS --retry 12 --retry-all-errors --retry-delay 5 --retry-max-time 180 --connect-timeout 5 --max-time 30 -o libnfnetlink-1.0.1-19.amzn2023.0.2.x86_64.rpm https://cdn.amazonlinux.com/al2023/blobstore/cc984aa33225910676443523274eba0f4bd95808695113fe180919033d06c859/libnfnetlink-1.0.1-19.amzn2023.0.2.x86_64.rpm\nprintf '%s\\n' 'cc984aa33225910676443523274eba0f4bd95808695113fe180919033d06c859  libnfnetlink-1.0.1-19.amzn2023.0.2.x86_64.rpm' | sha256sum -c -\nrpmkeys --checksig libnfnetlink-1.0.1-19.amzn2023.0.2.x86_64.rpm\ncurl --proto '=https' --tlsv1.2 -fsS --retry 12 --retry-all-errors --retry-delay 5 --retry-max-time 180 --connect-timeout 5 --max-time 30 -o libnetfilter_conntrack-1.0.8-2.amzn2023.0.2.x86_64.rpm https://cdn.amazonlinux.com/al2023/blobstore/6f1f29d39be88e61943e8b20f37d7fa4a4514aa2476de3480118b881bcc70ccd/libnetfilter_conntrack-1.0.8-2.amzn2023.0.2.x86_64.rpm\nprintf '%s\\n' '6f1f29d39be88e61943e8b20f37d7fa4a4514aa2476de3480118b881bcc70ccd  libnetfilter_conntrack-1.0.8-2.amzn2023.0.2.x86_64.rpm' | sha256sum -c -\nrpmkeys --checksig libnetfilter_conntrack-1.0.8-2.amzn2023.0.2.x86_64.rpm\ncurl --proto '=https' --tlsv1.2 -fsS --retry 12 --retry-all-errors --retry-delay 5 --retry-max-time 180 --connect-timeout 5 --max-time 30 -o iptables-libs-1.8.8-3.amzn2023.0.2.x86_64.rpm https://cdn.amazonlinux.com/al2023/blobstore/322786a8e3df9b8dde62b3543f1a932b44eed307917c154a42c97b50ee7c5553/iptables-libs-1.8.8-3.amzn2023.0.2.x86_64.rpm\nprintf '%s\\n' '322786a8e3df9b8dde62b3543f1a932b44eed307917c154a42c97b50ee7c5553  iptables-libs-1.8.8-3.amzn2023.0.2.x86_64.rpm' | sha256sum -c -\nrpmkeys --checksig iptables-libs-1.8.8-3.amzn2023.0.2.x86_64.rpm\ncurl --proto '=https' --tlsv1.2 -fsS --retry 12 --retry-all-errors --retry-delay 5 --retry-max-time 180 --connect-timeout 5 --max-time 30 -o libnftnl-1.2.2-2.amzn2023.0.2.x86_64.rpm https://cdn.amazonlinux.com/al2023/blobstore/07a5c6de366eb6c61def60beb0905e41ea832858467df65c4bb09cc9d30cde63/libnftnl-1.2.2-2.amzn2023.0.2.x86_64.rpm\nprintf '%s\\n' '07a5c6de366eb6c61def60beb0905e41ea832858467df65c4bb09cc9d30cde63  libnftnl-1.2.2-2.amzn2023.0.2.x86_64.rpm' | sha256sum -c -\nrpmkeys --checksig libnftnl-1.2.2-2.amzn2023.0.2.x86_64.rpm\ncurl --proto '=https' --tlsv1.2 -fsS --retry 12 --retry-all-errors --retry-delay 5 --retry-max-time 180 --connect-timeout 5 --max-time 30 -o nftables-1.0.4-3.amzn2023.0.3.x86_64.rpm https://cdn.amazonlinux.com/al2023/blobstore/f04fa5408e365de1a2ad1f1ed9b50f5c29d2287f1061e58af47ef3a1ece12ab1/nftables-1.0.4-3.amzn2023.0.3.x86_64.rpm\nprintf '%s\\n' 'f04fa5408e365de1a2ad1f1ed9b50f5c29d2287f1061e58af47ef3a1ece12ab1  nftables-1.0.4-3.amzn2023.0.3.x86_64.rpm' | sha256sum -c -\nrpmkeys --checksig nftables-1.0.4-3.amzn2023.0.3.x86_64.rpm\nrpm -Uvh --test libnfnetlink-1.0.1-19.amzn2023.0.2.x86_64.rpm libnetfilter_conntrack-1.0.8-2.amzn2023.0.2.x86_64.rpm iptables-libs-1.8.8-3.amzn2023.0.2.x86_64.rpm libnftnl-1.2.2-2.amzn2023.0.2.x86_64.rpm nftables-1.0.4-3.amzn2023.0.3.x86_64.rpm\nrpm -Uvh libnfnetlink-1.0.1-19.amzn2023.0.2.x86_64.rpm libnetfilter_conntrack-1.0.8-2.amzn2023.0.2.x86_64.rpm iptables-libs-1.8.8-3.amzn2023.0.2.x86_64.rpm libnftnl-1.2.2-2.amzn2023.0.2.x86_64.rpm nftables-1.0.4-3.amzn2023.0.3.x86_64.rpm\nset -euo pipefail\numask 077\ncat > /etc/zkapi-preview-nat.nft <<'NFT'\ntable ip zkapi_preview_nat {\n  chain forward {\n    type filter hook forward priority filter; policy drop;\n    ct state invalid drop\n    ct state established,related accept\n    ip saddr 10.79.1.0/24 ip daddr != 10.79.0.0/16 tcp dport 443 ct state new accept\n  }\n  chain postrouting {\n    type nat hook postrouting priority srcnat; policy accept;\n    ip saddr 10.79.1.0/24 ip daddr != 10.79.0.0/16 tcp dport 443 masquerade\n  }\n}\nNFT\ncat > /usr/local/sbin/zkapi-preview-nat-start <<'START'\n#!/bin/bash\nset -euo pipefail\nsysctl -w net.ipv4.ip_forward=0\nif nft list table ip zkapi_preview_nat >/dev/null 2>&1; then\n  nft delete table ip zkapi_preview_nat\nfi\nnft -f /etc/zkapi-preview-nat.nft\nsysctl -w net.ipv4.ip_forward=1\nSTART\nchmod 0700 /usr/local/sbin/zkapi-preview-nat-start\ncat > /etc/systemd/system/zkapi-preview-nat.service <<'UNIT'\n[Unit]\nDescription=Bounded private-subnet HTTPS egress for the Devnet preview\nWants=network-online.target\nAfter=network-online.target\n\n[Service]\nType=oneshot\nRemainAfterExit=yes\nExecStart=/usr/local/sbin/zkapi-preview-nat-start\nExecStop=/usr/sbin/sysctl -w net.ipv4.ip_forward=0\n\n[Install]\nWantedBy=multi-user.target\nUNIT\nsystemctl daemon-reload\nsystemctl enable --now zkapi-preview-nat.service\n"
+        },
+        "Tags": [
+          {
+            "Key": "Name",
+            "Value": {
+              "Fn::Sub": "${AWS::StackName}-https-egress"
+            }
+          }
+        ]
+      }
+    },
+    "NatAddressAssociation": {
+      "Type": "AWS::EC2::EIPAssociation",
+      "Properties": {
+        "AllocationId": {
+          "Fn::GetAtt": [
+            "NatAddress",
+            "AllocationId"
+          ]
+        },
+        "InstanceId": {
+          "Ref": "NatInstance"
+        }
+      }
+    }
+  },
+  "Outputs": {
+    "PublicOrigin": {
+      "Value": {
+        "Fn::Sub": "https://${Distribution.DomainName}"
+      }
+    },
+    "DistributionId": {
+      "Value": {
+        "Ref": "Distribution"
+      }
+    },
+    "OperatorInstanceId": {
+      "Value": {
+        "Ref": "OperatorInstance"
+      }
+    },
+    "OperatorSecurityGroupId": {
+      "Value": {
+        "Ref": "OperatorSecurityGroup"
+      }
+    },
+    "VpcId": {
+      "Value": {
+        "Ref": "Vpc"
+      }
+    },
+    "DataVolumeId": {
+      "Value": {
+        "Ref": "OperatorData"
+      }
+    },
+    "ArtifactBucket": {
+      "Value": {
+        "Ref": "Artifacts"
+      }
+    },
+    "BackupBucket": {
+      "Value": {
+        "Ref": "Backups"
+      }
+    },
+    "Readiness": {
+      "Value": "NOT_READY: memory/archive bounds, NAT bootstrap/reboot, ingress grant, software, profile, artifacts, budget and financial state must be verified. No spending approval or automatic USD50 cap."
+    },
+    "NatInstanceId": {
+      "Value": {
+        "Ref": "NatInstance"
+      }
+    }
+  },
+  "Metadata": {
+    "CandidateOnly": true,
+    "OriginalTemplateSha256": "14d4ae4fb89923058d48607934f919dea426920dc2d81b9e93a239844d8901cc",
+    "MonthlyHostingTargetUsd": 50,
+    "MeasuredFourGiBSufficiency": false,
+    "ChallengerArchiveGrowthQualified": false,
+    "AutomaticBudgetEnforcement": false,
+    "NatBootstrap": "Five SHA-256-pinned Amazon-signed RPMs from official HTTPS blobstore; dependency dry run before install; avoids low-memory dnf metadata resolution."
+  }
+}

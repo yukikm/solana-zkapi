@@ -140,7 +140,7 @@ test('escape relay forwards SDK upload and finalization bytes while retaining fi
     operation: 'finalize_escape', destinationOwner: payer.address, treasuryOwner: payer.address}), 7);
   let genesis = GENESIS, fee: number | null = 5000;
   const forwarded: any[] = [];
-  const host = await startUiHost({port: 0, output, allowTransactions: true, manifest: {program_id: programId, pool: pool} as any,
+  const host = await startUiHost({port: 0, output, allowTransactions: true, allowNewAdmissions: false, manifest: {program_id: programId, pool: pool} as any,
     rpc: async data => {
       const r = JSON.parse(data.toString());
       const result = r.method === 'getGenesisHash' ? genesis : r.method === 'getFeeForMessage' ? {context: {slot: 1}, value: fee}
@@ -161,7 +161,7 @@ test('escape relay forwards SDK upload and finalization bytes while retaining fi
     assert.deepEqual(forwarded.at(-1).params[1], {encoding: 'base64', skipPreflight: false, preflightCommitment: 'finalized', maxRetries: 0});
   }
   const count = forwarded.length, finalizedWire = await wire(finalize.instruction);
-  for (const operation of [3, 4, 255]) {
+  for (const operation of [0, 3, 4, 255]) {
     const data = Buffer.from(plan.steps[0].instruction.data!); data[8] = operation;
     assert.equal((await post(await wire({...plan.steps[0].instruction, data}))).status, 400);
   }
@@ -244,6 +244,8 @@ test('compact relay accepts exact SDK wire only for authenticated compact build 
   const post = (origin: string, bytes: string, caller = origin) => fetch(origin + '/rpc', {method: 'POST', headers: {origin: caller, 'content-type': 'application/json'},
     body: JSON.stringify({jsonrpc: '2.0', id: 1, method: 'sendTransaction', params: [bytes, {encoding: 'base64', skipPreflight: true, maxRetries: 10}]})});
   const valid = await wire(); assert.equal(Buffer.from(valid, 'base64').length, 1007);
+  const suspended = await startUiHost({port: 0, output, allowTransactions: true, allowNewAdmissions: false, manifest, rpc}); t.after(() => suspended.close());
+  assert.equal((await post(suspended.origin, valid)).status, 400);assert.equal(forwarded.length,0);
   assert.equal((await post(host.origin, valid)).status, 200);
   assert.equal(forwarded.length, 1); assert.equal(forwarded[0].params[0], valid);
   assert.deepEqual(forwarded[0].params[1], {encoding: 'base64', skipPreflight: false, preflightCommitment: 'finalized', maxRetries: 0});
