@@ -10,7 +10,7 @@ There are two separate deliverables:
 
 | Deliverable | Contents | Application integration |
 |---|---|---|
-| `zkapi-solana-sdk-0.2.0-devnet.1.tgz` | SDK ES modules and declarations with explicit exports | Install with npm; use `createZkApiClient` or `createBrowserClient` |
+| `zkapi-solana-sdk-0.2.0-devnet.2.tgz` | SDK ES modules and declarations with explicit exports | Install with npm; use `createZkApiClient` or `createBrowserClient` |
 | Public deployment bundle | Independently reviewed trust policy, signed manifest, complete proof/IDL artifacts and pinned WASM | Host as static files and call `loadDeploymentAssets` with an independently installed descriptor SHA-256 |
 
 A native application additionally installs the pinned native prover for its
@@ -54,6 +54,6 @@ request. Actual provider/devnet evidence remains separately scoped. See the
 Keep the exact tarball and an application lockfile for reproducible installs.
 Review dependency changes when updating either. A checksum supplied by the same
 untrusted download is not an independent trust anchor. The
-[Kit preview release](../releases/kit-preview.md) is publicly downloadable
+[public-profile client release](../evidence/PD-public-client-publication.md) is publicly downloadable
 and has a verified GitHub immutable-release attestation. Other-platform native
 installers, Apple signing/notarization and full production gates remain separate.

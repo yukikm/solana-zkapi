@@ -25,6 +25,7 @@ fn config(dir: &Path, rpc: String) -> runtime::Config {
         poll_seconds: 1,
         alert_sink_directory: None,
         priority_fee: None,
+        archive_batch: None,
     }
 }
 
@@ -145,7 +146,24 @@ fn scenario() -> Value {
 #[tokio::test]
 #[ignore = "reads existing I04 SBF archive; never regenerates fixtures"]
 async fn native_scan_stop_commits_validated_prefix_and_does_not_mask_write_failure() {
-    for write_failure in [false, true] {
+    for (write_failure, policy) in [
+        (false, None),
+        (true, None),
+        (
+            false,
+            Some(runtime::ArchiveBatchPolicy {
+                max_blocks: 256,
+                max_bytes: 32 * 1024 * 1024,
+            }),
+        ),
+        (
+            true,
+            Some(runtime::ArchiveBatchPolicy {
+                max_blocks: 256,
+                max_bytes: 32 * 1024 * 1024,
+            }),
+        ),
+    ] {
         let dir = tempfile::tempdir().unwrap();
         let scenario = scenario();
         let (trust, _) = trust_and_manifest();
@@ -188,7 +206,8 @@ async fn native_scan_stop_commits_validated_prefix_and_does_not_mask_write_failu
                 .await
                 .unwrap();
         });
-        let config = config(dir.path(), format!("http://{address}"));
+        let mut config = config(dir.path(), format!("http://{address}"));
+        config.archive_batch = policy;
         drop(runtime::Runtime::open(config.clone(), true).unwrap());
         let mut process = child(&config, "scan-direct");
         tokio::time::timeout(Duration::from_secs(10), reached.notified())
@@ -221,12 +240,12 @@ async fn native_scan_stop_commits_validated_prefix_and_does_not_mask_write_failu
         }
         let reopened = runtime::Runtime::open(config.clone(), false).unwrap();
         assert_eq!(
-            reopened.journal.archive().len(),
+            reopened.journal.archive_len(),
             if write_failure { 0 } else { 4 }
         );
         assert!(reopened.journal.jobs().next().is_none());
         if !write_failure {
-            assert_eq!(reopened.journal.archive().last().unwrap().slot, 4);
+            assert_eq!(reopened.journal.archive_tail().unwrap().slot, 4);
             let health: Value = serde_json::from_slice(
                 &std::fs::read(config.journal_directory.join("health.json")).unwrap(),
             )

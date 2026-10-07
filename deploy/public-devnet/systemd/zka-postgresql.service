@@ -1,0 +1,38 @@
+[Unit]
+Description=PostgreSQL for the public Devnet preview
+RequiresMountsFor=/srv/zka
+After=network-online.target 
+
+[Service]
+Type=simple
+UMask=0077
+NoNewPrivileges=true
+CapabilityBoundingSet=
+RestrictSUIDSGID=true
+LockPersonality=true
+ProtectProc=invisible
+ProcSubset=pid
+SystemCallFilter=~@debug
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+Restart=no
+TimeoutStopSec=90
+KillMode=control-group
+User=postgres
+Group=postgres
+WorkingDirectory=/opt/zkapi
+ExecStart=/usr/bin/postgres -D /srv/zka/postgres
+ExecStartPost=/usr/bin/python3 /opt/zkapi/scripts/public_devnet_service_ready.py postgres
+TimeoutStartSec=90
+ReadWritePaths=/srv/zka/postgres
+RuntimeDirectory=zkapi-postgresql
+RuntimeDirectoryMode=0755
+KillSignal=SIGINT
+
+[Install]
+WantedBy=multi-user.target

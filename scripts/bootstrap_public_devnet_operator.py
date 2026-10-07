@@ -57,6 +57,9 @@ def save(path, value, user='root', mode=0o600):
     try:
         account = pwd.getpwnam(user)
         os.fchown(fd, account.pw_uid, account.pw_gid)
+        # os.open applies the inherited umask. Apply the reviewed exact mode so
+        # public inputs remain readable under the bootstrap's private umask.
+        os.fchmod(fd, mode)
         with os.fdopen(fd, 'wb', closefd=False) as stream:
             stream.write(value)
             stream.flush()

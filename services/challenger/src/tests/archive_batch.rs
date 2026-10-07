@@ -5,6 +5,39 @@ use serde::Serialize;
 use std::{fs, path::Path, time::Instant};
 use zkapi_indexer::{FinalizedBlock, Instruction, Transaction};
 
+#[test]
+fn archive_batch_policy_preserves_defaults_and_rejects_unbounded_overrides() {
+    let default = runtime::ArchiveBatchPolicy::default();
+    assert_eq!(default.max_blocks, 64);
+    assert_eq!(default.max_bytes, 8 * 1024 * 1024);
+    for (max_blocks, max_bytes, valid) in [
+        (64, 8 * 1024 * 1024, true),
+        (256, 32 * 1024 * 1024, true),
+        (1, 1, true),
+        (0, 1, false),
+        (257, 1, false),
+        (1, 0, false),
+        (1, 32 * 1024 * 1024 + 1, false),
+    ] {
+        assert_eq!(
+            runtime::ArchiveBatchPolicy {
+                max_blocks,
+                max_bytes
+            }
+            .validate()
+            .is_ok(),
+            valid
+        );
+    }
+    for invalid in [
+        json!({"max_blocks":-1,"max_bytes":1}),
+        json!({"max_blocks":256,"max_bytes":33554432,"skip_history":true}),
+        json!({"max_blocks":256}),
+    ] {
+        assert!(serde_json::from_value::<runtime::ArchiveBatchPolicy>(invalid).is_err());
+    }
+}
+
 fn block(slot: u64, payload_bytes: usize) -> FinalizedBlock {
     FinalizedBlock {
         finalized: true,
@@ -28,6 +61,18 @@ fn block(slot: u64, payload_bytes: usize) -> FinalizedBlock {
             }],
         }],
     }
+}
+
+// Only small synthetic format fixtures materialize their replay for equality.
+fn archived_blocks(journal: &Journal) -> Vec<FinalizedBlock> {
+    let mut blocks = Vec::new();
+    journal
+        .replay_archive(|block| {
+            blocks.push(block.clone());
+            Ok(())
+        })
+        .unwrap();
+    blocks
 }
 
 fn saved(directory: &Path) -> Vec<u8> {
@@ -119,7 +164,7 @@ fn archive_batch_matches_singletons_and_legacy_v1_with_unknown_transport() {
             .map(|(id, job)| (id.to_owned(), job))
             .collect(),
         checkpoint: single.checkpoint(),
-        archive: single.archive(),
+        archive: &blocks,
         transport: BTreeMap::from([("archive-unknown-fixture".into(), &transport)]),
         alerts: single.alerts().collect(),
         proof_failure_total: single.proof_failure_total(),
@@ -137,7 +182,7 @@ fn archive_batch_matches_singletons_and_legacy_v1_with_unknown_transport() {
     drop(many);
     for directory in [one.path(), batch.path()] {
         let journal = Journal::open(directory, pool).unwrap();
-        assert_eq!(journal.archive(), blocks);
+        assert_eq!(archived_blocks(&journal), blocks);
         assert_eq!(journal.jobs().next(), Some((id.as_str(), &before_job)));
         assert_eq!(
             journal.transport("archive-unknown-fixture"),
@@ -149,6 +194,138 @@ fn archive_batch_matches_singletons_and_legacy_v1_with_unknown_transport() {
             Some(11)
         );
     }
+}
+
+#[test]
+fn archive_batch_streaming_cold_reopen_child() {
+    let Some(directory) = std::env::var_os("ZKAPI_STREAMING_JOURNAL_FIXTURE") else {
+        return;
+    };
+    let journal = Journal::open(Path::new(&directory), [8; 32]).unwrap();
+    assert_eq!(
+        archived_blocks(&journal),
+        &[block(1, 131_071), block(2, 131_073)]
+    );
+    assert!(journal.jobs().next().is_none());
+    assert_eq!(journal.proof_failure_total(), 0);
+}
+
+#[test]
+fn archive_batch_streaming_crosses_buffers_and_reopens_exact_legacy_bytes_in_fresh_process() {
+    let directory = tempfile::tempdir().unwrap();
+    let mut journal = Journal::initialize(directory.path(), [8; 32]).unwrap();
+    journal
+        .append_archive_batch(vec![block(1, 131_071), block(2, 131_073)])
+        .unwrap();
+    let original = saved(directory.path());
+    // Frozen minimal old shape, independent of the streaming implementation.
+    #[derive(Serialize)]
+    struct MinimalState<'a> {
+        version: u32,
+        pool: Hash,
+        jobs: BTreeMap<String, Job>,
+        checkpoint: Option<Checkpoint>,
+        archive: &'a [FinalizedBlock],
+    }
+    let legacy = MinimalState {
+        version: 1,
+        pool: [8; 32],
+        jobs: BTreeMap::new(),
+        checkpoint: None,
+        archive: &archived_blocks(&journal),
+    };
+    let digest = sha(&serde_json::to_vec(&legacy).unwrap());
+    #[derive(Serialize)]
+    struct Envelope<'a> {
+        digest: Hash,
+        state: &'a MinimalState<'a>,
+    }
+    assert_eq!(
+        original,
+        serde_json::to_vec(&Envelope {
+            digest,
+            state: &legacy
+        })
+        .unwrap()
+    );
+    assert!(original.len() > 4 * 128 * 1024);
+    drop(journal);
+    let status = std::process::Command::new(std::env::current_exe().unwrap())
+        .args([
+            "--exact",
+            "tests::archive_batch::archive_batch_streaming_cold_reopen_child",
+        ])
+        .env("ZKAPI_STREAMING_JOURNAL_FIXTURE", directory.path())
+        .stdin(std::process::Stdio::null())
+        .output()
+        .unwrap();
+    assert!(
+        status.status.success(),
+        "fresh process could not read exact legacy journal"
+    );
+    assert_eq!(saved(directory.path()), original);
+    let path = directory.path().join("journal.json");
+    // Whitespace/order remains readable: legacy checksums authenticate typed
+    // State serialization, not the raw envelope's whitespace or field order.
+    let value: Value = serde_json::from_slice(&original).unwrap();
+    fs::write(&path, serde_json::to_vec_pretty(&value).unwrap()).unwrap();
+    assert_eq!(
+        Journal::open(directory.path(), [8; 32])
+            .unwrap()
+            .archive_len(),
+        2
+    );
+    for bad in [
+        [&original[..], b"{}"].concat(),
+        original[..original.len() - 1].to_vec(),
+        {
+            let mut value = value.clone();
+            value["state"]["archive"][0]["block_time"] = json!(99);
+            serde_json::to_vec(&value).unwrap()
+        },
+    ] {
+        fs::write(&path, &bad).unwrap();
+        assert!(Journal::open(directory.path(), [8; 32]).is_err());
+        assert_eq!(saved(directory.path()), bad);
+    }
+    fs::write(&path, &original).unwrap();
+    assert_eq!(
+        Journal::open(directory.path(), [8; 32])
+            .unwrap()
+            .archive_len(),
+        2
+    );
+}
+
+#[test]
+#[ignore = "bounded synthetic journal timing only; no private archive, chain or financial actions"]
+fn archive_batch_streaming_synthetic_timing() {
+    let directory = tempfile::tempdir().unwrap();
+    let mut journal = Journal::initialize(directory.path(), [8; 32]).unwrap();
+    // Tens of MiB exceed the buffers but do not model1.25GiB host capacity.
+    let start = Instant::now();
+    journal
+        .append_archive_batch((1..=16).map(|slot| block(slot, 524_288)).collect())
+        .unwrap();
+    let persist_seconds = start.elapsed().as_secs_f64();
+    let bytes = fs::metadata(directory.path().join("journal.json"))
+        .unwrap()
+        .len();
+    drop(journal);
+    let start = Instant::now();
+    let journal = Journal::open(directory.path(), [8; 32]).unwrap();
+    let reopen_seconds = start.elapsed().as_secs_f64();
+    assert_eq!(journal.archive_len(), 16);
+    assert_eq!(
+        archived_blocks(&journal).last().unwrap().transactions[0].instructions[0]
+            .data
+            .len(),
+        524_288
+    );
+    println!(
+        "{}",
+        json!({"scope":"bounded synthetic local journal timing, not host capacity", "blocks":16,"journal_bytes":bytes,"persist_seconds":persist_seconds,"reopen_seconds":reopen_seconds})
+    );
 }
 
 #[test]
@@ -172,7 +349,7 @@ fn archive_batch_rejects_bad_middle_atomically_and_preserves_old_duplicates() {
         }
         assert!(journal.append_archive_batch(candidate).is_err(), "{fault}");
         assert_eq!(saved(directory.path()), baseline, "{fault}");
-        assert_eq!(journal.archive(), &[block(1, 128)], "{fault}");
+        assert_eq!(archived_blocks(&journal), &[block(1, 128)], "{fault}");
     }
     journal
         .append_archive_batch(vec![
@@ -190,7 +367,7 @@ fn archive_batch_rejects_bad_middle_atomically_and_preserves_old_duplicates() {
     drop(journal);
     let journal = Journal::open(directory.path(), [8; 32]).unwrap();
     assert_eq!(
-        journal.archive(),
+        archived_blocks(&journal),
         (1..=3).map(|s| block(s, 128)).collect::<Vec<_>>()
     );
 }
@@ -213,7 +390,7 @@ fn archive_batch_failed_persistence_poisons_writes_and_original_reopens() {
         assert!(journal
             .append_archive_batch(vec![block(2, 16), block(3, 16)])
             .is_err());
-        assert_eq!(journal.archive(), &[block(1, 16)]);
+        assert_eq!(archived_blocks(&journal), &[block(1, 16)]);
         if failure == "temporary_open" {
             assert_eq!(saved(directory.path()), baseline);
             fs::remove_dir(&temporary).unwrap();
@@ -223,15 +400,21 @@ fn archive_batch_failed_persistence_poisons_writes_and_original_reopens() {
         }
         assert!(journal.append_archive(block(2, 16)).is_err());
         assert!(journal.record_proof_failure().is_err());
+        assert!(matches!(
+            journal.enqueue_alerts(400),
+            Err(Error::Conflict(
+                "journal requires reopen after failed persistence"
+            ))
+        ));
         assert_eq!(saved(directory.path()), baseline);
         drop(journal);
         let mut reopened = Journal::open(directory.path(), [8; 32]).unwrap();
-        assert_eq!(reopened.archive(), &[block(1, 16)]);
+        assert_eq!(archived_blocks(&reopened), &[block(1, 16)]);
         assert_eq!(reopened.proof_failure_total(), 0);
         reopened
             .append_archive_batch(vec![block(2, 16), block(3, 16)])
             .unwrap();
-        assert_eq!(reopened.archive().len(), 3);
+        assert_eq!(reopened.archive_len(), 3);
     }
 }
 
@@ -246,13 +429,13 @@ fn archive_batch_restart_retains_committed_prefix_and_refetches_unsaved_suffix()
     let suffix: Vec<_> = (65..=71).map(|s| block(s, 64)).collect();
     drop(journal);
     let mut journal = Journal::open(directory.path(), [8; 32]).unwrap();
-    assert_eq!(journal.archive(), prefix);
+    assert_eq!(archived_blocks(&journal), prefix);
     assert_eq!(saved(directory.path()), durable);
     journal.append_archive_batch(suffix.clone()).unwrap();
     drop(journal);
     let mut journal = Journal::open(directory.path(), [8; 32]).unwrap();
     let complete: Vec<_> = prefix.into_iter().chain(suffix).collect();
-    assert_eq!(journal.archive(), complete);
+    assert_eq!(archived_blocks(&journal), complete);
     let durable = saved(directory.path());
     journal.append_archive_batch(complete).unwrap();
     assert_eq!(saved(directory.path()), durable);
@@ -284,4 +467,97 @@ fn archive_batch_measure_local_singleton_and_batch_persistence() {
         "singleton_seconds":singleton_seconds,"batch_seconds":batch_seconds,
         "exact_legacy_journal_bytes_equal":true})
     );
+}
+
+#[cfg(unix)]
+fn file_identity(directory: &Path) -> (u64, std::time::SystemTime, Vec<u8>) {
+    use std::os::unix::fs::MetadataExt;
+    let metadata = fs::metadata(directory.join("journal.json")).unwrap();
+    (
+        metadata.ino(),
+        metadata.modified().unwrap(),
+        saved(directory),
+    )
+}
+
+#[test]
+#[cfg(unix)]
+fn alerts_without_jobs_preserve_archive_inode_mtime_and_bytes() {
+    let directory = tempfile::tempdir().unwrap();
+    let mut journal = Journal::initialize(directory.path(), [8; 32]).unwrap();
+    journal
+        .append_archive_batch((1..=64).map(|slot| block(slot, 4096)).collect())
+        .unwrap();
+    let before = file_identity(directory.path());
+    // A persistence attempt would fail even if the serialized bytes matched.
+    fs::create_dir(directory.path().join("journal.next")).unwrap();
+    for now in [0, 70, 400, u64::MAX] {
+        assert_eq!(journal.enqueue_alerts(now).unwrap(), 0);
+        assert_eq!(file_identity(directory.path()), before);
+    }
+}
+
+#[test]
+#[cfg(unix)]
+fn alerts_unchanged_skip_writes_but_new_severity_completion_and_delivery_persist() {
+    let directory = tempfile::tempdir().unwrap();
+    let spool = tempfile::tempdir().unwrap();
+    let (mut journal, pool, id, _) = seeded(directory.path());
+    journal
+        .append_archive_batch((1..=64).map(|slot| block(slot, 4096)).collect())
+        .unwrap();
+    assert_eq!(journal.alerts().last().unwrap().severity, Alert::Page);
+    assert!(!journal.alerts().last().unwrap().delivered);
+    let before = file_identity(directory.path());
+    fs::create_dir(directory.path().join("journal.next")).unwrap();
+    assert_eq!(journal.enqueue_alerts(500).unwrap(), 0);
+    assert_eq!(file_identity(directory.path()), before);
+    fs::remove_dir(directory.path().join("journal.next")).unwrap();
+    // Unchanged severity does not suppress delivery of the already queued event.
+    assert_eq!(journal.deliver_alerts(spool.path()).unwrap(), 1);
+    assert_eq!(journal.deliver_alerts(spool.path()).unwrap(), 0);
+    let delivered = file_identity(directory.path());
+    assert_ne!(delivered.0, before.0);
+    let emergency_at = journal.jobs().next().unwrap().1.identity.deadline - 3600;
+    assert_eq!(journal.enqueue_alerts(emergency_at).unwrap(), 1);
+    let emergency = file_identity(directory.path());
+    assert_ne!(emergency.0, delivered.0);
+    assert_eq!(journal.alerts().last().unwrap().severity, Alert::Emergency);
+    journal
+        .resolve_finalized(
+            &id,
+            "archive-unknown-fixture",
+            Outcome::FinalizedSuccess {
+                slot: 100,
+                blockhash: [5; 32],
+            },
+        )
+        .unwrap();
+    let completed = file_identity(directory.path());
+    // Completion must enqueue Alert::None, retaining monotonic event timestamps.
+    assert_eq!(journal.enqueue_alerts(1).unwrap(), 1);
+    assert_ne!(file_identity(directory.path()).0, completed.0);
+    let events: Vec<_> = journal.alerts().cloned().collect();
+    assert_eq!(
+        events
+            .iter()
+            .map(|event| event.severity)
+            .collect::<Vec<_>>(),
+        vec![Alert::Page, Alert::Emergency, Alert::None]
+    );
+    assert_eq!(
+        events.iter().map(|event| event.id).collect::<Vec<_>>(),
+        vec![1, 2, 3]
+    );
+    assert_eq!(events[2].observed_at, emergency_at);
+    assert_eq!(journal.deliver_alerts(spool.path()).unwrap(), 2);
+    let complete = file_identity(directory.path());
+    assert_eq!(journal.enqueue_alerts(u64::MAX).unwrap(), 0);
+    assert_eq!(file_identity(directory.path()), complete);
+    drop(journal);
+    let mut reopened = Journal::open(directory.path(), pool).unwrap();
+    assert_eq!(reopened.enqueue_alerts(u64::MAX).unwrap(), 0);
+    assert_eq!(file_identity(directory.path()), complete);
+    assert_eq!(reopened.deliver_alerts(spool.path()).unwrap(), 0);
+    assert!(reopened.alerts().all(|event| event.delivered));
 }

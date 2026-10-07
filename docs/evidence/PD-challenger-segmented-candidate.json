@@ -1,0 +1,175 @@
+{
+  "schema": 1,
+  "kind": "challenger_segmented_archive_local_candidate",
+  "observed_at_utc": "2026-10-07T19:57:28.790566+00:00",
+  "scope": "Local synthetic, real CLI/loopback/process-signal and saved SBF fixtures plus Linux build/ABI smoke; no live journal migration or new chain/provider/financial action.",
+  "status": {
+    "local_candidate_verified": true,
+    "live_migration_performed": false,
+    "long_term_capacity_qualified": false
+  },
+  "source": {
+    "manifest_sha256": "8765a8533665829c734f936ea871775081b3087178b1221cb99f1f71c6be89b6",
+    "checked_files": 182,
+    "source_and_snapshot_unchanged_after_tests": true,
+    "source_and_snapshot_unchanged_after_build": true,
+    "changed_and_added_files": [
+      {
+        "path": "services/challenger/Cargo.lock",
+        "bytes": 76641,
+        "sha256": "0a27482a357e2f78942e887fde0457dec890b22544252655f3bf82e83a6cbaf4"
+      },
+      {
+        "path": "services/challenger/Cargo.toml",
+        "bytes": 1193,
+        "sha256": "e8c4cd2817bb36caaa015288465e65ff0640d4fe2725f6505cc36b4e2297875c"
+      },
+      {
+        "path": "services/challenger/src/bin/challengerd.rs",
+        "bytes": 994,
+        "sha256": "013533b818ef2d5f2a5912ed0b245182aa189c651ac5a01ddf1ba436fe61f38d"
+      },
+      {
+        "path": "services/challenger/src/journal.rs",
+        "bytes": 36870,
+        "sha256": "1b29629a1a1d4181df256f68b4c3a63ed6df9be9ccd6a040914da4382f059db4"
+      },
+      {
+        "path": "services/challenger/src/journal_segmented.rs",
+        "bytes": 26148,
+        "sha256": "3862edb6d957eec1009de0d3f652365ebc4f0b176137cd95c392ebc942658160"
+      },
+      {
+        "path": "services/challenger/src/journal_segmented_tests.rs",
+        "bytes": 25215,
+        "sha256": "5301808c95315c3a83eafdcd1db1d14c7063fb57355330b33472e5626f463fbb"
+      },
+      {
+        "path": "services/challenger/src/runtime.rs",
+        "bytes": 43382,
+        "sha256": "0684f1a0b19a149fe5847d00736a1d404a77553ddfcfb23aefa7a2b0f75ecbd1"
+      },
+      {
+        "path": "services/challenger/src/tests/coherent_cut.rs",
+        "bytes": 21144,
+        "sha256": "c12a494568734325a7e02493f2ac2519ee7fa99b82f57511e6f83b3fa21128c1"
+      },
+      {
+        "path": "services/challenger/tests/migrate_archive.rs",
+        "bytes": 9022,
+        "sha256": "7c34a27111cc49e8b40e94a6928a2f3814475aab30bf56f461150b7ca4ee5097"
+      }
+    ],
+    "dependency_delta": "Direct cfg(unix) libc =0.2.190, already present at that exact version in the standalone challenger lock; no dependency version changes."
+  },
+  "tests": {
+    "full_unit": {
+      "passed": 47,
+      "failed": 0,
+      "ignored": 12,
+      "seconds": 5.8
+    },
+    "cli": {
+      "passed": 2,
+      "failed": 0,
+      "ignored": 0,
+      "seconds": 0.54
+    },
+    "coherent_cut_explicit_saved_sbf": {
+      "passed": 3,
+      "failed": 0,
+      "ignored": 0,
+      "seconds": 7.05
+    },
+    "shutdown_explicit_saved_sbf": {
+      "passed": 1,
+      "failed": 0,
+      "ignored": 0,
+      "seconds": 0.13
+    },
+    "overlap_note": "Coherent-cut and shutdown cases are explicit executions of tests ignored by the ordinary unit run. Counts are separate scopes and are not added into a claim that all ignored tests ran. Unit counts include inert child test entrypoints.",
+    "logs": {
+      "all-unit": {
+        "path": "target/public-devnet-live-20261008/challenger-segmented-all-unit-root.log",
+        "sha256": "b2c47966bdec969eb72fab4fd824d809ee3a1d9c8e09a62fed1ee387db08c4fb",
+        "result": [
+          "test result: ok. 47 passed; 0 failed; 12 ignored; 0 measured; 0 filtered out; finished in 5.80s"
+        ]
+      },
+      "cli": {
+        "path": "target/public-devnet-live-20261008/challenger-segmented-cli-root.log",
+        "sha256": "9ece441fcf3e8bb7e014010fde00ac5db9b35e2a2dd6283ff34e9bb56f7c2ce2",
+        "result": [
+          "test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.54s"
+        ]
+      },
+      "coherent": {
+        "path": "target/public-devnet-live-20261008/challenger-segmented-coherent-root.log",
+        "sha256": "9e95194a7f20c7fb462a8e5bdcfec34350e9358406c02654278fb59dc7acab5d",
+        "result": [
+          "test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 56 filtered out; finished in 7.05s"
+        ]
+      },
+      "shutdown": {
+        "path": "target/public-devnet-live-20261008/challenger-segmented-shutdown-root.log",
+        "sha256": "709af828a5ca12c2a9dbb52336977b6c1c6d6f8c05a4f6942257b79363d8552c",
+        "result": [
+          "test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 58 filtered out; finished in 0.13s"
+        ]
+      }
+    }
+  },
+  "linux_build": {
+    "schema": 1,
+    "kind": "challenger_segmented_linux_build",
+    "observed_at_utc": "2026-10-07T19:57:28.790566+00:00",
+    "passed": true,
+    "binary": {
+      "path": "target/public-devnet-live-20261008/linux-build/challenger-segmented/output/challengerd",
+      "sha256": "271628332f24c0d60eb1bc105bf372e8a418aab2e87e002168e3f2ce1c80b0fe",
+      "bytes": 11686688
+    },
+    "build_seconds": 115,
+    "rust": "1.90.0",
+    "target": "x86_64-unknown-linux-gnu",
+    "glibc_max": "GLIBC_2.34",
+    "no_config_exit": 2,
+    "source_manifest_sha256": "8765a8533665829c734f936ea871775081b3087178b1221cb99f1f71c6be89b6",
+    "source_files": 182,
+    "files": {
+      "build.log": "989625fc322e3669eae16497ece25aa252af454621c048e3eed63cf932c9960b",
+      "after-binary-verified.json": "b7b1af24b177d03ba4dbd4cd44e2d4b388402c19657d37dab9d85f29f5e9df69",
+      "smoke/no-config.log": "28e46fad7a49b8a23581ce1be7392e29efc84355dbc0f2b9de3ae946d551144c",
+      "smoke/dependencies.txt": "389639c5d65c9f251c5e824194df91c27f7a651414ddd0630030c0efc25a4f1d",
+      "smoke/glibc-versions.txt": "63d871e60a1317c8871d01b562e85c3445f901b71b2a37d574a1d59a79728682"
+    },
+    "live_migration": false
+  },
+  "integrity_guards": {
+    "root_tests_report_sha256": "da0dd67559e6089254b9c053eb601682b04837331db859535f258b4f35d115cb",
+    "after_root_tests_report_sha256": "d252eeee3c312ff95b9692b710c11c7f63e11e40237bc1160f8aac663d47599b",
+    "build_report_sha256": "03d5f03c28996ae6989ae175c0e7f39d4c11b264c4a04adeb7f43bc41e215420",
+    "after_build_report_sha256": "b7b1af24b177d03ba4dbd4cd44e2d4b388402c19657d37dab9d85f29f5e9df69"
+  },
+  "verified_storage_properties": [
+    "Legacy v1 initialization and exact serialization remain the default; open never performs migration.",
+    "Migration holds the existing owner lock, verifies v1 state/archive invariants, retains byte-identical legacy-v1.json and refuses any partial preparation.",
+    "Cancellation remains effective through temporary-head fsync immediately before activation rename; ambiguous activation never triggers automatic rollback.",
+    "V2 mutable State contains no retained archive payload. Successful append moves only the validated suffix into the single resident Vec after chunk and head durability.",
+    "Committed hash-linked full-block chunks enforce exact counts, first/tail metadata, pool/version, slot/parent joins, raw checksums and EOF. Missing, substituted, corrupt or symlinked committed paths fail closed.",
+    "The complete original archive prefix is independently bound to the retained legacy file by a streamed canonical complete-block hash chain; rechecksummed omission or transaction-byte substitution fails.",
+    "Persistence failures poison further writes; reopen follows only the committed head and never adopts, overwrites or removes orphan tails.",
+    "Existing job, checkpoint, exact unknown signed-attempt, transport, proof-failure and alert data remain preserved by migration fixtures."
+  ],
+  "historical_observations": [
+    "Initial local no-run compile stopped because the new test module had not yet been created; its log is retained under the private candidate evidence directory.",
+    "Earlier candidate test runs predate the final cancellation, complete-prefix and buffered-hashing review corrections; their logs and source inventories remain retained."
+  ],
+  "limits": [
+    "The full historical archive still resides in memory once and continues growing on disk. This does not qualify long-term use on 4GiB or establish any hosting SLO.",
+    "Migration temporarily requires the original primary, retained exact backup and complete chunks; the backup is not pruned.",
+    "Cold open rereads the retained source and all committed chunks; the legacy-prefix visitor holds one block at a time and no second full archive Vec.",
+    "The existing local owner.lock is not distributed fencing, cross-machine clone detection or filesystem rollback protection.",
+    "Host transfer, installation, stopped-state anchors, guarded live migration, cold-open and live catch-up are separate outcomes."
+  ]
+}

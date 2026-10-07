@@ -84,6 +84,46 @@ test('independent SDK preflight completes through canonical gateway with only re
   assert.ok(!f.calls.some(c=>/quotes|sessions|notes|completions/.test(c.url)));
 });
 
+test('native SDK preflight uses actual Node fetch with its lone cors metadata and no browser Origin',async t=>{
+  const {config,f}=await installedFixture(t),loaded=await loadGatewayPublicProfile(config);
+  const upstream=async(url:string,method='GET',body?:string)=>{
+    const response=await f.fetcher(url,{method,body,credentials:'omit',redirect:'error'});
+    return{status:response.status,bytes:Buffer.from(await response.arrayBuffer())};
+  };
+  const h=await host(t,{manifest:loaded.assets.verifiedManifest,
+    controlRelay:async v=>{assert.equal(v.method,'GET');return upstream(publicOrigin+v.path);},
+    indexer:async path=>upstream(publicOrigin+path),rpc:async bytes=>upstream(publicOrigin+'/rpc','POST',bytes.toString())});
+  let observed=0;
+  h.server.on('request',request=>{
+    observed++;
+    assert.equal(request.headers.origin,undefined);
+    assert.deepEqual(Object.keys(request.headers).filter(name=>name.startsWith('sec-fetch-')),['sec-fetch-mode']);
+    assert.equal(request.headers['sec-fetch-mode'],'cors');
+  });
+  // Real deployments rewrite Host at the trusted local reverse proxy. Node
+  // fetch derives Host from its URL, so a Headers override is not a faithful
+  // fixture. Forward the actual fetch headers/body unchanged except for Host.
+  const ingress=createServer((incoming,outgoing)=>{
+    const forward=request(h.base+incoming.url,{method:incoming.method,headers:{...incoming.headers,host:new URL(publicOrigin).host}},upstream=>{
+      outgoing.writeHead(upstream.statusCode!,upstream.headers);upstream.pipe(outgoing);
+    });
+    forward.on('error',()=>{outgoing.writeHead(502);outgoing.end();});incoming.pipe(forward);
+  });
+  await new Promise<void>(resolve=>ingress.listen(0,'127.0.0.1',resolve));
+  t.after(()=>{ingress.closeAllConnections();return new Promise<void>(resolve=>ingress.close(()=>resolve()));});
+  const ingressAddress=ingress.address();assert.ok(ingressAddress&&typeof ingressAddress==='object');
+  const nativeFetch:typeof fetch=async(input,init)=>{
+    const url=new URL(String(input));assert.equal(url.origin,publicOrigin);
+    const response=await fetch('http://127.0.0.1:'+ingressAddress.port+url.pathname+url.search,init);
+    assert.equal(response.headers.get('access-control-allow-origin'),null);
+    return response;
+  };
+  const result=await preflightPublicDeployment(loaded,{fetch:nativeFetch,nowSeconds:2600n});
+  assert.equal(result.chainAllowsNewOperations,true);assert.equal(result.operatorAdmission,'unverified');assert.ok(observed>0);
+  assert.ok(f.calls.every(c=>c.method==='GET'||['getGenesisHash','getAccountInfo','getMultipleAccounts','getBlock'].includes(c.rpc??'')));
+  assert.ok(!f.calls.some(c=>/quotes|sessions|notes|completions/.test(c.url)));
+});
+
 test('canonical public routes work without UI output and retain no arbitrary prefix forwarding',async t=>{
   const control:string[]=[],indexer:string[]=[],rpc:string[]=[];
   const h=await host(t,{controlRelay:async v=>{control.push(v.path);assert.equal(v.allowNewAdmissions,false);return{status:200,bytes:Buffer.from('{}')};},
@@ -119,10 +159,31 @@ test('native no-Origin transport is explicit and browser headers/cookies cannot 
   let forwards=0;const controlRelay=async()=>{forwards++;return{status:200,bytes:Buffer.from('{}')};};
   const enabled=await host(t,{controlRelay}),disabled=await host(t,{controlRelay,allowNativeRequests:false});
   assert.equal((await call(enabled.base,'/zkapi/v1/config')).status,200);
-  for(const headers of [{'sec-fetch-mode':'cors'}, {'sec-fetch-site':'none'}, {cookie:'private'}, {'x-forwarded-host':new URL(publicOrigin).host}, {'x-api-key':'secret'}, {'proxy-authorization':'secret'}] as Record<string,string>[])
+  assert.equal((await call(enabled.base,'/zkapi/v1/config','GET',{'sec-fetch-mode':'cors'})).status,200);
+  for(const headers of [
+    {'sec-fetch-mode':'no-cors'}, {'sec-fetch-mode':'same-origin'}, {'sec-fetch-mode':'navigate'}, {'sec-fetch-mode':'cors, cors'},
+    {'sec-fetch-site':'none'}, {'sec-fetch-site':'cross-site','sec-fetch-mode':'cors'},
+    {'sec-fetch-site':'same-site','sec-fetch-mode':'cors'}, {'sec-fetch-site':'same-origin','sec-fetch-mode':'cors'},
+    {'sec-fetch-dest':'empty','sec-fetch-mode':'cors'}, {'sec-fetch-user':'?1','sec-fetch-mode':'cors'},
+    {'sec-fetch-unknown':'fixture','sec-fetch-mode':'cors'},
+    {cookie:'private'}, {'x-forwarded-host':new URL(publicOrigin).host}, {'x-api-key':'secret'}, {'proxy-authorization':'secret'}
+  ] as Record<string,string>[])
     assert.equal((await call(enabled.base,'/zkapi/v1/config','GET',headers)).status,400);
-  assert.equal((await call(disabled.base,'/zkapi/v1/config')).status,400);assert.equal(forwards,1);
+  assert.equal((await call(disabled.base,'/zkapi/v1/config')).status,400);
+  assert.equal((await call(disabled.base,'/zkapi/v1/config','GET',{'sec-fetch-mode':'cors'})).status,400);
+  assert.equal((await call(enabled.base,'/zkapi/v1/config','GET',{origin:'https://unreviewed.example.com','sec-fetch-mode':'cors'})).status,400);
+  assert.equal(forwards,2);
   assert.equal((await call(disabled.base,'/zkapi/v1/config','GET',{origin:browserOrigin})).status,200);
+});
+
+test('same-origin browser metadata retains its reviewed-origin branch with native transport disabled',async t=>{
+  let forwards=0;
+  const h=await host(t,{allowedBrowserOrigins:[publicOrigin],allowNativeRequests:false,
+    controlRelay:async()=>{forwards++;return{status:200,bytes:Buffer.from('{}')};}});
+  assert.equal((await call(h.base,'/zkapi/v1/config','GET',{'sec-fetch-site':'same-origin','sec-fetch-mode':'cors','sec-fetch-dest':'empty'})).status,200);
+  assert.equal((await call(h.base,'/zkapi/v1/config','GET',{'sec-fetch-mode':'cors'})).status,400);
+  assert.equal((await call(h.base,'/zkapi/v1/config','GET',{'sec-fetch-site':'cross-site','sec-fetch-mode':'cors','sec-fetch-dest':'empty'})).status,400);
+  assert.equal(forwards,1);
 });
 
 test('client abort cancels one bounded upstream forward without automatic retry',async t=>{

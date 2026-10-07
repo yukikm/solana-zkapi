@@ -10,6 +10,13 @@ the SDK handles the proof, authorization and signed settlement locally.
 4. Add [recovery and user-facing states](recovery.md).
 5. Consult the [API reference](api.md) and [verified feature status](status.md).
 
+The released `0.2.0-devnet.2` preview combines deployment inputs in an
+[authenticated public profile](public-profile.md), with read-only preflight and
+an [independent browser/native consumer](../../tools/public-devnet-consumer/README.md).
+Read the [Devnet funding and access guide](devnet-funding.md) and
+[current public deployment status](public-devnet-preview.md). Client publication
+does not establish funded service readiness; the immutable `.1` release is unchanged.
+
 The current SDK uses `@solana/kit` 8.4.0 directly. Applications upgrading from
 the first preview should read the [Kit migration guide](kit-migration.md) before
 changing their wallet or RPC adapters.

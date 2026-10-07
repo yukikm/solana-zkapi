@@ -1,0 +1,222 @@
+{
+  "schema": 1,
+  "kind": "server_only_node_fetch_metadata_compatibility",
+  "recordedAt": "2026-10-07T17:45:06.332298+00:00",
+  "sourceFiles": [
+    {
+      "path": "scripts/devnet-browser-relay/host.ts",
+      "beforeSha256": "5fb1f1141c9842649ed951bfe0e8738f15d9998e5f0fcc202699609500333fbb",
+      "afterSha256": "82673784a2565a981e1f27d720f353593dee2fd9c6dca8d99eda7577c206bff5"
+    },
+    {
+      "path": "scripts/public_devnet_gateway.test.ts",
+      "beforeSha256": "6b72fd6683fcc778436039eb2bc408e1b597134a2606a34392ef48ae5ecc4e71",
+      "afterSha256": "91654b65cf8666a74d71e0aad4e5a3238fc4594f5d18db694ac4e0eedfff7b3f"
+    }
+  ],
+  "runtimeClosureChanges": [
+    "scripts/devnet-browser-relay/host.ts"
+  ],
+  "behavior": "In public API mode, native opt-in now accepts no Origin with either absent Sec-Fetch metadata or exactly lone Sec-Fetch-Mode: cors. Any explicit Origin still requires the reviewed allowlist. Site, destination, user, unknown metadata, other mode values, joined duplicates, native-disabled and unreviewed-origin cases remain refused in the native branch. Reviewed same-origin browser behavior stays separate.",
+  "validation": {
+    "focusedTestsPassed": 42,
+    "failed": 0,
+    "skipped": 0,
+    "durationMs": 1974.773,
+    "tests": [
+      "scripts/public_devnet_gateway.test.ts",
+      "scripts/browser_chat_devnet_host.test.ts",
+      "scripts/devnet-browser-relay/host.test.ts"
+    ],
+    "realNodeFetchSdkPreflight": true,
+    "readOnlyFixtureCallsOnly": true,
+    "syntaxChecksPassed": true,
+    "independentReview": "transport_ops reviewed exact predicate and found no concrete security regression."
+  },
+  "preservedGuards": [
+    "exact route/method allowlist",
+    "browser Origin/CORS restrictions",
+    "invitation-only new AUTH",
+    "full-cap budget reservation and exact recovery",
+    "financial transaction checks",
+    "abort propagation with no implicit replay"
+  ],
+  "initialFixtureFailure": {
+    "testsPassed": 41,
+    "testsFailed": 1,
+    "logSha256": "c0f8410e34921ffca21afd177b3289b0169cdabf67cafbe59cb229a1a58480b5",
+    "cause": "The first regression fixture attempted to override Host in Node fetch. The corrected fixture uses a real local ingress proxy preserving actual fetch headers/body and rewriting only Host, as nginx does. No runtime guard was loosened to repair the fixture.",
+    "sourceSha256": "cedd170c85b1601853b66c64fd3904e1846ee51186d3b44308430c22faf503ac"
+  },
+  "preDeployPublicDiagnosis": {
+    "url": "https://d366buuvadnp3.cloudfront.net/relay-status",
+    "matrix": [
+      {
+        "case": "curl-native",
+        "requestHeaders": {},
+        "httpStatus": 200,
+        "headersSha256": "a0af247c6b9718ab33be550aefbd7107548e685ac22fdb659d06591742fe550b",
+        "bodySha256": "d678fca2fc1520a460f0db9c644e4f7a024a48ce8ec9938953eb05f90bc182f9",
+        "admission": "suspended",
+        "recovery": "enabled",
+        "readiness": "not_checked"
+      },
+      {
+        "case": "node-like",
+        "requestHeaders": {
+          "sec-fetch-mode": "cors"
+        },
+        "httpStatus": 400,
+        "headersSha256": "2d85f5df979392911f2f33616d91368afd5e9be1363dfe33a5a6eb72189dcc3d",
+        "bodySha256": "a6c29387cd225ce2be04038edef0d6482accfbdbd803bba84faf83cb392e7b98",
+        "error": "local acceptance request refused"
+      },
+      {
+        "case": "browser-sameorigin",
+        "requestHeaders": {
+          "sec-fetch-site": "same-origin",
+          "sec-fetch-mode": "cors",
+          "sec-fetch-dest": "empty"
+        },
+        "httpStatus": 200,
+        "headersSha256": "1e65125b292d4a5b6f8e13cf5366e072d58c06eba603c6abbe7da966c9ca37e4",
+        "bodySha256": "d678fca2fc1520a460f0db9c644e4f7a024a48ce8ec9938953eb05f90bc182f9",
+        "admission": "suspended",
+        "recovery": "enabled",
+        "readiness": "not_checked"
+      },
+      {
+        "case": "explicit-origin",
+        "requestHeaders": {
+          "origin": "https://d366buuvadnp3.cloudfront.net"
+        },
+        "httpStatus": 200,
+        "headersSha256": "dbfab3933637422c6c88c4e278db47a2f7c0d74d46efd771f5a449ae05b40472",
+        "bodySha256": "d678fca2fc1520a460f0db9c644e4f7a024a48ce8ec9938953eb05f90bc182f9",
+        "admission": "suspended",
+        "recovery": "enabled",
+        "readiness": "not_checked"
+      }
+    ],
+    "newAdmission": "suspended",
+    "scope": "Read-only HTTP/header compatibility, not operator readiness or provider acceptance."
+  },
+  "deploymentFollowup": {
+    "status": "deployed_and_read_only_public_http_verified",
+    "deployment": {
+      "executionStart": "2026-10-07T17:42:09.697Z",
+      "status": "Success",
+      "responseCode": 0,
+      "schema": 1,
+      "file": "/opt/zkapi/scripts/devnet-browser-relay/host.ts",
+      "before_sha256": "5fb1f1141c9842649ed951bfe0e8738f15d9998e5f0fcc202699609500333fbb",
+      "after_sha256": "82673784a2565a981e1f27d720f353593dee2fd9c6dca8d99eda7577c206bff5",
+      "admission_enabled": false,
+      "change": "Accept lone Node fetch Sec-Fetch-Mode cors only with explicit native transport; retain browser origin and other metadata guards",
+      "client_artifacts_changed": false
+    },
+    "publicVerification": {
+      "schema": 1,
+      "observedAt": "2026-10-07T17:44:39.001Z",
+      "sourceSha256": "82673784a2565a981e1f27d720f353593dee2fd9c6dca8d99eda7577c206bff5",
+      "financialActions": 0,
+      "rows": [
+        {
+          "name": "native-node-fetch",
+          "status": 200,
+          "expected": 200,
+          "passed": true
+        },
+        {
+          "name": "forbidden-browser-origin",
+          "status": 400,
+          "expected": 400,
+          "passed": true
+        },
+        {
+          "name": "cross-site-metadata",
+          "status": 400,
+          "expected": 400,
+          "passed": true
+        },
+        {
+          "name": "same-origin-metadata",
+          "status": 200,
+          "expected": 200,
+          "passed": true
+        },
+        {
+          "name": "active-seven-cap",
+          "status": 200,
+          "expected": 200,
+          "passed": true,
+          "body": {
+            "schema": 1,
+            "allowTransactions": true,
+            "budget_micro_usdc": "7000000",
+            "reserved_micro_usdc": "0",
+            "remaining_micro_usdc": "7000000",
+            "max_requests": 7,
+            "reserved_requests": 0,
+            "remaining_requests": 7,
+            "request_max_cost_micro_usdc": "1000000",
+            "available_requests": 0,
+            "budget_scope": "active_detached_grant",
+            "historical_snapshot": {
+              "live": false,
+              "original_capacity_transferred_micro_usdc": "0"
+            }
+          }
+        },
+        {
+          "name": "devnet-genesis",
+          "status": 200,
+          "expected": 200,
+          "passed": true,
+          "body": {
+            "jsonrpc": "2.0",
+            "id": 1,
+            "result": "EtWTRABZaYq6iMfeYKouRu166VU2xqa1wcaWoxPkrZBG"
+          }
+        }
+      ]
+    },
+    "actualNativePreflight": {
+      "status": "failed_closed_at_snapshot",
+      "errorComponent": "snapshot",
+      "priorChecksPassedBySequentialExecution": [
+        "authenticated_profile_and_assets",
+        "devnet_genesis",
+        "finalized_pool",
+        "control_config",
+        "catalog"
+      ],
+      "inferenceBasis": "The installed CLI reports PublicProfileError component snapshot. SDK preflight sets this component only after the preceding sequential checks complete. This is not a successful full-preflight result.",
+      "snapshotFailureContext": "The operator reports that the indexer was still catching up; this CLI log alone does not establish the specific internal snapshot failure cause.",
+      "sharedSnapshotAndClockVerified": false,
+      "financialActions": 0
+    },
+    "scope": "Read-only public transport/header/RPC verification with new admission disabled. No live browser-wallet, provider inference, funded lifecycle or native crash-recovery acceptance."
+  },
+  "artifactBoundary": {
+    "sdkNativeProfileGrantArtifactsMutated": false,
+    "nativeHistoricalSourceSnapshot": "Native release build-inputs records old server host.ts SHA 5fb1f1141c9842649ed951bfe0e8738f15d9998e5f0fcc202699609500333fbb. It remains a valid immutable historical snapshot; current working-tree equality is no longer claimed for this server file.",
+    "deployment": "The operator applied only the reviewed host.ts runtime file with before-hash guard and backup; the R03 result records exact before/after hashes. The six-case public read-only follow-up passed. Full actual native preflight remains incomplete at the snapshot component."
+  },
+  "evidence": {
+    "localVerificationSha256": "e026e06195963581d4212708bda2de15f403e5475f227873f7c5172b42e38d62",
+    "focusedTestsSha256": "591a277f8cba0796986e16bc7e75e5f603b22f4d6ecd80276361405498c341f1",
+    "initialFocusedTestsSha256": "c0f8410e34921ffca21afd177b3289b0169cdabf67cafbe59cb229a1a58480b5",
+    "verifiedPatchSha256": "ea3a7eb07f52f3716de87d057f3773706d24a1ab3cdf52ede31e1bade29b11f1",
+    "publicPostDeploymentPath": "target/public-devnet-live-20261008/gateway-node-fetch-fix/public-verified.json",
+    "publicPostDeploymentSha256": "ebf7f0cd436590eee238f13023e9bf09605a711385757b019904e971eb17bec9",
+    "serverInstallResultPath": "target/public-devnet-live-20261008/R03-install-node-fetch-gateway-result.json",
+    "serverInstallResultSha256": "3dd56912e724d75b4da6cae5e657ba024c9e29690531d5152a44ec59a3161dc3",
+    "actualNativePreflightLogPath": "target/public-devnet-live-20261008/native-preflight-initial.log",
+    "actualNativePreflightLogSha256": "34a3c3007b7fa989acc929495f745fa9962588a783411761a66b791096f9c5b3"
+  },
+  "newAuthReservations": 0,
+  "providerInferences": 0,
+  "walletTransactions": 0,
+  "updatedAt": "2026-10-07T17:48:00.121017+00:00"
+}

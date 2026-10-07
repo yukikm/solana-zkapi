@@ -1,0 +1,275 @@
+{
+  "schema": 1,
+  "scope": "Local frozen-source disk-backed v2 archive reader candidate, serial fixtures, Linux build and usage smoke; no host installation or live acceptance claim",
+  "prior_candidate_evidence": "PD-challenger-segmented-candidate.json",
+  "actual_prior_binary_migration_evidence": "PD-challenger-segmented-migration.json",
+  "source": {
+    "manifest_sha256": "3d2c0edacac02247ee083aad10ce1a3ac83b5827603bca09ffbb00d7bc78e945",
+    "guarded_files": 182,
+    "source_and_build_snapshot_independently_rehashed": true,
+    "changed_files": [
+      {
+        "path": "services/challenger/src/journal.rs",
+        "bytes": 38369,
+        "sha256": "f7402b121dba8c6a105c36dba498d6c45769bef2c6b1379a12f17135237f51bf"
+      },
+      {
+        "path": "services/challenger/src/journal_segmented.rs",
+        "bytes": 29923,
+        "sha256": "04764815ba1630711bf717316b01e5aa97aa0ff04e75cf3005122ac6d551f849"
+      },
+      {
+        "path": "services/challenger/src/journal_segmented_tests.rs",
+        "bytes": 33074,
+        "sha256": "6b13c5f0bca71c776e822254562ee4cacb23d9e122ce922a067017ea68bc8d44"
+      },
+      {
+        "path": "services/challenger/src/runtime.rs",
+        "bytes": 43238,
+        "sha256": "10bbe42e13d6896453cbcf35d01c689bff8ba895f003b68f0980100ed85e397e"
+      },
+      {
+        "path": "services/challenger/src/tests.rs",
+        "bytes": 56615,
+        "sha256": "8ef21081b79bf504f4334ff70cd734babad0fe5118d2e804396337e685f760b9"
+      },
+      {
+        "path": "services/challenger/src/tests/archive_batch.rs",
+        "bytes": 21364,
+        "sha256": "6e5052cc4d4439ba4cf394e0c3050ae748cbf3b1f72a467b1fd819c7ee1979ec"
+      },
+      {
+        "path": "services/challenger/src/tests/coherent_cut.rs",
+        "bytes": 23020,
+        "sha256": "5191bbedca9daef490159cb81e8b043e3d9977c154f7fd2fcf94cb09693cd370"
+      },
+      {
+        "path": "services/challenger/src/tests/scan_readonly.rs",
+        "bytes": 14797,
+        "sha256": "6c42e9d8acfd26f1a1a615ff6e0244b607ddd86e7ba1e19f5d5512f88de8e3b1"
+      },
+      {
+        "path": "services/challenger/src/tests/shutdown.rs",
+        "bytes": 16336,
+        "sha256": "bda1f14e9736523a613e1cc8169457d4b2b41a6a160ce2f9be7be4a824d5b7ca"
+      },
+      {
+        "path": "services/challenger/tests/migrate_archive.rs",
+        "bytes": 9184,
+        "sha256": "87eb1f21c141b6e34e4b9f826bec3e6f856bdf3c5d76a6e5f76d959fd1480982"
+      }
+    ],
+    "added_files": [],
+    "format_changed": false,
+    "existing_v2_migration_required": false,
+    "v1_default_storage_unchanged": true,
+    "dependency_versions_changed": false
+  },
+  "independent_review": {
+    "blocking_findings": [],
+    "reviewed_invariants": [
+      "Journal::open completes all chunk hashes, byte counts, identities, sequence, parent and full retained-legacy-prefix validation before Runtime replay or RPC construction.",
+      "Only authenticated ChunkRefs and compact tail persist in v2 Archive; each reader retains one payload chunk and revalidates its exact predecessor ref.",
+      "Replay returns callback errors immediately without later callbacks or mutation; Runtime preserves its per-block shutdown checkpoint.",
+      "Historical time and duplicate lookups verify matching committed chunk bytes, binary-search actual slots, and return None for skipped slots; duplicates compare full block payload equality.",
+      "New suffix rejects rollback/gap/fork/unfinalized blocks; metadata capacity is reserved before persistence; head/index/tail install only after durable commit; uncertain persistence still poisons writes.",
+      "Existing v1 format and storage behavior remain; metrics and catch-up use validated tail; fee/expiry planning uses fallible historical block-time lookup."
+    ],
+    "limitations": [
+      "Existing synchronous Journal::open validation remains non-cancellable mid-validation; runtime cancellation is checked before open and per replayed block, unchanged.",
+      "ChunkRefs and Indexer accepted-block digest history still grow with history; Scanner clones remain; this is not a fixed-total-memory or long-term disk capacity guarantee.",
+      "Nominal32MiB payload chunks preserve the existing oversized-singleton exception.",
+      "The cold path reads legacy bytes and chunks multiple times to retain complete validation before replay; host timing/RSS require separate observation."
+    ],
+    "report_sha256": "0c8ce26e24dd4af51a7c21ff51b46d1aa81a476bb9cace28a5dd88d2f0961e65"
+  },
+  "focused_tests": [
+    {
+      "path": "target/public-devnet-live-20261008/disk-archive-candidate/focused-disk-tests.log",
+      "sha256": "38d171188f16a9d12a4b5b17df3d72840d52357acbab52d1a96283eb7875d3a0",
+      "passed": 21,
+      "failed": 0,
+      "ignored": 0,
+      "seconds": 13.82,
+      "note": "Includes two inert child entrypoints. Followed by exact instruction-payload selector correction in one test only."
+    },
+    {
+      "path": "target/public-devnet-live-20261008/disk-archive-candidate/payload-tamper-final.log",
+      "sha256": "3f830a7185438c8573548e238e9d202c0a617d0ff3a4caa539b85d8a7caaea13",
+      "passed": 1,
+      "failed": 0,
+      "ignored": 0,
+      "seconds": 0.23,
+      "note": "Final frozen precise instruction-payload substitution fixture."
+    }
+  ],
+  "synthetic_memory_fixture": {
+    "measurements": [
+      {
+        "blocks": 16,
+        "chunks": 1,
+        "instruction_payload_bytes": 8388608,
+        "process_peak_rss_bytes": 20529152
+      },
+      {
+        "blocks": 128,
+        "chunks": 8,
+        "instruction_payload_bytes": 67108864,
+        "process_peak_rss_bytes": 21299200
+      }
+    ],
+    "scope": "synthetic disk archive cold-open and ordered replay; not full-stack capacity"
+  },
+  "serial_validation": {
+    "observed_at": "2026-10-07T20:37:34.041673+00:00",
+    "source_unchanged": true,
+    "guarded_files": 19,
+    "scopes": [
+      {
+        "name": "all-unit",
+        "exit": 0,
+        "sha256": "d45f8ec5a760b962ed8ca062b6c6c512b8a5050958044e53bd4ba9c1a50c8d9d",
+        "summary": [
+          "test result: ok. 52 passed; 0 failed; 12 ignored; 0 measured; 0 filtered out; finished in 18.15s"
+        ]
+      },
+      {
+        "name": "cli",
+        "exit": 0,
+        "sha256": "84650306bb6d6c99b4abfeece11bd355c976471755d7283fa2272dc34e6ccd97",
+        "summary": [
+          "test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.61s"
+        ]
+      },
+      {
+        "name": "coherent",
+        "exit": 0,
+        "sha256": "0b034e67136ae35318ad3fb62b712de0a19cdbe7c29c809ee88a500b9ac6e311",
+        "summary": [
+          "test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 61 filtered out; finished in 7.64s"
+        ]
+      },
+      {
+        "name": "shutdown",
+        "exit": 0,
+        "sha256": "fa5b5118362edde7e21c4dde5e6ecf852da94fd8f6a0f4a6484fae4f7164a780",
+        "summary": [
+          "test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 63 filtered out; finished in 0.13s"
+        ]
+      }
+    ],
+    "elapsed_seconds": 39.797,
+    "passed": true,
+    "scope": "Serial local fixture/process tests plus saved SBF archive replay; parallel lock failures separately retained; no live chain/provider/funding."
+  },
+  "initial_parallel_observation": {
+    "result": {
+      "observed_at": "2026-10-07T20:34:43.230283+00:00",
+      "source_unchanged": true,
+      "guarded_files": 19,
+      "scopes": [
+        {
+          "name": "all-unit",
+          "exit": 101,
+          "sha256": "2d67371870f6667560dc4454e5f4acfccad091dfdf54c1feacad94d2c0b21e79",
+          "summary": [
+            "test result: FAILED. 50 passed; 2 failed; 12 ignored; 0 measured; 0 filtered out; finished in 8.15s"
+          ]
+        }
+      ],
+      "elapsed_seconds": 8.482,
+      "passed": false,
+      "scope": "Local fixture/process tests plus saved SBF archive replay; no live chain/provider/funding."
+    },
+    "failure_category": "Two immediate reacquisitions of separate synthetic journal owner locks failed during parallel process fixtures",
+    "affected_tests": [
+      "segmented_authenticated_but_invalid_counts_identity_and_chain_fail_closed",
+      "segmented_rehashed_chunk_semantic_corruption_is_rejected"
+    ],
+    "source_changes_between_parallel_and_serial_runs": false,
+    "existing_runner_convention": "scripts/run_i09_challenger.py:58 uses --test-threads=1",
+    "isolated_os_mechanism": {
+      "scope": "Isolated deterministic OS flock/CLOEXEC pre-exec inheritance fixture; not a trace of the earlier Rust suite",
+      "temporary_files_only": true,
+      "descriptor_close_on_exec": true,
+      "parent_closed_original_descriptor": true,
+      "new_lock_refused_while_child_holds_inherited_pre_exec_descriptor": true,
+      "refusal_errno": 35,
+      "same_lock_succeeds_after_child_exec_exit": true,
+      "child_exit": 0,
+      "production_source_changed": false,
+      "production_lock_retries_added": false
+    },
+    "interpretation": "The isolated fixture demonstrates that a forked pre-exec child can retain an inherited flock despite CLOEXEC. This is consistent with the parallel failures, not a trace identifying their exact child. No lock weakening, automatic retry or production Drop change was introduced."
+  },
+  "linux_candidate": {
+    "sha256": "c73d58baebb1ad0d992ba63ca0827af4fb9636d93985440c9dffdd98e9fb7ac2",
+    "bytes": 11669872,
+    "target": "x86_64-unknown-linux-gnu",
+    "build_environment": "Amazon Linux 2023 / zkapi-public-build:20261008",
+    "rust": "1.90.0",
+    "cargo_release_seconds": 118,
+    "maximum_glibc_symbol": "2.34",
+    "no_config_exit": 2,
+    "verification_report_sha256": "c867edb064b26ffa23078edf7798824f2944ad2a2d85a3a0737aaa51fb7cd519"
+  },
+  "source_evidence": [
+    {
+      "path": "target/public-devnet-live-20261008/disk-archive-candidate/focused-results.json",
+      "sha256": "f2b9320d8991475baa3cce7c9e55ff97ed191b9abb22e1a5d9b922cf811dacb1"
+    },
+    {
+      "path": "target/public-devnet-live-20261008/disk-archive-candidate/root-tests.json",
+      "sha256": "213f84f76e85e287c1c1301f3d54c0e56c4449a276698a1c97b068796f204201"
+    },
+    {
+      "path": "target/public-devnet-live-20261008/disk-archive-candidate/root-all-unit.log",
+      "sha256": "2d67371870f6667560dc4454e5f4acfccad091dfdf54c1feacad94d2c0b21e79"
+    },
+    {
+      "path": "target/public-devnet-live-20261008/disk-archive-candidate/root-serial-tests.json",
+      "sha256": "392f0931346a59454b6bbaed3df797b747e32a9595ce51afc1c07b09f52cf787"
+    },
+    {
+      "path": "target/public-devnet-live-20261008/disk-archive-candidate/flock-cloexec-reproduction.json",
+      "sha256": "50abf9c0e04e5b928a23b777c2b9e2a1537085eec956c1ada077e9cadf160740"
+    },
+    {
+      "path": "target/public-devnet-live-20261008/linux-build/challenger-disk-reader/source-manifest.json",
+      "sha256": "3d2c0edacac02247ee083aad10ce1a3ac83b5827603bca09ffbb00d7bc78e945"
+    },
+    {
+      "path": "target/public-devnet-live-20261008/linux-build/challenger-disk-reader/independent-source-review.json",
+      "sha256": "0c8ce26e24dd4af51a7c21ff51b46d1aa81a476bb9cace28a5dd88d2f0961e65"
+    },
+    {
+      "path": "target/public-devnet-live-20261008/linux-build/challenger-disk-reader/after-binary-verified.json",
+      "sha256": "77ef6f1e833a8e7a900dce039412ce93f35d1b83264bdeb13bf801d667b8244e"
+    },
+    {
+      "path": "target/public-devnet-live-20261008/linux-build/challenger-disk-reader/build.log",
+      "sha256": "e11c4d40254b73c58ab9285697515499bf69b0127e3fa5a7705d3d6b90524281"
+    },
+    {
+      "path": "target/public-devnet-live-20261008/linux-build/challenger-disk-reader/smoke/no-config-exit.txt",
+      "sha256": "53c234e5e8472b6ac51c1ae1cab3fe06fad053beb8ebfd8977b010655bfdd3c3"
+    },
+    {
+      "path": "target/public-devnet-live-20261008/linux-build/challenger-disk-reader/smoke/no-config.log",
+      "sha256": "28e46fad7a49b8a23581ce1be7392e29efc84355dbc0f2b9de3ae946d551144c"
+    },
+    {
+      "path": "target/public-devnet-live-20261008/linux-build/challenger-disk-reader/smoke/glibc-versions.txt",
+      "sha256": "63d871e60a1317c8871d01b562e85c3445f901b71b2a37d574a1d59a79728682"
+    },
+    {
+      "path": "target/public-devnet-live-20261008/linux-build/challenger-disk-reader/verification.json",
+      "sha256": "c867edb064b26ffa23078edf7798824f2944ad2a2d85a3a0737aaa51fb7cd519"
+    }
+  ],
+  "not_established": [
+    "Host installation and same-archive cold-open with this new binary",
+    "Resumed catch-up, service readiness or funded/provider lifecycle acceptance",
+    "Fixed total memory, cgroup peak, long-term4GiB or disk capacity qualification"
+  ]
+}

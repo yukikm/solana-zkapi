@@ -1,0 +1,12 @@
+✔ direct OpenRouter transport preserves actual provider base, without adding a second v1 (1.703891ms)
+✔ proxy and OA verifier routes derive only from reviewed profile values (0.430463ms)
+✔ network mode is explicit and does not accept credentials or insecure destinations (0.548985ms)
+✔ native admission references only a private file and the authenticated control origin (0.424051ms)
+ℹ tests 4
+ℹ suites 0
+ℹ pass 4
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 151.940212

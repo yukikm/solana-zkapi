@@ -45,6 +45,35 @@ pub struct Config {
     pub alert_sink_directory: Option<PathBuf>,
     #[serde(default)]
     pub priority_fee: Option<PriorityFeePolicy>,
+    /// Read-only replay commit frequency; never changes the v1 archive format.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub archive_batch: Option<ArchiveBatchPolicy>,
+}
+#[derive(Clone, Copy, Deserialize, Serialize)]
+#[serde(deny_unknown_fields)]
+pub struct ArchiveBatchPolicy {
+    pub max_blocks: usize,
+    pub max_bytes: usize,
+}
+impl Default for ArchiveBatchPolicy {
+    fn default() -> Self {
+        Self {
+            max_blocks: 64,
+            max_bytes: 8 * 1024 * 1024,
+        }
+    }
+}
+impl ArchiveBatchPolicy {
+    pub fn validate(&self) -> Result<()> {
+        if self.max_blocks == 0
+            || self.max_blocks > 256
+            || self.max_bytes == 0
+            || self.max_bytes > 32 * 1024 * 1024
+        {
+            return Err(bad("archive batch policy"));
+        }
+        Ok(())
+    }
 }
 /// Integer micro-lamports per CU; capped at one lamport/CU. A rate is selected
 /// only for a new payload plan and remains immutable throughout its upload.
@@ -136,6 +165,7 @@ impl Config {
         if let Some(policy) = &self.priority_fee {
             policy.validate()?;
         }
+        self.archive_batch.unwrap_or_default().validate()?;
         Ok(trust)
     }
     fn index(&self, trust: &Trust) -> IndexConfig {
@@ -233,8 +263,6 @@ pub struct Runtime {
     rpc: ArchiveRpc,
     shutdown: Option<Shutdown>,
 }
-const ARCHIVE_BATCH_BLOCKS: usize = 64;
-const ARCHIVE_BATCH_BYTES: usize = 8 * 1024 * 1024;
 impl Runtime {
     pub fn open(config: Config, initialize: bool) -> Result<Self> {
         Self::open_with_shutdown(config, initialize, None)
@@ -254,15 +282,15 @@ impl Runtime {
             Journal::open(&config.journal_directory, trust.pool())?
         };
         let mut scanner = Scanner::new(trust.clone());
-        for block in journal.archive() {
+        journal.replay_archive(|block| {
             if let Some(shutdown) = &shutdown {
                 shutdown.checkpoint()?;
             }
-            scanner.apply_finalized(block)?;
-        }
+            scanner.apply_finalized(block)
+        })?;
         // A v1 queue with a checkpoint but no archive must explicitly import its
         // finalized history, never silently continue from an empty scanner.
-        if journal.checkpoint().is_some() && journal.archive().is_empty() {
+        if journal.checkpoint().is_some() && journal.archive_is_empty() {
             return Err(bad("legacy journal requires archive import"));
         }
         let rpc = ArchiveRpc::new(config.rpc_url.clone()).map_err(|_| bad("RPC config"))?;
@@ -324,12 +352,10 @@ impl Runtime {
         self.scanner.reconcile(&accounts, &pool)
     }
     async fn catch_up_to(&mut self, tip: u64) -> Result<()> {
-        let mut next = self
-            .journal
-            .archive()
-            .last()
-            .map_or(self.config.start_slot, |b| b.slot.saturating_add(1));
-        if self.journal.archive().last().is_some_and(|b| tip < b.slot) {
+        let batch = self.config.archive_batch.unwrap_or_default();
+        let tail = self.journal.archive_tail();
+        let mut next = tail.map_or(self.config.start_slot, |b| b.slot.saturating_add(1));
+        if tail.is_some_and(|b| tip < b.slot) {
             return Err(bad("RPC rollback"));
         }
         while next <= tip {
@@ -364,7 +390,7 @@ impl Runtime {
                         let block = zkapi_indexer::rpc::decode_finalized_block(slot, &value)
                             .map_err(|_| bad("RPC archive encoding"))?;
                         let bytes = serde_json::to_vec(&block)?.len();
-                        if pending_bytes.saturating_add(bytes) > ARCHIVE_BATCH_BYTES {
+                        if pending_bytes.saturating_add(bytes) > batch.max_bytes {
                             self.commit_archive_prefix(&mut pending, &checked)?;
                             pending_bytes = 0;
                         }
@@ -377,9 +403,7 @@ impl Runtime {
                         pending_bytes = pending_bytes.saturating_add(bytes);
                         // A single oversized block is committed alone: batching
                         // must not invent an archive size rejection/truncation.
-                        if pending.len() >= ARCHIVE_BATCH_BLOCKS
-                            || pending_bytes >= ARCHIVE_BATCH_BYTES
-                        {
+                        if pending.len() >= batch.max_blocks || pending_bytes >= batch.max_bytes {
                             self.commit_archive_prefix(&mut pending, &checked)?;
                             pending_bytes = 0;
                         }
@@ -493,15 +517,13 @@ impl Runtime {
             .enqueue_cut(self.checkpoint(view), candidates, now())
     }
     fn plan(&self, job: &crate::journal::Job, payload: &Payload) -> Result<Value> {
-        let block = self
+        let block_time = self
             .journal
-            .archive()
-            .iter()
-            .find(|b| b.slot == payload.checkpoint.position.slot)
+            .archive_block_time(payload.checkpoint.position.slot)?
             .ok_or(bad("payload clock absent"))?;
         let nonce = sha(&[job.identity.id().as_bytes(), &payload.digest].concat());
         let fee = self.config.priority_fee.as_ref().map_or(0, |policy| {
-            policy.price(job.discovered_at, block.block_time, job.identity.deadline)
+            policy.price(job.discovered_at, block_time, job.identity.deadline)
         });
         for attempt in job
             .attempts
@@ -521,7 +543,7 @@ impl Runtime {
             }
         }
         Ok(
-            json!({"programId":self.trust.pool.program_id,"pool":self.trust.pool.pool,"mint":self.trust.pool.mint,"payer":self.config.payer,"noteId":job.identity.note_id,"payloadHex":hex::encode(&payload.bytes),"nonceHex":hex::encode(nonce),"expires":block.block_time.saturating_add(3600).min(job.identity.deadline).to_string(),"slot":payload.checkpoint.position.slot,"sequence":payload.checkpoint.tree_sequence.to_string(),"priorityFeeMicroLamports":fee.to_string()}),
+            json!({"programId":self.trust.pool.program_id,"pool":self.trust.pool.pool,"mint":self.trust.pool.mint,"payer":self.config.payer,"noteId":job.identity.note_id,"payloadHex":hex::encode(&payload.bytes),"nonceHex":hex::encode(nonce),"expires":block_time.saturating_add(3600).min(job.identity.deadline).to_string(),"slot":payload.checkpoint.position.slot,"sequence":payload.checkpoint.tree_sequence.to_string(),"priorityFeeMicroLamports":fee.to_string()}),
         )
     }
     pub async fn prove(&mut self, view: &FinalizedView) -> Result<usize> {
@@ -904,6 +926,7 @@ pub struct Metrics {
     pub root_conflict_reproves_total: usize,
 }
 pub fn metrics(journal: &Journal, at: u64) -> Metrics {
+    let tail = journal.archive_tail();
     let mut m = Metrics {
         pending_jobs: 0,
         unknown_signatures: 0,
@@ -913,11 +936,8 @@ pub fn metrics(journal: &Journal, at: u64) -> Metrics {
         page_jobs: 0,
         emergency_jobs: 0,
         oldest_unresolved_seconds: 0,
-        finalized_slot: journal.archive().last().map(|b| b.slot),
-        finalized_lag_seconds: journal
-            .archive()
-            .last()
-            .map(|b| at.saturating_sub(b.block_time)),
+        finalized_slot: tail.map(|b| b.slot),
+        finalized_lag_seconds: tail.map(|b| at.saturating_sub(b.block_time)),
         undelivered_alerts: journal.alerts().filter(|a| !a.delivered).count(),
         oldest_detection_to_send_seconds: journal.jobs().filter(|(_,j)|!j.complete).map(|(_,j)|j.first_execute_send_at.unwrap_or(at).saturating_sub(j.discovered_at)).max().unwrap_or(0),
         proof_failure_total: journal.proof_failure_total(),
@@ -954,6 +974,19 @@ pub fn metrics(journal: &Journal, at: u64) -> Metrics {
 }
 pub async fn run(config: Config, command: &str) -> Result<()> {
     let signals = Signals::install()?;
+    if command == "migrate-archive" {
+        // Explicit offline storage conversion, before any Scanner, RPC client,
+        // repository or transport bridge is opened. Normal startup never migrates.
+        signals.shutdown.checkpoint()?;
+        let trust = config.trust()?;
+        let report = Journal::migrate_v1_to_segmented_with_cancel(
+            &config.journal_directory,
+            trust.pool(),
+            || signals.shutdown.checkpoint().is_err(),
+        )?;
+        println!("{}", serde_json::to_string(&report)?);
+        return Ok(());
+    }
     let mut runtime = match Runtime::open_with_shutdown(
         config,
         command == "init",
@@ -1033,8 +1066,10 @@ async fn run_command(runtime: &mut Runtime, command: &str) -> Result<()> {
         if command != "run" {
             return result;
         }
-        if result.is_err() {
-            eprintln!("challenger paused: reconciliation or transport unavailable");
+        if let Err(error) = &result {
+            // Error's Display exposes static evidence/conflict categories and
+            // redacts all nested I/O, JSON and database error details.
+            eprintln!("challenger paused: {error}");
         }
         interruptible(
             runtime.shutdown.as_ref(),

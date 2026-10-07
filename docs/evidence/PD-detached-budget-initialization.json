@@ -1,0 +1,224 @@
+{
+  "schema": 1,
+  "kind": "detached_seven_cap_initialization_and_public_api_checkpoint",
+  "recordedAt": "2026-10-07T17:51:54.167674+00:00",
+  "scope": "Actual single selected AWS detached grant initialization and read-only public HTTP/API publication checkpoint. Not full operator, browser-wallet, provider or native lifecycle acceptance.",
+  "publicOrigin": "https://d366buuvadnp3.cloudfront.net",
+  "grant": {
+    "id": "e9f9406e-8750-4d29-97b2-e4b38a218c7c",
+    "authorizationSha256": "e4c09a7e3cf9de33296893b7bc1922f26fe980cf63e64d6199ad8bb4c4f740f7",
+    "kind": "detached_supplemental_grant",
+    "initialized": true,
+    "initializationObservedAt": "2026-10-07T17:25:33.854Z",
+    "approval": "Explicit user authorization for seven additional one-USDC AUTH caps, once, across B-01 through B-03 and N-01 through N-04; no automatic replacement.",
+    "matrix": [
+      "B-01",
+      "B-02",
+      "B-03",
+      "N-01",
+      "N-02",
+      "N-03",
+      "N-04"
+    ],
+    "budgetMicroUsdc": "7000000",
+    "maxRequests": 7,
+    "policy": "new_grant_only_no_original_capacity_transfer",
+    "deploymentPins": {
+      "profile_sha256": "5e868f8e57ef06961b73ba8cb755635e81d4bb168dd6ad498152496ac1b02d14",
+      "manifest_sha256": "b97e200769be24448a51999346a28d0ca497892d68212f517b2b9bb4cc1a4643",
+      "bundle_sha256": "10a85725034a18bfa3e07913af9cdf89bd10ca05c4ce50aefe5f766a2431c9c8",
+      "sdk_sha256": "fe9917b7f11e4bec0837bc7aac7624ad2965aa9bca007d61b877f263620143dc",
+      "native_sha256": "9a2ab6759d99b3d7031b4c939ab654caeec2244763d1f16538e471bd5675cb56",
+      "tariff_sha256": "ca205b230ac0e68b1fc84383d6948f215b46b604c3dbe8502bce83940af75ff5",
+      "mode": "direct_openrouter",
+      "provider": "openrouter",
+      "model": "openai/gpt-4o-mini",
+      "cap_micro_usdc": "1000000",
+      "session_ttl_seconds": 60,
+      "max_output_tokens": 128
+    }
+  },
+  "historicalReference": {
+    "snapshotSha256": "1cb10175ff67c66f3186e47b1c65b3f73ed3a07882eb29735df73c0a4d3bb01d",
+    "originalAnchors": {
+      "plan_sha256": "50f3f10040671f27ecd2ff59db3d3d6474a58de67bb0cf38e7a2cd41d7577167",
+      "identity_sha256": "9780016f4d9858225194c14f5b72259b3847269bdefe2db0b30937a131ed5668",
+      "state_sha256": "513d46d07ac617d07e9620f3aac1d1809a8f5474cb22e442e46481f9055a2e29"
+    },
+    "summary": {
+      "budget_micro_usdc": "10000000",
+      "reserved_micro_usdc": "9154216",
+      "reserved_requests": 17
+    },
+    "originalFilesUnchangedDuringExport": true,
+    "capacityTransferredMicroUsdc": "0",
+    "live": false,
+    "privateRowsPublished": false,
+    "semantics": "Immutable historical request/AUTH collision reference only. The old authority remains separate; its unused capacity and recovery rights were not moved or replenished. This is not live cross-authority deduplication."
+  },
+  "selectedAuthority": {
+    "binding": {
+      "path": "/srv/zka/budget-seven",
+      "directory_device": 66305,
+      "directory_inode": 393217,
+      "lock_device": 66305,
+      "lock_inode": 393218
+    },
+    "singleAuthorityRecord": {
+      "path": "/srv/zka/single-authority-record.json",
+      "owner": "root",
+      "group": "root",
+      "mode": "0600",
+      "createdExclusivelyBeforeInitialization": true,
+      "preparedRecordInitializedField": false,
+      "note": "The prepared record remains a pre-initialization anchor. R01 and the separate initialization marker establish the subsequent initialized state."
+    },
+    "initializationMarker": "/srv/zka/grant-initialized.json",
+    "runtimeAccount": "zka-gateway",
+    "stateDirectoryMode": "0700",
+    "lockMode": "0600",
+    "historySnapshot": {
+      "path": "/srv/zka/history/original-snapshot.json",
+      "owner": "root",
+      "group": "zka-gateway",
+      "mode": "0440",
+      "parentMode": "0750",
+      "parentsRootOwned": true,
+      "gatewayWritable": false
+    },
+    "limits": "Canonical directory/lock device and inode binding plus the root-protected selection record describe one local authority. They are not distributed fencing, remote clone detection or a restore/migration acceptance test."
+  },
+  "preservedPreparationFailure": {
+    "initialObservedAt": "2026-10-07T17:14:27.574Z",
+    "status": "Failed",
+    "responseCode": 1,
+    "failure": "The initial umask 0077 reduced the intended root-owned snapshot mode 0440 to 0400. The non-root helper could not read it and preparation failed before a grant was initialized.",
+    "diagnosisObservedAt": "2026-10-07T17:21:12.953Z",
+    "resumeObservedAt": "2026-10-07T17:23:57.733Z",
+    "resume": "Guarded resume checked exact existing file sets, ownership, modes and content hashes. It changed only the existing snapshot group-read mode to 0440 with the inode retained, then prepared and validated the one recorded grant UUID. No existing grant UUID/ledger was reset, no replacement grant was created, and all initial failure artifacts remain retained.",
+    "preparationOnly": true
+  },
+  "initialization": {
+    "status": "Success",
+    "responseCode": 0,
+    "result": {
+      "schema": 2,
+      "initialized": true,
+      "authorization_sha256": "e4c09a7e3cf9de33296893b7bc1922f26fe980cf63e64d6199ad8bb4c4f740f7",
+      "original_capacity_transferred_micro_usdc": "0",
+      "funding_actions": 0,
+      "inference_actions": 0
+    }
+  },
+  "gatewayPublication": {
+    "startedAt": "2026-10-07T17:27:22.793Z",
+    "status": "Success",
+    "responseCode": 0,
+    "result": {
+      "gateway_started": true,
+      "nginx_started": true,
+      "admission_enabled": false,
+      "gateway_config_sha256": "c03cf2977aeac81ec650369d42504c318aaf296f91edaf053e748b6752edb331",
+      "nginx_config_sha256": "1626b7eb7d5a688ac18fecea301b82ff646f3f98f89b62314ed840c5a5332bfe",
+      "grant_id": "e9f9406e-8750-4d29-97b2-e4b38a218c7c"
+    },
+    "admissionEnabled": false,
+    "note": "Gateway and nginx startup is a publication checkpoint. Admission remains suspended; a running listener does not establish readiness."
+  },
+  "publicBudgetObservation": {
+    "observedAt": "2026-10-07T17:44:39.001Z",
+    "httpStatus": 200,
+    "result": {
+      "schema": 1,
+      "allowTransactions": true,
+      "budget_micro_usdc": "7000000",
+      "reserved_micro_usdc": "0",
+      "remaining_micro_usdc": "7000000",
+      "max_requests": 7,
+      "reserved_requests": 0,
+      "remaining_requests": 7,
+      "request_max_cost_micro_usdc": "1000000",
+      "available_requests": 0,
+      "budget_scope": "active_detached_grant",
+      "historical_snapshot": {
+        "live": false,
+        "original_capacity_transferred_micro_usdc": "0"
+      }
+    },
+    "scope": "Read-only aggregate status. Seven remaining reservations do not mean seven currently available admissions; available_requests is zero."
+  },
+  "publicTransportFollowup": {
+    "evidence": "PD-gateway-node-fetch.json",
+    "checksPassed": 6,
+    "checksFailed": 0,
+    "fullNativePreflight": "incomplete_at_snapshot",
+    "operatorReportedContext": "Indexer catch-up was in progress. The redacted CLI error alone does not establish the internal snapshot failure cause."
+  },
+  "redaction": {
+    "included": "Public deployment pins, one grant UUID, selected local authority binding, aggregate counts, source hashes and redacted execution summaries.",
+    "excluded": [
+      "historical request/AUTH rows",
+      "invitation token",
+      "private RPC URLs or credentials",
+      "wallet/provider/operator secrets",
+      "AWS instance and volume identifiers",
+      "raw approval conversation identifier"
+    ]
+  },
+  "evidence": [
+    {
+      "path": "target/public-devnet-live-20261008/history-export-verification.json",
+      "sha256": "7bc4c4f34ad2b1e77400b2ebe3588df3c3fd704279f63bff517681d57148375b"
+    },
+    {
+      "path": "target/public-devnet-live-20261008/40-prepare-grant-result.json",
+      "sha256": "7a8c4d0a2a7d259d6b91f019a168399269d6247b1bac9ab4988b8c90879273e7"
+    },
+    {
+      "path": "target/public-devnet-live-20261008/42-grant-preparation-diagnosis-result.json",
+      "sha256": "02ee0fbd222c6dfcdafc52c4358f4b0ee71aec58310dcbe7ac105d6d3944e9e0"
+    },
+    {
+      "path": "target/public-devnet-live-20261008/43-resume-grant-preparation.sh",
+      "sha256": "95c623867a324a0af6aaebccc0a9b8df549a64405d7798a2b7881246791f8b2b"
+    },
+    {
+      "path": "target/public-devnet-live-20261008/43-resume-grant-preparation-result.json",
+      "sha256": "db4fa7323dda722b1f8e010582a363338e75d15c4c7f148d3ae972ed0f543a99"
+    },
+    {
+      "path": "target/public-devnet-live-20261008/prepared-authority-review.json",
+      "sha256": "950d5001749d36f4f7c6a2f73023e64203a2682b5496cabdc9d712d503916b7e"
+    },
+    {
+      "path": "target/public-devnet-live-20261008/R01-initialize-grant.sh",
+      "sha256": "400372d24f6262ae9dc9d5a2314c27a7425b291c75db6ea60741871434d9d1b4"
+    },
+    {
+      "path": "target/public-devnet-live-20261008/R01-initialize-grant-result.json",
+      "sha256": "0bb42888975280b1b930657d98ca5498bfdf861844c1d754e0d220626c99cd0f"
+    },
+    {
+      "path": "target/public-devnet-live-20261008/R02-start-public-gateway-result.json",
+      "sha256": "3680d40764877ada167194ceb50975e785d4f62f2cc1c14fe057dd854fbf8aac"
+    },
+    {
+      "path": "target/public-devnet-live-20261008/gateway-node-fetch-fix/public-verified.json",
+      "sha256": "ebf7f0cd436590eee238f13023e9bf09605a711385757b019904e971eb17bec9"
+    },
+    {
+      "path": "target/public-devnet-live-20261008/native-preflight-initial.log",
+      "sha256": "34a3c3007b7fa989acc929495f745fa9962588a783411761a66b791096f9c5b3"
+    }
+  ],
+  "newAuthReservationsAtCheckpoint": 0,
+  "providerInferencesInThisScope": 0,
+  "fundingActionsInThisScope": 0,
+  "notEstablished": [
+    "full public SDK/native preflight",
+    "real browser wallet/provider lifecycle",
+    "stock native supervisor public inference or unknown-send recovery",
+    "operator backup/restore acceptance",
+    "long-term hosting capacity or availability"
+  ]
+}

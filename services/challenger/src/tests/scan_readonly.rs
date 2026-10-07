@@ -198,6 +198,7 @@ async fn native_scan_discovers_and_advances_archive_without_recovering_unknown_e
         poll_seconds: 1,
         alert_sink_directory: None,
         priority_fee: None,
+        archive_batch: None,
     };
     let mut runtime = runtime::Runtime::open(config.clone(), true).unwrap();
     let view = runtime.scan().await.unwrap();
@@ -270,7 +271,7 @@ async fn native_scan_discovers_and_advances_archive_without_recovering_unknown_e
         .unwrap();
     let before = runtime.journal.jobs().next().unwrap().1.clone();
     assert_eq!(before.first_execute_send_at, None);
-    assert_eq!(runtime.journal.archive().last().unwrap().slot, 15);
+    assert_eq!(runtime.journal.archive_tail().unwrap().slot, 15);
     drop(runtime);
 
     tip.store(16, Ordering::SeqCst);
@@ -285,7 +286,7 @@ async fn native_scan_discovers_and_advances_archive_without_recovering_unknown_e
     .unwrap();
     assert!(!marker.exists(), "scan invoked the SDK bridge");
     let mut journal = Journal::open(&config.journal_directory, trust.pool()).unwrap();
-    assert_eq!(journal.archive().last().unwrap().slot, 16);
+    assert_eq!(journal.archive_tail().unwrap().slot, 16);
     assert_eq!(
         journal.checkpoint().unwrap().position.slot,
         16,

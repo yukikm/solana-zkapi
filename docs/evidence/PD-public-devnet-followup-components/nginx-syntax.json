@@ -1,0 +1,7 @@
+{
+  "exit_code": 0,
+  "nginx_version": "1.30.5",
+  "template_sha256": "da572d967c04877d03fa9fb17d7d8ce1dd66759e5f59573e010ffc5930481119",
+  "adaptation": "filesystem error-log path only; http/events wrapper; no service started",
+  "download_sha256": "6c20565aa2325cb82216ae804f4a4ff1875179014759a381c42ddc8e11c4906d"
+}

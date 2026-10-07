@@ -6,12 +6,12 @@ No supported public production bundle or npm release is advertised yet.
 
 ## 1. Install the SDK in your own repository
 
-Obtain an independently reviewed `zkapi-solana-sdk-0.2.0-devnet.1.tgz` and verify its
+Obtain an independently reviewed `zkapi-solana-sdk-0.2.0-devnet.2.tgz` and verify its
 published SHA256 through your trusted distribution channel. Then install it in
 your application with Node 24.19.0/npm 11.9.0:
 
 ```sh
-npm install --save-exact /absolute/path/zkapi-solana-sdk-0.2.0-devnet.1.tgz @solana/kit@8.4.0
+npm install --save-exact /absolute/path/zkapi-solana-sdk-0.2.0-devnet.2.tgz @solana/kit@8.4.0
 ```
 
 The package contains compiled ES modules and TypeScript declarations. No source
@@ -27,6 +27,15 @@ complete integration and build instructions. Provider secrets stay with the
 operator; the browser does not need the operator's API key.
 
 ## 2. Configure the deployment once
+
+The released `0.2.0-devnet.2` preview offers a
+[public-profile loader and read-only preflight](public-profile.md) that supplies
+these inputs from one authenticated profile. The
+[independent consumer](../../tools/public-devnet-consumer/README.md) shows durable
+profile binding, browser integration and native input generation. Use the
+[current public deployment](public-devnet-preview.md) for its authenticated
+profile and availability status. Explicit deployment inputs are described below
+for application maintainers and self-hosted operators.
 
 Your app supplies a `ClientDeployment`: raw manifest bytes, an independently
 installed trust policy, public proof/IDL artifacts, an Kit `Rpc<SolanaRpcApi>` and an

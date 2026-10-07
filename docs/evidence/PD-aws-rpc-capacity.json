@@ -1,0 +1,75 @@
+{
+  "scope": "New AWS preview startup observations; no funded/provider acceptance",
+  "time_basis": "UTC on 2026-10-07",
+  "rpc_provider_label": "alchemy",
+  "actual_account_tier_and_quota": "unknown",
+  "rpc_endpoint_credentials_disclosed": false,
+  "historical_v1_windows": [
+    {
+      "start": "19:33:00",
+      "end": "19:36:00",
+      "control": "inactive",
+      "seconds": 180.332010577,
+      "archive_slot_advance": 684,
+      "slots_per_second": 3.7930037923463327,
+      "journal_growth_bytes": 60801227,
+      "process_write_bytes_per_second": 39098386.01277851,
+      "cpu_cores_mean": 0.4987467267304523,
+      "ready": false
+    }
+  ],
+  "post_control_pause_failures": {
+    "window_start": "19:30:19",
+    "observed_at": "19:34:57",
+    "method": "getBlock",
+    "http_status": 429,
+    "phase": "http",
+    "count": 10,
+    "rpc_code": null,
+    "timeout": false,
+    "shared_cooldown_seconds": 10
+  },
+  "single_bounded_density_probe": {
+    "start_slot": 508560430,
+    "end_slot": 508561429,
+    "slot_span": 1000,
+    "produced_blocks": 1000,
+    "method": "getBlocks",
+    "full_block_calls": 0,
+    "http_status": 200,
+    "elapsed_ms": 127
+  },
+  "pre_migration_stop": {
+    "at": "20:05:02",
+    "clean_exit": true,
+    "service_inactive": true,
+    "cgroup_processes": 0,
+    "gateway_new_admissions": false,
+    "database_financial_counts": 0,
+    "active_notes": 0,
+    "pending_withdrawals": 0,
+    "challenger_jobs": 0,
+    "challenger_unknown_signatures": 0,
+    "original_v1_bytes": 2912440894,
+    "original_v1_sha256": "fbec86b6c8dfd6ddda5ee9aaa9c6be408098440449720b57baedd4042e37aa2b"
+  },
+  "limits": [
+    "HTTP429 confirms real throttling, not the account quota or competing workload",
+    "Stopping only the empty new control did not establish catch-up capacity",
+    "Original v1 full archive rewriting consumes substantial I/O and CPU",
+    "Segmented migration and post-migration throughput require their own outcomes",
+    "No replay start advance, reset, instance resize, CPU Unlimited or new paid RPC was used"
+  ],
+  "private_evidence_sha256": {
+    "target/public-devnet-live-20261008/68-streaming-steady-io-result.json": "53171983205dcb43c4043b918a0cd1928aa45ac135d761eb5d66186df9869a3f",
+    "target/public-devnet-live-20261008/88-actual-rpc-failure-cut-result.json": "a3a8f99947273775fb6ba0c52522e0d199d6dd039bdda4efbe49fd0925e77653",
+    "target/public-devnet-live-20261008/90-rpc-provider-classification-result.json": "ab0d38fdb5114ae1ae387fd4908c37ea9caf1afb2030e789f56ca16e4b2966d6",
+    "target/public-devnet-live-20261008/92-pause-empty-control-result.json": "b4addd82ea388657b317e7cb51bc94a6ba2317cc7a5695619716a451eca0c0ea",
+    "target/public-devnet-live-20261008/93-post-control-pause-steady-io-result.json": "a7c948ca9c296c929cdbbabc567d4df930ce9fb5dec09b689b4d2a0e4e8e4121",
+    "target/public-devnet-live-20261008/94-recent-finalized-block-density-result.json": "2b09bce01a1c9c1b17b29251c0782eb80592c67562205491a9434ce71ca3eac3",
+    "target/public-devnet-live-20261008/95-post-control-pause-rpc-errors-result.json": "ab6b48b6bc64b636a4bb2457f2fe1698e416f15c40ae878b9029358998e95b5c",
+    "target/public-devnet-live-20261008/103-root-observed-result.json": "bbf8b644641f45e6034dbcddd3ddf1bf6f922d9442b72c055eb3b6721b4927d3",
+    "target/public-devnet-live-20261008/103c-root-pause-retry-result-1.json": "2fc8bed4194d3be2b4ef1822e302d1802883c0fab06435c56f86758c6ebba75d",
+    "target/public-devnet-live-20261008/78-post-noop-steady-io-result.json": "2f418ef00a6b7eb643ee190df3b65fa260a317b1b49ee56ef0f6b806fc15434c"
+  }
+}

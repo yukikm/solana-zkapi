@@ -1,0 +1,141 @@
+{
+  "schema": 1,
+  "scope": "Actual same-authority offline v1-to-v2 challenger archive migration and fresh-process cold-open; services remain stopped",
+  "observed_at": "2026-10-07T20:26:40.364406+00:00",
+  "migration_completed_at": "2026-10-07T20:25:03.855264+00:00",
+  "binary_sha256": "271628332f24c0d60eb1bc105bf372e8a418aab2e87e002168e3f2ce1c80b0fe",
+  "candidate_evidence": "PD-challenger-segmented-candidate.json",
+  "original_and_retained_legacy": {
+    "sha256": "fbec86b6c8dfd6ddda5ee9aaa9c6be408098440449720b57baedd4042e37aa2b",
+    "bytes": 2912440894,
+    "typed_state_digest": "c3da0c0d6ea1d4019b955a2f737ac7cbaa26ccab07d9223e9621e02dfe2c50d1",
+    "source_count_digest_validation": "Validated by the native migration before activation; report emitted after activation",
+    "independent_raw_sha256_join": true,
+    "byte_identical_backup_retained": true
+  },
+  "committed_v2": {
+    "blocks": 29844,
+    "chunks": 117,
+    "raw_head_sha256": "ab82591dc87c46e50ece3afa1fc59afe6a6013c71ca9a8b0688679548daa3da6",
+    "typed_head_digest": "db8f2f6e2fad9431eb59a89853243c14c0d5f1c2eb3e340f1d6d3a022ae05bd0",
+    "last_slot": 508550323,
+    "last_blockhash_hex": "c1e655f735a332658e6792a3286527350513ac62c2ef62b1554ab1903cb47be5",
+    "tail_chunk_sha256": "8aaebd084e24b64e7ddf2fa4a4294d7d541e3168d711700ed8866064f79547b7",
+    "tail_chunk_bytes": 23016254,
+    "jobs": 0,
+    "cold_open_full_prefix_validation_passed": true,
+    "head_unchanged_after_cold_open": true
+  },
+  "authority": {
+    "same_owner_lock_device": 66305,
+    "same_owner_lock_inode": 1179655,
+    "config_sha256_unchanged": "399cded5e3d3c2babc10a1c9f85c1385644ecb165ef7f6fa7cd71750ba4f1c0e",
+    "single_local_authority_only": true
+  },
+  "services": {
+    "control": "inactive/success/0",
+    "challenger": "inactive/success/0",
+    "migration_monitor": "inactive/success/0",
+    "allow_new_admissions": false,
+    "service_started_by_migration": false
+  },
+  "cold_open_metrics": {
+    "pending_jobs": 0,
+    "unknown_signatures": 0,
+    "complete_jobs": 0,
+    "regenerated_proofs": 0,
+    "warning_jobs": 0,
+    "page_jobs": 0,
+    "emergency_jobs": 0,
+    "oldest_unresolved_seconds": 0,
+    "finalized_slot": 508550323,
+    "finalized_lag_seconds": 5772,
+    "minimum_deadline_remaining_seconds": null,
+    "undelivered_alerts": 0,
+    "oldest_detection_to_send_seconds": 0,
+    "proof_failure_total": 0,
+    "root_conflict_reproves_total": 0
+  },
+  "storage": {
+    "files": 119,
+    "logical_bytes": 5824957378,
+    "unique_allocated_bytes": 5825212416
+  },
+  "sampled_memory": {
+    "migration": {
+      "samples": 199,
+      "max_sampled_rss_bytes": 1846882304,
+      "max_observed_process_hwm_bytes": 1846886400,
+      "min_available_bytes": 1597960192,
+      "any_sigint_sent": false,
+      "exit": {
+        "command": "migrate-archive",
+        "exit_code": 0,
+        "sigint_sent": false,
+        "cancellation_reason": null,
+        "elapsed_seconds": 199.349,
+        "finished_at": "2026-10-07T20:21:10.027634+00:00",
+        "stdout_bytes": 488,
+        "stderr_bytes": 0
+      }
+    },
+    "cold-open": {
+      "samples": 212,
+      "max_sampled_rss_bytes": 1854849024,
+      "max_observed_process_hwm_bytes": 1855070208,
+      "min_available_bytes": 1627734016,
+      "any_sigint_sent": false,
+      "exit": {
+        "command": "status",
+        "exit_code": 0,
+        "sigint_sent": false,
+        "cancellation_reason": null,
+        "elapsed_seconds": 212.358,
+        "finished_at": "2026-10-07T20:25:03.766704+00:00",
+        "stdout_bytes": 378,
+        "stderr_bytes": 0
+      }
+    }
+  },
+  "execution": {
+    "migration_command": "migrate-archive",
+    "cold_open_command": "status",
+    "both_child_network_namespaces_verified_isolated": true,
+    "automatic_retries": 0,
+    "signals_sent": 0,
+    "rollback_or_orphan_adoption": false
+  },
+  "source_evidence": [
+    {
+      "path": "target/public-devnet-live-20261008/105-segmented-migration-monitor.py",
+      "sha256": "68610f83006efdbb846a607b95d19cb73614df8a1f9e57228e3a9ea08233c32f"
+    },
+    {
+      "path": "target/public-devnet-live-20261008/106-segmented-migration-launch-script.sh",
+      "sha256": "2731c1fc97313843b10b7fddae74fcf7fe6b09d582cdb38cb15b424d2d9e5da0"
+    },
+    {
+      "path": "target/public-devnet-live-20261008/106-segmented-migration-launch-result.json",
+      "sha256": "ef305cfdd6b960b023305e59b771825eb766e94aefddf90b9ba1ed6178c91e2f"
+    },
+    {
+      "path": "target/public-devnet-live-20261008/107g-segmented-migration-observe-result.json",
+      "sha256": "b89690ea05a278a6e9a9760ea1e0861bea46d7552e1b0c8634ace66265306202"
+    },
+    {
+      "path": "target/public-devnet-live-20261008/111-final-migration-proof-cut-script.sh",
+      "sha256": "7f21a0d179466055948c5c7b1cf64c1c5696791136296c4494db9719161942a3"
+    },
+    {
+      "path": "target/public-devnet-live-20261008/111-final-migration-proof-cut-result.json",
+      "sha256": "914bd16e6af1fa2e2947c02cfe5bca036a7571a693d61664ddcac49fba2201ff"
+    }
+  ],
+  "limits": [
+    "No resumed catch-up, ready service, funded session, provider inference or financial lifecycle acceptance is established.",
+    "Process RSS/HWM are sampled observations, not cgroup peak or long-term host capacity qualification.",
+    "This binary still keeps one complete block-history Vec in memory; its measured cold-open baseline motivates a separately reviewed disk-backed reader.",
+    "The retained v1 backup and all committed full-block chunks remain; no history pruning, reset, skipped replay or automatic fallback occurred.",
+    "Inactive transient-unit defaults after systemd garbage collection do not describe execution isolation; the running controller verified its properties and each child network namespace."
+  ]
+}

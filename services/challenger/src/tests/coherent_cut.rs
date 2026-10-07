@@ -13,6 +13,49 @@ struct CutMode {
 #[tokio::test]
 #[ignore = "reads existing I04 SBF archive; focused run requires target/i04/sdk-svm-history.json"]
 async fn rpc_daemon_advancing_cut_preserves_archive_and_same_cut_pool_validation() {
+    check_archive_batches(None, false).await;
+}
+#[tokio::test]
+#[ignore = "reads existing I04 SBF archive; focused run requires target/i04/sdk-svm-history.json"]
+async fn rpc_daemon_larger_archive_batch_preserves_prefix_recovery_and_account_cut() {
+    check_archive_batches(
+        Some(runtime::ArchiveBatchPolicy {
+            max_blocks: 256,
+            max_bytes: 32 * 1024 * 1024,
+        }),
+        false,
+    )
+    .await;
+}
+#[tokio::test]
+#[ignore = "reads existing I04 SBF archive; focused run requires target/i04/sdk-svm-history.json"]
+async fn rpc_daemon_segmented_archive_preserves_cut_failure_prefix_and_restart() {
+    check_archive_batches(None, true).await;
+}
+fn open_new_fixture(config: runtime::Config, segmented: bool) -> runtime::Runtime {
+    if segmented {
+        let pool = config.trust().unwrap().pool();
+        drop(Journal::initialize(&config.journal_directory, pool).unwrap());
+        let original = std::fs::read(config.journal_directory.join("journal.json")).unwrap();
+        let report = Journal::migrate_v1_to_segmented(&config.journal_directory, pool).unwrap();
+        assert_eq!(report.format_version, 2);
+        assert_eq!(report.archive_blocks, 0);
+        assert_eq!(
+            std::fs::read(config.journal_directory.join("legacy-v1.json")).unwrap(),
+            original
+        );
+        runtime::Runtime::open(config, false).unwrap()
+    } else {
+        runtime::Runtime::open(config, true).unwrap()
+    }
+}
+async fn check_archive_batches(policy: Option<runtime::ArchiveBatchPolicy>, segmented: bool) {
+    let batch = policy.unwrap_or_default();
+    let boundary = batch.max_blocks as u64;
+    let final_slot = boundary * 2 + 2;
+    let failed_slot = boundary + 3;
+    let large_end = if policy.is_some() { 24 } else { 20 };
+    let byte_observation = large_end + 1;
     let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
     let history: Value = serde_json::from_slice(
         &std::fs::read(root.join("target/i04/sdk-svm-history.json")).unwrap(),
@@ -31,7 +74,7 @@ async fn rpc_daemon_advancing_cut_preserves_archive_and_same_cut_pool_validation
     // fixture crosses two durable batch boundaries without changing state.
     let blocks = scenario["blocks"].as_array_mut().unwrap();
     blocks.retain(|block| block["slot"].as_u64().unwrap() <= 16);
-    for slot in 17u64..=130 {
+    for slot in 17u64..=final_slot {
         let previous = blocks.last().unwrap()["block"]["blockhash"].clone();
         blocks.push(json!({"slot":slot,"block":{"blockhash":zkapi_indexer::snapshot::key(sha(&slot.to_le_bytes())),
             "previousBlockhash":previous,"parentSlot":slot-1,"blockTime":3_000_000_000u64,"transactions":[]}}));
@@ -97,19 +140,25 @@ async fn rpc_daemon_advancing_cut_preserves_archive_and_same_cut_pool_validation
                             .unwrap()["block"]
                             .clone();
                         let slot = body["params"][0].as_u64().unwrap();
-                        if [21, 65, 129].contains(&slot) {
+                        if [byte_observation, boundary + 1, boundary * 2 + 1].contains(&slot) {
                             if let Some(path) = journal_path.lock().unwrap().as_ref() {
                                 let saved: Value =
                                     serde_json::from_slice(&std::fs::read(path).unwrap()).unwrap();
-                                let last = saved["state"]["archive"]
-                                    .as_array()
-                                    .and_then(|a| a.last())
-                                    .and_then(|b| b["slot"].as_u64())
-                                    .unwrap_or(0);
+                                let last = match saved["state"]["version"].as_u64().unwrap() {
+                                    1 => saved["state"]["archive"]
+                                        .as_array()
+                                        .and_then(|a| a.last())
+                                        .and_then(|b| b["slot"].as_u64())
+                                        .unwrap_or(0),
+                                    2 => saved["segmented"]["tail"]["last_slot"]
+                                        .as_u64()
+                                        .unwrap_or(0),
+                                    _ => panic!("unexpected journal format"),
+                                };
                                 durable_at_fetch.lock().unwrap().push((slot, last));
                             }
                         }
-                        if slot == 67 {
+                        if slot == failed_slot {
                             match mode.fault {
                                 "fetch67" => {
                                     return Json(
@@ -117,11 +166,11 @@ async fn rpc_daemon_advancing_cut_preserves_archive_and_same_cut_pool_validation
                                     )
                                 }
                                 "decode67" => block["blockTime"] = json!("invalid"),
-                                "replay67" => block["parentSlot"] = json!(65),
+                                "replay67" => block["parentSlot"] = json!(failed_slot - 2),
                                 _ => {}
                             }
                         }
-                        if mode.fault == "large" && (17..=20).contains(&slot) {
+                        if mode.fault == "large" && (17..=large_end).contains(&slot) {
                             let program = zkapi_indexer::snapshot::key([91; 32]);
                             block["transactions"] = json!([{"version":"legacy","transaction":{"signatures":[scenario["blocks"][0]["block"]["transactions"][0]["transaction"]["signatures"][0]],"message":{"accountKeys":[program],"instructions":[{"programIdIndex":0,"accounts":[],"data":""}]}},"meta":{"err":null,"innerInstructions":[],"logMessages":[format!("Program {program} invoke [1]"),format!("Program data: {}",STANDARD.encode(vec![7u8;2_200_000])),format!("Program {program} success")]}}]);
                         }
@@ -195,13 +244,27 @@ async fn rpc_daemon_advancing_cut_preserves_archive_and_same_cut_pool_validation
         poll_seconds: 1,
         alert_sink_directory: None,
         priority_fee: None,
+        archive_batch: policy,
     };
-    let mut daemon = runtime::Runtime::open(config.clone(), true).unwrap();
+    if policy.is_none() {
+        assert!(serde_json::to_value(&config)
+            .unwrap()
+            .get("archive_batch")
+            .is_none());
+    }
+    let mut invalid = config.clone();
+    invalid.archive_batch = Some(runtime::ArchiveBatchPolicy {
+        max_blocks: 257,
+        max_bytes: 1,
+    });
+    assert!(runtime::Runtime::open(invalid, true).is_err());
+    assert!(!config.journal_directory.exists());
+    let mut daemon = open_new_fixture(config.clone(), segmented);
     let view = daemon.scan().await.unwrap();
     assert_eq!(view.slot(), 16);
     assert_eq!(view.pending().count(), 1);
     assert!(view.paused);
-    assert_eq!(daemon.journal.archive().last().unwrap().slot, 16);
+    assert_eq!(daemon.journal.archive_tail().unwrap().slot, 16);
     assert!(calls
         .lock()
         .unwrap()
@@ -215,6 +278,47 @@ async fn rpc_daemon_advancing_cut_preserves_archive_and_same_cut_pool_validation
     };
     calls.lock().unwrap().clear();
     let mut daemon = runtime::Runtime::open(config.clone(), false).unwrap();
+    // Cold replay must retain the exact historical clock used by challenge
+    // fee/expiry planning, while health reads only the authenticated tail.
+    let tail = daemon.journal.archive_tail().unwrap();
+    assert_eq!(tail.slot, 16);
+    assert_eq!(daemon.journal.archive_len(), 16);
+    let mut count = 0;
+    daemon
+        .journal
+        .replay_archive(|block| {
+            assert_eq!(
+                daemon.journal.archive_block_time(block.slot)?,
+                Some(block.block_time)
+            );
+            count += 1;
+            Ok(())
+        })
+        .unwrap();
+    assert_eq!(count, 16);
+    assert_eq!(daemon.journal.archive_block_time(0).unwrap(), None);
+    assert_eq!(daemon.journal.archive_block_time(17).unwrap(), None);
+    let summary = runtime::metrics(&daemon.journal, tail.block_time + 17);
+    assert_eq!(summary.finalized_slot, Some(16));
+    assert_eq!(summary.finalized_lag_seconds, Some(17));
+    // The fallible borrowed visitor propagates a latched shutdown before a
+    // later block is applied. This read cannot advance the durable head.
+    let before_replay = std::fs::read(config.journal_directory.join("journal.json")).unwrap();
+    let mut visited = 0;
+    let interrupted = daemon.journal.replay_archive(|_| {
+        visited += 1;
+        if visited == 2 {
+            Err(crate::Error::Interrupted)
+        } else {
+            Ok(())
+        }
+    });
+    assert!(matches!(interrupted, Err(crate::Error::Interrupted)));
+    assert_eq!(visited, 2);
+    assert_eq!(
+        std::fs::read(config.journal_directory.join("journal.json")).unwrap(),
+        before_replay
+    );
     assert_eq!(daemon.scan().await.unwrap().state, view.state);
     assert!(!calls
         .lock()
@@ -241,12 +345,12 @@ async fn rpc_daemon_advancing_cut_preserves_archive_and_same_cut_pool_validation
     };
     let mut changed = config.clone();
     changed.journal_directory = dir.path().join("inventory-journal");
-    let mut daemon = runtime::Runtime::open(changed.clone(), true).unwrap();
+    let mut daemon = open_new_fixture(changed.clone(), segmented);
     assert!(
         daemon.scan().await.is_err(),
         "new Pending inventory was not captured"
     );
-    assert_eq!(daemon.journal.archive().last().unwrap().slot, 15);
+    assert_eq!(daemon.journal.archive_tail().unwrap().slot, 15);
     drop(daemon);
     *mode.lock().unwrap() = CutMode {
         tip: 15,
@@ -272,9 +376,9 @@ async fn rpc_daemon_advancing_cut_preserves_archive_and_same_cut_pool_validation
     };
     let mut changed = config.clone();
     changed.journal_directory = dir.path().join("tail-journal");
-    let mut daemon = runtime::Runtime::open(changed, true).unwrap();
+    let mut daemon = open_new_fixture(changed, segmented);
     assert!(daemon.scan().await.is_err());
-    assert_eq!(daemon.journal.archive().last().unwrap().slot, 15);
+    assert_eq!(daemon.journal.archive_tail().unwrap().slot, 15);
     mode.lock().unwrap().fault = "none";
     assert_eq!(daemon.scan().await.unwrap().slot(), 16);
     drop(daemon);
@@ -287,18 +391,18 @@ async fn rpc_daemon_advancing_cut_preserves_archive_and_same_cut_pool_validation
     };
     let mut changed = config.clone();
     changed.journal_directory = dir.path().join("prefix-journal");
-    let mut daemon = runtime::Runtime::open(changed.clone(), true).unwrap();
+    let mut daemon = open_new_fixture(changed.clone(), segmented);
     assert!(daemon.scan().await.is_err());
     assert_eq!(*completions.lock().unwrap(), vec![4, 3, 2, 1]);
-    assert_eq!(
-        daemon
-            .journal
-            .archive()
-            .iter()
-            .map(|block| block.slot)
-            .collect::<Vec<_>>(),
-        vec![1, 2]
-    );
+    let mut replayed_slots = Vec::new();
+    daemon
+        .journal
+        .replay_archive(|block| {
+            replayed_slots.push(block.slot);
+            Ok(())
+        })
+        .unwrap();
+    assert_eq!(replayed_slots, vec![1, 2]);
     drop(daemon);
     calls.lock().unwrap().clear();
     mode.lock().unwrap().fault = "none";
@@ -322,31 +426,34 @@ async fn rpc_daemon_advancing_cut_preserves_archive_and_same_cut_pool_validation
     // including replay errors that poison only their discarded candidate.
     for fault in ["fetch67", "decode67", "replay67"] {
         *mode.lock().unwrap() = CutMode {
-            tip: 130,
-            captured: 130,
+            tip: final_slot,
+            captured: final_slot,
             fault,
         };
         let mut changed = config.clone();
         changed.journal_directory = dir.path().join(fault);
         *journal_path.lock().unwrap() = Some(changed.journal_directory.join("journal.json"));
         durable_at_fetch.lock().unwrap().clear();
-        let mut daemon = runtime::Runtime::open(changed.clone(), true).unwrap();
+        let mut daemon = open_new_fixture(changed.clone(), segmented);
         assert!(daemon.scan().await.is_err());
-        assert_eq!(daemon.journal.archive().last().unwrap().slot, 66);
-        assert!(durable_at_fetch.lock().unwrap().contains(&(65, 64)));
+        assert_eq!(daemon.journal.archive_tail().unwrap().slot, failed_slot - 1);
+        assert!(durable_at_fetch
+            .lock()
+            .unwrap()
+            .contains(&(boundary + 1, boundary)));
         calls.lock().unwrap().clear();
         mode.lock().unwrap().fault = "none";
         if fault == "replay67" {
             // Retry this same Runtime: an invalid candidate must not poison
             // the successfully committed prefix Scanner.
-            assert_eq!(daemon.scan().await.unwrap().slot(), 130);
+            assert_eq!(daemon.scan().await.unwrap().slot(), final_slot);
         }
         drop(daemon);
         let mut daemon = runtime::Runtime::open(changed, false).unwrap();
         let view = daemon.scan().await.unwrap();
-        assert_eq!(view.slot(), 130);
+        assert_eq!(view.slot(), final_slot);
         assert_eq!(view.pending().count(), 1);
-        assert_eq!(daemon.journal.archive().last().unwrap().slot, 130);
+        assert_eq!(daemon.journal.archive_tail().unwrap().slot, final_slot);
         assert_eq!(
             calls
                 .lock()
@@ -354,32 +461,64 @@ async fn rpc_daemon_advancing_cut_preserves_archive_and_same_cut_pool_validation
                 .iter()
                 .find(|r| r["method"] == "getBlocks")
                 .unwrap()["params"][0],
-            67
+            failed_slot
         );
     }
-    // Four foreign event payloads cross the8MiB byte trigger before64blocks.
+    // Foreign event payloads cross each configured byte trigger before its block bound.
     // Their exact bytes remain in the archive; the financial state is unchanged.
     *mode.lock().unwrap() = CutMode {
-        tip: 21,
-        captured: 21,
+        tip: byte_observation,
+        captured: byte_observation,
         fault: "large",
     };
-    let mut changed = config;
+    let mut changed = config.clone();
     changed.journal_directory = dir.path().join("byte-trigger");
     *journal_path.lock().unwrap() = Some(changed.journal_directory.join("journal.json"));
     durable_at_fetch.lock().unwrap().clear();
-    let mut daemon = runtime::Runtime::open(changed.clone(), true).unwrap();
-    assert_eq!(daemon.scan().await.unwrap().slot(), 21);
-    assert!(durable_at_fetch.lock().unwrap().contains(&(21, 19)));
-    for block in &daemon.journal.archive()[16..20] {
-        assert_eq!(
-            block.transactions[0].instructions[0].events[0],
-            vec![7; 2_200_000]
-        );
-    }
+    let mut daemon = open_new_fixture(changed.clone(), segmented);
+    assert_eq!(daemon.scan().await.unwrap().slot(), byte_observation);
+    assert!(durable_at_fetch
+        .lock()
+        .unwrap()
+        .contains(&(byte_observation, large_end - 1)));
+    let mut inspected = 0;
+    daemon
+        .journal
+        .replay_archive(|block| {
+            if block.slot > 16 && block.slot <= large_end {
+                assert_eq!(
+                    block.transactions[0].instructions[0].events[0],
+                    vec![7; 2_200_000]
+                );
+                inspected += 1;
+            }
+            Ok(())
+        })
+        .unwrap();
+    assert_eq!(inspected, large_end - 16);
     drop(daemon);
     mode.lock().unwrap().fault = "none";
     let mut daemon = runtime::Runtime::open(changed, false).unwrap();
-    assert_eq!(daemon.scan().await.unwrap().slot(), 21);
+    assert_eq!(daemon.scan().await.unwrap().slot(), byte_observation);
+    drop(daemon);
+    // An explicit tiny byte threshold must preserve each larger block alone,
+    // not truncate or reject the archive. The financial account cut is equal.
+    *mode.lock().unwrap() = CutMode {
+        tip: 16,
+        captured: 16,
+        fault: "none",
+    };
+    let mut changed = config;
+    changed.journal_directory = dir.path().join("oversized-singletons");
+    changed.archive_batch = Some(runtime::ArchiveBatchPolicy {
+        max_blocks: 256,
+        max_bytes: 1,
+    });
+    let mut daemon = open_new_fixture(changed.clone(), segmented);
+    assert_eq!(daemon.scan().await.unwrap().slot(), 16);
+    assert_eq!(daemon.journal.archive_len(), 16);
+    drop(daemon);
+    let mut daemon = runtime::Runtime::open(changed, false).unwrap();
+    assert_eq!(daemon.scan().await.unwrap().slot(), 16);
     server.abort();
 }

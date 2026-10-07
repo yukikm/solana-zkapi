@@ -30,6 +30,19 @@ PoolConfig. A trust policy fetched alongside an untrusted manifest is not an
 independent trust root. Do not derive the trust anchor/build pins from whatever
 the server returned. Protect the JS worker through your trusted app build too.
 
+The `0.2.0-devnet.2` candidate's `loadDeploymentAssets` supports public
+descriptor schema 2 with authenticated license/provenance notices. Its
+`notices` map associates safe flat labels with unique same-directory filenames,
+and `files` binds their exact byte lengths and SHA-256 hashes. Limits are 32
+notices, 1 MiB per file and 4 MiB combined; files may not collide with proof,
+manifest or WASM paths. The loader must retrieve and verify every notice before
+returning `assets.notices`. Preserve those bytes when installing or distributing
+the assets. Missing or modified notices fail the whole load. Schema 1 remains
+supported with an empty notice map; older released SDKs cannot read schema 2.
+See [distribution](../../packages/sdk/DISTRIBUTION.md#loading-a-distributable-public-artifact-bundle)
+for the offline packager and exact-file publication review. Source support alone
+is not a new published SDK or a downloadable bundle acceptance result.
+
 `ArtifactBundle` and `ManifestTrustPolicy` in [trust.ts](../../packages/sdk/src/trust.ts)
 are the exact contracts. The existing [operator services](../../services/control/README.md)
 and [deployment operations](../../deploy/operations/README.md) produce and run

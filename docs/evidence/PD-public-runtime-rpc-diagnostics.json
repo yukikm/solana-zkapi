@@ -1,0 +1,218 @@
+{
+  "schema": 1,
+  "kind": "public_runtime_rpc_diagnostics_verification",
+  "observed_at_utc": "2026-10-07T19:19:07.599189+00:00",
+  "passed": true,
+  "scope": "Observation-only actual ArchiveRpc failures; offline tests and pinned Linux challenger build, no throughput or readiness claim",
+  "source_manifest": {
+    "path": "target/public-devnet-live-20261008/linux-build/challenger-rpc-diagnostics-v2/source-manifest.json",
+    "bytes": 32344,
+    "sha256": "345e863f52ee3c16190b08f6ef8915a192cc5070c889aec67de1d0cf8fc4fd68"
+  },
+  "guarded_inputs": 179,
+  "changed_from_alert_noop_snapshot": [
+    {
+      "path": "services/indexer/src/runtime.rs",
+      "bytes": 43968,
+      "sha256": "082e8cfab28f85bbc80ef743d581bd9104ffd5414a0957314602bbd75e61f4c5"
+    },
+    {
+      "path": "services/indexer/tests/rpc_concurrency.rs",
+      "bytes": 17520,
+      "sha256": "d65ab73f746999b1d09f33f5ea46f7088ddc1814838958eae5fe061581953cbd"
+    }
+  ],
+  "diagnostic_contract": {
+    "event": "archive_rpc_failure",
+    "fields": [
+      "event",
+      "method",
+      "phase",
+      "http_status",
+      "rpc_code",
+      "timeout",
+      "elapsed_ms",
+      "cooldown_seconds"
+    ],
+    "string_sources": "Compile-time event/phase labels and allowlisted methods; unknown methods map to other",
+    "phases": [
+      "send",
+      "http",
+      "body",
+      "envelope_id",
+      "rpc_error",
+      "result_missing"
+    ],
+    "http_status": "Optional u16",
+    "rpc_code": "Optional i64 only; message/data/non-numeric code omitted",
+    "timeout": "Boolean reqwest timeout classification only",
+    "elapsed_ms": "Unsigned milliseconds since actual call begins after any shared cooldown",
+    "cooldown_seconds": "Optional bounded numeric Retry-After delay; set shared state before logging",
+    "never_emitted": [
+      "URL",
+      "request parameters",
+      "response body",
+      "response ID",
+      "headers",
+      "RPC error message/data",
+      "nested transport error"
+    ]
+  },
+  "unchanged": [
+    "Existing returned error strings and response rejection order",
+    "Read-only callers, request count, four-read concurrency, no automatic retry",
+    "Shared429cooldown and cancellation",
+    "Challenger configuration, batch limits, v1 journal, complete history, durability and poison semantics"
+  ],
+  "tests": {
+    "redaction_unit": {
+      "passed": 1,
+      "failed": 0,
+      "ignored": 0,
+      "log": {
+        "path": "target/public-devnet-live-20261008/archive-rpc-diagnostics-unit-v2.log",
+        "bytes": 473,
+        "sha256": "262ec8b24335d5425599253b25f6771218b92fcfaa850899c8113b56800f6d65"
+      }
+    },
+    "http_integration": {
+      "passed": 7,
+      "failed": 0,
+      "ignored": 0,
+      "duration_seconds": 1.07,
+      "composition": "Five existing scheduling/cursor/cooldown regressions; one actual eight-failure subprocess stderr/request-count matrix; one inert helper when not invoked by matrix",
+      "matrix": [
+        "HTTP429",
+        "HTTP503",
+        "invalidJSON",
+        "wrongResponseID",
+        "numericRPCerror",
+        "stringRPCerrorCode",
+        "nullResultWithUnknownMethod",
+        "connectionRefused"
+      ],
+      "log": {
+        "path": "target/public-devnet-live-20261008/archive-rpc-diagnostics-http-verified.log",
+        "bytes": 819,
+        "sha256": "570ef2d3ee4ff5a65a97cd571a4616f8717628eb95c21250a0e93f21abee2bce"
+      }
+    },
+    "test_compile": {
+      "path": "target/public-devnet-live-20261008/archive-rpc-diagnostics-test-compile-v2.log",
+      "bytes": 268,
+      "sha256": "d80a3682fdb45a90b17b5ea0dade8c712fb6b5bec806ab43cc4d72bede4239ae"
+    },
+    "initial_compile_failure_preserved": {
+      "path": "target/public-devnet-live-20261008/archive-rpc-diagnostics-test-compile.log",
+      "bytes": 1845,
+      "sha256": "b60f324e679b26e088fa8c9480b42cbb8b91886d3a78dbe15fbc2d5c4932f3ca"
+    },
+    "initial_compile_resolution": "Test changed from unavailable tokio process feature to std::process via existing spawn_blocking; dependency graph unchanged"
+  },
+  "reviews": {
+    "independent_reviewers": [
+      "proof_assets",
+      "transport_ops"
+    ],
+    "blocking_findings": 0
+  },
+  "linux_build": {
+    "binary": {
+      "path": "target/public-devnet-live-20261008/linux-build/challenger-rpc-diagnostics-v2/output/challengerd",
+      "bytes": 11479624,
+      "sha256": "4c41d3ec99e5e320ee0e4ae886542801141cc0413b1337999610cc217d79dd56"
+    },
+    "duration_seconds": 120,
+    "target": "x86_64-unknown-linux-gnu",
+    "rust": "1.90.0",
+    "cargo_locked": true,
+    "image_digest": "sha256:8ed3c0a996841537f75607e7d1de2114d8150391f75792e8da9268738547e73f",
+    "log": {
+      "path": "target/public-devnet-live-20261008/linux-build/challenger-rpc-diagnostics-v2/build.log",
+      "bytes": 1941,
+      "sha256": "d428eda5963004c30627f3d073373ca913ae8bcfed6a6f8d00613922abf6821c"
+    },
+    "scripts": [
+      {
+        "path": "target/public-devnet-live-20261008/linux-build/challenger-rpc-diagnostics-v2/build.sh",
+        "bytes": 315,
+        "sha256": "8e83d0e65048e9025b982564e2abff7dccd8bdf860a743adc2355b2142d19385"
+      },
+      {
+        "path": "target/public-devnet-live-20261008/linux-build/challenger-rpc-diagnostics-v2/run-build.sh",
+        "bytes": 1081,
+        "sha256": "dd597e798a55542dafbd523057c85d681801140f8a800538feb0e4e55b480b11"
+      },
+      {
+        "path": "target/public-devnet-live-20261008/linux-build/challenger-rpc-diagnostics-v2/smoke.sh",
+        "bytes": 391,
+        "sha256": "5260abe8e61ee4968557c159add27f0e250c5b957204ae5bfeed811e24beaadf"
+      },
+      {
+        "path": "target/public-devnet-live-20261008/linux-build/challenger-rpc-diagnostics-v2/run-smoke.sh",
+        "bytes": 648,
+        "sha256": "63c48d691ba27bb07e2e1afbe6299193b8ddceacb0831d471ca4d6937778438d"
+      },
+      {
+        "path": "target/public-devnet-live-20261008/linux-build/challenger-rpc-diagnostics-v2/check-source.py",
+        "bytes": 1937,
+        "sha256": "3975de8d78f045d84d1d2bda4b907a53cf1a6fd1635acce8d41591f096d4e11a"
+      }
+    ],
+    "network_disabled_read_only_smoke": {
+      "no_config_exit": 2,
+      "max_glibc": "2.34",
+      "libraries_resolved": true,
+      "files": [
+        {
+          "path": "target/public-devnet-live-20261008/linux-build/challenger-rpc-diagnostics-v2/smoke/no-config.log",
+          "bytes": 81,
+          "sha256": "1879e6d1f06b8007969c5bf7824dd0355e219bc89417146ec6b326bb79e50dc6"
+        },
+        {
+          "path": "target/public-devnet-live-20261008/linux-build/challenger-rpc-diagnostics-v2/smoke/no-config-exit.txt",
+          "bytes": 2,
+          "sha256": "53c234e5e8472b6ac51c1ae1cab3fe06fad053beb8ebfd8977b010655bfdd3c3"
+        },
+        {
+          "path": "target/public-devnet-live-20261008/linux-build/challenger-rpc-diagnostics-v2/smoke/glibc-versions.txt",
+          "bytes": 4612,
+          "sha256": "d9f845c66078e35503a9b0539aaa96e7889d83ccf7541a1f48a9efe1a15f84f7"
+        },
+        {
+          "path": "target/public-devnet-live-20261008/linux-build/challenger-rpc-diagnostics-v2/smoke/dependencies.txt",
+          "bytes": 214,
+          "sha256": "d05930f8b751ce6473f7a2de5d9db9e4e06fc7bd2a4fc93e701e3e66c76a8dcd"
+        }
+      ]
+    }
+  },
+  "guards": [
+    {
+      "path": "target/public-devnet-live-20261008/linux-build/challenger-rpc-diagnostics-v2/source-guard-before-build.json",
+      "bytes": 32386,
+      "sha256": "f1e4f7a172f4c205efc5e384ed60933e4882126c9f57f7ecabab8a6b62b6a316"
+    },
+    {
+      "path": "target/public-devnet-live-20261008/linux-build/challenger-rpc-diagnostics-v2/source-guard-agent-after-binary.json",
+      "bytes": 32386,
+      "sha256": "87036ff744b9bdbbcf42d3cac788713541bc69f2eef8cb8fd9ac84d2d0f19b21"
+    },
+    {
+      "path": "target/public-devnet-live-20261008/linux-build/challenger-rpc-diagnostics-v2/after-binary-verified.json",
+      "bytes": 32386,
+      "sha256": "21613dd8e1f0df341416b89511b15322fc39e31933d84c71d618775f8a4041cc"
+    }
+  ],
+  "previous_binary_preserved": {
+    "path": "target/public-devnet-live-20261008/linux-build/challenger-alert-noop/output/challengerd",
+    "bytes": 11471488,
+    "sha256": "b6c53269c24d67f14b7f19cd29897ac8c93c0ddbe590fbf59d15c4c4c0383183"
+  },
+  "limits": [
+    "Diagnoses the next actual failed call; successful probes do not identify previous failures",
+    "No new live RPC/provider/funding/AUTH/transaction or operational mutation by these checks",
+    "No increase to batch size, concurrency or memory allowance; no history skip/reset",
+    "No host performance, sustained resource capacity or public acceptance claim"
+  ]
+}

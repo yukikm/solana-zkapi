@@ -1,0 +1,33 @@
+{
+  "schema": 1,
+  "passed": true,
+  "scope": "Local macOS ARM64 installed-file integrity, help and Node export checks; no financial or public transport lifecycle",
+  "distribution_sha256": "ee520af54f4fd5cf88db985886aecb4e610ad44d92b3724ca978bcee6c89d499",
+  "file_count": 7257,
+  "source_inputs": 532,
+  "source_inputs_unchanged": true,
+  "checks": [
+    {
+      "name": "clientd-help",
+      "exit_code": 0,
+      "stdout_sha256": "69d51d1fe1fd1141e53c6c72d36f023ef6e0ab54a0d31b49cd24ab6b74c7c4f1"
+    },
+    {
+      "name": "node-version",
+      "exit_code": 0,
+      "stdout_sha256": "b7677d3ec37ee1897ba07dc2cfe8292fe421c9ac93396cca5bbece486d1a2a41"
+    },
+    {
+      "name": "consumer-help",
+      "exit_code": 0,
+      "stdout_sha256": "ea76d8deed604a0e14f733823214660954e6b99f2801595484eae63b288e72f1"
+    },
+    {
+      "name": "public-profile-import",
+      "exit_code": 0,
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  ],
+  "native_public_lifecycle_verified": false,
+  "published": false
+}

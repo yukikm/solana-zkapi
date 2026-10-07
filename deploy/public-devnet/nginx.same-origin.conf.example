@@ -1,0 +1,42 @@
+# Configuration template, not a deployed or nginx-validated endpoint.
+# Install these locations in an HTTPS server with an independently provisioned
+# certificate and exact server_name. Set the relay publicOrigin to that origin.
+# The loopback upstream must never be exposed directly to the network.
+# Canonical routes below reuse public-api route/body/transaction checks.
+# Browser CORS origins and native access are explicitly configured in the gateway.
+server {
+    listen 443 ssl;
+    server_name chat.example.invalid;
+    ssl_certificate /etc/zkapi/tls/fullchain.pem;
+    ssl_certificate_key /etc/zkapi/tls/privkey.pem;
+    ssl_protocols TLSv1.2 TLSv1.3;
+
+    client_max_body_size 64k;
+    client_body_timeout 15s;
+    access_log off;
+    # Do not enable debug logging or request-body/header capture.
+    error_log /var/log/nginx/zkapi-error.log crit;
+    proxy_http_version 1.1;
+    proxy_set_header Host chat.example.invalid;
+    proxy_set_header Connection "";
+    proxy_set_header X-Forwarded-Host "";
+    proxy_set_header X-Forwarded-For "";
+    proxy_set_header X-Forwarded-Proto "";
+    proxy_connect_timeout 5s;
+    proxy_read_timeout 65s;
+    proxy_send_timeout 65s;
+    proxy_next_upstream off;
+    proxy_intercept_errors off;
+    proxy_redirect off;
+    proxy_buffering off;
+    proxy_cache off;
+
+    # public-api mode validates canonical paths itself; no route rewriting.
+    # Origin and Fetch Metadata remain unchanged for exact CORS validation.
+    location ^~ /zkapi/v1/ { proxy_pass http://127.0.0.1:4175; }
+    location = /rpc { proxy_pass http://127.0.0.1:4175; }
+    location = /relay-status { proxy_pass http://127.0.0.1:4175; }
+    location = /provider-budget { proxy_pass http://127.0.0.1:4175; }
+    # No application assets, keys, journals or arbitrary filesystem routes.
+    location / { return 404; }
+}

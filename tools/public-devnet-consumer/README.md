@@ -1,14 +1,15 @@
 # Independent public-profile consumer
 
 This small integration imports only published SDK exports. Copy this directory
-to an independent application and install a **reviewed candidate SDK tarball**
-containing `@zkapi/solana-sdk/public-profile`. These APIs are currently unreleased;
-the immutable `v0.2.0-devnet.1` package does not contain them. This example does
-not supply an operating public service or invent a default profile.
+to an independent application and install the **reviewed `0.2.0-devnet.2` SDK tarball**
+containing `@zkapi/solana-sdk/public-profile`. The immutable `v0.2.0-devnet.1`
+package does not contain these APIs. Use the
+[current public deployment guide](../../docs/sdk/public-devnet-preview.md) for
+the authenticated profile, exact downloads, access policy and service status.
 
 ## Install and diagnose
 
-Use Node 24.19.0. Verify the candidate tarball digest through the release's
+Use Node 24.19.0. Verify the tarball digest through the release's
 authenticated channel, then install that exact file:
 
 ```sh
@@ -97,14 +98,14 @@ If the operator requires an invitation, save the received token in a private,
 owner-only regular file outside the installation and public artifact directory.
 Pass `--admission-token-file /absolute/private/invitation` to the command below.
 The helper records the path and authenticated control origin in `network.json`;
-it never reads, copies or prints the token. The candidate native relay checks the
+it never reads, copies or prints the token. The `.2` native relay checks the
 file's owner, permissions, canonical path and token encoding at startup, then
 adds it only to that origin's exact `POST /zkapi/v1/sessions` request. It never
 sends it to RPC, indexer, provider or other control routes. The file contains
 only the 43-character base64url invitation (optionally one trailing newline),
 not a provider key or local clientd management token. Keep it out of backups
-intended for public distribution. The stock historical release lacks this
-candidate support; current public native lifecycle acceptance remains PD-09.
+intended for public distribution. Earlier immutable releases lack this support;
+current public native lifecycle acceptance remains PD-09.
 
 ```sh
 node cli.mjs install-native --profile-url REVIEWED_HTTPS_PROFILE_URL \
@@ -120,7 +121,7 @@ counts and hashes (an empty map for legacy bundles). The receipt records exact
 local hashes, including the notice index. Existing or partial
 directories are never overwritten. No token, wallet key, journal, custody or
 provider credential is created. Preserve this directory while the profile uses
-its absolute paths. Use a native candidate containing the same capability-aware
+its absolute paths. Use the `.2` native release containing the same capability-aware
 SDK; the historical release does not gain these changes retroactively.
 
 Pass the output paths and `runtimeSha256` to the existing `clientd setup` command

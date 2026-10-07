@@ -983,6 +983,7 @@ async fn rpc_daemon_replays_durable_history_and_reconciles_restart_forks_and_cut
         poll_seconds: 1,
         alert_sink_directory: Some(dir.path().join("alerts")),
         priority_fee: None,
+        archive_batch: None,
     };
     let mut daemon = runtime::Runtime::open(config.clone(), true).unwrap();
     let v = daemon.scan().await.unwrap();
@@ -993,7 +994,7 @@ async fn rpc_daemon_replays_durable_history_and_reconciles_restart_forks_and_cut
         .journal
         .enqueue_cut(daemon.checkpoint(&v), vec![(p.job, e)], 100)
         .unwrap();
-    let blocks = daemon.journal.archive().len();
+    let blocks = daemon.journal.archive_len();
     assert!(blocks > 1);
     drop(daemon);
     requested.lock().unwrap().clear();
@@ -1001,7 +1002,7 @@ async fn rpc_daemon_replays_durable_history_and_reconciles_restart_forks_and_cut
     let restored = daemon.scan().await.unwrap();
     assert_eq!(restored.state, v.state);
     assert_eq!(restored.generations, v.generations);
-    assert_eq!(daemon.journal.archive().len(), blocks);
+    assert_eq!(daemon.journal.archive_len(), blocks);
     assert!(!requested.lock().unwrap().iter().any(|m| m == "getBlocks"));
     for fault in 1..=4 {
         mode.store(fault, Ordering::SeqCst);
@@ -1145,6 +1146,7 @@ async fn native_daemon_prove_sign_persist_send_restart_and_stale_root_recovery()
                 emergency: 100000,
                 cap: 100000,
             }),
+            archive_batch: None,
         };
         let rpc = zkapi_indexer::runtime::ArchiveRpc::new(config.rpc_url.clone()).unwrap();
         rpc.call(
@@ -1368,4 +1370,51 @@ fn priority_fee_schedule_is_integer_capped_and_escalates_only_new_plans() {
     }
     .validate()
     .is_err());
+}
+
+#[test]
+fn paused_error_display_retains_static_categories_and_redacts_nested_details() {
+    let json_error = serde_json::from_str::<Value>("PRIVATE_JSON_SECRET").unwrap_err();
+    let database_error = "unknown_parameter=PRIVATE_DATABASE_SECRET"
+        .parse::<tokio_postgres::Config>()
+        .unwrap_err();
+    let cases = [
+        (
+            Error::Interrupted,
+            "challenger stopping at a durable checkpoint",
+        ),
+        (
+            Error::BridgeCleanup,
+            "challenger transport child could not be reaped",
+        ),
+        (
+            Error::Evidence("RPC archive unavailable"),
+            "challenger rejected evidence: RPC archive unavailable",
+        ),
+        (
+            Error::Evidence("RPC account cut"),
+            "challenger rejected evidence: RPC account cut",
+        ),
+        (
+            Error::Conflict("journal requires reopen after failed persistence"),
+            "challenger journal conflict: journal requires reopen after failed persistence",
+        ),
+        (
+            Error::Io(std::io::Error::other(
+                "PRIVATE_IO_SECRET https://private-rpc.invalid/?token=secret",
+            )),
+            "challenger storage I/O",
+        ),
+        (Error::Json(json_error), "challenger journal encoding"),
+        (
+            Error::Database(database_error),
+            "challenger read repository unavailable",
+        ),
+    ];
+    for (error, expected) in cases {
+        let displayed = error.to_string();
+        assert_eq!(displayed, expected);
+        assert!(!displayed.contains("PRIVATE_"));
+        assert!(!displayed.contains("https://"));
+    }
 }

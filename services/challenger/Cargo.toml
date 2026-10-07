@@ -29,6 +29,9 @@ zkapi-layout2 = { path = "../../crates/zkapi-layout2" }
 zkapi-tree-prover = { path = "../../crates/zkapi-tree-prover" }
 zkapi-solana-types = { path = "../../crates/zkapi-solana-types" }
 
+[target.'cfg(unix)'.dependencies]
+libc = "=0.2.190"
+
 [dev-dependencies]
 axum = "=0.8.9"
 tempfile = "=3.27.0"

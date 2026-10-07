@@ -315,7 +315,14 @@ export async function startUiHost(options: HostOptions) {
           const sameOriginBrowser = browserOrigins.has(origin) && request.headers['sec-fetch-site'] === 'same-origin'
             && ['cors','same-origin'].includes(String(request.headers['sec-fetch-mode']))
             && (!request.headers['sec-fetch-dest'] || request.headers['sec-fetch-dest'] === 'empty');
-          assert.ok(sameOriginBrowser || nativeRequests && !Object.keys(request.headers).some(name => name.startsWith('sec-fetch-')), 'explicit native transport required');
+          // Node's standard fetch sends a lone Sec-Fetch-Mode: cors even when
+          // Origin and browser context metadata are absent. Keep this exception
+          // behind native opt-in; any site/dest/user/unknown metadata stays out
+          // of the native branch and cannot bypass the browser-origin policy.
+          const fetchMetadata = Object.keys(request.headers).filter(name => name.startsWith('sec-fetch-'));
+          const nativeMetadata = fetchMetadata.length === 0 || fetchMetadata.length === 1
+            && fetchMetadata[0] === 'sec-fetch-mode' && request.headers['sec-fetch-mode'] === 'cors';
+          assert.ok(sameOriginBrowser || nativeRequests && nativeMetadata, 'explicit native transport required');
         }
         const method = gatewayMethod(path); assert.ok(method, 'unsupported public route');
         if (request.method === 'OPTIONS') {

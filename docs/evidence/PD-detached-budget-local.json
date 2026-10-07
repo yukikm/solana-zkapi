@@ -1,0 +1,124 @@
+{
+  "schema": 1,
+  "recordedDate": "2026-10-07",
+  "scope": "Synthetic local detached seven-cap budget and gateway boundary validation; no actual ledger export or grant initialized",
+  "status": "passed",
+  "approval": {
+    "providerAdditionalMicroUsdc": "7000000",
+    "providerApproved": true,
+    "awsProposedUsd": "100",
+    "awsApproved": false
+  },
+  "checks": [
+    {
+      "command": [
+        "python3",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "scripts",
+        "-p",
+        "test_provider_*budget.py"
+      ],
+      "passed": 35,
+      "failed": 0,
+      "newDetachedTests": 14
+    },
+    {
+      "command": [
+        "node",
+        "--test",
+        "--test-name-pattern",
+        "detached|supplemental",
+        "scripts/public_devnet_gateway.test.ts"
+      ],
+      "passed": 4,
+      "failed": 0
+    },
+    {
+      "command": [
+        "node",
+        "node_modules/typescript/bin/tsc",
+        "--noEmit",
+        "--strict",
+        "--allowJs",
+        "--allowImportingTsExtensions",
+        "--target",
+        "ES2023",
+        "--module",
+        "NodeNext",
+        "--moduleResolution",
+        "NodeNext",
+        "--lib",
+        "ES2023,DOM",
+        "--types",
+        "node",
+        "scripts/public_devnet_gateway.ts",
+        "scripts/public_devnet_gateway.test.ts"
+      ],
+      "exitCode": 0
+    },
+    {
+      "command": [
+        "git",
+        "diff",
+        "--check"
+      ],
+      "exitCode": 0
+    }
+  ],
+  "sourceFiles": [
+    {
+      "path": "scripts/provider_detached_budget.py",
+      "sha256": "0cb388b5697e9527ec0af4406014165c2974956934955bef1cd0a7ff930b08a9",
+      "bytes": 20119
+    },
+    {
+      "path": "scripts/test_provider_detached_budget.py",
+      "sha256": "760cc468d24f5a0cc9afa83fab30953970c7306674ccd00750cdeaa19d4826b9",
+      "bytes": 12954
+    },
+    {
+      "path": "scripts/public_devnet_gateway.ts",
+      "sha256": "cc7d9be6307ac738d0f9f980b59b42794cf3b43fbbc7fc1c3d0c1439cd1b1d43",
+      "bytes": 16349
+    },
+    {
+      "path": "scripts/public_devnet_gateway.test.ts",
+      "sha256": "6b72fd6683fcc778436039eb2bc408e1b597134a2606a34392ef48ae5ecc4e71",
+      "bytes": 22901
+    },
+    {
+      "path": "scripts/provider_supplemental_budget.py",
+      "sha256": "54fa8849ffe4fa1184be5ee9dc7f386965befb568ae02dcce87caf58880eef6e",
+      "bytes": 18264
+    },
+    {
+      "path": "scripts/provider_demo_budget.py",
+      "sha256": "f66a249b79da78a0f930b5cc7518531ba339ca479b66e9e4afea0db0231cbd64",
+      "bytes": 8910
+    },
+    {
+      "path": "scripts/provider_acceptance.py",
+      "sha256": "5911ca26cd21a342e6a3f6a29c65088028ffcac2807c3f1366b54db25715b2ae",
+      "bytes": 31148
+    },
+    {
+      "path": "deploy/public-devnet/detached-budget.md",
+      "sha256": "3f28026c1cc763dcf5b4619c029529bac9ee651f5224c902fe4a5cb7c0e1f7f0",
+      "bytes": 11525
+    }
+  ],
+  "actualSnapshotExports": 0,
+  "actualGrantInitializations": 0,
+  "actualReservations": 0,
+  "providerActions": 0,
+  "fundingActions": 0,
+  "cloudMutations": 0,
+  "originalCapacityTransferredMicroUsdc": "0",
+  "productionRootOwnedPlacementExecuted": false,
+  "distributedFencingClaimed": false,
+  "historicalSnapshotLive": false,
+  "releaseGatesPassed": []
+}

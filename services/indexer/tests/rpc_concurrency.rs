@@ -1,6 +1,12 @@
 //! Offline HTTP scheduling tests only. Concurrent reads retain sequential replay
 //! and never establish public RPC, financial execution or release-gate evidence.
-use axum::{extract::State, routing::post, Json, Router};
+use axum::{
+    extract::State,
+    http::StatusCode,
+    response::{IntoResponse, Response},
+    routing::post,
+    Json, Router,
+};
 use serde_json::{json, Value};
 use std::{
     collections::BTreeMap,
@@ -22,6 +28,8 @@ struct RpcState {
     active: AtomicUsize,
     peak: AtomicUsize,
     fault: AtomicUsize,
+    rate_limited: AtomicBool,
+    calls: AtomicUsize,
     reverse: AtomicBool,
     barriers: Vec<Barrier>,
     gates: Vec<Vec<Semaphore>>,
@@ -41,7 +49,8 @@ impl Drop for Server {
         self.task.abort();
     }
 }
-async fn endpoint(State(state): State<Arc<RpcState>>, Json(request): Json<Value>) -> Json<Value> {
+async fn endpoint(State(state): State<Arc<RpcState>>, Json(request): Json<Value>) -> Response {
+    state.calls.fetch_add(1, Ordering::SeqCst);
     let result = match request["method"].as_str().unwrap() {
         "getSlot" => json!(FIRST + COUNT - 1),
         "getBlocks" => {
@@ -88,10 +97,14 @@ async fn endpoint(State(state): State<Arc<RpcState>>, Json(request): Json<Value>
                     1 => {
                         return Json(
                             json!({"jsonrpc":"2.0","id":request["id"],"error":{"code":-32000,"message":"fixture transient archive error"}}),
-                        )
+                        ).into_response()
                     }
                     2 => block["blockTime"] = json!("invalid"),
                     3 => block["parentSlot"] = json!(FIRST - 1),
+                    4 => {
+                        state.rate_limited.store(true, Ordering::SeqCst);
+                        return (StatusCode::TOO_MANY_REQUESTS, [("retry-after", "1")], "limited").into_response();
+                    }
                     _ => {}
                 }
             }
@@ -99,7 +112,7 @@ async fn endpoint(State(state): State<Arc<RpcState>>, Json(request): Json<Value>
         }
         _ => panic!("unexpected fixture method"),
     };
-    Json(json!({"jsonrpc":"2.0","id":request["id"],"result":result}))
+    Json(json!({"jsonrpc":"2.0","id":request["id"],"result":result})).into_response()
 }
 async fn server(fault: usize) -> Server {
     let first: Value =
@@ -138,6 +151,8 @@ async fn server(fault: usize) -> Server {
         active: AtomicUsize::new(0),
         peak: AtomicUsize::new(0),
         fault: AtomicUsize::new(fault),
+        rate_limited: AtomicBool::new(false),
+        calls: AtomicUsize::new(0),
         reverse: AtomicBool::new(true),
         barriers: (0..COUNT / 4).map(|_| Barrier::new(4)).collect(),
         gates: (0..COUNT / 4)
@@ -252,4 +267,230 @@ async fn invalid_parent_latches_replay_closed_despite_later_successful_fetches()
         "fork failure still requires explicit replay recovery"
     );
     assert_eq!(next, FIRST + 1);
+}
+
+#[tokio::test]
+async fn http_429_waits_then_fails_without_skipping_the_failed_slot() {
+    let server = server(4).await;
+    let mut index = Indexer::new(server.program, server.pool);
+    let mut next = FIRST;
+    let start = tokio::time::Instant::now();
+    assert!(tokio::time::timeout(
+        Duration::from_secs(5),
+        server.rpc.catch_up(&mut index, &mut next)
+    )
+    .await
+    .unwrap()
+    .is_err());
+    assert!(start.elapsed() >= Duration::from_secs(1));
+    assert_eq!(next, FIRST + 1);
+    assert_eq!(index.replay_state().unwrap().slot, FIRST);
+    assert!(!index.is_ready());
+    assert_eq!(
+        server.state.calls.load(Ordering::SeqCst),
+        6,
+        "no automatic HTTP retry"
+    );
+    server.state.reverse.store(false, Ordering::SeqCst);
+    server.state.fault.store(0, Ordering::SeqCst);
+    server.rpc.catch_up(&mut index, &mut next).await.unwrap();
+    assert_eq!(*server.state.ranges.lock().unwrap(), vec![FIRST, FIRST + 1]);
+    assert_eq!(next, FIRST + COUNT);
+    assert_eq!(index.replay_state().unwrap(), server.expected);
+    assert!(!index.is_ready(), "account reconciliation remains required");
+    assert!(server.state.peak.load(Ordering::SeqCst) <= 4);
+}
+
+#[tokio::test]
+async fn cancelling_a_rate_limited_read_keeps_shared_cooldown_and_sends_no_retry() {
+    let server = server(4).await;
+    server.state.reverse.store(false, Ordering::SeqCst);
+    assert!(tokio::time::timeout(
+        Duration::from_millis(150),
+        server.rpc.finalized_block_window(&[FIRST + 1])
+    )
+    .await
+    .is_err());
+    assert!(server.state.rate_limited.load(Ordering::SeqCst));
+    assert_eq!(server.state.calls.load(Ordering::SeqCst), 1);
+    let cloned = server.rpc.clone();
+    assert!(
+        tokio::time::timeout(Duration::from_millis(50), cloned.call("getSlot", json!([])))
+            .await
+            .is_err()
+    );
+    assert_eq!(
+        server.state.calls.load(Ordering::SeqCst),
+        1,
+        "a clone must not bypass cooldown"
+    );
+    assert!(
+        tokio::time::timeout(Duration::from_secs(3), cloned.call("getSlot", json!([])))
+            .await
+            .unwrap()
+            .is_ok()
+    );
+    assert_eq!(
+        server.state.calls.load(Ordering::SeqCst),
+        2,
+        "only the new explicit read was sent"
+    );
+}
+
+// Invoked in a fresh process by the test below to capture the real stderr path.
+// With no fixture environment this helper performs no network operation.
+#[tokio::test]
+async fn rpc_diagnostic_fixture_child() {
+    let Ok(raw) = std::env::var("ZKAPI_RPC_DIAGNOSTIC_FIXTURE") else {
+        return;
+    };
+    let input: Value = serde_json::from_str(&raw).unwrap();
+    let rpc = ArchiveRpc::new(input["url"].as_str().unwrap().into()).unwrap();
+    let result = rpc
+        .call(
+            input["method"].as_str().unwrap(),
+            json!(["PRIVATE_REQUEST_PARAM"]),
+        )
+        .await;
+    assert_eq!(
+        result.unwrap_err().to_string(),
+        input["error"].as_str().unwrap()
+    );
+}
+
+#[tokio::test]
+async fn actual_rpc_failure_stderr_is_numeric_redacted_and_does_not_retry() {
+    for (status, body, phase, code, expected_error) in [
+        (429, "PRIVATE_HTTP_BODY", "http", None, "RPC HTTP error"),
+        (503, "PRIVATE_HTTP_BODY", "http", None, "RPC HTTP error"),
+        (
+            200,
+            "PRIVATE_INVALID_JSON",
+            "body",
+            None,
+            "RPC invalid JSON",
+        ),
+        (
+            200,
+            r#"{"id":"PRIVATE_RESPONSE_ID","result":5}"#,
+            "envelope_id",
+            None,
+            "RPC response error",
+        ),
+        (
+            200,
+            r#"{"id":1,"error":{"code":-32005,"message":"PRIVATE_MESSAGE","data":"PRIVATE_DATA"}}"#,
+            "rpc_error",
+            Some(-32005),
+            "RPC response error",
+        ),
+        (
+            200,
+            r#"{"id":1,"error":{"code":"PRIVATE_CODE","message":"PRIVATE_MESSAGE"}}"#,
+            "rpc_error",
+            None,
+            "RPC response error",
+        ),
+        (
+            200,
+            r#"{"id":1,"result":null,"PRIVATE_FIELD":"PRIVATE_VALUE"}"#,
+            "result_missing",
+            None,
+            "RPC result unavailable",
+        ),
+        (0, "", "send", None, "RPC transport unavailable"),
+    ] {
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let address = listener.local_addr().unwrap();
+        let calls = Arc::new(AtomicUsize::new(0));
+        let counted = calls.clone();
+        let task = if status != 0 {
+            let app = Router::new().route(
+                "/PRIVATE_RPC_PATH",
+                post(move || {
+                    let counted = counted.clone();
+                    async move {
+                        counted.fetch_add(1, Ordering::SeqCst);
+                        (
+                            StatusCode::from_u16(status).unwrap(),
+                            [("retry-after", "1"), ("x-private-header", "PRIVATE_HEADER")],
+                            body,
+                        )
+                    }
+                }),
+            );
+            Some(tokio::spawn(async move {
+                axum::serve(listener, app).await.unwrap();
+            }))
+        } else {
+            drop(listener);
+            None
+        };
+        let method = if phase == "result_missing" {
+            "PRIVATE_METHOD"
+        } else {
+            "getBlock"
+        };
+        let fixture = json!({"url":format!("http://{address}/PRIVATE_RPC_PATH?api-key=PRIVATE_QUERY"),"method":method,"error":expected_error}).to_string();
+        let output = tokio::task::spawn_blocking(move || {
+            std::process::Command::new(std::env::current_exe().unwrap())
+                .args(["--exact", "rpc_diagnostic_fixture_child", "--nocapture"])
+                .env("ZKAPI_RPC_DIAGNOSTIC_FIXTURE", fixture)
+                .output()
+                .unwrap()
+        })
+        .await
+        .unwrap();
+        if let Some(task) = task {
+            task.abort();
+        }
+        assert!(
+            output.status.success(),
+            "child failed: {}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+        let stderr = String::from_utf8(output.stderr).unwrap();
+        assert!(
+            !stderr.contains("PRIVATE_")
+                && !stderr.contains("http://")
+                && !stderr.contains("api-key")
+        );
+        let records: Vec<Value> = stderr
+            .lines()
+            .filter_map(|line| serde_json::from_str(line).ok())
+            .collect();
+        assert_eq!(records.len(), 1);
+        let value = &records[0];
+        assert_eq!(value["event"], "archive_rpc_failure");
+        assert_eq!(
+            value["method"],
+            if method == "PRIVATE_METHOD" {
+                "other"
+            } else {
+                method
+            }
+        );
+        assert_eq!(value["phase"], phase);
+        assert_eq!(
+            value["http_status"],
+            if status == 0 {
+                Value::Null
+            } else {
+                json!(status)
+            }
+        );
+        assert_eq!(value["rpc_code"], json!(code));
+        assert_eq!(value["timeout"], false);
+        assert!(value["elapsed_ms"].as_u64().is_some());
+        assert_eq!(
+            value["cooldown_seconds"],
+            if status == 429 { json!(1) } else { Value::Null }
+        );
+        assert_eq!(value.as_object().unwrap().len(), 8);
+        assert_eq!(
+            calls.load(Ordering::SeqCst),
+            usize::from(status != 0),
+            "exactly one HTTP invocation and no retry"
+        );
+    }
 }

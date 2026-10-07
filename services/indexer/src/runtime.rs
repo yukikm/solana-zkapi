@@ -9,7 +9,7 @@ use axum::{
     Json, Router,
 };
 use base64::{engine::general_purpose::STANDARD, Engine};
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use sha2::{Digest, Sha256};
 use solana_pubkey::Pubkey;
@@ -127,6 +127,72 @@ impl AccountCut {
 pub struct ArchiveRpc {
     client: reqwest::Client,
     url: String,
+    retry_not_before: Arc<tokio::sync::Mutex<tokio::time::Instant>>,
+}
+fn rate_limit_delay(headers: &reqwest::header::HeaderMap) -> Duration {
+    // Only bounded delta-seconds are accepted. Missing, malformed and HTTP-date
+    // values use the same conservative fallback; server text is never logged.
+    let seconds = headers
+        .get(reqwest::header::RETRY_AFTER)
+        .and_then(|value| value.to_str().ok())
+        .map(str::trim)
+        .filter(|value| !value.is_empty() && value.bytes().all(|b| b.is_ascii_digit()))
+        .and_then(|value| value.parse::<u64>().ok())
+        .map(|value| value.clamp(1, 60))
+        .unwrap_or(10);
+    Duration::from_secs(seconds)
+}
+#[derive(Clone, Copy, Serialize)]
+#[serde(rename_all = "snake_case")]
+enum RpcFailurePhase {
+    Send,
+    Http,
+    Body,
+    EnvelopeId,
+    RpcError,
+    ResultMissing,
+}
+#[derive(Serialize)]
+struct RpcFailureDiagnostic {
+    event: &'static str,
+    method: &'static str,
+    phase: RpcFailurePhase,
+    http_status: Option<u16>,
+    rpc_code: Option<i64>,
+    timeout: bool,
+    elapsed_ms: u64,
+    cooldown_seconds: Option<u64>,
+}
+impl RpcFailureDiagnostic {
+    fn new(method: &str, phase: RpcFailurePhase, elapsed: Duration) -> Self {
+        Self {
+            event: "archive_rpc_failure",
+            // Never copy a caller-controlled method or any request arguments.
+            method: match method {
+                "getBlock" => "getBlock",
+                "getBlocks" => "getBlocks",
+                "getSlot" => "getSlot",
+                "getGenesisHash" => "getGenesisHash",
+                "getMultipleAccounts" => "getMultipleAccounts",
+                "getLatestBlockhash" => "getLatestBlockhash",
+                _ => "other",
+            },
+            phase,
+            http_status: None,
+            rpc_code: None,
+            timeout: false,
+            elapsed_ms: elapsed.as_millis().min(u64::MAX as u128) as u64,
+            cooldown_seconds: None,
+        }
+    }
+    fn emit(&self) {
+        // Every string above is a compile-time label. Never serialize the
+        // response, URL, parameters, headers or nested transport error here.
+        eprintln!(
+            "{}",
+            serde_json::to_string(self).expect("numeric RPC diagnostic")
+        );
+    }
 }
 impl ArchiveRpc {
     pub fn new(url: String) -> Result<Self> {
@@ -140,27 +206,97 @@ impl ArchiveRpc {
                 .redirect(reqwest::redirect::Policy::none())
                 .build()?,
             url,
+            retry_not_before: Arc::new(tokio::sync::Mutex::new(tokio::time::Instant::now())),
         })
     }
+    async fn wait_rate_limit(&self) {
+        loop {
+            let until = *self.retry_not_before.lock().await;
+            if until <= tokio::time::Instant::now() {
+                return;
+            }
+            tokio::time::sleep_until(until).await;
+        }
+    }
     pub async fn call(&self, method: &str, params: Value) -> Result<Value> {
+        self.wait_rate_limit().await;
+        let started = std::time::Instant::now();
         let response = self
             .client
             .post(&self.url)
             .json(&json!({"jsonrpc":"2.0","id":1,"method":method,"params":params}))
             .send()
             .await
-            .map_err(|_| "RPC transport unavailable")?;
-        if !response.status().is_success() {
+            .map_err(|error| {
+                let mut diagnostic =
+                    RpcFailureDiagnostic::new(method, RpcFailurePhase::Send, started.elapsed());
+                diagnostic.timeout = error.is_timeout();
+                diagnostic.emit();
+                "RPC transport unavailable"
+            })?;
+        let status = response.status();
+        if status == reqwest::StatusCode::TOO_MANY_REQUESTS {
+            let delay = rate_limit_delay(response.headers());
+            let until = tokio::time::Instant::now() + delay;
+            drop(response);
+            let mut diagnostic =
+                RpcFailureDiagnostic::new(method, RpcFailurePhase::Http, started.elapsed());
+            diagnostic.http_status = Some(status.as_u16());
+            diagnostic.cooldown_seconds = Some(delay.as_secs());
+            {
+                let mut deadline = self.retry_not_before.lock().await;
+                *deadline = (*deadline).max(until);
+            }
+            diagnostic.emit();
+            // Cloned readers share the cooldown. Return the original failure;
+            // only the caller may retry its read, with its unchanged cursor.
+            // Dropping this future cancels the wait without another request.
+            self.wait_rate_limit().await;
             return Err("RPC HTTP error".into());
         }
-        let body: Value = response.json().await.map_err(|_| "RPC invalid JSON")?;
+        if !status.is_success() {
+            let mut diagnostic =
+                RpcFailureDiagnostic::new(method, RpcFailurePhase::Http, started.elapsed());
+            diagnostic.http_status = Some(status.as_u16());
+            diagnostic.emit();
+            return Err("RPC HTTP error".into());
+        }
+        let body: Value = response.json().await.map_err(|error| {
+            let mut diagnostic =
+                RpcFailureDiagnostic::new(method, RpcFailurePhase::Body, started.elapsed());
+            diagnostic.http_status = Some(status.as_u16());
+            diagnostic.timeout = error.is_timeout();
+            diagnostic.emit();
+            "RPC invalid JSON"
+        })?;
         if body["id"] != 1 || body.get("error").is_some() {
+            let phase = if body["id"] != 1 {
+                RpcFailurePhase::EnvelopeId
+            } else {
+                RpcFailurePhase::RpcError
+            };
+            let mut diagnostic = RpcFailureDiagnostic::new(method, phase, started.elapsed());
+            diagnostic.http_status = Some(status.as_u16());
+            diagnostic.rpc_code = body
+                .get("error")
+                .and_then(|error| error.get("code"))
+                .and_then(Value::as_i64);
+            diagnostic.emit();
             return Err("RPC response error".into());
         }
         body.get("result")
             .cloned()
             .filter(|v| !v.is_null())
-            .ok_or_else(|| "RPC result unavailable".into())
+            .ok_or_else(|| {
+                let mut diagnostic = RpcFailureDiagnostic::new(
+                    method,
+                    RpcFailurePhase::ResultMissing,
+                    started.elapsed(),
+                );
+                diagnostic.http_status = Some(status.as_u16());
+                diagnostic.emit();
+                "RPC result unavailable".into()
+            })
     }
     async fn accounts(
         &self,
@@ -623,6 +759,80 @@ mod http_tests {
     use axum::body::to_bytes;
     use std::sync::atomic::{AtomicU64, Ordering};
     static NEXT: AtomicU64 = AtomicU64::new(0);
+    #[test]
+    fn rpc_failure_diagnostic_has_only_static_labels_and_numeric_fields() {
+        for method in [
+            "getBlock",
+            "getBlocks",
+            "getSlot",
+            "getGenesisHash",
+            "getMultipleAccounts",
+            "getLatestBlockhash",
+            "PRIVATE_METHOD https://rpc.invalid/?key=SECRET",
+        ] {
+            for phase in [
+                RpcFailurePhase::Send,
+                RpcFailurePhase::Http,
+                RpcFailurePhase::Body,
+                RpcFailurePhase::EnvelopeId,
+                RpcFailurePhase::RpcError,
+                RpcFailurePhase::ResultMissing,
+            ] {
+                let mut diagnostic =
+                    RpcFailureDiagnostic::new(method, phase, Duration::from_millis(123));
+                diagnostic.http_status = Some(429);
+                diagnostic.rpc_code = Some(-32005);
+                diagnostic.timeout = true;
+                diagnostic.cooldown_seconds = Some(10);
+                let text = serde_json::to_string(&diagnostic).unwrap();
+                let value: Value = serde_json::from_str(&text).unwrap();
+                assert_eq!(value["event"], "archive_rpc_failure");
+                assert_eq!(
+                    value["method"],
+                    if method.starts_with("PRIVATE_") {
+                        "other"
+                    } else {
+                        method
+                    }
+                );
+                assert_eq!(value["http_status"], 429);
+                assert_eq!(value["rpc_code"], -32005);
+                assert_eq!(value["elapsed_ms"], 123);
+                assert_eq!(value["timeout"], true);
+                assert_eq!(value["cooldown_seconds"], 10);
+                assert_eq!(value.as_object().unwrap().len(), 8);
+                assert!(
+                    !text.contains("PRIVATE_")
+                        && !text.contains("https://")
+                        && !text.contains("SECRET")
+                );
+            }
+        }
+    }
+    #[test]
+    fn rpc_retry_after_delta_seconds_are_bounded_and_invalid_values_use_fallback() {
+        for (value, expected) in [
+            (None, 10),
+            (Some(""), 10),
+            (Some("invalid"), 10),
+            (Some("Wed, 21 Oct 2015 07:28:00 GMT"), 10),
+            (Some("-1"), 10),
+            (Some("+9"), 10),
+            (Some("0"), 1),
+            (Some("1"), 1),
+            (Some("10"), 10),
+            (Some(" 12 "), 12),
+            (Some("999"), 60),
+            (Some("18446744073709551615"), 60),
+            (Some("18446744073709551616"), 10),
+        ] {
+            let mut headers = reqwest::header::HeaderMap::new();
+            if let Some(value) = value {
+                headers.insert(reqwest::header::RETRY_AFTER, value.parse().unwrap());
+            }
+            assert_eq!(rate_limit_delay(&headers), Duration::from_secs(expected));
+        }
+    }
     async fn body(response: Response) -> Value {
         serde_json::from_slice(&to_bytes(response.into_body(), 1024 * 1024).await.unwrap()).unwrap()
     }

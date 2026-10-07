@@ -1,11 +1,12 @@
 # Support and verification status
 
-Updated 2026-10-07 JST. “Implemented,” “locally tested” and “publicly verified”
+Updated 2026-10-08 JST. “Implemented,” “locally tested” and “publicly verified”
 describe different boundaries. Evidence is tied to the source/configuration
 tested at the time; adding a wrapper does not reverify an older deployment.
 
 | Capability | Current evidence / limit |
 |---|---|
+| Public profile preview | Published `0.2.0-devnet.2`: authenticated profiles, read-only preflight, explicit capabilities, invitation-gated gateway, browser/native onboarding and bounded native settlement waiting. [Publication verification](../evidence/PD-public-client-publication.md) passed release/asset attestations, anonymous downloads and 7,257 native installed-file hashes. [Focused hosted CI](../evidence/PD-public-client-hosted-ci.md) passed 377 SDK and 75 installed-package fixtures plus consumer and Go checks in separate scopes. The complete public bundle produced six actual native/WASM proofs with 18 negative checks. Current operator catch-up and funded browser/native/OpenClaw acceptance remain in progress. |
 | Kit migration | Current source uses Kit 8.4.0 directly; breaking native types and async validation are documented in [the migration guide](kit-migration.md). Historical live/provider reports below predate this client migration and do not establish a new live acceptance pass. |
 | Application SDK and response helpers | 315 local SDK tests with zero skips and actual Chrome custody; independent SDK Chat text/tools/SSE consumption, settlement and devnet withdrawal verified in selected cases. OpenRouter terminal-usage parsing corrected; [integration evidence](../evidence/I10-external-integration.md), [parser correction](../evidence/I10-sdk-sse-parser.md) |
 | Standalone browser chat | Arbitrary text/history, configured model/API selection, SSE/cancel and recovery UI; actual Chrome with synthetic services plus a pinned local build wired to the fresh public devnet profile; existing user Chrome blocks localhost, so actual standalone Phantom remains unverified; [evidence](../evidence/I10-parity-review-browser.md) |

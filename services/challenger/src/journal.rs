@@ -3,13 +3,31 @@
 use crate::{sha, Error, Evidence, Hash, Result};
 use fs2::FileExt;
 use serde::{Deserialize, Serialize};
+use sha2::{Digest, Sha256};
 use std::{
     collections::{BTreeMap, BTreeSet},
     fs::{self, File, OpenOptions},
-    io::Write,
+    io::{BufReader, BufWriter, Write},
     path::{Path, PathBuf},
 };
 use zkapi_indexer::Position;
+
+#[path = "journal_segmented.rs"]
+mod segmented;
+pub use segmented::MigrationReport;
+
+/// Small committed archive cursor. Full v2 block payloads stay on disk.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct ArchiveTail {
+    pub slot: u64,
+    pub blockhash: Hash,
+    pub block_time: u64,
+}
+impl From<&zkapi_indexer::FinalizedBlock> for ArchiveTail {
+    fn from(block: &zkapi_indexer::FinalizedBlock) -> Self {
+        Self { slot: block.slot, blockhash: block.blockhash, block_time: block.block_time }
+    }
+}
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(deny_unknown_fields)]
@@ -305,6 +323,14 @@ impl State {
 struct Envelope {
     digest: Hash,
     state: State,
+    // A missing field is the original v1 envelope. Explicit null is not a
+    // legacy spelling and is rejected rather than silently downgrading v2.
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        deserialize_with = "segmented::deserialize_head"
+    )]
+    segmented: Option<segmented::Head>,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
@@ -321,6 +347,7 @@ pub struct Journal {
     directory: PathBuf,
     _lock: File,
     state: State,
+    segmented: Option<segmented::Archive>,
     poisoned: bool,
 }
 impl Journal {
@@ -394,14 +421,30 @@ impl Journal {
         self.state.alerts.iter()
     }
     pub fn enqueue_alerts(&mut self, now: u64) -> Result<usize> {
-        self.update(|s| {
-            let mut added = 0;
-            for (id, job) in &s.jobs {
+        // A no-op must not bypass a previous uncertain persistence failure.
+        self.ensure_writable()?;
+        let additions: Vec<_> = self
+            .state
+            .jobs
+            .iter()
+            .filter_map(|(id, job)| {
                 let severity = alert(job, now);
-                let previous = s.alerts.iter().rev().find(|a| &a.job_id == id);
+                let previous = self.state.alerts.iter().rev().find(|a| &a.job_id == id);
                 if previous.map_or(severity == Alert::None, |p| p.severity == severity) {
-                    continue;
+                    None
+                } else {
+                    Some((id.clone(), severity))
                 }
+            })
+            .collect();
+        // Avoid cloning, hashing and rewriting the complete archived history
+        // when no job changed severity. Pending delivery remains independent.
+        if additions.is_empty() {
+            return Ok(0);
+        }
+        self.update(|s| {
+            let added = additions.len();
+            for (job_id, severity) in additions {
                 let observed_at = s
                     .alerts
                     .last()
@@ -409,12 +452,11 @@ impl Journal {
                 s.alerts.push(AlertEvent {
                     id: s.alerts.len() as u64 + 1,
                     pool: s.pool,
-                    job_id: id.clone(),
+                    job_id,
                     severity,
                     observed_at,
                     delivered: false,
                 });
-                added += 1;
             }
             Ok(added)
         })
@@ -472,8 +514,30 @@ impl Journal {
         }
         Ok(delivered)
     }
-    pub fn archive(&self) -> &[zkapi_indexer::FinalizedBlock] {
-        &self.state.archive
+    pub fn archive_len(&self) -> u64 {
+        self.segmented.as_ref().map_or(self.state.archive.len() as u64, |archive| archive.len())
+    }
+    pub fn archive_is_empty(&self) -> bool {
+        self.archive_len() == 0
+    }
+    pub fn archive_tail(&self) -> Option<ArchiveTail> {
+        self.segmented.as_ref().map_or_else(|| self.state.archive.last().map(ArchiveTail::from), |archive| archive.tail())
+    }
+    /// Visit all committed blocks in order. A callback may stop replay by
+    /// returning an error. V2 revalidates one complete chunk before exposing
+    /// its borrowed blocks; no whole-history payload Vec is materialized.
+    pub fn replay_archive(&self, mut visit: impl FnMut(&zkapi_indexer::FinalizedBlock) -> Result<()>) -> Result<()> {
+        if let Some(archive) = &self.segmented {
+            return archive.replay(&self.directory, visit);
+        }
+        for block in &self.state.archive { visit(block)?; }
+        Ok(())
+    }
+    pub fn archive_block_time(&self, slot: u64) -> Result<Option<u64>> {
+        if let Some(archive) = &self.segmented {
+            return archive.block_time(&self.directory, slot);
+        }
+        Ok(self.state.archive.iter().find(|block| block.slot == slot).map(|block| block.block_time))
     }
     pub fn transport(&self, signature: &str) -> Option<&serde_json::Value> {
         self.state.transport.get(signature)
@@ -485,11 +549,15 @@ impl Journal {
     }
     /// Atomically append an already validated ordered prefix. A failed batch
     /// publishes none of its blocks; a caller must install its Scanner only
-    /// after this durable commit. The on-disk v1 format is unchanged.
+    /// after this durable commit. Existing v1 files keep their original format;
+    /// explicitly migrated v2 files commit only new chunks and a small head.
     pub fn append_archive_batch(
         &mut self,
         blocks: Vec<zkapi_indexer::FinalizedBlock>,
     ) -> Result<()> {
+        if self.segmented.is_some() {
+            return self.append_segmented(blocks);
+        }
         self.update(|s| {
             for block in blocks {
                 if !block.finalized {
@@ -531,7 +599,10 @@ impl Journal {
             fs::set_permissions(directory, fs::Permissions::from_mode(0o700))?;
         }
         let lock = lock(directory)?;
-        if directory.join("journal.json").exists() {
+        if directory.join("journal.json").exists()
+            || fs::symlink_metadata(directory.join("archive-v2")).is_ok()
+            || fs::symlink_metadata(directory.join("legacy-v1.json")).is_ok()
+        {
             return Err(Error::Conflict("journal exists"));
         }
         let state = State {
@@ -544,24 +615,32 @@ impl Journal {
             directory: directory.into(),
             _lock: lock,
             state,
+            segmented: None,
             poisoned: false,
         })
     }
     pub fn open(directory: &Path, pool: Hash) -> Result<Self> {
         let lock = lock(directory)?;
-        let envelope: Envelope =
-            serde_json::from_slice(&fs::read(directory.join("journal.json"))?)?;
-        if envelope.digest != sha(&serde_json::to_vec(&envelope.state)?)
-            || envelope.state.version != 1
-            || envelope.state.pool != pool
-        {
+        let (envelope, _, _) = segmented::read_source(directory)?;
+        if envelope.state.pool != pool {
             return Err(Error::Conflict("journal checksum/version/pool"));
         }
+        let archive = match (envelope.state.version, &envelope.segmented) {
+            (1, None) if envelope.digest == state_digest(&envelope.state)? => None,
+            (2, Some(head))
+                if envelope.state.archive.is_empty()
+                    && envelope.digest == segmented::digest(&envelope.state, head)? =>
+            {
+                Some(segmented::load(directory, pool, head.clone())?)
+            }
+            _ => return Err(Error::Conflict("journal checksum/version/pool")),
+        };
         envelope.state.validate_job_identities()?;
         Ok(Self {
             directory: directory.into(),
             _lock: lock,
             state: envelope.state,
+            segmented: archive,
             poisoned: false,
         })
     }
@@ -571,16 +650,25 @@ impl Journal {
     pub fn checkpoint(&self) -> Option<&Checkpoint> {
         self.state.checkpoint.as_ref()
     }
-    fn update<T>(&mut self, f: impl FnOnce(&mut State) -> Result<T>) -> Result<T> {
+    fn ensure_writable(&self) -> Result<()> {
         if self.poisoned {
             return Err(Error::Conflict(
                 "journal requires reopen after failed persistence",
             ));
         }
+        Ok(())
+    }
+    fn update<T>(&mut self, f: impl FnOnce(&mut State) -> Result<T>) -> Result<T> {
+        self.ensure_writable()?;
         let mut next = self.state.clone();
         let value = f(&mut next)?;
         next.validate_job_identities()?;
-        if let Err(error) = persist(&self.directory, &next) {
+        let persisted = if let Some(archive) = &self.segmented {
+            segmented::persist_head(&self.directory, &next, &archive.head)
+        } else {
+            persist(&self.directory, &next)
+        };
+        if let Err(error) = persisted {
             self.poisoned = true;
             return Err(error);
         }
@@ -851,12 +939,29 @@ fn lock(directory: &Path) -> Result<File> {
         .map_err(|_| Error::Conflict("another challenger owns the journal"))?;
     Ok(file)
 }
+const JOURNAL_IO_BUFFER_BYTES: usize = 128 * 1024;
+
+struct HashWriter(Sha256);
+impl Write for HashWriter {
+    fn write(&mut self, bytes: &[u8]) -> std::io::Result<usize> {
+        self.0.update(bytes);
+        Ok(bytes.len())
+    }
+    fn flush(&mut self) -> std::io::Result<()> {
+        Ok(())
+    }
+}
+fn state_digest(state: &State) -> Result<Hash> {
+    let mut writer = BufWriter::with_capacity(JOURNAL_IO_BUFFER_BYTES, HashWriter(Sha256::new()));
+    serde_json::to_writer(&mut writer, state)?;
+    // into_inner must flush the final partial buffer before digest finalization.
+    let writer = writer.into_inner().map_err(|error| error.into_error())?;
+    Ok(writer.0.finalize().into())
+}
 fn persist(directory: &Path, state: &State) -> Result<()> {
-    // Reuse these exact state bytes both for the checksum and the v1 envelope.
-    // Serializing an owned Envelope cloned and encoded the growing archive a
-    // second time. Field order and bytes stay identical to serde's Envelope.
-    let state_bytes = serde_json::to_vec(state)?;
-    let digest_bytes = serde_json::to_vec(&sha(&state_bytes))?;
+    // Two bounded serializer passes preserve the exact v1 checksum/envelope
+    // bytes without retaining a second full-size encoded archive in memory.
+    let digest = state_digest(state)?;
     let temporary = directory.join("journal.next");
     let mut options = OpenOptions::new();
     options.create(true).truncate(true).write(true);
@@ -866,11 +971,16 @@ fn persist(directory: &Path, state: &State) -> Result<()> {
         options.mode(0o600);
     }
     let mut file = options.open(&temporary)?;
-    file.write_all(b"{\"digest\":")?;
-    file.write_all(&digest_bytes)?;
-    file.write_all(b",\"state\":")?;
-    file.write_all(&state_bytes)?;
-    file.write_all(b"}")?;
+    {
+        let mut writer = BufWriter::with_capacity(JOURNAL_IO_BUFFER_BYTES, &mut file);
+        writer.write_all(b"{\"digest\":")?;
+        serde_json::to_writer(&mut writer, &digest)?;
+        writer.write_all(b",\"state\":")?;
+        serde_json::to_writer(&mut writer, state)?;
+        writer.write_all(b"}")?;
+        // Never sync/rename before both serde and the final buffered write pass.
+        writer.flush()?;
+    }
     file.sync_all()?;
     fs::rename(temporary, directory.join("journal.json"))?;
     File::open(directory)?.sync_all()?;

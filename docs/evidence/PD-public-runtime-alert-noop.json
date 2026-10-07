@@ -1,0 +1,220 @@
+{
+  "schema": 1,
+  "kind": "public_runtime_alert_noop_verification",
+  "observed_at_utc": "2026-10-07T18:50:25.391153+00:00",
+  "scope": "Offline source/tests/Linux build verification for measured public challenger startup write amplification; not a hosted catch-up or readiness result",
+  "passed": true,
+  "source_manifest": {
+    "path": "target/public-devnet-live-20261008/linux-build/challenger-alert-noop/source-manifest.json",
+    "sha256": "dc3bc09dbe69b1085126b559fe4698a0995f1cb3bae8fd38fb54fc706bb16824",
+    "bytes": 32425
+  },
+  "guarded_inputs": 179,
+  "changed_from_streaming_snapshot": [
+    {
+      "path": "services/challenger/src/journal.rs",
+      "bytes": 35439,
+      "sha256": "abfdabea555770e6d08ee8ee4ff74484cdd1ee15dc557842e163dc1edc16ba23"
+    },
+    {
+      "path": "services/challenger/src/runtime.rs",
+      "bytes": 42818,
+      "sha256": "d19bac3f635ca7296891c74543d0508c82488e5785c1f4293d580a2293c84794"
+    },
+    {
+      "path": "services/challenger/src/tests.rs",
+      "bytes": 56619,
+      "sha256": "93cba797baaa82ff22813536f83f4dcc3be259c8e5c56caa04627f09a54b1ba9"
+    },
+    {
+      "path": "services/challenger/src/tests/archive_batch.rs",
+      "bytes": 20980,
+      "sha256": "b57b6d2cf13618651f2fed7d36afb8cc1732c64091cfab6e90c54a88ace0b110"
+    }
+  ],
+  "guards": [
+    {
+      "path": "target/public-devnet-live-20261008/linux-build/challenger-alert-noop/source-guard-before-build.json",
+      "sha256": "7d409e03b03ea6fd2a1161f7a3581d9585dc58c57045b57408a98789c06a2b43",
+      "bytes": 32470
+    },
+    {
+      "path": "target/public-devnet-live-20261008/linux-build/challenger-alert-noop/source-guard-after-binary.json",
+      "sha256": "882e3b0003ae9e68fdaa10fe9f5754d6c2a2926d4a5903962a80f4fb21f71ec2",
+      "bytes": 32470
+    }
+  ],
+  "change": {
+    "enqueue_alerts": "Check persistence poison first; compute unchanged existing per-job severity predicate before State clone; return zero without hashing/writing when no event would be added. Nonempty changes use original update/validation/atomic persistence path.",
+    "alert_semantics": "BTreeMap job order, event ids, monotonic observed timestamps and completion-to-None preserved; pending delivery remains independent.",
+    "runtime_diagnostic": "Use existing Error Display with static Evidence/Conflict categories and redacted nested I/O/JSON/database variants; no inner error Debug, URL or body logging.",
+    "batch_bounds_unchanged": {
+      "default_blocks": 64,
+      "default_bytes": 8388608,
+      "maximum_blocks": 256,
+      "maximum_bytes": 33554432
+    },
+    "history_format_and_authority_unchanged": true
+  },
+  "tests": [
+    {
+      "path": "target/public-devnet-live-20261008/challenger-alert-noop-unit.log",
+      "sha256": "6d721b3013990adda1223292d87dd947332c921cab644d96c66f332a11afd5cf",
+      "bytes": 6517,
+      "passed": 29,
+      "failed": 2,
+      "ignored": 11,
+      "scope": "Initial sandbox run, two loopback PermissionDenied failures preserved"
+    },
+    {
+      "path": "target/public-devnet-live-20261008/challenger-alert-noop-unit-verified.log",
+      "sha256": "f591a0a6748ccd521ca79b44152e29b90f946cf66efd7495e396788c3675c6ee",
+      "bytes": 5477,
+      "passed": 31,
+      "failed": 0,
+      "ignored": 11,
+      "scope": "Ordinary library suite"
+    },
+    {
+      "path": "target/public-devnet-live-20261008/challenger-alert-noop-coherent.log",
+      "sha256": "3d57f9ca05a72fe8fe1f58a9df4c03371f3f03ddfc40dce81477b2762304e0ab",
+      "bytes": 932,
+      "passed": 2,
+      "failed": 0,
+      "ignored": 0,
+      "scope": "Selected opt-in coherent-cut fixture"
+    },
+    {
+      "path": "target/public-devnet-live-20261008/challenger-alert-noop-stop.log",
+      "sha256": "bebdb4d67d8aa5e9c4ed88647626a022178a246c9ecb3687a546c1d67421fddb",
+      "bytes": 822,
+      "passed": 1,
+      "failed": 0,
+      "ignored": 0,
+      "scope": "Selected native scan stop/persist failure fixture"
+    }
+  ],
+  "new_test_contracts": [
+    "No-job nonempty archive retains exact inode, mtime and bytes even with journal.next write trap",
+    "Unchanged existing Page severity retains exact inode, mtime and bytes despite undelivered alert; delivery still persists independently",
+    "Emergency transition and completed-job None event persist with original order/id/monotonic time; repeated complete state and cold reopen are no-ops",
+    "Poisoned journal rejects no-op alerts after both temporary-open and rename failures",
+    "Every Error variant Display redacts nested private error details; RPC archive and account-cut categories remain distinguishable"
+  ],
+  "review": {
+    "path": "target/public-devnet-live-20261008/linux-build/challenger-alert-noop/focused-review.json",
+    "sha256": "2612703d90e68d70a6bf3e53fe73b1f40705a01e26eccca2a21e067f08da037d",
+    "bytes": 2156
+  },
+  "linux_build": {
+    "binary": {
+      "path": "target/public-devnet-live-20261008/linux-build/challenger-alert-noop/output/challengerd",
+      "sha256": "b6c53269c24d67f14b7f19cd29897ac8c93c0ddbe590fbf59d15c4c4c0383183",
+      "bytes": 11471488
+    },
+    "duration_seconds": 120,
+    "target": "x86_64-unknown-linux-gnu",
+    "rust": "1.90.0",
+    "cargo_locked": true,
+    "image_digest": "sha256:8ed3c0a996841537f75607e7d1de2114d8150391f75792e8da9268738547e73f",
+    "log": {
+      "path": "target/public-devnet-live-20261008/linux-build/challenger-alert-noop/build.log",
+      "sha256": "bfd5a3f4171ed2fda19f2a2db0cb3df9a226eb2c339a8f8387868664194be29d",
+      "bytes": 1941
+    },
+    "scripts": [
+      {
+        "path": "target/public-devnet-live-20261008/linux-build/challenger-alert-noop/build.sh",
+        "sha256": "8e83d0e65048e9025b982564e2abff7dccd8bdf860a743adc2355b2142d19385",
+        "bytes": 315
+      },
+      {
+        "path": "target/public-devnet-live-20261008/linux-build/challenger-alert-noop/run-build.sh",
+        "sha256": "a130c16b9d643a06ec46f913e4b6eaa09aa2b834e7fcfef60aadfdc3dba99663",
+        "bytes": 1041
+      },
+      {
+        "path": "target/public-devnet-live-20261008/linux-build/challenger-alert-noop/smoke.sh",
+        "sha256": "5260abe8e61ee4968557c159add27f0e250c5b957204ae5bfeed811e24beaadf",
+        "bytes": 391
+      },
+      {
+        "path": "target/public-devnet-live-20261008/linux-build/challenger-alert-noop/run-smoke.sh",
+        "sha256": "0614600443c6775fe55f080e1f288f83d4614c7e759d2d9b1908e14fe5e70afb",
+        "bytes": 616
+      },
+      {
+        "path": "target/public-devnet-live-20261008/linux-build/challenger-alert-noop/check-source.py",
+        "sha256": "ec251815acadfb5575228d1d4e7a53f8331fbe9e6fc14ce089edc9cd26e0e3dd",
+        "bytes": 1931
+      }
+    ],
+    "network_disabled_read_only_smoke": {
+      "no_config_exit": 2,
+      "max_glibc": "2.34",
+      "libraries_resolved": true,
+      "files": [
+        {
+          "path": "target/public-devnet-live-20261008/linux-build/challenger-alert-noop/smoke/no-config.log",
+          "sha256": "1879e6d1f06b8007969c5bf7824dd0355e219bc89417146ec6b326bb79e50dc6",
+          "bytes": 81
+        },
+        {
+          "path": "target/public-devnet-live-20261008/linux-build/challenger-alert-noop/smoke/no-config-exit.txt",
+          "sha256": "53c234e5e8472b6ac51c1ae1cab3fe06fad053beb8ebfd8977b010655bfdd3c3",
+          "bytes": 2
+        },
+        {
+          "path": "target/public-devnet-live-20261008/linux-build/challenger-alert-noop/smoke/glibc-versions.txt",
+          "sha256": "d9f845c66078e35503a9b0539aaa96e7889d83ccf7541a1f48a9efe1a15f84f7",
+          "bytes": 4612
+        },
+        {
+          "path": "target/public-devnet-live-20261008/linux-build/challenger-alert-noop/smoke/dependencies.txt",
+          "sha256": "6692db7d4965df36151aeb0a7b74f9ee9e802d56f41720b8d13814ec30d5730e",
+          "bytes": 214
+        }
+      ]
+    }
+  },
+  "preserved_previous_binaries": [
+    {
+      "path": "target/public-devnet-live-20261008/linux-build/output/bin/challengerd",
+      "sha256": "cfd8a8c7447e5281d5778b5569648999fcae0f74590ff340c7bcbd63bbe05845",
+      "bytes": 11292560
+    },
+    {
+      "path": "target/public-devnet-live-20261008/linux-build/challenger-streaming/output/challengerd",
+      "sha256": "e789c2db86636429a552e44605931290b16b68154e3d0424183b5c4e55e64ac0",
+      "bytes": 11447352
+    }
+  ],
+  "trigger_observation": {
+    "scope": "Read-only aggregate counters on the earlier streaming binary; not controlled benchmark",
+    "duration_seconds": 180.27,
+    "archive_slots_added": 40,
+    "archive_growth_bytes_approx": 3380000,
+    "process_written_bytes_approx": 9864000000,
+    "average_cpu_cores_approx": 0.557,
+    "both_readers_used_same_primary_rpc": true,
+    "private_sources": [
+      {
+        "path": "target/public-devnet-live-20261008/68-streaming-steady-io-result.json",
+        "sha256": "53171983205dcb43c4043b918a0cd1928aa45ac135d761eb5d66186df9869a3f",
+        "bytes": 3967
+      },
+      {
+        "path": "target/public-devnet-live-20261008/71-rpc-equality-result.json",
+        "sha256": "5531f66b8aeb3014ed978689746820e4440c7388a95efeb3272f9ca4625b33fc",
+        "bytes": 1396
+      }
+    ]
+  },
+  "limits": [
+    "No final-candidate host RAM/throughput/readiness result in this checkpoint",
+    "No RPC capacity guarantee; actual successful/error-prefix archival still rewrites full retained history",
+    "No bound on growing decoded archive, State clones, Scanner digest maps or disk history",
+    "No provider inference, AUTH, funding, transaction send, history skip/reset or authority/budget change by these source/build/fixture checks",
+    "Opt-in tests overlap ordinary library inventory and must not be summed into a claimed complete live acceptance"
+  ]
+}

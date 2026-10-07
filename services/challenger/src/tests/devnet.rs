@@ -101,6 +101,7 @@ fn runtime_config(dir: &Path, manifest: &Value, devnet: Option<DevnetConfig>) ->
         poll_seconds: 1,
         alert_sink_directory: None,
         priority_fee: None,
+        archive_batch: None,
     }
 }
 #[test]

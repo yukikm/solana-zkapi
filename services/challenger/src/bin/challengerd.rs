@@ -4,12 +4,20 @@ async fn main() {
     let args: Vec<_> = std::env::args().collect();
     if args.len() != 3
         || ![
-            "init", "scan", "prove", "once", "run", "recover", "cleanup", "status",
+            "init",
+            "scan",
+            "prove",
+            "once",
+            "run",
+            "recover",
+            "cleanup",
+            "status",
+            "migrate-archive",
         ]
         .contains(&args[1].as_str())
     {
         eprintln!(
-            "usage: challengerd <init|scan|prove|once|run|recover|cleanup|status> CONFIG.json"
+            "usage: challengerd <init|scan|prove|once|run|recover|cleanup|status|migrate-archive> CONFIG.json"
         );
         std::process::exit(2);
     }

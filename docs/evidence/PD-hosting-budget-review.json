@@ -1,0 +1,108 @@
+{
+  "schema": 1,
+  "recorded_date": "2026-10-07",
+  "scope": "Read-only pricing/capacity review and new undeployed infrastructure candidate",
+  "user_direction": "About USD50 hosting; working interpretation communicated as monthly; earlier seven-day/USD100 proposal superseded",
+  "provider_grant": "Seven additional USDC already approved, separate and not initialized",
+  "region": "us-east-1",
+  "price_observations": [
+    {
+      "label": "operator",
+      "sku": "CEC547W2ASCGJKER",
+      "instance_type": "t3a.medium",
+      "memory": "4 GiB",
+      "effective_date": "2026-10-01T00:00:00Z",
+      "unit": "Hrs",
+      "usd": "0.0376000000",
+      "description": "$0.0376 per On Demand Linux t3a.medium Instance Hour"
+    },
+    {
+      "label": "nat-instance",
+      "sku": "3NY3EX7YAET2WWYZ",
+      "instance_type": "t3a.nano",
+      "memory": "0.5 GiB",
+      "effective_date": "2026-10-01T00:00:00Z",
+      "unit": "Hrs",
+      "usd": "0.0047000000",
+      "description": "$0.0047 per On Demand Linux t3a.nano Instance Hour"
+    },
+    {
+      "label": "storage",
+      "sku": "JG3KUJMBRGHV3N8G",
+      "effective_date": "2026-10-01T00:00:00Z",
+      "unit": "GB-Mo",
+      "usd": "0.0800000000",
+      "description": "$0.08 per GB-month of General Purpose (gp3) provisioned storage - US East (N. Virginia)"
+    }
+  ],
+  "public_ipv4_usd_per_hour": "0.005",
+  "monthly_fixed_usd": {
+    "730_hours": "38.369",
+    "744_hours": "39.0312"
+  },
+  "illustrative_ten_percent_tax_included": {
+    "730_hours": "42.2059",
+    "744_hours": "42.93432"
+  },
+  "free_tier_assumed": false,
+  "hard_cap_enforced": false,
+  "exclusions": [
+    "CloudFront/S3 requests/transfer",
+    "artifact and encrypted-backup storage",
+    "snapshots and logs",
+    "other retained resources",
+    "actual tax treatment",
+    "external RPC fees and AI inference separate"
+  ],
+  "files": [
+    {
+      "path": "deploy/public-devnet/aws-generated-host.json",
+      "sha256": "14d4ae4fb89923058d48607934f919dea426920dc2d81b9e93a239844d8901cc"
+    },
+    {
+      "path": "deploy/public-devnet/aws-budget-host.json",
+      "sha256": "c023450b795728dd4b978d711938498208ddb3777a897fe69f55ff5aef746829"
+    },
+    {
+      "path": "deploy/public-devnet/aws-budget-host.md",
+      "sha256": "3dc4c17ed750c0eafa576ccb5f7cb32a638a9c94e95f04ba6145ae1c76809267"
+    },
+    {
+      "path": "deploy/public-devnet/aws-cost-options.md",
+      "sha256": "3f97d066615ff6643d19b3e542884bf7dcb8bc14e070535c79ef6a077c68892e"
+    }
+  ],
+  "validation": {
+    "resources": 33,
+    "aws_validate_template": {
+      "exit_code": 0,
+      "output_sha256": "a91d02d5a88f44db556e1baa6480852d57536b1ebea23c2dca059e445d1759c7"
+    },
+    "cfn_lint": {
+      "version": "1.57.2",
+      "region": "us-east-1",
+      "exit_code": 0,
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "nat_bootstrap_bash_syntax": {
+      "exit_code": 0,
+      "sha256": "144013f9d15da060cebe9e55ef3a468d3be15b5f45102ba6f5127fe229a3137c",
+      "executed": false
+    }
+  },
+  "runtime_qualified": false,
+  "month_long_operation_verified": false,
+  "capacity_blocker": "Unbounded full-block challenger journal plus growing indexer block-digest map and repeated clones; segmentation alone does not bound disk. Required bounded design and measured Linux workload remain.",
+  "aws_resource_mutations": 0,
+  "paid_provider_actions": 0,
+  "original_template_unchanged": true,
+  "original_budget_unchanged": true,
+  "prior_native_checkpoint": "New infrastructure JSON changes whole-tree provenance after previous543-input native build; no SDK/native runtime changed in this cost review, no fresh archive/source join claimed",
+  "sources": [
+    "https://aws.amazon.com/ec2/instance-types/t3/",
+    "https://aws.amazon.com/ebs/pricing/",
+    "https://aws.amazon.com/vpc/pricing/",
+    "https://docs.aws.amazon.com/vpc/latest/userguide/work-with-nat-instances.html",
+    "https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/private-content-vpc-origins.html"
+  ]
+}

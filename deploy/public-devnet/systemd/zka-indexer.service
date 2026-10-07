@@ -1,0 +1,33 @@
+[Unit]
+Description=Finalized Devnet indexer
+RequiresMountsFor=/srv/zka
+After=network-online.target network-online.target
+
+[Service]
+Type=simple
+UMask=0077
+NoNewPrivileges=true
+CapabilityBoundingSet=
+RestrictSUIDSGID=true
+LockPersonality=true
+ProtectProc=invisible
+ProcSubset=pid
+SystemCallFilter=~@debug
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+Restart=no
+TimeoutStopSec=90
+KillMode=control-group
+User=zka-indexer
+Group=zka-indexer
+WorkingDirectory=/opt/zkapi
+ExecStart=/opt/zkapi/bin/indexerd /srv/zka/indexer/config.json
+ReadWritePaths=/srv/zka/indexer
+
+[Install]
+WantedBy=multi-user.target

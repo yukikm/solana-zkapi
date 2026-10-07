@@ -1,0 +1,162 @@
+{
+  "schema": 1,
+  "kind": "public_client_immutable_github_release",
+  "observed_at_utc": "2026-10-07T20:32:03.156420+00:00",
+  "release_url": "https://github.com/yukikm/solana-zkapi/releases/tag/v0.2.0-devnet.2",
+  "release_id": 406136637,
+  "published_at": "2026-10-07T20:29:36Z",
+  "immutable": true,
+  "prerelease": true,
+  "source_commit": "5ded36bf39de9b9fb6bf27a10d744437abc6a9c7",
+  "tag_commit": "5ded36bf39de9b9fb6bf27a10d744437abc6a9c7",
+  "archives_rebuilt_or_repacked": false,
+  "original_source_inputs_verified": 551,
+  "source_join_report_sha256": "7df8c2f7260def6cea24a1277fc46e9a9c74e1448408c9f3b3c4d04a6a6be4c2",
+  "native_built_by_github_actions": false,
+  "focused_ci_url": "https://github.com/yukikm/solana-zkapi/actions/runs/37680066910",
+  "public_profile_sha256": "5e868f8e57ef06961b73ba8cb755635e81d4bb168dd6ad498152496ac1b02d14",
+  "assets": [
+    {
+      "name": "SHA256SUMS",
+      "sha256": "69c5daa7a25475de62fe87acc1bdc3bf0080aa9b2dab1e49905eab5b9bda362c",
+      "bytes": 305,
+      "url": "https://github.com/yukikm/solana-zkapi/releases/download/v0.2.0-devnet.2/SHA256SUMS",
+      "anonymous_download_verified": true
+    },
+    {
+      "name": "release-manifest.json",
+      "sha256": "46b363bcdfd673475010789dccae80401f5bf7411a4175079fc581edf882be94",
+      "bytes": 1677,
+      "url": "https://github.com/yukikm/solana-zkapi/releases/download/v0.2.0-devnet.2/release-manifest.json",
+      "anonymous_download_verified": true
+    },
+    {
+      "name": "zkapi-clientd-0.2.0-devnet.2-darwin-arm64.tar.gz",
+      "sha256": "9a2ab6759d99b3d7031b4c939ab654caeec2244763d1f16538e471bd5675cb56",
+      "bytes": 71056092,
+      "url": "https://github.com/yukikm/solana-zkapi/releases/download/v0.2.0-devnet.2/zkapi-clientd-0.2.0-devnet.2-darwin-arm64.tar.gz",
+      "anonymous_download_verified": true
+    },
+    {
+      "name": "zkapi-solana-sdk-0.2.0-devnet.2.tgz",
+      "sha256": "fe9917b7f11e4bec0837bc7aac7624ad2965aa9bca007d61b877f263620143dc",
+      "bytes": 121467,
+      "url": "https://github.com/yukikm/solana-zkapi/releases/download/v0.2.0-devnet.2/zkapi-solana-sdk-0.2.0-devnet.2.tgz",
+      "anonymous_download_verified": true
+    }
+  ],
+  "anonymous_downloads": true,
+  "tls_verification": true,
+  "release_signature_verified": true,
+  "sdk_asset_signature_verified": true,
+  "native_asset_signature_verified": true,
+  "native_extracted_files_verified": 7257,
+  "native_manifest_sha256": "0b5733718f51eabcf4ca57f2406eb36bab641e23d642aac2436ca0e3090572ca",
+  "downloaded_native_probes": {
+    "clientd-help": {
+      "exit": 0,
+      "sha256": "69d51d1fe1fd1141e53c6c72d36f023ef6e0ab54a0d31b49cd24ab6b74c7c4f1"
+    },
+    "node-version": {
+      "exit": 0,
+      "sha256": "b7677d3ec37ee1897ba07dc2cfe8292fe421c9ac93396cca5bbece486d1a2a41"
+    },
+    "consumer-help": {
+      "exit": 0,
+      "sha256": "ea76d8deed604a0e14f733823214660954e6b99f2801595484eae63b288e72f1"
+    }
+  },
+  "previous_releases": [
+    {
+      "tag": "v0.1.0-devnet.1",
+      "id": 405380992,
+      "immutable": true,
+      "assets": [
+        {
+          "name": "release-manifest.json",
+          "size": 1436,
+          "digest": "sha256:502a0cd452152b44fbc93524f3655e08654daeb02a9afbcb9839b7941ab121bd"
+        },
+        {
+          "name": "SHA256SUMS",
+          "size": 305,
+          "digest": "sha256:41001d81eb6e341cdcc06f691c218c277f5255268fc65ee2af2e3b15364fc9ea"
+        },
+        {
+          "name": "zkapi-clientd-0.1.0-devnet.1-darwin-arm64.tar.gz",
+          "size": 53037927,
+          "digest": "sha256:402a19ff875f9b2b1c0d9c3f33bfae64e436e867391ec9e0d2fba904650c30ee"
+        },
+        {
+          "name": "zkapi-solana-sdk-0.1.0-devnet.1.tgz",
+          "size": 108720,
+          "digest": "sha256:eb3164d5b7a54c7b97e523ec742033b39547eda5842648490ae9f68048b07504"
+        }
+      ]
+    },
+    {
+      "tag": "v0.2.0-devnet.1",
+      "id": 405404364,
+      "immutable": true,
+      "assets": [
+        {
+          "name": "release-manifest.json",
+          "size": 1435,
+          "digest": "sha256:9fed99d8168386ccbe9593e0d0f047ac8381b4fcb2557c355c1883a717eab4cf"
+        },
+        {
+          "name": "SHA256SUMS",
+          "size": 305,
+          "digest": "sha256:6a569e0fe55efd4a38f842658fdaac5f8c8ce9ce4d76285613ff577993a781e0"
+        },
+        {
+          "name": "zkapi-clientd-0.2.0-devnet.1-darwin-arm64.tar.gz",
+          "size": 71020822,
+          "digest": "sha256:45270b8e71488a6b1b330f45119bb938fed09269d8c7b12fb8d1236475622b8a"
+        },
+        {
+          "name": "zkapi-solana-sdk-0.2.0-devnet.1.tgz",
+          "size": 112723,
+          "digest": "sha256:e6ff141b1c13c278f1c6d80dbe1397f187290270c583a32545df5fe4fbd45019"
+        }
+      ]
+    }
+  ],
+  "verification_artifacts": {
+    "release-verify.json": {
+      "sha256": "10d40be362e8b92fbf95e989f1351877ed88705040eb1d534a9ebf2353ee8a7a",
+      "bytes": 4996
+    },
+    "sdk-verify.json": {
+      "sha256": "10d40be362e8b92fbf95e989f1351877ed88705040eb1d534a9ebf2353ee8a7a",
+      "bytes": 4996
+    },
+    "native-verify.json": {
+      "sha256": "10d40be362e8b92fbf95e989f1351877ed88705040eb1d534a9ebf2353ee8a7a",
+      "bytes": 4996
+    },
+    "anonymous-download-verification.json": {
+      "sha256": "e7b720845467dc0de2dd025bbe264a3f415fb9b6404d0fe9d6eead9f8d8073ff",
+      "bytes": 2084
+    },
+    "remote-tag.json": {
+      "sha256": "62ba4525117d79adf4b1563091c46228b014eb859f45821315973efb89a1afdc",
+      "bytes": 369
+    },
+    "published-release.json": {
+      "sha256": "117a54c47900caabadb9db923a2c222f3359c7fbc4393f061659f2663e73f4bc",
+      "bytes": 11590
+    },
+    "release-notes.md": {
+      "sha256": "9e764df98f184abe685201bd42c18688868fa6358e286f546d07632aea0abba1",
+      "bytes": 3884
+    }
+  },
+  "financial_actions": 0,
+  "provider_inferences": 0,
+  "limitations": [
+    "Current operator catch-up and funded browser/native/OpenClaw acceptance remain in progress.",
+    "Release attestation authenticates published tag/assets, not a GitHub-built native binary.",
+    "No Apple signing/notarization, npm registry, mainnet, full I10 or G1-G4 claim."
+  ]
+}

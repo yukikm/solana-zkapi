@@ -1,0 +1,278 @@
+{
+  "schema": 1,
+  "date": "2026-10-07",
+  "scope": "Independent zkchat local integration; no funded or public acceptance",
+  "destination": "/Users/yukikimura/work/zkchat",
+  "transfer_manifest": {
+    "path": "target/public-devnet-followup-20261007/zkchat-transfer-manifest.json",
+    "sha256": "31c82d2e7312a0ea6f4cfba2e10e46ee1ed400fbf881f7bd4e2941032e4f2c2d",
+    "bytes": 3290
+  },
+  "before_inventory": {
+    "path": "target/public-devnet-followup-20261007/zkchat-before/before-inventory.json",
+    "sha256": "cc6832052f777fde9f81442ecb158f0fc34170a61c99dd71a4c03c0211e15e9a",
+    "bytes": 4244
+  },
+  "before_files_verified": 30,
+  "changed_files": [
+    {
+      "path": "README.md",
+      "before_sha256": "84a9ab83224f99962e6e08e7cd0fa5310da17a15ff9348aae76d137bbf9f5583",
+      "after_sha256": "30c4ab4aa81e00f5d913168f140769ceeb3350e59a75cc994df96bd4082db9c6",
+      "bytes": 4571
+    },
+    {
+      "path": "package.json",
+      "before_sha256": "2e42620cce1a18d7612067746d937eebe0da47001d984a068ac4927f3e8fe497",
+      "after_sha256": "125f325265820ab29604b388b51e39a70105f5144d92ba736720684309b553f9",
+      "bytes": 1177
+    },
+    {
+      "path": "package-lock.json",
+      "before_sha256": "7154964361bbef11c7abda541b58266711e941d7cd0d1f4c8441eada599c26b3",
+      "after_sha256": "939a63fc6cc6f8b7bdf61cd62c50d1b9b43382b49865d5a3d56262927e4f810b",
+      "bytes": 170449
+    },
+    {
+      "path": "scripts/verify-sdk.mjs",
+      "before_sha256": "e1f2066a2a41b3b5f01683c2c2ad840cc4867d50d2a8ca714af3c9b6cc9ed575",
+      "after_sha256": "157a854c2c2a3e7de832f9443172f098442ec7df64ecaa3890c8a8aa8b81cce5",
+      "bytes": 568
+    },
+    {
+      "path": "src/App.tsx",
+      "before_sha256": "9ed54efa14c28d394cf1b375af2daa1e350be8fd549b180a9f51404aa55023bd",
+      "after_sha256": "c239953eb12467025dae196dd289506bdeb94b6c89ab6b7e00f505bba642a3cc",
+      "bytes": 45100
+    },
+    {
+      "path": "src/components/ConnectionPanel.tsx",
+      "before_sha256": "8b0da611bee9109a17bfff19286c7db4e38b6e18d2c5d36b33ce82c81588519c",
+      "after_sha256": "54e018538d1964c3bc18648e0e5a6ebeface092b7b4f721917280df3f1d1a249",
+      "bytes": 25525
+    },
+    {
+      "path": "src/lib/zkapi.ts",
+      "before_sha256": "d11d7d4ad43a4047ff26b7d3b6383e53459945fddeb6ec01363d4be39145beae",
+      "after_sha256": "1140de711db6d0c652adc5a97f2e30cbc31527872e903da1b1ed18319acf87a6",
+      "bytes": 21006
+    },
+    {
+      "path": "tests/app.spec.ts",
+      "before_sha256": "5e5de0be2748d9e8befb836fa6354ab96c870e3dc0870d9d42984005a386a82e",
+      "after_sha256": "2c1ad9022a934b506cddbcac45929e2a07c0719b3258b3f1db13027d4d8a26cc",
+      "bytes": 20012
+    },
+    {
+      "path": "src/lib/publicDeployment.ts",
+      "before_sha256": null,
+      "after_sha256": "da2efecad04d39d29566c4ad8f19fdca99a5320fa21605d130c69068942e51f0",
+      "bytes": 8377
+    },
+    {
+      "path": "tests/publicDeployment.test.ts",
+      "before_sha256": null,
+      "after_sha256": "97ea05a84e55b0749553c5dec12ca2b6a7531bd5ce86e4316bbde30550d2a79e",
+      "bytes": 14602
+    },
+    {
+      "path": "vendor/zkapi-solana-sdk-0.2.0-devnet.2.tgz",
+      "before_sha256": null,
+      "after_sha256": "fe9917b7f11e4bec0837bc7aac7624ad2965aa9bca007d61b877f263620143dc",
+      "bytes": 121467
+    }
+  ],
+  "destination_and_frozen_staging_match_all_transfer_hashes": true,
+  "preserved_files": [
+    {
+      "path": "public/zkapi-config.json",
+      "sha256": "38e0b9de817f645c4bec37c0d4a3e58baecccb040f5718dc069a72c7385a0bed",
+      "bytes": 5
+    },
+    {
+      "path": "docs/INTEGRATION-REPORT.md",
+      "sha256": "3859b33427bfb86f2ed1959791a611553e42173356a8602c44a1f6d293a02b92",
+      "bytes": 7352
+    },
+    {
+      "path": "docs/zkchat-desktop.png",
+      "sha256": "9f6a47d6aaf33b46a76eff1d54e1da8483748fb2de1b96bbd21c2d8096500100",
+      "bytes": 89913
+    },
+    {
+      "path": "docs/zkchat-mobile.png",
+      "sha256": "33f0e4013721d626a7286a3e57d820b95982a10faaf8293f118fd19287c1f74c",
+      "bytes": 54235
+    },
+    {
+      "path": "vendor/zkapi-solana-sdk-0.2.0-devnet.1.tgz",
+      "sha256": "e6ff141b1c13c278f1c6d80dbe1397f187290270c583a32545df5fe4fbd45019",
+      "bytes": 112723
+    }
+  ],
+  "public_config": null,
+  "sdk": {
+    "version": "0.2.0-devnet.2",
+    "release_status": "unreleased_local_candidate",
+    "archive_sha256": "fe9917b7f11e4bec0837bc7aac7624ad2965aa9bca007d61b877f263620143dc",
+    "installed_members_matching_archive": 65
+  },
+  "verification": {
+    "node": "24.19.0",
+    "destination_results": [
+      {
+        "name": "sdk",
+        "exit_code": 0,
+        "seconds": 0.138,
+        "log_sha256": "9d5208d8a58c4a751e7a1e23a15f3c92b1e4be9911926d2fd27a651afa0a905a"
+      },
+      {
+        "name": "typecheck",
+        "exit_code": 0,
+        "seconds": 1.253,
+        "log_sha256": "48ee13ebd163a61712e0f5b4dc788963408e47f47274fc7b51a6abe94a8667a4"
+      },
+      {
+        "name": "unit",
+        "exit_code": 0,
+        "seconds": 0.961,
+        "log_sha256": "331bdacd3026850b2d4cf202e3a9dbea9c314d7dd56c1aaaa59a8267fc78c8d2"
+      },
+      {
+        "name": "build",
+        "exit_code": 0,
+        "seconds": 2.892,
+        "log_sha256": "0f5cc060375d234c6b7c8c2bb2ceae1b4a59131db4aeaf6bf4dd985aa695d184"
+      }
+    ],
+    "unit": {
+      "passed": 62,
+      "failed": 0,
+      "new_public_profile_cases": 13,
+      "existing_cases": 49
+    },
+    "frozen_e2e": {
+      "passed": 12,
+      "failed": 0,
+      "seconds": 8.0,
+      "environment": "isolated Chromium 153.0.8010.12 / Playwright chromium v1243",
+      "source": "identical frozen staging; all 11 transferred hashes match destination",
+      "command": "node node_modules/@playwright/test/cli.js test --config playwright.staging.config.ts",
+      "server": "http://127.0.0.1:53187",
+      "reuse_existing_server": false,
+      "workers": 2,
+      "harness": {
+        "path": "/Users/yukikimura/work/solana-zkapi/target/public-devnet-followup-20261007/zkchat-work/playwright.staging.config.ts",
+        "sha256": "ffbc2463dcb3d8217a6ebf74e92f502f4ed0ee4baaa1315e3eb3d5c45cc7f69e",
+        "bytes": 267
+      }
+    },
+    "independent_read_only_review": "No blocking finding; profile/custody continuity, invitation isolation, account guards and recovery scope checked"
+  },
+  "observations": [
+    {
+      "stage": "initial_browser_launch",
+      "result": "failed_before_test_bodies",
+      "cases": 12,
+      "reason": "Matching chromium_headless_shell-1243 executable was absent; not an application or funded failure",
+      "log": "zkchat-e2e-staging.log"
+    },
+    {
+      "stage": "browser_installation",
+      "result": "succeeded",
+      "detail": "Matching Chrome for Testing, headless shell and FFmpeg installed through normal Playwright HTTPS downloads; no browser protection bypass",
+      "log": "zkchat-browser-install.log"
+    },
+    {
+      "stage": "intermediate_source_work",
+      "detail": "Test-only public onboarding module fixture closing-brace replacement was anchored to the end; generated fixture syntax was checked. UI copy clarified no AUTH/inference/transaction on connect and chain/catalog-only readiness. No runtime admission or recovery policy was relaxed."
+    },
+    {
+      "stage": "intermediate_e2e",
+      "result": "12 passed in 8.3 seconds",
+      "detail": "Retained as intermediate observation because fixture/copy edits overlapped the run; final acceptance uses the separate frozen rerun",
+      "log": "zkchat-e2e-verified.log"
+    },
+    {
+      "stage": "frozen_e2e",
+      "result": "12 passed in 8.0 seconds",
+      "log": "zkchat-e2e-frozen.log"
+    }
+  ],
+  "verification_artifacts": [
+    {
+      "path": "target/public-devnet-followup-20261007/checks/zkchat-transfer.json",
+      "sha256": "d78ee1cb9a2a8a0d73ed19ffac39632ce4003ccaa611065f3636f98dc1cc1ce3",
+      "bytes": 305
+    },
+    {
+      "path": "target/public-devnet-followup-20261007/checks/zkchat-applied.json",
+      "sha256": "205116d654d09e45af0f2d7edc31af2350e53f7c5232059f9e2391f52739e079",
+      "bytes": 883
+    },
+    {
+      "path": "target/public-devnet-followup-20261007/checks/zkchat-applied-sdk.log",
+      "sha256": "9d5208d8a58c4a751e7a1e23a15f3c92b1e4be9911926d2fd27a651afa0a905a",
+      "bytes": 139
+    },
+    {
+      "path": "target/public-devnet-followup-20261007/checks/zkchat-applied-typecheck.log",
+      "sha256": "48ee13ebd163a61712e0f5b4dc788963408e47f47274fc7b51a6abe94a8667a4",
+      "bytes": 36
+    },
+    {
+      "path": "target/public-devnet-followup-20261007/checks/zkchat-applied-unit.log",
+      "sha256": "331bdacd3026850b2d4cf202e3a9dbea9c314d7dd56c1aaaa59a8267fc78c8d2",
+      "bytes": 227
+    },
+    {
+      "path": "target/public-devnet-followup-20261007/checks/zkchat-applied-build.log",
+      "sha256": "0f5cc060375d234c6b7c8c2bb2ceae1b4a59131db4aeaf6bf4dd985aa695d184",
+      "bytes": 10075
+    },
+    {
+      "path": "target/public-devnet-followup-20261007/checks/zkchat-installed.log",
+      "sha256": "15db8b8a5ccfb536f543ae12f577d712bf548d9e925f4126f686da607f001d9b",
+      "bytes": 28
+    },
+    {
+      "path": "target/public-devnet-followup-20261007/checks/zkchat-e2e-staging.log",
+      "sha256": "6ea3e0ee36db2b999c51b4021b8f7a3d09be886075abce4706dc22db35247744",
+      "bytes": 28989
+    },
+    {
+      "path": "target/public-devnet-followup-20261007/checks/zkchat-browser-install.log",
+      "sha256": "457899ef8b86cdf4b19bb228ef344645c8f96ebfb34ad174518d48901378cf6c",
+      "bytes": 6856
+    },
+    {
+      "path": "target/public-devnet-followup-20261007/checks/zkchat-e2e-verified.log",
+      "sha256": "bae43fa0efd37b2856ac3a6b070785c74790dc1f86d006b72f38a70e86cf2965",
+      "bytes": 2118
+    },
+    {
+      "path": "target/public-devnet-followup-20261007/checks/zkchat-e2e-frozen.log",
+      "sha256": "801674085ee64a8ef6739bf834b13fa68b5dbf6040bbe8b86dd48b851b0dd977",
+      "bytes": 2116
+    }
+  ],
+  "limitations": [
+    "Browser fixtures and synthetic wallet/SDK adapters do not establish live Phantom, actual public hosting, provider inference, CORS acceptance, funding, settlement, or PD-09 native transport acceptance.",
+    "The application retains null public configuration until actual reviewed hosting and independent profile hash delivery.",
+    "SDK .2 remains an unreleased local candidate; no release asset was published by this integration.",
+    "Original schema 1 custody is not automatically migrated or adopted by schema 2."
+  ],
+  "funding_actions": 0,
+  "provider_inferences": 0,
+  "public_chain_transactions": 0,
+  "app_source_changed_during_evidence_collection": false,
+  "excluded_generated": [
+    "node_modules",
+    "dist",
+    "test-results",
+    "playwright-report",
+    "tsconfig.tsbuildinfo",
+    "playwright.staging.config.ts",
+    "before-inventory.json"
+  ]
+}

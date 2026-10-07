@@ -1,0 +1,84 @@
+{
+  "schema": 1,
+  "source": "/Users/yukikimura/work/solana-zkapi/target/public-devnet-followup-20261007/zkchat-work",
+  "destination": "/Users/yukikimura/work/zkchat",
+  "before_inventory": "/Users/yukikimura/work/solana-zkapi/target/public-devnet-followup-20261007/zkchat-before/before-inventory.json",
+  "files": [
+    {
+      "path": "README.md",
+      "before_sha256": "84a9ab83224f99962e6e08e7cd0fa5310da17a15ff9348aae76d137bbf9f5583",
+      "after_sha256": "30c4ab4aa81e00f5d913168f140769ceeb3350e59a75cc994df96bd4082db9c6",
+      "bytes": 4571
+    },
+    {
+      "path": "package.json",
+      "before_sha256": "2e42620cce1a18d7612067746d937eebe0da47001d984a068ac4927f3e8fe497",
+      "after_sha256": "125f325265820ab29604b388b51e39a70105f5144d92ba736720684309b553f9",
+      "bytes": 1177
+    },
+    {
+      "path": "package-lock.json",
+      "before_sha256": "7154964361bbef11c7abda541b58266711e941d7cd0d1f4c8441eada599c26b3",
+      "after_sha256": "939a63fc6cc6f8b7bdf61cd62c50d1b9b43382b49865d5a3d56262927e4f810b",
+      "bytes": 170449
+    },
+    {
+      "path": "scripts/verify-sdk.mjs",
+      "before_sha256": "e1f2066a2a41b3b5f01683c2c2ad840cc4867d50d2a8ca714af3c9b6cc9ed575",
+      "after_sha256": "157a854c2c2a3e7de832f9443172f098442ec7df64ecaa3890c8a8aa8b81cce5",
+      "bytes": 568
+    },
+    {
+      "path": "src/App.tsx",
+      "before_sha256": "9ed54efa14c28d394cf1b375af2daa1e350be8fd549b180a9f51404aa55023bd",
+      "after_sha256": "c239953eb12467025dae196dd289506bdeb94b6c89ab6b7e00f505bba642a3cc",
+      "bytes": 45100
+    },
+    {
+      "path": "src/components/ConnectionPanel.tsx",
+      "before_sha256": "8b0da611bee9109a17bfff19286c7db4e38b6e18d2c5d36b33ce82c81588519c",
+      "after_sha256": "54e018538d1964c3bc18648e0e5a6ebeface092b7b4f721917280df3f1d1a249",
+      "bytes": 25525
+    },
+    {
+      "path": "src/lib/zkapi.ts",
+      "before_sha256": "d11d7d4ad43a4047ff26b7d3b6383e53459945fddeb6ec01363d4be39145beae",
+      "after_sha256": "1140de711db6d0c652adc5a97f2e30cbc31527872e903da1b1ed18319acf87a6",
+      "bytes": 21006
+    },
+    {
+      "path": "tests/app.spec.ts",
+      "before_sha256": "5e5de0be2748d9e8befb836fa6354ab96c870e3dc0870d9d42984005a386a82e",
+      "after_sha256": "2c1ad9022a934b506cddbcac45929e2a07c0719b3258b3f1db13027d4d8a26cc",
+      "bytes": 20012
+    },
+    {
+      "path": "src/lib/publicDeployment.ts",
+      "before_sha256": null,
+      "after_sha256": "da2efecad04d39d29566c4ad8f19fdca99a5320fa21605d130c69068942e51f0",
+      "bytes": 8377
+    },
+    {
+      "path": "tests/publicDeployment.test.ts",
+      "before_sha256": null,
+      "after_sha256": "97ea05a84e55b0749553c5dec12ca2b6a7531bd5ce86e4316bbde30550d2a79e",
+      "bytes": 14602
+    },
+    {
+      "path": "vendor/zkapi-solana-sdk-0.2.0-devnet.2.tgz",
+      "before_sha256": null,
+      "after_sha256": "fe9917b7f11e4bec0837bc7aac7624ad2965aa9bca007d61b877f263620143dc",
+      "bytes": 121467
+    }
+  ],
+  "excluded_generated": [
+    "node_modules",
+    "dist",
+    "test-results",
+    "playwright-report",
+    "tsconfig.tsbuildinfo",
+    "playwright.staging.config.ts",
+    "before-inventory.json"
+  ],
+  "scope": "Local unreleased candidate integration only; public/zkapi-config.json remains null. Original .1 archive and historical docs remain unchanged."
+}

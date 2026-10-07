@@ -1,0 +1,41 @@
+[Unit]
+Description=Pinned Devnet signer with retained journal
+RequiresMountsFor=/srv/zka
+After=network-online.target zka-postgresql.service
+Requires=zka-postgresql.service
+
+[Service]
+Type=simple
+UMask=0077
+NoNewPrivileges=true
+CapabilityBoundingSet=
+RestrictSUIDSGID=true
+LockPersonality=true
+ProtectProc=invisible
+ProcSubset=pid
+SystemCallFilter=~@debug
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+Restart=no
+TimeoutStopSec=90
+KillMode=control-group
+User=zka-runtime
+Group=zka-runtime
+WorkingDirectory=/opt/zkapi
+ExecStart=/opt/zkapi/bin/signerd --local-test --config /srv/zka/runtime/signer.json --journal /srv/zka/signer/signer.journal --socket /run/zkapi-signer/signer.sock --state-seed-file /srv/zka/runtime/state.seed --clearance-seed-file /srv/zka/runtime/clearance.seed
+ExecStartPost=/usr/bin/python3 /opt/zkapi/scripts/public_devnet_service_ready.py signer /srv/zka/runtime/signer.json /run/zkapi-signer/signer.sock
+TimeoutStartSec=90
+ReadWritePaths=/srv/zka/signer
+# EnvironmentFile is read by the system manager before entering this namespace.
+InaccessiblePaths=/srv/zka/dispatcher /srv/zka/runtime/control.env /srv/zka/runtime/control.json /srv/zka/runtime/dispatcher.json /srv/zka/runtime/openrouter-management.credential /srv/zka/runtime/quote.seed /srv/zka/runtime/receipt.seed
+EnvironmentFile=/srv/zka/runtime/signer.env
+RuntimeDirectory=zkapi-signer
+RuntimeDirectoryMode=0700
+
+[Install]
+WantedBy=multi-user.target

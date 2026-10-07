@@ -1,0 +1,207 @@
+{
+  "schema": 1,
+  "kind": "public_runtime_startup_local_verification",
+  "verified_at_utc": "2026-10-07T18:28:56.937071+00:00",
+  "passed": true,
+  "scope": "Server-only read pacing, bounded archive commit batching and exact-v1 streaming serialization/reopen. Local tests and Linux ABI smoke, not host readiness or sustainable capacity.",
+  "changes": [
+    {
+      "component": "shared indexer ArchiveRpc",
+      "behavior": "Shared HTTP429 numeric Retry-After cooldown clamped1..60seconds; missing/invalid header10seconds; original failure returned; no automatic request retry; ordered successful prefix only.",
+      "evidence": {
+        "path": "target/public-devnet-live-20261008/linux-build/indexer-backoff/verification.json",
+        "sha256": "3acacc49e3d467eac5de073e3286b24e253db370b45cf0a9ccdbb84a4d410773",
+        "bytes": 3904
+      }
+    },
+    {
+      "component": "challenger archive batching",
+      "behavior": "Optional archive_batch max_blocks1..256/max_bytes1..33554432; default64/8388608. Same validated prefix on failure/shutdown and oversized singleton handling. No history skip or format migration.",
+      "source_manifest": {
+        "path": "target/public-devnet-live-20261008/linux-build/challenger-batch/source-manifest.json",
+        "sha256": "8504254d05a930b8d55705242aafd7095af99fa83c38ba726ce808e3df611b6d",
+        "bytes": 32500
+      },
+      "intermediate_binary": {
+        "path": "target/public-devnet-live-20261008/linux-build/challenger-batch/output/challengerd",
+        "sha256": "a50e39ac725e0331e060021e5db4c16ce9f8fdf0ead9670ebacabc831af2bf81",
+        "bytes": 11340496
+      }
+    },
+    {
+      "component": "challenger journal",
+      "behavior": "128KiB buffered canonical SHA256 sink; second bounded serializer pass writes identical v1 envelope. Explicit flush before file fsync/rename/directory fsync; buffered cold reader and canonical checksum. State clone, full archive, locks, semantic checks and poison rules unchanged."
+    }
+  ],
+  "source_manifest": {
+    "path": "target/public-devnet-live-20261008/linux-build/challenger-streaming/source-manifest.json",
+    "sha256": "948e787a68712f95370583e330a43a421b2912ca98869602b578516dadb423f4",
+    "bytes": 32312
+  },
+  "source_guard": {
+    "path": "target/public-devnet-live-20261008/linux-build/challenger-streaming/source-guard-after-binary.json",
+    "sha256": "d97c47dba91137719398891b3cd964ae8e251c611c39dc500ba751c565c01170",
+    "bytes": 32393
+  },
+  "source_files_verified": 179,
+  "changed_from_batch_snapshot": [
+    "services/challenger/src/journal.rs",
+    "services/challenger/src/tests/archive_batch.rs"
+  ],
+  "build": {
+    "command": "cargo build --release --locked --manifest-path services/challenger/Cargo.toml --bin challengerd",
+    "rustc": "1.90.0",
+    "target": "linux/amd64",
+    "base_image_digest": "sha256:8ed3c0a996841537f75607e7d1de2114d8150391f75792e8da9268738547e73f",
+    "jobs": 1,
+    "container_memory_limit": "6GiB",
+    "seconds_reported_by_cargo": 114,
+    "binary": {
+      "path": "target/public-devnet-live-20261008/linux-build/challenger-streaming/output/challengerd",
+      "sha256": "e789c2db86636429a552e44605931290b16b68154e3d0424183b5c4e55e64ac0",
+      "bytes": 11447352
+    },
+    "log": {
+      "path": "target/public-devnet-live-20261008/linux-build/challenger-streaming/build.log",
+      "sha256": "34b7dc1eb9236ef2d6d5430f8806be4f47f5bc36679172e2214dc814065ebe9a",
+      "bytes": 1941
+    },
+    "original_binary_preserved": {
+      "path": "target/public-devnet-live-20261008/linux-build/output/bin/challengerd",
+      "sha256": "cfd8a8c7447e5281d5778b5569648999fcae0f74590ff340c7bcbd63bbe05845",
+      "bytes": 11292560
+    }
+  },
+  "smoke": {
+    "network": "none",
+    "configuration_mounted": false,
+    "usage_exit_code": 2,
+    "dynamic_dependencies_resolved": true,
+    "maximum_glibc": "2.34",
+    "files": [
+      {
+        "path": "target/public-devnet-live-20261008/linux-build/challenger-streaming/smoke/dependencies.txt",
+        "sha256": "c5674298b233cc357debc46d61a2646294d4f3887e9ca22f8155e1d486e94612",
+        "bytes": 214
+      },
+      {
+        "path": "target/public-devnet-live-20261008/linux-build/challenger-streaming/smoke/glibc-versions.txt",
+        "sha256": "d9f845c66078e35503a9b0539aaa96e7889d83ccf7541a1f48a9efe1a15f84f7",
+        "bytes": 4612
+      },
+      {
+        "path": "target/public-devnet-live-20261008/linux-build/challenger-streaming/smoke/no-config-exit.txt",
+        "sha256": "53c234e5e8472b6ac51c1ae1cab3fe06fad053beb8ebfd8977b010655bfdd3c3",
+        "bytes": 2
+      },
+      {
+        "path": "target/public-devnet-live-20261008/linux-build/challenger-streaming/smoke/no-config.log",
+        "sha256": "1879e6d1f06b8007969c5bf7824dd0355e219bc89417146ec6b326bb79e50dc6",
+        "bytes": 81
+      }
+    ]
+  },
+  "validation_scopes": [
+    {
+      "scope": "all non-ignored challenger library tests",
+      "passed": 28,
+      "failed": 0,
+      "ignored": 11,
+      "log": {
+        "path": "target/public-devnet-live-20261008/challenger-streaming-all-unit.log",
+        "sha256": "338f172dc9d7c726b1cef41993eb6b19b57c3d5c536a77abfd828a8410edc3e6",
+        "bytes": 5179
+      }
+    },
+    {
+      "scope": "default and256-block coherent-cut archive fixtures",
+      "passed": 2,
+      "failed": 0,
+      "ignored": 0,
+      "log": {
+        "path": "target/public-devnet-live-20261008/challenger-streaming-coherent.log",
+        "sha256": "d473103e4c95d6bd7c8668b3a2d0890b4367e064f8b0b15c7e7872349494c712",
+        "bytes": 1145
+      }
+    },
+    {
+      "scope": "native interrupted scan and failed-prefix persistence, both batch policies",
+      "passed": 1,
+      "failed": 0,
+      "ignored": 0,
+      "log": {
+        "path": "target/public-devnet-live-20261008/challenger-streaming-stop.log",
+        "sha256": "2dab34eb87083447e4f2e76d9640f2bba5dd8295e47a480122e86f96a68d803e",
+        "bytes": 1030
+      }
+    },
+    {
+      "scope": "bounded synthetic timing",
+      "passed": 1,
+      "failed": 0,
+      "ignored": 0,
+      "journal_bytes": 20460095,
+      "blocks": 16,
+      "persist_seconds": 0.179345041,
+      "reopen_seconds": 0.166663208,
+      "peak_memory_measured": false,
+      "log": {
+        "path": "target/public-devnet-live-20261008/challenger-streaming-timing.log",
+        "sha256": "6b8470593ad89b36ab4ebf8a21dff4efa5a60df3c636ebdb22aeded4a9cb0db5",
+        "bytes": 1173
+      }
+    }
+  ],
+  "exact_v1_checks": [
+    "Populated original writer bytes including unknown signed attempt/transport/alerts",
+    "Multiple128KiB buffers and partial final checksum tail",
+    "Fresh subprocess opens same exact saved bytes without mutation",
+    "Legacy whitespace/field-order tolerance retained",
+    "Tamper/truncation/trailing tokens/wrong identity rejected",
+    "Failed persistence poisons later writes; original bytes reopen"
+  ],
+  "preserved_observations": {
+    "batch_smoke_initial_script": {
+      "path": "target/public-devnet-live-20261008/linux-build/challenger-batch/smoke-initial.sh",
+      "sha256": "84caa301ff5f4f19593c86f49b896148461a52b4eac28d838ada756a17a9838e",
+      "bytes": 391
+    },
+    "batch_smoke_correction": "Initial smoke expected exit1; actual CLI correctly returns usageexit2. Only the smoke assertion changed, not the binary.",
+    "io_observation": {
+      "source": {
+        "path": "target/public-devnet-live-20261008/54-challenger-write-io-result.json",
+        "sha256": "e2a991645f6e560129e48c12b21ffa31dc54c393f10d4f8502e937dc4f1dd5ac",
+        "bytes": 2386
+      },
+      "operator_reported_20_seconds": {
+        "challenger_write_bytes": 1147609088,
+        "journal_growth_bytes": 8963880
+      },
+      "scope": "Read-only host counters; not a controlled attribution benchmark."
+    },
+    "memory_guard": {
+      "source": {
+        "path": "target/public-devnet-live-20261008/62-postbatch-memory-guard-result.json",
+        "sha256": "145e5945dfd36caf9be94f59ebaf729e61794ac5e7669a548c2e9affb41263f1",
+        "bytes": 6121
+      },
+      "reported_observed_at_utc": "2026-10-07T18:21:08Z",
+      "available_bytes": 801689600,
+      "threshold_available_bytes": 805306368,
+      "rss_bytes": 2604130304,
+      "reported_clean_stop_at_utc": "2026-10-07T18:21:19Z",
+      "reported_exit_code": 0,
+      "retained_journal_bytes": 1371322352,
+      "retained_tail_slot": 508534491,
+      "scope": "Batch-only host result. Streaming candidate host result is not included."
+    }
+  },
+  "host_streaming_result": "pending_separate_observation",
+  "limitations": [
+    "No skipped slots, new Pool, journal reset, authority/budget reset, provider inference or financial transaction was performed by this implementation/test task.",
+    "Indexerd/challengerd source changes do not change published SDK/native client/profile/proof pins.",
+    "Decoded archive,State clone and Scanner digest maps still grow; no total memory/disk bound or monthly sustainability claim.",
+    "Two serialization passes and buffered parse have CPU cost;20MiB local timing does not qualify1.37GiB Linux host peak memory.",
+    "Focused test scopes overlap and do not establish full integration/release gates."
+  ]
+}

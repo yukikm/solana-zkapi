@@ -1,0 +1,35 @@
+[Unit]
+Description=Invited public Devnet API gateway
+RequiresMountsFor=/srv/zka
+After=network-online.target zka-control.service zka-indexer.service
+Wants=zka-control.service zka-indexer.service
+
+[Service]
+Type=simple
+UMask=0077
+NoNewPrivileges=true
+CapabilityBoundingSet=
+RestrictSUIDSGID=true
+LockPersonality=true
+ProtectProc=invisible
+ProcSubset=pid
+SystemCallFilter=~@debug
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+Restart=no
+TimeoutStopSec=90
+KillMode=control-group
+User=zka-gateway
+Group=zka-gateway
+WorkingDirectory=/opt/zkapi
+ExecStart=/opt/zkapi/node/bin/node /opt/zkapi/scripts/public_devnet_gateway.ts --config /srv/zka/config/gateway.json
+ReadWritePaths=/srv/zka/budget-seven
+ReadOnlyPaths=/srv/zka/history /srv/zka/config
+
+[Install]
+WantedBy=multi-user.target

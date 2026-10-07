@@ -1,0 +1,820 @@
+{
+  "actions": {
+    "auth": 0,
+    "budget_reservations": 0,
+    "funding": 0,
+    "inference": 0,
+    "network": 0
+  },
+  "bundle": {
+    "bytes": 6286,
+    "descriptor": {
+      "artifacts": {
+        "additional": {
+          "devnet_build_manifest": "additional-0.bin",
+          "public_devnet_profile": "additional-1.bin",
+          "vault_idl": "additional-2.bin",
+          "vault_program": "additional-3.bin"
+        },
+        "idl": "idl.bin",
+        "requestPk": "requestPk.bin",
+        "requestVk": "requestVk.bin",
+        "treePk": "treePk.bin",
+        "treeSourceBundle": "treeSourceBundle.bin",
+        "treeVerifierConstants": "treeVerifierConstants.bin",
+        "treeVk": "treeVk.bin",
+        "withdrawalPk": "withdrawalPk.bin",
+        "withdrawalVk": "withdrawalVk.bin"
+      },
+      "files": {
+        "Apache-2.0.txt": {
+          "bytes": 10280,
+          "sha256": "074e6e32c86a4c0ef8b3ed25b721ca23aca83df277cd88106ef7177c354615ff"
+        },
+        "BUNDLE-PROVENANCE.md": {
+          "bytes": 2387,
+          "sha256": "3904df43cfc4482b1080c6a7d8dd8874a82049494d6df8a2a73c301d88be7cce"
+        },
+        "PROVENANCE.md": {
+          "bytes": 3682,
+          "sha256": "2b2fd1dd5baf7baf8fe0947987c56b8465c64b63e179d461f7a12f190b834aed"
+        },
+        "Rust-dependencies.json": {
+          "bytes": 232194,
+          "sha256": "8ee3fafc6e0c7758c6f5846fb8083852985f326efc3868fbe059b003cfa6d1a5"
+        },
+        "Rust-notices-1.json": {
+          "bytes": 849885,
+          "sha256": "60901baa076fb37f4fd60c337f8feae117b27723ef0194b4a6462d501c198f7d"
+        },
+        "Rust-notices-2.json": {
+          "bytes": 145787,
+          "sha256": "8c7dfd19d3a2433ee81a276153ef487a11ca43b969d455e4b24d309905afb89f"
+        },
+        "Solana-zkAPI-LICENSE.txt": {
+          "bytes": 1097,
+          "sha256": "71afea996cef8ff3d3ef4f84705180bb0b124c1c21a16e89fddacd3b482d4fa7"
+        },
+        "additional-0.bin": {
+          "bytes": 1180,
+          "sha256": "ac579def463b72df4193d1601652d0afd39b65444eb27367096e76799845d2cc"
+        },
+        "additional-1.bin": {
+          "bytes": 3045,
+          "sha256": "3933fcae97f544f0be368532cc9c2127af8f7fc008cbebcf2ddd0f803abfd311"
+        },
+        "additional-2.bin": {
+          "bytes": 34803,
+          "sha256": "cbc94a33608b3945ff7704efe530a374dac2662070b533e33ebe208d4032b111"
+        },
+        "additional-3.bin": {
+          "bytes": 380760,
+          "sha256": "42febb6f9e6e373f318fb596611af842a0c95271831f77ec0fe70eccc79803a1"
+        },
+        "ethereum-VENDORED-045b444.md": {
+          "bytes": 2208,
+          "sha256": "12e597fefcdb430f28a1ca16c1fe917e0bd2513958aa8523e1e1610bb947fce3"
+        },
+        "idl.bin": {
+          "bytes": 34803,
+          "sha256": "cbc94a33608b3945ff7704efe530a374dac2662070b533e33ebe208d4032b111"
+        },
+        "manifest.json": {
+          "bytes": 3983,
+          "sha256": "96caa60a67a79e076804b6fdf204b8ce44522e6a43bcaf8ee8ddfc6d5181a6b5"
+        },
+        "mingyech-README-8b2d4e3.md": {
+          "bytes": 3301,
+          "sha256": "f93dcf61244ca2c3de783aa68355cb263024f5b5da3ec9fd40ac26cbee157846"
+        },
+        "mingyech-setup-README-8b2d4e3.md": {
+          "bytes": 894,
+          "sha256": "22b8ab79c6e8c985447c2a20b55d9253b5c2dab932cbd50927538f3571ffcf5d"
+        },
+        "prover.wasm": {
+          "bytes": 3678975,
+          "sha256": "c06a247e1ff88f1ac415ea127bcf49d486b5b4954715cdf00f133b5ac71c1f30"
+        },
+        "requestPk.bin": {
+          "bytes": 5935783,
+          "sha256": "c894b261a13f571d0df36be29734aabf2a8cd7162baddc5e08a50341aa076584"
+        },
+        "requestVk.bin": {
+          "bytes": 671,
+          "sha256": "8011244c99fa1a8524870906462d430fc86366b8ad821736c5fa726b479e6d97"
+        },
+        "treePk.bin": {
+          "bytes": 7414736,
+          "sha256": "f5bb2a1a6979bf5fc0a175039fd36a3f1492febf405ad18064f1de6bedd2cc2e"
+        },
+        "treeSourceBundle.bin": {
+          "bytes": 235520,
+          "sha256": "6c6030526d80b862bdd2fc56369caf1739a34c7643a0707bc840925ad6d1cb14"
+        },
+        "treeVerifierConstants.bin": {
+          "bytes": 1216,
+          "sha256": "f4edbeb7bd68bf539a1672140298737dbbdcf33a096443fb61b4b582ebf304d1"
+        },
+        "treeVk.bin": {
+          "bytes": 616,
+          "sha256": "4e62f971f0467a8cd1733194425904d9433cc59f2badaf2e12cc3fda87285443"
+        },
+        "withdrawalPk.bin": {
+          "bytes": 7783719,
+          "sha256": "8e41398092fdd02b9ff86c6ccbecbd7ce2402e6f22ec162e6124d1d04fe0a668"
+        },
+        "withdrawalVk.bin": {
+          "bytes": 735,
+          "sha256": "2a8ea7f07176e369a93d1d816124192a798d1466c99fd6dc47850ba82094b679"
+        }
+      },
+      "manifest": "manifest.json",
+      "notices": {
+        "Apache-2.0.txt": "Apache-2.0.txt",
+        "BUNDLE-PROVENANCE.md": "BUNDLE-PROVENANCE.md",
+        "PROVENANCE.md": "PROVENANCE.md",
+        "Rust-dependencies.json": "Rust-dependencies.json",
+        "Rust-notices-1.json": "Rust-notices-1.json",
+        "Rust-notices-2.json": "Rust-notices-2.json",
+        "Solana-zkAPI-LICENSE.txt": "Solana-zkAPI-LICENSE.txt",
+        "ethereum-VENDORED-045b444.md": "ethereum-VENDORED-045b444.md",
+        "mingyech-README-8b2d4e3.md": "mingyech-README-8b2d4e3.md",
+        "mingyech-setup-README-8b2d4e3.md": "mingyech-setup-README-8b2d4e3.md"
+      },
+      "schema": 2,
+      "trust": {
+        "anchor": {
+          "kind": "hash",
+          "sha256": "0e003f5d03109870af469e430eb268d160d0098ea114049eb454c039eaca8b7d"
+        },
+        "build": {
+          "circuitProfileHash": "1ec31b5b39c957dce8e8d424838e19dbeb7ded571c14fdcd469496c2e4a2b233",
+          "clearanceKey": {
+            "x": "0x0663b45466c8fce0ac6e624af49a5002b7487acbda56e2ad323e8c7f2b301342",
+            "y": "0x2ae2268ff99adfa49ef2752701139aa172275b922b407b64c389f1e655f08d16"
+          },
+          "idlHash": "cbc94a33608b3945ff7704efe530a374dac2662070b533e33ebe208d4032b111",
+          "setupProfile": "test_only",
+          "stateKey": {
+            "x": "0x0cb0569a045d0ef3efd576a6586b87e94ba44942dc3a3f608faf49c333ccc281",
+            "y": "0x2aefe9f8bdc0109040d61690f8935f9c25c2bf8c68ca7975de651a49bdfb756d"
+          },
+          "transactionFormats": [
+            "v0_buffer",
+            "v0_inline_deposit_v1"
+          ]
+        },
+        "expected": {
+          "control_api_origin": "https://127.0.0.1:19685",
+          "deployment_environment": "devnet",
+          "deployment_id": "i10-devnet-8iwjnYVNuRQhyijbcYGWGctyty7d8FEt8JnT8dWmCjSd-provider-parity-chat",
+          "genesis_hash": "EtWTRABZaYq6iMfeYKouRu166VU2xqa1wcaWoxPkrZBG",
+          "inference_api_origin": "https://127.0.0.1:19686",
+          "mint": "4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU",
+          "pool": "2aeTCsHthoockF8LC8N3UfP312BZ8uJ6sfuMbA2rot1w",
+          "program_id": "8iwjnYVNuRQhyijbcYGWGctyty7d8FEt8JnT8dWmCjSd",
+          "token_program": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        }
+      },
+      "wasm": {
+        "path": "prover.wasm",
+        "sha256": "c06a247e1ff88f1ac415ea127bcf49d486b5b4954715cdf00f133b5ac71c1f30"
+      }
+    },
+    "manifest_hash": "0e003f5d03109870af469e430eb268d160d0098ea114049eb454c039eaca8b7d",
+    "path": "target/public-devnet-followup-20261007/notices-bundle/bundle.json",
+    "payload_bytes": 26762260,
+    "public_files": 26,
+    "schema": 2,
+    "sha256": "4169846c4a8a02162ca4870ff069e86e94aa06064d67d17ce39e8f344bc1a423"
+  },
+  "claims": {
+    "actual_browser_verified": false,
+    "legal_sufficiency_verified": false,
+    "new_setup_ceremony": false,
+    "proof_generation_by_this_packaging_check": false,
+    "public_chain_or_provider_acceptance": false,
+    "public_profile_ready": false,
+    "published": false,
+    "release_gates_complete": false,
+    "reproducible_build_verified": false
+  },
+  "distribution_review": {
+    "bytes": 14611,
+    "path": "target/public-devnet-followup-20261007/notices-distribution-review.json",
+    "record": {
+      "bundle_sha256": "4169846c4a8a02162ca4870ff069e86e94aa06064d67d17ce39e8f344bc1a423",
+      "files": {
+        "Apache-2.0.txt": {
+          "decision": "approved",
+          "notices": [
+            "Apache-2.0.txt",
+            "PROVENANCE.md"
+          ],
+          "sha256": "074e6e32c86a4c0ef8b3ed25b721ca23aca83df277cd88106ef7177c354615ff",
+          "source": "https://github.com/spdx/license-list-data/blob/31ba1a50e5397e00a304dbadc76531740e89ee48/text/Apache-2.0.txt",
+          "terms": "https://github.com/spdx/license-list-data/blob/31ba1a50e5397e00a304dbadc76531740e89ee48/text/Apache-2.0.txt"
+        },
+        "BUNDLE-PROVENANCE.md": {
+          "decision": "approved",
+          "notices": [
+            "Solana-zkAPI-LICENSE.txt",
+            "BUNDLE-PROVENANCE.md"
+          ],
+          "sha256": "3904df43cfc4482b1080c6a7d8dd8874a82049494d6df8a2a73c301d88be7cce",
+          "source": "https://github.com/yukikm/solana-zkapi",
+          "terms": "https://github.com/yukikm/solana-zkapi/blob/088ca40bf5886738f87b4db97205db8bff752356/LICENSE"
+        },
+        "PROVENANCE.md": {
+          "decision": "approved",
+          "notices": [
+            "Solana-zkAPI-LICENSE.txt",
+            "BUNDLE-PROVENANCE.md"
+          ],
+          "sha256": "2b2fd1dd5baf7baf8fe0947987c56b8465c64b63e179d461f7a12f190b834aed",
+          "source": "https://github.com/yukikm/solana-zkapi",
+          "terms": "https://github.com/yukikm/solana-zkapi/blob/088ca40bf5886738f87b4db97205db8bff752356/LICENSE"
+        },
+        "Rust-dependencies.json": {
+          "decision": "approved",
+          "notices": [
+            "Solana-zkAPI-LICENSE.txt",
+            "BUNDLE-PROVENANCE.md",
+            "Rust-dependencies.json",
+            "Rust-notices-1.json",
+            "Rust-notices-2.json",
+            "Apache-2.0.txt",
+            "mingyech-README-8b2d4e3.md",
+            "ethereum-VENDORED-045b444.md"
+          ],
+          "sha256": "8ee3fafc6e0c7758c6f5846fb8083852985f326efc3868fbe059b003cfa6d1a5",
+          "source": "https://github.com/yukikm/solana-zkapi/blob/088ca40bf5886738f87b4db97205db8bff752356/scripts/collect_clientd_release_notices.py",
+          "terms": "https://spdx.org/licenses/"
+        },
+        "Rust-notices-1.json": {
+          "decision": "approved",
+          "notices": [
+            "Solana-zkAPI-LICENSE.txt",
+            "BUNDLE-PROVENANCE.md",
+            "Rust-dependencies.json",
+            "Rust-notices-1.json",
+            "Rust-notices-2.json",
+            "Apache-2.0.txt",
+            "mingyech-README-8b2d4e3.md",
+            "ethereum-VENDORED-045b444.md"
+          ],
+          "sha256": "60901baa076fb37f4fd60c337f8feae117b27723ef0194b4a6462d501c198f7d",
+          "source": "https://github.com/yukikm/solana-zkapi/blob/088ca40bf5886738f87b4db97205db8bff752356/scripts/collect_clientd_release_notices.py",
+          "terms": "https://spdx.org/licenses/"
+        },
+        "Rust-notices-2.json": {
+          "decision": "approved",
+          "notices": [
+            "Solana-zkAPI-LICENSE.txt",
+            "BUNDLE-PROVENANCE.md",
+            "Rust-dependencies.json",
+            "Rust-notices-1.json",
+            "Rust-notices-2.json",
+            "Apache-2.0.txt",
+            "mingyech-README-8b2d4e3.md",
+            "ethereum-VENDORED-045b444.md"
+          ],
+          "sha256": "8c7dfd19d3a2433ee81a276153ef487a11ca43b969d455e4b24d309905afb89f",
+          "source": "https://github.com/yukikm/solana-zkapi/blob/088ca40bf5886738f87b4db97205db8bff752356/scripts/collect_clientd_release_notices.py",
+          "terms": "https://spdx.org/licenses/"
+        },
+        "Solana-zkAPI-LICENSE.txt": {
+          "decision": "approved",
+          "notices": [
+            "Solana-zkAPI-LICENSE.txt",
+            "BUNDLE-PROVENANCE.md"
+          ],
+          "sha256": "71afea996cef8ff3d3ef4f84705180bb0b124c1c21a16e89fddacd3b482d4fa7",
+          "source": "https://github.com/yukikm/solana-zkapi",
+          "terms": "https://github.com/yukikm/solana-zkapi/blob/088ca40bf5886738f87b4db97205db8bff752356/LICENSE"
+        },
+        "additional-0.bin": {
+          "decision": "approved",
+          "notices": [
+            "Solana-zkAPI-LICENSE.txt",
+            "BUNDLE-PROVENANCE.md"
+          ],
+          "sha256": "ac579def463b72df4193d1601652d0afd39b65444eb27367096e76799845d2cc",
+          "source": "https://github.com/yukikm/solana-zkapi/blob/088ca40bf5886738f87b4db97205db8bff752356/docs/evidence/I10-parity-review.md",
+          "terms": "https://github.com/yukikm/solana-zkapi/blob/088ca40bf5886738f87b4db97205db8bff752356/LICENSE"
+        },
+        "additional-1.bin": {
+          "decision": "approved",
+          "notices": [
+            "Solana-zkAPI-LICENSE.txt",
+            "BUNDLE-PROVENANCE.md"
+          ],
+          "sha256": "3933fcae97f544f0be368532cc9c2127af8f7fc008cbebcf2ddd0f803abfd311",
+          "source": "https://github.com/yukikm/solana-zkapi/blob/088ca40bf5886738f87b4db97205db8bff752356/docs/evidence/I10-parity-review.md",
+          "terms": "https://github.com/yukikm/solana-zkapi/blob/088ca40bf5886738f87b4db97205db8bff752356/LICENSE"
+        },
+        "additional-2.bin": {
+          "decision": "approved",
+          "notices": [
+            "Solana-zkAPI-LICENSE.txt",
+            "BUNDLE-PROVENANCE.md"
+          ],
+          "sha256": "cbc94a33608b3945ff7704efe530a374dac2662070b533e33ebe208d4032b111",
+          "source": "https://github.com/yukikm/solana-zkapi/blob/088ca40bf5886738f87b4db97205db8bff752356/docs/evidence/I10-parity-review.md",
+          "terms": "https://github.com/yukikm/solana-zkapi/blob/088ca40bf5886738f87b4db97205db8bff752356/LICENSE"
+        },
+        "additional-3.bin": {
+          "decision": "approved",
+          "notices": [
+            "Solana-zkAPI-LICENSE.txt",
+            "BUNDLE-PROVENANCE.md",
+            "Rust-dependencies.json",
+            "Rust-notices-1.json",
+            "Rust-notices-2.json",
+            "Apache-2.0.txt",
+            "mingyech-README-8b2d4e3.md",
+            "ethereum-VENDORED-045b444.md"
+          ],
+          "sha256": "42febb6f9e6e373f318fb596611af842a0c95271831f77ec0fe70eccc79803a1",
+          "source": "https://github.com/yukikm/solana-zkapi/tree/088ca40bf5886738f87b4db97205db8bff752356/programs/zkapi-vault",
+          "terms": "https://github.com/yukikm/solana-zkapi/blob/088ca40bf5886738f87b4db97205db8bff752356/LICENSE"
+        },
+        "bundle.json": {
+          "decision": "approved",
+          "notices": [
+            "Solana-zkAPI-LICENSE.txt",
+            "BUNDLE-PROVENANCE.md"
+          ],
+          "sha256": "4169846c4a8a02162ca4870ff069e86e94aa06064d67d17ce39e8f344bc1a423",
+          "source": "https://github.com/yukikm/solana-zkapi",
+          "terms": "https://github.com/yukikm/solana-zkapi/blob/088ca40bf5886738f87b4db97205db8bff752356/LICENSE"
+        },
+        "ethereum-VENDORED-045b444.md": {
+          "decision": "approved",
+          "notices": [
+            "Apache-2.0.txt",
+            "PROVENANCE.md"
+          ],
+          "sha256": "12e597fefcdb430f28a1ca16c1fe917e0bd2513958aa8523e1e1610bb947fce3",
+          "source": "https://github.com/ethereum/zkapi/blob/045b444ea1b52538d1b40273c7cb6ed09468a052/protocol/VENDORED.md",
+          "terms": "https://github.com/mingyech/zkAPI/blob/8b2d4e3da921f956e1eb6b93afbf722a877c060c/README.md#L97"
+        },
+        "idl.bin": {
+          "decision": "approved",
+          "notices": [
+            "Solana-zkAPI-LICENSE.txt",
+            "BUNDLE-PROVENANCE.md"
+          ],
+          "sha256": "cbc94a33608b3945ff7704efe530a374dac2662070b533e33ebe208d4032b111",
+          "source": "https://github.com/yukikm/solana-zkapi/blob/088ca40bf5886738f87b4db97205db8bff752356/docs/evidence/I10-parity-review.md",
+          "terms": "https://github.com/yukikm/solana-zkapi/blob/088ca40bf5886738f87b4db97205db8bff752356/LICENSE"
+        },
+        "manifest.json": {
+          "decision": "approved",
+          "notices": [
+            "Solana-zkAPI-LICENSE.txt",
+            "BUNDLE-PROVENANCE.md"
+          ],
+          "sha256": "96caa60a67a79e076804b6fdf204b8ce44522e6a43bcaf8ee8ddfc6d5181a6b5",
+          "source": "https://github.com/yukikm/solana-zkapi/blob/088ca40bf5886738f87b4db97205db8bff752356/docs/evidence/I10-parity-review.md",
+          "terms": "https://github.com/yukikm/solana-zkapi/blob/088ca40bf5886738f87b4db97205db8bff752356/LICENSE"
+        },
+        "mingyech-README-8b2d4e3.md": {
+          "decision": "approved",
+          "notices": [
+            "Apache-2.0.txt",
+            "PROVENANCE.md"
+          ],
+          "sha256": "f93dcf61244ca2c3de783aa68355cb263024f5b5da3ec9fd40ac26cbee157846",
+          "source": "https://github.com/mingyech/zkAPI/blob/8b2d4e3da921f956e1eb6b93afbf722a877c060c/README.md",
+          "terms": "https://github.com/mingyech/zkAPI/blob/8b2d4e3da921f956e1eb6b93afbf722a877c060c/README.md#L97"
+        },
+        "mingyech-setup-README-8b2d4e3.md": {
+          "decision": "approved",
+          "notices": [
+            "Apache-2.0.txt",
+            "PROVENANCE.md"
+          ],
+          "sha256": "22b8ab79c6e8c985447c2a20b55d9253b5c2dab932cbd50927538f3571ffcf5d",
+          "source": "https://github.com/mingyech/zkAPI/blob/8b2d4e3da921f956e1eb6b93afbf722a877c060c/setup/v2/README.md",
+          "terms": "https://github.com/mingyech/zkAPI/blob/8b2d4e3da921f956e1eb6b93afbf722a877c060c/README.md#L97"
+        },
+        "prover.wasm": {
+          "decision": "approved",
+          "notices": [
+            "Solana-zkAPI-LICENSE.txt",
+            "BUNDLE-PROVENANCE.md",
+            "Rust-dependencies.json",
+            "Rust-notices-1.json",
+            "Rust-notices-2.json",
+            "Apache-2.0.txt",
+            "mingyech-README-8b2d4e3.md",
+            "ethereum-VENDORED-045b444.md"
+          ],
+          "sha256": "c06a247e1ff88f1ac415ea127bcf49d486b5b4954715cdf00f133b5ac71c1f30",
+          "source": "https://github.com/yukikm/solana-zkapi/tree/088ca40bf5886738f87b4db97205db8bff752356/apps/clientd/prover",
+          "terms": "https://github.com/yukikm/solana-zkapi/blob/088ca40bf5886738f87b4db97205db8bff752356/LICENSE"
+        },
+        "requestPk.bin": {
+          "decision": "approved",
+          "notices": [
+            "mingyech-README-8b2d4e3.md",
+            "mingyech-setup-README-8b2d4e3.md",
+            "ethereum-VENDORED-045b444.md",
+            "Apache-2.0.txt",
+            "PROVENANCE.md"
+          ],
+          "sha256": "c894b261a13f571d0df36be29734aabf2a8cd7162baddc5e08a50341aa076584",
+          "source": "https://github.com/mingyech/zkAPI/blob/8b2d4e3da921f956e1eb6b93afbf722a877c060c/setup/v2/request.pk",
+          "terms": "https://github.com/mingyech/zkAPI/blob/8b2d4e3da921f956e1eb6b93afbf722a877c060c/README.md#L97"
+        },
+        "requestVk.bin": {
+          "decision": "approved",
+          "notices": [
+            "mingyech-README-8b2d4e3.md",
+            "mingyech-setup-README-8b2d4e3.md",
+            "ethereum-VENDORED-045b444.md",
+            "Apache-2.0.txt",
+            "PROVENANCE.md"
+          ],
+          "sha256": "8011244c99fa1a8524870906462d430fc86366b8ad821736c5fa726b479e6d97",
+          "source": "https://github.com/mingyech/zkAPI/blob/8b2d4e3da921f956e1eb6b93afbf722a877c060c/setup/v2/request.vk",
+          "terms": "https://github.com/mingyech/zkAPI/blob/8b2d4e3da921f956e1eb6b93afbf722a877c060c/README.md#L97"
+        },
+        "treePk.bin": {
+          "decision": "approved",
+          "notices": [
+            "Solana-zkAPI-LICENSE.txt",
+            "BUNDLE-PROVENANCE.md",
+            "Rust-dependencies.json",
+            "Rust-notices-1.json",
+            "Rust-notices-2.json",
+            "Apache-2.0.txt",
+            "mingyech-README-8b2d4e3.md",
+            "ethereum-VENDORED-045b444.md"
+          ],
+          "sha256": "f5bb2a1a6979bf5fc0a175039fd36a3f1492febf405ad18064f1de6bedd2cc2e",
+          "source": "https://github.com/yukikm/solana-zkapi/blob/088ca40bf5886738f87b4db97205db8bff752356/crates/zkapi-tree-prover/examples/public_devnet_setup.rs",
+          "terms": "https://github.com/yukikm/solana-zkapi/blob/088ca40bf5886738f87b4db97205db8bff752356/LICENSE"
+        },
+        "treeSourceBundle.bin": {
+          "decision": "approved",
+          "notices": [
+            "Solana-zkAPI-LICENSE.txt",
+            "BUNDLE-PROVENANCE.md",
+            "Rust-dependencies.json",
+            "Rust-notices-1.json",
+            "Rust-notices-2.json",
+            "Apache-2.0.txt",
+            "mingyech-README-8b2d4e3.md",
+            "ethereum-VENDORED-045b444.md"
+          ],
+          "sha256": "6c6030526d80b862bdd2fc56369caf1739a34c7643a0707bc840925ad6d1cb14",
+          "source": "https://github.com/yukikm/solana-zkapi/tree/088ca40bf5886738f87b4db97205db8bff752356/crates",
+          "terms": "https://github.com/yukikm/solana-zkapi/blob/088ca40bf5886738f87b4db97205db8bff752356/LICENSE"
+        },
+        "treeVerifierConstants.bin": {
+          "decision": "approved",
+          "notices": [
+            "Solana-zkAPI-LICENSE.txt",
+            "BUNDLE-PROVENANCE.md",
+            "Rust-dependencies.json",
+            "Rust-notices-1.json",
+            "Rust-notices-2.json",
+            "Apache-2.0.txt",
+            "mingyech-README-8b2d4e3.md",
+            "ethereum-VENDORED-045b444.md"
+          ],
+          "sha256": "f4edbeb7bd68bf539a1672140298737dbbdcf33a096443fb61b4b582ebf304d1",
+          "source": "https://github.com/yukikm/solana-zkapi/blob/088ca40bf5886738f87b4db97205db8bff752356/crates/zkapi-tree-prover/examples/public_devnet_setup.rs",
+          "terms": "https://github.com/yukikm/solana-zkapi/blob/088ca40bf5886738f87b4db97205db8bff752356/LICENSE"
+        },
+        "treeVk.bin": {
+          "decision": "approved",
+          "notices": [
+            "Solana-zkAPI-LICENSE.txt",
+            "BUNDLE-PROVENANCE.md",
+            "Rust-dependencies.json",
+            "Rust-notices-1.json",
+            "Rust-notices-2.json",
+            "Apache-2.0.txt",
+            "mingyech-README-8b2d4e3.md",
+            "ethereum-VENDORED-045b444.md"
+          ],
+          "sha256": "4e62f971f0467a8cd1733194425904d9433cc59f2badaf2e12cc3fda87285443",
+          "source": "https://github.com/yukikm/solana-zkapi/blob/088ca40bf5886738f87b4db97205db8bff752356/crates/zkapi-tree-prover/examples/public_devnet_setup.rs",
+          "terms": "https://github.com/yukikm/solana-zkapi/blob/088ca40bf5886738f87b4db97205db8bff752356/LICENSE"
+        },
+        "withdrawalPk.bin": {
+          "decision": "approved",
+          "notices": [
+            "mingyech-README-8b2d4e3.md",
+            "mingyech-setup-README-8b2d4e3.md",
+            "ethereum-VENDORED-045b444.md",
+            "Apache-2.0.txt",
+            "PROVENANCE.md"
+          ],
+          "sha256": "8e41398092fdd02b9ff86c6ccbecbd7ce2402e6f22ec162e6124d1d04fe0a668",
+          "source": "https://github.com/mingyech/zkAPI/blob/8b2d4e3da921f956e1eb6b93afbf722a877c060c/setup/v2/withdrawal.pk",
+          "terms": "https://github.com/mingyech/zkAPI/blob/8b2d4e3da921f956e1eb6b93afbf722a877c060c/README.md#L97"
+        },
+        "withdrawalVk.bin": {
+          "decision": "approved",
+          "notices": [
+            "mingyech-README-8b2d4e3.md",
+            "mingyech-setup-README-8b2d4e3.md",
+            "ethereum-VENDORED-045b444.md",
+            "Apache-2.0.txt",
+            "PROVENANCE.md"
+          ],
+          "sha256": "2a8ea7f07176e369a93d1d816124192a798d1466c99fd6dc47850ba82094b679",
+          "source": "https://github.com/mingyech/zkAPI/blob/8b2d4e3da921f956e1eb6b93afbf722a877c060c/setup/v2/withdrawal.vk",
+          "terms": "https://github.com/mingyech/zkAPI/blob/8b2d4e3da921f956e1eb6b93afbf722a877c060c/README.md#L97"
+        }
+      },
+      "reviewed_at": "2026-10-07",
+      "reviewer": "Solana zkAPI implementation review: retained author-selected MIT scope and exact upstream Apache-2.0 setup decision",
+      "schema": 1
+    },
+    "sha256": "0f62ef19d5c8dc8791aff7b5faf39bb215b82536d8960552caa6d4b648d58f02"
+  },
+  "notices": {
+    "count": 10,
+    "declaration_only_packages": 101,
+    "dependency_packages": 301,
+    "distinct_source_texts": 223,
+    "files": {
+      "Apache-2.0.txt": {
+        "bytes": 10280,
+        "file": "Apache-2.0.txt",
+        "sha256": "074e6e32c86a4c0ef8b3ed25b721ca23aca83df277cd88106ef7177c354615ff"
+      },
+      "BUNDLE-PROVENANCE.md": {
+        "bytes": 2387,
+        "file": "BUNDLE-PROVENANCE.md",
+        "sha256": "3904df43cfc4482b1080c6a7d8dd8874a82049494d6df8a2a73c301d88be7cce"
+      },
+      "PROVENANCE.md": {
+        "bytes": 3682,
+        "file": "PROVENANCE.md",
+        "sha256": "2b2fd1dd5baf7baf8fe0947987c56b8465c64b63e179d461f7a12f190b834aed"
+      },
+      "Rust-dependencies.json": {
+        "bytes": 232194,
+        "file": "Rust-dependencies.json",
+        "sha256": "8ee3fafc6e0c7758c6f5846fb8083852985f326efc3868fbe059b003cfa6d1a5"
+      },
+      "Rust-notices-1.json": {
+        "bytes": 849885,
+        "file": "Rust-notices-1.json",
+        "sha256": "60901baa076fb37f4fd60c337f8feae117b27723ef0194b4a6462d501c198f7d"
+      },
+      "Rust-notices-2.json": {
+        "bytes": 145787,
+        "file": "Rust-notices-2.json",
+        "sha256": "8c7dfd19d3a2433ee81a276153ef487a11ca43b969d455e4b24d309905afb89f"
+      },
+      "Solana-zkAPI-LICENSE.txt": {
+        "bytes": 1097,
+        "file": "Solana-zkAPI-LICENSE.txt",
+        "sha256": "71afea996cef8ff3d3ef4f84705180bb0b124c1c21a16e89fddacd3b482d4fa7"
+      },
+      "ethereum-VENDORED-045b444.md": {
+        "bytes": 2208,
+        "file": "ethereum-VENDORED-045b444.md",
+        "sha256": "12e597fefcdb430f28a1ca16c1fe917e0bd2513958aa8523e1e1610bb947fce3"
+      },
+      "mingyech-README-8b2d4e3.md": {
+        "bytes": 3301,
+        "file": "mingyech-README-8b2d4e3.md",
+        "sha256": "f93dcf61244ca2c3de783aa68355cb263024f5b5da3ec9fd40ac26cbee157846"
+      },
+      "mingyech-setup-README-8b2d4e3.md": {
+        "bytes": 894,
+        "file": "mingyech-setup-README-8b2d4e3.md",
+        "sha256": "22b8ab79c6e8c985447c2a20b55d9253b5c2dab932cbd50927538f3571ffcf5d"
+      }
+    },
+    "lock_sha256": {
+      "apps/clientd/prover/Cargo.lock": "270bf7787e6d0863de0f681d42f62cd2c2c9d733db42ddb556cb44eb972711d9",
+      "programs/zkapi-vault/Cargo.lock": "041380fc83a88535a6d5d0387544a5a4b3316c57fd9c9c5a23d9b3e22cb96ef4"
+    },
+    "scope": "Conservative normal/build source/lock metadata closure for wasm32-unknown-unknown prover and sbpfv0-solana-solana Vault with sbf-entrypoint; not binary-level inclusion or build reproduction.",
+    "standard_library_limit": "WASM catalog retained. Installed SBF toolchain supplies no complete copyright catalog; available source notices and exact core/alloc license declarations retained instead.",
+    "total_bytes": 1251715
+  },
+  "packaging_passed": true,
+  "preservation": {
+    "historical_loopback_origins_preserved": true,
+    "historical_release_assets_modified": false,
+    "original_descriptor": {
+      "bytes": 4280,
+      "path": "target/external-integration/public-assets/bundle.json",
+      "sha256": "af5a2eb9e11cf93174d9e1391e523a017f028a1518cd768de102f9e326bde591"
+    },
+    "original_payloads_unchanged": 15,
+    "original_source_files_unchanged": 15,
+    "source_inventory": {
+      "apps/clientd/prover/target/wasm32-unknown-unknown/release/zkapi_client_prover.wasm": {
+        "bytes": 3678975,
+        "sha256": "c06a247e1ff88f1ac415ea127bcf49d486b5b4954715cdf00f133b5ac71c1f30"
+      },
+      "target/external-integration/public-assets-input.json": {
+        "bytes": 3592,
+        "sha256": "5157823e799325ee0fb7b9d1d5b935182a936b16074812ad0c76b2cc9c8aa89a"
+      },
+      "target/public-devnet/parity-review-20261007/circuit-source.tar": {
+        "bytes": 235520,
+        "sha256": "6c6030526d80b862bdd2fc56369caf1739a34c7643a0707bc840925ad6d1cb14"
+      },
+      "target/public-devnet/parity-review-20261007/deployment/pools/provider/parity-chat/build-manifest.json": {
+        "bytes": 1180,
+        "sha256": "ac579def463b72df4193d1601652d0afd39b65444eb27367096e76799845d2cc"
+      },
+      "target/public-devnet/parity-review-20261007/deployment/pools/provider/parity-chat/public-manifest.json": {
+        "bytes": 3983,
+        "sha256": "96caa60a67a79e076804b6fdf204b8ce44522e6a43bcaf8ee8ddfc6d5181a6b5"
+      },
+      "target/public-devnet/parity-review-20261007/deployment/pools/provider/parity-chat/vault-idl.json": {
+        "bytes": 34803,
+        "sha256": "cbc94a33608b3945ff7704efe530a374dac2662070b533e33ebe208d4032b111"
+      },
+      "target/public-devnet/parity-review-20261007/deployment/zkapi_vault.so": {
+        "bytes": 380760,
+        "sha256": "42febb6f9e6e373f318fb596611af842a0c95271831f77ec0fe70eccc79803a1"
+      },
+      "target/public-devnet/parity-review-20261007/public-profile.json": {
+        "bytes": 3045,
+        "sha256": "3933fcae97f544f0be368532cc9c2127af8f7fc008cbebcf2ddd0f803abfd311"
+      },
+      "target/public-devnet/parity-review-20261007/request.pk": {
+        "bytes": 5935783,
+        "sha256": "c894b261a13f571d0df36be29734aabf2a8cd7162baddc5e08a50341aa076584"
+      },
+      "target/public-devnet/parity-review-20261007/request.vk": {
+        "bytes": 671,
+        "sha256": "8011244c99fa1a8524870906462d430fc86366b8ad821736c5fa726b479e6d97"
+      },
+      "target/public-devnet/parity-review-20261007/tree-vk-wire.bin": {
+        "bytes": 1216,
+        "sha256": "f4edbeb7bd68bf539a1672140298737dbbdcf33a096443fb61b4b582ebf304d1"
+      },
+      "target/public-devnet/parity-review-20261007/tree.pk": {
+        "bytes": 7414736,
+        "sha256": "f5bb2a1a6979bf5fc0a175039fd36a3f1492febf405ad18064f1de6bedd2cc2e"
+      },
+      "target/public-devnet/parity-review-20261007/tree.vk": {
+        "bytes": 616,
+        "sha256": "4e62f971f0467a8cd1733194425904d9433cc59f2badaf2e12cc3fda87285443"
+      },
+      "target/public-devnet/parity-review-20261007/withdrawal.pk": {
+        "bytes": 7783719,
+        "sha256": "8e41398092fdd02b9ff86c6ccbecbd7ce2402e6f22ec162e6124d1d04fe0a668"
+      },
+      "target/public-devnet/parity-review-20261007/withdrawal.vk": {
+        "bytes": 735,
+        "sha256": "2a8ea7f07176e369a93d1d816124192a798d1466c99fd6dc47850ba82094b679"
+      }
+    },
+    "trust_manifest_artifact_paths_and_wasm_pin_unchanged": true
+  },
+  "recorded_date": "2026-10-07",
+  "release_check": {
+    "bytes": 425,
+    "path": "target/public-devnet-followup-20261007/notices-release-check.json",
+    "record": {
+      "asset_bytes": 26762260,
+      "bundle_sha256": "4169846c4a8a02162ca4870ff069e86e94aa06064d67d17ce39e8f344bc1a423",
+      "legal_sufficiency_verified": false,
+      "passed": true,
+      "proof_generation_verified": false,
+      "public_files": 26,
+      "published": false,
+      "review_sha256": "0f62ef19d5c8dc8791aff7b5faf39bb215b82536d8960552caa6d4b648d58f02",
+      "schema": 1,
+      "scope": "exact bytes and explicit per-file review record only"
+    },
+    "sha256": "749f32395002f35834890b9034ee993a4296d469b14c43241701c4d56478a911"
+  },
+  "schema": 1,
+  "scope": "New local schema-2 complete bundle, required notices, exact per-file distribution review and original-input preservation. Cryptographic proof acceptance is recorded separately.",
+  "separate_proof_evidence": "docs/evidence/PD-complete-bundle-proofs.md",
+  "setup_review": {
+    "bytes": 6069,
+    "files": {
+      "requestPk.bin": {
+        "bytes": 5935783,
+        "decision": "approved",
+        "git_blob_sha1": "5fb7bd7e5c8db0426f293228187c16ce994b341d",
+        "imported_source": "https://github.com/ethereum/zkapi/blob/045b444ea1b52538d1b40273c7cb6ed09468a052/protocol/setup/v2/request.pk",
+        "modification": "unchanged bytes; distribution filename changed",
+        "notices": [
+          "mingyech-README-8b2d4e3.md",
+          "mingyech-setup-README-8b2d4e3.md",
+          "ethereum-VENDORED-045b444.md",
+          "Apache-2.0.txt",
+          "PROVENANCE.md"
+        ],
+        "original_path": "setup/v2/request.pk",
+        "selected_license": "Apache-2.0",
+        "sha256": "c894b261a13f571d0df36be29734aabf2a8cd7162baddc5e08a50341aa076584",
+        "source": "https://github.com/mingyech/zkAPI/blob/8b2d4e3da921f956e1eb6b93afbf722a877c060c/setup/v2/request.pk",
+        "terms": "https://github.com/mingyech/zkAPI/blob/8b2d4e3da921f956e1eb6b93afbf722a877c060c/README.md#L97"
+      },
+      "requestVk.bin": {
+        "bytes": 671,
+        "decision": "approved",
+        "git_blob_sha1": "33666441aa6d5553d174f64df62874dd5f1f77d5",
+        "imported_source": "https://github.com/ethereum/zkapi/blob/045b444ea1b52538d1b40273c7cb6ed09468a052/protocol/setup/v2/request.vk",
+        "modification": "unchanged bytes; distribution filename changed",
+        "notices": [
+          "mingyech-README-8b2d4e3.md",
+          "mingyech-setup-README-8b2d4e3.md",
+          "ethereum-VENDORED-045b444.md",
+          "Apache-2.0.txt",
+          "PROVENANCE.md"
+        ],
+        "original_path": "setup/v2/request.vk",
+        "selected_license": "Apache-2.0",
+        "sha256": "8011244c99fa1a8524870906462d430fc86366b8ad821736c5fa726b479e6d97",
+        "source": "https://github.com/mingyech/zkAPI/blob/8b2d4e3da921f956e1eb6b93afbf722a877c060c/setup/v2/request.vk",
+        "terms": "https://github.com/mingyech/zkAPI/blob/8b2d4e3da921f956e1eb6b93afbf722a877c060c/README.md#L97"
+      },
+      "withdrawalPk.bin": {
+        "bytes": 7783719,
+        "decision": "approved",
+        "git_blob_sha1": "5f8e4cb5e8086215f6f7d6a26616ee4834b9e393",
+        "imported_source": "https://github.com/ethereum/zkapi/blob/045b444ea1b52538d1b40273c7cb6ed09468a052/protocol/setup/v2/withdrawal.pk",
+        "modification": "unchanged bytes; distribution filename changed",
+        "notices": [
+          "mingyech-README-8b2d4e3.md",
+          "mingyech-setup-README-8b2d4e3.md",
+          "ethereum-VENDORED-045b444.md",
+          "Apache-2.0.txt",
+          "PROVENANCE.md"
+        ],
+        "original_path": "setup/v2/withdrawal.pk",
+        "selected_license": "Apache-2.0",
+        "sha256": "8e41398092fdd02b9ff86c6ccbecbd7ce2402e6f22ec162e6124d1d04fe0a668",
+        "source": "https://github.com/mingyech/zkAPI/blob/8b2d4e3da921f956e1eb6b93afbf722a877c060c/setup/v2/withdrawal.pk",
+        "terms": "https://github.com/mingyech/zkAPI/blob/8b2d4e3da921f956e1eb6b93afbf722a877c060c/README.md#L97"
+      },
+      "withdrawalVk.bin": {
+        "bytes": 735,
+        "decision": "approved",
+        "git_blob_sha1": "3f0dc9b5652989e327293627e53641b865b73c0a",
+        "imported_source": "https://github.com/ethereum/zkapi/blob/045b444ea1b52538d1b40273c7cb6ed09468a052/protocol/setup/v2/withdrawal.vk",
+        "modification": "unchanged bytes; distribution filename changed",
+        "notices": [
+          "mingyech-README-8b2d4e3.md",
+          "mingyech-setup-README-8b2d4e3.md",
+          "ethereum-VENDORED-045b444.md",
+          "Apache-2.0.txt",
+          "PROVENANCE.md"
+        ],
+        "original_path": "setup/v2/withdrawal.vk",
+        "selected_license": "Apache-2.0",
+        "sha256": "2a8ea7f07176e369a93d1d816124192a798d1466c99fd6dc47850ba82094b679",
+        "source": "https://github.com/mingyech/zkAPI/blob/8b2d4e3da921f956e1eb6b93afbf722a877c060c/setup/v2/withdrawal.vk",
+        "terms": "https://github.com/mingyech/zkAPI/blob/8b2d4e3da921f956e1eb6b93afbf722a877c060c/README.md#L97"
+      }
+    },
+    "four_files_match_sha256_bytes_and_git_blob": true,
+    "path": "deploy/public-devnet/upstream-setup-distribution.json",
+    "review_evidence": "docs/evidence/PD-02-redistribution-followup.md",
+    "selected_license": "Apache-2.0",
+    "sha256": "160ef825acb8affc341d6c9335eabf0b58b960b6ee93920b02ecbeeb53cbe2a6"
+  },
+  "source_records": {
+    "asset-source-baseline.json": {
+      "bytes": 2965,
+      "path": "target/public-devnet-followup-20261007/asset-source-baseline.json",
+      "sha256": "421ff989dc312aa47245ddfb9512e7a6d3128ac3c3fbcd2e9454a2ec10569907"
+    },
+    "notice-preparation.json": {
+      "bytes": 4096,
+      "path": "target/public-devnet-followup-20261007/notice-preparation.json",
+      "sha256": "ec4bd812315e6a74a75003954932ac0ca432389636a9630ea938a3f35c1b9704"
+    },
+    "notices-package-checks.json": {
+      "bytes": 2751,
+      "path": "target/public-devnet-followup-20261007/notices-package-checks.json",
+      "sha256": "61ab4f4429d65e755836d37d760976beb69af11c091d91c4c0a81ac3411d2558"
+    },
+    "notices-package-result.json": {
+      "bytes": 308,
+      "path": "target/public-devnet-followup-20261007/notices-package-result.json",
+      "sha256": "4a889b906ea499323ad4ab13210a9e90235c2889aed249f27f02f83186fb44e1"
+    },
+    "prepare-notice-inputs.py": {
+      "bytes": 7604,
+      "path": "target/public-devnet-followup-20261007/prepare-notice-inputs.py",
+      "sha256": "e6a3346f5d5fe9755b35c678592da7887266899955253f17393afe7ed273f901"
+    },
+    "review-notices-bundle.py": {
+      "bytes": 6119,
+      "path": "target/public-devnet-followup-20261007/review-notices-bundle.py",
+      "sha256": "31107b93a7b2f05c515f674ed68cabb4a045cf23c33d0a4e6082e72f31e5a2d6"
+    }
+  }
+}

@@ -1,0 +1,4 @@
+
+> typecheck
+> tsc --noEmit -p packages/sdk/tsconfig.json
+

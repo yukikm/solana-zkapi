@@ -1,0 +1,2286 @@
+TAP version 13
+# Subtest: challenger signs every real v0 step with the existing I04 plan and verifies restored bytes
+ok 1 - challenger signs every real v0 step with the existing I04 plan and verifies restored bytes
+  ---
+  duration_ms: 1159.476979
+  type: 'test'
+  ...
+# Subtest: lost challenger execute response and restart rebroadcast exactly the same signature bytes
+ok 2 - lost challenger execute response and restart rebroadcast exactly the same signature bytes
+  ---
+  duration_ms: 213.18494
+  type: 'test'
+  ...
+# Subtest: expired or forged challenger receipts never authorize replacement; finalized stale-root preserves historical proof
+ok 3 - expired or forged challenger receipts never authorize replacement; finalized stale-root preserves historical proof
+  ---
+  duration_ms: 183.457122
+  type: 'test'
+  ...
+# Subtest: native challenger bridge signs without RPC and rejects public fee keys with redacted diagnostics
+ok 4 - native challenger bridge signs without RPC and rejects public fee keys with redacted diagnostics
+  ---
+  duration_ms: 839.216553
+  type: 'test'
+  ...
+# Subtest: expired challenger append/seal uses finalized exact buffer prefix and a fresh hash; financial/missing buffer stays unresolved
+ok 5 - expired challenger append/seal uses finalized exact buffer prefix and a fresh hash; financial/missing buffer stays unresolved
+  ---
+  duration_ms: 790.413882
+  type: 'test'
+  ...
+# Subtest: priority fee is signed and immutable in each upload plan; chunk sizing still fits 1232 bytes
+ok 6 - priority fee is signed and immutable in each upload plan; chunk sizing still fits 1232 bytes
+  ---
+  duration_ms: 874.452975
+  type: 'test'
+  ...
+# Subtest: challenger buffer absence inspection requires a finalized cut at the failure slot or later
+ok 7 - challenger buffer absence inspection requires a finalized cut at the failure slot or later
+  ---
+  duration_ms: 960.841711
+  type: 'test'
+  ...
+# Subtest: Chat SSE accepts UTF-8, comments, CRLF splits, usage events and multiline data at every byte boundary
+ok 8 - Chat SSE accepts UTF-8, comments, CRLF splits, usage events and multiline data at every byte boundary
+  ---
+  duration_ms: 119.869579
+  type: 'test'
+  ...
+# Subtest: SSE rejects truncated streams, provider errors, bad UTF-8 and oversized frames
+ok 9 - SSE rejects truncated streams, provider errors, bad UTF-8 and oversized frames
+  ---
+  duration_ms: 7.1629
+  type: 'test'
+  ...
+# Subtest: SSE accepts CR-only event endings, including a final CR at EOF
+ok 10 - SSE accepts CR-only event endings, including a final CR at EOF
+  ---
+  duration_ms: 31.899589
+  type: 'test'
+  ...
+# Subtest: breaking delta iteration cancels unread response; HTTP errors are bounded and redacted
+ok 11 - breaking delta iteration cancels unread response; HTTP errors are bounded and redacted
+  ---
+  duration_ms: 3.310996
+  type: 'test'
+  ...
+# Subtest: text helper accepts one text choice and refuses tool-only, malformed and oversized responses
+ok 12 - text helper accepts one text choice and refuses tool-only, malformed and oversized responses
+  ---
+  duration_ms: 8.957427
+  type: 'test'
+  ...
+# Subtest: reader and cancellation failures never expose private errors from text or SSE helpers
+ok 13 - reader and cancellation failures never expose private errors from text or SSE helpers
+  ---
+  duration_ms: 7.309354
+  type: 'test'
+  ...
+# Subtest: SSE cancellation failures after DONE or early exit are redacted
+ok 14 - SSE cancellation failures after DONE or early exit are redacted
+  ---
+  duration_ms: 0.820871
+  type: 'test'
+  ...
+# Subtest: text helpers refuse tool calls mixed with text and missing or unsupported terminal reasons
+ok 15 - text helpers refuse tool calls mixed with text and missing or unsupported terminal reasons
+  ---
+  duration_ms: 3.622717
+  type: 'test'
+  ...
+# Subtest: SSE requires a terminal choice before DONE and rejects content after a terminal choice
+ok 16 - SSE requires a terminal choice before DONE and rejects content after a terminal choice
+  ---
+  duration_ms: 0.791847
+  type: 'test'
+  ...
+# Subtest: SSE accepts empty terminal usage choices after the same terminal reason at every byte boundary
+ok 17 - SSE accepts empty terminal usage choices after the same terminal reason at every byte boundary
+  ---
+  duration_ms: 181.13403
+  type: 'test'
+  ...
+# Subtest: SSE terminal usage metadata cannot append content, change terminal reason, or carry tool calls
+ok 18 - SSE terminal usage metadata cannot append content, change terminal reason, or carry tool calls
+  ---
+  duration_ms: 1.757929
+  type: 'test'
+  ...
+# Subtest: one chat call quotes, proves, authorizes, sends once and verifies settlement; model switch uses its tariff
+ok 19 - one chat call quotes, proves, authorizes, sends once and verifies settlement; model switch uses its tariff
+  ---
+  duration_ms: 501.385316
+  type: 'test'
+  ...
+# Subtest: lists and notifications are detached and omit secrets, prompt bodies and provider keys
+ok 20 - lists and notifications are detached and omit secrets, prompt bodies and provider keys
+  ---
+  duration_ms: 154.710066
+  type: 'test'
+  ...
+# Subtest: quote rejection never reaches proof, AUTH or inference
+ok 21 - quote rejection never reaches proof, AUTH or inference
+  ---
+  duration_ms: 36.062331
+  type: 'test'
+  ...
+# Subtest: reopening pending AUTH is read-only; new sends are blocked and recovery sends only saved AUTH
+ok 22 - reopening pending AUTH is read-only; new sends are blocked and recovery sends only saved AUTH
+  ---
+  duration_ms: 231.694066
+  type: 'test'
+  ...
+# Subtest: explicit unaccepted AUTH recovery verifies permanent clearance and archives expired work without replay or signing
+ok 23 - explicit unaccepted AUTH recovery verifies permanent clearance and archives expired work without replay or signing
+  ---
+  duration_ms: 184.805923
+  type: 'test'
+  ...
+# Subtest: unavailable or invalid clearance preserves the exact AUTH and state for explicit same-note retry
+ok 24 - unavailable or invalid clearance preserves the exact AUTH and state for explicit same-note retry
+  ---
+  duration_ms: 200.857946
+  type: 'test'
+  ...
+# Subtest: clearance holds the shared action lock and another facade re-verifies the completed archive
+ok 25 - clearance holds the shared action lock and another facade re-verifies the completed archive
+  ---
+  duration_ms: 159.965701
+  type: 'test'
+  ...
+# Subtest: clearance eligibility excludes accepted, used, prepared, closing and wallet-busy notes
+ok 26 - clearance eligibility excludes accepted, used, prepared, closing and wallet-busy notes
+  ---
+  duration_ms: 751.456414
+  type: 'test'
+  ...
+# Subtest: explicit emergency escape preserves uncertain inference before proof work and keeps recovery fenced after reopen
+ok 27 - explicit emergency escape preserves uncertain inference before proof work and keeps recovery fenced after reopen
+  ---
+  duration_ms: 267.389333
+  type: 'test'
+  ...
+# Subtest: emergency escape stays explicit and refuses a never-sent authorization or an unrelated note
+ok 28 - emergency escape stays explicit and refuses a never-sent authorization or an unrelated note
+  ---
+  duration_ms: 109.601525
+  type: 'test'
+  ...
+# Subtest: challenge recovery remains visible after finalization preparation without treating its status hint as chain evidence
+ok 29 - challenge recovery remains visible after finalization preparation without treating its status hint as chain evidence
+  ---
+  duration_ms: 229.277254
+  type: 'test'
+  ...
+# Subtest: response loss and failed settlement retain operation; restarting never replays it
+ok 30 - response loss and failed settlement retain operation; restarting never replays it
+  ---
+  duration_ms: 424.723928
+  type: 'test'
+  ...
+# Subtest: an unverified successor never becomes available balance
+ok 31 - an unverified successor never becomes available balance
+  ---
+  duration_ms: 253.643429
+  type: 'test'
+  ...
+# Subtest: stream holds action lock; cancellation closes shared lifecycle and releases the client
+ok 32 - stream holds action lock; cancellation closes shared lifecycle and releases the client
+  ---
+  duration_ms: 149.37176
+  type: 'test'
+  ...
+# Subtest: stream helpers finish settlement before returning to the next send
+ok 33 - stream helpers finish settlement before returning to the next send
+  ---
+  duration_ms: 636.950245
+  type: 'test'
+  ...
+# Subtest: stream errors await the existing close finalizer before releasing the application lock
+ok 34 - stream errors await the existing close finalizer before releasing the application lock
+  ---
+  duration_ms: 193.962649
+  type: 'test'
+  ...
+# Subtest: cancelling a pending read retains the application lock through settlement
+ok 35 - cancelling a pending read retains the application lock through settlement
+  ---
+  duration_ms: 173.639436
+  type: 'test'
+  ...
+# Subtest: separate instances share a note lock through body consumption
+ok 36 - separate instances share a note lock through body consumption
+  ---
+  duration_ms: 492.337046
+  type: 'test'
+  ...
+# Subtest: invalid model, API, ID and body cannot start an authorization; abort-before-send is side-effect free
+ok 37 - invalid model, API, ID and body cannot start an authorization; abort-before-send is side-effect free
+  ---
+  duration_ms: 19.146444
+  type: 'test'
+  ...
+# Subtest: expired, cleared, closed and insufficient notes cannot start chat
+ok 38 - expired, cleared, closed and insufficient notes cannot start chat
+  ---
+  duration_ms: 81.868903
+  type: 'test'
+  ...
+# Subtest: dispose does not settle or erase storage and refuses later actions
+ok 39 - dispose does not settle or erase storage and refuses later actions
+  ---
+  duration_ms: 7.233821
+  type: 'test'
+  ...
+# Subtest: reviewed model restrictions reject streaming and tools before quote, proof or AUTH
+ok 40 - reviewed model restrictions reject streaming and tools before quote, proof or AUTH
+  ---
+  duration_ms: 136.129047
+  type: 'test'
+  ...
+# Subtest: each configured proxy model selects its own pinned provider/API/tariff and verifies its quote
+ok 41 - each configured proxy model selects its own pinned provider/API/tariff and verifies its quote
+  ---
+  duration_ms: 46.299235
+  type: 'test'
+  ...
+# Subtest: legacy single proxy tariff stays compatible but cannot advertise unrelated models
+ok 42 - legacy single proxy tariff stays compatible but cannot advertise unrelated models
+  ---
+  duration_ms: 4.800173
+  type: 'test'
+  ...
+# Subtest: legacy direct wildcard tariff supports multiple concrete IDs with the same explicit provider
+ok 43 - legacy direct wildcard tariff supports multiple concrete IDs with the same explicit provider
+  ---
+  duration_ms: 3.064025
+  type: 'test'
+  ...
+# Subtest: startup rejects mixed, ambiguous, unsupported, mismatched, tampered and unpinned model configuration
+ok 44 - startup rejects mixed, ambiguous, unsupported, mismatched, tampered and unpinned model configuration
+  ---
+  duration_ms: 3.299955
+  type: 'test'
+  ...
+# Subtest: model configuration and returned tariffs do not retain mutable caller-owned values
+ok 45 - model configuration and returned tariffs do not retain mutable caller-owned values
+  ---
+  duration_ms: 1.509245
+  type: 'test'
+  ...
+# Subtest: public profile model capability restrictions survive tariff loading and reject ambiguous fields
+ok 46 - public profile model capability restrictions survive tariff loading and reject ambiguous fields
+  ---
+  duration_ms: 1.622526
+  type: 'test'
+  ...
+# Subtest: new native profile reports unfunded status without creating a note or contacting control
+ok 47 - new native profile reports unfunded status without creating a note or contacting control
+  ---
+  duration_ms: 31.124505
+  type: 'test'
+  ...
+# Subtest: model switch settles the old session and dispatches the original new operation once
+ok 48 - model switch settles the old session and dispatches the original new operation once
+  ---
+  duration_ms: 292.751795
+  type: 'test'
+  ...
+# Subtest: model switch cannot close a session with an active response
+ok 49 - model switch cannot close a session with an active response
+  ---
+  duration_ms: 282.937312
+  type: 'test'
+  ...
+# Subtest: unfinished or unverifiable close blocks new-model authorization without replay
+ok 50 - unfinished or unverifiable close blocks new-model authorization without replay
+  ---
+  duration_ms: 929.736971
+  type: 'test'
+  ...
+# Subtest: aborting during old-session settlement never authorizes the new model
+ok 51 - aborting during old-session settlement never authorizes the new model
+  ---
+  duration_ms: 106.153168
+  type: 'test'
+  ...
+# Subtest: shutdown during model-switch settlement closes without admitting the new send
+ok 52 - shutdown during model-switch settlement closes without admitting the new send
+  ---
+  duration_ms: 104.811211
+  type: 'test'
+  ...
+# Subtest: reuse expiry and a concurrent maintenance tick admit a new request once after settlement
+ok 53 - reuse expiry and a concurrent maintenance tick admit a new request once after settlement
+  ---
+  duration_ms: 287.432364
+  type: 'test'
+  ...
+# Subtest: validated model policies drive the advertised provider and reject unsupported APIs before AUTH
+ok 54 - validated model policies drive the advertised provider and reject unsupported APIs before AUTH
+  ---
+  duration_ms: 72.370619
+  type: 'test'
+  ...
+# Subtest: direct client tools accept arbitrary JSON Schema property names without admitting unsupported modalities
+ok 55 - direct client tools accept arbitrary JSON Schema property names without admitting unsupported modalities
+  ---
+  duration_ms: 273.310815
+  type: 'test'
+  ...
+# Subtest: direct identity and transport metadata is rejected before AUTH or inference
+ok 56 - direct identity and transport metadata is rejected before AUTH or inference
+  ---
+  duration_ms: 18.593249
+  type: 'test'
+  ...
+# Subtest: direct structured text formats are supported only at the native API format paths
+ok 57 - direct structured text formats are supported only at the native API format paths
+  ---
+  duration_ms: 795.342272
+  type: 'test'
+  ...
+# Subtest: direct Responses requires explicit disabled storage before AUTH
+ok 58 - direct Responses requires explicit disabled storage before AUTH
+  ---
+  duration_ms: 157.373432
+  type: 'test'
+  ...
+# Subtest: daemon exposes inference headers without upstream cookies or tracking headers
+ok 59 - daemon exposes inference headers without upstream cookies or tracking headers
+  ---
+  duration_ms: 365.199501
+  type: 'test'
+  ...
+# Subtest: clientd shares encrypted journal, streams once, reuses 60-second session and closes idle
+ok 60 - clientd shares encrypted journal, streams once, reuses 60-second session and closes idle
+  ---
+  duration_ms: 180.173969
+  type: 'test'
+  ...
+# Subtest: reuse zero closes after every request and duplicate operation cannot cross settled sessions
+ok 61 - reuse zero closes after every request and duplicate operation cannot cross settled sessions
+  ---
+  duration_ms: 372.17266
+  type: 'test'
+  ...
+# Subtest: opt-in native wait admits exact new tool continuation once only after verified prior settlement
+ok 62 - opt-in native wait admits exact new tool continuation once only after verified prior settlement
+  ---
+  duration_ms: 1357.914663
+  type: 'test'
+  ...
+# Subtest: native settlement wait fails closed on deadline, unavailable control or invalid signed successor
+ok 63 - native settlement wait fails closed on deadline, unavailable control or invalid signed successor
+  ---
+  duration_ms: 501.690538
+  type: 'test'
+  ...
+# Subtest: initial post-response close failure requires explicit recovery before native settlement wait
+ok 64 - initial post-response close failure requires explicit recovery before native settlement wait
+  ---
+  duration_ms: 148.697747
+  type: 'test'
+  ...
+# Subtest: native settlement wait cancels or shuts down without admitting its queued operation
+ok 65 - native settlement wait cancels or shuts down without admitting its queued operation
+  ---
+  duration_ms: 340.164726
+  type: 'test'
+  ...
+# Subtest: native wait does not authorize after unknown response, cancellation, restart or disabled opt-in
+ok 66 - native wait does not authorize after unknown response, cancellation, restart or disabled opt-in
+  ---
+  duration_ms: 518.826789
+  type: 'test'
+  ...
+# Subtest: settlement-wait policy rejects incompatible modes, reuse and invalid bounds before AUTH
+ok 67 - settlement-wait policy rejects incompatible modes, reuse and invalid bounds before AUTH
+  ---
+  duration_ms: 23.624307
+  type: 'test'
+  ...
+# Subtest: disconnect during native new-operation preparation prevents its AUTH and inference
+ok 68 - disconnect during native new-operation preparation prevents its AUTH and inference
+  ---
+  duration_ms: 10.616378
+  type: 'test'
+  ...
+# Subtest: uncertain direct inference is never replayed after restart; volatile key, same mode
+ok 69 - uncertain direct inference is never replayed after restart; volatile key, same mode
+  ---
+  duration_ms: 138.675549
+  type: 'test'
+  ...
+# Subtest: restart keeps admin reachable for explicit absent-operation reconciliation without inference replay
+ok 70 - restart keeps admin reachable for explicit absent-operation reconciliation without inference replay
+  ---
+  duration_ms: 266.828622
+  type: 'test'
+  ...
+# Subtest: restart outage keeps inference blocked until explicit recovery closes the previous session
+ok 71 - restart outage keeps inference blocked until explicit recovery closes the previous session
+  ---
+  duration_ms: 316.418783
+  type: 'test'
+  ...
+# Subtest: startup rejects a tampered encrypted journal before contacting control
+ok 72 - startup rejects a tampered encrypted journal before contacting control
+  ---
+  duration_ms: 65.595652
+  type: 'test'
+  ...
+# Subtest: expired never-sent authorization has explicit admin cancellation; uncertain inference cannot be canceled
+ok 73 - expired never-sent authorization has explicit admin cancellation; uncertain inference cannot be canceled
+  ---
+  duration_ms: 115.5053
+  type: 'test'
+  ...
+# Subtest: direct 202 with missing key closes without inference or proxy fallback
+ok 74 - direct 202 with missing key closes without inference or proxy fallback
+  ---
+  duration_ms: 59.035805
+  type: 'test'
+  ...
+# Subtest: OA key is independently verified before clientd inference and reused only within the same session
+ok 75 - OA key is independently verified before clientd inference and reused only within the same session
+  ---
+  duration_ms: 120.517826
+  type: 'test'
+  ...
+# Subtest: OA verifier rejection closes the same authorization without saving a key or sending inference
+ok 76 - OA verifier rejection closes the same authorization without saving a key or sending inference
+  ---
+  duration_ms: 68.609654
+  type: 'test'
+  ...
+# Subtest: stream cancel still closes reuse-zero session, unsupported direct modalities never authorize
+ok 77 - stream cancel still closes reuse-zero session, unsupported direct modalities never authorize
+  ---
+  duration_ms: 100.25476
+  type: 'test'
+  ...
+# Subtest: graceful shutdown waits for delivered streams and durable session close
+ok 78 - graceful shutdown waits for delivered streams and durable session close
+  ---
+  duration_ms: 122.51681
+  type: 'test'
+  ...
+# Subtest: canceling a pending read retains native admission until upstream cancellation finishes
+ok 79 - canceling a pending read retains native admission until upstream cancellation finishes
+  ---
+  duration_ms: 183.537644
+  type: 'test'
+  ...
+# Subtest: graceful shutdown also waits for admission already preparing its authorization
+ok 80 - graceful shutdown also waits for admission already preparing its authorization
+  ---
+  duration_ms: 103.423889
+  type: 'test'
+  ...
+# Subtest: native custody wraps random key, authenticates passphrase and metadata, and refuses reset
+ok 81 - native custody wraps random key, authenticates passphrase and metadata, and refuses reset
+  ---
+  duration_ms: 395.891953
+  type: 'test'
+  ...
+# Subtest: actual Unix HTTP disconnect cancels upstream response and waits for stream finalizer
+ok 82 - actual Unix HTTP disconnect cancels upstream response and waits for stream finalizer
+  ---
+  duration_ms: 35.951036
+  type: 'test'
+  ...
+# Subtest: disconnect before upstream headers aborts inference and retains its non-replayable intent
+ok 83 - disconnect before upstream headers aborts inference and retains its non-replayable intent
+  ---
+  duration_ms: 197.883915
+  type: 'test'
+  ...
+# Subtest: already disconnected Unix response cancels a late body without waiting for its first byte
+ok 84 - already disconnected Unix response cancels a late body without waiting for its first byte
+  ---
+  duration_ms: 4.566746
+  type: 'test'
+  ...
+# Subtest: native reviewed streaming and tool restrictions fail before AUTH and preserve the journal
+ok 85 - native reviewed streaming and tool restrictions fail before AUTH and preserve the journal
+  ---
+  duration_ms: 6.90714
+  type: 'test'
+  ...
+# Subtest: explicit absent-operation reconciliation requires terminal settlement and original crypto verification
+ok 86 - explicit absent-operation reconciliation requires terminal settlement and original crypto verification
+  ---
+  duration_ms: 123.206184
+  type: 'test'
+  ...
+# Subtest: absent-operation reconciliation does not persist exclusions when the signed successor fails verification
+ok 87 - absent-operation reconciliation does not persist exclusions when the signed successor fails verification
+  ---
+  duration_ms: 63.526153
+  type: 'test'
+  ...
+# Subtest: prepare snapshots exact authorization and credentials; send_unknown is durable before the first POST
+ok 88 - prepare snapshots exact authorization and credentials; send_unknown is durable before the first POST
+  ---
+  duration_ms: 74.84331
+  type: 'test'
+  ...
+# Subtest: two callers cannot prepare two unresolved authorizations for the same note
+ok 89 - two callers cannot prepare two unresolved authorizations for the same note
+  ---
+  duration_ms: 25.250285
+  type: 'test'
+  ...
+# Subtest: authorization response loss recovers only identical proof/body/token, even after restart
+ok 90 - authorization response loss recovers only identical proof/body/token, even after restart
+  ---
+  duration_ms: 54.198075
+  type: 'test'
+  ...
+# Subtest: close of an unknown create preserves exact authorization recovery and durable close intent
+ok 91 - close of an unknown create preserves exact authorization recovery and durable close intent
+  ---
+  duration_ms: 98.339926
+  type: 'test'
+  ...
+# Subtest: closing an unknown direct create withholds a newly delivered key and resumes close after response loss
+ok 92 - closing an unknown direct create withholds a newly delivered key and resumes close after response loss
+  ---
+  duration_ms: 65.650085
+  type: 'test'
+  ...
+# Subtest: direct 202 or missing first key persists closing and uses saved control credential, without changing mode
+ok 93 - direct 202 or missing first key persists closing and uses saved control credential, without changing mode
+  ---
+  duration_ms: 88.621913
+  type: 'test'
+  ...
+# Subtest: direct key stays only in the current client and restart closes the same keyless session
+ok 94 - direct key stays only in the current client and restart closes the same keyless session
+  ---
+  duration_ms: 85.368816
+  type: 'test'
+  ...
+# Subtest: legacy persisted direct keys remain readable but cannot authorize inference after restart
+    # Subtest: direct_oa
+    ok 1 - direct_oa
+      ---
+      duration_ms: 97.936658
+      type: 'test'
+      ...
+    # Subtest: direct_openrouter
+    ok 2 - direct_openrouter
+      ---
+      duration_ms: 54.602712
+      type: 'test'
+      ...
+    1..2
+ok 95 - legacy persisted direct keys remain readable but cannot authorize inference after restart
+  ---
+  duration_ms: 153.394307
+  type: 'test'
+  ...
+# Subtest: failed key-delivery persistence cannot leave a usable volatile key or change saved AUTH
+ok 96 - failed key-delivery persistence cannot leave a usable volatile key or change saved AUTH
+  ---
+  duration_ms: 45.477652
+  type: 'test'
+  ...
+# Subtest: a volatile direct key cannot hydrate a changed authorization or be replaced by a persisted key field
+ok 97 - a volatile direct key cannot hydrate a changed authorization or be replaced by a persisted key field
+  ---
+  duration_ms: 116.982282
+  type: 'test'
+  ...
+# Subtest: forgetting volatile keys does not alter custody and same-session recovery settles without another key
+ok 98 - forgetting volatile keys does not alter custody and same-session recovery settles without another key
+  ---
+  duration_ms: 71.434666
+  type: 'test'
+  ...
+# Subtest: OA key without independently verifiable evidence is withheld and the same session closes
+ok 99 - OA key without independently verifiable evidence is withheld and the same session closes
+  ---
+  duration_ms: 69.666463
+  type: 'test'
+  ...
+# Subtest: OA evidence is checked before volatile key delivery and a restarted SDK cannot revive the key
+ok 100 - OA evidence is checked before volatile key delivery and a restarted SDK cannot revive the key
+  ---
+  duration_ms: 93.809842
+  type: 'test'
+  ...
+# Subtest: untrusted OA evidence and verifier failures close without exposing or persisting a usable key
+    # Subtest: missing independent pin
+    ok 1 - missing independent pin
+      ---
+      duration_ms: 43.236319
+      type: 'test'
+      ...
+    # Subtest: missing evidence
+    ok 2 - missing evidence
+      ---
+      duration_ms: 53.951022
+      type: 'test'
+      ...
+    # Subtest: null evidence
+    ok 3 - null evidence
+      ---
+      duration_ms: 45.459631
+      type: 'test'
+      ...
+    # Subtest: injected verifier URL
+    ok 4 - injected verifier URL
+      ---
+      duration_ms: 40.839065
+      type: 'test'
+      ...
+    # Subtest: wrong station
+    ok 5 - wrong station
+      ---
+      duration_ms: 37.49745
+      type: 'test'
+      ...
+    # Subtest: malformed signature
+    ok 6 - malformed signature
+      ---
+      duration_ms: 44.911239
+      type: 'test'
+      ...
+    # Subtest: unknown evidence field
+    ok 7 - unknown evidence field
+      ---
+      duration_ms: 37.518837
+      type: 'test'
+      ...
+    # Subtest: wrong attestation flag type
+    ok 8 - wrong attestation flag type
+      ---
+      duration_ms: 37.960304
+      type: 'test'
+      ...
+    # Subtest: string evidence expiry
+    ok 9 - string evidence expiry
+      ---
+      duration_ms: 32.122546
+      type: 'test'
+      ...
+    # Subtest: unsafe evidence expiry
+    ok 10 - unsafe evidence expiry
+      ---
+      duration_ms: 32.858037
+      type: 'test'
+      ...
+    # Subtest: fractional evidence expiry
+    ok 11 - fractional evidence expiry
+      ---
+      duration_ms: 44.012727
+      type: 'test'
+      ...
+    # Subtest: numeric lease expiry
+    ok 12 - numeric lease expiry
+      ---
+      duration_ms: 46.467544
+      type: 'test'
+      ...
+    # Subtest: noncanonical lease expiry
+    ok 13 - noncanonical lease expiry
+      ---
+      duration_ms: 37.787563
+      type: 'test'
+      ...
+    # Subtest: missing lease expiry
+    ok 14 - missing lease expiry
+      ---
+      duration_ms: 32.071845
+      type: 'test'
+      ...
+    # Subtest: expired lease
+    ok 15 - expired lease
+      ---
+      duration_ms: 31.691512
+      type: 'test'
+      ...
+    # Subtest: evidence expires before lease
+    ok 16 - evidence expires before lease
+      ---
+      duration_ms: 44.739969
+      type: 'test'
+      ...
+    # Subtest: excessive expiry skew
+    ok 17 - excessive expiry skew
+      ---
+      duration_ms: 40.783952
+      type: 'test'
+      ...
+    # Subtest: verifier rejects substituted key
+    ok 18 - verifier rejects substituted key
+      ---
+      duration_ms: 40.12928
+      type: 'test'
+      ...
+    # Subtest: HTTP failure with verified body
+    ok 19 - HTTP failure with verified body
+      ---
+      duration_ms: 38.906352
+      type: 'test'
+      ...
+    # Subtest: network timeout
+    ok 20 - network timeout
+      ---
+      duration_ms: 43.989704
+      type: 'test'
+      ...
+    # Subtest: duplicate JSON status
+    ok 21 - duplicate JSON status
+      ---
+      duration_ms: 46.232861
+      type: 'test'
+      ...
+    # Subtest: wrong verifier status type
+    ok 22 - wrong verifier status type
+      ---
+      duration_ms: 46.824409
+      type: 'test'
+      ...
+    # Subtest: expiry crossed during verification
+    ok 23 - expiry crossed during verification
+      ---
+      duration_ms: 46.263007
+      type: 'test'
+      ...
+    1..23
+ok 101 - untrusted OA evidence and verifier failures close without exposing or persisting a usable key
+  ---
+  duration_ms: 950.631256
+  type: 'test'
+  ...
+# Subtest: OA verifier pins are detached from mutable caller options and the existing 65-second issuer skew is accepted
+ok 102 - OA verifier pins are detached from mutable caller options and the existing 65-second issuer skew is accepted
+  ---
+  duration_ms: 28.532741
+  type: 'test'
+  ...
+# Subtest: OA failed close retains keyless closing state and can settle without verifier access
+ok 103 - OA failed close retains keyless closing state and can settle without verifier access
+  ---
+  duration_ms: 54.468384
+  type: 'test'
+  ...
+# Subtest: changed saved OA evidence is independently rechecked against the current in-memory key
+    # Subtest: legacy
+    ok 1 - legacy
+      ---
+      duration_ms: 69.850544
+      type: 'test'
+      ...
+    # Subtest: evidence
+    ok 2 - evidence
+      ---
+      duration_ms: 70.897295
+      type: 'test'
+      ...
+    # Subtest: expiry
+    ok 3 - expiry
+      ---
+      duration_ms: 73.797941
+      type: 'test'
+      ...
+    1..3
+ok 104 - changed saved OA evidence is independently rechecked against the current in-memory key
+  ---
+  duration_ms: 215.442203
+  type: 'test'
+  ...
+# Subtest: SETTLED text with failed successor verification preserves old note and unresolved authorization
+ok 105 - SETTLED text with failed successor verification preserves old note and unresolved authorization
+  ---
+  duration_ms: 54.972149
+  type: 'test'
+  ...
+# Subtest: verified successor is committed with old state and transcript before a note becomes available
+ok 106 - verified successor is committed with old state and transcript before a note becomes available
+  ---
+  duration_ms: 65.942369
+  type: 'test'
+  ...
+# Subtest: server session identity substitution cannot change the note
+ok 107 - server session identity substitution cannot change the note
+  ---
+  duration_ms: 36.780487
+  type: 'test'
+  ...
+# Subtest: duplicate receipt and nonadvancing cursor both block settlement before the verifier
+ok 108 - duplicate receipt and nonadvancing cursor both block settlement before the verifier
+  ---
+  duration_ms: 92.870638
+  type: 'test'
+  ...
+# Subtest: inference persists exact bytes before send; response loss and restart cannot auto replay
+ok 109 - inference persists exact bytes before send; response loss and restart cannot auto replay
+  ---
+  duration_ms: 77.957035
+  type: 'test'
+  ...
+# Subtest: concurrent senders dispatch one inference and 409 points at status without retrying
+ok 110 - concurrent senders dispatch one inference and 409 points at status without retrying
+  ---
+  duration_ms: 82.257216
+  type: 'test'
+  ...
+# Subtest: failed durable save stops authorization dispatch and failed RP verification never creates pending state
+ok 111 - failed durable save stops authorization dispatch and failed RP verification never creates pending state
+  ---
+  duration_ms: 21.191661
+  type: 'test'
+  ...
+# Subtest: duplicate JSON fields in status fail closed without advancing state
+ok 112 - duplicate JSON fields in status fail closed without advancing state
+  ---
+  duration_ms: 30.667474
+  type: 'test'
+  ...
+# Subtest: browser-compatible credential encoding is byte-identical to Node base64url including both substituted alphabet characters and padding
+ok 113 - browser-compatible credential encoding is byte-identical to Node base64url including both substituted alphabet characters and padding
+  ---
+  duration_ms: 5.294256
+  type: 'test'
+  ...
+# Subtest: credential mode is explicit and expiry warning includes the Active principal treasury consequence
+ok 114 - credential mode is explicit and expiry warning includes the Active principal treasury consequence
+  ---
+  duration_ms: 1.045131
+  type: 'test'
+  ...
+# Subtest: quote verifies real Ed25519 and signed tariff binding while preserving request/price snapshots
+ok 115 - quote verifies real Ed25519 and signed tariff binding while preserving request/price snapshots
+  ---
+  duration_ms: 11.175724
+  type: 'test'
+  ...
+# Subtest: quote rejects altered signature, body digest, tariff bytes and unpinned tariff
+ok 116 - quote rejects altered signature, body digest, tariff bytes and unpinned tariff
+  ---
+  duration_ms: 9.93712
+  type: 'test'
+  ...
+# Subtest: validly signed quotes cannot substitute deployment, pool, mode, provider, model, tariff or API origins
+ok 117 - validly signed quotes cannot substitute deployment, pool, mode, provider, model, tariff or API origins
+  ---
+  duration_ms: 21.20074
+  type: 'test'
+  ...
+# Subtest: quote admission accepts issued_at and rejects expires_at equality, future quotes, bad TTL and concurrency
+ok 118 - quote admission accepts issued_at and rejects expires_at equality, future quotes, bad TTL and concurrency
+  ---
+  duration_ms: 15.776438
+  type: 'test'
+  ...
+# Subtest: tariff validity is bound to quote issue time including the exclusive valid_until boundary
+ok 119 - tariff validity is bound to quote issue time including the exclusive valid_until boundary
+  ---
+  duration_ms: 8.150473
+  type: 'test'
+  ...
+# Subtest: quote rejects extra prompt/secret fields, implicit mode and invalid selection before any request leaves the client
+ok 120 - quote rejects extra prompt/secret fields, implicit mode and invalid selection before any request leaves the client
+  ---
+  duration_ms: 5.921515
+  type: 'test'
+  ...
+# Subtest: expired never-sent authorization remains cancellable and can be replaced without changing the note state
+ok 121 - expired never-sent authorization remains cancellable and can be replaced without changing the note state
+  ---
+  duration_ms: 73.511832
+  type: 'test'
+  ...
+# Subtest: possibly-sent authorization cannot be cancelled and recovers identical bytes after quote expiry
+ok 122 - possibly-sent authorization cannot be cancelled and recovers identical bytes after quote expiry
+  ---
+  duration_ms: 68.230168
+  type: 'test'
+  ...
+# Subtest: schema 2 survives every ControlClient authorization, inference, recovery and settlement writer
+ok 123 - schema 2 survives every ControlClient authorization, inference, recovery and settlement writer
+  ---
+  duration_ms: 115.03526
+  type: 'test'
+  ...
+# Subtest: deployment loader requires independent descriptor pin and safe public transport before fetching
+ok 124 - deployment loader requires independent descriptor pin and safe public transport before fetching
+  ---
+  duration_ms: 2.496901
+  type: 'test'
+  ...
+# Subtest: descriptor mismatch prevents every artifact download and omits credentials
+ok 125 - descriptor mismatch prevents every artifact download and omits credentials
+  ---
+  duration_ms: 10.236689
+  type: 'test'
+  ...
+# Subtest: pinned descriptors cannot escape their static directory or remove artifact size bounds
+ok 126 - pinned descriptors cannot escape their static directory or remove artifact size bounds
+  ---
+  duration_ms: 16.752893
+  type: 'test'
+  ...
+# Subtest: oversized descriptor streams are canceled and private stream errors stay redacted
+ok 127 - oversized descriptor streams are canceled and private stream errors stay redacted
+  ---
+  duration_ms: 1.54283
+  type: 'test'
+  ...
+# Subtest: overall deadline and caller abort reach a pending fetch without retry
+ok 128 - overall deadline and caller abort reach a pending fetch without retry
+  ---
+  duration_ms: 16.983083
+  type: 'test'
+  ...
+# Subtest: deadline bounds custom stalled response bodies, cancellation and fetch implementations
+ok 129 - deadline bounds custom stalled response bodies, cancellation and fetch implementations
+  ---
+  duration_ms: 31.925847
+  type: 'test'
+  ...
+# Subtest: schema one retains exact validation and returns an empty notices map
+ok 130 - schema one retains exact validation and returns an empty notices map
+  ---
+  duration_ms: 27.852282
+  type: 'test'
+  ...
+# Subtest: schema two downloads and authenticates every notice alongside the proof assets
+ok 131 - schema two downloads and authenticates every notice alongside the proof assets
+  ---
+  duration_ms: 17.919263
+  type: 'test'
+  ...
+# Subtest: missing, changed or oversized schema two notice bytes fail the whole load without retry
+ok 132 - missing, changed or oversized schema two notice bytes fail the whole load without retry
+  ---
+  duration_ms: 42.516822
+  type: 'test'
+  ...
+# Subtest: schema two notice labels, paths, counts, references and size bounds reject before asset downloads
+ok 133 - schema two notice labels, paths, counts, references and size bounds reject before asset downloads
+  ---
+  duration_ms: 11.191381
+  type: 'test'
+  ...
+# Subtest: the shared Rust/browser binding vectors match byte for byte
+ok 134 - the shared Rust/browser binding vectors match byte for byte
+  ---
+  duration_ms: 8.038195
+  type: 'test'
+  ...
+# Subtest: each Solana identity component changes the binding
+ok 135 - each Solana identity component changes the binding
+  ---
+  duration_ms: 2.807451
+  type: 'test'
+  ...
+# Subtest: integer charges round once per session and respect cap
+ok 136 - integer charges round once per session and respect cap
+  ---
+  duration_ms: 0.904428
+  type: 'test'
+  ...
+# Subtest: external fields reject noncanonical values instead of reducing
+ok 137 - external fields reject noncanonical values instead of reducing
+  ---
+  duration_ms: 0.730353
+  type: 'test'
+  ...
+# Subtest: Schnorr scalars use the Baby-JubJub bound, independently of Fr
+ok 138 - Schnorr scalars use the Baby-JubJub bound, independently of Fr
+  ---
+  duration_ms: 0.370061
+  type: 'test'
+  ...
+# Subtest: operation framing binds endpoint, version and exact UTF-8 bytes
+ok 139 - operation framing binds endpoint, version and exact UTF-8 bytes
+  ---
+  duration_ms: 1.219747
+  type: 'test'
+  ...
+# Subtest: application facade preserves compact durable sign-once and read-only unknown-send recovery
+ok 140 - application facade preserves compact durable sign-once and read-only unknown-send recovery
+  ---
+  duration_ms: 685.096699
+  type: 'test'
+  ...
+# Subtest: compact encoding exactly expands original canonical proof and refuses mismatched redundant fields
+ok 141 - compact encoding exactly expands original canonical proof and refuses mismatched redundant fields
+  ---
+  duration_ms: 3.751032
+  type: 'test'
+  ...
+# Subtest: compact self-pay and independent payer plans use one financial instruction and 1007/1103/1199 bytes
+ok 142 - compact self-pay and independent payer plans use one financial instruction and 1007/1103/1199 bytes
+  ---
+  duration_ms: 78.087873
+  type: 'test'
+  ...
+# Subtest: normal inline deposit signs once, sends once, binds finalized receipt and note, and remains schema 2
+ok 143 - normal inline deposit signs once, sends once, binds finalized receipt and note, and remains schema 2
+  ---
+  duration_ms: 325.599684
+  type: 'test'
+  ...
+# Subtest: schema 1 buffer deposit stays buffer and read-only open never rewrites its schema or transport
+ok 144 - schema 1 buffer deposit stays buffer and read-only open never rewrites its schema or transport
+  ---
+  duration_ms: 45.854858
+  type: 'test'
+  ...
+# Subtest: failed signed CAS sends nothing; restart can sign once again only when commit did not happen
+ok 145 - failed signed CAS sends nothing; restart can sign once again only when commit did not happen
+  ---
+  duration_ms: 272.04152
+  type: 'test'
+  ...
+# Subtest: lost durable commit ACK and unknown send never auto resend; explicit recovery sends only exact saved bytes
+ok 146 - lost durable commit ACK and unknown send never auto resend; explicit recovery sends only exact saved bytes
+  ---
+  duration_ms: 737.277997
+  type: 'test'
+  ...
+# Subtest: expired, confirmed, mismatched receipt and RPC disagreement cannot rebase, fallback or sign again
+ok 147 - expired, confirmed, mismatched receipt and RPC disagreement cannot rebase, fallback or sign again
+  ---
+  duration_ms: 1245.723943
+  type: 'test'
+  ...
+# Subtest: exact finalized stale rejection requires explicit retry; reproof preserves operation, secret and amount
+ok 148 - exact finalized stale rejection requires explicit retry; reproof preserves operation, secret and amount
+  ---
+  duration_ms: 425.336303
+  type: 'test'
+  ...
+# Subtest: unsigned pre-sign snapshot race rebuilds same secret without a signature or send
+ok 149 - unsigned pre-sign snapshot race rebuilds same secret without a signature or send
+  ---
+  duration_ms: 72.989184
+  type: 'test'
+  ...
+# Subtest: unsigned reproof preserves an explicitly selected fee through a proof crash and reopen
+ok 150 - unsigned reproof preserves an explicitly selected fee through a proof crash and reopen
+  ---
+  duration_ms: 215.116468
+  type: 'test'
+  ...
+# Subtest: fee selected before the first proof remains durable when proving is interrupted
+ok 151 - fee selected before the first proof remains durable when proving is interrupted
+  ---
+  duration_ms: 119.330501
+  type: 'test'
+  ...
+# Subtest: older inline journals retain their plan fee through unsigned and rejected reproof
+ok 152 - older inline journals retain their plan fee through unsigned and rejected reproof
+  ---
+  duration_ms: 694.71583
+  type: 'test'
+  ...
+# Subtest: inline fee journal rejects noncanonical values and disagreement with saved plans or attempts
+ok 153 - inline fee journal rejects noncanonical values and disagreement with saved plans or attempts
+  ---
+  duration_ms: 460.142792
+  type: 'test'
+  ...
+# Subtest: receipt before final CAS crash recovers without sending; absent/other/stale Note never activates
+ok 154 - receipt before final CAS crash recovers without sending; absent/other/stale Note never activates
+  ---
+  duration_ms: 1026.737584
+  type: 'test'
+  ...
+# Subtest: schema 2 refuses buffer fields, downgrade, mixed attempts and wire substitution before persistence
+ok 155 - schema 2 refuses buffer fields, downgrade, mixed attempts and wire substitution before persistence
+  ---
+  duration_ms: 352.391627
+  type: 'test'
+  ...
+# Subtest: two wallet clients share one lock and persisted attempt; only one prompts and dispatches
+ok 156 - two wallet clients share one lock and persisted attempt; only one prompts and dispatches
+  ---
+  duration_ms: 262.122594
+  type: 'test'
+  ...
+# Subtest: wallet rejection and message mutation cannot persist or dispatch a financial attempt
+ok 157 - wallet rejection and message mutation cannot persist or dispatch a financial attempt
+  ---
+  duration_ms: 143.597658
+  type: 'test'
+  ...
+# Subtest: ambiguous legacy roles and unverified capability are rejected before witness persistence
+ok 158 - ambiguous legacy roles and unverified capability are rejected before witness persistence
+  ---
+  duration_ms: 6.063237
+  type: 'test'
+  ...
+# Subtest: a different verified manifest cannot replace pins on an unresolved operation, even with exact receipt
+ok 159 - a different verified manifest cannot replace pins on an unresolved operation, even with exact receipt
+  ---
+  duration_ms: 313.917207
+  type: 'test'
+  ...
+# Subtest: proof crash retains witness and chosen inline transport; only explicit resume invokes proof again
+ok 160 - proof crash retains witness and chosen inline transport; only explicit resume invokes proof again
+  ---
+  duration_ms: 48.726999
+  type: 'test'
+  ...
+# Subtest: post-deposit withdrawal still uses buffer with schema 2 and preserves inline history
+ok 161 - post-deposit withdrawal still uses buffer with schema 2 and preserves inline history
+  ---
+  duration_ms: 552.190753
+  type: 'test'
+  ...
+# Subtest: journal cannot hide an older unknown signed attempt behind a new current or finalized attempt
+ok 162 - journal cannot hide an older unknown signed attempt behind a new current or finalized attempt
+  ---
+  duration_ms: 329.806584
+  type: 'test'
+  ...
+# Subtest: schema 2 full lifecycle and encrypted reopen mutual_close
+ok 163 - schema 2 full lifecycle and encrypted reopen mutual_close
+  ---
+  duration_ms: 3614.072656
+  type: 'test'
+  ...
+# preserved inline history with 2 completed/cancelled operations, 6 signatures
+# Subtest: schema 2 full lifecycle and encrypted reopen initiate_escape
+ok 164 - schema 2 full lifecycle and encrypted reopen initiate_escape
+  ---
+  duration_ms: 3470.956232
+  type: 'test'
+  ...
+# preserved inline history with 3 completed/cancelled operations, 7 signatures
+# Subtest: schema 2 full lifecycle and encrypted reopen fallback
+ok 165 - schema 2 full lifecycle and encrypted reopen fallback
+  ---
+  duration_ms: 4185.604843
+  type: 'test'
+  ...
+# preserved inline history with 4 completed/cancelled operations, 7 signatures
+# Subtest: browser readiness ignores empty or partially written DevTools port files
+ok 166 - browser readiness ignores empty or partially written DevTools port files
+  ---
+  duration_ms: 1.037728
+  type: 'test'
+  ...
+# Subtest: browser document readiness waits through navigation before initialization
+ok 167 - browser document readiness waits through navigation before initialization
+  ---
+  duration_ms: 21.583555
+  type: 'test'
+  ...
+# Subtest: browser document readiness does not retry unrelated debugger failures
+ok 168 - browser document readiness does not retry unrelated debugger failures
+  ---
+  duration_ms: 0.868351
+  type: 'test'
+  ...
+# Subtest: browser cleanup does not await an already observed signal exit
+ok 169 - browser cleanup does not await an already observed signal exit
+  ---
+  duration_ms: 31.014422
+  type: 'test'
+  ...
+# Subtest: browser cleanup escalates when a process ignores TERM
+ok 170 - browser cleanup escalates when a process ignores TERM
+  ---
+  duration_ms: 1542.98391
+  type: 'test'
+  ...
+# Subtest: real browser journal: atomic cross-tab CAS, encrypted restart, Web Locks and tab crash recovery
+ok 171 - real browser journal: atomic cross-tab CAS, encrypted restart, Web Locks and tab crash recovery
+  ---
+  duration_ms: 1930.858889
+  type: 'test'
+  ...
+# Runtime browser: Chrome/154.0.8037.57
+# Actual isolated browser storage retention: best_effort
+# Subtest: native journal atomically persists exact request/token and old state without plaintext leakage; restart resumes
+ok 172 - native journal atomically persists exact request/token and old state without plaintext leakage; restart resumes
+  ---
+  duration_ms: 70.099024
+  type: 'test'
+  ...
+# Subtest: concurrent native journals allow only one create and one revision CAS
+ok 173 - concurrent native journals allow only one create and one revision CAS
+  ---
+  duration_ms: 47.645741
+  type: 'test'
+  ...
+# Subtest: AES authentication rejects wrong keys, context substitution, ciphertext corruption and corrupted overwrite
+ok 174 - AES authentication rejects wrong keys, context substitution, ciphertext corruption and corrupted overwrite
+  ---
+  duration_ms: 22.062639
+  type: 'test'
+  ...
+# Subtest: stale/divergent backups fail closed; fresh restore requires independently trusted exact head
+ok 175 - stale/divergent backups fail closed; fresh restore requires independently trusted exact head
+  ---
+  duration_ms: 44.842527
+  type: 'test'
+  ...
+# Subtest: storage failure never acknowledges a pending request and caller mutation cannot alter a commit
+ok 176 - storage failure never acknowledges a pending request and caller mutation cannot alter a commit
+  ---
+  duration_ms: 12.224201
+  type: 'test'
+  ...
+# Subtest: native operation locks serialize workers and release after exceptions
+ok 177 - native operation locks serialize workers and release after exceptions
+  ---
+  duration_ms: 39.853015
+  type: 'test'
+  ...
+# Subtest: GC cannot release a live operation lock; process death releases it and restart loads ciphertext
+ok 178 - GC cannot release a live operation lock; process death releases it and restart loads ciphertext
+  ---
+  duration_ms: 281.151276
+  type: 'test'
+  ...
+# Subtest: I04 transport adapter retains exact attempts, deduplicates identical signatures and rejects changed bytes
+ok 179 - I04 transport adapter retains exact attempts, deduplicates identical signatures and rejects changed bytes
+  ---
+  duration_ms: 29.581734
+  type: 'test'
+  ...
+# Subtest: real I04 wallet-signed v0 attempt resumes from encrypted transport journal with identical wire bytes
+ok 180 - real I04 wallet-signed v0 attempt resumes from encrypted transport journal with identical wire bytes
+  ---
+  duration_ms: 183.24208
+  type: 'test'
+  ...
+# Subtest: async journal validation is awaited and cannot observe caller mutation during commit
+ok 181 - async journal validation is awaited and cannot observe caller mutation during commit
+  ---
+  duration_ms: 40.08578
+  type: 'test'
+  ...
+# Subtest: async validator rejection fences create, read and backup restore without writing
+ok 182 - async validator rejection fences create, read and backup restore without writing
+  ---
+  duration_ms: 17.514939
+  type: 'test'
+  ...
+# Subtest: Kit preserves signed wire and old-journal recovery 1: deposit/create
+ok 183 - Kit preserves signed wire and old-journal recovery 1: deposit/create
+  ---
+  duration_ms: 193.235619
+  type: 'test'
+  ...
+# Subtest: Kit preserves signed wire and old-journal recovery 2: deposit/append
+ok 184 - Kit preserves signed wire and old-journal recovery 2: deposit/append
+  ---
+  duration_ms: 70.281353
+  type: 'test'
+  ...
+# Subtest: Kit preserves signed wire and old-journal recovery 3: deposit/seal
+ok 185 - Kit preserves signed wire and old-journal recovery 3: deposit/seal
+  ---
+  duration_ms: 71.068359
+  type: 'test'
+  ...
+# Subtest: Kit preserves signed wire and old-journal recovery 4: deposit/execute
+ok 186 - Kit preserves signed wire and old-journal recovery 4: deposit/execute
+  ---
+  duration_ms: 83.00298
+  type: 'test'
+  ...
+# Subtest: Kit preserves signed wire and old-journal recovery 5: deposit/close
+ok 187 - Kit preserves signed wire and old-journal recovery 5: deposit/close
+  ---
+  duration_ms: 62.459876
+  type: 'test'
+  ...
+# Subtest: Kit preserves signed wire and old-journal recovery 6: mutual_close/create
+ok 188 - Kit preserves signed wire and old-journal recovery 6: mutual_close/create
+  ---
+  duration_ms: 80.661962
+  type: 'test'
+  ...
+# Subtest: Kit preserves signed wire and old-journal recovery 7: mutual_close/append
+ok 189 - Kit preserves signed wire and old-journal recovery 7: mutual_close/append
+  ---
+  duration_ms: 92.532068
+  type: 'test'
+  ...
+# Subtest: Kit preserves signed wire and old-journal recovery 8: mutual_close/append
+ok 190 - Kit preserves signed wire and old-journal recovery 8: mutual_close/append
+  ---
+  duration_ms: 88.485623
+  type: 'test'
+  ...
+# Subtest: Kit preserves signed wire and old-journal recovery 9: mutual_close/seal
+ok 191 - Kit preserves signed wire and old-journal recovery 9: mutual_close/seal
+  ---
+  duration_ms: 81.857986
+  type: 'test'
+  ...
+# Subtest: Kit preserves signed wire and old-journal recovery 10: mutual_close/execute
+ok 192 - Kit preserves signed wire and old-journal recovery 10: mutual_close/execute
+  ---
+  duration_ms: 118.120284
+  type: 'test'
+  ...
+# Subtest: Kit preserves signed wire and old-journal recovery 11: mutual_close/close
+ok 193 - Kit preserves signed wire and old-journal recovery 11: mutual_close/close
+  ---
+  duration_ms: 107.008377
+  type: 'test'
+  ...
+# Subtest: Kit preserves signed wire and old-journal recovery 12: initiate_escape/create
+ok 194 - Kit preserves signed wire and old-journal recovery 12: initiate_escape/create
+  ---
+  duration_ms: 84.275355
+  type: 'test'
+  ...
+# Subtest: Kit preserves signed wire and old-journal recovery 13: initiate_escape/append
+ok 195 - Kit preserves signed wire and old-journal recovery 13: initiate_escape/append
+  ---
+  duration_ms: 98.585956
+  type: 'test'
+  ...
+# Subtest: Kit preserves signed wire and old-journal recovery 14: initiate_escape/append
+ok 196 - Kit preserves signed wire and old-journal recovery 14: initiate_escape/append
+  ---
+  duration_ms: 95.515981
+  type: 'test'
+  ...
+# Subtest: Kit preserves signed wire and old-journal recovery 15: initiate_escape/seal
+ok 197 - Kit preserves signed wire and old-journal recovery 15: initiate_escape/seal
+  ---
+  duration_ms: 86.504883
+  type: 'test'
+  ...
+# Subtest: Kit preserves signed wire and old-journal recovery 16: initiate_escape/execute
+ok 198 - Kit preserves signed wire and old-journal recovery 16: initiate_escape/execute
+  ---
+  duration_ms: 120.78365
+  type: 'test'
+  ...
+# Subtest: Kit preserves signed wire and old-journal recovery 17: initiate_escape/close
+ok 199 - Kit preserves signed wire and old-journal recovery 17: initiate_escape/close
+  ---
+  duration_ms: 96.869538
+  type: 'test'
+  ...
+# Subtest: Kit preserves signed wire and old-journal recovery 18: challenge_escape/create
+ok 200 - Kit preserves signed wire and old-journal recovery 18: challenge_escape/create
+  ---
+  duration_ms: 89.672341
+  type: 'test'
+  ...
+# Subtest: Kit preserves signed wire and old-journal recovery 19: challenge_escape/append
+ok 201 - Kit preserves signed wire and old-journal recovery 19: challenge_escape/append
+  ---
+  duration_ms: 82.334024
+  type: 'test'
+  ...
+# Subtest: Kit preserves signed wire and old-journal recovery 20: challenge_escape/append
+ok 202 - Kit preserves signed wire and old-journal recovery 20: challenge_escape/append
+  ---
+  duration_ms: 82.923612
+  type: 'test'
+  ...
+# Subtest: Kit preserves signed wire and old-journal recovery 21: challenge_escape/seal
+ok 203 - Kit preserves signed wire and old-journal recovery 21: challenge_escape/seal
+  ---
+  duration_ms: 105.896479
+  type: 'test'
+  ...
+# Subtest: Kit preserves signed wire and old-journal recovery 22: challenge_escape/execute
+ok 204 - Kit preserves signed wire and old-journal recovery 22: challenge_escape/execute
+  ---
+  duration_ms: 118.060091
+  type: 'test'
+  ...
+# Subtest: Kit preserves signed wire and old-journal recovery 23: challenge_escape/close
+ok 205 - Kit preserves signed wire and old-journal recovery 23: challenge_escape/close
+  ---
+  duration_ms: 80.814779
+  type: 'test'
+  ...
+# Subtest: Kit preserves signed wire and old-journal recovery 24: claim_expired/create
+ok 206 - Kit preserves signed wire and old-journal recovery 24: claim_expired/create
+  ---
+  duration_ms: 63.423325
+  type: 'test'
+  ...
+# Subtest: Kit preserves signed wire and old-journal recovery 25: claim_expired/append
+ok 207 - Kit preserves signed wire and old-journal recovery 25: claim_expired/append
+  ---
+  duration_ms: 60.134335
+  type: 'test'
+  ...
+# Subtest: Kit preserves signed wire and old-journal recovery 26: claim_expired/seal
+ok 208 - Kit preserves signed wire and old-journal recovery 26: claim_expired/seal
+  ---
+  duration_ms: 59.27988
+  type: 'test'
+  ...
+# Subtest: Kit preserves signed wire and old-journal recovery 27: claim_expired/execute
+ok 209 - Kit preserves signed wire and old-journal recovery 27: claim_expired/execute
+  ---
+  duration_ms: 84.101457
+  type: 'test'
+  ...
+# Subtest: Kit preserves signed wire and old-journal recovery 28: claim_expired/close
+ok 210 - Kit preserves signed wire and old-journal recovery 28: claim_expired/close
+  ---
+  duration_ms: 67.675649
+  type: 'test'
+  ...
+# Subtest: Kit preserves signed wire and old-journal recovery 29: finalize_escape/finalize
+ok 211 - Kit preserves signed wire and old-journal recovery 29: finalize_escape/finalize
+  ---
+  duration_ms: 39.645528
+  type: 'test'
+  ...
+# Subtest: Kit preserves signed wire and old-journal recovery 30: deposit_inline/deposit_inline
+ok 212 - Kit preserves signed wire and old-journal recovery 30: deposit_inline/deposit_inline
+  ---
+  duration_ms: 79.738354
+  type: 'test'
+  ...
+# Subtest: Kit preserves signed wire and old-journal recovery 31: deposit_inline/deposit_inline
+ok 213 - Kit preserves signed wire and old-journal recovery 31: deposit_inline/deposit_inline
+  ---
+  duration_ms: 77.667853
+  type: 'test'
+  ...
+# Subtest: Kit signature map identity, ordering, duplicate accounts and canonical encoding are checked
+ok 214 - Kit signature map identity, ordering, duplicate accounts and canonical encoding are checked
+  ---
+  duration_ms: 11.133303
+  type: 'test'
+  ...
+# Subtest: custom Kit RPC keeps full u64 precision and exact explicit commitments
+ok 215 - custom Kit RPC keeps full u64 precision and exact explicit commitments
+  ---
+  duration_ms: 7.00197
+  type: 'test'
+  ...
+# Subtest: Kit RPC finalized base64 receipts retain Anchor error codes and reject unsafe slots
+ok 216 - Kit RPC finalized base64 receipts retain Anchor error codes and reject unsafe slots
+  ---
+  duration_ms: 123.028575
+  type: 'test'
+  ...
+# Subtest: one pinned public profile loads all assets and preflights without custody, quotes, AUTH, inference or selected-note reads
+ok 217 - one pinned public profile loads all assets and preflights without custody, quotes, AUTH, inference or selected-note reads
+  ---
+  duration_ms: 110.334261
+  type: 'test'
+  ...
+# Subtest: independent profile hash and retained installation pin fail before following downloaded inputs
+ok 218 - independent profile hash and retained installation pin fail before following downloaded inputs
+  ---
+  duration_ms: 15.967633
+  type: 'test'
+  ...
+# Subtest: profile compatibility, public URLs, modes, capabilities and closed fields fail before asset fetch
+ok 219 - profile compatibility, public URLs, modes, capabilities and closed fields fail before asset fetch
+  ---
+  duration_ms: 140.753483
+  type: 'test'
+  ...
+# Subtest: manifest/artifact/WASM and model tariff mismatches are rejected before financial or chain operations
+ok 220 - manifest/artifact/WASM and model tariff mismatches are rejected before financial or chain operations
+  ---
+  duration_ms: 66.622982
+  type: 'test'
+  ...
+# Subtest: preflight names failing RPC, Pool, control, catalog, stale-clock and snapshot components without private errors
+ok 221 - preflight names failing RPC, Pool, control, catalog, stale-clock and snapshot components without private errors
+  ---
+  duration_ms: 190.667283
+  type: 'test'
+  ...
+# Subtest: paused deployment retains read-only diagnosis and never reports admission ready
+ok 222 - paused deployment retains read-only diagnosis and never reports admission ready
+  ---
+  duration_ms: 41.003008
+  type: 'test'
+  ...
+# Subtest: authenticated configuration and byte getters cannot be rebound by caller mutation
+ok 223 - authenticated configuration and byte getters cannot be rebound by caller mutation
+  ---
+  duration_ms: 34.572079
+  type: 'test'
+  ...
+# Subtest: authenticated schema-2 notices remain detached across asset getters
+ok 224 - authenticated schema-2 notices remain detached across asset getters
+  ---
+  duration_ms: 32.276508
+  type: 'test'
+  ...
+# Subtest: load and preflight deadlines bound custom fetch and body implementations without retries
+ok 225 - load and preflight deadlines bound custom fetch and body implementations without retries
+  ---
+  duration_ms: 63.954085
+  type: 'test'
+  ...
+# Subtest: duplicate JSON fields are rejected even if exact malicious bytes are pinned
+ok 226 - duplicate JSON fields are rejected even if exact malicious bytes are pinned
+  ---
+  duration_ms: 1.377982
+  type: 'test'
+  ...
+# Subtest: different selected notes and missing membership have identical network selectors
+ok 227 - different selected notes and missing membership have identical network selectors
+  ---
+  duration_ms: 61.824197
+  type: 'test'
+  ...
+# Subtest: no authorization fallback to note-selecting finance adapters
+ok 228 - no authorization fallback to note-selecting finance adapters
+  ---
+  duration_ms: 0.641698
+  type: 'test'
+  ...
+# Subtest: snapshot data, canonical form and descriptor identity are checked before proving
+ok 229 - snapshot data, canonical form and descriptor identity are checked before proving
+  ---
+  duration_ms: 1117.74544
+  type: 'test'
+  ...
+# Subtest: descriptor paths cannot redirect selected reads to an untrusted origin or endpoint
+ok 230 - descriptor paths cannot redirect selected reads to an untrusted origin or endpoint
+  ---
+  duration_ms: 23.555301
+  type: 'test'
+  ...
+# Subtest: finalized tree root, sequence, next ID and independent pool/genesis pins cannot be substituted
+ok 231 - finalized tree root, sequence, next ID and independent pool/genesis pins cannot be substituted
+  ---
+  duration_ms: 116.372304
+  type: 'test'
+  ...
+# Subtest: local verification failure and malformed worker output fail closed without network fallback
+ok 232 - local verification failure and malformed worker output fail closed without network fallback
+  ---
+  duration_ms: 41.116968
+  type: 'test'
+  ...
+# Subtest: invalid selected IDs and minimum slots are rejected before any network request
+ok 233 - invalid selected IDs and minimum slots are rejected before any network request
+  ---
+  duration_ms: 60.845949
+  type: 'test'
+  ...
+# Subtest: Kit RPC integer conversion preserves safe boundaries and refuses lossy numbers
+ok 234 - Kit RPC integer conversion preserves safe boundaries and refuses lossy numbers
+  ---
+  duration_ms: 1.805824
+  type: 'test'
+  ...
+# Subtest: base64 RPC account decoding preserves u64 lamports and rejects malformed wire data
+ok 235 - base64 RPC account decoding preserves u64 lamports and rejects malformed wire data
+  ---
+  duration_ms: 5.794297
+  type: 'test'
+  ...
+# Subtest: layout-2 encoding reuses canonical fields and matches independent fixture concatenation
+ok 236 - layout-2 encoding reuses canonical fields and matches independent fixture concatenation
+  ---
+  duration_ms: 6.660683
+  type: 'test'
+  ...
+# Subtest: all operation steps use real signed v0 <=1232 bytes with independent fee/payer/uploader/owner/rent
+ok 237 - all operation steps use real signed v0 <=1232 bytes with independent fee/payer/uploader/owner/rent
+  ---
+  duration_ms: 754.050863
+  type: 'test'
+  ...
+# Subtest: generated instruction discriminators/account flags match compiler-backed IDL
+ok 238 - generated instruction discriminators/account flags match compiler-backed IDL
+  ---
+  duration_ms: 27.638785
+  type: 'test'
+  ...
+# Subtest: expected_digest binds signed execute even when same PDA is recreated
+ok 239 - expected_digest binds signed execute even when same PDA is recreated
+  ---
+  duration_ms: 118.062214
+  type: 'test'
+  ...
+# Subtest: wallet rejection, unsupported version, message mutation and dropped signature stop sending
+ok 240 - wallet rejection, unsupported version, message mutation and dropped signature stop sending
+  ---
+  duration_ms: 50.994366
+  type: 'test'
+  ...
+# Subtest: verified transactions are detached from references retained by wallets
+ok 241 - verified transactions are detached from references retained by wallets
+  ---
+  duration_ms: 57.502119
+  type: 'test'
+  ...
+# Subtest: durable journal contains exact payload, snapshot, signature and expiry before any send
+ok 242 - durable journal contains exact payload, snapshot, signature and expiry before any send
+  ---
+  duration_ms: 167.212858
+  type: 'test'
+  ...
+# Subtest: wallet prompt edits cannot change the upload transaction or its persisted recovery context
+ok 243 - wallet prompt edits cannot change the upload transaction or its persisted recovery context
+  ---
+  duration_ms: 137.39438
+  type: 'test'
+  ...
+# Subtest: lost send response resends only the identical wire and recognizes finalized receipt
+ok 244 - lost send response resends only the identical wire and recognizes finalized receipt
+  ---
+  duration_ms: 198.656253
+  type: 'test'
+  ...
+# Subtest: RPC waits cannot substitute a different signed upload after journal validation
+ok 245 - RPC waits cannot substitute a different signed upload after journal validation
+  ---
+  duration_ms: 177.066217
+  type: 'test'
+  ...
+# Subtest: pending/unknown RPC state and missing buffer never become execute success or authorize new transaction
+ok 246 - pending/unknown RPC state and missing buffer never become execute success or authorize new transaction
+  ---
+  duration_ms: 250.459954
+  type: 'test'
+  ...
+# Subtest: finalized root/ID/expiry conflicts request fresh proofs and never rewrite existing authorization
+ok 247 - finalized root/ID/expiry conflicts request fresh proofs and never rewrite existing authorization
+  ---
+  duration_ms: 293.440752
+  type: 'test'
+  ...
+# Subtest: every upload crash boundary resumes from verified finalized prefix/seal state
+ok 248 - every upload crash boundary resumes from verified finalized prefix/seal state
+  ---
+  duration_ms: 76.22378
+  type: 'test'
+  ...
+# Subtest: finalized-expired upload refreshes only after exact buffer reconciliation
+ok 249 - finalized-expired upload refreshes only after exact buffer reconciliation
+  ---
+  duration_ms: 379.680458
+  type: 'test'
+  ...
+# Subtest: finalized buffer decoder rejects every header identity and inconsistent progress
+ok 250 - finalized buffer decoder rejects every header identity and inconsistent progress
+  ---
+  duration_ms: 24.565638
+  type: 'test'
+  ...
+# Subtest: Connection adapter keeps finalized recovery with default preparation and exact send response loss
+ok 251 - Connection adapter keeps finalized recovery with default preparation and exact send response loss
+  ---
+  duration_ms: 127.080394
+  type: 'test'
+  ...
+# Subtest: Connection adapter keeps finalized recovery with confirmed preparation and exact send response loss
+ok 252 - Connection adapter keeps finalized recovery with confirmed preparation and exact send response loss
+  ---
+  duration_ms: 115.663504
+  type: 'test'
+  ...
+# Subtest: standalone finalize has durable signed recovery, note/account binding and no new proof
+ok 253 - standalone finalize has durable signed recovery, note/account binding and no new proof
+  ---
+  duration_ms: 167.994673
+  type: 'test'
+  ...
+# Subtest: wallet prompt edits cannot change a finalization journal after the message is signed
+ok 254 - wallet prompt edits cannot change a finalization journal after the message is signed
+  ---
+  duration_ms: 76.968521
+  type: 'test'
+  ...
+# Subtest: RPC waits cannot change a finalization attempt after journal validation
+ok 255 - RPC waits cannot change a finalization attempt after journal validation
+  ---
+  duration_ms: 112.419436
+  type: 'test'
+  ...
+# Subtest: permissionless expired close records actual closer and never treats absence as success
+ok 256 - permissionless expired close records actual closer and never treats absence as success
+  ---
+  duration_ms: 128.310435
+  type: 'test'
+  ...
+# Subtest: strict parser preserves JCS ordering/numbers and rejects duplicate/invalid JSON before hashing
+ok 257 - strict parser preserves JCS ordering/numbers and rejects duplicate/invalid JSON before hashing
+  ---
+  duration_ms: 3.555327
+  type: 'test'
+  ...
+# Subtest: strict parser defaults to 1 MiB and permits only an explicit bounded local archive size
+ok 258 - strict parser defaults to 1 MiB and permits only an explicit bounded local archive size
+  ---
+  duration_ms: 42.263155
+  type: 'test'
+  ...
+# Subtest: expanded local archive limit retains duplicate, fatal UTF-8, depth and number checks
+ok 259 - expanded local archive limit retains duplicate, fatal UTF-8, depth and number checks
+  ---
+  duration_ms: 219.881111
+  type: 'test'
+  ...
+# Subtest: authenticates a full OpenAPI manifest via external distribution signature or digest; immutable result
+ok 260 - authenticates a full OpenAPI manifest via external distribution signature or digest; immutable result
+  ---
+  duration_ms: 33.228309
+  type: 'test'
+  ...
+# Subtest: rejects signed mismatched deployment, role keys, build/profile, binding, and malformed wire
+ok 261 - rejects signed mismatched deployment, role keys, build/profile, binding, and malformed wire
+  ---
+  duration_ms: 42.761186
+  type: 'test'
+  ...
+# Subtest: ceremony assertion requires independently reviewed transcripts and mainnet rejects relabeled public test keys
+ok 262 - ceremony assertion requires independently reviewed transcripts and mainnet rejects relabeled public test keys
+  ---
+  duration_ms: 8.939889
+  type: 'test'
+  ...
+# Subtest: explicit devnet test-only single-key custody preserves distribution and finalized PoolConfig admin pins
+ok 263 - explicit devnet test-only single-key custody preserves distribution and finalized PoolConfig admin pins
+  ---
+  duration_ms: 17.922284
+  type: 'test'
+  ...
+# Subtest: single-key custody cannot be relabeled as local, mainnet, another genesis, or ceremony verified
+ok 264 - single-key custody cannot be relabeled as local, mainnet, another genesis, or ceremony verified
+  ---
+  duration_ms: 14.33553
+  type: 'test'
+  ...
+# Subtest: single-key authority discriminant and fields are strict for both roles
+ok 265 - single-key authority discriminant and fields are strict for both roles
+  ---
+  duration_ms: 23.804224
+  type: 'test'
+  ...
+# Subtest: checks finalized raw Vault PoolConfig PDA/owner/layout/role pins/cap/profile and never trusts an unverified object
+ok 266 - checks finalized raw Vault PoolConfig PDA/owner/layout/role pins/cap/profile and never trusts an unverified object
+  ---
+  duration_ms: 25.801825
+  type: 'test'
+  ...
+# Subtest: application factory authenticates independent pins, tariffs and finalized pool without sending or running proofs
+ok 267 - application factory authenticates independent pins, tariffs and finalized pool without sending or running proofs
+  ---
+  duration_ms: 43.025701
+  type: 'test'
+  ...
+# Subtest: compact deposit requires authenticated capability and an independent build capability pin
+ok 268 - compact deposit requires authenticated capability and an independent build capability pin
+  ---
+  duration_ms: 16.291372
+  type: 'test'
+  ...
+# Subtest: compact capability rejects a pinned but incompatible IDL before any wallet signing
+ok 269 - compact capability rejects a pinned but incompatible IDL before any wallet signing
+  ---
+  duration_ms: 44.558158
+  type: 'test'
+  ...
+# Subtest: hashes exact artifact bytes, rejects each changed/missing artifact, and returns detached copies
+ok 270 - hashes exact artifact bytes, rejects each changed/missing artifact, and returns detached copies
+  ---
+  duration_ms: 21.725496
+  type: 'test'
+  ...
+# Subtest: verified client bundle retains entry-time pool and artifact snapshots for the prover
+ok 271 - verified client bundle retains entry-time pool and artifact snapshots for the prover
+  ---
+  duration_ms: 9.230881
+  type: 'test'
+  ...
+# Subtest: client context rejects initially altered artifacts even if buffers change during pool verification
+ok 272 - client context rejects initially altered artifacts even if buffers change during pool verification
+  ---
+  duration_ms: 10.053207
+  type: 'test'
+  ...
+# Subtest: confirmed blockhash preparation is opt-in and snapshotted while proof accounts stay finalized
+ok 273 - confirmed blockhash preparation is opt-in and snapshotted while proof accounts stay finalized
+  ---
+  duration_ms: 84.720113
+  type: 'test'
+  ...
+# Subtest: wallet snapshot promotes unchanged tree to one newer finalized account cut and propagates minimum slot
+ok 274 - wallet snapshot promotes unchanged tree to one newer finalized account cut and propagates minimum slot
+  ---
+  duration_ms: 20.948656
+  type: 'test'
+  ...
+# Subtest: wallet snapshot refuses changed root, next ID and restored-root ABA sequence
+ok 275 - wallet snapshot refuses changed root, next ID and restored-root ABA sequence
+  ---
+  duration_ms: 37.676903
+  type: 'test'
+  ...
+# Subtest: wallet snapshot refuses stale or unsafe account cuts and invalid minimums
+ok 276 - wallet snapshot refuses stale or unsafe account cuts and invalid minimums
+  ---
+  duration_ms: 76.459059
+  type: 'test'
+  ...
+# Subtest: wallet snapshot requires authentic source block and present canonical finalized target block
+ok 277 - wallet snapshot requires authentic source block and present canonical finalized target block
+  ---
+  duration_ms: 47.943408
+  type: 'test'
+  ...
+# Subtest: advanced cut still validates Pool, Note, Pending and Clock account bytes
+ok 278 - advanced cut still validates Pool, Note, Pending and Clock account bytes
+  ---
+  duration_ms: 160.759497
+  type: 'test'
+  ...
+# Subtest: signed clearance archives exact lost AUTH in the same journal, then ordinary SDK mutual withdrawal closes
+ok 279 - signed clearance archives exact lost AUTH in the same journal, then ordinary SDK mutual withdrawal closes
+  ---
+  duration_ms: 1837.853915
+  type: 'test'
+  ...
+# Subtest: accepted or racing AUTH makes authoritative clearance refuse; no AUTH or inference is replayed
+ok 280 - accepted or racing AUTH makes authoritative clearance refuse; no AUTH or inference is replayed
+  ---
+  duration_ms: 87.910179
+  type: 'test'
+  ...
+# Subtest: verified accepted-AUTH settlement retires only its refused clearance intent and permits successor withdrawal
+ok 281 - verified accepted-AUTH settlement retires only its refused clearance intent and permits successor withdrawal
+  ---
+  duration_ms: 1883.85175
+  type: 'test'
+  ...
+# Subtest: a stored clearance signature cannot be discarded by a conflicting settlement even with malformed requested phase
+    # Subtest: requested
+    ok 1 - requested
+      ---
+      duration_ms: 62.987722
+      type: 'test'
+      ...
+    # Subtest: verified
+    ok 2 - verified
+      ---
+      duration_ms: 50.572175
+      type: 'test'
+      ...
+    1..2
+ok 282 - a stored clearance signature cannot be discarded by a conflicting settlement even with malformed requested phase
+  ---
+  duration_ms: 114.414633
+  type: 'test'
+  ...
+# Subtest: lost clearance ACK keeps exact AUTH and retries only the same N after encrypted-journal reopen
+ok 283 - lost clearance ACK keeps exact AUTH and retries only the same N after encrypted-journal reopen
+  ---
+  duration_ms: 76.557946
+  type: 'test'
+  ...
+# Subtest: bad clearance signature, mismatched N and nonempty inference leave pending authorization intact
+    # Subtest: N
+    ok 1 - N
+      ---
+      duration_ms: 60.524424
+      type: 'test'
+      ...
+    # Subtest: deployment
+    ok 2 - deployment
+      ---
+      duration_ms: 63.200679
+      type: 'test'
+      ...
+    # Subtest: operation
+    ok 3 - operation
+      ---
+      duration_ms: 66.957092
+      type: 'test'
+      ...
+    # Subtest: active
+    ok 4 - active
+      ---
+      duration_ms: 71.261677
+      type: 'test'
+      ...
+    1..4
+ok 284 - bad clearance signature, mismatched N and nonempty inference leave pending authorization intact
+  ---
+  duration_ms: 389.186365
+  type: 'test'
+  ...
+# Subtest: a persistence failure after the server clearance cannot erase pending or bypass durable signature
+ok 285 - a persistence failure after the server clearance cannot erase pending or bypass durable signature
+  ---
+  duration_ms: 105.100616
+  type: 'test'
+  ...
+# Subtest: crash between verified clearance persistence and archive commit resumes without another HTTP request
+ok 286 - crash between verified clearance persistence and archive commit resumes without another HTTP request
+  ---
+  duration_ms: 108.188447
+  type: 'test'
+  ...
+# Subtest: archive corruption is rejected on actual encrypted journal reload
+    # Subtest: bytes
+    ok 1 - bytes
+      ---
+      duration_ms: 72.22335
+      type: 'test'
+      ...
+    # Subtest: state
+    ok 2 - state
+      ---
+      duration_ms: 69.758258
+      type: 'test'
+      ...
+    # Subtest: N
+    ok 3 - N
+      ---
+      duration_ms: 67.757517
+      type: 'test'
+      ...
+    # Subtest: phase
+    ok 4 - phase
+      ---
+      duration_ms: 94.524623
+      type: 'test'
+      ...
+    # Subtest: missing signature
+    ok 5 - missing signature
+      ---
+      duration_ms: 84.90087
+      type: 'test'
+      ...
+    # Subtest: missing fence
+    ok 6 - missing fence
+      ---
+      duration_ms: 66.5642
+      type: 'test'
+      ...
+    # Subtest: live pending
+    ok 7 - live pending
+      ---
+      duration_ms: 78.038593
+      type: 'test'
+      ...
+    # Subtest: unknown field
+    ok 8 - unknown field
+      ---
+      duration_ms: 64.43135
+      type: 'test'
+      ...
+    1..8
+ok 287 - archive corruption is rejected on actual encrypted journal reload
+  ---
+  duration_ms: 599.863907
+  type: 'test'
+  ...
+# Subtest: concurrent recovery clients archive once under the shared note lock
+ok 288 - concurrent recovery clients archive once under the shared note lock
+  ---
+  duration_ms: 81.587347
+  type: 'test'
+  ...
+# Subtest: explicit expired-create recovery archives exact attempt and anchored absence before fresh proof/expiry
+ok 289 - explicit expired-create recovery archives exact attempt and anchored absence before fresh proof/expiry
+  ---
+  duration_ms: 573.080213
+  type: 'test'
+  ...
+# Subtest: a failed rebuild leaves durable proof recovery with old signed bytes and absence evidence intact
+ok 290 - a failed rebuild leaves durable proof recovery with old signed bytes and absence evidence intact
+  ---
+  duration_ms: 390.112642
+  type: 'test'
+  ...
+# Subtest: mutual-close create recovery preserves the cleared financial state and exact old signature without sending
+ok 291 - mutual-close create recovery preserves the cleared financial state and exact old signature without sending
+  ---
+  duration_ms: 721.842243
+  type: 'test'
+  ...
+# Subtest: mutual-close recovery requires verified same-state clearance and an active unchanged note before writing
+ok 292 - mutual-close recovery requires verified same-state clearance and an active unchanged note before writing
+  ---
+  duration_ms: 1957.591708
+  type: 'test'
+  ...
+# Subtest: interrupted mutual-close rebuild resumes with the same clearance and durable finalized cutoff
+ok 293 - interrupted mutual-close rebuild resumes with the same clearance and durable finalized cutoff
+  ---
+  duration_ms: 630.125513
+  type: 'test'
+  ...
+# Subtest: pending, unknown, non-expired and finalized receipts cannot authorize a replacement
+ok 294 - pending, unknown, non-expired and finalized receipts cannot authorize a replacement
+  ---
+  duration_ms: 8080.041625
+  type: 'test'
+  ...
+# Subtest: absent account must be the exact PDA at a finalized safe block height beyond validity
+ok 295 - absent account must be the exact PDA at a finalized safe block height beyond validity
+  ---
+  duration_ms: 8682.423492
+  type: 'test'
+  ...
+# Subtest: non-create, advanced, pending, altered-plan and resolved journal states are refused without writes
+ok 296 - non-create, advanced, pending, altered-plan and resolved journal states are refused without writes
+  ---
+  duration_ms: 489.055197
+  type: 'test'
+  ...
+# Subtest: repeated expiry rechecks every saved create and distinct buffer, preserving all signed records
+ok 297 - repeated expiry rechecks every saved create and distinct buffer, preserving all signed records
+  ---
+  duration_ms: 3091.39774
+  type: 'test'
+  ...
+# Subtest: RPC absence observation anchors the returned account slot to its own finalized block, never a slot/height comparison
+ok 298 - RPC absence observation anchors the returned account slot to its own finalized block, never a slot/height comparison
+  ---
+  duration_ms: 127.071277
+  type: 'test'
+  ...
+# Subtest: ordinary and emergency escape expired-create recovery retain state, roles, destination and exact evidence without sending
+    # Subtest: initiate_escape
+    ok 1 - initiate_escape
+      ---
+      duration_ms: 333.399419
+      type: 'test'
+      ...
+    # Subtest: emergency_escape
+    ok 2 - emergency_escape
+      ---
+      duration_ms: 362.310759
+      type: 'test'
+      ...
+    1..2
+ok 299 - ordinary and emergency escape expired-create recovery retain state, roles, destination and exact evidence without sending
+  ---
+  duration_ms: 696.332841
+  type: 'test'
+  ...
+# Subtest: escape create recovery rejects changed signed state, destination, roles, advanced attempts and inactive note
+ok 300 - escape create recovery rejects changed signed state, destination, roles, advanced attempts and inactive note
+  ---
+  duration_ms: 646.60579
+  type: 'test'
+  ...
+# Subtest: interrupted emergency escape setup recovery resumes from durable absence without changing the archive
+ok 301 - interrupted emergency escape setup recovery resumes from durable absence without changing the archive
+  ---
+  duration_ms: 405.586127
+  type: 'test'
+  ...
+# Subtest: accepted AUTH plus lost inference and close 503 escapes in the same encrypted journal, then finalizes only after deadline
+ok 302 - accepted AUTH plus lost inference and close 503 escapes in the same encrypted journal, then finalizes only after deadline
+  ---
+  duration_ms: 2310.771911
+  type: 'test'
+  ...
+# Subtest: a new emergency archive omits a legacy direct key while preserving exact financial and inference evidence
+ok 303 - a new emergency archive omits a legacy direct key while preserving exact financial and inference evidence
+  ---
+  duration_ms: 301.286205
+  type: 'test'
+  ...
+# Subtest: finalized challenge restores only close/status recovery and a verified successor; no AUTH or inference replay
+ok 304 - finalized challenge restores only close/status recovery and a verified successor; no AUTH or inference replay
+  ---
+  duration_ms: 2576.510863
+  type: 'test'
+  ...
+# Subtest: challenge before escape execute ACK reconciles exact receipt without another financial send
+ok 305 - challenge before escape execute ACK reconciles exact receipt without another financial send
+  ---
+  duration_ms: 1492.953842
+  type: 'test'
+  ...
+# Subtest: unacknowledged AUTH escape recovery never repeats AUTH even if original saved phase is send_unknown
+ok 306 - unacknowledged AUTH escape recovery never repeats AUTH even if original saved phase is send_unknown
+  ---
+  duration_ms: 1462.432669
+  type: 'test'
+  ...
+# Subtest: emergency archive rejects fabricated phase, missing exact receipt, modified state/request/operations and unsafe active reuse
+    # Subtest: duplicate archive
+    ok 1 - duplicate archive
+      ---
+      duration_ms: 146.61535
+      type: 'test'
+      ...
+    # Subtest: phase
+    ok 2 - phase
+      ---
+      duration_ms: 138.416335
+      type: 'test'
+      ...
+    # Subtest: previous
+    ok 3 - previous
+      ---
+      duration_ms: 138.366133
+      type: 'test'
+      ...
+    # Subtest: request
+    ok 4 - request
+      ---
+      duration_ms: 149.364242
+      type: 'test'
+      ...
+    # Subtest: nullifier
+    ok 5 - nullifier
+      ---
+      duration_ms: 145.77696
+      type: 'test'
+      ...
+    # Subtest: operation identity
+    ok 6 - operation identity
+      ---
+      duration_ms: 145.88718
+      type: 'test'
+      ...
+    # Subtest: active reuse
+    ok 7 - active reuse
+      ---
+      duration_ms: 139.819621
+      type: 'test'
+      ...
+    # Subtest: receipt
+    ok 8 - receipt
+      ---
+      duration_ms: 146.49343
+      type: 'test'
+      ...
+    # Subtest: extra fields
+    ok 9 - extra fields
+      ---
+      duration_ms: 161.757144
+      type: 'test'
+      ...
+    1..9
+ok 307 - emergency archive rejects fabricated phase, missing exact receipt, modified state/request/operations and unsafe active reuse
+  ---
+  duration_ms: 2828.241405
+  type: 'test'
+  ...
+# Subtest: completed emergency recovery rejects duplicated settlement history or a fabricated settled archive
+ok 308 - completed emergency recovery rejects duplicated settlement history or a fabricated settled archive
+  ---
+  duration_ms: 1502.367749
+  type: 'test'
+  ...
+# Subtest: challenge reconciliation cancels only unsigned or conclusively rejected finalization attempts, retaining every signed byte
+    # Subtest: unsigned
+    ok 1 - unsigned
+      ---
+      duration_ms: 1498.996228
+      type: 'test'
+      ...
+    # Subtest: unknown
+    ok 2 - unknown
+      ---
+      duration_ms: 1595.137678
+      type: 'test'
+      ...
+    # Subtest: successful
+    ok 3 - successful
+      ---
+      duration_ms: 1568.115272
+      type: 'test'
+      ...
+    # Subtest: rejected
+    ok 4 - rejected
+      ---
+      duration_ms: 1584.266811
+      type: 'test'
+      ...
+    1..4
+ok 309 - challenge reconciliation cancels only unsigned or conclusively rejected finalization attempts, retaining every signed byte
+  ---
+  duration_ms: 6247.51889
+  type: 'test'
+  ...
+# Subtest: future plans snapshot the configured u64 fee while omitted and zero preserve legacy serialization
+ok 310 - future plans snapshot the configured u64 fee while omitted and zero preserve legacy serialization
+  ---
+  duration_ms: 322.790094
+  type: 'test'
+  ...
+# Subtest: explicit unsent repricing persists only the plan fee and survives restart without changing proof or operation
+ok 311 - explicit unsent repricing persists only the plan fee and survives restart without changing proof or operation
+  ---
+  duration_ms: 136.897005
+  type: 'test'
+  ...
+# Subtest: same selected fee is a no-op and explicit zero restores original bytes without a journal reset
+ok 312 - same selected fee is a no-op and explicit zero restores original bytes without a journal reset
+  ---
+  duration_ms: 211.951324
+  type: 'test'
+  ...
+# Subtest: signed, current, finalized, advanced, non-ready, resolved and pending-session states cannot be repriced
+ok 313 - signed, current, finalized, advanced, non-ready, resolved and pending-session states cannot be repriced
+  ---
+  duration_ms: 352.464711
+  type: 'test'
+  ...
+# Subtest: constructor and explicit repricing reject invalid runtime types and out-of-u64 fees before writes
+ok 314 - constructor and explicit repricing reject invalid runtime types and out-of-u64 fees before writes
+  ---
+  duration_ms: 55.118442
+  type: 'test'
+  ...
+# Subtest: wallet-added priority fee is rejected; explicit same-plan fee then signs exact bytes and persists before send
+ok 315 - wallet-added priority fee is rejected; explicit same-plan fee then signs exact bytes and persists before send
+  ---
+  duration_ms: 243.547067
+  type: 'test'
+  ...
+# Subtest: explicit rejected deposit retry retains secret, closes the old buffer and rechecks next ID/expiry
+ok 316 - explicit rejected deposit retry retains secret, closes the old buffer and rechecks next ID/expiry
+  ---
+  duration_ms: 443.360497
+  type: 'test'
+  ...
+# Subtest: rejected create with finalized absent buffer can reprove; withdrawal retains clearance and destination
+ok 317 - rejected create with finalized absent buffer can reprove; withdrawal retains clearance and destination
+  ---
+  duration_ms: 278.65554
+  type: 'test'
+  ...
+# Subtest: explicit rejected finalize retry rechecks deadline and saved pending destination/balance at the receipt slot
+ok 318 - explicit rejected finalize retry rechecks deadline and saved pending destination/balance at the receipt slot
+  ---
+  duration_ms: 139.505485
+  type: 'test'
+  ...
+# Subtest: finalized buffer absence must be observed at or after the requested rejection slot
+ok 319 - finalized buffer absence must be observed at or after the requested rejection slot
+  ---
+  duration_ms: 83.258168
+  type: 'test'
+  ...
+# Subtest: explicit Wallet Standard v0 selection signs exact transaction and fails closed on chain/version/disconnect
+ok 320 - explicit Wallet Standard v0 selection signs exact transaction and fails closed on chain/version/disconnect
+  ---
+  duration_ms: 60.449776
+  type: 'test'
+  ...
+1..320
+# tests 377
+# suites 0
+# pass 377
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 47518.908914

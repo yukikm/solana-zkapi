@@ -1,0 +1,549 @@
+{
+  "schema": 1,
+  "kind": "public_client_hosted_ci",
+  "observed_at_utc": "2026-10-07T20:19:02.786161+00:00",
+  "passed": true,
+  "scope": "Focused hosted SDK/Chrome fixtures, independently installed exact SDK tarball and Go/synthetic client checks at the reconstructed client build source; separate from installed macOS native and current operator server builds",
+  "workflow": {
+    "url": "https://github.com/yukikm/solana-zkapi/actions/runs/37680066910",
+    "run_id": 37680066910,
+    "name": "SDK and clientd devnet preview",
+    "file": ".github/workflows/client-preview.yml",
+    "file_sha256": "1bd518745031f08511d95897394c69216b185165311b7126ee190992b7d077ef",
+    "event": "workflow_dispatch",
+    "head_sha": "5ded36bf39de9b9fb6bf27a10d744437abc6a9c7",
+    "branch": "codex/public-devnet-client-0.2.0-devnet.2",
+    "status": "completed",
+    "conclusion": "success",
+    "jobs": [
+      {
+        "id": 112993493673,
+        "name": "clientd Go race and synthetic secret-helper tests",
+        "url": "https://github.com/yukikm/solana-zkapi/actions/runs/37680066910/job/112993493673",
+        "started_at": "2026-10-07T20:11:02Z",
+        "completed_at": "2026-10-07T20:11:36Z",
+        "conclusion": "success"
+      },
+      {
+        "id": 112993494122,
+        "name": "SDK fixtures, real Chrome custody, isolated tarball",
+        "url": "https://github.com/yukikm/solana-zkapi/actions/runs/37680066910/job/112993494122",
+        "started_at": "2026-10-07T20:11:02Z",
+        "completed_at": "2026-10-07T20:12:47Z",
+        "conclusion": "success"
+      }
+    ],
+    "saved_status": {
+      "path": "docs/evidence/PD-public-client-hosted-components/workflow-run.json",
+      "sha256": "ebafbefa575779b7b9196a1b5276c1c54af345ebd6494d8d60a56dd8962a10a3",
+      "bytes": 5331
+    }
+  },
+  "sdk": {
+    "tests": {
+      "tests": 377,
+      "pass": 377,
+      "fail": 0,
+      "cancelled": 0,
+      "skipped": 0,
+      "todo": 0
+    },
+    "build_passed": true,
+    "typecheck_passed": true,
+    "chrome": "Google Chrome 154.0.8037.57",
+    "node": "24.19.0",
+    "npm": "11.9.0",
+    "solana_kit": "8.4.0",
+    "legacy_solana_packages": []
+  },
+  "independent_package": {
+    "passed": true,
+    "tarball": {
+      "file": "zkapi-solana-sdk-0.2.0-devnet.2.tgz",
+      "sha256": "fe9917b7f11e4bec0837bc7aac7624ad2965aa9bca007d61b877f263620143dc",
+      "bytes": 121467
+    },
+    "matches_preserved_sdk": true,
+    "installed_tests": {
+      "tests": 75,
+      "pass": 75,
+      "fail": 0,
+      "cancelled": 0,
+      "skipped": 0,
+      "todo": 0
+    },
+    "consumer_fixture_tests": {
+      "public-consumer-network": {
+        "tests": 4,
+        "pass": 4,
+        "fail": 0,
+        "cancelled": 0,
+        "skipped": 0,
+        "todo": 0
+      },
+      "public-consumer-browser-adapter": {
+        "tests": 6,
+        "pass": 6,
+        "fail": 0,
+        "cancelled": 0,
+        "skipped": 0,
+        "todo": 0
+      },
+      "public-consumer-install": {
+        "tests": 2,
+        "pass": 2,
+        "fail": 0,
+        "cancelled": 0,
+        "skipped": 0,
+        "todo": 0
+      }
+    },
+    "stages": [
+      {
+        "name": "node-version",
+        "exit_code": 0,
+        "seconds": 0.004,
+        "log": "node-version.log",
+        "log_sha256": "b7677d3ec37ee1897ba07dc2cfe8292fe421c9ac93396cca5bbece486d1a2a41"
+      },
+      {
+        "name": "pack",
+        "exit_code": 0,
+        "seconds": 5.471,
+        "log": "pack.log",
+        "log_sha256": "77ed97028b2d048eebeab4e6f1199f5772f76fc3b2d52def94f69d06d715dc37"
+      },
+      {
+        "name": "install",
+        "exit_code": 0,
+        "seconds": 6.923,
+        "log": "install.log",
+        "log_sha256": "21126dedffb56c7f4598dbeeedfa775be9b3603b209010fb19c090825dfbdf0d"
+      },
+      {
+        "name": "node-exports",
+        "exit_code": 0,
+        "seconds": 0.131,
+        "log": "node-exports.log",
+        "log_sha256": "2025b55f65cd7c100803f54d4cb73c5f393e4c3787b0233af354f252255937d5"
+      },
+      {
+        "name": "declarations",
+        "exit_code": 0,
+        "seconds": 3.152,
+        "log": "declarations.log",
+        "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "name": "installed-lifecycle-trust",
+        "exit_code": 0,
+        "seconds": 4.088,
+        "log": "installed-lifecycle-trust.log",
+        "log_sha256": "e5059ae47a134347a8f68941f47e259fbc3c7079863e1fecaa86fb6f8b7d927e"
+      },
+      {
+        "name": "public-consumer-help",
+        "exit_code": 0,
+        "seconds": 0.122,
+        "log": "public-consumer-help.log",
+        "log_sha256": "ea76d8deed604a0e14f733823214660954e6b99f2801595484eae63b288e72f1"
+      },
+      {
+        "name": "public-consumer-network",
+        "exit_code": 0,
+        "seconds": 0.186,
+        "log": "public-consumer-network.log",
+        "log_sha256": "c64957da165b43af488c0d738e454e93daba199487aa4ad2315349caecea906d"
+      },
+      {
+        "name": "public-consumer-browser-adapter",
+        "exit_code": 0,
+        "seconds": 0.403,
+        "log": "public-consumer-browser-adapter.log",
+        "log_sha256": "fa80c464ec3d40f72b211b469cb3d9ae33b3464001c91cf047e7e09610fc040b"
+      },
+      {
+        "name": "public-consumer-install",
+        "exit_code": 0,
+        "seconds": 0.319,
+        "log": "public-consumer-install.log",
+        "log_sha256": "ec0a7fcfa87d059c7ab834e686096ea75ed41cf806c34637cf426eba0f661a75"
+      },
+      {
+        "name": "public-consumer-types",
+        "exit_code": 0,
+        "seconds": 3.077,
+        "log": "public-consumer-types.log",
+        "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "name": "browser-build",
+        "exit_code": 0,
+        "seconds": 0.111,
+        "log": "browser-build.log",
+        "log_sha256": "06efe27a42f63a966636054bc67e0af64bd94909301d5af43e826ae3da4ae889"
+      }
+    ],
+    "seconds": 24.094,
+    "source_inputs": 58,
+    "source_inputs_unchanged": true,
+    "every_source_digest_matches_exact_commit": true,
+    "browser_outputs": {
+      "browser.js": {
+        "sha256": "6a5767bdf011fe95951a19887b1e21fe8a2de8b87db04c7d78ec3c3f1d415f07",
+        "bytes": 561269
+      },
+      "worker.js": {
+        "sha256": "55ee16e2c6f35123658ad9f07696072ec7c5201d5eb0ee51b1cced25cff20d7a",
+        "bytes": 3947
+      }
+    },
+    "public_chain_verified": false,
+    "live_provider_verified": false,
+    "real_prover_option_selected": false,
+    "public_bundle_option_selected": false,
+    "result": {
+      "path": "docs/evidence/PD-public-client-hosted-components/sdk-preview-fixtures-browser-package-logs/external-package/results.json",
+      "sha256": "6819f86770ae0874a60b290a9d5f39a79eaa81e9b1ac4aa755ba58e4c7e0632b",
+      "bytes": 11819
+    },
+    "identity_join_basis": "SHA256 and byte count recorded by successful hosted packaging/install run; workflow artifact contains its logs/results, not the SDK tarball bytes."
+  },
+  "clientd": {
+    "go_version": "1.25.0",
+    "go_race_packages_passed": [
+      "cmd/clientd",
+      "internal/daemon",
+      "internal/egress"
+    ],
+    "go_package_count": 3,
+    "synthetic_python_test_counts": {
+      "clientd-secrets": 5,
+      "clientd-notices": 7,
+      "clientd-provenance": 6
+    }
+  },
+  "preserved_artifact_context": {
+    "sdk_sha256": "fe9917b7f11e4bec0837bc7aac7624ad2965aa9bca007d61b877f263620143dc",
+    "native_sha256": "9a2ab6759d99b3d7031b4c939ab654caeec2244763d1f16538e471bd5675cb56",
+    "native_installation_manifest_sha256": "0b5733718f51eabcf4ca57f2406eb36bab641e23d642aac2436ca0e3090572ca",
+    "native_build_input_entries": 551,
+    "source_join_result_sha256": "7df8c2f7260def6cea24a1277fc46e9a9c74e1448408c9f3b3c4d04a6a6be4c2",
+    "native_built_or_executed_by_this_workflow": false
+  },
+  "artifact_inventory": [
+    {
+      "artifact_path": "clientd-preview-local-fixture-logs/clientd-go-race.log",
+      "saved_source": {
+        "path": "target/public-devnet-live-20261008/client-release-hosted-ci/clientd-preview-local-fixture-logs/clientd-go-race.log",
+        "sha256": "89df60fd26aa6c34c6fb26b78d57f557c0127f1d8d204694410bed480d300100",
+        "bytes": 143
+      },
+      "public_copy": {
+        "path": "docs/evidence/PD-public-client-hosted-components/clientd-preview-local-fixture-logs/clientd-go-race.txt",
+        "sha256": "89df60fd26aa6c34c6fb26b78d57f557c0127f1d8d204694410bed480d300100",
+        "bytes": 143
+      }
+    },
+    {
+      "artifact_path": "clientd-preview-local-fixture-logs/clientd-notices.log",
+      "saved_source": {
+        "path": "target/public-devnet-live-20261008/client-release-hosted-ci/clientd-preview-local-fixture-logs/clientd-notices.log",
+        "sha256": "0d6653413f55f7cf64dbfab59b6b29c640ade8e63585414ab2a44a0892a5ed0a",
+        "bytes": 105
+      },
+      "public_copy": {
+        "path": "docs/evidence/PD-public-client-hosted-components/clientd-preview-local-fixture-logs/clientd-notices.txt",
+        "sha256": "0d6653413f55f7cf64dbfab59b6b29c640ade8e63585414ab2a44a0892a5ed0a",
+        "bytes": 105
+      }
+    },
+    {
+      "artifact_path": "clientd-preview-local-fixture-logs/clientd-provenance.log",
+      "saved_source": {
+        "path": "target/public-devnet-live-20261008/client-release-hosted-ci/clientd-preview-local-fixture-logs/clientd-provenance.log",
+        "sha256": "067daaad349562947c465e5f08f59e642134e3e603dad67499040b5ca0835354",
+        "bytes": 104
+      },
+      "public_copy": {
+        "path": "docs/evidence/PD-public-client-hosted-components/clientd-preview-local-fixture-logs/clientd-provenance.txt",
+        "sha256": "067daaad349562947c465e5f08f59e642134e3e603dad67499040b5ca0835354",
+        "bytes": 104
+      }
+    },
+    {
+      "artifact_path": "clientd-preview-local-fixture-logs/clientd-secrets.log",
+      "saved_source": {
+        "path": "target/public-devnet-live-20261008/client-release-hosted-ci/clientd-preview-local-fixture-logs/clientd-secrets.log",
+        "sha256": "0f7e4b97443e54aca647179972594d13bb587afcbf151fab8228148587ea844a",
+        "bytes": 103
+      },
+      "public_copy": {
+        "path": "docs/evidence/PD-public-client-hosted-components/clientd-preview-local-fixture-logs/clientd-secrets.txt",
+        "sha256": "0f7e4b97443e54aca647179972594d13bb587afcbf151fab8228148587ea844a",
+        "bytes": 103
+      }
+    },
+    {
+      "artifact_path": "sdk-preview-fixtures-browser-package-logs/chrome.log",
+      "saved_source": {
+        "path": "target/public-devnet-live-20261008/client-release-hosted-ci/sdk-preview-fixtures-browser-package-logs/chrome.log",
+        "sha256": "853e10339f16fd47037f8ba97c7417b4a0b4605cca9f08308436c65ac32077bb",
+        "bytes": 29
+      },
+      "public_copy": {
+        "path": "docs/evidence/PD-public-client-hosted-components/sdk-preview-fixtures-browser-package-logs/chrome.txt",
+        "sha256": "853e10339f16fd47037f8ba97c7417b4a0b4605cca9f08308436c65ac32077bb",
+        "bytes": 29
+      }
+    },
+    {
+      "artifact_path": "sdk-preview-fixtures-browser-package-logs/external-package/browser-build.log",
+      "saved_source": {
+        "path": "target/public-devnet-live-20261008/client-release-hosted-ci/sdk-preview-fixtures-browser-package-logs/external-package/browser-build.log",
+        "sha256": "06efe27a42f63a966636054bc67e0af64bd94909301d5af43e826ae3da4ae889",
+        "bytes": 87
+      },
+      "public_copy": {
+        "path": "docs/evidence/PD-public-client-hosted-components/sdk-preview-fixtures-browser-package-logs/external-package/browser-build.txt",
+        "sha256": "06efe27a42f63a966636054bc67e0af64bd94909301d5af43e826ae3da4ae889",
+        "bytes": 87
+      }
+    },
+    {
+      "artifact_path": "sdk-preview-fixtures-browser-package-logs/external-package/declarations.log",
+      "saved_source": {
+        "path": "target/public-devnet-live-20261008/client-release-hosted-ci/sdk-preview-fixtures-browser-package-logs/external-package/declarations.log",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "bytes": 0
+      },
+      "public_copy": {
+        "path": "docs/evidence/PD-public-client-hosted-components/sdk-preview-fixtures-browser-package-logs/external-package/declarations.txt",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "bytes": 0
+      }
+    },
+    {
+      "artifact_path": "sdk-preview-fixtures-browser-package-logs/external-package/install.log",
+      "saved_source": {
+        "path": "target/public-devnet-live-20261008/client-release-hosted-ci/sdk-preview-fixtures-browser-package-logs/external-package/install.log",
+        "sha256": "21126dedffb56c7f4598dbeeedfa775be9b3603b209010fb19c090825dfbdf0d",
+        "bytes": 25
+      },
+      "public_copy": {
+        "path": "docs/evidence/PD-public-client-hosted-components/sdk-preview-fixtures-browser-package-logs/external-package/install.txt",
+        "sha256": "21126dedffb56c7f4598dbeeedfa775be9b3603b209010fb19c090825dfbdf0d",
+        "bytes": 25
+      }
+    },
+    {
+      "artifact_path": "sdk-preview-fixtures-browser-package-logs/external-package/installed-lifecycle-trust.log",
+      "saved_source": {
+        "path": "target/public-devnet-live-20261008/client-release-hosted-ci/sdk-preview-fixtures-browser-package-logs/external-package/installed-lifecycle-trust.log",
+        "sha256": "e5059ae47a134347a8f68941f47e259fbc3c7079863e1fecaa86fb6f8b7d927e",
+        "bytes": 18730
+      },
+      "public_copy": {
+        "path": "docs/evidence/PD-public-client-hosted-components/sdk-preview-fixtures-browser-package-logs/external-package/installed-lifecycle-trust.txt",
+        "sha256": "e5059ae47a134347a8f68941f47e259fbc3c7079863e1fecaa86fb6f8b7d927e",
+        "bytes": 18730
+      }
+    },
+    {
+      "artifact_path": "sdk-preview-fixtures-browser-package-logs/external-package/node-exports.log",
+      "saved_source": {
+        "path": "target/public-devnet-live-20261008/client-release-hosted-ci/sdk-preview-fixtures-browser-package-logs/external-package/node-exports.log",
+        "sha256": "2025b55f65cd7c100803f54d4cb73c5f393e4c3787b0233af354f252255937d5",
+        "bytes": 50
+      },
+      "public_copy": {
+        "path": "docs/evidence/PD-public-client-hosted-components/sdk-preview-fixtures-browser-package-logs/external-package/node-exports.txt",
+        "sha256": "2025b55f65cd7c100803f54d4cb73c5f393e4c3787b0233af354f252255937d5",
+        "bytes": 50
+      }
+    },
+    {
+      "artifact_path": "sdk-preview-fixtures-browser-package-logs/external-package/node-version.log",
+      "saved_source": {
+        "path": "target/public-devnet-live-20261008/client-release-hosted-ci/sdk-preview-fixtures-browser-package-logs/external-package/node-version.log",
+        "sha256": "b7677d3ec37ee1897ba07dc2cfe8292fe421c9ac93396cca5bbece486d1a2a41",
+        "bytes": 9
+      },
+      "public_copy": {
+        "path": "docs/evidence/PD-public-client-hosted-components/sdk-preview-fixtures-browser-package-logs/external-package/node-version.txt",
+        "sha256": "b7677d3ec37ee1897ba07dc2cfe8292fe421c9ac93396cca5bbece486d1a2a41",
+        "bytes": 9
+      }
+    },
+    {
+      "artifact_path": "sdk-preview-fixtures-browser-package-logs/external-package/pack.log",
+      "saved_source": {
+        "path": "target/public-devnet-live-20261008/client-release-hosted-ci/sdk-preview-fixtures-browser-package-logs/external-package/pack.log",
+        "sha256": "77ed97028b2d048eebeab4e6f1199f5772f76fc3b2d52def94f69d06d715dc37",
+        "bytes": 3021
+      },
+      "public_copy": {
+        "path": "docs/evidence/PD-public-client-hosted-components/sdk-preview-fixtures-browser-package-logs/external-package/pack.txt",
+        "sha256": "77ed97028b2d048eebeab4e6f1199f5772f76fc3b2d52def94f69d06d715dc37",
+        "bytes": 3021
+      }
+    },
+    {
+      "artifact_path": "sdk-preview-fixtures-browser-package-logs/external-package/public-consumer-browser-adapter.log",
+      "saved_source": {
+        "path": "target/public-devnet-live-20261008/client-release-hosted-ci/sdk-preview-fixtures-browser-package-logs/external-package/public-consumer-browser-adapter.log",
+        "sha256": "fa80c464ec3d40f72b211b469cb3d9ae33b3464001c91cf047e7e09610fc040b",
+        "bytes": 1081
+      },
+      "public_copy": {
+        "path": "docs/evidence/PD-public-client-hosted-components/sdk-preview-fixtures-browser-package-logs/external-package/public-consumer-browser-adapter.txt",
+        "sha256": "fa80c464ec3d40f72b211b469cb3d9ae33b3464001c91cf047e7e09610fc040b",
+        "bytes": 1081
+      }
+    },
+    {
+      "artifact_path": "sdk-preview-fixtures-browser-package-logs/external-package/public-consumer-help.log",
+      "saved_source": {
+        "path": "target/public-devnet-live-20261008/client-release-hosted-ci/sdk-preview-fixtures-browser-package-logs/external-package/public-consumer-help.log",
+        "sha256": "ea76d8deed604a0e14f733823214660954e6b99f2801595484eae63b288e72f1",
+        "bytes": 399
+      },
+      "public_copy": {
+        "path": "docs/evidence/PD-public-client-hosted-components/sdk-preview-fixtures-browser-package-logs/external-package/public-consumer-help.txt",
+        "sha256": "ea76d8deed604a0e14f733823214660954e6b99f2801595484eae63b288e72f1",
+        "bytes": 399
+      }
+    },
+    {
+      "artifact_path": "sdk-preview-fixtures-browser-package-logs/external-package/public-consumer-install.log",
+      "saved_source": {
+        "path": "target/public-devnet-live-20261008/client-release-hosted-ci/sdk-preview-fixtures-browser-package-logs/external-package/public-consumer-install.log",
+        "sha256": "ec0a7fcfa87d059c7ab834e686096ea75ed41cf806c34637cf426eba0f661a75",
+        "bytes": 319
+      },
+      "public_copy": {
+        "path": "docs/evidence/PD-public-client-hosted-components/sdk-preview-fixtures-browser-package-logs/external-package/public-consumer-install.txt",
+        "sha256": "ec0a7fcfa87d059c7ab834e686096ea75ed41cf806c34637cf426eba0f661a75",
+        "bytes": 319
+      }
+    },
+    {
+      "artifact_path": "sdk-preview-fixtures-browser-package-logs/external-package/public-consumer-network.log",
+      "saved_source": {
+        "path": "target/public-devnet-live-20261008/client-release-hosted-ci/sdk-preview-fixtures-browser-package-logs/external-package/public-consumer-network.log",
+        "sha256": "c64957da165b43af488c0d738e454e93daba199487aa4ad2315349caecea906d",
+        "bytes": 507
+      },
+      "public_copy": {
+        "path": "docs/evidence/PD-public-client-hosted-components/sdk-preview-fixtures-browser-package-logs/external-package/public-consumer-network.txt",
+        "sha256": "c64957da165b43af488c0d738e454e93daba199487aa4ad2315349caecea906d",
+        "bytes": 507
+      }
+    },
+    {
+      "artifact_path": "sdk-preview-fixtures-browser-package-logs/external-package/public-consumer-types.log",
+      "saved_source": {
+        "path": "target/public-devnet-live-20261008/client-release-hosted-ci/sdk-preview-fixtures-browser-package-logs/external-package/public-consumer-types.log",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "bytes": 0
+      },
+      "public_copy": {
+        "path": "docs/evidence/PD-public-client-hosted-components/sdk-preview-fixtures-browser-package-logs/external-package/public-consumer-types.txt",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "bytes": 0
+      }
+    },
+    {
+      "artifact_path": "sdk-preview-fixtures-browser-package-logs/external-package/results.json",
+      "saved_source": {
+        "path": "target/public-devnet-live-20261008/client-release-hosted-ci/sdk-preview-fixtures-browser-package-logs/external-package/results.json",
+        "sha256": "6819f86770ae0874a60b290a9d5f39a79eaa81e9b1ac4aa755ba58e4c7e0632b",
+        "bytes": 11819
+      },
+      "public_copy": {
+        "path": "docs/evidence/PD-public-client-hosted-components/sdk-preview-fixtures-browser-package-logs/external-package/results.json",
+        "sha256": "6819f86770ae0874a60b290a9d5f39a79eaa81e9b1ac4aa755ba58e4c7e0632b",
+        "bytes": 11819
+      }
+    },
+    {
+      "artifact_path": "sdk-preview-fixtures-browser-package-logs/kit-dependencies.log",
+      "saved_source": {
+        "path": "target/public-devnet-live-20261008/client-release-hosted-ci/sdk-preview-fixtures-browser-package-logs/kit-dependencies.log",
+        "sha256": "11117e995e659bbd9e3f093aa2db1679d9136477ecefbbe4839e520d4749ee93",
+        "bytes": 127
+      },
+      "public_copy": {
+        "path": "docs/evidence/PD-public-client-hosted-components/sdk-preview-fixtures-browser-package-logs/kit-dependencies.txt",
+        "sha256": "11117e995e659bbd9e3f093aa2db1679d9136477ecefbbe4839e520d4749ee93",
+        "bytes": 127
+      }
+    },
+    {
+      "artifact_path": "sdk-preview-fixtures-browser-package-logs/sdk-build.log",
+      "saved_source": {
+        "path": "target/public-devnet-live-20261008/client-release-hosted-ci/sdk-preview-fixtures-browser-package-logs/sdk-build.log",
+        "sha256": "354cd2f798cb265846f3cf2c9d92d382a8195f4d2552f0e4a774e4d619a29bf7",
+        "bytes": 120
+      },
+      "public_copy": {
+        "path": "docs/evidence/PD-public-client-hosted-components/sdk-preview-fixtures-browser-package-logs/sdk-build.txt",
+        "sha256": "354cd2f798cb265846f3cf2c9d92d382a8195f4d2552f0e4a774e4d619a29bf7",
+        "bytes": 120
+      }
+    },
+    {
+      "artifact_path": "sdk-preview-fixtures-browser-package-logs/sdk-test-counts.json",
+      "saved_source": {
+        "path": "target/public-devnet-live-20261008/client-release-hosted-ci/sdk-preview-fixtures-browser-package-logs/sdk-test-counts.json",
+        "sha256": "6e51d8c1a7580660417d10e004d5fa732757ae75daeb0d23857a5237550582e8",
+        "bytes": 94
+      },
+      "public_copy": {
+        "path": "docs/evidence/PD-public-client-hosted-components/sdk-preview-fixtures-browser-package-logs/sdk-test-counts.json",
+        "sha256": "6e51d8c1a7580660417d10e004d5fa732757ae75daeb0d23857a5237550582e8",
+        "bytes": 94
+      }
+    },
+    {
+      "artifact_path": "sdk-preview-fixtures-browser-package-logs/sdk-tests.log",
+      "saved_source": {
+        "path": "target/public-devnet-live-20261008/client-release-hosted-ci/sdk-preview-fixtures-browser-package-logs/sdk-tests.log",
+        "sha256": "4341502d56e6b4a32e46d3a82f8938bdb67849c58351e8f7d8f7c545efc9cd24",
+        "bytes": 87403
+      },
+      "public_copy": {
+        "path": "docs/evidence/PD-public-client-hosted-components/sdk-preview-fixtures-browser-package-logs/sdk-tests.txt",
+        "sha256": "4341502d56e6b4a32e46d3a82f8938bdb67849c58351e8f7d8f7c545efc9cd24",
+        "bytes": 87403
+      }
+    },
+    {
+      "artifact_path": "sdk-preview-fixtures-browser-package-logs/sdk-typecheck.log",
+      "saved_source": {
+        "path": "target/public-devnet-live-20261008/client-release-hosted-ci/sdk-preview-fixtures-browser-package-logs/sdk-typecheck.log",
+        "sha256": "4856ecb79ae68a07fac5c939eaeeebcec040c125213e6ec85a35d3671ea6866d",
+        "bytes": 59
+      },
+      "public_copy": {
+        "path": "docs/evidence/PD-public-client-hosted-components/sdk-preview-fixtures-browser-package-logs/sdk-typecheck.txt",
+        "sha256": "4856ecb79ae68a07fac5c939eaeeebcec040c125213e6ec85a35d3671ea6866d",
+        "bytes": 59
+      }
+    }
+  ],
+  "counts_overlap_between_scopes": true,
+  "limits": [
+    "This is a fresh success of the focused client workflow only; no comprehensive implementation CI or full I10/G1-G4 claim.",
+    "Chrome tests are synthetic browser custody/fixture checks, not funded public Phantom/provider acceptance.",
+    "Independent package cases use fixture providers/chain and copied synthetic consumer fixtures; real native/WASM proof or public bundle options were not selected by this hosted run.",
+    "The workflow did not build/test the macOS native archive or the current Linux operator server; those source snapshots and local/live evidence remain separate.",
+    "The archived SDK hash equals the preserved candidate; no existing SDK/native artifact, public profile, grant, journal or funded state changed.",
+    "No GitHub release/tag/publication or release/build attestation outcome is established here; the run used a candidate branch."
+  ],
+  "publication_state_at_checkpoint": {
+    "candidate_branch_pushed": true,
+    "new_release_published": false,
+    "existing_release_tags_unchanged": true
+  }
+}

@@ -1,0 +1,39 @@
+[Unit]
+Description=Public Devnet control and one-shot dispatcher
+RequiresMountsFor=/srv/zka
+After=network-online.target zka-postgresql.service zka-signer.service zka-indexer.service
+Requires=zka-postgresql.service zka-signer.service
+Wants=zka-indexer.service
+
+[Service]
+Type=simple
+UMask=0077
+NoNewPrivileges=true
+CapabilityBoundingSet=
+RestrictSUIDSGID=true
+LockPersonality=true
+ProtectProc=invisible
+ProcSubset=pid
+SystemCallFilter=~@debug
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+Restart=no
+TimeoutStopSec=90
+KillMode=control-group
+User=zka-runtime
+Group=zka-runtime
+WorkingDirectory=/opt/zkapi
+ExecStart=/opt/zkapi/bin/controld serve /srv/zka/runtime/control.json
+ReadWritePaths=/srv/zka/dispatcher
+# Shared UID remains a preview limitation; these paths prevent ordinary secret reads.
+InaccessiblePaths=/srv/zka/signer /srv/zka/runtime/state.seed /srv/zka/runtime/clearance.seed /srv/zka/runtime/signer.env /srv/zka/runtime/signer.json
+EnvironmentFile=/srv/zka/runtime/control.env
+KillSignal=SIGINT
+
+[Install]
+WantedBy=multi-user.target

@@ -11,19 +11,33 @@ for in integer micro-USDC (1 USDC = 1,000,000 micro-USDC).
 have passed. Independent SDK installation and selected devnet/provider lifecycles
 also have [separate evidence](docs/evidence/I10-external-integration.md). Full provider
 acceptance, production setup, audits and release gates remain incomplete.
-The [Kit preview release](docs/releases/kit-preview.md) provides an SDK
-tarball and a macOS ARM64 clientd distribution.
+The [public-profile client release](docs/evidence/PD-public-client-publication.md)
+provides an SDK tarball and a macOS ARM64 clientd distribution.
 There is no published npm release or ready-to-use production deployment bundle.
 See [supported features and evidence](docs/sdk/status.md).
 
+For the remaining work to offer a public Devnet deployment that independent
+apps can use from published inputs, see the [public Devnet readiness backlog](docs/public-devnet-readiness-backlog.md).
+It distinguishes existing implementation/live evidence from missing hosted
+services, complete artifacts, onboarding and current-release acceptance.
+The published `0.2.0-devnet.2` preview adds an
+[authenticated public profile and read-only preflight](docs/sdk/public-profile.md),
+an [independent consumer example](tools/public-devnet-consumer/README.md),
+and [funding instructions](docs/sdk/devnet-funding.md).
+See the [implementation record](docs/public-devnet-implementation.md) for the
+remaining operator readiness and funded-acceptance requirements. The
+[public deployment guide](docs/sdk/public-devnet-preview.md) supplies the actual
+profile and verified downloads. New admission remains suspended during operator
+catch-up and funded acceptance; downloading a client is not service readiness.
+
 [Kit migration](docs/sdk/kit-migration.md) · [SDK quickstart](docs/sdk/quickstart.md) · [SDK tarball](docs/sdk/distribution.md) · [Local clientd](docs/sdk/clientd-quickstart.md)
 
-The current `0.2.0-devnet.1` source uses `@solana/kit` 8.4.0 throughout the
+The current source and published `0.2.0-devnet.2` use `@solana/kit` 8.4.0 throughout the
 SDK and native client. Its native Kit API is a breaking change from the first
 preview; follow the [migration guide](docs/sdk/kit-migration.md). The existing
 immutable `v0.1.0-devnet.1` release remains historical.
-[`v0.2.0-devnet.1`](https://github.com/yukikm/solana-zkapi/releases/tag/v0.2.0-devnet.1)
-is published; [signature and anonymous-download verification](docs/evidence/I10-kit-publication.json)
+[`v0.2.0-devnet.2`](https://github.com/yukikm/solana-zkapi/releases/tag/v0.2.0-devnet.2)
+is published; [signature and anonymous-download verification](docs/evidence/PD-public-client-publication.json)
 identify the exact released files.
 
 ## Build an application
