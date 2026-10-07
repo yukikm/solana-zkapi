@@ -1,0 +1,85 @@
+{
+  "schema": 1,
+  "date_jst": "2026-10-08",
+  "verified_at_utc": "2026-10-07T22:23:54.014932+00:00",
+  "scope": "Local test-only control ledger expiry boundary fix; no hosted success or production runtime change",
+  "preserved_hosted_failure": {
+    "run_id": 37692298429,
+    "job_id": 113035237886,
+    "source_commit": "046d7a17c39baa9492058504a056f61da7ad9c80",
+    "log_sha256": "a993757783fb3e03a8bbfa53b8d542d285bafd3012bfbf194917f3ee2423cde8",
+    "test": "admission_expiry_cursor_and_direct_dispatch_contract",
+    "former_line": 827,
+    "result": "Conflict(quote_expired) at first setup reservation",
+    "ledger_tests_passed": 4,
+    "ledger_tests_failed": 1,
+    "measured_scheduling_delay": null
+  },
+  "change": {
+    "path": "services/control/tests/ledger_runtime.rs",
+    "before_sha256": "84bf9c917c10daf170e950e02ace5f4549768e675e88dd1fcfaabc431c9e70a7",
+    "after_sha256": "d37ac341eb007d1fdd0b6c34d432258f1eec7ef32c8bd9d1c07f5d55fbdff7a8",
+    "setup_seconds_before": 1,
+    "setup_seconds_after": 5,
+    "expiry_wait_bound_seconds": 15,
+    "database_clock_poll_milliseconds": 25,
+    "immutable_expiry_preserved": true,
+    "dispatch_callback_entry_required": true,
+    "automatic_retries_added": false,
+    "test_skips_added": false,
+    "production_runtime_changed": false
+  },
+  "local_validation": {
+    "rust": "1.90.0",
+    "postgres": "18.6 (Homebrew)",
+    "fresh_cluster": true,
+    "unique_unix_socket": true,
+    "tcp_listener": false,
+    "fsync": true,
+    "fixture_stop_exit_code": 0,
+    "tests_passed": 5,
+    "tests_failed": 0,
+    "tests_ignored": 0,
+    "test_harness_seconds": 14.49,
+    "command_seconds": 15.991,
+    "complete_run_seconds": 17.674,
+    "format_exit_code": 0,
+    "inputs_unchanged": true,
+    "independent_review": "No blocking issue found",
+    "runner_sha256": "92b8a1af6657e11a86d5de9a5545c5a5211e0cbb8deb4a0ed61c5d153f90e3f3",
+    "results_sha256": "0d285e069b1f235057df3e927b605d1eaee12d8ee314d20f65d060bd9e3d3a07",
+    "test_log_sha256": "1e1e6909d51734c2a3ef0d8b485be402452a2b8bd4f3e230b80156ea5937cd99",
+    "format_log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "command": [
+      "cargo",
+      "+1.90.0",
+      "test",
+      "--locked",
+      "--offline",
+      "--manifest-path",
+      "services/control/Cargo.toml",
+      "--test",
+      "ledger_runtime",
+      "--",
+      "--include-ignored",
+      "--nocapture",
+      "--test-threads=1"
+    ]
+  },
+  "unchanged_runtime": [
+    {
+      "path": "services/control/src/ledger.rs",
+      "sha256": "1ad42fc08c482adcae327084c9485e5b2816a66f5d811f86269d2fb371c0f994"
+    },
+    {
+      "path": "services/control/migrations/0002_invariants.sql",
+      "sha256": "3a3994489f16903df3393d45a63c8511d37b0faf539a48e57dfeb1255ddda7b9"
+    }
+  ],
+  "hosted_rerun": false,
+  "full_control_sbf_regression": false,
+  "provider_requests": false,
+  "funding_actions": false,
+  "existing_database_changed": false,
+  "release_gates_passed": []
+}

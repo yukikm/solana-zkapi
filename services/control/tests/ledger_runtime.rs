@@ -150,6 +150,15 @@ async fn now(c: &Client) -> i64 {
     .unwrap()
     .get(0)
 }
+async fn wait_for_database_expiry(c: &Client, expires_at: i64) {
+    tokio::time::timeout(Duration::from_secs(15), async {
+        while now(c).await < expires_at {
+            tokio::time::sleep(Duration::from_millis(25)).await;
+        }
+    })
+    .await
+    .expect("database clock did not reach the immutable test expiry");
+}
 async fn active(ledger: &Ledger, c: &Client, tariff: Hash, n: Hash) -> NewSession {
     let q = quote(ledger, tariff, now(c).await + 120).await;
     let n = new_session(&q, n);
@@ -819,13 +828,14 @@ async fn admission_expiry_cursor_and_direct_dispatch_contract() {
     ledger.set_accepting(true).await.unwrap();
     let tariff = tariff(&ledger).await;
     // Recovery is based on accepted transcript, never current quote time or current root.
-    let q = quote(&ledger, tariff, now(&c).await + 1).await;
+    // A one-second integer deadline can expire during setup near a clock boundary.
+    let q = quote(&ledger, tariff, now(&c).await + 5).await;
     let accepted = new_session(&q, [51; 32]);
     ledger
         .reserve_session(&accepted, || async { Ok(()) })
         .await
         .unwrap();
-    tokio::time::sleep(Duration::from_millis(1100)).await;
+    wait_for_database_expiry(&c, q.expires_at).await;
     assert_eq!(
         ledger
             .reserve_session(&accepted, || async {
@@ -853,21 +863,27 @@ async fn admission_expiry_cursor_and_direct_dispatch_contract() {
         .reserve_session(&n, || async { Ok(()) })
         .await
         .unwrap();
-    ledger
-        .activate_proxy(n.request_id, 1, || async { Ok(()) })
+    let activated = ledger
+        .activate_proxy(n.request_id, 5, || async { Ok(()) })
         .await
         .unwrap();
     let op = operation(n.request_id, 100);
     ledger.reserve_operation(&op).await.unwrap();
+    let mut dispatch_check_entered = false;
     assert!(matches!(
         ledger
             .begin_dispatch(n.request_id, op.operation_id, Uuid::new_v4(), || async {
-                tokio::time::sleep(Duration::from_millis(1100)).await;
+                dispatch_check_entered = true;
+                wait_for_database_expiry(&c, activated.expires_at.unwrap()).await;
                 Ok(())
             })
             .await,
         Err(LedgerError::Conflict("session_closed_or_expired"))
     ));
+    assert!(
+        dispatch_check_entered,
+        "expiry must occur during the final check"
+    );
     assert!(ledger
         .reserve_operation(&operation(n.request_id, 1))
         .await
