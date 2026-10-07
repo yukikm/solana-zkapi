@@ -114,4 +114,3 @@ export function parseReviewedDevnetProfile(bytes: Uint8Array): ReviewedChatProfi
   }
   return p as ReviewedChatProfile;
 }
-
