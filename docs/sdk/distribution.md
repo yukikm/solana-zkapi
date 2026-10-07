@@ -54,6 +54,6 @@ request. Actual provider/devnet evidence remains separately scoped. See the
 Keep the exact tarball and an application lockfile for reproducible installs.
 Review dependency changes when updating either. A checksum supplied by the same
 untrusted download is not an independent trust anchor. The
-[Devnet Preview release](../releases/devnet-preview.md) is publicly downloadable
+[Kit preview release](../releases/kit-preview.md) is publicly downloadable
 and has a verified GitHub immutable-release attestation. Other-platform native
 installers, Apple signing/notarization and full production gates remain separate.

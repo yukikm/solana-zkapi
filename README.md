@@ -11,7 +11,7 @@ for in integer micro-USDC (1 USDC = 1,000,000 micro-USDC).
 have passed. Independent SDK installation and selected devnet/provider lifecycles
 also have [separate evidence](docs/evidence/I10-external-integration.md). Full provider
 acceptance, production setup, audits and release gates remain incomplete.
-The [Devnet Preview release](docs/releases/devnet-preview.md) provides an SDK
+The [Kit preview release](docs/releases/kit-preview.md) provides an SDK
 tarball and a macOS ARM64 clientd distribution.
 There is no published npm release or ready-to-use production deployment bundle.
 See [supported features and evidence](docs/sdk/status.md).
@@ -21,9 +21,10 @@ See [supported features and evidence](docs/sdk/status.md).
 The current `0.2.0-devnet.1` source uses `@solana/kit` 8.4.0 throughout the
 SDK and native client. Its native Kit API is a breaking change from the first
 preview; follow the [migration guide](docs/sdk/kit-migration.md). The existing
-immutable `v0.1.0-devnet.1` release remains historical. The new release target is
-[`v0.2.0-devnet.1`](https://github.com/yukikm/solana-zkapi/releases/tag/v0.2.0-devnet.1);
-source preparation alone does not establish that its assets are published.
+immutable `v0.1.0-devnet.1` release remains historical.
+[`v0.2.0-devnet.1`](https://github.com/yukikm/solana-zkapi/releases/tag/v0.2.0-devnet.1)
+is published; [signature and anonymous-download verification](docs/evidence/I10-kit-publication.json)
+identify the exact released files.
 
 ## Build an application
 

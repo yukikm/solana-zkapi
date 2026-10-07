@@ -17,7 +17,7 @@ provider charges. SDK settlement and withdrawal remain necessary.
 ## Install the current-platform package
 
 Download and verify the prebuilt macOS ARM64 archive from the
-[Devnet Preview release](../releases/devnet-preview.md), then extract it into a
+[Kit preview release](../releases/kit-preview.md), then extract it into a
 new directory. Obtain the archive and installed `release.json` hashes from the
 authenticated release manifest. The following build command is for maintainers.
 

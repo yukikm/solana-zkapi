@@ -155,3 +155,33 @@ Phantom use, a default hosted operator, mainnet readiness, a third-party audit,
 all hosted CI, complete I10, or G1–G4. The earlier published preview and its
 separately scoped live evidence remain historical records. Setup-file
 redistribution limitations and the existing immutable budget remain unchanged.
+
+## Verified publication follow-up
+
+The immutable [v0.2.0-devnet.1 release](https://github.com/yukikm/solana-zkapi/releases/tag/v0.2.0-devnet.1)
+was published from source `088ca40bf5886738f87b4db97205db8bff752356`.
+[Publication verification](I10-kit-publication.json) records GitHub release and
+SDK/native asset attestation verification, anonymous TLS-verified downloads of
+all four files, and all 7,247 extracted native file hashes plus CLI/Node checks.
+The native archive SHA-256 is
+`45270b8e71488a6b1b330f45119bb938fed09269d8c7b12fb8d1236475622b8a`;
+the SDK digest remains the independently tested `e6ff141b…`.
+
+[Focused core CI](I10-kit-hosted-core.json) passed 353 SDK tests without skips,
+independent package installation (59 tests and the same SDK archive digest),
+and native Go/helper checks. The separate
+[UI hosted run](https://github.com/yukikm/solana-zkapi-client/actions/runs/37575958917)
+passed 77 tests without skips with 56 unchanged inputs, including real isolated
+Chrome. Its initial short Chrome startup-deadline failures remain recorded in
+the client repository; only the test startup deadlines changed for the rerun.
+
+The old comprehensive implementation workflow remains non-green: historical
+artifact hash checks are stale and its browser job failed to launch Chromium.
+The focused workflow used the runner's installed Chrome and passed. Other
+comprehensive jobs were still running at the recorded observation; no all-CI or
+full release-gate claim follows.
+
+Post-publication main-branch documentation selects the Kit preview in active
+installation links. Immutable release artifacts retain their original committed
+documentation snapshot. No runtime bytes, funded journals, provider reservations
+or old immutable assets were changed by this documentation follow-up.
