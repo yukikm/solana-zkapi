@@ -9,10 +9,13 @@ jobs:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           submodules: recursive
+      - name: Fetch immutable historical evidence source
+        run: git fetch --no-tags --depth=1 origin a9c3364a89990e22b0a3c3d0bddee82493017987
       - name: Check source and design pins
         run: |
           python3 scripts/check_upstream.py
           python3 scripts/check_design.py
+          python3 -m unittest discover -s scripts -p 'test_check_evidence.py'
           python3 scripts/check_evidence.py
       - name: Install pinned Rust
         run: rustup show

@@ -1,0 +1,95 @@
+{
+  "schema": 1,
+  "date_jst": "2026-10-08",
+  "verified_at_utc": "2026-10-07T22:05:47.299668+00:00",
+  "scope": "Local historical Git artifact verification; no current runtime or hosted readiness claim",
+  "original_report": {
+    "path": "docs/evidence/implementation-results.json",
+    "sha256": "96ab495d58e351883ac2660b75ad4b50955e81c6b84186e6e52602c728d079e0",
+    "unchanged": true
+  },
+  "historical_source_commit": "a9c3364a89990e22b0a3c3d0bddee82493017987",
+  "historical_report_git_blob_equal": true,
+  "artifact_counts": {
+    "verified": 811,
+    "mismatched": 0,
+    "missing": 0,
+    "mode_100644": 802,
+    "mode_100755": 9
+  },
+  "preserved_failed_hosted_observation": {
+    "run_id": 37689991621,
+    "commit": "340b043760919782b563b1f0598f8af75083a2b9",
+    "job": "rust",
+    "artifact_hash_mismatches": 139,
+    "missing_or_moved_paths": 38,
+    "later_rust_commands_executed": false,
+    "raw_log_sha256": "f7e9b5c14be9db1aa799dc4e05d8733d225c9896978ca226451aa8f620c80ab2"
+  },
+  "migration_map": {
+    "path": "docs/source-migrations.json",
+    "sha256": "8129ddb3431cf7b9dd352d614906892aa198fd9e2666782fb540184e000e3a9d",
+    "missing_paths_covered": 38,
+    "hashes_equal_to_original_inventory": 22,
+    "hashes_of_later_revision": 16,
+    "used_as_verification_fallback": false
+  },
+  "tests": {
+    "final_passed": 15,
+    "failed": 0,
+    "ignored": 0,
+    "initial_overlapping_passed": 14,
+    "commands": [
+      {
+        "name": "unit",
+        "command": [
+          "python3",
+          "-m",
+          "unittest",
+          "discover",
+          "-s",
+          "scripts",
+          "-p",
+          "test_check_evidence.py",
+          "-v"
+        ],
+        "exit_code": 0,
+        "elapsed_seconds": 3.133,
+        "log_sha256": "46aec2ddd9f683463ea8a4c12bfe1e1d51084c4f4cf0ebe4fbd35ee8cd4161b6"
+      },
+      {
+        "name": "historical",
+        "command": [
+          "python3",
+          "scripts/check_evidence.py"
+        ],
+        "exit_code": 0,
+        "elapsed_seconds": 0.093,
+        "log_sha256": "46901ee72121eb71487d82859a12e7d5c4241533f7492f2dab1c8af84d832abd"
+      }
+    ],
+    "retained_local_results_sha256": "30dc8d7250491926ef096b7f2f13a8d29368a1a2f0c2eb7b6a97945bd47c5bf9"
+  },
+  "preservation": {
+    "real_head_index_refs_unchanged": true,
+    "historical_report_unchanged": true,
+    "frozen_server_source_count": 187,
+    "frozen_server_sources_unchanged": true
+  },
+  "source_sha256": {
+    "scripts/check_evidence.py": "8354f0b1ae584d0de05db00ca535d1980a4be82c59423154b7ccdc742c9e9dcc",
+    "scripts/test_check_evidence.py": "875118e6166268ec4613132b6532c7439b724799ca438776eda6783f158efe50",
+    "docs/evidence/implementation-source.json": "a7728ac2d9e56ed19c78ef9e5289d69fcd75ffc39fe56658c04efc6c3c99378a",
+    ".github/workflows/ci.yml": "e51c2913a50bd5776477483eabfc378a5d75a90b0c6a5cea7818673ab4544d73"
+  },
+  "verifier_network": false,
+  "git_replace_objects": false,
+  "git_lazy_fetch": false,
+  "git_transports_allowed": [],
+  "worktree_fallback": false,
+  "current_runtime_source_modified": false,
+  "new_hosted_execution": false,
+  "public_readiness_claim": false,
+  "funded_acceptance_claim": false,
+  "release_gates_passed": []
+}
