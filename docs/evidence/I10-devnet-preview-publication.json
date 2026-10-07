@@ -1,0 +1,73 @@
+{
+  "release_url": "https://github.com/yukikm/solana-zkapi/releases/tag/v0.1.0-devnet.1",
+  "release_id": 405380992,
+  "published_at": "2026-10-07T04:34:46Z",
+  "immutable": true,
+  "prerelease": true,
+  "assets": [
+    {
+      "name": "release-manifest.json",
+      "sha256": "502a0cd452152b44fbc93524f3655e08654daeb02a9afbcb9839b7941ab121bd",
+      "bytes": 1436,
+      "anonymous_download_verified": true
+    },
+    {
+      "name": "SHA256SUMS",
+      "sha256": "41001d81eb6e341cdcc06f691c218c277f5255268fc65ee2af2e3b15364fc9ea",
+      "bytes": 305,
+      "anonymous_download_verified": true
+    },
+    {
+      "name": "zkapi-clientd-0.1.0-devnet.1-darwin-arm64.tar.gz",
+      "sha256": "402a19ff875f9b2b1c0d9c3f33bfae64e436e867391ec9e0d2fba904650c30ee",
+      "bytes": 53037927,
+      "anonymous_download_verified": true
+    },
+    {
+      "name": "zkapi-solana-sdk-0.1.0-devnet.1.tgz",
+      "sha256": "eb3164d5b7a54c7b97e523ec742033b39547eda5842648490ae9f68048b07504",
+      "bytes": 108720,
+      "anonymous_download_verified": true
+    }
+  ],
+  "authenticated": false,
+  "tls_verification_enabled": true,
+  "client": "macOS system curl (configuration file disabled)",
+  "extracted_installation_all_hashes_verified": true,
+  "downloaded_clientd_help": true,
+  "downloaded_node_version": "v24.19.0",
+  "local_gh_release_signature_verified": true,
+  "local_gh_sdk_signature_verified": true,
+  "local_gh_clientd_signature_verified": true,
+  "release_commit": "ec25411259385aeb766f24db68c921e6addcebc7",
+  "git_tag_object": "8bc9df38fa1e81786ca2ab37c05f3fd77d299d92",
+  "repositories": [
+    {
+      "url": "https://github.com/yukikm/solana-zkapi",
+      "visibility": "public",
+      "license": "MIT"
+    },
+    {
+      "url": "https://github.com/yukikm/solana-zkapi-client",
+      "visibility": "public",
+      "license": "MIT"
+    }
+  ],
+  "initial_anonymous_probe": {
+    "client": "Python 3.13 urllib",
+    "passed": false,
+    "reason": "local CA store could not validate issuer",
+    "tls_verification_disabled": false
+  },
+  "focused_hosted_ci": {
+    "core": "https://github.com/yukikm/solana-zkapi/actions/runs/37571622745",
+    "client": "https://github.com/yukikm/solana-zkapi-client/actions/runs/37571647210",
+    "both_passed": true,
+    "full_implementation_passed": false
+  },
+  "signature_verification_commands": [
+    "gh release verify v0.1.0-devnet.1 --repo yukikm/solana-zkapi",
+    "gh release verify-asset v0.1.0-devnet.1 SDK_TARBALL --repo yukikm/solana-zkapi",
+    "gh release verify-asset v0.1.0-devnet.1 NATIVE_ARCHIVE --repo yukikm/solana-zkapi"
+  ]
+}

@@ -124,3 +124,26 @@ assertion ran in that failed test. The focused preview explicitly selected the
 runner's Google Chrome and passed all 315. The exact failed executable was not
 logged, so a specific browser-selection cause is not asserted. These failures
 are preserved and are not converted to a full implementation pass.
+
+## Published release and consumer verification
+
+[v0.1.0-devnet.1](https://github.com/yukikm/solana-zkapi/releases/tag/v0.1.0-devnet.1)
+was published at 2026-10-07 04:34:46 UTC as an immutable prerelease, release ID
+405380992, source commit `ec25411259385aeb766f24db68c921e6addcebc7`.
+All 503 recorded build inputs match that commit and its pinned upstream gitlink.
+The four assets are the SDK tarball, macOS ARM64 clientd archive, release manifest
+and SHA256SUMS. All uploaded digests and sizes matched before publication.
+
+`gh release verify` and `gh release verify-asset` for both executable packages
+passed against GitHub's signed release attestation. Independent unauthenticated
+system-curl downloads of all four files matched their hashes and sizes, with TLS
+verification enabled. The downloaded native archive was extracted, every file
+checked against its installation manifest, and its clientd help / bundled Node
+24.19.0 executed successfully. Both public repository APIs report MIT licensing.
+The first Python urllib download probe failed due to its local CA store; system
+curl succeeded with normal certificate verification, without disabling TLS.
+
+The [publication report](I10-devnet-preview-publication.json) records these results.
+The signature is a GitHub release attestation, not Apple code signing or a
+production audit. This documentation-only publication confirmation does not
+change the immutable tag, archives, runtime source or deployment state.
