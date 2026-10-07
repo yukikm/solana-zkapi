@@ -312,7 +312,12 @@ fn deposit_state(witness: Witness) -> Result<Value> {
 }
 pub fn execute(command: Command) -> Result<Value> {
     match command {
-        Command::SnapshotPath { root, next_note_id, active_notes, note_id } => snapshot::path(root, next_note_id, active_notes, note_id),
+        Command::SnapshotPath {
+            root,
+            next_note_id,
+            active_notes,
+            note_id,
+        } => snapshot::path(root, next_note_id, active_notes, note_id),
         Command::Verify { command } => verifier::execute(command),
         Command::Deposit {
             note_id,

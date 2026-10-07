@@ -2,8 +2,9 @@
 
 Original handoff: 2026-10-07 JST. Status updated: 2026-10-08 JST.
 **The public profile, complete proof assets, SDK/native archives and independent
-chat app are hosted and verified; operator history catch-up and funded lifecycle
-acceptance remain in progress.** The original document below records the
+chat app are hosted and verified; public service readiness is blocked by the
+configured RPC's monthly quota, and funded lifecycle acceptance remains
+unfinished.** The original document below records the
 separate-session request after an independent chat application could install
 the SDK but could not complete a public-input-only integration. Subsequent
 deployment and verification evidence is linked here; historical checkpoints
@@ -26,10 +27,17 @@ approved proceeding with the roughly USD50/month
 This supersedes the previous seven-day/USD100 proposal. The user excluded
 long-term qualification from the current scope; current deployment headroom and
 live lifecycle acceptance still require verification. The actual `zkchat` app
-is updated and published. Its read-only Chrome check correctly reports an
-unavailable finalized snapshot during catch-up. New admission remains suspended
-at this checkpoint; funded browser, native/provider and recovery acceptance
-remain unfinished. The [detached authority checkpoint](evidence/PD-detached-budget-initialization.md)
+is updated and published. Earlier public preflight and unfunded browser/native
+initialization passed in their recorded scopes. The
+[current RPC checkpoint](evidence/PD-public-rpc-quota-blocker.md) confirms an
+actual monthly-quota response from the configured endpoint; a bounded official
+free Devnet fallback also returned HTTP 429 before completing its sample.
+The [shared archive follower](evidence/PD-shared-archive-indexer-host.md) preserves
+the original history, but current root/snapshot endpoints are unavailable and
+control remains stopped. New admission remains suspended; funded browser,
+native/provider and recovery acceptance remain unfinished. No history is skipped
+and no RPC replacement or paid upgrade is established by these observations.
+The [detached authority checkpoint](evidence/PD-detached-budget-initialization.md)
 records the approved seven-cap grant initialized with zero reservations, without
 transferring or reclaiming the original ledger's capacity.
 

@@ -1,9 +1,13 @@
 # Public Devnet preview deployment
 
-Status at 2026-10-08 JST: **assets are published; public preflight and unfunded
-browser/native initialization have passed; funded acceptance remains in
-progress**. New admission is suspended at this checkpoint. A successful
-download or read-only preflight is not a live-provider result. See the
+Status at 2026-10-08 JST: **assets are published; earlier public preflight and
+unfunded browser/native initialization passed; current service readiness is
+blocked by the configured RPC's monthly quota**. New admission is suspended,
+root/snapshot endpoints are unavailable, and funded acceptance remains
+unfinished. The [RPC checkpoint](../evidence/PD-public-rpc-quota-blocker.md)
+preserves the actual quota response and a bounded official free Devnet fallback
+that also returned HTTP 429. A successful earlier download or read-only preflight
+is not a current availability or live-provider result. See the
 [implementation record](../public-devnet-implementation.md) for current evidence.
 
 The operator uses the AWS account selected by the repository maintainer. This is

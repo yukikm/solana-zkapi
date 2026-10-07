@@ -1,0 +1,506 @@
+{
+  "schema": 1,
+  "recorded_date_jst": "2026-10-08",
+  "observed_at_utc": "2026-10-07 23:16:18 UTC",
+  "scope": "Read-only completed focused CI, completed preceding implementation failure and bounded current implementation observation; no new workflow dispatched by this collection",
+  "focused": {
+    "run_id": 37696330196,
+    "url": "https://github.com/yukikm/solana-zkapi/actions/runs/37696330196",
+    "source_commit": "169e929d534b0ea6961cbf084c43db90c7401421",
+    "conclusion": "success",
+    "jobs": [
+      {
+        "id": 113048862991,
+        "name": "clientd Go race and synthetic secret-helper tests",
+        "conclusion": "success"
+      },
+      {
+        "id": 113048863294,
+        "name": "SDK fixtures, real Chrome custody, isolated tarball",
+        "conclusion": "success"
+      }
+    ],
+    "sdk": {
+      "tests": 377,
+      "passed": 377,
+      "failed": 0,
+      "skipped": 0,
+      "duration_ms": 31810.603804,
+      "chrome": "154.0.8037.57",
+      "node": "24.19.0",
+      "external_package_reported_pass": true,
+      "ci_tarball_sha256": "e5da3b8294ae3394c0876df4d29a7af1afc96e8ef1b32fb1cd4b7c4e2efd2282",
+      "immutable_released_tarball_unchanged": true,
+      "release_tarball_sha256": "fe9917b7f11e4bec0837bc7aac7624ad2965aa9bca007d61b877f263620143dc",
+      "ci_tarball_bytes_reported": 121464
+    },
+    "installed_package": {
+      "tests": {
+        "tests": 75,
+        "pass": 75,
+        "fail": 0,
+        "cancelled": 0,
+        "skipped": 0,
+        "todo": 0
+      },
+      "stages": 12,
+      "seconds": 16.412,
+      "stage_log_hashes_verified": 12,
+      "source_input_hashes_joined_to_exact_commit": 58,
+      "source_inputs_unchanged_reported": true
+    },
+    "native_fixtures": {
+      "go_race_packages_passed": 3,
+      "secret_helper_tests": 5,
+      "notices_tests": 7,
+      "release_provenance_tests": 6
+    },
+    "artifacts": [
+      {
+        "id": 11515632194,
+        "name": "sdk-preview-fixtures-browser-package-logs",
+        "bytes": 31090,
+        "reported_digest": "sha256:f875027eebcc5d5dc4680e19d72112563c5c8ad2439932f74d38320a5ec7585a"
+      },
+      {
+        "id": 11515158336,
+        "name": "clientd-preview-local-fixture-logs",
+        "bytes": 737,
+        "reported_digest": "sha256:bb86229ee1965cc9e7068b8c347ea9a8a29ff8420a7ba0502335e48678d0aecf"
+      }
+    ],
+    "artifact_scope": "GitHub reports ZIP digest/size; extracted members were downloaded and hashed. Original ZIP bytes and SDK tarball bytes were not independently hashed in this collection. Tarball digest/size come from matching saved pack/results logs.",
+    "extracted_members": [
+      {
+        "path": "clientd-preview-local-fixture-logs/clientd-go-race.log",
+        "bytes": 143,
+        "sha256": "47f9bd5875ab6f4e4bec067570e1c3217366c67a5a11fcbd88ca2ae0317ff2dd"
+      },
+      {
+        "path": "clientd-preview-local-fixture-logs/clientd-notices.log",
+        "bytes": 105,
+        "sha256": "86c967a00f06ad033ecab8fdfd48f0dfe4f7c54ecd2a5af426df39e10af79aa8"
+      },
+      {
+        "path": "clientd-preview-local-fixture-logs/clientd-provenance.log",
+        "bytes": 104,
+        "sha256": "e69559a3ca5db2e082d98d5632ce4325cf1d5d7354a79e30f5aa59d2158962b6"
+      },
+      {
+        "path": "clientd-preview-local-fixture-logs/clientd-secrets.log",
+        "bytes": 103,
+        "sha256": "baf49b59538192f3e136ca0404cac516ecb8dd2fe5ba1416604056f3080fa49c"
+      },
+      {
+        "path": "sdk-preview-fixtures-browser-package-logs/chrome.log",
+        "bytes": 29,
+        "sha256": "853e10339f16fd47037f8ba97c7417b4a0b4605cca9f08308436c65ac32077bb"
+      },
+      {
+        "path": "sdk-preview-fixtures-browser-package-logs/external-package/browser-build.log",
+        "bytes": 87,
+        "sha256": "06efe27a42f63a966636054bc67e0af64bd94909301d5af43e826ae3da4ae889"
+      },
+      {
+        "path": "sdk-preview-fixtures-browser-package-logs/external-package/declarations.log",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "path": "sdk-preview-fixtures-browser-package-logs/external-package/install.log",
+        "bytes": 25,
+        "sha256": "32fad87b4ec997dc12fef1158d10bd3cd8d07c3b4bf62891a76ac4eeae4aaa05"
+      },
+      {
+        "path": "sdk-preview-fixtures-browser-package-logs/external-package/installed-lifecycle-trust.log",
+        "bytes": 18721,
+        "sha256": "93210ab05bbba75c1c0a42b74a0481f742027fda265a1add92c02913de931968"
+      },
+      {
+        "path": "sdk-preview-fixtures-browser-package-logs/external-package/node-exports.log",
+        "bytes": 50,
+        "sha256": "2025b55f65cd7c100803f54d4cb73c5f393e4c3787b0233af354f252255937d5"
+      },
+      {
+        "path": "sdk-preview-fixtures-browser-package-logs/external-package/node-version.log",
+        "bytes": 9,
+        "sha256": "b7677d3ec37ee1897ba07dc2cfe8292fe421c9ac93396cca5bbece486d1a2a41"
+      },
+      {
+        "path": "sdk-preview-fixtures-browser-package-logs/external-package/pack.log",
+        "bytes": 3021,
+        "sha256": "c07fb232c27c287e722794ca5ef317f3be67cdbcc9e53b90b9b34501cea21b18"
+      },
+      {
+        "path": "sdk-preview-fixtures-browser-package-logs/external-package/public-consumer-browser-adapter.log",
+        "bytes": 1081,
+        "sha256": "48298598be48282039ce0ee1ea2b86a93211c79871d54971d528e4d1c720546d"
+      },
+      {
+        "path": "sdk-preview-fixtures-browser-package-logs/external-package/public-consumer-help.log",
+        "bytes": 399,
+        "sha256": "ea76d8deed604a0e14f733823214660954e6b99f2801595484eae63b288e72f1"
+      },
+      {
+        "path": "sdk-preview-fixtures-browser-package-logs/external-package/public-consumer-install.log",
+        "bytes": 319,
+        "sha256": "446f10a5ff0995ef1bb285779f1d753aebd81d5b6d19641a80b5f5391a66efd7"
+      },
+      {
+        "path": "sdk-preview-fixtures-browser-package-logs/external-package/public-consumer-network.log",
+        "bytes": 506,
+        "sha256": "beabe0df9dddd402520b56cd686ff93eaa2f53a947c6159bc978139073215f2a"
+      },
+      {
+        "path": "sdk-preview-fixtures-browser-package-logs/external-package/public-consumer-types.log",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "path": "sdk-preview-fixtures-browser-package-logs/external-package/results.json",
+        "bytes": 11819,
+        "sha256": "9c06301d2a246711c71a80be8a758245fd07c99e5bf46acd43c0a4ed4e2028cf"
+      },
+      {
+        "path": "sdk-preview-fixtures-browser-package-logs/kit-dependencies.log",
+        "bytes": 127,
+        "sha256": "f58bbdcba2f2e5fa3874af0643b5fdbc6ea6a389768006e19e6f9754ff776190"
+      },
+      {
+        "path": "sdk-preview-fixtures-browser-package-logs/sdk-build.log",
+        "bytes": 120,
+        "sha256": "354cd2f798cb265846f3cf2c9d92d382a8195f4d2552f0e4a774e4d619a29bf7"
+      },
+      {
+        "path": "sdk-preview-fixtures-browser-package-logs/sdk-test-counts.json",
+        "bytes": 94,
+        "sha256": "6e51d8c1a7580660417d10e004d5fa732757ae75daeb0d23857a5237550582e8"
+      },
+      {
+        "path": "sdk-preview-fixtures-browser-package-logs/sdk-tests.log",
+        "bytes": 87331,
+        "sha256": "041e9571e49d2887c0c4035cc6574b3fde553383d33bd69806d43ce807a31a4d"
+      },
+      {
+        "path": "sdk-preview-fixtures-browser-package-logs/sdk-typecheck.log",
+        "bytes": 59,
+        "sha256": "4856ecb79ae68a07fac5c939eaeeebcec040c125213e6ec85a35d3671ea6866d"
+      }
+    ]
+  },
+  "preceding_implementation": {
+    "run_id": 37696330290,
+    "url": "https://github.com/yukikm/solana-zkapi/actions/runs/37696330290",
+    "source_commit": "169e929d534b0ea6961cbf084c43db90c7401421",
+    "status": "completed",
+    "conclusion": "failure",
+    "jobs": [
+      {
+        "id": 113048863648,
+        "name": "vault",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-10-07T22:27:50Z",
+        "completed_at": "2026-10-07T22:39:31Z",
+        "html_url": "https://github.com/yukikm/solana-zkapi/actions/runs/37696330290/job/113048863648"
+      },
+      {
+        "id": 113048863920,
+        "name": "contracts",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-10-07T22:27:50Z",
+        "completed_at": "2026-10-07T22:28:09Z",
+        "html_url": "https://github.com/yukikm/solana-zkapi/actions/runs/37696330290/job/113048863920"
+      },
+      {
+        "id": 113048863921,
+        "name": "go",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-10-07T22:27:51Z",
+        "completed_at": "2026-10-07T22:28:19Z",
+        "html_url": "https://github.com/yukikm/solana-zkapi/actions/runs/37696330290/job/113048863921"
+      },
+      {
+        "id": 113048863943,
+        "name": "rust",
+        "status": "completed",
+        "conclusion": "failure",
+        "started_at": "2026-10-07T22:27:50Z",
+        "completed_at": "2026-10-07T22:28:08Z",
+        "html_url": "https://github.com/yukikm/solana-zkapi/actions/runs/37696330290/job/113048863943"
+      },
+      {
+        "id": 113048863995,
+        "name": "svm",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-10-07T22:27:50Z",
+        "completed_at": "2026-10-07T22:37:43Z",
+        "html_url": "https://github.com/yukikm/solana-zkapi/actions/runs/37696330290/job/113048863995"
+      },
+      {
+        "id": 113048864060,
+        "name": "transport",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-10-07T22:27:51Z",
+        "completed_at": "2026-10-07T22:41:34Z",
+        "html_url": "https://github.com/yukikm/solana-zkapi/actions/runs/37696330290/job/113048864060"
+      },
+      {
+        "id": 113048864078,
+        "name": "node",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-10-07T22:27:52Z",
+        "completed_at": "2026-10-07T22:29:10Z",
+        "html_url": "https://github.com/yukikm/solana-zkapi/actions/runs/37696330290/job/113048864078"
+      },
+      {
+        "id": 113048864079,
+        "name": "control",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-10-07T22:27:50Z",
+        "completed_at": "2026-10-07T22:46:40Z",
+        "html_url": "https://github.com/yukikm/solana-zkapi/actions/runs/37696330290/job/113048864079"
+      },
+      {
+        "id": 113048864103,
+        "name": "client-challenger",
+        "status": "completed",
+        "conclusion": "failure",
+        "started_at": "2026-10-07T22:27:50Z",
+        "completed_at": "2026-10-07T23:08:45Z",
+        "html_url": "https://github.com/yukikm/solana-zkapi/actions/runs/37696330290/job/113048864103"
+      }
+    ],
+    "successful_jobs": 7,
+    "failed_jobs": 2,
+    "failures": [
+      {
+        "job": "rust",
+        "stage": "cargo fmt --all -- --check",
+        "path": "crates/zkapi-tree-prover/examples/verify_public_bundle.rs",
+        "historical_inventory_passed": 811,
+        "historical_checker_tests_passed": 15,
+        "clippy_and_rust_tests_reached": false
+      },
+      {
+        "job": "client-challenger",
+        "component": "wallet",
+        "stage": "cargo fmt --manifest-path apps/clientd/prover/Cargo.toml -- --check",
+        "path": "apps/clientd/prover/src/lib.rs",
+        "line": 312,
+        "preceding_sdk_and_challenger_components": "passed",
+        "wallet_runtime_tests_reached": false,
+        "source_sha256_identical_at_169_and_92": "89e4684e737d6f1aacb9a35ae937e00b53f7708b21960ef74eb6d6b50667ba8a"
+      }
+    ]
+  },
+  "current_implementation": {
+    "run_id": 37697885279,
+    "url": "https://github.com/yukikm/solana-zkapi/actions/runs/37697885279",
+    "source_commit": "92b3fc903ef92aba379910a8689873a81d6fd624",
+    "observed_at_utc": "2026-10-07 23:16:18 UTC",
+    "status": "in_progress",
+    "conclusion": null,
+    "jobs": [
+      {
+        "id": 113053996617,
+        "name": "transport",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-10-07T22:42:39Z",
+        "completed_at": "2026-10-07T22:54:18Z",
+        "html_url": "https://github.com/yukikm/solana-zkapi/actions/runs/37697885279/job/113053996617"
+      },
+      {
+        "id": 113053996778,
+        "name": "svm",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-10-07T22:42:40Z",
+        "completed_at": "2026-10-07T22:58:12Z",
+        "html_url": "https://github.com/yukikm/solana-zkapi/actions/runs/37697885279/job/113053996778"
+      },
+      {
+        "id": 113053996832,
+        "name": "node",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-10-07T22:42:39Z",
+        "completed_at": "2026-10-07T22:43:45Z",
+        "html_url": "https://github.com/yukikm/solana-zkapi/actions/runs/37697885279/job/113053996832"
+      },
+      {
+        "id": 113053996844,
+        "name": "control",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-10-07T22:42:39Z",
+        "completed_at": "2026-10-07T23:00:47Z",
+        "html_url": "https://github.com/yukikm/solana-zkapi/actions/runs/37697885279/job/113053996844"
+      },
+      {
+        "id": 113053996848,
+        "name": "go",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-10-07T22:42:39Z",
+        "completed_at": "2026-10-07T22:43:02Z",
+        "html_url": "https://github.com/yukikm/solana-zkapi/actions/runs/37697885279/job/113053996848"
+      },
+      {
+        "id": 113053996873,
+        "name": "vault",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-10-07T22:42:39Z",
+        "completed_at": "2026-10-07T22:56:57Z",
+        "html_url": "https://github.com/yukikm/solana-zkapi/actions/runs/37697885279/job/113053996873"
+      },
+      {
+        "id": 113053996880,
+        "name": "rust",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-10-07T22:42:40Z",
+        "completed_at": "2026-10-07T22:48:02Z",
+        "html_url": "https://github.com/yukikm/solana-zkapi/actions/runs/37697885279/job/113053996880"
+      },
+      {
+        "id": 113053996930,
+        "name": "client-challenger",
+        "status": "in_progress",
+        "conclusion": null,
+        "started_at": "2026-10-07T22:42:39Z",
+        "completed_at": null,
+        "html_url": "https://github.com/yukikm/solana-zkapi/actions/runs/37697885279/job/113053996930"
+      },
+      {
+        "id": 113053996953,
+        "name": "contracts",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-10-07T22:42:40Z",
+        "completed_at": "2026-10-07T22:43:02Z",
+        "html_url": "https://github.com/yukikm/solana-zkapi/actions/runs/37697885279/job/113053996953"
+      }
+    ],
+    "successful_jobs": 8,
+    "pending_jobs": 1,
+    "pending_step": "I10 local SDK, WASM, Go, challenger, backend, operations and integration acceptance",
+    "pending_step_started_at_utc": "2026-10-07T22:59:28Z",
+    "full_workflow_passed": false,
+    "rust_job": {
+      "conclusion": "success",
+      "design_json_documents": 593,
+      "design_local_links": 1322,
+      "historical_inventory_files": 811,
+      "historical_source_commit": "a9c3364a89990e22b0a3c3d0bddee82493017987",
+      "historical_checker_fixture_tests": 15,
+      "scope": "Historical integrity is not current-tree byte equality; current format/clippy/test/wasm and upstream checks are separately scoped job steps."
+    }
+  },
+  "local_prover_correction": {
+    "evidence": "PD-prover-format-followup.json",
+    "source_sha256": "9bba46d458d059fbfc8ef415c0be1f540cdb2e0d04262c5577c2e049fe9b9ab0",
+    "scope": "Formatter-only candidate; successor hosted outcome unverified at this cut; not a rewrite of preceding failure"
+  },
+  "runtime_boundary": {
+    "evidence": "PD-public-rpc-quota-blocker.json",
+    "public_readiness_established": false,
+    "funded_public_native_browser_openclaw_acceptance_established": false,
+    "provider_recovery_withdrawal_operating_acceptance_established": false,
+    "release_gates_passed": [],
+    "release_artifacts_replaced": false,
+    "financial_actions": 0,
+    "workflow_retries_dispatched": 0
+  },
+  "retained_inputs": [
+    {
+      "retained_file": "main-169-hosted-ci/focused-jobs.json",
+      "sha256": "6cc5a15c7d195395afc9892dadeeeb6686eb0c61f77f2601d15219e5c65e6141",
+      "bytes": 4957
+    },
+    {
+      "retained_file": "main-169-hosted-ci/focused-artifacts.json",
+      "sha256": "b6da3df9d96e4388d7d833781665eb6873945bc36a028b78c77991a061aaea6c",
+      "bytes": 1698
+    },
+    {
+      "retained_file": "main-169-hosted-ci/focused-completed-summary.json",
+      "sha256": "aabe407ed97d1cb9d03dbd30d3281294454100e156c55fbddb8ec46ac81eea3c",
+      "bytes": 4797
+    },
+    {
+      "retained_file": "main-169-hosted-ci/artifact-validation.json",
+      "sha256": "87169f02c9282e90e8509cd1953e7dd74816860a633bd5ad6bcb3569b49ca12c",
+      "bytes": 5357
+    },
+    {
+      "retained_file": "main-169-hosted-ci/final-run.json",
+      "sha256": "cccb53d24a2abfb64a25c3bc862fc5a28d28182095ae7e5c0a21a8e9224ecc4b",
+      "bytes": 13543
+    },
+    {
+      "retained_file": "main-169-hosted-ci/implementation-jobs-seventh.json",
+      "sha256": "612b306c641436cafc45c31f9175c940d30b4a6de5227cfa1d3cc715eb1c7acb",
+      "bytes": 32921
+    },
+    {
+      "retained_file": "main-169-hosted-ci/implementation-artifacts.json",
+      "sha256": "7b09ee33e71dee1a3c5874104997a8b6fcb7f14410edbc3a2f6ff6ffd36453b2",
+      "bytes": 4118
+    },
+    {
+      "retained_file": "main-169-hosted-ci/rust-job-113048863943.log",
+      "sha256": "3a2e50735a7d54ce2f643d7266d6b72f9456300c93f373b407cc93efa083460a",
+      "bytes": 28793
+    },
+    {
+      "retained_file": "main-169-hosted-ci/client-challenger-job-113048864103.log",
+      "sha256": "fca1e82c9ce5aa2e802e2119f416d1b887f750257d57e76d673346c0c59fd12e",
+      "bytes": 328216
+    },
+    {
+      "retained_file": "main-169-hosted-ci/wallet-format-failure.json",
+      "sha256": "6315610412c5893268df82ec4fdd5bf57c006d668370c4baa476e2dd6d5fb617",
+      "bytes": 1205
+    },
+    {
+      "retained_file": "main-169-hosted-ci/runtime-artifacts/target/i10-acceptance/run-df2aa762/wallet.log",
+      "sha256": "f2e3366b2623056414120a6aee8df66fc150db1f28699adadb53b822dd3b62e2",
+      "bytes": 1519
+    },
+    {
+      "retained_file": "main-92-hosted-ci/run-cut-2316.json",
+      "sha256": "4622e86464bfdcd5cf07e67a7f06e3932a45ab3a53436ac97c07862783ad139d",
+      "bytes": 13592
+    },
+    {
+      "retained_file": "main-92-hosted-ci/jobs-sixth.json",
+      "sha256": "be3e662620e4a4a6ea3ba2ca74f77aaed9dc087d39fc52d14f38d68b81f165c9",
+      "bytes": 32395
+    },
+    {
+      "retained_file": "main-92-hosted-ci/rust-job-113053996880.log",
+      "sha256": "90ab95571544c1e7012fe1dd313877409e2a2441b0dec63783cc0ac90d488a70",
+      "bytes": 113106
+    },
+    {
+      "retained_file": "main-92-hosted-ci/control-job-113053996844.log",
+      "sha256": "e985f8d3dc3d1f85cdf7a1f2a9b8999bb69d693a38464d63c408165bd3e9b2c6",
+      "bytes": 190784
+    },
+    {
+      "retained_file": "main-92-hosted-ci/node-job-113053996832.log",
+      "sha256": "66e41206a506dbe1ed8115e89ed4114fc7a2877cb158f8822eb64669309c2e87",
+      "bytes": 107109
+    }
+  ],
+  "log_scope": "Decoded GitHub job text and separately downloaded extracted artifact members; earlier intermediate cuts remain retained and are not overwritten."
+}

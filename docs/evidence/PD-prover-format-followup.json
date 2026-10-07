@@ -1,0 +1,110 @@
+{
+  "schema": 1,
+  "date_jst": "2026-10-08",
+  "verified_at_utc": "2026-10-07T23:13:20.237725+00:00",
+  "scope": "Source-only prover formatter correction; no new proof, build, hosted pass or public acceptance",
+  "hosted_failure": {
+    "run_id": 37696330290,
+    "source_commit": "169e929d534b0ea6961cbf084c43db90c7401421",
+    "job_id": 113048864103,
+    "url": "https://github.com/yukikm/solana-zkapi/actions/runs/37696330290/job/113048864103",
+    "component": "wallet",
+    "command": [
+      "cargo",
+      "fmt",
+      "--manifest-path",
+      "apps/clientd/prover/Cargo.toml",
+      "--",
+      "--check"
+    ],
+    "wallet_runtime_tests_reached": false,
+    "wallet_log_sha256": "f2e3366b2623056414120a6aee8df66fc150db1f28699adadb53b822dd3b62e2",
+    "prover_fmt_log_sha256": "62c7013a4ae63d7bcfb4e161e8b5f21a8d09d3a4bd64b82b0c308110fab1a03f"
+  },
+  "change": {
+    "path": "apps/clientd/prover/src/lib.rs",
+    "before_sha256": "89e4684e737d6f1aacb9a35ae937e00b53f7708b21960ef74eb6d6b50667ba8a",
+    "after_sha256": "9bba46d458d059fbfc8ef415c0be1f540cdb2e0d04262c5577c2e049fe9b9ab0",
+    "before_bytes": 19419,
+    "after_bytes": 19476,
+    "description": "Expand SnapshotPath destructuring into rustfmt layout and add one trailing comma.",
+    "nonformat_tokens_unchanged": true,
+    "all_literals_and_comments_exact": true,
+    "token_report_sha256": "7125f00d63cf3170b412a9dddb665ea17111b24616335b74b6494bc947402735",
+    "diff_sha256": "b0f087aa44ba1a7d3e15cc7a42782507bbc6cb26297458f4728b18bb8fb92dc8"
+  },
+  "local_validation": {
+    "formatter_version": "rustfmt 1.8.0-stable (1159e78c47 2025-09-14)",
+    "commands": [
+      {
+        "argv": [
+          "rustfmt",
+          "+1.90.0",
+          "--edition",
+          "2021",
+          "--config",
+          "skip_children=true",
+          "apps/clientd/prover/src/lib.rs"
+        ],
+        "exit_code": 0
+      },
+      {
+        "argv": [
+          "cargo",
+          "+1.90.0",
+          "fmt",
+          "--manifest-path",
+          "apps/clientd/prover/Cargo.toml",
+          "--",
+          "--check"
+        ],
+        "exit_code": 0,
+        "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      }
+    ],
+    "guarded_prover_inputs": 8,
+    "other_prover_inputs_unchanged": 7,
+    "before_manifest_sha256": "514be18592ee2abb8041c19c504951445c377e845685b83b4996920797bb2f3a",
+    "result_sha256": "0f9169e01d2a2790741693aa7d77f2abcc9806c000e6f6181dd9ffe7eca3a8de",
+    "separate_root_format_checks": {
+      "scope": "Read-only Rust 1.90 checks of the other formatter surfaces after the prover formatting failure; prover is separately checked by the fixing agent.",
+      "surfaces": [
+        "root",
+        "control",
+        "companion",
+        "challenger",
+        "indexer",
+        "svm",
+        "wallet"
+      ],
+      "exit_codes": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "result_sha256": "a9f3c708d3f873b40c68abac445432519508969f6bb12e2b34d24af23b48ca65",
+      "tests_or_proofs_run": false,
+      "format_mutations": false
+    }
+  },
+  "root_verification_command": [
+    "cargo",
+    "+1.90.0",
+    "fmt",
+    "--manifest-path",
+    "apps/clientd/prover/Cargo.toml",
+    "--",
+    "--check"
+  ],
+  "builds": 0,
+  "proof_executions": 0,
+  "host_actions": 0,
+  "financial_actions": 0,
+  "release_artifact_rebuilt_or_replaced": false,
+  "new_hosted_ci_pass": false,
+  "release_gates_passed": []
+}
