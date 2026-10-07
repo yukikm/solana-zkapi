@@ -1,0 +1,134 @@
+{
+  "scope": "Local scoped engineering review; no new public deployment or provider acceptance",
+  "reviewed_commit": "664db46",
+  "upstream_commit": "045b444ea1b52538d1b40273c7cb6ed09468a052",
+  "logs": [
+    {
+      "file": "transport-trust-profile.tap",
+      "bytes": 3118,
+      "sha256": "2e934e4f68a1e84a216f3a56698793dcfd477d3f0d289dd47eed7368f3d2c638"
+    },
+    {
+      "file": "native-snapshot.log",
+      "bytes": 1065,
+      "sha256": "e237b8c8d4230bb868b159885d31064a0237aa32ffcb3dbdc7168a10b8fb0935"
+    },
+    {
+      "file": "native-build.log",
+      "bytes": 563,
+      "sha256": "bc72e357d2760e9efbd82040cf1433cf733dd3fe6b250dd5937eee44d1709716"
+    },
+    {
+      "file": "wasm-build.log",
+      "bytes": 562,
+      "sha256": "a1757cbb1256709723250c116bd60347bd181de23f7cfe3b6c1cc452e3add693"
+    },
+    {
+      "file": "native-wasm-runtime.tap",
+      "bytes": 445,
+      "sha256": "583d612a0e9724a206cbdd02ff95297b6e12273db5498a64e0dfb76d3ae3fac6"
+    },
+    {
+      "file": "public-profile-rust.log",
+      "bytes": 75,
+      "sha256": "171a28ced97a6063b5a3dc91b877b23572050a27f31249580f8ec9b78c844599"
+    },
+    {
+      "file": "public-profile-rust-corrected.log",
+      "bytes": 568,
+      "sha256": "f7db60681a272cef4c808f27f8d693fe7911c731a8f89253e7ede0f99678056a"
+    },
+    {
+      "file": "memory-keys-initial.tap",
+      "bytes": 19730,
+      "sha256": "2325fa64284dc7322588c2a4ca9301f2a242780c5b08d146319aa4edc8621c78"
+    },
+    {
+      "file": "memory-keys-focused.tap",
+      "bytes": 12853,
+      "sha256": "384c533c41a195982e6309f30bbeb703daed4f01b081d2bff9e5c0a75d1baeb0"
+    }
+  ],
+  "reviewed_sources": [
+    {
+      "file": "packages/sdk/src/session-snapshot.ts",
+      "sha256": "3ec0da43662fcc4eba62eef566d57671a002257bda85f32156e23f6b50adb942"
+    },
+    {
+      "file": "packages/sdk/src/prover.ts",
+      "sha256": "8bef115d98f7783cc6d05c0d060409ea9f866de56eb9c03f4fb004dfac4d494c"
+    },
+    {
+      "file": "packages/sdk/src/prover-runtime.ts",
+      "sha256": "3c4d7e15984613307c4137d16200b5d75d236e616de50db482d1c1a3ad6e4ff4"
+    },
+    {
+      "file": "packages/sdk/src/prover-node.ts",
+      "sha256": "2bbcbc09a047c938c3c16bf2d28daae8ccf2a8934676d7db7ff4a9ee8f02cfcc"
+    },
+    {
+      "file": "packages/sdk/src/trust.ts",
+      "sha256": "45b4f4d9e1ef47470e54b115ce00f541d97e8a334b3707a6a586c7fb9a102129"
+    },
+    {
+      "file": "packages/sdk/src/control.ts",
+      "sha256": "9fdad063bae3fb178f810025b9e8a047f0428a98cb6d7c3a92f9e30aca59146a"
+    },
+    {
+      "file": "packages/sdk/src/browser-storage.ts",
+      "sha256": "741bff23bedd35880120acdb423945d0375f6d3947023e16b2bf2e15584f35d7"
+    },
+    {
+      "file": "apps/clientd/prover/src/snapshot.rs",
+      "sha256": "4b3b862e09174f61ae0788e6caf424dc1e7a63ecf8eba6dd5527928f4ed98dcd"
+    },
+    {
+      "file": "scripts/public_devnet_profile.py",
+      "sha256": "75ed728ab007dff72b1458cc308da1aeea5547051eab4b7dbdffed2808a990f0"
+    },
+    {
+      "file": "scripts/i10_public_devnet_profile.ts",
+      "sha256": "19a8c26c435daea3524b61e4269161a2d2dde6ce2685da18dce54b7756c2d925"
+    },
+    {
+      "file": "services/control/src/config.rs",
+      "sha256": "da7ea1c1468a4ef07ed4ad4ded344f906b63a63c461ef7e7a20f91843f459e84"
+    },
+    {
+      "file": "programs/zkapi-vault/build_profile.rs",
+      "sha256": "1dcc5fff3ac3ae4ce5837d12bf79561f2eb1ecf2901944faafad9a6cfb199e4f"
+    },
+    {
+      "file": "packages/sdk/src/client.ts",
+      "sha256": "3403f6f7d8128ddcfc125e9472f6c706daf1190289025f834758e0fe105a0941"
+    },
+    {
+      "file": "packages/sdk/src/wallet.ts",
+      "sha256": "15739b7ce4133ad8e8cac273a60f746c2e769c779775315f7c904decc9e803d0"
+    },
+    {
+      "file": "packages/sdk/test/control.test.ts",
+      "sha256": "8ea5878d30a858d844d5efbebb1424868d13d25f04c155c8e82d9d336ee05ffe"
+    },
+    {
+      "file": "packages/sdk/test/clientd.test.ts",
+      "sha256": "c784df45e99151228b2e7ee1c48d92760d327af130a0d998cd3d2a9f42b81611"
+    },
+    {
+      "file": "packages/sdk/test/client.test.ts",
+      "sha256": "f89ffbed53c12560f70b8c66978d805dcfadb9bae3c80f9dba16fa93c979eec1"
+    },
+    {
+      "file": "packages/sdk/test/wallet-emergency-escape.test.ts",
+      "sha256": "f56b6bda5229c73e38bfcf3b88b006a8e02b42c3a7c4a92ace5bd1bb0f82b21a"
+    }
+  ],
+  "initial_review_sources": "initial-artifacts.json",
+  "memory_only_fix": {
+    "focused_passed": 138,
+    "failed": 0,
+    "skipped": 0,
+    "sdk_typecheck_exit_code": 0,
+    "scope": "Local synthetic provider/chain/proof fixtures; real encrypted journal and SDK lifecycle. No historical funded files migrated."
+  }
+}

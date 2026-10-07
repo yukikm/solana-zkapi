@@ -1,0 +1,14 @@
+{
+  "schema": 1,
+  "recorded_at_utc": "2026-10-06T17:09:45.044Z",
+  "original_path": "target/public-devnet/parity-review-20261007/deployment/pools/provider/parity-direct-plain/mutual-close/provider-case-openrouter-direct-plain-failure.json",
+  "archived_path": "target/public-devnet/parity-review-20261007/deployment/pools/provider/parity-direct-plain/mutual-close/provider-case-openrouter-direct-plain-failure-before-shared-snapshot-fix.json",
+  "sha256": "b68c2719b5534ebc18dec13d25465b4f3230637b035217d7cf88d0d89256e856",
+  "reason": "Explicitly preserve pre-AUTH-only failure before continuing same funded note; leave latest failure checkpoint free for a later distinct diagnostic",
+  "case_reserved": false,
+  "pending": null,
+  "settled_sessions": 0,
+  "funded_journal_unchanged": true,
+  "campaign_identity_unchanged": true,
+  "inference_replays": 0
+}

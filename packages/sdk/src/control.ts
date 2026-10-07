@@ -95,8 +95,9 @@ export interface OaKeyVerification {
 }
 export interface PendingSession {
   prepared: PreparedSession; exactRequest: string; phase: 'prepared' | 'send_unknown' | 'active' | 'closing';
+  /** Legacy readable field; new ControlClient writes omit it. Usable keys are memory-only. */
   providerKey?: string; serverState?: string; operations: Operation[];
-  /** Evidence, not a persisted assertion of trust. A new client re-verifies it. */
+  /** Evidence, not a persisted assertion of trust or a replacement for a live key. */
   oaKeyVerification?: { evidence: OaKeyVerification; expiresAt: string };
   /** Preserve close intent while an unacknowledged create still needs exact POST recovery. */
   closeRequested?: boolean;
@@ -352,6 +353,7 @@ export class ControlClient {
   private readonly config: VerificationContext;
   private readonly options: ClientOptions;
   private readonly verifiedOaKeys = new Map<string, string>();
+  private readonly directKeys = new Map<string, { exactRequest: string; requestId: string; key: string }>();
   constructor(options: ClientOptions) {
     this.options = { ...options, directProviderBases: { ...options.directProviderBases },
       oaVerifier: options.oaVerifier && { ...options.oaVerifier } }; this.config = structuredClone(options.context);
@@ -373,11 +375,36 @@ export class ControlClient {
     }
   }
   private async record(noteId: string): Promise<JournalRecord<NoteJournal>> {
-    const r = await this.options.journal.read(noteId); requireTrue(r, 'note must already be finalized and imported'); return r;
+    const r = await this.options.journal.read(noteId); requireTrue(r, 'note must already be finalized and imported');
+    const p = r.value.pending, cached = this.directKeys.get(noteId);
+    // Reading a legacy key never grants it a new lifetime after restart and
+    // never rewrites the durable journal. Only this client's original delivery
+    // can hydrate an active session with a usable key.
+    if (p) delete p.providerKey;
+    if (p && cached && p.exactRequest === cached.exactRequest
+      && p.prepared.request.authorization.request_id === cached.requestId
+      && p.phase === 'active' && p.serverState === 'ACTIVE' && !p.closeRequested
+      && !r.value.wallet?.emergencyEscapes?.some(e => e.phase !== 'settled')) p.providerKey = cached.key;
+    else this.directKeys.delete(noteId);
+    return r;
   }
   private async save(noteId: string, r: JournalRecord<NoteJournal>): Promise<JournalRecord<NoteJournal>> {
-    return this.options.journal.compareAndSwap(noteId, r.revision, r.value);
+    const value = structuredClone(r.value), p = r.value.pending;
+    if (value.pending) delete value.pending.providerKey;
+    // Commit exact AUTH/operation recovery state before retaining the volatile
+    // key. A failed write must not turn an uncommitted delivery into admission.
+    let saved: JournalRecord<NoteJournal>;
+    try { saved = await this.options.journal.compareAndSwap(noteId, r.revision, value); }
+    catch (error) { this.directKeys.delete(noteId); throw error; }
+    if (p?.providerKey && p.phase === 'active' && p.serverState === 'ACTIVE' && !p.closeRequested
+      && !value.wallet?.emergencyEscapes?.some(e => e.phase !== 'settled')) {
+      this.directKeys.set(noteId, { exactRequest: p.exactRequest, requestId: p.prepared.request.authorization.request_id, key: p.providerKey });
+    } else this.directKeys.delete(noteId);
+    return saved;
   }
+  /** Forget local short-lived keys only. Recovery still uses the saved control
+   * credentials to close/settle; this does not revoke a provider key remotely. */
+  clearEphemeralKeys(): void { this.directKeys.clear(); this.verifiedOaKeys.clear(); }
   private async json(response: Response): Promise<unknown> {
     // Bound the stream, not just Content-Length, before materializing JSON.
     const reader = response.body?.getReader(); requireTrue(reader, 'missing response');
@@ -387,15 +414,15 @@ export class ControlClient {
     } } finally { await reader.cancel(); }
     return parseStrictJson(new Uint8Array(Buffer.concat(chunks)));
   }
-  private fetch(path: string, method: string, token: string, body?: string): Promise<Response> {
+  private fetch(path: string, method: string, token: string, body?: string, signal?: AbortSignal): Promise<Response> {
     requireTrue(path.startsWith('/zkapi/v1/') && !path.includes('://'), 'invalid control path');
     return (this.options.fetch ?? globalThis.fetch)(this.config.control_api_origin + path, {
       method, headers: { Authorization: `Bearer ${token}`, ...(body === undefined ? {} : { 'Content-Type': 'application/json' }) }, body,
-      redirect: 'error', credentials: 'omit', cache: 'no-store', signal: AbortSignal.timeout(60_000),
+      redirect: 'error', credentials: 'omit', cache: 'no-store', signal: signal ? AbortSignal.any([signal, AbortSignal.timeout(60_000)]) : AbortSignal.timeout(60_000),
     });
   }
   private path(p: PendingSession): string { return `/zkapi/v1/sessions/${p.prepared.request.authorization.request_id}`; }
-  private async verifyOaKey(p: PendingSession, key: string, evidence: unknown, expiresAt: unknown): Promise<void> {
+  private async verifyOaKey(p: PendingSession, key: string, evidence: unknown, expiresAt: unknown, signal?: AbortSignal): Promise<void> {
     const pin = this.options.oaVerifier; requireTrue(pin, 'OA verifier pin required');
     object(evidence);
     requireTrue(Object.keys(evidence).sort().join(',') === 'key_valid_till,org_signature,station_id,station_recently_attested,station_signature,verifier_url', 'invalid OA evidence fields');
@@ -420,7 +447,7 @@ export class ControlClient {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ station_id: evidence.station_id, api_key: key, key_valid_till: evidence.key_valid_till,
           station_signature: evidence.station_signature, org_signature: evidence.org_signature }),
-        redirect: 'error', credentials: 'omit', cache: 'no-store', signal: AbortSignal.timeout(60_000),
+        redirect: 'error', credentials: 'omit', cache: 'no-store', signal: signal ? AbortSignal.any([signal, AbortSignal.timeout(60_000)]) : AbortSignal.timeout(60_000),
       });
       if (!response.ok) { await response.body?.cancel(); throw new Error('OA verifier unavailable'); }
       const verified = await this.json(response); object(verified);
@@ -433,17 +460,21 @@ export class ControlClient {
   private discardDirectKey(p: PendingSession): void {
     delete p.providerKey; delete p.oaKeyVerification;
     this.verifiedOaKeys.delete(p.prepared.request.authorization.request_id);
+    for (const [noteId, cached] of this.directKeys) if (cached.requestId === p.prepared.request.authorization.request_id) this.directKeys.delete(noteId);
     p.phase = 'closing'; p.closeRequested = true;
   }
-  private async closePending(noteId: string, r: JournalRecord<NoteJournal>): Promise<SessionStatus | undefined> {
+  private async closePending(noteId: string, r: JournalRecord<NoteJournal>, signal?: AbortSignal): Promise<SessionStatus | undefined> {
     const p = r.value.pending!;
-    const response = await this.fetch(this.path(p) + '/close', 'POST', p.prepared.control_token);
+    const response = await this.fetch(this.path(p) + '/close', 'POST', p.prepared.control_token, undefined, signal);
     if (!response.ok) throw new ControlHttpError(response.status);
     const closed = await this.json(response); object(closed);
     // No recursive polling. A later explicit recover resumes a pending close.
-    if (closed.state === 'SETTLED') return this.accept(noteId, r, closed, false);
+    if (closed.state === 'SETTLED') return this.accept(noteId, r, closed, false, signal);
   }
-  async quote(request: { mode: Mode; provider: Quote['body']['provider']; models: string[]; session_ttl_seconds?: string }, tariff: Tariff): Promise<Quote> {
+  /** Optional cancellation bounds this call's transport only; it never changes
+   * the client's transport or the lifetime of a later inference/close call. */
+  async quote(request: { mode: Mode; provider: Quote['body']['provider']; models: string[]; session_ttl_seconds?: string }, tariff: Tariff, signal?: AbortSignal): Promise<Quote> {
+    signal?.throwIfAborted();
     const wanted = structuredClone(request), frozenTariff = structuredClone(tariff);
     object(wanted);
     requireTrue(Object.keys(wanted).every(k => ['mode','provider','models','session_ttl_seconds'].includes(k)), 'unknown quote request field');
@@ -453,7 +484,7 @@ export class ControlClient {
     if (wanted.session_ttl_seconds !== undefined) requireTrue(typeof wanted.session_ttl_seconds === 'string' && /^[1-9][0-9]{0,2}$/.test(wanted.session_ttl_seconds) && BigInt(wanted.session_ttl_seconds) <= 300n, 'session TTL');
     const response = await (this.options.fetch ?? globalThis.fetch)(this.config.control_api_origin + '/zkapi/v1/quotes', {
       method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(wanted),
-      redirect: 'error', credentials: 'omit', cache: 'no-store', signal: AbortSignal.timeout(60_000),
+      redirect: 'error', credentials: 'omit', cache: 'no-store', signal: signal ? AbortSignal.any([signal, AbortSignal.timeout(60_000)]) : AbortSignal.timeout(60_000),
     });
     if (!response.ok) throw new ControlHttpError(response.status);
     const raw = await this.json(response); object(raw);
@@ -492,12 +523,14 @@ export class ControlClient {
       await this.save(noteId, r);
     });
   }
-  async submit(noteId: string): Promise<SessionStatus> {
-    return this.options.journal.withNoteLock(noteId, async () => this.submitPending(noteId, await this.record(noteId)));
+  async submit(noteId: string, signal?: AbortSignal): Promise<SessionStatus> {
+    signal?.throwIfAborted();
+    return this.options.journal.withNoteLock(noteId, async () => this.submitPending(noteId, await this.record(noteId), signal));
   }
   /** Caller holds the note operation lock. An unknown create must remain
    * replayable even when close was requested before the server acknowledged it. */
-  private async submitPending(noteId: string, record: JournalRecord<NoteJournal>): Promise<SessionStatus> {
+  private async submitPending(noteId: string, record: JournalRecord<NoteJournal>, signal?: AbortSignal): Promise<SessionStatus> {
+    signal?.throwIfAborted();
     let r = record; const p = r.value.pending; requireTrue(p, 'no pending authorization');
     requireTrue(!r.value.wallet?.emergencyEscapes?.some(e=>e.phase!=='settled'),'emergency escape forbids authorization replay');
     requireTrue(p.phase === 'prepared' || p.phase === 'send_unknown', 'use recover for existing session');
@@ -507,9 +540,9 @@ export class ControlClient {
     }
     p.phase = 'send_unknown'; r = await this.save(noteId, r);
     // Exact same body and credentials on retries, even when the quote is old.
-    const response = await this.fetch('/zkapi/v1/sessions', 'POST', p.prepared.control_token, p.exactRequest);
+    const response = await this.fetch('/zkapi/v1/sessions', 'POST', p.prepared.control_token, p.exactRequest, signal);
     if (!response.ok) throw new ControlHttpError(response.status);
-    return this.accept(noteId, r, await this.json(response), response.status !== 202);
+    return this.accept(noteId, r, await this.json(response), response.status !== 202, signal);
   }
   /** Only a never-sent authorization can be discarded locally. A send_unknown
    * record, even after a timeout or expired quote, must use exact recovery. */
@@ -521,16 +554,18 @@ export class ControlClient {
       r.value.pending = null; await this.save(noteId, r);
     });
   }
-  async recover(noteId: string): Promise<SessionStatus> {
+  async recover(noteId: string, signal?: AbortSignal): Promise<SessionStatus> {
+    signal?.throwIfAborted();
     // Recovering an unknown create resends only the identical authorization;
     // provider inference is never repeated by this path.
     const existing = await this.record(noteId); requireTrue(existing.value.pending, 'no pending authorization');
-    if (['prepared', 'send_unknown'].includes(existing.value.pending.phase)) return this.submit(noteId);
+    if (['prepared', 'send_unknown'].includes(existing.value.pending.phase)) return this.submit(noteId, signal);
     return this.options.journal.withNoteLock(noteId, async () => {
+      signal?.throwIfAborted();
       const r = await this.record(noteId); const p = r.value.pending; requireTrue(p, 'already settled');
-      const response = await this.fetch(this.path(p), 'GET', p.prepared.control_token);
+      const response = await this.fetch(this.path(p), 'GET', p.prepared.control_token, undefined, signal);
       if (!response.ok) throw new ControlHttpError(response.status);
-      return this.accept(noteId, r, await this.json(response), false);
+      return this.accept(noteId, r, await this.json(response), false, signal);
     });
   }
   async close(noteId: string): Promise<SessionStatus> {
@@ -545,7 +580,7 @@ export class ControlClient {
       return this.accept(noteId, r, await this.json(response), false);
     });
   }
-  private async accept(noteId: string, r: JournalRecord<NoteJournal>, raw: unknown, initial: boolean): Promise<SessionStatus> {
+  private async accept(noteId: string, r: JournalRecord<NoteJournal>, raw: unknown, initial: boolean, signal?: AbortSignal): Promise<SessionStatus> {
     object(raw); const status = raw as unknown as SessionStatus; const p = r.value.pending!;
     const q = p.prepared.request.quote.body;
     const emergency=r.value.wallet?.emergencyEscapes?.find(e=>e.phase!=='settled');
@@ -563,7 +598,7 @@ export class ControlClient {
         || status.provider_api_origin !== this.options.directProviderBases?.[p.prepared.request.authorization.mode]) this.discardDirectKey(p);
       else if (q.mode === 'direct_oa') {
         try {
-          await this.verifyOaKey(p, status.provider_key, status.provider_key_verification, status.expires_at);
+          await this.verifyOaKey(p, status.provider_key, status.provider_key_verification, status.expires_at, signal);
           p.oaKeyVerification = { evidence: structuredClone(status.provider_key_verification!), expiresAt: status.expires_at! };
           p.providerKey = status.provider_key;
         } catch { this.discardDirectKey(p); }
@@ -572,7 +607,7 @@ export class ControlClient {
     }
     if (status.state === 'SETTLED') {
       requireTrue(status.settlement && !status.provider_key, 'missing settlement');
-      const receipts = await this.receipts(p);
+      const receipts = await this.receipts(p, signal);
       const operations = q.mode === 'proxy' ? p.operations.filter(o => o.phase !== 'prepared' && o.phase !== 'not_accepted').map(o => o.id) : [];
       const next = await this.options.verifier.settle(this.config, r.value.state, p.prepared, status.settlement, receipts, operations);
       privateState(next);
@@ -598,14 +633,14 @@ export class ControlClient {
     p.phase = closeRequired ? 'closing' : 'active'; r = await this.save(noteId, r);
     if (closeRequired) {
       // Losing a direct key is not permission to issue another key or change mode.
-      const closed = await this.closePending(noteId, r); if (closed) return closed;
+      const closed = await this.closePending(noteId, r, signal); if (closed) return closed;
     }
     return status;
   }
-  private async receipts(p: PendingSession): Promise<Receipt[]> {
+  private async receipts(p: PendingSession, signal?: AbortSignal): Promise<Receipt[]> {
     const all: Receipt[] = []; let cursor: string | null = null; const seen = new Set<string>();
     for (let page = 0; page < 10_000; page++) {
-      const response = await this.fetch(this.path(p) + '/receipts' + (cursor === null ? '' : `?cursor=${cursor}`), 'GET', p.prepared.control_token);
+      const response = await this.fetch(this.path(p) + '/receipts' + (cursor === null ? '' : `?cursor=${cursor}`), 'GET', p.prepared.control_token, undefined, signal);
       if (!response.ok) throw new ControlHttpError(response.status);
       const raw = await this.json(response); object(raw);
       requireTrue(Object.keys(raw).sort().join(',') === 'next_cursor,receipts' && Array.isArray(raw.receipts) && raw.receipts.length <= 100, 'invalid receipt page');

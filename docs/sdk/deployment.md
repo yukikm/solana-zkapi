@@ -86,6 +86,31 @@ financial recovery `snapshot` still verifies individual Note/Pending accounts.
 Network addresses, timing and publicly visible funding/withdrawal remain visible;
 this change does not provide network anonymity.
 
+Direct mode sends prompts and responses to the selected provider; proxy mode
+also exposes that content to the proxy operator. The control authorization and
+settlement protocol does not receive the inference body in direct mode. Providers
+and operators remain trusted for their key-management and usage reports. ZK
+proofs do not verify model outputs or prove that reported usage is accurate.
+
+The Solana settlement trust model also includes the USDC issuer's mint/freeze
+controls, the deployed program's upgrade authority and the additional layout-2
+tree circuit/setup. A fresh experimental devnet profile uses a single-party
+OS-random tree setup and the pinned upstream request/withdrawal setup; it is not
+an independently verified ceremony. Independently review the deployed program
+bytes and upgrade authority as well as client artifact pins. These differences
+from Ethereum native-ETH settlement remain relevant on devnet.
+
+Both direct and proxy request bodies are retained in the encrypted local journal
+for exact operation identity and recovery, including any conversation context
+the app sends. Newly received direct provider keys stay only in the current
+`ControlClient`'s memory; restarting closes and settles the saved session without
+recovering or replaying inference. Historical journals/backups from earlier
+versions may still contain encrypted provider keys and are not migrated on read.
+Clearing a chat display does not erase retained requests. The browser stores its
+nonextractable encryption key in the same origin; trusted app code can decrypt
+the records. See [local retention](recovery.md#local-request-retention) before
+making a no-storage or ephemeral-chat claim.
+
 The default transaction preparation commitment is `finalized`. Applications may
 explicitly configure `confirmed` for blockhash/preflight preparation; proof cuts,
 funding acceptance and financial receipts remain finalized. Choose an explicit

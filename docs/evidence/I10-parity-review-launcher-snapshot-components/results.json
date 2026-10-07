@@ -1,0 +1,54 @@
+{
+  "schema": 1,
+  "recorded_at_utc": "2026-10-06T17:12:36.348008+00:00",
+  "scope": "Offline launcher common AUTH snapshot wiring; actual SDK adapter with synthetic finalized accounts/local path prover and actual loopback TLS transport",
+  "runtime": "Node 24.19.0",
+  "checks": [
+    {
+      "command": "target/i08-toolchain/bin/node --test scripts/i10_devnet_snapshot_chain.test.ts scripts/i10_devnet_transport.test.ts",
+      "exit_code": 1,
+      "log": "focused.tap",
+      "tests": 9,
+      "pass": 7,
+      "fail": 2,
+      "note": "New test fixture incorrectly compared null-prototype strict JSON objects to ordinary objects. Canonical byte comparison corrected; not a production adapter failure.",
+      "sha256": "d5372f7b1df499f0200c88fd902a17c4bc4331da81557f3f5c8a7ef718421477"
+    },
+    {
+      "command": "target/i08-toolchain/bin/node --test scripts/i10_devnet_snapshot_chain.test.ts scripts/i10_devnet_transport.test.ts packages/sdk/test/session-snapshot.test.ts packages/sdk/test/wallet-chain.test.ts",
+      "exit_code": 0,
+      "log": "final-tests.tap",
+      "tests": 22,
+      "pass": 22,
+      "fail": 0,
+      "skipped": 0,
+      "cancelled": 0,
+      "duration_ms": 3397.304334,
+      "sha256": "a04dcb9b57141846cf07e8eeca16f6dd60a983ebe5e59959160d3991888c8c93"
+    },
+    {
+      "command": "target/i08-toolchain/bin/node node_modules/typescript/bin/tsc --noEmit --target ES2023 --module NodeNext --moduleResolution NodeNext --strict --allowImportingTsExtensions --lib ES2023,DOM --types node scripts/run_i10_devnet_vault.ts scripts/i10_devnet_snapshot_chain.ts scripts/i10_devnet_snapshot_chain.test.ts scripts/i10_devnet_transport.test.ts",
+      "exit_code": 0,
+      "log": "typecheck.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  ],
+  "source_sha256": {
+    "scripts/run_i10_devnet_vault.ts": "fda22a1103ee3b9dd66c1bb128f7e93f1ba0b1a76eaf50e2b31a3fafedffae00",
+    "scripts/i10_devnet_snapshot_chain.ts": "e7b9bfecdb7965f4ebf772e7dde4a795efea6f37293564671e788833bdd21b61",
+    "scripts/i10_devnet_snapshot_chain.test.ts": "7986311b58d14fd820c843fc2a3efbf56b3166ec3176e3bd77fb4cfbdbd7b9fa",
+    "scripts/i10_devnet_transport.ts": "99834fc4ab78a45b74fcd2cc6072359511ddca048232f07774c69d5c54b90198",
+    "scripts/i10_devnet_transport.test.ts": "c4ad4bef69f32991eb11057fd33e8d4fe4f504e22c40a261d44861c1d571f5a1",
+    "packages/sdk/src/session-snapshot.ts": "3ec0da43662fcc4eba62eef566d57671a002257bda85f32156e23f6b50adb942",
+    "packages/sdk/src/wallet-chain.ts": "fdb00750267cd539d4fc9b3a56f676a9d4699fd22ef2de7203a604eed9516124"
+  },
+  "immutable_campaign_source_observation": {
+    "scripts/provider_acceptance.py": "5911ca26cd21a342e6a3f6a29c65088028ffcac2807c3f1366b54db25715b2ae",
+    "scripts/provider_acceptance_client.ts": "48b4866e4f864bcfb3b009e9399a8ff9d24ec4cf082858abe7204ed92041f023",
+    "scripts/i10_devnet_provider.ts": "16152b42a7dc2171d644505afd3391ea469eee8df126e59817e8942ecfa86b0c"
+  },
+  "live_provider_actions": false,
+  "funded_state_mutated": false,
+  "budget_mutated": false,
+  "I10_complete": false
+}

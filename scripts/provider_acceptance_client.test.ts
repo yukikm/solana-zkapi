@@ -7,13 +7,13 @@ import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 import test, {type TestContext} from 'node:test';
 import bs58 from 'bs58';
-import {ControlClient, validateNoteJournal, type ClientOptions, type NoteJournal, type PreparedSession, type PrivateState,
+import {ControlClient, validateNoteJournal, type ClientOptions, type Mode, type NoteJournal, type PreparedSession, type PrivateState,
   type Quote, type Receipt, type Tariff, type VerificationContext} from '../packages/sdk/src/control.ts';
 import {EncryptedJournal, importJournalKey} from '../packages/sdk/src/journal.ts';
 import {NativeJournalStore} from '../packages/sdk/src/journal-node.ts';
 import {jcsBytes} from '../packages/sdk/src/trust.ts';
 import {ProviderAcceptanceFailure, providerAcceptanceBody, runProviderAcceptanceCase, sendProviderAcceptanceOperation,
-  type ProviderAcceptanceCase} from './provider_acceptance_client.ts';
+  type ProviderAcceptanceCase, type ProviderAcceptanceContext} from './provider_acceptance_client.ts';
 import {saveProviderFailureDiagnostic, validateCompletedProviderCase} from './i10_devnet_provider.ts';
 
 const field = (n: number) => '0x' + n.toString(16).padStart(64, '0');
@@ -40,7 +40,12 @@ const successor: PrivateState = {...initial, balance_micro_usdc: '999', anchor: 
 async function setup(t: TestContext, variant: 'plain' | 'sse' | 'unknown' | 'missing_evidence' | 'sse_fake_tool'
   | 'http502' | 'malformed' | 'stream_break' | 'error_header_canary' = 'plain',
   auth: 'normal' | '503_once' | 'unknown_once' | 'expired_unknown' | 'permanent' | 'slow' = 'normal',
-  quoteFault: 'normal' | '503_once' | 'unknown_once' | 'permanent' | 'deadline' | 'slow' | 'invalid_quote' | 'expired_quote' = 'normal') {
+  quoteFault: 'normal' | '503_once' | 'unknown_once' | 'permanent' | 'deadline' | 'slow' | 'invalid_quote' | 'expired_quote' = 'normal',
+  mode: Mode = 'proxy') {
+  const provider = mode === 'proxy' ? 'openai' : mode === 'direct_oa' ? 'oa' : 'openrouter';
+  const price = {...tariffBody, provider, model: mode === 'proxy' ? testCase.model : '*', pricing_basis: mode === 'proxy' ? 'fixed_usage_rates' : 'provider_reported_usd', rates: mode === 'proxy' ? tariffBody.rates : []};
+  const selectedTariff: Tariff = {...price, tariff_hash: digest(price).toString('hex')};
+  const selectedContext = {...context, tariff_hashes: [selectedTariff.tariff_hash]};
   const directory = await mkdtemp(join(tmpdir(), 'provider-acceptance-sdk-'));
   t.after(() => rm(directory, {recursive: true, force: true}));
   const aes = await importJournalKey(new Uint8Array(32).fill(87));
@@ -53,11 +58,15 @@ async function setup(t: TestContext, variant: 'plain' | 'sse' | 'unknown' | 'mis
   let requestId = '', operationId = '', observedBody: unknown, reserved = false, now = 150_000, proofs = 0, snapshots = 0;
   const authRequests: {body: string; token: string}[] = [];
   const quoteRequests: string[] = [], issuedQuotes: Quote[] = [];
-  const clientOptions: ClientOptions = {context, journal, now: () => BigInt(Math.floor(now / 1000)),
+  let authSignal: AbortSignal | undefined, waitForAuthDeadline = false, slowVerifier = false, verifications = 0, verifierDeadlineAborted = false;
+  const clientOptions: ClientOptions = {context: selectedContext, journal, now: () => BigInt(Math.floor(now / 1000)),
+    directProviderBases: {direct_oa:'https://direct.invalid/v1', direct_openrouter:'https://direct.invalid/v1'},
+    oaVerifier: {base:'https://verifier.invalid',stationId:'fixture-station'},
     verifier: {async prepare() {counts.prepare++;}, async settle(_context, previous, saved, _settlement, receipts, operations) {
       assert.deepEqual(previous, initial); assert.equal(saved.request.authorization.request_id, requestId);
-      assert.equal(receipts.length, 1); assert.deepEqual(operations, [operationId]); counts.settle++; return successor;
+      assert.equal(receipts.length, 1); assert.deepEqual(operations, mode === 'proxy' ? [operationId] : []); counts.settle++; return successor;
     }}, fetch: async (url, init) => {
+      init?.signal?.throwIfAborted();
       const path = new URL(String(url)).pathname;
       if (path === '/zkapi/v1/quotes') {
         counts.quote++;
@@ -75,7 +84,7 @@ async function setup(t: TestContext, variant: 'plain' | 'sse' | 'unknown' | 'mis
           if (init!.signal!.aborted) abort(); else init!.signal!.addEventListener('abort', abort, {once: true});
         });
         const body: Quote['body'] = {quote_id: `12345678-1234-4123-8123-${(123456789011 + counts.quote).toString()}`, deployment_id: context.deployment_id,
-          pool: context.pool, mode: 'proxy', provider: 'openai', models: ['offline-fixture'], tariff_hash: tariff.tariff_hash,
+          pool: context.pool, mode, provider, models: [selectedTariff.model], tariff_hash: selectedTariff.tariff_hash,
           cap_micro_usdc: '100', issued_at: '140', expires_at: '260', session_ttl_seconds: '60', max_concurrency: '4',
           control_api_origin: context.control_api_origin, inference_api_origin: context.inference_api_origin};
         if (quoteFault === 'expired_quote') {body.issued_at = '100'; body.expires_at = '220'; now = 230_000;}
@@ -92,6 +101,7 @@ async function setup(t: TestContext, variant: 'plain' | 'sse' | 'unknown' | 'mis
         requestId = pending.prepared.request.authorization.request_id;
         assert.equal(pending.phase, 'send_unknown'); assert.equal(init!.body, pending.exactRequest);
         assert.ok(init?.signal, 'authorization deadline reaches the actual SDK HTTP transport');
+        authSignal = init.signal;
         authRequests.push({body: String(init!.body), token: new Headers(init!.headers).get('Authorization')!});
         if (auth === '503_once' && counts.auth === 1) return new Response(null, {status: 503});
         if (auth === 'unknown_once' && counts.auth === 1) throw new TypeError('fetch failed');
@@ -102,15 +112,40 @@ async function setup(t: TestContext, variant: 'plain' | 'sse' | 'unknown' | 'mis
           const abort = () => { clearTimeout(timer); reject(init!.signal!.reason); };
           if (init!.signal!.aborted) abort(); else init!.signal!.addEventListener('abort', abort, {once: true});
         });
-        return Response.json({request_id: requestId, mode: 'proxy', state: 'ACTIVE', cap_micro_usdc: '100'});
+        return Response.json({request_id: requestId, mode, state: 'ACTIVE', cap_micro_usdc: '100',
+          ...(mode === 'proxy' ? {} : {provider_key:'memory-only-provider-key',provider_api_origin:'https://direct.invalid/v1',expires_at:'210',
+            ...(mode === 'direct_oa' ? {provider_key_verification:{verifier_url:'https://verifier.invalid',station_id:'fixture-station',station_recently_attested:true,key_valid_till:210,station_signature:'ab'.repeat(64),org_signature:'cd'.repeat(64)}} : {})})});
+      }
+      if (path === '/submit_key') {
+        verifications++;
+        assert.equal(new URL(String(url)).origin,'https://verifier.invalid');
+        assert.equal(JSON.parse(String(init!.body)).api_key,'memory-only-provider-key');
+        assert.equal((await journal.read('note'))!.value.pending!.providerKey,undefined);
+        assert.ok(init!.signal);
+        if (slowVerifier) await new Promise<void>((_resolve,reject)=>{
+          const timer=setTimeout(()=>reject(Error('unbounded verifier request')),5000);
+          const aborted=()=>{clearTimeout(timer);verifierDeadlineAborted=init!.signal!.aborted&&init!.signal!.reason?.name==='TimeoutError';reject(init!.signal!.reason);};
+          if(init!.signal!.aborted)aborted();else init!.signal!.addEventListener('abort',aborted,{once:true});
+        });
+        return Response.json({status:'verified'});
       }
       if (path === '/v1/chat/completions') {
         counts.inference++;
         const operation = (await journal.read('note'))!.value.pending!.operations[0];
         operationId = operation.id; assert.equal(operation.phase, 'send_unknown');
         observedBody = JSON.parse(new TextDecoder().decode(init!.body as Uint8Array));
-        assert.equal(new Headers(init!.headers).get('Idempotency-Key'), operation.id);
+        assert.equal((await journal.read('note'))!.value.pending!.providerKey,undefined);
+        if (mode === 'proxy') assert.equal(new Headers(init!.headers).get('Idempotency-Key'), operation.id);
+        else assert.equal(new Headers(init!.headers).get('Authorization'),'Bearer memory-only-provider-key');
         assert.equal(counts.inference, 1, 'one actual SDK send');
+        if (waitForAuthDeadline) {
+          assert.ok(authSignal);assert.notEqual(init!.signal,authSignal);
+          if (!authSignal.aborted) await new Promise<void>((resolve,reject)=>{
+            const timer=setTimeout(()=>reject(Error('authorization deadline did not expire')),1000);
+            authSignal!.addEventListener('abort',()=>{clearTimeout(timer);resolve();},{once:true});
+          });
+          assert.equal(init!.signal!.aborted,false,'expired AUTH deadline must not abort inference');
+        }
         if (variant === 'unknown') throw TypeError('fixture-secret-provider-transport');
         if (variant === 'http502' || variant === 'error_header_canary') return new Response('fixture-secret-provider-body', {status: 502,
           headers: {'x-zkapi-error-code': variant === 'http502' ? 'provider_unavailable' : 'fixture-secret-error-header'}});
@@ -124,31 +159,30 @@ async function setup(t: TestContext, variant: 'plain' | 'sse' | 'unknown' | 'mis
       }
       if (path.endsWith('/close')) {
         counts.close++;
-        return Response.json({request_id: requestId, mode: 'proxy', state: 'SETTLED', cap_micro_usdc: '100',
+        assert.equal(init!.signal!.aborted,false,'expired AUTH deadline must not abort close');
+        return Response.json({request_id: requestId, mode, state: 'SETTLED', cap_micro_usdc: '100',
           settlement: {charge_micro_usdc: '1', next_commitment: successor.commitment, next_anchor: successor.anchor,
             blind_delta_srv: field(12), next_state_signature: successor.state_signature}});
       }
       assert.equal(path, `/zkapi/v1/sessions/${requestId}/receipts`);
       if (new URL(String(url)).searchParams.has('cursor')) return Response.json({receipts: [], next_cursor: null});
-      const receipt: Receipt = {body: {receipt_id: '12345678-1234-4123-8123-123456789013', operation_id: operationId,
-        billing_effect: 'charge', evidence_kind: variant === 'unknown' ? 'UNKNOWN_OPERATOR_LOSS' : 'PROXY_USAGE',
+      const receipt: Receipt = {body: {receipt_id: '12345678-1234-4123-8123-123456789013', operation_id: mode === 'proxy' ? operationId : null,
+        billing_effect: 'charge', evidence_kind: variant === 'unknown' ? 'UNKNOWN_OPERATOR_LOSS' : mode === 'proxy' ? 'PROXY_USAGE' : mode === 'direct_oa' ? 'OA_SIGNED_RECEIPT' : 'OPENROUTER_USAGE',
         reason: variant === 'unknown' ? 'waived_unknown' : 'metered', observed_nano_usdc: variant === 'unknown' ? null : '1000',
         ...(variant === 'missing_evidence' ? {} : {provider_evidence_digest: '44'.repeat(32)})}, receipt_hash: '55'.repeat(32), signature: 'synthetic'};
       return Response.json({receipts: [receipt], next_cursor: '1'});
     }};
   const client = new ControlClient(clientOptions);
-  const options = {client, journal, noteId: 'note', tariff, now: () => now,
+  const options: ProviderAcceptanceContext = {client, journal, noteId: 'note', tariff: selectedTariff, now: () => now,
     quoteTimeoutMs: quoteFault === 'slow' ? 30 : 120_000,
     authorizationTimeoutMs: auth === 'slow' ? 30 : 120_000,
-    authorizationClient: (signal: AbortSignal) => new ControlClient({...clientOptions,
-      fetch: (url, init) => clientOptions.fetch!(url, {...init, signal: init?.signal ? AbortSignal.any([signal, init.signal]) : signal})}),
-    testCase: {...testCase, stream: variant === 'sse' || variant === 'sse_fake_tool', tools: variant === 'sse_fake_tool'},
+    testCase: {...testCase, mode, provider, stream: variant === 'sse' || variant === 'sse_fake_tool', tools: variant === 'sse_fake_tool'},
     chain: {async sessionSnapshot() {snapshots++; return {slot: 200, root: field(14), sequence: '1', siblings: [], nextNoteId: 1, clock: '150', paused: false, treasuryOwner: 'fixture'};}},
     prover: {async snapshotPath(){throw Error('synthetic chain does not reconstruct a real tree');},async prepareSession(_witness: unknown, _state: unknown, _root: unknown, _siblings: unknown, quote: Quote, price: Tariff,
       credentials: {requestId: string; controlToken: string; proxyToken: string | null; controlHash: string; proxyHash: string | null}): Promise<PreparedSession> {
       proofs++;
       return {request: {authorization: {version: '1', deployment_id: context.deployment_id, pool: context.pool,
-        request_id: credentials.requestId, quote_hash: quote.quote_hash, mode: 'proxy', control_secret_hash: credentials.controlHash,
+        request_id: credentials.requestId, quote_hash: quote.quote_hash, mode, control_secret_hash: credentials.controlHash,
         proxy_secret_hash: credentials.proxyHash}, quote, public_inputs: Array(12).fill(field(1)),
         proof: {backend: 'groth16_bn254', proof: 'synthetic'}}, control_token: credentials.controlToken,
         proxy_token: credentials.proxyToken, tariff: price, rerandomization: field(13)};
@@ -156,8 +190,58 @@ async function setup(t: TestContext, variant: 'plain' | 'sse' | 'unknown' | 'mis
       counts.reserve++; if (reserved) throw Error('already reserved'); reserved = true;
       return {case_id: c.id, reserved_micro_usdc: c.max_cost_micro_usdc, plan_sha256: '66'.repeat(32), send_authorized_once: true as const};
     }};
-  return {options, counts, journal, observed: () => observedBody, authRequests, proofs: () => proofs, directory, quoteRequests, issuedQuotes};
+  return {options, counts, journal, observed: () => observedBody, authRequests, proofs: () => proofs, directory, quoteRequests, issuedQuotes,
+    waitForAuthDeadline: () => {waitForAuthDeadline=true;options.authorizationTimeoutMs=200;},
+    slowVerifier: () => {slowVerifier=true;options.authorizationTimeoutMs=1000;},verifications:()=>verifications,
+    verifierDeadlineAborted:()=>verifierDeadlineAborted};
 }
+
+for (const mode of ['direct_openrouter','direct_oa'] as const) test(`${mode} acceptance uses the authorizing client's volatile key after its AUTH timeout expires`, async t=>{
+  const h=await setup(t,'plain','normal','normal',mode);h.waitForAuthDeadline();
+  const report=await runProviderAcceptanceCase(h.options);
+  assert.equal(report.passed,true);assert.equal(report.inference_sends,1);assert.equal(report.inference_replays,0);
+  assert.deepEqual(h.counts,{quote:1,prepare:1,reserve:1,auth:1,inference:1,close:1,settle:1});
+  const saved=(await h.journal.read('note'))!.value;
+  assert.equal(saved.pending,null);assert.equal(saved.history[0].operations.length,1);
+  assert.equal(JSON.stringify(saved).includes('memory-only-provider-key'),false);
+  await assert.rejects(runProviderAcceptanceCase(h.options));assert.equal(h.counts.inference,1);
+});
+
+for (const mode of ['direct_openrouter','direct_oa'] as const) for (const fault of ['503_once','unknown_once'] as const)
+test(`${mode} ${fault} retries only the saved AUTH on the same key-owning client`, async t=>{
+  const h=await setup(t,'plain',fault,'normal',mode),report=await runProviderAcceptanceCase(h.options);
+  assert.equal(report.authorization_recovery_attempts,2);assert.deepEqual(h.authRequests[0],h.authRequests[1]);
+  assert.deepEqual(h.counts,{quote:1,prepare:1,reserve:1,auth:2,inference:1,close:1,settle:1});
+  assert.equal(JSON.stringify((await h.journal.read('note'))!.value).includes('memory-only-provider-key'),false);
+});
+
+test('an AUTH deadline also bounds OA verification without saving a key or sending inference',async t=>{
+  const h=await setup(t,'plain','normal','normal','direct_oa');h.slowVerifier();
+  await assert.rejects(runProviderAcceptanceCase(h.options),error=>{
+    assert.ok(error instanceof ProviderAcceptanceFailure);assert.equal(error.diagnostic!.stage,'authorize');return true;
+  });
+  const pending=(await h.journal.read('note'))!.value.pending!;
+  assert.equal(h.verifications(),1,'the deadline is exercised after reaching the independent verifier');
+  assert.equal(h.verifierDeadlineAborted(),true,'the per-call TimeoutError, not the watchdog, must stop verifier transport');
+  assert.equal(pending.providerKey,undefined);assert.equal(pending.phase,'closing');assert.equal(pending.closeRequested,true);
+  assert.deepEqual(pending.operations,[]);assert.equal(pending.exactRequest,h.authRequests[0].body);
+  assert.equal(h.counts.auth,1);assert.equal(h.counts.inference,0);assert.equal(h.counts.close,0);
+  await assert.rejects(h.options.client.sendDirectOperation('note',crypto.randomUUID(),'/v1/chat/completions',new Uint8Array()));
+  assert.equal(h.counts.inference,0);
+  await h.options.client.close('note');
+  assert.equal((await h.journal.read('note'))!.value.pending,null);
+  assert.equal(h.counts.close,1);assert.equal(h.counts.settle,1);assert.equal(h.counts.inference,0);
+  assert.equal(h.verifications(),1,'explicit close never retries issuance or verifier delivery');
+});
+
+for(const mode of ['direct_openrouter','direct_oa'] as const)test(`${mode} uncertain inference closes once and never replays after orchestration failure`,async t=>{
+  const h=await setup(t,'unknown','normal','normal',mode);
+  await assert.rejects(runProviderAcceptanceCase(h.options));
+  const saved=(await h.journal.read('note'))!.value;assert.equal(saved.pending,null);
+  assert.equal(saved.history[0].operations[0].phase,'send_unknown');
+  assert.deepEqual(h.counts,{quote:1,prepare:1,reserve:1,auth:1,inference:1,close:1,settle:1});
+  await assert.rejects(runProviderAcceptanceCase(h.options));assert.equal(h.counts.inference,1);
+});
 
 for (const fault of ['503_once', 'unknown_once'] as const) test(`quote ${fault} repeats fixed parameters before one proof/reservation/AUTH/inference`, async t => {
   const h = await setup(t, 'plain', 'normal', fault);

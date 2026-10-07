@@ -53,7 +53,7 @@ and recovery controls. Install a reviewed deployment bundle before real use.
 | Connect a local OpenAI-compatible client | [clientd](apps/clientd/README.md) |
 | Operate a deployment | [Operator configuration](docs/sdk/deployment.md), [control service](services/control/README.md), [operations](deploy/operations/README.md) |
 | Understand or change the protocol | [Implementation contract](docs/implementation-ready.md), [implementation plan](docs/implementation-plan.md) |
-| Inspect what was actually verified | [Current boundaries](docs/sdk/status.md), [parity follow-up](docs/evidence/I10-parity.md), [historical I10 evidence](docs/evidence/I10.md) |
+| Inspect what was actually verified | [Current boundaries](docs/sdk/status.md), [parity review and direct-provider evidence](docs/evidence/I10-parity-review.md), [historical I10 evidence](docs/evidence/I10.md) |
 
 In **direct** mode, prompts go to the selected provider using a short-lived key.
 In **proxy** mode, the operator relays requests and can read prompts and responses.

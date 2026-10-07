@@ -26,9 +26,6 @@ export interface ProviderAcceptanceCase {
 }
 export interface ProviderAcceptanceContext {
   client: ControlClient;
-  /** Same SDK context/journal/verifier/transport, with this signal combined into
-   * fetch for quote and AUTH. Bounds HTTP without abandoning a journal commit. */
-  authorizationClient(signal: AbortSignal): ControlClient;
   journal: EncryptedJournal<NoteJournal>;
   prover: Pick<NoteProver, 'prepareSession'|'snapshotPath'>;
   chain: Pick<WalletChain, 'sessionSnapshot'>;
@@ -105,8 +102,8 @@ async function obtainQuote(o: ProviderAcceptanceContext) {
     const ms = remaining();
     if (!Number.isSafeInteger(ms) || ms <= 0) throw lastTransient ?? new ProviderAcceptanceFailure();
     try {
-      const client = o.authorizationClient(AbortSignal.timeout(ms)); attempts++;
-      const quote = await client.quote(request, o.tariff);
+      attempts++;
+      const quote = await o.client.quote(request, o.tariff, AbortSignal.timeout(ms));
       requireTrue(remaining() > 0);
       return {quote, attempts};
     } catch (error) {
@@ -139,8 +136,10 @@ async function authorizeSaved(o: ProviderAcceptanceContext, prepared: PreparedSe
       && !pending.closeRequested && ['prepared', 'send_unknown', 'active'].includes(pending.phase));
     const ms = remaining(); requireTrue(Number.isSafeInteger(ms) && ms > 0);
     try {
-      const client = o.authorizationClient(AbortSignal.timeout(ms)); attempts++;
-      const status = await client.recover(o.noteId);
+      attempts++;
+      // The authorizing instance owns the volatile direct-provider key. Bound
+      // this recovery call without replacing that instance or its transport.
+      const status = await o.client.recover(o.noteId, AbortSignal.timeout(ms));
       requireTrue(remaining() > 0);
       const saved = (await o.journal.read(o.noteId))?.value.pending;
       requireTrue(saved && saved.exactRequest === exact && saved.operations.length === 0

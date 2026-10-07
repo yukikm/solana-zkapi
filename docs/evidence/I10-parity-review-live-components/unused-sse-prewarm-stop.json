@@ -1,0 +1,8 @@
+{
+  "stopped_at_utc": "2026-10-06T16:58:08.487924+00:00",
+  "reason": "Old SSE pool initialized before plain test; preserve its unused state and use freshly initialized pool for serial SSE to avoid idle archive backlog.",
+  "funding_auth_inference_attempts": 0,
+  "reservation_created": false,
+  "indexer_stop": "SIGCONT then SIGTERM; not claimed graceful",
+  "backend_stop_requested": "SIGINT"
+}

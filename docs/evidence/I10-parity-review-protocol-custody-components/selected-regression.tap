@@ -1,0 +1,446 @@
+TAP version 13
+# Subtest: lists and notifications are detached and omit secrets, prompt bodies and provider keys
+ok 1 - lists and notifications are detached and omit secrets, prompt bodies and provider keys
+  ---
+  duration_ms: 368.487834
+  type: 'test'
+  ...
+# Subtest: explicit emergency escape preserves uncertain inference before proof work and keeps recovery fenced after reopen
+ok 2 - explicit emergency escape preserves uncertain inference before proof work and keeps recovery fenced after reopen
+  ---
+  duration_ms: 426.503459
+  type: 'test'
+  ...
+# Subtest: emergency escape stays explicit and refuses a never-sent authorization or an unrelated note
+ok 3 - emergency escape stays explicit and refuses a never-sent authorization or an unrelated note
+  ---
+  duration_ms: 238.872375
+  type: 'test'
+  ...
+# Subtest: response loss and failed settlement retain operation; restarting never replays it
+ok 4 - response loss and failed settlement retain operation; restarting never replays it
+  ---
+  duration_ms: 702.569209
+  type: 'test'
+  ...
+# Subtest: dispose does not settle or erase storage and refuses later actions
+ok 5 - dispose does not settle or erase storage and refuses later actions
+  ---
+  duration_ms: 27.818
+  type: 'test'
+  ...
+# Subtest: direct client tools accept arbitrary JSON Schema property names without admitting unsupported modalities
+ok 6 - direct client tools accept arbitrary JSON Schema property names without admitting unsupported modalities
+  ---
+  duration_ms: 790.321916
+  type: 'test'
+  ...
+# Subtest: direct identity and transport metadata is rejected before AUTH or inference
+ok 7 - direct identity and transport metadata is rejected before AUTH or inference
+  ---
+  duration_ms: 88.846542
+  type: 'test'
+  ...
+# Subtest: direct structured text formats are supported only at the native API format paths
+ok 8 - direct structured text formats are supported only at the native API format paths
+  ---
+  duration_ms: 1316.067667
+  type: 'test'
+  ...
+# Subtest: direct Responses requires explicit disabled storage before AUTH
+ok 9 - direct Responses requires explicit disabled storage before AUTH
+  ---
+  duration_ms: 170.952041
+  type: 'test'
+  ...
+# Subtest: uncertain direct inference is never replayed after restart; volatile key, same mode
+ok 10 - uncertain direct inference is never replayed after restart; volatile key, same mode
+  ---
+  duration_ms: 188.046292
+  type: 'test'
+  ...
+# Subtest: restart keeps admin reachable for explicit absent-operation reconciliation without inference replay
+ok 11 - restart keeps admin reachable for explicit absent-operation reconciliation without inference replay
+  ---
+  duration_ms: 344.710625
+  type: 'test'
+  ...
+# Subtest: restart outage keeps inference blocked until explicit recovery closes the previous session
+ok 12 - restart outage keeps inference blocked until explicit recovery closes the previous session
+  ---
+  duration_ms: 335.585292
+  type: 'test'
+  ...
+# Subtest: direct 202 with missing key closes without inference or proxy fallback
+ok 13 - direct 202 with missing key closes without inference or proxy fallback
+  ---
+  duration_ms: 125.191125
+  type: 'test'
+  ...
+# Subtest: OA key is independently verified before clientd inference and reused only within the same session
+ok 14 - OA key is independently verified before clientd inference and reused only within the same session
+  ---
+  duration_ms: 179.7675
+  type: 'test'
+  ...
+# Subtest: OA verifier rejection closes the same authorization without saving a key or sending inference
+ok 15 - OA verifier rejection closes the same authorization without saving a key or sending inference
+  ---
+  duration_ms: 103.250917
+  type: 'test'
+  ...
+# Subtest: stream cancel still closes reuse-zero session, unsupported direct modalities never authorize
+ok 16 - stream cancel still closes reuse-zero session, unsupported direct modalities never authorize
+  ---
+  duration_ms: 162.150917
+  type: 'test'
+  ...
+# Subtest: native custody wraps random key, authenticates passphrase and metadata, and refuses reset
+ok 17 - native custody wraps random key, authenticates passphrase and metadata, and refuses reset
+  ---
+  duration_ms: 226.785584
+  type: 'test'
+  ...
+# Subtest: authorization response loss recovers only identical proof/body/token, even after restart
+ok 18 - authorization response loss recovers only identical proof/body/token, even after restart
+  ---
+  duration_ms: 159.246167
+  type: 'test'
+  ...
+# Subtest: closing an unknown direct create withholds a newly delivered key and resumes close after response loss
+ok 19 - closing an unknown direct create withholds a newly delivered key and resumes close after response loss
+  ---
+  duration_ms: 213.899208
+  type: 'test'
+  ...
+# Subtest: direct 202 or missing first key persists closing and uses saved control credential, without changing mode
+ok 20 - direct 202 or missing first key persists closing and uses saved control credential, without changing mode
+  ---
+  duration_ms: 274.859166
+  type: 'test'
+  ...
+# Subtest: direct key stays only in the current client and restart closes the same keyless session
+ok 21 - direct key stays only in the current client and restart closes the same keyless session
+  ---
+  duration_ms: 295.995959
+  type: 'test'
+  ...
+# Subtest: legacy persisted direct keys remain readable but cannot authorize inference after restart
+    # Subtest: direct_oa
+    ok 1 - direct_oa
+      ---
+      duration_ms: 145.466458
+      type: 'test'
+      ...
+    # Subtest: direct_openrouter
+    ok 2 - direct_openrouter
+      ---
+      duration_ms: 199.236458
+      type: 'test'
+      ...
+    1..2
+ok 22 - legacy persisted direct keys remain readable but cannot authorize inference after restart
+  ---
+  duration_ms: 345.571959
+  type: 'test'
+  ...
+# Subtest: failed key-delivery persistence cannot leave a usable volatile key or change saved AUTH
+ok 23 - failed key-delivery persistence cannot leave a usable volatile key or change saved AUTH
+  ---
+  duration_ms: 112.800834
+  type: 'test'
+  ...
+# Subtest: a volatile direct key cannot hydrate a changed authorization or be replaced by a persisted key field
+ok 24 - a volatile direct key cannot hydrate a changed authorization or be replaced by a persisted key field
+  ---
+  duration_ms: 214.246
+  type: 'test'
+  ...
+# Subtest: forgetting volatile keys does not alter custody and same-session recovery settles without another key
+ok 25 - forgetting volatile keys does not alter custody and same-session recovery settles without another key
+  ---
+  duration_ms: 153.5845
+  type: 'test'
+  ...
+# Subtest: OA key without independently verifiable evidence is withheld and the same session closes
+ok 26 - OA key without independently verifiable evidence is withheld and the same session closes
+  ---
+  duration_ms: 98.743834
+  type: 'test'
+  ...
+# Subtest: OA evidence is checked before volatile key delivery and a restarted SDK cannot revive the key
+ok 27 - OA evidence is checked before volatile key delivery and a restarted SDK cannot revive the key
+  ---
+  duration_ms: 120.786333
+  type: 'test'
+  ...
+# Subtest: untrusted OA evidence and verifier failures close without exposing or persisting a usable key
+    # Subtest: missing independent pin
+    ok 1 - missing independent pin
+      ---
+      duration_ms: 91.282625
+      type: 'test'
+      ...
+    # Subtest: missing evidence
+    ok 2 - missing evidence
+      ---
+      duration_ms: 87.424708
+      type: 'test'
+      ...
+    # Subtest: null evidence
+    ok 3 - null evidence
+      ---
+      duration_ms: 84.876625
+      type: 'test'
+      ...
+    # Subtest: injected verifier URL
+    ok 4 - injected verifier URL
+      ---
+      duration_ms: 90.254125
+      type: 'test'
+      ...
+    # Subtest: wrong station
+    ok 5 - wrong station
+      ---
+      duration_ms: 90.556666
+      type: 'test'
+      ...
+    # Subtest: malformed signature
+    ok 6 - malformed signature
+      ---
+      duration_ms: 93.929042
+      type: 'test'
+      ...
+    # Subtest: unknown evidence field
+    ok 7 - unknown evidence field
+      ---
+      duration_ms: 105.4745
+      type: 'test'
+      ...
+    # Subtest: wrong attestation flag type
+    ok 8 - wrong attestation flag type
+      ---
+      duration_ms: 98.386583
+      type: 'test'
+      ...
+    # Subtest: string evidence expiry
+    ok 9 - string evidence expiry
+      ---
+      duration_ms: 93.2155
+      type: 'test'
+      ...
+    # Subtest: unsafe evidence expiry
+    ok 10 - unsafe evidence expiry
+      ---
+      duration_ms: 96.865875
+      type: 'test'
+      ...
+    # Subtest: fractional evidence expiry
+    ok 11 - fractional evidence expiry
+      ---
+      duration_ms: 95.586125
+      type: 'test'
+      ...
+    # Subtest: numeric lease expiry
+    ok 12 - numeric lease expiry
+      ---
+      duration_ms: 93.194917
+      type: 'test'
+      ...
+    # Subtest: noncanonical lease expiry
+    ok 13 - noncanonical lease expiry
+      ---
+      duration_ms: 87.478375
+      type: 'test'
+      ...
+    # Subtest: missing lease expiry
+    ok 14 - missing lease expiry
+      ---
+      duration_ms: 100.371833
+      type: 'test'
+      ...
+    # Subtest: expired lease
+    ok 15 - expired lease
+      ---
+      duration_ms: 98.421875
+      type: 'test'
+      ...
+    # Subtest: evidence expires before lease
+    ok 16 - evidence expires before lease
+      ---
+      duration_ms: 95.281584
+      type: 'test'
+      ...
+    # Subtest: excessive expiry skew
+    ok 17 - excessive expiry skew
+      ---
+      duration_ms: 92.3175
+      type: 'test'
+      ...
+    # Subtest: verifier rejects substituted key
+    ok 18 - verifier rejects substituted key
+      ---
+      duration_ms: 82.92925
+      type: 'test'
+      ...
+    # Subtest: HTTP failure with verified body
+    ok 19 - HTTP failure with verified body
+      ---
+      duration_ms: 66.757792
+      type: 'test'
+      ...
+    # Subtest: network timeout
+    ok 20 - network timeout
+      ---
+      duration_ms: 70.935166
+      type: 'test'
+      ...
+    # Subtest: duplicate JSON status
+    ok 21 - duplicate JSON status
+      ---
+      duration_ms: 69.535292
+      type: 'test'
+      ...
+    # Subtest: wrong verifier status type
+    ok 22 - wrong verifier status type
+      ---
+      duration_ms: 51.125375
+      type: 'test'
+      ...
+    # Subtest: expiry crossed during verification
+    ok 23 - expiry crossed during verification
+      ---
+      duration_ms: 48.229083
+      type: 'test'
+      ...
+    1..23
+ok 28 - untrusted OA evidence and verifier failures close without exposing or persisting a usable key
+  ---
+  duration_ms: 1986.760375
+  type: 'test'
+  ...
+# Subtest: OA verifier pins are detached from mutable caller options and the existing 65-second issuer skew is accepted
+ok 29 - OA verifier pins are detached from mutable caller options and the existing 65-second issuer skew is accepted
+  ---
+  duration_ms: 45.29925
+  type: 'test'
+  ...
+# Subtest: OA failed close retains keyless closing state and can settle without verifier access
+ok 30 - OA failed close retains keyless closing state and can settle without verifier access
+  ---
+  duration_ms: 66.511917
+  type: 'test'
+  ...
+# Subtest: changed saved OA evidence is independently rechecked against the current in-memory key
+    # Subtest: legacy
+    ok 1 - legacy
+      ---
+      duration_ms: 91.674542
+      type: 'test'
+      ...
+    # Subtest: evidence
+    ok 2 - evidence
+      ---
+      duration_ms: 105.0015
+      type: 'test'
+      ...
+    # Subtest: expiry
+    ok 3 - expiry
+      ---
+      duration_ms: 79.742667
+      type: 'test'
+      ...
+    1..3
+ok 31 - changed saved OA evidence is independently rechecked against the current in-memory key
+  ---
+  duration_ms: 276.776709
+  type: 'test'
+  ...
+# Subtest: inference persists exact bytes before send; response loss and restart cannot auto replay
+ok 32 - inference persists exact bytes before send; response loss and restart cannot auto replay
+  ---
+  duration_ms: 82.441417
+  type: 'test'
+  ...
+# Subtest: a new emergency archive omits a legacy direct key while preserving exact financial and inference evidence
+ok 33 - a new emergency archive omits a legacy direct key while preserving exact financial and inference evidence
+  ---
+  duration_ms: 523.841292
+  type: 'test'
+  ...
+# Subtest: emergency archive rejects fabricated phase, missing exact receipt, modified state/request/operations and unsafe active reuse
+    # Subtest: duplicate archive
+    ok 1 - duplicate archive
+      ---
+      duration_ms: 445.033459
+      type: 'test'
+      ...
+    # Subtest: phase
+    ok 2 - phase
+      ---
+      duration_ms: 395.8575
+      type: 'test'
+      ...
+    # Subtest: previous
+    ok 3 - previous
+      ---
+      duration_ms: 335.998
+      type: 'test'
+      ...
+    # Subtest: request
+    ok 4 - request
+      ---
+      duration_ms: 290.524458
+      type: 'test'
+      ...
+    # Subtest: nullifier
+    ok 5 - nullifier
+      ---
+      duration_ms: 252.699958
+      type: 'test'
+      ...
+    # Subtest: operation identity
+    ok 6 - operation identity
+      ---
+      duration_ms: 268.712875
+      type: 'test'
+      ...
+    # Subtest: active reuse
+    ok 7 - active reuse
+      ---
+      duration_ms: 248.03375
+      type: 'test'
+      ...
+    # Subtest: receipt
+    ok 8 - receipt
+      ---
+      duration_ms: 269.698708
+      type: 'test'
+      ...
+    # Subtest: extra fields
+    ok 9 - extra fields
+      ---
+      duration_ms: 267.541334
+      type: 'test'
+      ...
+    1..9
+ok 34 - emergency archive rejects fabricated phase, missing exact receipt, modified state/request/operations and unsafe active reuse
+  ---
+  duration_ms: 3630.111375
+  type: 'test'
+  ...
+# Subtest: completed emergency recovery rejects duplicated settlement history or a fabricated settled archive
+ok 35 - completed emergency recovery rejects duplicated settlement history or a fabricated settled archive
+  ---
+  duration_ms: 686.825
+  type: 'test'
+  ...
+1..35
+# tests 72
+# suites 0
+# pass 72
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 5078.484167

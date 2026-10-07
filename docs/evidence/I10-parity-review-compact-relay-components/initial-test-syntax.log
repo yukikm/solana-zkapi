@@ -1,0 +1,40 @@
+node:internal/modules/run_main:107
+    triggerUncaughtException(
+    ^
+
+file:///Users/yukikimura/work/solana-zkapi/scripts/i10-wallet-ui/host.test.ts:250
+  for (const data of malformed) assert.equal((await post(host.origin, wire(new TransactionInstruction({...instruction, data})))).status, 400);
+  assert.equal((await post(host.origin, wire(new TransactionInstruction({...instruction, keys: instruction.keys.slice(0, -1)}))))).status, 400);
+                                                                                                                                              ^
+  const wrongPool = VersionedTransaction.deserialize(Buffer.from(valid, 'base64'));
+
+SyntaxError [ERR_INVALID_TYPESCRIPT_SYNTAX]: Expected ';', '}' or <eof>
+    at parseTypeScript (node:internal/modules/typescript:72:36)
+    at processTypeScriptCode (node:internal/modules/typescript:146:42)
+    at stripTypeScriptModuleTypes (node:internal/modules/typescript:215:22)
+    at ModuleLoader.<anonymous> (node:internal/modules/esm/translators:680:29)
+    at #translate (node:internal/modules/esm/loader:434:20)
+    at afterLoad (node:internal/modules/esm/loader:502:29)
+    at ModuleLoader.loadAndTranslate (node:internal/modules/esm/loader:507:12)
+    at #getOrCreateModuleJobAfterResolve (node:internal/modules/esm/loader:560:36)
+    at afterResolve (node:internal/modules/esm/loader:607:52)
+    at ModuleLoader.getOrCreateModuleJob (node:internal/modules/esm/loader:613:12) {
+  code: 'ERR_INVALID_TYPESCRIPT_SYNTAX'
+}
+
+Node.js v24.19.0
+✖ scripts/i10-wallet-ui/host.test.ts (54.163167ms)
+ℹ tests 1
+ℹ suites 0
+ℹ pass 0
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 57.314042
+
+✖ failing tests:
+
+test at scripts/i10-wallet-ui/host.test.ts:1:1
+✖ scripts/i10-wallet-ui/host.test.ts (54.163167ms)
+  'test failed'

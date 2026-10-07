@@ -67,7 +67,7 @@ Mode must explicitly be `direct` or `tor`. For direct provider sessions add the 
 - Private `journal` directory, `custody` envelope file, local `note_id`.
 - Explicit `mode` (`proxy`, `direct_oa`, `direct_openrouter`), per-model provider/API/tariff configuration, `rpc` URL, `indexer` origin, optional `direct_provider_bases`.
 - For `direct_oa`, independently install `oa_verifier: {"base":"https://verifier.example/api","stationId":"trusted-station"}`. Use the canonical HTTPS base without a trailing slash; do not derive these pins from the control server or key response. The SDK verifies the received key and its signed evidence directly with this verifier before saving or using the key. Missing pins, mismatched evidence or verifier rejection close the same session without inference or mode fallback.
-- `key_reuse_seconds`: default 60, range 0–300. Zero closes after each request; server TTL remains 60 seconds.
+- `key_reuse_seconds`: default 60, range 0–300. A nonzero value also requests that session TTL. Zero requests a 60-second TTL and closes after each request.
 
 The runtime checks actual finalized PoolConfig/genesis/keys/profile/artifact hashes before serving. Custody's parent directory must be mode 0700. Never reset missing/corrupt custody automatically.
 
@@ -121,6 +121,27 @@ All calls require the appropriate `Authorization: Bearer …`. Management and in
 Wallet commands specify role public keys and destination. Explicit `escape` switches a blocked mutual-close intent to escape only before any transaction has been signed, preserving the existing nullifier, clearance intent and destination. `advance` performs one durable sign/recover step; `prove` resumes the saved operation. Explicit `retry-rejected` rechecks an exact finalized rejection, cleans up its old buffer and preserves the saved witness/nullifier/destination before reproving; finalize also rechecks the current Pending and deadline. Secret witness and signed bytes are encrypted before sends. Only a finalized receipt plus actual account reconciliation activates a deposit. An unknown execute/close/finalize never gets a replacement signature. Blockhash expiry and confirmed status alone do not establish non-execution.
 
 Inference UUID and exact bytes are durable. A supplied `Idempotency-Key` is preserved; otherwise the daemon creates one and returns `X-Zkapi-Operation-Id`. Neither direct nor proxy inference is replayed automatically. IDs in active or settled history cannot be reused. Restart recovers/closes the previous session before new work. Direct 202/missing-key recovery closes the same authorization, never reissues a key or changes mode. Disconnects before upstream headers abort inference transport as well as delivered streams, retaining uncertain intents and running the shared lifecycle finalizer. Graceful shutdown waits for authorization preparation, active streams and close persistence. Go supervisor death closes its private pipe so the SDK exits and releases the journal lock; restart retains and reconciles unresolved operations.
+
+Direct requests reject top-level `user`, `metadata`, `safety_identifier`,
+`prompt_cache_key`, `extra_headers` and `provider` before authorization. Ethereum's
+clientd removes those fields; this client explicitly rejects them so the saved
+request remains byte-for-byte identical to the submitted inference. Client tool
+parameter schemas can use arbitrary property names, including `type` and
+`image_url`. Direct Chat supports `response_format` text/JSON formats, and direct
+Responses supports their `text.format` equivalents, including JSON Schemas.
+Those selectors apply only at the named API paths; they do not enable image
+inputs or hosted tools. Responses
+forward only content type, retry timing, and proxy operation status/error headers.
+Upstream cookies, CORS and arbitrary tracking headers are not forwarded. The
+locally assigned operation ID and `no-store` cache policy remain authoritative.
+Canceling a pending stream read retains its admission slot until upstream
+cancellation finishes, then runs the existing settlement maintenance.
+
+Direct Responses requests must explicitly include `"store": false`, for example
+`{"model":"gpt-example","input":"Hello","store":false}`. Missing, null or true
+values are rejected before authorization because that API stores responses by
+default. This disables API application storage; provider logging, retention
+policy and network observations remain provider trust assumptions.
 
 An explicit new request selecting another proxy model, or arriving after the
 reuse window, closes the old session first. Once the existing receipt/successor

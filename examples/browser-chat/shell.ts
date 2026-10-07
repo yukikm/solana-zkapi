@@ -7,6 +7,7 @@ export const shell = `
     <section class="card" aria-labelledby="setup-heading"><h2 id="setup-heading">1. Connect your note</h2>
       <label for="profile">Deployment and privacy mode</label><select id="profile"><option value="">Choose a reviewed profile</option></select>
       <p id="profile-state" class="hint"></p><p id="privacy" class="privacy">Select a mode to review who can read your content.</p>
+      <p id="admission" class="hint">Campaign availability appears after opening a configured local note.</p>
       <label class="check"><input id="privacy-ack" type="checkbox"> I understand this mode's content visibility.</label>
       <div class="row"><button id="scan-wallets" class="secondary">Find wallets</button><button id="connect-wallet" class="secondary" disabled>Connect wallet</button></div>
       <label for="wallet">Wallet</label><select id="wallet"><option value="">Find a Wallet Standard wallet</option></select>
@@ -31,7 +32,7 @@ export const shell = `
       <div class="chat-settings"><div><label for="model">Configured model</label><select id="model" disabled><option value="">Open a note first</option></select></div><div><label for="max-tokens">Maximum output tokens</label><input id="max-tokens" type="number" min="1" max="32768" value="512"></div></div>
       <label for="api">Configured API</label><select id="api" disabled><option value="">Choose a model first</option></select>
       <label class="check"><input id="stream" type="checkbox" checked> Stream the response (SSE)</label>
-      <p class="hint">Conversation history stays in this tab's memory and is lost on reload. Complete turns are sent as context to the selected model. No automatic resend.</p>
+      <p class="hint">The displayed conversation is not restored after reload. Complete turns are sent as context to the selected model. Request bodies, including prompts and prior turns, remain in the encrypted financial journal after settlement or clearing the conversation. No automatic resend.</p>
       <div id="transcript" class="transcript" role="log" aria-label="Conversation"><p class="empty">Your conversation will appear here.</p></div>
       <form id="chat-form"><label for="message">Message</label><textarea id="message" rows="4" placeholder="Ask a question…" maxlength="200000" disabled></textarea>
       <div class="row spread"><p id="send-state" class="hint">Open and fund a note to send.</p><div class="row"><button id="cancel" type="button" class="secondary" disabled>Cancel</button><button id="send" type="submit" disabled>Send message</button></div></div></form>

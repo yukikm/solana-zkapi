@@ -1,0 +1,30 @@
+{
+  "schema": 1,
+  "scope": "Offline collector validation; no database or network accessed by tests",
+  "passed": true,
+  "command": [
+    "python3",
+    "-m",
+    "unittest",
+    "scripts/test_i10_collect_direct_lifecycle.py",
+    "-v"
+  ],
+  "exit_code": 0,
+  "test_count": 4,
+  "negative_lifecycle_subcases": 22,
+  "log": "docs/evidence/I10-parity-review-live-components/direct-lifecycle-collector-tests.txt",
+  "log_sha256": "8b10dbf48fdf5886bd18ac77b387f6551d26d9e0383aca54eb55de14f79d124d",
+  "source_sha256": {
+    "scripts/i10_collect_direct_lifecycle.py": "9e5def398fb66bb6e98e34a504939969249764f84b449ebfdd8eed5553c1ba90",
+    "scripts/test_i10_collect_direct_lifecycle.py": "b163f9a454a56399739b48e90c73433d325da9830fe664263c25efb0deabfc90"
+  },
+  "collected_at_utc": "2026-10-06T17:22:23.492006+00:00",
+  "checks": [
+    "plain and SSE sanitized output drops secret canaries in unselected fields",
+    "read-only role, single session, settlement and charge requirements",
+    "single finished issuance, timing, equality and final-usage-before-deletion",
+    "canonical UUID-only SQL and no raw metadata/reference/digest projection",
+    "exact rational USD to nano ceiling and integer micro ceiling"
+  ],
+  "independent_source_review": "Sibling privacy reviewer reviewed SQL projection, redaction, validation and evidence limitations without database or provider access; no blocker found."
+}

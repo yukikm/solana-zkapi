@@ -5,7 +5,8 @@ import {createHash} from 'node:crypto';
 import {validateNoteJournal, type NoteJournal, type SessionVerifier, type Tariff,
   type VerificationContext} from '../packages/sdk/src/control.ts';
 import {jcsBytes} from '../packages/sdk/src/trust.ts';
-import {validateProviderSelection,demoBudgetTemplate} from './i10_devnet_provider.ts';
+import {validateProviderSelection} from './i10_devnet_provider.ts';
+import {recoveryDemoBudgetTemplate,validateRecoveryDemoCase} from './provider_demo_budget.ts';
 import {providerAcceptanceBody, type ProviderAcceptanceCase} from './provider_acceptance_client.ts';
 
 export interface ProviderRecoveryPlan {
@@ -51,12 +52,12 @@ function verifyRecoveryCampaign(o:RecoveryCampaignInput,selectedReservationPrese
   const planned=new Map(o.plan.cases.map(row=>[row.id,row]));requireTrue(planned.size===o.plan.cases.length);
   const seen=new Set<string>(),demoSessions=new Set<string>();let reserved=0n;
   for(const value of b.reservations){
-    const row=object(value),template=demoBudgetTemplate(row);
+    const row=object(value),template=recoveryDemoBudgetTemplate(row);
     requireTrue(typeof row.case_id==='string'&&!seen.has(row.case_id));seen.add(row.case_id);
     if(template){requireTrue(!planned.has(row.case_id)&&!demoSessions.has(row.request_id as string));demoSessions.add(row.request_id as string);}
     const expected=planned.get(template??row.case_id);requireTrue(expected&&row.max_cost_micro_usdc===expected.max_cost_micro_usdc
     &&row.state==='reserved_no_automatic_replay');
-    if(template)requireTrue(expected.mode==='proxy'&&expected.provider==='openai'&&expected.endpoint==='chat_completions'&&!expected.stream&&!expected.tools);
+    if(template)validateRecoveryDemoCase(row,expected);
     const amount=units(row.max_cost_micro_usdc);requireTrue(amount>0n);reserved+=amount;
   }
   requireTrue(seen.has(c.id)===selectedReservationPresent&&reserved<=cap&&units(b.reserved_micro_usdc)===reserved&&units(b.remaining_micro_usdc)===cap-reserved);

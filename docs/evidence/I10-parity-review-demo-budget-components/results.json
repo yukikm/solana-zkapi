@@ -1,0 +1,70 @@
+{
+  "schema": 1,
+  "recorded_at_utc": "2026-10-06T17:43:10.624919+00:00",
+  "scope": "Offline direct demo reserve-before-AUTH extension; isolated temporary ledgers and synthetic recovery proofs/receipts",
+  "checks": [
+    {
+      "command": "python3 -m unittest discover -s scripts -p 'test_provider_demo_budget.py'",
+      "exit_code": 0,
+      "tests": 8,
+      "log": "direct-budget-final.log",
+      "sha256": "a0089eb13b84ca11b13b199f830bb5ed7c4328f0f59dcb53e84a7974daf6f698"
+    },
+    {
+      "command": "python3 -m unittest discover -s scripts -p 'test_provider_acceptance.py'",
+      "exit_code": 0,
+      "tests": 22,
+      "log": "legacy-budget-final.log",
+      "sha256": "db8f2514647293d5f7762b88e973e51af41b3aaf3eb6cbbb940c27ecbd6fb5ce"
+    },
+    {
+      "command": "target/i08-toolchain/bin/node --test scripts/i10_devnet_provider_recovery.test.ts",
+      "exit_code": 0,
+      "tests": 75,
+      "pass": 75,
+      "fail": 0,
+      "skipped": 0,
+      "cancelled": 0,
+      "duration_ms": 187.53725,
+      "log": "recovery-final.log",
+      "sha256": "614a171020eb35c0f3c60afdba1f75b56bd95c8ded85c7affe71e4729c2d63e6"
+    },
+    {
+      "command": "target/i08-toolchain/bin/node node_modules/typescript/bin/tsc --noEmit --target ES2023 --module NodeNext --moduleResolution NodeNext --strict --allowImportingTsExtensions --lib ES2023,DOM --types node scripts/run_i10_devnet_vault.ts scripts/i10_devnet_provider_recovery.ts scripts/i10_devnet_provider_recovery.test.ts scripts/provider_demo_budget.ts",
+      "exit_code": 0,
+      "log": "typecheck-final.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  ],
+  "source_sha256": {
+    "scripts/provider_demo_budget.py": "eae9f7e8bfe66ab2f1faaecf3c52197e84607ec82d6fcb63269b82e5ce389ee1",
+    "scripts/test_provider_demo_budget.py": "27b8f619d282fe728401586e0027f780e344deecdfc8d5b23737cf47544ac4e5",
+    "scripts/provider_demo_budget.ts": "eb145650567e0e97fc280edfd70cec430c5fd9f4bd002ba1d83ac2ef89893a78",
+    "scripts/i10_devnet_provider_recovery.ts": "4c374d13cf78f818fa8f029b0680e831768a2c67ccee2cadbd992c5ea2bedcf2",
+    "scripts/i10_devnet_provider_recovery.test.ts": "39e03734245ef0913fd8a2fa078919f84e959c0832ec752178d97195b027dcc0",
+    "scripts/run_i10_devnet_vault.ts": "2fbfbe3897eb9009eb3c71bee9713a0420f87df8f5d7faca53d132d8e6dfc703"
+  },
+  "immutable_campaign_sources_unchanged": {
+    "scripts/provider_acceptance.py": true,
+    "scripts/provider_acceptance_client.ts": true,
+    "scripts/i10_devnet_provider.ts": true
+  },
+  "immutable_campaign_source_sha256": {
+    "scripts/provider_acceptance.py": "5911ca26cd21a342e6a3f6a29c65088028ffcac2807c3f1366b54db25715b2ae",
+    "scripts/provider_acceptance_client.ts": "48b4866e4f864bcfb3b009e9399a8ff9d24ec4cf082858abe7204ed92041f023",
+    "scripts/i10_devnet_provider.ts": "16152b42a7dc2171d644505afd3391ea469eee8df126e59817e8942ecfa86b0c"
+  },
+  "preserved_initial_failures": {
+    "initial-fixture-failure.log": "Fixture expected derived totals in the historical raw ledger; corrected to calculate total from retained rows.",
+    "initial-typecheck-failure.log": "Strict checking exposed pre-existing narrow fixture transport/kind typing.",
+    "intermediate-typecheck-failure.log": "Over-broad fixture return annotation erased failure checkpoint type; corrected by widening only NoteJournal."
+  },
+  "historical_ledger_copy": "docs/evidence/I10-parity-review-live-components/budget-after.json",
+  "historical_ledger_copy_sha256": "0fcdf6a9927ad6cdea61670128b620053bb4a0ff58f0e64377eb9464485a6a06",
+  "copied_historical_reservations": 10,
+  "copied_historical_reserved_micro_usdc": "2154216",
+  "live_budget_written": false,
+  "provider_actions": false,
+  "chain_sends": false,
+  "I10_complete": false
+}

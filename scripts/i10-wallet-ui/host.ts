@@ -9,14 +9,15 @@ import {fileURLToPath} from 'node:url';
 import {execFile} from 'node:child_process';
 import {promisify} from 'node:util';
 import {ComputeBudgetProgram, VersionedTransaction} from '@solana/web3.js';
-import {jcsBytes, parseStrictJson, sha256Hex, verifyManifest, type ManifestTrustPolicy, type VerifiedManifest} from '../../packages/sdk/src/trust.ts';
+import {jcsBytes, parseStrictJson, sha256Hex, verifyManifest, supportsInlineDeposit, type ManifestTrustPolicy, type VerifiedManifest} from '../../packages/sdk/src/trust.ts';
+import {expandCompactDepositPayload} from '../../packages/sdk/src/layout2.ts';
 import {discriminator, verifySignatures, resolvePreparationCommitment, type TransactionPreparationCommitment} from '../../packages/sdk/src/transport.ts';
 import type {Tariff} from '../../packages/sdk/src/control.ts';
 import {providerAcceptanceBody, type ProviderAcceptanceCase} from '../provider_acceptance_client.ts';
 import {validatePreparedProviderConfig} from '../i10_devnet_provider.ts';
 import {providerErrorCode} from './provider-diagnostics.ts';
 
-interface UpstreamReply {status: number; bytes: Buffer; serviceErrorCode?: string}
+export interface UpstreamReply {status: number; bytes: Buffer; serviceErrorCode?: string}
 
 export const GENESIS = 'EtWTRABZaYq6iMfeYKouRu166VU2xqa1wcaWoxPkrZBG';
 export interface HostConfig {
@@ -36,6 +37,12 @@ export interface UiProviderPublic {testCase: ProviderAcceptanceCase; tariff: Tar
 /** Read-only capacity snapshot; only reserve() grants a one-time send. */
 export interface UiProviderBudget {
   schema: 1; plan_sha256: string; request_policy: 'explicit_demo' | 'single_acceptance_case';
+  budget_micro_usdc: string; reserved_micro_usdc: string; remaining_micro_usdc: string;
+  max_requests: number; reserved_requests: number; remaining_requests: number;
+  request_max_cost_micro_usdc: string; available_requests: number;
+}
+export interface UiDirectProviderBudget {
+  schema: 1; allowTransactions: boolean;
   budget_micro_usdc: string; reserved_micro_usdc: string; remaining_micro_usdc: string;
   max_requests: number; reserved_requests: number; remaining_requests: number;
   request_max_cost_micro_usdc: string; available_requests: number;
@@ -65,7 +72,7 @@ export async function loadProviderUi(config: NonNullable<HostConfig['provider']>
   validatePreparedProviderConfig({models, cases}, await privateJson(join(directory, 'providers.json')));
   const coordinator = async (command: 'budget-status' | 'reserve' | 'reserve-demo', requestId?: string, operationId?: string) => {
     const env: NodeJS.ProcessEnv = {}; for (const name of ['PATH', 'HOME', 'LANG', 'LC_ALL', 'TMPDIR']) if (process.env[name]) env[name] = process.env[name];
-    const args = [join(ROOT, 'scripts/provider_acceptance.py'), command, '--plan', planPath, '--state-dir', state,
+    const args = [join(ROOT, 'scripts/provider_demo_budget.py'), command, '--plan', planPath, '--state-dir', state,
       ...(command !== 'budget-status' ? ['--case', testCase.id] : []),
       ...(command === 'reserve-demo' ? ['--request-id', requestId!, '--operation-id', operationId!] : [])];
     try { const result = await execute('python3', args, {cwd: ROOT, env, timeout: 30_000, maxBuffer: 1_048_576}); return parseStrictJson(Buffer.from(result.stdout)) as any; }
@@ -167,6 +174,13 @@ export async function configuredHost(config: HostConfig, output: string) {
 
 export interface HostOptions {
   port: number; output: string; assets?: Map<string, {bytes: Buffer; mime: string}>; manifest?: VerifiedManifest; allowTransactions?: boolean;
+  /** Explicit standalone application integration; defaults preserve the wallet host. */
+  application?: 'browser-chat';
+  directProviderOrigin?: 'https://openrouter.ai';
+  /** Only /control is delegated, after the same loopback/origin/header/write guards.
+   * The installed application must enforce its exact native routes and budget. */
+  controlRelay?: (input: {path: string; method: 'GET' | 'POST'; authorization?: string; data: Buffer}) => Promise<UpstreamReply>;
+  directBudget?: () => Promise<UiDirectProviderBudget>;
   preparationCommitment?: TransactionPreparationCommitment;
   rpc?: (data: Buffer) => Promise<{status: number; bytes: Buffer}>;
   historyRpc?: (data: Buffer) => Promise<{status: number; bytes: Buffer}>;
@@ -178,6 +192,11 @@ export interface HostOptions {
 }
 export async function startUiHost(options: HostOptions) {
   const preparationCommitment = resolvePreparationCommitment(options.preparationCommitment);
+  assert.ok(options.application === undefined || options.application === 'browser-chat');
+  assert.ok(options.directProviderOrigin === undefined || options.application === 'browser-chat' && options.directProviderOrigin === 'https://openrouter.ai');
+  assert.ok(!options.controlRelay || options.application === 'browser-chat' && !options.provider);
+  assert.ok(!options.directBudget || options.application === 'browser-chat' && !options.provider && options.controlRelay);
+  const directProviderOrigin = options.directProviderOrigin, controlRelay = options.controlRelay, directBudget = options.directBudget;
   const historyRpc = options.historyRpc;
   const provider = options.provider ? {...options.provider, public: structuredClone(options.provider.public)} : undefined;
   const uuidPattern = '[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}';
@@ -192,13 +211,16 @@ export async function startUiHost(options: HostOptions) {
   const quoteRequest = provider && {mode: 'proxy', provider: 'openai', models: [provider.public.testCase.model], session_ttl_seconds: String(provider.public.testCase.session_ttl_seconds)};
   const exactFields = (value: any, fields: string[]) => { assert.ok(value && typeof value === 'object' && !Array.isArray(value)); assert.deepEqual(Object.keys(value).sort(), fields.sort()); };
   const assets = new Map(options.assets);
-  for (const [name, mime] of [['index.html', 'text/html'], ['app.js', 'text/javascript'], ['style.css', 'text/css'], ['worker.js', 'text/javascript']]) {
+  for (const [name, mime] of [['index.html', 'text/html'], ['app.js', 'text/javascript'], [options.application === 'browser-chat' ? 'styles.css' : 'style.css', 'text/css'], ['worker.js', 'text/javascript']]) {
+    // The standalone packager already authenticates these exact bytes. Do not
+    // re-read a changed file after checking its build digest.
+    if (options.application === 'browser-chat' && assets.has(name === 'index.html' ? '/' : '/' + name)) continue;
     try { assets.set(name === 'index.html' ? '/' : '/' + name, {bytes: await readFile(resolve(options.output, name)), mime}); }
     catch (error) { if (name !== 'worker.js' || (error as NodeJS.ErrnoException).code !== 'ENOENT') throw error; }
   }
   assets.set('/live', assets.get('/')!);
   let demo: Buffer | undefined;
-  try { demo = await readFile(resolve(options.output, 'demo.html')); }
+  try { if (options.application !== 'browser-chat') demo = await readFile(resolve(options.output, 'demo.html')); }
   catch (error) { if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error; }
   if (demo) {
     // Presentation and live wallet share an origin; only the document changes.
@@ -211,7 +233,7 @@ export async function startUiHost(options: HostOptions) {
     // /demo route, so a visitor never mistakes an animation for a live request.
     assets.set('/demo', presentation);
   }
-  const allowedVault = new Map(await Promise.all(['create_payload', 'append_payload', 'seal_payload', 'execute_payload', 'close_payload'].map(async name => [Buffer.from(await discriminator(name)).toString('hex'), name] as const)));
+  const allowedVault = new Map(await Promise.all(['create_payload', 'append_payload', 'seal_payload', 'execute_payload', 'close_payload', 'finalize_escape', 'deposit_compact_v1'].map(async name => [Buffer.from(await discriminator(name)).toString('hex'), name] as const)));
   const safeReply = (result: UpstreamReply, request?: any) => {
     if (result.status < 200 || result.status >= 300) return {...result, bytes: Buffer.from('{"error":"configured upstream unavailable"}')};
     if (!request) return result;
@@ -227,7 +249,7 @@ export async function startUiHost(options: HostOptions) {
   };
   const server = createServer(async (request, response) => {
     response.setHeader('cache-control', 'no-store'); response.setHeader('x-content-type-options', 'nosniff');
-    response.setHeader('content-security-policy', "default-src 'none'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self'; connect-src 'self'; worker-src 'self'; img-src 'self' data:; frame-ancestors 'none'; base-uri 'none'; form-action 'none'");
+    response.setHeader('content-security-policy', `default-src 'none'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self'; connect-src 'self'${directProviderOrigin ? ' ' + directProviderOrigin : ''}; worker-src 'self'; img-src 'self' data:; frame-ancestors 'none'; base-uri 'none'; form-action 'none'`);
     try {
       assert.equal(request.headers.host, new URL(origin).host); assert.ok(['127.0.0.1', '::ffff:127.0.0.1'].includes(request.socket.remoteAddress ?? ''));
       assert.ok(!request.headers['sec-fetch-site'] || ['same-origin', 'none'].includes(String(request.headers['sec-fetch-site'])));
@@ -237,12 +259,25 @@ export async function startUiHost(options: HostOptions) {
       if (request.method === 'GET' && path === '/provider-budget') {
         for (const name of ['authorization', 'cookie', 'proxy-authorization', 'x-api-key']) assert.equal(request.headers[name], undefined);
         response.setHeader('content-type', 'application/json');
-        try { assert.ok(provider?.budget); response.end(JSON.stringify(await provider.budget())); }
+        try { const budget = directBudget ?? provider?.budget; assert.ok(budget); response.end(JSON.stringify(await budget())); }
         catch { response.statusCode = 503; response.end('{"error":"provider campaign unavailable"}'); }
         return;
       }
       if (request.method === 'GET' && /^\/indexer\/zkapi\/v1\/tree\/(root|snapshot|snapshots\/[0-9a-f]{64}\.json|notes\/\d+\/(path|zero-path))$/.test(path)) {
         assert.ok(options.indexer); const result = safeReply(await options.indexer(path.slice('/indexer'.length))); response.statusCode = result.status; response.setHeader('content-type', 'application/json'); response.end(result.bytes); return;
+      }
+      if (path.startsWith('/control/') && controlRelay) {
+        for (const name of ['cookie', 'proxy-authorization', 'x-api-key', 'anthropic-version', 'idempotency-key']) assert.equal(request.headers[name], undefined);
+        assert.ok(request.method === 'GET' || request.method === 'POST');
+        assert.ok(request.rawHeaders.filter((_, i) => i % 2 === 0 && request.rawHeaders[i].toLowerCase() === 'authorization').length <= 1);
+        if (request.method === 'POST') {
+          assert.equal(request.headers.origin, origin); assert.ok(options.allowTransactions, 'financial writes disabled');
+        }
+        const data = await body(request);
+        if (data.length) assert.equal(request.headers['content-type'], 'application/json');
+        const result = safeReply(await controlRelay({path: path.slice('/control'.length), method: request.method,
+          authorization: request.headers.authorization, data}));
+        response.statusCode = result.status; response.setHeader('content-type', 'application/json'); response.end(result.bytes); return;
       }
       if (path.startsWith('/control/') || path.startsWith('/inference/')) {
         assert.ok(provider && options.manifest);
@@ -311,9 +346,21 @@ export async function startUiHost(options: HostOptions) {
             assert.ok([options.manifest.program_id, ComputeBudgetProgram.programId.toBase58()].includes(program));
             if (program === options.manifest.program_id) {
               const name = allowedVault.get(Buffer.from(ix.data.slice(0, 8)).toString('hex')); assert.ok(name);
-              const poolPosition = name === 'execute_payload' ? 3 : 1;
+              const poolPosition = name === 'execute_payload' ? 3 : name === 'finalize_escape' || name === 'deposit_compact_v1' ? 0 : 1;
               assert.equal(tx.message.staticAccountKeys[ix.accountKeyIndexes[poolPosition]]?.toBase58(), options.manifest.pool);
-              if (name === 'create_payload') assert.ok(ix.data[8] === 0 || ix.data[8] === 1, 'only deposit/mutual-close payload creation');
+              if (name === 'create_payload') assert.ok(ix.data.length === 85 && [0, 1, 2].includes(ix.data[8]), 'only deposit/mutual-close/escape payload creation');
+              if (name === 'finalize_escape') assert.equal(ix.data.length, 12, 'canonical escape finalization required');
+              if (name === 'deposit_compact_v1') {
+                // This requires the SDK's authenticated manifest identity and
+                // independent build capability pin, not a caller-supplied flag.
+                assert.ok(supportsInlineDeposit(options.manifest), 'compact deposit capability required');
+                assert.equal(ix.accountKeyIndexes.length, 19, 'canonical compact account shape required');
+                // The shared strict codec checks the exact 436-byte arguments,
+                // field encodings and positive amount, and reconstructs implicit
+                // public inputs using the pinned binding.
+                // Proof and finalized account validation remain in the SDK/Vault.
+                expandCompactDepositPayload(ix.data.slice(8), options.manifest.vault_binding);
+              }
               vaultCalls++;
             } else {
               assert.ok((ix.data[0] === 2 && ix.data.length === 5 && Buffer.from(ix.data).readUInt32LE(1) <= 1_000_000) || (ix.data[0] === 3 && ix.data.length === 9), 'supported compute budget required');

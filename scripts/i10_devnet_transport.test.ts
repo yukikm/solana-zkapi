@@ -10,6 +10,7 @@ import {execFileSync} from 'node:child_process';
 import {once} from 'node:events';
 import {setTimeout as delay} from 'node:timers/promises';
 import {startDevnetFrontend,createDevnetPinnedFetch} from './i10_devnet_transport.ts';
+import {MAX_SESSION_SNAPSHOT_BYTES} from '../packages/sdk/src/session-snapshot.ts';
 const origin = (server: {address(): unknown}, scheme = 'https') => `${scheme}://127.0.0.1:${(server.address() as {port:number}).port}`;
 async function listen(server: ReturnType<typeof httpServer>) { server.listen(0,'127.0.0.1'); await once(server,'listening'); return server; }
 function cleanup(t: TestContext, server: ReturnType<typeof httpServer>) { t.after(() => new Promise<void>(resolve => {server.closeAllConnections();server.close(()=>resolve());})); }
@@ -70,6 +71,25 @@ test('direct transport permits only exact HTTPS chat endpoint, refuses redirects
  await assert.rejects(f(endpoint,{method:'POST',body:'{}'}),/pinned service transport/);await delay(100);assert.equal(handshakes,1);assert.equal(requests,0);
  // A pinned local response redirect is also returned as a generic error, not followed.
  const local=createDevnetPinnedFetch({ca:cert.certificate,indexerOrigin:origin(direct)});await assert.rejects(local(origin(direct)+'/zkapi/v1/tree/root'),/redirect refused/);assert.equal(requests,1);
+});
+test('common AUTH snapshot routes retain large files, reject expanded selectors and enforce snapshot byte bounds', {timeout:15_000}, async t=>{
+ const cert=await certificate(t),digest='ab'.repeat(32),path='/zkapi/v1/tree/snapshots/'+digest+'.json';
+ const hits:string[]=[],large=JSON.stringify({fixture:'x'.repeat(70_000)});let oversize=false;
+ const upstream=await listen(httpServer((req,res)=>{hits.push(req.url!);res.writeHead(200,{'content-type':'application/json'});
+  res.end(req.url!.endsWith('/snapshot')?'{}':oversize?Buffer.alloc(MAX_SESSION_SNAPSHOT_BYTES+1,32):large);}));cleanup(t,upstream);
+ const indexer=await startDevnetFrontend({...cert,port:0,upstreamOrigin:origin(upstream,'http'),kind:'indexer'});cleanup(t,indexer);
+ const base=origin(indexer),f=createDevnetPinnedFetch({ca:cert.certificate,indexerOrigin:base});
+ assert.deepEqual(await(await f(base+'/zkapi/v1/tree/snapshot')).json(),{});
+ assert.equal(await(await f(base+path)).text(),large);assert.deepEqual(hits,['/zkapi/v1/tree/snapshot',path]);
+ for(const invalid of [path+'?note=0',path+'#note=0',path.replace(digest,digest.toUpperCase()),path.replace(digest,digest.slice(2)),path+'.bak',path.replace('.json','%2ejson'),'/zkapi/v1/tree/snapshots/anything.json'])await assert.rejects(f(base+invalid),/pinned service transport/);
+ for(const blocked of ['/zkapi/v1/tree/snapshot',path])await assert.rejects(f(base+blocked,{method:'POST',body:'{}'}),/pinned service transport/);
+ assert.equal(hits.length,2);
+ // Bypass only the client allowlist, retaining ordinary TLS, to verify the
+ // frontend independently refuses malformed routes without upstream requests.
+ const native=await import('node:https');
+ const status=await new Promise<number>((resolve,reject)=>{native.get(base+path+'.bak',{ca:cert.certificate},r=>{r.resume();resolve(r.statusCode!);}).on('error',reject);});
+ assert.equal(status,503);assert.equal(hits.length,2);
+ oversize=true;await assert.rejects(async()=>await(await f(base+path)).arrayBuffer(),/body bound|transport/);assert.equal(hits.length,3);
 });
 test('OA verifier transport permits only its pinned POST and never trusts the devnet service CA', {timeout:15_000}, async t=>{
  const cert=await certificate(t);let handshakes=0,requests=0;

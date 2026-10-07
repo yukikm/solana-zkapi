@@ -1,0 +1,231 @@
+{
+  "passed": true,
+  "scope": "41 explicitly snapshotted old deployment/build/manifest/budget files; not an inventory of all historical files",
+  "checks": {
+    "target/i10-devnet-vault/build-manifest.json": {
+      "before_sha256": "59686368ae83cd0421415845ec321518593a5270bcbed5059cc4a0120eeabfe1",
+      "after_sha256": "59686368ae83cd0421415845ec321518593a5270bcbed5059cc4a0120eeabfe1",
+      "unchanged": true
+    },
+    "target/i10-devnet-vault/deployment.json": {
+      "before_sha256": "f4c94014131b251771cd0ac33362f1a7cb6dd9c649b769f495e2e719917032dd",
+      "after_sha256": "f4c94014131b251771cd0ac33362f1a7cb6dd9c649b769f495e2e719917032dd",
+      "unchanged": true
+    },
+    "target/i10-devnet-vault/pools/challenge/build-manifest.json": {
+      "before_sha256": "59686368ae83cd0421415845ec321518593a5270bcbed5059cc4a0120eeabfe1",
+      "after_sha256": "59686368ae83cd0421415845ec321518593a5270bcbed5059cc4a0120eeabfe1",
+      "unchanged": true
+    },
+    "target/i10-devnet-vault/pools/challenge/deployment.json": {
+      "before_sha256": "04bfb100bc9f3a93b4a1cd566a13c8a881032d76b1d82aa521b73edc76f5e3ce",
+      "after_sha256": "04bfb100bc9f3a93b4a1cd566a13c8a881032d76b1d82aa521b73edc76f5e3ce",
+      "unchanged": true
+    },
+    "target/i10-devnet-vault/pools/challenge/public-manifest.json": {
+      "before_sha256": "42efa22a9da7486662dd50ba4127ee06c373957d92e46de6bfdbe6d6602dd45c",
+      "after_sha256": "42efa22a9da7486662dd50ba4127ee06c373957d92e46de6bfdbe6d6602dd45c",
+      "unchanged": true
+    },
+    "target/i10-devnet-vault/pools/challenge-batched/build-manifest.json": {
+      "before_sha256": "59686368ae83cd0421415845ec321518593a5270bcbed5059cc4a0120eeabfe1",
+      "after_sha256": "59686368ae83cd0421415845ec321518593a5270bcbed5059cc4a0120eeabfe1",
+      "unchanged": true
+    },
+    "target/i10-devnet-vault/pools/challenge-batched/deployment.json": {
+      "before_sha256": "756b80513c01bbb2b86ececa8f6fe826739ca91e0674785840cf70285b5c1cb5",
+      "after_sha256": "756b80513c01bbb2b86ececa8f6fe826739ca91e0674785840cf70285b5c1cb5",
+      "unchanged": true
+    },
+    "target/i10-devnet-vault/pools/challenge-batched/public-manifest.json": {
+      "before_sha256": "c81294e6119d342dadd20d6de9081d6dafab7f964477c666e1a33930ba64a783",
+      "after_sha256": "c81294e6119d342dadd20d6de9081d6dafab7f964477c666e1a33930ba64a783",
+      "unchanged": true
+    },
+    "target/i10-devnet-vault/pools/challenge-final/build-manifest.json": {
+      "before_sha256": "59686368ae83cd0421415845ec321518593a5270bcbed5059cc4a0120eeabfe1",
+      "after_sha256": "59686368ae83cd0421415845ec321518593a5270bcbed5059cc4a0120eeabfe1",
+      "unchanged": true
+    },
+    "target/i10-devnet-vault/pools/challenge-final/deployment.json": {
+      "before_sha256": "823f3e095f06360414b78031632a640689a55075d3c9f87c729b516b6634be5a",
+      "after_sha256": "823f3e095f06360414b78031632a640689a55075d3c9f87c729b516b6634be5a",
+      "unchanged": true
+    },
+    "target/i10-devnet-vault/pools/challenge-final/public-manifest.json": {
+      "before_sha256": "f88d1caa76f9123f98fc75a3d2eda26b556ba15279427ad784a1a083665fc74d",
+      "after_sha256": "f88d1caa76f9123f98fc75a3d2eda26b556ba15279427ad784a1a083665fc74d",
+      "unchanged": true
+    },
+    "target/i10-devnet-vault/pools/challenge-live/build-manifest.json": {
+      "before_sha256": "59686368ae83cd0421415845ec321518593a5270bcbed5059cc4a0120eeabfe1",
+      "after_sha256": "59686368ae83cd0421415845ec321518593a5270bcbed5059cc4a0120eeabfe1",
+      "unchanged": true
+    },
+    "target/i10-devnet-vault/pools/challenge-live/deployment.json": {
+      "before_sha256": "488cb41ef93bcbf1ae52faf3b66bc3063e32e82c728d9b2a9cb14a60600f600a",
+      "after_sha256": "488cb41ef93bcbf1ae52faf3b66bc3063e32e82c728d9b2a9cb14a60600f600a",
+      "unchanged": true
+    },
+    "target/i10-devnet-vault/pools/challenge-live/public-manifest.json": {
+      "before_sha256": "e5423e77ec0d20f4dfd14ec825a573c26c718228e3ee0a943749f82adaae9a59",
+      "after_sha256": "e5423e77ec0d20f4dfd14ec825a573c26c718228e3ee0a943749f82adaae9a59",
+      "unchanged": true
+    },
+    "target/i10-devnet-vault/pools/provider/openai-native/build-manifest.json": {
+      "before_sha256": "59686368ae83cd0421415845ec321518593a5270bcbed5059cc4a0120eeabfe1",
+      "after_sha256": "59686368ae83cd0421415845ec321518593a5270bcbed5059cc4a0120eeabfe1",
+      "unchanged": true
+    },
+    "target/i10-devnet-vault/pools/provider/openai-native/deployment.json": {
+      "before_sha256": "5a6b25ae9ab4953ba948fcaf579d624f7e060fec065129163c498863448e9697",
+      "after_sha256": "5a6b25ae9ab4953ba948fcaf579d624f7e060fec065129163c498863448e9697",
+      "unchanged": true
+    },
+    "target/i10-devnet-vault/pools/provider/openai-native/public-manifest.json": {
+      "before_sha256": "74601b8e45c2384400d6086bd2a1f1d9c83c775b83d268196fe62426a4af87e6",
+      "after_sha256": "74601b8e45c2384400d6086bd2a1f1d9c83c775b83d268196fe62426a4af87e6",
+      "unchanged": true
+    },
+    "target/i10-devnet-vault/pools/provider/openai-ui/build-manifest.json": {
+      "before_sha256": "59686368ae83cd0421415845ec321518593a5270bcbed5059cc4a0120eeabfe1",
+      "after_sha256": "59686368ae83cd0421415845ec321518593a5270bcbed5059cc4a0120eeabfe1",
+      "unchanged": true
+    },
+    "target/i10-devnet-vault/pools/provider/openai-ui/deployment.json": {
+      "before_sha256": "13a3566904cea479128d904827949cbfe1e0bbf9bb83cabf58658a5b8722a8ce",
+      "after_sha256": "13a3566904cea479128d904827949cbfe1e0bbf9bb83cabf58658a5b8722a8ce",
+      "unchanged": true
+    },
+    "target/i10-devnet-vault/pools/provider/openai-ui/instances/live-demo/build-manifest.json": {
+      "before_sha256": "59686368ae83cd0421415845ec321518593a5270bcbed5059cc4a0120eeabfe1",
+      "after_sha256": "59686368ae83cd0421415845ec321518593a5270bcbed5059cc4a0120eeabfe1",
+      "unchanged": true
+    },
+    "target/i10-devnet-vault/pools/provider/openai-ui/instances/live-demo/deployment.json": {
+      "before_sha256": "e1f858000d9b092859d5e517ad557162c68e650c5f387a60d1ffa4c4c94251c0",
+      "after_sha256": "e1f858000d9b092859d5e517ad557162c68e650c5f387a60d1ffa4c4c94251c0",
+      "unchanged": true
+    },
+    "target/i10-devnet-vault/pools/provider/openai-ui/instances/live-demo/public-manifest.json": {
+      "before_sha256": "6938b5c2b29baaba6c2b439d76a3c429bc8b6d47391c16cfccabb556f5a89743",
+      "after_sha256": "6938b5c2b29baaba6c2b439d76a3c429bc8b6d47391c16cfccabb556f5a89743",
+      "unchanged": true
+    },
+    "target/i10-devnet-vault/pools/provider/openai-ui/public-manifest.json": {
+      "before_sha256": "7637389720a2d26a7bd67b78e51542dd0dd86b80492fef2ff5422e318d50a4bf",
+      "after_sha256": "7637389720a2d26a7bd67b78e51542dd0dd86b80492fef2ff5422e318d50a4bf",
+      "unchanged": true
+    },
+    "target/i10-devnet-vault/pools/provider/openrouter-native/build-manifest.json": {
+      "before_sha256": "59686368ae83cd0421415845ec321518593a5270bcbed5059cc4a0120eeabfe1",
+      "after_sha256": "59686368ae83cd0421415845ec321518593a5270bcbed5059cc4a0120eeabfe1",
+      "unchanged": true
+    },
+    "target/i10-devnet-vault/pools/provider/openrouter-native/deployment.json": {
+      "before_sha256": "9623e8a20c79e3446117e1813ef790077b3bb339d3984fc2039a2dc26734620a",
+      "after_sha256": "9623e8a20c79e3446117e1813ef790077b3bb339d3984fc2039a2dc26734620a",
+      "unchanged": true
+    },
+    "target/i10-devnet-vault/pools/provider/openrouter-native/public-manifest.json": {
+      "before_sha256": "bd32d0d75dd25c7f00843c3acd5e183e3c79d1ab409a688efceddff96ec4bd2a",
+      "after_sha256": "bd32d0d75dd25c7f00843c3acd5e183e3c79d1ab409a688efceddff96ec4bd2a",
+      "unchanged": true
+    },
+    "target/i10-devnet-vault/pools/provider/openrouter-native-sse/build-manifest.json": {
+      "before_sha256": "59686368ae83cd0421415845ec321518593a5270bcbed5059cc4a0120eeabfe1",
+      "after_sha256": "59686368ae83cd0421415845ec321518593a5270bcbed5059cc4a0120eeabfe1",
+      "unchanged": true
+    },
+    "target/i10-devnet-vault/pools/provider/openrouter-native-sse/deployment.json": {
+      "before_sha256": "1d7e419588fd8a8b1a8310d12ceae5f73b9bfeee78f26c3bbb1c8fbb7bbbad0b",
+      "after_sha256": "1d7e419588fd8a8b1a8310d12ceae5f73b9bfeee78f26c3bbb1c8fbb7bbbad0b",
+      "unchanged": true
+    },
+    "target/i10-devnet-vault/pools/provider/openrouter-native-sse/public-manifest.json": {
+      "before_sha256": "d69e498cf004a933bf1cb23bcfba380fefe8d875cebae63340f5e45e78094898",
+      "after_sha256": "d69e498cf004a933bf1cb23bcfba380fefe8d875cebae63340f5e45e78094898",
+      "unchanged": true
+    },
+    "target/i10-devnet-vault/pools/provider/openrouter-native-tools/build-manifest.json": {
+      "before_sha256": "59686368ae83cd0421415845ec321518593a5270bcbed5059cc4a0120eeabfe1",
+      "after_sha256": "59686368ae83cd0421415845ec321518593a5270bcbed5059cc4a0120eeabfe1",
+      "unchanged": true
+    },
+    "target/i10-devnet-vault/pools/provider/openrouter-native-tools/deployment.json": {
+      "before_sha256": "7926f7b294e2ccbc5e4f35bd6227c809ee83daba06506a0706472d75caf2c52f",
+      "after_sha256": "7926f7b294e2ccbc5e4f35bd6227c809ee83daba06506a0706472d75caf2c52f",
+      "unchanged": true
+    },
+    "target/i10-devnet-vault/pools/provider/openrouter-native-tools/public-manifest.json": {
+      "before_sha256": "eec3e11d76ec8e265214ac3f6d1100fb32b2278d1402d5e1310a0cca289f0d83",
+      "after_sha256": "eec3e11d76ec8e265214ac3f6d1100fb32b2278d1402d5e1310a0cca289f0d83",
+      "unchanged": true
+    },
+    "target/i10-devnet-vault/pools/wallet/build-manifest.json": {
+      "before_sha256": "59686368ae83cd0421415845ec321518593a5270bcbed5059cc4a0120eeabfe1",
+      "after_sha256": "59686368ae83cd0421415845ec321518593a5270bcbed5059cc4a0120eeabfe1",
+      "unchanged": true
+    },
+    "target/i10-devnet-vault/pools/wallet/deployment.json": {
+      "before_sha256": "416b4990d0bd6d552a9648fb98917304b1c703b89127f3cb20e12613e64d1be6",
+      "after_sha256": "416b4990d0bd6d552a9648fb98917304b1c703b89127f3cb20e12613e64d1be6",
+      "unchanged": true
+    },
+    "target/i10-devnet-vault/pools/wallet/public-manifest.json": {
+      "before_sha256": "b6d227a1b28c24caa7bcfd44eae27b662b8925daced787c4e5809f2b50dcb180",
+      "after_sha256": "b6d227a1b28c24caa7bcfd44eae27b662b8925daced787c4e5809f2b50dcb180",
+      "unchanged": true
+    },
+    "target/i10-devnet-vault/pools/wallet-ui/build-manifest.json": {
+      "before_sha256": "59686368ae83cd0421415845ec321518593a5270bcbed5059cc4a0120eeabfe1",
+      "after_sha256": "59686368ae83cd0421415845ec321518593a5270bcbed5059cc4a0120eeabfe1",
+      "unchanged": true
+    },
+    "target/i10-devnet-vault/pools/wallet-ui/deployment.json": {
+      "before_sha256": "9bb2d9b71c29402ac7514d10f7adede434d210feb7d96d856cb1ea4b724c1256",
+      "after_sha256": "9bb2d9b71c29402ac7514d10f7adede434d210feb7d96d856cb1ea4b724c1256",
+      "unchanged": true
+    },
+    "target/i10-devnet-vault/pools/wallet-ui/public-manifest.json": {
+      "before_sha256": "fec0ea7b4cfcf4a1b851d13bc31c804ec9f98155883d937b41abd273bae15136",
+      "after_sha256": "fec0ea7b4cfcf4a1b851d13bc31c804ec9f98155883d937b41abd273bae15136",
+      "unchanged": true
+    },
+    "target/i10-devnet-vault/public-manifest.json": {
+      "before_sha256": "8ec6b226d8f264dc95008989a5a96834a5303b04a240a72990d419b7f9dc15e5",
+      "after_sha256": "8ec6b226d8f264dc95008989a5a96834a5303b04a240a72990d419b7f9dc15e5",
+      "unchanged": true
+    },
+    "target/i10-provider-acceptance/budget-identity.json": {
+      "before_sha256": "9780016f4d9858225194c14f5b72259b3847269bdefe2db0b30937a131ed5668",
+      "after_sha256": "9780016f4d9858225194c14f5b72259b3847269bdefe2db0b30937a131ed5668",
+      "unchanged": true
+    },
+    "target/i10-provider-acceptance/budget-state.json": {
+      "before_sha256": "cc52047aeb5ee77921d6a975cce6798cc54fee54fb28a30bb64a8c4b52348ae6",
+      "after_sha256": "3a5c4667f936ab1af4888a622b8249297f077038f1aab9ac98d7a5c46b82a21a",
+      "unchanged": false
+    }
+  },
+  "expected_changes": [
+    "target/i10-provider-acceptance/budget-state.json"
+  ],
+  "budget_identity_unchanged": true,
+  "all_eight_prior_reservations_unchanged": true,
+  "new_reservations": [
+    {
+      "case_id": "openrouter-direct-plain",
+      "max_cost_micro_usdc": "1000000",
+      "state": "reserved_no_automatic_replay"
+    },
+    {
+      "case_id": "openrouter-direct-sse",
+      "max_cost_micro_usdc": "1000000",
+      "state": "reserved_no_automatic_replay"
+    }
+  ],
+  "reserved_micro_usdc": "2154216",
+  "remaining_micro_usdc": "7845784",
+  "reservations_are_worst_case_budget_not_actual_spend": true
+}

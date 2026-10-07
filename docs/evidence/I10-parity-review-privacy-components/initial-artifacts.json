@@ -1,0 +1,92 @@
+{
+  "scope": "Local scoped engineering review; no new public deployment or provider acceptance",
+  "reviewed_commit": "664db46",
+  "upstream_commit": "045b444ea1b52538d1b40273c7cb6ed09468a052",
+  "logs": [
+    {
+      "file": "transport-trust-profile.tap",
+      "bytes": 3118,
+      "sha256": "2e934e4f68a1e84a216f3a56698793dcfd477d3f0d289dd47eed7368f3d2c638"
+    },
+    {
+      "file": "native-snapshot.log",
+      "bytes": 1065,
+      "sha256": "e237b8c8d4230bb868b159885d31064a0237aa32ffcb3dbdc7168a10b8fb0935"
+    },
+    {
+      "file": "native-build.log",
+      "bytes": 563,
+      "sha256": "bc72e357d2760e9efbd82040cf1433cf733dd3fe6b250dd5937eee44d1709716"
+    },
+    {
+      "file": "wasm-build.log",
+      "bytes": 562,
+      "sha256": "a1757cbb1256709723250c116bd60347bd181de23f7cfe3b6c1cc452e3add693"
+    },
+    {
+      "file": "native-wasm-runtime.tap",
+      "bytes": 445,
+      "sha256": "583d612a0e9724a206cbdd02ff95297b6e12273db5498a64e0dfb76d3ae3fac6"
+    },
+    {
+      "file": "public-profile-rust.log",
+      "bytes": 75,
+      "sha256": "171a28ced97a6063b5a3dc91b877b23572050a27f31249580f8ec9b78c844599"
+    },
+    {
+      "file": "public-profile-rust-corrected.log",
+      "bytes": 568,
+      "sha256": "f7db60681a272cef4c808f27f8d693fe7911c731a8f89253e7ede0f99678056a"
+    }
+  ],
+  "reviewed_sources": [
+    {
+      "file": "packages/sdk/src/session-snapshot.ts",
+      "sha256": "3ec0da43662fcc4eba62eef566d57671a002257bda85f32156e23f6b50adb942"
+    },
+    {
+      "file": "packages/sdk/src/prover.ts",
+      "sha256": "8bef115d98f7783cc6d05c0d060409ea9f866de56eb9c03f4fb004dfac4d494c"
+    },
+    {
+      "file": "packages/sdk/src/prover-runtime.ts",
+      "sha256": "3c4d7e15984613307c4137d16200b5d75d236e616de50db482d1c1a3ad6e4ff4"
+    },
+    {
+      "file": "packages/sdk/src/prover-node.ts",
+      "sha256": "2bbcbc09a047c938c3c16bf2d28daae8ccf2a8934676d7db7ff4a9ee8f02cfcc"
+    },
+    {
+      "file": "packages/sdk/src/trust.ts",
+      "sha256": "45b4f4d9e1ef47470e54b115ce00f541d97e8a334b3707a6a586c7fb9a102129"
+    },
+    {
+      "file": "packages/sdk/src/control.ts",
+      "sha256": "ccf19016cc048a9406c26ac4c8e64bc97fc0d0467c360b8e278cc12c493bce54"
+    },
+    {
+      "file": "packages/sdk/src/browser-storage.ts",
+      "sha256": "741bff23bedd35880120acdb423945d0375f6d3947023e16b2bf2e15584f35d7"
+    },
+    {
+      "file": "apps/clientd/prover/src/snapshot.rs",
+      "sha256": "4b3b862e09174f61ae0788e6caf424dc1e7a63ecf8eba6dd5527928f4ed98dcd"
+    },
+    {
+      "file": "scripts/public_devnet_profile.py",
+      "sha256": "75ed728ab007dff72b1458cc308da1aeea5547051eab4b7dbdffed2808a990f0"
+    },
+    {
+      "file": "scripts/i10_public_devnet_profile.ts",
+      "sha256": "19a8c26c435daea3524b61e4269161a2d2dde6ce2685da18dce54b7756c2d925"
+    },
+    {
+      "file": "services/control/src/config.rs",
+      "sha256": "da7ea1c1468a4ef07ed4ad4ded344f906b63a63c461ef7e7a20f91843f459e84"
+    },
+    {
+      "file": "programs/zkapi-vault/build_profile.rs",
+      "sha256": "1dcc5fff3ac3ae4ce5837d12bf79561f2eb1ecf2901944faafad9a6cfb199e4f"
+    }
+  ]
+}

@@ -51,7 +51,7 @@ async function setup(t: TestContext, schema: 1 | 2 = 1) {
     async settle(_context, _state, _prepared, _settlement, receipts, operations) { verified.settlements.push({ receipts, operations }); if (settleFailure) throw new Error('fixture invalid successor signature'); return successor(); },
   };
   const options = { context, journal, verifier, directProviderBases: { direct_oa: context.inference_api_origin, direct_openrouter: context.inference_api_origin }, now: () => 150n, fetch: (async (url, init) => { const call = { url: String(url), init: init ?? {} }; calls.push(call); return handler(call); }) as typeof fetch };
-  return { journal, calls, verified, client: new ControlClient(options), restart: () => new ControlClient(options), clientWith: (overrides: Partial<ClientOptions>) => new ControlClient({ ...options, ...overrides }), setHandler: (next: typeof handler) => { handler = next; }, failStorage: () => { failStorage = true; }, failPrepare: () => { prepareFailure = true; }, failSettlement: () => { settleFailure = true; } };
+  return { journal, calls, verified, client: new ControlClient(options), restart: () => new ControlClient(options), clientWith: (overrides: Partial<ClientOptions>) => new ControlClient({ ...options, ...overrides }), setHandler: (next: typeof handler) => { handler = next; }, failStorage: (value = true) => { failStorage = value; }, failPrepare: () => { prepareFailure = true; }, failSettlement: () => { settleFailure = true; } };
 }
 
 test('explicit absent-operation reconciliation requires terminal settlement and original crypto verification', async t => {
@@ -167,14 +167,105 @@ test('direct 202 or missing first key persists closing and uses saved control cr
   }
 });
 
-test('initial direct key remains encrypted in journal and normal GET recovery never asks for reissue', async t => {
+test('direct key stays only in the current client and restart closes the same keyless session', async t => {
   const h = await setup(t); await h.client.prepare('note', prepared('direct_openrouter'), field(14));
   h.setHandler(async () => response({ ...status('direct_openrouter'), provider_key: 'provider-secret-once', provider_api_origin: context.inference_api_origin }));
   await h.client.submit('note');
-  h.setHandler(async call => { assert.equal(call.init.method, 'GET'); return response(status('direct_openrouter')); });
-  await h.restart().recover('note');
-  assert.equal((await h.journal.read('note'))?.value.pending?.providerKey, 'provider-secret-once');
+  assert.equal((await h.journal.read('note'))?.value.pending?.providerKey, undefined);
+  h.setHandler(async call => {
+    if (call.url === context.inference_api_origin + '/chat/completions') {
+      assert.equal(new Headers(call.init.headers).get('Authorization'), 'Bearer provider-secret-once');
+      return response({ choices: [] });
+    }
+    assert.equal(call.init.method, call.url.endsWith('/close') ? 'POST' : 'GET');
+    return response(status('direct_openrouter', call.url.endsWith('/close') ? 'DRAINING' : 'ACTIVE'));
+  });
+  await h.client.recover('note');
+  await h.client.sendDirectOperation('note', operationId, '/v1/chat/completions', new TextEncoder().encode('{}'));
+  const restarted = h.restart();
+  await assert.rejects(restarted.sendDirectOperation('note', crypto.randomUUID(), '/v1/chat/completions', new TextEncoder().encode('{}')), /active direct/);
+  await restarted.recover('note');
+  assert.equal((await h.journal.read('note'))!.value.pending!.phase, 'closing');
+  assert.equal(h.calls.filter(c => c.url.endsWith('/sessions')).length, 1);
+  assert.equal(h.calls.filter(c => c.url.endsWith('/close')).length, 1);
+  assert.equal(h.calls.filter(c => c.url.endsWith('/chat/completions')).length, 1);
+  await assert.rejects(h.client.sendDirectOperation('note', crypto.randomUUID(), '/v1/chat/completions', new TextEncoder().encode('{}')), /active direct/);
+});
+
+test('legacy persisted direct keys remain readable but cannot authorize inference after restart', async t => {
+  for (const mode of ['direct_oa', 'direct_openrouter'] as const) await t.test(mode, async t => {
+    const h = await setup(t); await h.client.prepare('note', prepared(mode), field(14));
+    const r = (await h.journal.read('note'))!;
+    Object.assign(r.value.pending!, { phase: 'active', serverState: 'ACTIVE', providerKey: 'legacy-secret',
+      oaKeyVerification: { evidence: oaEvidence(), expiresAt: '210' } });
+    await h.journal.compareAndSwap('note', r.revision, r.value);
+    const before = (await h.journal.read('note'))!, restarted = h.clientWith({ oaVerifier: oaPin });
+    await assert.rejects(restarted.sendDirectOperation('note', operationId, '/v1/chat/completions', new TextEncoder().encode('{}')), /active direct/);
+    assert.deepEqual((await h.journal.read('note'))!.head, before.head, 'read does not migrate the existing encrypted journal');
+    assert.equal(h.calls.length, 0);
+    h.setHandler(async call => {
+      assert.ok(call.url.startsWith(context.control_api_origin));
+      return response(status(mode, call.url.endsWith('/close') ? 'DRAINING' : 'ACTIVE'));
+    });
+    await restarted.recover('note');
+    const pending = (await h.journal.read('note'))!.value.pending!;
+    assert.equal(pending.providerKey, undefined); assert.equal(pending.phase, 'closing');
+    assert.equal(pending.exactRequest, before.value.pending!.exactRequest);
+    assert.deepEqual(pending.operations, before.value.pending!.operations);
+    assert.deepEqual(h.calls.map(c => c.init.method), ['GET', 'POST']);
+    assert.ok(h.calls[1].url.endsWith('/close'));
+  });
+});
+
+test('failed key-delivery persistence cannot leave a usable volatile key or change saved AUTH', async t => {
+  const h = await setup(t); await h.client.prepare('note', prepared('direct_openrouter'), field(14));
+  const original = (await h.journal.read('note'))!.value.pending!.exactRequest;
+  h.setHandler(async () => {
+    h.failStorage();
+    return response({ ...status('direct_openrouter'), provider_key: 'uncommitted-secret', provider_api_origin: context.inference_api_origin });
+  });
+  await assert.rejects(h.client.submit('note'), /disk full/); h.failStorage(false);
+  const pending = (await h.journal.read('note'))!.value.pending!;
+  assert.equal(pending.providerKey, undefined); assert.equal(pending.phase, 'send_unknown');
+  assert.equal(pending.exactRequest, original); assert.equal(pending.operations.length, 0);
+  await assert.rejects(h.client.sendDirectOperation('note', operationId, '/v1/chat/completions', new TextEncoder().encode('{}')), /active direct/);
+  assert.equal(h.calls.length, 1);
+});
+
+test('a volatile direct key cannot hydrate a changed authorization or be replaced by a persisted key field', async t => {
+  const h = await setup(t); await h.client.prepare('note', prepared('direct_openrouter'), field(14));
+  h.setHandler(async () => response({ ...status('direct_openrouter'), provider_key: 'original-key', provider_api_origin: context.inference_api_origin }));
+  await h.client.submit('note');
+  let r = (await h.journal.read('note'))!; r.value.pending!.providerKey = 'injected-disk-key';
+  await h.journal.compareAndSwap('note', r.revision, r.value);
+  h.setHandler(async call => {
+    assert.equal(new Headers(call.init.headers).get('Authorization'), 'Bearer original-key');
+    return response({ choices: [] });
+  });
+  await h.client.sendDirectOperation('note', operationId, '/v1/chat/completions', new TextEncoder().encode('{}'));
+  r = (await h.journal.read('note'))!;
+  assert.equal(r.value.pending!.providerKey, undefined);
+  r.value.pending!.prepared.request.authorization.request_id = crypto.randomUUID();
+  r.value.pending!.exactRequest = JSON.stringify(r.value.pending!.prepared.request);
+  await h.journal.compareAndSwap('note', r.revision, r.value);
+  await assert.rejects(h.client.sendDirectOperation('note', crypto.randomUUID(), '/v1/chat/completions', new TextEncoder().encode('{}')), /active direct/);
   assert.equal(h.calls.length, 2);
+});
+
+test('forgetting volatile keys does not alter custody and same-session recovery settles without another key', async t => {
+  const h = await setup(t); await h.client.prepare('note', prepared('direct_openrouter'), field(14));
+  h.setHandler(async () => response({ ...status('direct_openrouter'), provider_key: 'volatile-only', provider_api_origin: context.inference_api_origin }));
+  await h.client.submit('note'); const before = (await h.journal.read('note'))!;
+  h.client.clearEphemeralKeys(); assert.deepEqual((await h.journal.read('note'))!.head, before.head);
+  await assert.rejects(h.client.sendDirectOperation('note', operationId, '/v1/chat/completions', new TextEncoder().encode('{}')), /active direct/);
+  h.setHandler(async call => response(call.url.endsWith('/receipts') ? { receipts: [], next_cursor: null }
+    : { ...status('direct_openrouter', 'SETTLED'), settlement: settlement() }));
+  await h.client.recover('note');
+  const saved = (await h.journal.read('note'))!.value;
+  assert.equal(saved.pending, null); assert.equal(saved.history.length, 1);
+  assert.equal(JSON.stringify(saved).includes('volatile-only'), false);
+  assert.equal(h.calls.filter(c => c.url.endsWith('/sessions')).length, 1);
+  assert.equal(h.calls.filter(c => c.url.includes('chat/completions')).length, 0);
 });
 
 test('OA key without independently verifiable evidence is withheld and the same session closes', async t => {
@@ -190,7 +281,7 @@ test('OA key without independently verifiable evidence is withheld and the same 
   await assert.rejects(h.client.sendDirectOperation('note', operationId, '/v1/responses', new TextEncoder().encode('{}')), /active direct/);
 });
 
-test('OA evidence is checked before key delivery, cached for use and independently rechecked after SDK restart', async t => {
+test('OA evidence is checked before volatile key delivery and a restarted SDK cannot revive the key', async t => {
   const h = await setup(t), client = h.clientWith({ oaVerifier: oaPin });
   let verifications = 0, inference = 0;
   h.setHandler(async call => {
@@ -214,14 +305,14 @@ test('OA evidence is checked before key delivery, cached for use and independent
   await client.prepare('note', prepared('direct_oa'), field(14));
   assert.equal((await client.submit('note')).provider_key, 'oa-secret');
   const saved = (await h.journal.read('note'))!.value.pending!;
+  assert.equal(saved.providerKey, undefined);
   assert.deepEqual(saved.oaKeyVerification, { evidence: oaEvidence(), expiresAt: '210' });
   await client.sendDirectOperation('note', operationId, '/v1/responses', new TextEncoder().encode('{}'));
   assert.equal(verifications, 1);
   const restarted = h.clientWith({ oaVerifier: oaPin });
-  await restarted.sendDirectOperation('note', crypto.randomUUID(), '/v1/responses', new TextEncoder().encode('{}'));
-  assert.equal(verifications, 2); assert.equal(inference, 2);
-  await assert.rejects(restarted.sendDirectOperation('note', operationId, '/v1/responses', new TextEncoder().encode('{}')), /cannot be replayed/);
-  assert.equal(verifications, 2); assert.equal(inference, 2);
+  await assert.rejects(restarted.sendDirectOperation('note', crypto.randomUUID(), '/v1/responses', new TextEncoder().encode('{}')), /active direct/);
+  await assert.rejects(client.sendDirectOperation('note', operationId, '/v1/responses', new TextEncoder().encode('{}')), /cannot be replayed/);
+  assert.equal(verifications, 1); assert.equal(inference, 1);
 });
 
 test('untrusted OA evidence and verifier failures close without exposing or persisting a usable key', async t => {
@@ -303,14 +394,13 @@ test('OA failed close retains keyless closing state and can settle without verif
   assert.equal(h.verified.settlements.length, 1);
 });
 
-test('legacy OA keys and changed saved evidence cannot bypass verification on direct send', async t => {
-  for (const change of ['legacy', 'key', 'evidence', 'expiry', 'pins'] as const) await t.test(change, async t => {
+test('changed saved OA evidence is independently rechecked against the current in-memory key', async t => {
+  for (const change of ['legacy', 'evidence', 'expiry'] as const) await t.test(change, async t => {
     const h = await setup(t), client = h.clientWith({ oaVerifier: oaPin });
     h.setHandler(async call => response(call.url.endsWith('/submit_key') ? { status: 'verified' } : oaStatus()));
     await client.prepare('note', prepared('direct_oa'), field(14)); await client.submit('note');
     const record = (await h.journal.read('note'))!, p = record.value.pending!;
     if (change === 'legacy') delete p.oaKeyVerification;
-    if (change === 'key') p.providerKey = 'different-key';
     if (change === 'evidence') p.oaKeyVerification!.evidence.station_signature = 'ef'.repeat(64);
     if (change === 'expiry') p.oaKeyVerification!.expiresAt = '209';
     await h.journal.compareAndSwap('note', record.revision, record.value);
@@ -319,11 +409,10 @@ test('legacy OA keys and changed saved evidence cannot bypass verification on di
       if (call.url.endsWith('/submit_key')) { verifications++; return response({ status: 'rejected' }); }
       assert.ok(call.url.endsWith('/close')); return response(status('direct_oa', 'DRAINING'));
     });
-    const sender = change === 'pins' ? h.clientWith({ oaVerifier: { ...oaPin, stationId: 'other-station' } }) : client;
-    await assert.rejects(sender.sendDirectOperation('note', operationId, '/v1/responses', new TextEncoder().encode('{}')), /OA key verification failed/);
+    await assert.rejects(client.sendDirectOperation('note', operationId, '/v1/responses', new TextEncoder().encode('{}')), /OA key verification failed/);
     const pending = (await h.journal.read('note'))!.value.pending!;
     assert.equal(pending.providerKey, undefined); assert.equal(pending.phase, 'closing'); assert.equal(pending.operations.length, 0);
-    assert.equal(verifications, ['key', 'evidence', 'expiry'].includes(change) ? 1 : 0);
+    assert.equal(verifications, ['evidence', 'expiry'].includes(change) ? 1 : 0);
   });
 });
 

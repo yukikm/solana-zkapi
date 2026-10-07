@@ -110,12 +110,35 @@ export class ClientDaemon {
     if (typeof model !== 'string' && !model.apis.some(api => daemonApiPaths[api] === path)) throw new Error('model API is not configured');
     if (this.o.mode !== 'proxy') {
       if (path.startsWith('/v1/messages') || this.o.mode === 'direct_openrouter' && path !== '/v1/chat/completions') throw new Error('unsupported direct endpoint');
+      // Upstream clientd strips these identity/transport fields. Reject them
+      // before AUTH here so the durable request retains the caller's exact bytes.
+      if (['user','metadata','safety_identifier','prompt_cache_key','extra_headers','provider'].some(key=>Object.hasOwn(body,key))) throw new Error('unsupported identity or transport metadata');
+      if (path === '/v1/responses' && body.store !== false) throw new Error('direct Responses requires store:false');
       // Direct adapters are text/client-tool only in this release as well.
+      // Function parameter schemas describe application data. Their property
+      // names/types are not provider request fields or hosted-tool selectors.
+      const schemas = new Set<unknown>();
+      if (Array.isArray(body.tools)) for (const tool of body.tools) {
+        if (!tool || typeof tool !== 'object' || Array.isArray(tool) || tool.type !== 'function') continue;
+        const definition = path === '/v1/chat/completions' ? tool.function : tool;
+        if (definition && typeof definition === 'object' && !Array.isArray(definition) && Object.hasOwn(definition,'parameters')) schemas.add(definition.parameters);
+      }
+      const formats = new Set<unknown>();
+      const format = path === '/v1/chat/completions' ? body.response_format
+        : body.text && typeof body.text === 'object' && !Array.isArray(body.text) ? body.text.format : undefined;
+      if (format && typeof format === 'object' && !Array.isArray(format) && ['text','json_object','json_schema'].includes(String(format.type))) {
+        formats.add(format);
+        if (format.type === 'json_schema') {
+          const definition = path === '/v1/chat/completions' ? format.json_schema : format;
+          if (definition && typeof definition === 'object' && !Array.isArray(definition) && Object.hasOwn(definition,'schema')) schemas.add(definition.schema);
+        }
+      }
       const check = (v: unknown): void => {
+        if (schemas.has(v)) return;
         if (Array.isArray(v)) { for (const x of v) check(x); return; }
         if (!v || typeof v !== 'object') return;
         const obj = v as Record<string,unknown>;
-        if (['image_url','input_audio','file_id','file_url','audio','web_search_options','previous_response_id','background','conversation'].some(k=>Object.hasOwn(obj,k)) || obj.store === true || obj.type !== undefined && !(Array.isArray(obj.type) ? obj.type.every(t=>['object','array','string','number','integer','boolean','null'].includes(String(t))) : ['text','input_text','output_text','function','function_call','function_call_output','message','object','array','string','number','integer','boolean','null'].includes(String(obj.type)))) throw new Error('unsupported modality or hosted tool');
+        if (['image_url','input_audio','file_id','file_url','audio','web_search_options','previous_response_id','background','conversation'].some(k=>Object.hasOwn(obj,k)) || obj.store === true || obj.type !== undefined && !formats.has(obj) && !(Array.isArray(obj.type) ? obj.type.every(t=>['object','array','string','number','integer','boolean','null'].includes(String(t))) : ['text','input_text','output_text','function','function_call','function_call_output','message','object','array','string','number','integer','boolean','null'].includes(String(obj.type)))) throw new Error('unsupported modality or hosted tool');
         for (const v of Object.values(obj)) check(v);
       }; check(body);
     }
@@ -153,12 +176,30 @@ export class ClientDaemon {
     const finish = () => finishing ??= (async() => { this.inflight--; if(this.inflight===0)for(const resolve of this.idleWaiters.splice(0))resolve(); await this.maintenance().catch(()=>{}); })();
     try {
       const response = this.o.mode === 'proxy' ? await this.o.client.sendOperation(this.o.noteId,operationId,signal) : await this.o.client.sendDirectOperation(this.o.noteId,operationId,path,snapshot,signal);
-      const headers = new Headers(response.headers); headers.set('X-Zkapi-Operation-Id',operationId); headers.set('Cache-Control','no-store');
+      // An upstream response must not set cookies, enable CORS or attach an
+      // arbitrary correlation identifier to the local application origin.
+      const headers = new Headers();
+      for (const name of ['Content-Type','Retry-After',...(this.o.mode === 'proxy' ? ['X-Zkapi-Status-Url','X-Zkapi-Error-Code'] : [])]) {
+        const value = response.headers.get(name); if (value !== null) headers.set(name,value);
+      }
+      headers.set('X-Zkapi-Operation-Id',operationId); headers.set('Cache-Control','no-store');
       const reader = response.body?.getReader();
       if (!reader) { await finish(); return new Response(null,{status:response.status,headers}); }
+      let canceling = false;
       const body = new ReadableStream<Uint8Array>({
-        async pull(controller) { try { const next = await reader.read(); if (next.done) { await finish(); controller.close(); } else controller.enqueue(next.value); } catch { await finish(); controller.error(new Error('upstream stream interrupted; no replay')); } },
-        async cancel() { try { await reader.cancel(); } finally { await finish(); } },
+        async pull(controller) {
+          try {
+            const next = await reader.read();
+            // cancel() resolves an outstanding read before its asynchronous
+            // finalizer completes. Cancellation alone owns admission release.
+            if (canceling) return;
+            if (next.done) { await finish(); controller.close(); } else controller.enqueue(next.value);
+          } catch {
+            if (canceling) return;
+            await finish(); controller.error(new Error('upstream stream interrupted; no replay'));
+          }
+        },
+        async cancel() { canceling = true; try { await reader.cancel(); } finally { await finish(); } },
       });
       return new Response(body,{status:response.status,headers});
     } catch (error) { await finish(); throw error; }

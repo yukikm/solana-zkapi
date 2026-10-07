@@ -8,7 +8,7 @@ function status(canRequest = true): ClientStatus {
     canRequest, canReconcileUnacceptedAuthorization: false, canPrepareEmergencyEscape: false, canReconcileChallengedEscape: false, emergencyEscape: null,
     busy: false, session: null, walletOperation: null, expiry: { severity: 'normal', message: 'fixture' }, lastSettlement: null, privacyNotice: 'fixture' };
 }
-const answer = (text: string) => Response.json({ choices: [{ message: { content: text } }] });
+const answer = (text: string) => Response.json({ choices: [{ message: { content: text }, finish_reason: 'stop' }] });
 const input = { model: 'configured-model', text: 'hello', maxOutputTokens: 100, stream: false };
 
 test('USDC input is exact integer arithmetic and rejects rounding, exponent and negative inputs', () => {
@@ -36,6 +36,21 @@ test('uncertain inference is not replayed and incomplete content is excluded fro
   fail = false; await conversation.send(client, { ...input, text: 'new request' });
   assert.deepEqual(calls[1].messages, [{ role: 'user', content: 'new request' }]);
   assert.notEqual(calls[0].operationId, calls[1].operationId);
+});
+test('a truncated SSE answer is visible as interrupted and never reused as conversation context', async () => {
+  const conversation = new Conversation(), calls: ChatRequest[] = [];
+  const client = { status: async () => status(), chat: async (request: ChatRequest) => {
+    calls.push(request);
+    return calls.length === 1
+      ? new Response('data: {"choices":[{"index":0,"delta":{"content":"partial answer"}}]}\n\ndata: [DONE]\n\n', { headers: { 'Content-Type': 'text/event-stream' } })
+      : answer('new answer');
+  } };
+  await assert.rejects(conversation.send(client, { ...input, stream: true }), /did not complete/);
+  assert.equal(conversation.turns[0].assistant, 'partial answer');
+  assert.equal(conversation.turns[0].outcome, 'interrupted');
+  await conversation.send(client, { ...input, text: 'separate explicit request' });
+  assert.deepEqual(calls[1].messages, [{ role: 'user', content: 'separate explicit request' }]);
+  assert.equal(calls.length, 2);
 });
 test('pending or expired status prevents inference even with a stale presentation state', async () => {
   let calls = 0; const conversation = new Conversation();

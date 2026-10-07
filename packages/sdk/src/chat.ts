@@ -11,6 +11,15 @@ export class ChatResponseError extends Error {
 function failure(response: Response, code: ChatResponseError['code']): ChatResponseError {
   return new ChatResponseError(code, response.headers.get('X-Zkapi-Operation-Id'), response.status);
 }
+const textFinishReasons = new Set(['stop', 'length', 'content_filter']);
+function textMessage(value: unknown): value is { content?: string | null } {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
+  const message = value as Record<string, unknown>;
+  return (message.role === undefined || message.role === 'assistant')
+    && (message.tool_calls == null || Array.isArray(message.tool_calls) && message.tool_calls.length === 0)
+    && message.function_call == null
+    && (message.content === undefined || message.content === null || typeof message.content === 'string');
+}
 async function check(response: Response, stream: boolean): Promise<void> {
   const type = response.headers.get('Content-Type')?.split(';')[0].trim().toLowerCase();
   if (!response.ok || type !== (stream ? 'text/event-stream' : 'application/json')) {
@@ -33,8 +42,11 @@ export async function readChatText(response: Response): Promise<string> {
     for (;;) { const next = await reader.read(); if (next.done) break; bytes += next.value.length;
       if (bytes > 4 * 1024 * 1024) throw failure(response, 'invalid_response'); text += decoder.decode(next.value, { stream: true }); }
     text += decoder.decode(); const value = JSON.parse(text);
-    if (value.error || !Array.isArray(value.choices) || value.choices.length !== 1 || typeof value.choices[0]?.message?.content !== 'string') throw failure(response, 'invalid_response');
-    return value.choices[0].message.content;
+    const choice = value?.choices?.[0];
+    if (value.error || !Array.isArray(value.choices) || value.choices.length !== 1 || !choice
+      || choice.index !== undefined && choice.index !== 0 || !textMessage(choice.message)
+      || typeof choice.message.content !== 'string' || !textFinishReasons.has(choice.finish_reason)) throw failure(response, 'invalid_response');
+    return choice.message.content;
   } catch (error) { failed = true; if (error instanceof ChatResponseError) throw error; throw failure(response, 'invalid_response'); }
   finally { await cleanup(response, reader, failed); }
 }
@@ -45,16 +57,23 @@ export async function* readChatDeltas(response: Response): AsyncGenerator<string
   await check(response, true);
   const reader = response.body?.getReader(); if (!reader) throw failure(response, 'invalid_response');
   const decoder = new TextDecoder('utf-8', { fatal: true });
-  let buffer = '', data: string[] = [], frameSize = 0, total = 0, done = false, failed = false;
+  let buffer = '', data: string[] = [], frameSize = 0, total = 0, done = false, failed = false, finished = false;
   function event(): string | null {
     const source = data.join('\n'); data = []; frameSize = 0;
     if (!source) return null;
-    if (source === '[DONE]') { done = true; return null; }
+    if (source === '[DONE]') {
+      if (!finished) throw failure(response, 'incomplete_stream');
+      done = true; return null;
+    }
     const value = JSON.parse(source);
     if (value.error || !Array.isArray(value.choices) || value.choices.length > 1) throw failure(response, 'invalid_response');
     if (!value.choices.length) return null; // Optional final usage metadata, never billing authority.
     const choice = value.choices[0];
-    if (choice.index !== 0 || !choice.delta || typeof choice.delta !== 'object') throw failure(response, 'invalid_response');
+    if (finished || choice.index !== 0 || !textMessage(choice.delta)) throw failure(response, 'invalid_response');
+    if (choice.finish_reason !== undefined && choice.finish_reason !== null) {
+      if (!textFinishReasons.has(choice.finish_reason)) throw failure(response, 'invalid_response');
+      finished = true;
+    }
     const content = choice.delta.content;
     if (content !== undefined && content !== null && typeof content !== 'string') throw failure(response, 'invalid_response');
     return content ?? null;

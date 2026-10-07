@@ -107,10 +107,13 @@ a [recovery action](recovery.md). Lost response bodies cannot be reproduced.
 ## Text helpers
 
 `readChatText(response): Promise<string>` accepts one text choice from JSON
-Chat Completions, bounded to 4 MiB. Use native JSON for tool-only responses.
+Chat Completions with a recognized text finish reason, bounded to 4 MiB. Use
+native JSON for tool responses, including tool calls accompanied by text.
 
 `readChatDeltas(response): AsyncGenerator<string>` accepts Chat Completions SSE,
-handles split UTF-8/CRLF, comments and multiline data, and requires `[DONE]`.
+handles split UTF-8/CRLF, comments and multiline data, and requires a terminal
+text choice followed by `[DONE]`. Bare `[DONE]`, tool-call deltas, unknown finish
+reasons and further choices after termination are rejected.
 Limits: 16 MiB total; 1 MiB buffered event text. Breaking iteration cancels the
 body. Tool-call deltas need a native SSE consumer instead.
 

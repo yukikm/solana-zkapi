@@ -117,6 +117,156 @@ test('invalid preparation commitment fails before file reads, RPC or listener st
   }
 });
 
+test('escape relay forwards SDK upload and finalization bytes while retaining financial send guards', async t => {
+  const {Keypair, PublicKey, TransactionInstruction, VersionedTransaction} = await import('@solana/web3.js');
+  const {buildUploadPlan, compileV0, finalizeEscape, vaultAccounts} = await import('../../packages/sdk/src/transport.ts');
+  const output = await mkdtemp(join(tmpdir(), 'zkapi-ui-escape-')); t.after(() => rm(output, {recursive: true, force: true}));
+  for (const file of ['index.html', 'app.js', 'style.css']) await writeFile(join(output, file), 'fixture');
+  const payer = Keypair.fromSeed(new Uint8Array(32).fill(71));
+  const programId = new PublicKey(new Uint8Array(32).fill(72)), pool = new PublicKey(new Uint8Array(32).fill(73));
+  const mint = new PublicKey(new Uint8Array(32).fill(74)), blockhash = new PublicKey(new Uint8Array(32).fill(75)).toBase58();
+  const plan = await buildUploadPlan({programId, pool, uploader: payer.publicKey, rentPayer: payer.publicKey, feePayer: payer.publicKey,
+    nonce: new Uint8Array(32).fill(76), expires: 2000n, operation: 'initiate_escape', payload: new Uint8Array(1312),
+    financial: vaultAccounts({programId, pool, mint, noteId: 7, payer: payer.publicKey, operation: 'initiate_escape',
+      destinationOwner: payer.publicKey, nullifier: new Uint8Array(32).fill(77)}), snapshot: {slot: 1, sequence: 1n}});
+  const finalize = await finalizeEscape(programId, vaultAccounts({programId, pool, mint, noteId: 7, payer: payer.publicKey,
+    operation: 'finalize_escape', destinationOwner: payer.publicKey, treasuryOwner: payer.publicKey}), 7);
+  let genesis = GENESIS, fee: number | null = 5000;
+  const forwarded: any[] = [];
+  const host = await startUiHost({port: 0, output, allowTransactions: true, manifest: {program_id: programId.toBase58(), pool: pool.toBase58()} as any,
+    rpc: async data => {
+      const r = JSON.parse(data.toString());
+      const result = r.method === 'getGenesisHash' ? genesis : r.method === 'getFeeForMessage' ? {context: {slot: 1}, value: fee}
+        : r.method === 'sendTransaction' ? (forwarded.push(r), 'local-fixture') : undefined;
+      assert.notEqual(result, undefined);
+      return {status: 200, bytes: Buffer.from(JSON.stringify({jsonrpc: '2.0', id: r.id, result}))};
+    }}); t.after(() => host.close());
+  const wire = (instruction: InstanceType<typeof TransactionInstruction>, sign = true) => {
+    const tx = compileV0(instruction, payer.publicKey, blockhash); if (sign) tx.sign([payer]);
+    return Buffer.from(tx.serialize()).toString('base64');
+  };
+  const post = (bytes: string, origin = host.origin) => fetch(host.origin + '/rpc', {method: 'POST', headers: {origin, 'content-type': 'application/json'},
+    body: JSON.stringify({jsonrpc: '2.0', id: 1, method: 'sendTransaction', params: [bytes, {encoding: 'base64', skipPreflight: true, maxRetries: 10}]})});
+  for (const step of [...plan.steps, finalize]) {
+    const bytes = wire(step.instruction);
+    assert.equal((await post(bytes)).status, 200, step.kind);
+    assert.equal(forwarded.at(-1).params[0], bytes);
+    assert.deepEqual(forwarded.at(-1).params[1], {encoding: 'base64', skipPreflight: false, preflightCommitment: 'finalized', maxRetries: 0});
+  }
+  const count = forwarded.length, finalizedWire = wire(finalize.instruction);
+  for (const operation of [3, 4, 255]) {
+    const data = Buffer.from(plan.steps[0].instruction.data); data[8] = operation;
+    assert.equal((await post(wire(new TransactionInstruction({...plan.steps[0].instruction, data})))).status, 400);
+  }
+  // Presence elsewhere in the message is insufficient: finalize uses account zero.
+  const wrongPool = VersionedTransaction.deserialize(Buffer.from(finalizedWire, 'base64'));
+  const ix = wrongPool.message.compiledInstructions.at(-1)!;
+  ix.accountKeyIndexes[0] = 0; wrongPool.sign([payer]);
+  assert.equal((await post(Buffer.from(wrongPool.serialize()).toString('base64'))).status, 400);
+  for (const data of [finalize.instruction.data.subarray(0, 11), Buffer.concat([finalize.instruction.data, Buffer.of(0)])])
+    assert.equal((await post(wire(new TransactionInstruction({...finalize.instruction, data})))).status, 400);
+  assert.equal((await post(wire(finalize.instruction, false))).status, 400);
+  assert.equal((await post(finalizedWire, 'https://foreign.invalid')).status, 400);
+  genesis = 'not-devnet'; assert.equal((await post(finalizedWire)).status, 400); genesis = GENESIS;
+  for (fee of [null, 10001]) assert.equal((await post(finalizedWire)).status, 400);
+  assert.equal(forwarded.length, count);
+  let readOnlyCalls = 0;
+  const readOnly = await startUiHost({port: 0, output, manifest: {program_id: programId.toBase58(), pool: pool.toBase58()} as any,
+    rpc: async () => { readOnlyCalls++; throw Error('read-only host must not submit escape'); }}); t.after(() => readOnly.close());
+  for (const bytes of [wire(plan.steps[0].instruction), finalizedWire]) {
+    const response = await fetch(readOnly.origin + '/rpc', {method: 'POST', headers: {origin: readOnly.origin, 'content-type': 'application/json'},
+      body: JSON.stringify({jsonrpc: '2.0', id: 1, method: 'sendTransaction', params: [bytes, {encoding: 'base64'}]})});
+    assert.equal(response.status, 400);
+  }
+  assert.equal(readOnlyCalls, 0);
+});
+
+test('compact relay accepts exact SDK wire only for authenticated compact build capability', async t => {
+  const {Keypair, PublicKey, TransactionInstruction, VersionedTransaction} = await import('@solana/web3.js');
+  const {buildInlineDepositPlan, compileV0, vaultAccounts} = await import('../../packages/sdk/src/transport.ts');
+  const {encodeLayout2Args} = await import('../../packages/sdk/src/layout2.ts');
+  const {vaultBinding} = await import('../../packages/sdk/src/encoding.ts');
+  const {manifestDigest, verifyManifest} = await import('../../packages/sdk/src/trust.ts');
+  const fixture = JSON.parse(await readFile('tests/fixtures/vault/genesis-a.json', 'utf8'));
+  const profile = JSON.parse(await readFile('tests/fixtures/layout2/profile.json', 'utf8'));
+  const idl = await readFile('docs/contracts/zkapi_vault.json');
+  const output = await mkdtemp(join(tmpdir(), 'zkapi-ui-compact-')); t.after(() => rm(output, {recursive: true, force: true}));
+  for (const file of ['index.html', 'app.js', 'style.css']) await writeFile(join(output, file), 'fixture');
+  const payer = Keypair.fromSeed(new Uint8Array(32).fill(81));
+  const programId = new PublicKey(JSON.parse(idl.toString()).address), pool = new PublicKey(new Uint8Array(32).fill(82));
+  const mint = new PublicKey('4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU');
+  const token = new PublicKey('TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA');
+  const binding = await vaultBinding(new PublicKey(GENESIS).toBytes(), programId.toBytes(), pool.toBytes(), token.toBytes(), mint.toBytes());
+  const raw = {...profile, deployment_id: 'compact-relay-fixture', deployment_environment: 'devnet',
+    manifest_hash: '00'.repeat(32), manifest_signature: Buffer.alloc(64).toString('base64'), genesis_hash: GENESIS,
+    program_id: programId.toBase58(), pool: pool.toBase58(), mint: mint.toBase58(), token_program: token.toBase58(), decimals: 6,
+    vault_binding: binding, state_key: {x: fixture.auth.escape.public_inputs[4], y: fixture.auth.escape.public_inputs[5]},
+    clearance_key: {x: fixture.auth.escape.public_inputs[6], y: fixture.auth.escape.public_inputs[7]},
+    quote_public_key: payer.publicKey.toBase58(), receipt_public_key: new PublicKey(new Uint8Array(32).fill(83)).toBase58(),
+    transaction_formats: ['v0_buffer', 'v0_inline_deposit_v1'], cap_micro_usdc: '1000000', note_ttl_seconds: String(fixture.ttl),
+    challenge_seconds: '86400', control_api_origin: 'https://control.example', inference_api_origin: 'https://inference.example',
+    proving_keys_base_url: 'https://keys.example/keys', idl_hash: await sha256Hex(idl), api_endpoints: ['/zkapi/v1/config'],
+    tariff_hashes: [], artifact_digests: {vault_idl: await sha256Hex(idl)}, db_schema_version: '2',
+    authorities: {admin: {kind: 'devnet_test_single_key', authority: payer.publicKey.toBase58()}, upgrade: {kind: 'devnet_test_single_key', authority: payer.publicKey.toBase58()}}};
+  raw.manifest_hash = await manifestDigest(raw);
+  const policy = {anchor: {kind: 'hash' as const, sha256: raw.manifest_hash}, expected: {
+    deployment_id: raw.deployment_id, deployment_environment: 'devnet' as const, genesis_hash: GENESIS, program_id: raw.program_id,
+    pool: raw.pool, mint: raw.mint, token_program: raw.token_program, control_api_origin: raw.control_api_origin, inference_api_origin: raw.inference_api_origin},
+    build: {stateKey: raw.state_key, clearanceKey: raw.clearance_key, circuitProfileHash: raw.circuit_profile_hash,
+      idlHash: raw.idl_hash, setupProfile: raw.setup_profile, transactionFormats: ['v0_buffer', 'v0_inline_deposit_v1'] as const}};
+  await assert.rejects(verifyManifest(jcsBytes(raw), {...policy, build: {...policy.build, transactionFormats: undefined}}), /build capability pin/);
+  const manifest = await verifyManifest(jcsBytes(raw), policy);
+  const tree = structuredClone(fixture.trees[0]); tree.public_inputs[0] = binding;
+  const plan = await buildInlineDepositPlan({deploymentId: manifest.deployment_id, manifestHash: manifest.manifest_hash,
+    vaultBinding: binding, programId, pool, feePayer: payer.publicKey,
+    payload: encodeLayout2Args({operation: 'deposit', expectedId: 0, expectedRoot: tree.public_inputs[1], expiry: BigInt(fixture.expiry),
+      commitment: '0x' + fixture.commitment, amount: BigInt(fixture.deposit), tree}),
+    financial: vaultAccounts({programId, pool, mint, noteId: 0, payer: payer.publicKey, tokenOwner: payer.publicKey, operation: 'deposit'}),
+    snapshot: {slot: 1, sequence: 0n}, priorityFeeMicroLamports: 1n});
+  const instruction = plan.steps[0].instruction;
+  let genesis = GENESIS, fee: number | null = 5001;
+  const forwarded: any[] = [];
+  const rpc = async (data: Buffer) => {
+    const r = JSON.parse(data.toString());
+    const result = r.method === 'getGenesisHash' ? genesis : r.method === 'getFeeForMessage' ? {context: {slot: 1}, value: fee}
+      : r.method === 'sendTransaction' ? (forwarded.push(r), 'local-fixture') : undefined;
+    assert.notEqual(result, undefined); return {status: 200, bytes: Buffer.from(JSON.stringify({jsonrpc: '2.0', id: r.id, result}))};
+  };
+  const host = await startUiHost({port: 0, output, allowTransactions: true, manifest, rpc}); t.after(() => host.close());
+  const wire = (ix = instruction, sign = true) => {
+    const tx = compileV0(ix, payer.publicKey, new PublicKey(new Uint8Array(32).fill(84)).toBase58(), 1n);
+    if (sign) tx.sign([payer]); return Buffer.from(tx.serialize()).toString('base64');
+  };
+  const post = (origin: string, bytes: string, caller = origin) => fetch(origin + '/rpc', {method: 'POST', headers: {origin: caller, 'content-type': 'application/json'},
+    body: JSON.stringify({jsonrpc: '2.0', id: 1, method: 'sendTransaction', params: [bytes, {encoding: 'base64', skipPreflight: true, maxRetries: 10}]})});
+  const valid = wire(); assert.equal(Buffer.from(valid, 'base64').length, 1007);
+  assert.equal((await post(host.origin, valid)).status, 200);
+  assert.equal(forwarded.length, 1); assert.equal(forwarded[0].params[0], valid);
+  assert.deepEqual(forwarded[0].params[1], {encoding: 'base64', skipPreflight: false, preflightCommitment: 'finalized', maxRetries: 0});
+  const malformed = [instruction.data.subarray(0, 443), Buffer.concat([instruction.data, Buffer.of(0)])];
+  const zero = Buffer.from(instruction.data); zero.fill(0, 8 + 76, 8 + 84); malformed.push(zero);
+  for (const offset of [4, 44, 84, 116, 148]) { const bad = Buffer.from(instruction.data); bad.fill(255, 8 + offset, 8 + offset + 32); malformed.push(bad); }
+  for (const data of malformed) assert.equal((await post(host.origin, wire(new TransactionInstruction({...instruction, data})))).status, 400);
+  assert.equal((await post(host.origin, wire(new TransactionInstruction({...instruction, keys: instruction.keys.slice(0, -1)})))).status, 400);
+  const wrongPool = VersionedTransaction.deserialize(Buffer.from(valid, 'base64'));
+  wrongPool.message.compiledInstructions.at(-1)!.accountKeyIndexes[0] = 0; wrongPool.sign([payer]);
+  assert.equal((await post(host.origin, Buffer.from(wrongPool.serialize()).toString('base64'))).status, 400);
+  assert.equal((await post(host.origin, wire(instruction, false))).status, 400);
+  assert.equal((await post(host.origin, valid, 'https://foreign.invalid')).status, 400);
+  genesis = 'not-devnet'; assert.equal((await post(host.origin, valid)).status, 400); genesis = GENESIS;
+  for (fee of [null, 10001]) assert.equal((await post(host.origin, valid)).status, 400); fee = 5001;
+  const legacyRaw = {...raw, transaction_formats: ['v0_buffer']}; legacyRaw.manifest_hash = await manifestDigest(legacyRaw);
+  const legacy = await verifyManifest(jcsBytes(legacyRaw), {...policy, anchor: {kind: 'hash', sha256: legacyRaw.manifest_hash}});
+  for (const deniedManifest of [legacy, {...manifest}] as const) {
+    const denied = await startUiHost({port: 0, output, allowTransactions: true, manifest: deniedManifest as typeof manifest, rpc}); t.after(() => denied.close());
+    assert.equal((await post(denied.origin, valid)).status, 400);
+  }
+  let readOnlyCalls = 0;
+  const readOnly = await startUiHost({port: 0, output, manifest, rpc: async () => { readOnlyCalls++; throw Error('no send'); }}); t.after(() => readOnly.close());
+  assert.equal((await post(readOnly.origin, valid)).status, 400); assert.equal(readOnlyCalls, 0);
+  assert.equal(forwarded.length, 1);
+});
+
 test('explicit history endpoint receives only transaction reads after its own Devnet pin; primary reads remain primary', async t => {
   const output = await mkdtemp(join(tmpdir(), 'zkapi-ui-history-')); t.after(() => rm(output, {recursive: true, force: true}));
   for (const file of ['index.html', 'app.js', 'style.css']) await writeFile(join(output, file), 'fixture');

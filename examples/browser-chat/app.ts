@@ -1,7 +1,7 @@
 import type { ClientStatus, InferenceApi, ZkApiClient } from '@zkapi/solana-sdk';
 import type { StandardAccount, StandardWallet } from '@zkapi/solana-sdk/browser';
 import type { connectChat } from './integration.ts';
-import type { ReviewedChatProfile } from './load-deployment.ts';
+import type { DevnetAdmission, ReviewedChatProfile } from './load-deployment.ts';
 import { Conversation, canLeaveNote, formatUsdc, microUsdc, modeName, privacyNotice } from './chat-model.ts';
 import { shell } from './shell.ts';
 
@@ -13,7 +13,7 @@ type UiClient = Pick<ZkApiClient, 'status' | 'subscribe' | 'listModels' | 'chat'
 export interface AppServices {
   profiles: readonly ReviewedChatProfile[];
   wallets(): readonly BrowserWallet[];
-  connect(options: Parameters<typeof connectChat>[0]): Promise<{ client: UiClient; persistence?: 'persistent' | 'best_effort' | 'unknown'; dispose(): void }>;
+  connect(options: Parameters<typeof connectChat>[0]): Promise<{ client: UiClient; persistence?: 'persistent' | 'best_effort' | 'unknown'; admission?(): Promise<DevnetAdmission>; dispose(): void }>;
 }
 
 /** Dependency injection is for local verification; main.ts installs only the real SDK. */
@@ -30,6 +30,7 @@ export function mountChat(root: HTMLElement, services: AppServices): { dispose()
   let wallets: readonly BrowserWallet[] = [], connectedWallet: BrowserWallet | undefined;
   let opened: Awaited<ReturnType<AppServices['connect']>> | undefined;
   let latest: ClientStatus | undefined, working = false, unsubscribe: (() => void) | undefined;
+  let admission: DevnetAdmission | null | undefined, admissionRead: Promise<void> | undefined;
   let disposed = false;
   const getProfile = () => services.profiles.find(p => p.id === select('profile').value);
   const selectedWallet = () => wallets[Number(select('wallet').value)];
@@ -52,6 +53,28 @@ export function mountChat(root: HTMLElement, services: AppServices): { dispose()
     }
   } catch { /* Preferences are optional; never reset custody when unavailable. */ }
 
+  const newWorkAvailable = () => !opened?.admission || !!admission?.allowTransactions && admission.available_requests > 0;
+  function showAdmission() {
+    el('admission').textContent = !opened?.admission ? 'No local campaign admission hint for this profile.'
+      : admission === undefined ? 'Checking local campaign availability before new funding or requests…'
+      : admission === null ? 'Campaign availability is unavailable. New deposits and requests are disabled. Refresh to check again; saved-state recovery and withdrawal remain available.'
+      : `${admission.allowTransactions ? '' : 'Host is read-only. '}Capacity: ${admission.available_requests} new request(s), within ${admission.remaining_requests} remaining request slots. `
+        + `Worst-case reservation per new session: ${formatUsdc(admission.request_max_cost_micro_usdc)} USDC; unreserved campaign budget: ${formatUsdc(admission.remaining_micro_usdc)} USDC. `
+        + 'Reservations are not actual charges. The host checks and reserves again at authorization; recovery and withdrawal do not require a new reservation.';
+  }
+  async function refreshAdmission() {
+    const current = opened;
+    if (!current?.admission) {admission = undefined; showAdmission(); return;}
+    if (!admissionRead) {
+      admissionRead = (async () => {
+        let next: DevnetAdmission | null;
+        try {next = await current.admission!();} catch {next = null;}
+        if (opened === current) {admission = next; showAdmission(); updateControls();}
+      })().finally(() => {admissionRead = undefined;});
+    }
+    await admissionRead;
+  }
+
   function updateControls() {
     const busy = working || conversation.busy || !!latest?.busy;
     const profile = getProfile(), account = selectedAccount();
@@ -68,11 +91,11 @@ export function mountChat(root: HTMLElement, services: AppServices): { dispose()
     select('api').disabled = busy || !opened || !select('model').value;
     input('max-tokens').disabled = input('stream').disabled = busy || !opened;
     (el('message') as HTMLTextAreaElement).disabled = busy || !latest?.canRequest || !select('model').value || !select('api').value;
-    button('send').disabled = busy || !latest?.canRequest || !select('model').value || !select('api').value;
+    button('send').disabled = busy || !newWorkAvailable() || !latest?.canRequest || !select('model').value || !select('api').value;
     button('cancel').disabled = !conversation.busy;
     button('clear-chat').disabled = conversation.busy;
     const usable = !!opened && !!latest && !busy;
-    button('deposit').disabled = !usable || latest?.wallet !== 'empty';
+    button('deposit').disabled = !usable || !newWorkAvailable() || latest?.wallet !== 'empty';
     input('deposit-amount').disabled = button('deposit').disabled;
     button('advance').disabled = !usable || !latest?.walletOperation || latest.walletOperation.phase === 'failed' || latest.walletOperation.phase === 'proving';
     button('resume-proof').disabled = !usable || latest?.walletOperation?.phase !== 'proving';
@@ -92,6 +115,7 @@ export function mountChat(root: HTMLElement, services: AppServices): { dispose()
     el('send-state').textContent = conversation.busy ? 'Receiving response; settlement follows consumption or cancellation.'
       : latest?.wallet === 'closed' ? 'This note is closed. Close this view to select a new local note; the saved history is retained.'
       : latest?.session || latest?.walletOperation || latest?.emergencyEscape?.phase === 'escaping' ? 'Saved work requires recovery before another send.'
+      : opened?.admission && !newWorkAvailable() ? 'New funding and requests require available campaign capacity and an enabled host. Existing recovery remains available.'
       : latest?.canRequest ? (select('model').value && select('api').value ? 'Ready for an explicit new request.' : 'Select a configured model and API.')
       : 'Open and fund an unexpired note with at least the authorization cap.';
   }
@@ -124,7 +148,7 @@ export function mountChat(root: HTMLElement, services: AppServices): { dispose()
   }
   async function refresh() {
     if (!opened) return;
-    try { showStatus(await opened.client.status()); }
+    try { showStatus(await opened.client.status()); await refreshAdmission(); }
     catch { latest = undefined; updateControls(); note('Saved status could not be read. Keep this origin, wallet and storage intact; do not create a replacement note.', true); }
   }
   async function action(label: string, run: () => Promise<void>, success: string) {
@@ -170,6 +194,7 @@ export function mountChat(root: HTMLElement, services: AppServices): { dispose()
       const storageName = input('storage-name').value.trim(), noteId = input('note-id').value.trim();
       if (!storageName || !noteId) throw new Error('Stable storage and note IDs required.');
       opened = await services.connect({ profile, mode: profile.mode, wallet, account, chain: profile.chain, storageName, noteId, initializeStorage });
+      admission = undefined; showAdmission();
       el('storage-status').textContent = opened.persistence === 'persistent'
         ? 'Browser persistence granted. Clearing site data or losing this device can still lose access to the note; portable backup is unavailable.'
         : 'Browser storage is not confirmed persistent and may be evicted. Keep this origin and browser profile intact; clearing site data or device loss can lose access. Portable backup is unavailable.';
@@ -186,6 +211,7 @@ export function mountChat(root: HTMLElement, services: AppServices): { dispose()
   button('close-note').addEventListener('click', () => void action('Closing local view', async () => {
     if (!opened || !canLeaveNote(await opened.client.status())) throw new Error('Keep the funded or unresolved note selected.');
     opened.dispose(); unsubscribe?.(); unsubscribe = undefined; opened = undefined; latest = undefined;
+    admission = undefined; showAdmission();
     conversation.clear(); renderConversation();
     el('balance').textContent = el('cap').textContent = el('charge').textContent = '—';
     el('wallet-state').textContent = 'Not open'; el('pending').textContent = 'No note open.';
@@ -204,7 +230,10 @@ export function mountChat(root: HTMLElement, services: AppServices): { dispose()
     let amount: string;
     try { amount = microUsdc(input('deposit-amount').value.trim()); }
     catch { note('Enter a positive USDC amount with at most six decimal places; exponent notation is not supported.', true); return; }
-    void action('Preparing deposit', () => opened!.client.prepareDeposit(amount), 'Deposit prepared. Continue the saved wallet step to approve and finalize funding.');
+    void action('Preparing deposit', async () => {
+      await refreshAdmission(); if (!newWorkAvailable()) throw new Error('New deposit admission unavailable');
+      await opened!.client.prepareDeposit(amount);
+    }, 'Deposit prepared. Continue the saved wallet step to approve and finalize funding.');
   });
   const actions: [string, string, (client: UiClient) => Promise<unknown>, string][] = [
     ['advance', 'Continuing saved wallet step', async client => {
@@ -259,15 +288,21 @@ export function mountChat(root: HTMLElement, services: AppServices): { dispose()
     }
     const api = select('api').value as InferenceApi;
     if (!opened.client.listModels().find(m => m.id === select('model').value)?.apis.includes(api)) return;
-    const request = conversation.send(opened.client, { text, model: select('model').value, api, maxOutputTokens, stream: input('stream').checked }, renderConversation);
-    updateControls(); note('Request in progress. You can cancel; provider work may still incur a charge.');
-    (el('message') as HTMLTextAreaElement).value = '';
-    void request.then(() => note('Response consumption finished. Check the verified settlement and any pending work.'),
-      () => note('Response interrupted or cancelled. Inspect saved status and recover pending work; inference was not replayed.', true))
-      .finally(async () => { await refresh(); updateControls(); });
+    working = true; updateControls();
+    void (async () => {
+      await refreshAdmission();
+      if (!newWorkAvailable()) {
+        note('New request unavailable. Refresh campaign availability or recover existing saved work. No authorization or inference was submitted.', true); return;
+      }
+      const request = conversation.send(opened!.client, { text, model: select('model').value, api, maxOutputTokens, stream: input('stream').checked }, renderConversation);
+      working = false; updateControls(); note('Request in progress. You can cancel; provider work may still incur a charge.');
+      (el('message') as HTMLTextAreaElement).value = '';
+      await request.then(() => note('Response consumption finished. Check the verified settlement and any pending work.'),
+        () => note('Response interrupted or cancelled. Inspect saved status and recover pending work; inference was not replayed.', true));
+    })().finally(async () => { working = false; await refresh(); updateControls(); });
   });
   button('cancel').addEventListener('click', () => { conversation.cancel(); note('Cancellation requested. Waiting for response cleanup and settlement attempt.'); });
-  button('clear-chat').addEventListener('click', () => { conversation.clear(); renderConversation(); note('Conversation memory cleared. The encrypted financial journal and pending operations are retained.'); });
+  button('clear-chat').addEventListener('click', () => { conversation.clear(); renderConversation(); note('Conversation display cleared. Saved request bodies, including prompts and prior turns, remain in the encrypted financial journal. Pending operations are retained.'); });
   const timer = setInterval(() => { if (!disposed && !working) void refresh(); }, 10_000);
   // Never try to settle asynchronously during unload. The SDK's saved journal is
   // reopened explicitly, and the user decides which recovery action to run.

@@ -1,0 +1,6 @@
+{
+  "stopped_at_utc": "2026-10-06T16:38:41.177760+00:00",
+  "reason": "Acceptance AUTH helper creates separate ControlClient instances; memory-only direct keys require reuse of the authorizing instance before any live AUTH/inference.",
+  "financial_files_present": [],
+  "provider_verified": false
+}

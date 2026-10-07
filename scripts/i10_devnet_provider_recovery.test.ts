@@ -136,6 +136,30 @@ test('later explicit demo reservations count globally without replacing acceptan
   }
 });
 
+test('saved provider withdrawal accepts copied historical budget plus a later direct AUTH reservation',async()=>{
+  const saved=JSON.parse(readFileSync(new URL('../docs/evidence/I10-parity-review-live-components/budget-after.json',import.meta.url),'utf8'));
+  const historical=structuredClone(saved),request='12345678-1234-4123-8123-123456789033';
+  for(const template of ['openrouter-direct-plain','openrouter-direct-sse']){
+    const h=fixture(),budget={...structuredClone(saved),reserved_micro_usdc:'3154216',remaining_micro_usdc:'6845784',refunds_supported:false,inference_replays_supported:false};
+    budget.reservations.push({case_id:'demo-auth-'+request,kind:'explicit_direct_demo',template_case_id:template,request_id:request,
+      authorization_sha256:'ab'.repeat(32),max_cost_micro_usdc:'1000000',state:'reserved_no_automatic_replay'});
+    h.input.budget=budget;
+    const report=await verifySettledProviderCase(h.input);assert.equal(report.case_id,'openrouter-proxy-plain');assert.equal(h.calls(),1);
+    assert.equal(report.provider_acceptance_passed,false);assert.deepEqual(budget.reservations.slice(0,10),historical.reservations);
+    const unstarted=unstartedFixture();unstarted.budget=budget;
+    assert.equal(verifyUnstartedProviderCase(unstarted).case_id,'openrouter-proxy-sse');
+    for(const [field,value] of [['max_cost_micro_usdc','1'],['template_case_id','openai-chat-plain'],['request_id','invalid'],
+      ['authorization_sha256','AB'.repeat(32)],['operation_id',request],['case_id','demo-auth-'+request+'x'],['state','completed']] as const){
+      const bad=structuredClone(budget);bad.reservations.at(-1)[field]=value;h.input.budget=bad;
+      await assert.rejects(verifySettledProviderCase(h.input),/preserve journal and budget/);
+    }
+    const duplicate=structuredClone(budget),earlier=duplicate.reservations.find((row:{kind?:string})=>row.kind==='explicit_demo');assert.ok(earlier);
+    duplicate.reservations.at(-1).request_id=earlier.request_id;duplicate.reservations.at(-1).case_id='demo-auth-'+earlier.request_id;h.input.budget=duplicate;
+    await assert.rejects(verifySettledProviderCase(h.input),/preserve journal and budget/);
+  }
+  assert.deepEqual(saved,historical);
+});
+
 
 function unstartedFixture(){
   const settled=fixture(),{verifier,...input}=settled.input;
@@ -155,7 +179,7 @@ function unstartedFixture(){
   const failure={schema:1,passed:false,scope:'sanitized SDK provider-case failure checkpoint; no replay or refund authority',
     case_id:c.id,plan_sha256:hash(input.plan).toString('hex'),diagnostic:{schema:1,stage:'quote',elapsed_ms:50,
       control_http_status:503,inference:null,settlement:'not_started',inference_replays:0},full_g3_passed:false};
-  return {...input,failure,depositMicroUsdc:'10000000'} satisfies UnstartedProviderRecoveryInput;
+  return {...input,note:input.note as NoteJournal,failure,depositMicroUsdc:'10000000'} satisfies UnstartedProviderRecoveryInput;
 }
 
 test('unstarted quote failure is read-only across active, mutual-close intent and closed journal',()=>{
@@ -209,9 +233,9 @@ test('unstarted recovery rejects changed checkpoint, saved AUTH/history, state, 
     ['cap above deposit',o=>{o.context.cap_micro_usdc='10000001';}],
     ['missing context tariff',o=>{o.context.tariff_hashes=[];}],
     ['pending escape',o=>{o.note.wallet!.status='pending_escape';}],
-    ['escape operation',o=>{o.note.wallet!.operation={...o.note.wallet!.history[0],kind:'initiate_escape',phase:'proving',step:0};}],
+    ['escape operation',o=>{const old=o.note.wallet!.history[0];o.note.wallet!.operation={id:old.id,roles:old.roles,kind:'initiate_escape',phase:'proving',step:0,attempts:[],finalized:[]};}],
     ['imported history',o=>{o.note.wallet!.history=[];}],
-    ['historical escape',o=>{o.note.wallet!.history.push({...o.note.wallet!.history[0],kind:'initiate_escape'});}],
+    ['historical escape',o=>{const old=o.note.wallet!.history[0];o.note.wallet!.history.push({id:old.id,roles:old.roles,kind:'initiate_escape',phase:'ready',step:0,attempts:[],finalized:[]});}],
     ['closed without mutual history',o=>{o.note.wallet!.status='closed';}],
     ['profile mismatch',o=>{o.profile='different-profile';}],
     ['case mismatch',o=>{o.caseId='openrouter-proxy-plain';}],

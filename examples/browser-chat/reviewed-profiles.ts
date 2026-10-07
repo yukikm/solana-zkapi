@@ -1,7 +1,8 @@
 import type { ReviewedChatProfile } from './load-deployment.ts';
 
-/** Install reviewed public configuration here and rebuild. Keep trust/WASM pins
- * independent of downloaded assets. Never put provider or private RPC keys here.
- * Empty deliberately: this repository does not imply a current hosted deployment.
- * Use one entry per explicit privacy mode, with the matching model tariffs. */
-export const reviewedProfiles: readonly ReviewedChatProfile[] = [];
+/** Replaced only by build.mjs after validating the explicitly pinned public JSON.
+ * No runtime URL, downloaded config or query parameter can install trust pins. */
+declare const __ZKAPI_INSTALLED_PROFILES__: readonly ReviewedChatProfile[];
+/** The default build deliberately has no deployment or automatic network effects. */
+export const reviewedProfiles: readonly ReviewedChatProfile[] =
+  typeof __ZKAPI_INSTALLED_PROFILES__ === 'undefined' ? [] : __ZKAPI_INSTALLED_PROFILES__;

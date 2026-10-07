@@ -1,0 +1,9 @@
+test_complete_plain_and_sse_are_redacted (scripts.test_i10_collect_direct_lifecycle.CollectorTests.test_complete_plain_and_sse_are_redacted) ... ok
+test_exact_integer_nano_and_micro_rounding (scripts.test_i10_collect_direct_lifecycle.CollectorTests.test_exact_integer_nano_and_micro_rounding) ... ok
+test_missing_or_mismatched_lifecycle_facts_fail (scripts.test_i10_collect_direct_lifecycle.CollectorTests.test_missing_or_mismatched_lifecycle_facts_fail) ... ok
+test_sql_uses_validated_uuid_and_no_raw_secret_projection (scripts.test_i10_collect_direct_lifecycle.CollectorTests.test_sql_uses_validated_uuid_and_no_raw_secret_projection) ... ok
+
+----------------------------------------------------------------------
+Ran 4 tests in 0.002s
+
+OK

@@ -1,0 +1,125 @@
+{
+  "passed": true,
+  "scope": "Offline packaging CLI using the fresh public profile and real artifacts, with two synthetic private RPC canaries; no network/wallet/provider/budget actions",
+  "recorded_at_utc": "2026-10-06T17:43:11.466672+00:00",
+  "cases": [
+    {
+      "name": "CLI success with real pinned public artifacts and dummy private RPC destinations",
+      "exit_code": 0,
+      "expected_exit_code": 0,
+      "command": [
+        "target/i08-toolchain/bin/node",
+        "scripts/prepare_browser_chat_devnet.ts",
+        "--profile-directory=target/public-devnet/parity-review-20261007",
+        "--profile-sha256=3933fcae97f544f0be368532cc9c2127af8f7fc008cbebcf2ddd0f803abfd311",
+        "--deployment-directory=target/public-devnet/parity-review-20261007/deployment/pools/provider/parity-chat",
+        "--wasm-path=apps/clientd/prover/target/wasm32-unknown-unknown/release/zkapi_client_prover.wasm",
+        "--wasm-sha256=c06a247e1ff88f1ac415ea127bcf49d486b5b4954715cdf00f133b5ac71c1f30",
+        "--build-output=target/parity-chat-browser",
+        "--port=4174",
+        "--service-port=19683",
+        "--plan-path=config/provider-acceptance.i10.json",
+        "--state-dir=target/i10-provider-acceptance",
+        "--output=target/parity-chat-packaging-validation/success"
+      ],
+      "stdout_sha256": "72b5bfa0e707399a0a69d3b3763d0d990048568c662129af1abc5af6c13c2e99",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "name": "Existing output refused without changing it",
+      "exit_code": 1,
+      "expected_exit_code": 1,
+      "command": [
+        "target/i08-toolchain/bin/node",
+        "scripts/prepare_browser_chat_devnet.ts",
+        "--profile-directory=target/public-devnet/parity-review-20261007",
+        "--profile-sha256=3933fcae97f544f0be368532cc9c2127af8f7fc008cbebcf2ddd0f803abfd311",
+        "--deployment-directory=target/public-devnet/parity-review-20261007/deployment/pools/provider/parity-chat",
+        "--wasm-path=apps/clientd/prover/target/wasm32-unknown-unknown/release/zkapi_client_prover.wasm",
+        "--wasm-sha256=c06a247e1ff88f1ac415ea127bcf49d486b5b4954715cdf00f133b5ac71c1f30",
+        "--build-output=target/parity-chat-browser",
+        "--port=4174",
+        "--service-port=19683",
+        "--plan-path=config/provider-acceptance.i10.json",
+        "--state-dir=target/i10-provider-acceptance",
+        "--output=target/parity-chat-packaging-validation/success"
+      ],
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderr_sha256": "328ba50ca22e36e30ebe4280fee28b3c3d827b07606a57ea1397c5be2b658674"
+    },
+    {
+      "name": "Wrong WASM pin rejected before output creation",
+      "exit_code": 1,
+      "expected_exit_code": 1,
+      "command": [
+        "target/i08-toolchain/bin/node",
+        "scripts/prepare_browser_chat_devnet.ts",
+        "--profile-directory=target/public-devnet/parity-review-20261007",
+        "--profile-sha256=3933fcae97f544f0be368532cc9c2127af8f7fc008cbebcf2ddd0f803abfd311",
+        "--deployment-directory=target/public-devnet/parity-review-20261007/deployment/pools/provider/parity-chat",
+        "--wasm-path=apps/clientd/prover/target/wasm32-unknown-unknown/release/zkapi_client_prover.wasm",
+        "--wasm-sha256=0000000000000000000000000000000000000000000000000000000000000000",
+        "--build-output=target/parity-chat-browser",
+        "--port=4174",
+        "--service-port=19683",
+        "--plan-path=config/provider-acceptance.i10.json",
+        "--state-dir=target/i10-provider-acceptance",
+        "--output=target/parity-chat-packaging-validation/wrong-wasm"
+      ],
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderr_sha256": "328ba50ca22e36e30ebe4280fee28b3c3d827b07606a57ea1397c5be2b658674"
+    },
+    {
+      "name": "Wrong public profile pin rejected before output creation",
+      "exit_code": 1,
+      "expected_exit_code": 1,
+      "command": [
+        "target/i08-toolchain/bin/node",
+        "scripts/prepare_browser_chat_devnet.ts",
+        "--profile-directory=target/public-devnet/parity-review-20261007",
+        "--profile-sha256=0000000000000000000000000000000000000000000000000000000000000000",
+        "--deployment-directory=target/public-devnet/parity-review-20261007/deployment/pools/provider/parity-chat",
+        "--wasm-path=apps/clientd/prover/target/wasm32-unknown-unknown/release/zkapi_client_prover.wasm",
+        "--wasm-sha256=c06a247e1ff88f1ac415ea127bcf49d486b5b4954715cdf00f133b5ac71c1f30",
+        "--build-output=target/parity-chat-browser",
+        "--port=4174",
+        "--service-port=19683",
+        "--plan-path=config/provider-acceptance.i10.json",
+        "--state-dir=target/i10-provider-acceptance",
+        "--output=target/parity-chat-packaging-validation/wrong-profile"
+      ],
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderr_sha256": "328ba50ca22e36e30ebe4280fee28b3c3d827b07606a57ea1397c5be2b658674"
+    },
+    {
+      "name": "Duplicate argument rejected before output creation",
+      "exit_code": 1,
+      "expected_exit_code": 1,
+      "command": [
+        "target/i08-toolchain/bin/node",
+        "scripts/prepare_browser_chat_devnet.ts",
+        "--profile-directory=target/public-devnet/parity-review-20261007",
+        "--profile-sha256=3933fcae97f544f0be368532cc9c2127af8f7fc008cbebcf2ddd0f803abfd311",
+        "--deployment-directory=target/public-devnet/parity-review-20261007/deployment/pools/provider/parity-chat",
+        "--wasm-path=apps/clientd/prover/target/wasm32-unknown-unknown/release/zkapi_client_prover.wasm",
+        "--wasm-sha256=c06a247e1ff88f1ac415ea127bcf49d486b5b4954715cdf00f133b5ac71c1f30",
+        "--build-output=target/parity-chat-browser",
+        "--port=4174",
+        "--service-port=19683",
+        "--plan-path=config/provider-acceptance.i10.json",
+        "--state-dir=target/i10-provider-acceptance",
+        "--port=4175",
+        "--output=target/parity-chat-packaging-validation/duplicate"
+      ],
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderr_sha256": "328ba50ca22e36e30ebe4280fee28b3c3d827b07606a57ea1397c5be2b658674"
+    }
+  ],
+  "public_profile_sha256": "40efad46ef8eabe330bb48f3d8c616e4cd4e10c78f58677ac4abd8bf65b8291f",
+  "private_rpc_canaries_absent_from_public_output": true,
+  "private_output_permissions": "0600",
+  "source_sha256": {
+    "scripts/prepare_browser_chat_devnet.ts": "27d9c0d77f59961dc3f3d27f20b47d4f89df5daec4688cbc83473a91fbdf4bc6"
+  },
+  "private_test_output": "target/parity-chat-packaging-validation"
+}

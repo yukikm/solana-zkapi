@@ -3,7 +3,7 @@ import { Buffer } from 'buffer';
 import { createBrowserClient, walletStandardAdapter, type StandardWallet, type StandardAccount } from '@zkapi/solana-sdk/browser';
 import { readChatText, readChatDeltas } from '@zkapi/solana-sdk/chat';
 import type { ChatRequest, Mode, ZkApiClient } from '@zkapi/solana-sdk';
-import { loadDeployment, type ReviewedBrowserProfile } from './load-deployment.ts';
+import { loadDeployment, readDevnetAdmission, type ReviewedBrowserProfile } from './load-deployment.ts';
 
 export async function connectChat(options: {
   profile: ReviewedBrowserProfile;
@@ -18,10 +18,11 @@ export async function connectChat(options: {
   // Browser web3 consumers need the same pinned Buffer polyfill as the SDK.
   Object.assign(globalThis, { Buffer });
   const deployment = await loadDeployment(options.profile);
-  return createBrowserClient({ ...deployment, wallet: walletStandardAdapter(options.wallet, options.account, options.chain),
+  const browser = await createBrowserClient({ ...deployment, wallet: walletStandardAdapter(options.wallet, options.account, options.chain),
     storageName: options.storageName, noteId: options.noteId, initializeStorage: options.initializeStorage,
     mode: options.mode,
     createWorker: () => new Worker(new URL('./worker.js', import.meta.url), { type: 'module' }), priorityFeeMicroLamports: 1n });
+  return {...browser, ...(options.profile.relay ? {admission: readDevnetAdmission} : {})};
 }
 
 /** Call once for a user-created operation ID. There is intentionally no retry loop. */

@@ -1,0 +1,30 @@
+✔ different selected notes and missing membership have identical network selectors (42.70475ms)
+✔ no authorization fallback to note-selecting finance adapters (0.263ms)
+✔ snapshot data, canonical form and descriptor identity are checked before proving (469.771583ms)
+✔ descriptor paths cannot redirect selected reads to an untrusted origin or endpoint (7.892042ms)
+✔ finalized tree root, sequence, next ID and independent pool/genesis pins cannot be substituted (29.31525ms)
+✔ local verification failure and malformed worker output fail closed without network fallback (9.90875ms)
+✔ invalid selected IDs and minimum slots are rejected before any network request (16.920333ms)
+✔ confirmed blockhash preparation is opt-in and snapshotted while proof accounts stay finalized (42.4245ms)
+✔ wallet snapshot promotes unchanged tree to one newer finalized account cut and propagates minimum slot (6.529834ms)
+✔ wallet snapshot refuses changed root, next ID and restored-root ABA sequence (12.019542ms)
+✔ wallet snapshot refuses stale or unsafe account cuts and invalid minimums (25.925125ms)
+✔ wallet snapshot requires authentic source block and present canonical finalized target block (14.482792ms)
+✔ advanced cut still validates Pool, Note, Pending and Clock account bytes (50.334709ms)
+✔ launcher wrapper retries common AUTH reads using actual SDK adapter, same prover and no selected-note fallback (35.483541ms)
+✔ common snapshot deadline aborts actual SDK transport and later calls receive a fresh scope (109.110209ms)
+✔ missing private membership is terminal and never invokes a selected-note finance read (6.166666ms)
+✔ finance recovery methods retain original adapter binding and never enter snapshot retry scope (3.841708ms)
+✔ TLS inference bridge streams first SSE frame before final usage, pins Host and preserves operation/Anthropic headers (82.62675ms)
+✔ legacy indexer/control routes retain bodies/status, local errors do not retry, cancellation closes upstream (94.57825ms)
+✔ direct transport permits only exact HTTPS chat endpoint, refuses redirects and never retries TLS failure (137.224125ms)
+✔ common AUTH snapshot routes retain large files, reject expanded selectors and enforce snapshot byte bounds (67.79275ms)
+✔ OA verifier transport permits only its pinned POST and never trusts the devnet service CA (142.612625ms)
+ℹ tests 22
+ℹ suites 0
+ℹ pass 22
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 3397.304334

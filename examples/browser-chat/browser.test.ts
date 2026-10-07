@@ -101,7 +101,7 @@ test('actual Chrome: unconfigured build has no effects; explicit setup, chat/nat
       async chat(request){calls.chat.push(request);snapshot.busy=true;snapshot.canRequest=false;snapshot.session={id:'saved-session',phase:'active',operations:[{id:request.operationId,phase:'send_unknown'}]};publish();
         if(behavior==='unknown'){snapshot.busy=false;snapshot.session.phase='send_unknown';publish();throw Error('SECRET_PROVIDER_ERROR')}
         if(behavior==='cancel'){let controller;request.signal.addEventListener('abort',()=>controller.enqueue(new TextEncoder().encode('data: {"choices":[{"index":0,"delta":{"content":"late"}}]}\\n\\n')));return new Response(new ReadableStream({start(c){controller=c;c.enqueue(new TextEncoder().encode('data: {"choices":[{"index":0,"delta":{"content":"partial answer"}}]}\\n\\n'))},async cancel(){cleanupStarted=true;await new Promise(resolve=>globalThis.releaseCleanup=resolve);snapshot.busy=false;snapshot.session.phase='closing';publish()}},{highWaterMark:0}),{headers:{'content-type':'text/event-stream'}})}
-        return jsonBody({choices:[{message:{content:'<img src=x onerror=globalThis.xss=true> reply '+calls.chat.length}}]})},
+        return jsonBody({choices:[{message:{content:'<img src=x onerror=globalThis.xss=true> reply '+calls.chat.length},finish_reason:'stop'}]})},
       async request(request){calls.native.push(request);snapshot.busy=true;snapshot.canRequest=false;publish();return jsonBody(request.api==='responses'?{status:'completed',output:[{type:'message',role:'assistant',content:[{type:'output_text',text:'Responses reply'}]}]}:{type:'message',role:'assistant',content:[{type:'text',text:'Messages reply'}],stop_reason:'end_turn'})},
       async prepareDeposit(amount){calls.deposit.push(amount);snapshot.wallet='unfunded';snapshot.walletOperation={kind:'deposit',phase:'ready',signature:null};publish()},
       async advanceWallet(){calls.wallet++;const kind=snapshot.walletOperation.kind;snapshot.walletOperation=null;snapshot.wallet=kind==='deposit'?'active':kind==='initiate_escape'?'pending_escape':'closed';snapshot.canRequest=snapshot.wallet==='active';if(kind==='initiate_escape'&&snapshot.emergencyEscape?.phase==='escaping')snapshot.canReconcileChallengedEscape=true;if(kind==='deposit'){snapshot.settledBalanceMicroUsdc=calls.deposit.at(-1);snapshot.expiry={severity:'normal',message:'Note expiry: fixture future date. After expiry, the entire principal of an Active note can be transferred to the treasury.'}}publish();return {state:'complete'}},
@@ -113,7 +113,8 @@ test('actual Chrome: unconfigured build has no effects; explicit setup, chat/nat
       async fallbackToEscape(){snapshot.walletOperation={kind:'initiate_escape',phase:'ready',signature:null};publish()},async prepareFinalizeEscape(){if(snapshot.emergencyEscape?.phase==='escaping'&&behavior!=='deadline-passed')throw Error('fixture escape cannot finalize before chain deadline or after challenge');snapshot.walletOperation={kind:'finalize_escape',phase:'ready',signature:null};publish()},
       async resumeWalletProof(){},async retryRejectedWalletOperation(){},async recoverExpiredWalletSetup(){},async cancelUnsentAuthorization(){},async reconcileAbsentOperations(){}
     };
-    globalThis.app=mountChat(document.getElementById('app'),{profiles:[{id:'proxy-fixture',label:'Fixture',mode:'proxy',chain:'solana:devnet'},{id:'direct-fixture',label:'Fixture direct',mode:'direct_openrouter',chain:'solana:devnet'}],wallets:()=>[wallet],async connect(options){calls.connect.push({mode:options.mode,initialize:options.initializeStorage,account:options.account.address,noteId:options.noteId,storageName:options.storageName});snapshot.mode=options.mode;return {client,persistence:'best_effort',dispose(){}}}});
+    globalThis.admissionFailure=false;globalThis.budget={schema:1,allowTransactions:true,budget_micro_usdc:'10000000',reserved_micro_usdc:'1000000',remaining_micro_usdc:'9000000',reserved_requests:1,max_requests:18,remaining_requests:17,request_max_cost_micro_usdc:'1000000',available_requests:9};
+    globalThis.app=mountChat(document.getElementById('app'),{profiles:[{id:'proxy-fixture',label:'Fixture',mode:'proxy',chain:'solana:devnet'},{id:'direct-fixture',label:'Fixture direct',mode:'direct_openrouter',chain:'solana:devnet'}],wallets:()=>[wallet],async connect(options){calls.connect.push({mode:options.mode,initialize:options.initializeStorage,account:options.account.address,noteId:options.noteId,storageName:options.storageName});snapshot.mode=options.mode;return {client,persistence:'best_effort',...(options.mode==='direct_openrouter'?{async admission(){if(admissionFailure)throw Error('PRIVATE_BUDGET_FAILURE');return structuredClone(budget)}}:{}),dispose(){}}}});
     globalThis.choose=(id,value)=>{const element=document.getElementById(id);element.value=value;element.dispatchEvent(new Event('change'))};
     return true;
   })()`);
@@ -243,6 +244,31 @@ test('actual Chrome: unconfigured build has no effects; explicit setup, chat/nat
   await c.wait(`!document.querySelector('#model').disabled`);
   assert.equal(await c.evaluate('calls.connect.at(-1).initialize'), false);
   assert.equal(await c.evaluate('calls.connect.at(-1).mode'), 'direct_openrouter');
+  await c.evaluate(`choose('model','direct-model');choose('api','chat');globalThis.availableBudget=structuredClone(budget);globalThis.fundedSnapshot=structuredClone(snapshot);budget.available_requests=0;budget.reserved_micro_usdc='10000000';budget.remaining_micro_usdc='0';document.querySelector('#refresh').click()`);
+  await c.wait(`document.querySelector('#admission').textContent.includes('Capacity: 0')`);
+  assert.equal(await c.evaluate(`document.querySelector('#send').disabled && !document.querySelector('#withdraw').disabled && !document.querySelector('#refresh').disabled`), true);
+  assert.match(await c.evaluate(`document.querySelector('#admission').textContent`), /Reservations are not actual charges/);
+  await c.evaluate(`snapshot.session={id:'budget-exhausted-saved-work',phase:'closing',operations:[]};snapshot.canRequest=false;publish()`);
+  assert.equal(await c.evaluate(`document.querySelector('#recover').disabled || document.querySelector('#settle').disabled`), false);
+  await c.evaluate(`snapshot=structuredClone(fundedSnapshot);budget=structuredClone(availableBudget);budget.allowTransactions=false;budget.available_requests=0;publish();document.querySelector('#refresh').click()`);
+  await c.wait(`document.querySelector('#admission').textContent.includes('Host is read-only')`);
+  assert.equal(await c.evaluate(`document.querySelector('#send').disabled && !document.querySelector('#withdraw').disabled`), true);
+  await c.evaluate(`budget=structuredClone(availableBudget);document.querySelector('#refresh').click()`); await c.wait(`!document.querySelector('#send').disabled`);
+  // Capacity can disappear after rendering: the next explicit send rechecks it.
+  await c.evaluate(`admissionFailure=true;document.querySelector('#message').value='must remain unsent';document.querySelector('#chat-form').requestSubmit()`);
+  await c.wait(`document.querySelector('#admission').textContent.includes('availability is unavailable') && !document.querySelector('#refresh').disabled`);
+  assert.equal(await c.evaluate('calls.chat.length+calls.native.length'), 5);
+  assert.equal(await c.evaluate(`document.querySelector('#message').value`), 'must remain unsent');
+  assert.equal(await c.evaluate(`!document.querySelector('#withdraw').disabled && document.querySelector('#send').disabled`), true);
+  // The same new-work guard applies before preparing a deposit, without changing recovery.
+  await c.evaluate(`snapshot.wallet='empty';snapshot.canRequest=false;snapshot.settledBalanceMicroUsdc='0';admissionFailure=false;publish();document.querySelector('#refresh').click()`);
+  await c.wait(`!document.querySelector('#deposit').disabled`);
+  await c.evaluate(`admissionFailure=true;document.querySelector('#deposit').click()`);
+  await c.wait(`document.querySelector('#deposit').disabled && !document.querySelector('#refresh').disabled && document.querySelector('#notice').classList.contains('error')`);
+  assert.deepEqual(await c.evaluate('calls.deposit'), ['2000000']);
+  assert.equal(await c.evaluate(`document.body.textContent.includes('PRIVATE_BUDGET_FAILURE')`), false);
+  await c.evaluate(`snapshot=structuredClone(fundedSnapshot);admissionFailure=false;budget=structuredClone(availableBudget);publish();document.querySelector('#refresh').click()`);
+  await c.wait(`!document.querySelector('#send').disabled`);
   await c.evaluate(`choose('model','direct-model');choose('api','chat');behavior='unknown';document.querySelector('#stream').checked=false;document.querySelector('#message').value='uncertain direct request';document.querySelector('#chat-form').requestSubmit()`);
   await c.wait(`!document.querySelector('#recover').disabled`);
   assert.equal(await c.evaluate('calls.chat.length'), 4);
@@ -256,4 +282,10 @@ test('actual Chrome: unconfigured build has no effects; explicit setup, chat/nat
   assert.equal(await c.evaluate(`document.querySelector('#profile').value`), 'direct-fixture');
   assert.equal(await c.evaluate('networkCalls'), 0);
   assert.equal(await c.evaluate('calls.chat.length+calls.native.length'), 6);
+  const saved = await c.evaluate('JSON.stringify(snapshot)');
+  await c.evaluate(`document.querySelector('#clear-chat').click()`);
+  assert.match(await c.evaluate(`document.querySelector('#notice').textContent`), /Saved request bodies, including prompts and prior turns, remain in the encrypted financial journal/);
+  assert.equal(await c.evaluate('JSON.stringify(snapshot)'), saved);
+  assert.equal(await c.evaluate('calls.chat.length+calls.native.length'), 6);
+  assert.match(await c.evaluate(`document.querySelector('#transcript').textContent`), /Your conversation will appear here/);
 });

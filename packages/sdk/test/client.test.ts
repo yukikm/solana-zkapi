@@ -82,7 +82,7 @@ async function setup(t: TestContext, mode: Mode = 'proxy') {
     if (behavior.lose) throw Error('response lost');
     if (behavior.streamWaiting) return new Response(new ReadableStream<Uint8Array>(), { headers: { 'Content-Type': 'text/event-stream' } });
     if (behavior.streamFailure) return new Response(new ReadableStream({ start(c) { c.error(new Error('private upstream error')); } }), { headers: { 'Content-Type': 'application/json' } });
-    if (behavior.stream) return new Response('data: {"choices":[{"index":0,"delta":{"content":"Hello"}}]}\n\ndata: [DONE]\n\n', { headers: { 'Content-Type': 'text/event-stream' } });
+    if (behavior.stream) return new Response('data: {"choices":[{"index":0,"delta":{"content":"Hello"},"finish_reason":"stop"}]}\n\ndata: [DONE]\n\n', { headers: { 'Content-Type': 'text/event-stream' } });
     return Response.json({ choices: [{ message: { content: 'Hello' }, finish_reason: 'stop' }] });
   };
   const verifier: SessionVerifier = { async prepare() {}, async settle(_c, previous) {

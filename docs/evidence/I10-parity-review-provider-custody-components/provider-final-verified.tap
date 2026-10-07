@@ -1,0 +1,798 @@
+TAP version 13
+# Subtest: normalizer profile projection matches canonically independent of provider/model/object-key order
+ok 1 - normalizer profile projection matches canonically independent of provider/model/object-key order
+  ---
+  duration_ms: 1.511917
+  type: 'test'
+  ...
+# Subtest: context/output/cache/endpoint/model drift and missing/duplicate profiles fail closed
+ok 2 - context/output/cache/endpoint/model drift and missing/duplicate profiles fail closed
+  ---
+  duration_ms: 1.458584
+  type: 'test'
+  ...
+# Subtest: unplanned/missing/duplicate providers and fixture routes are rejected
+ok 3 - unplanned/missing/duplicate providers and fixture routes are rejected
+  ---
+  duration_ms: 1.607625
+  type: 'test'
+  ...
+# Subtest: only profiles of selected providers are emitted, matching the normalizer
+ok 4 - only profiles of selected providers are emitted, matching the normalizer
+  ---
+  duration_ms: 0.213417
+  type: 'test'
+  ...
+# Subtest: an explicitly planned OA direct entry preserves exact normalizer fields and HTTPS pins
+ok 5 - an explicitly planned OA direct entry preserves exact normalizer fields and HTTPS pins
+  ---
+  duration_ms: 4.533541
+  type: 'test'
+  ...
+# Subtest: selected native and UI cases retain the full parent identity and exact selected tariff/profile
+ok 6 - selected native and UI cases retain the full parent identity and exact selected tariff/profile
+  ---
+  duration_ms: 1.042917
+  type: 'test'
+  ...
+# Subtest: selectors bind parent bytes, exact role/case IDs, canonical order and configuration profile
+ok 7 - selectors bind parent bytes, exact role/case IDs, canonical order and configuration profile
+  ---
+  duration_ms: 4.669959
+  type: 'test'
+  ...
+# Subtest: unknown waiver re-verifies receipt/successor without writes, inference or provider-pass claim
+ok 8 - unknown waiver re-verifies receipt/successor without writes, inference or provider-pass claim
+  ---
+  duration_ms: 12.248375
+  type: 'test'
+  ...
+# Subtest: metered charge re-verifies receipt/successor without writes, inference or provider-pass claim
+ok 9 - metered charge re-verifies receipt/successor without writes, inference or provider-pass claim
+  ---
+  duration_ms: 2.92975
+  type: 'test'
+  ...
+# Subtest: wrong selection, case, exact body, receipt identity, cap, state or budget refuses recovery
+    # Subtest: pending
+    ok 1 - pending
+      ---
+      duration_ms: 0.834417
+      type: 'test'
+      ...
+    # Subtest: extra history
+    ok 2 - extra history
+      ---
+      duration_ms: 0.542667
+      type: 'test'
+      ...
+    # Subtest: different financial operation
+    ok 3 - different financial operation
+      ---
+      duration_ms: 0.491958
+      type: 'test'
+      ...
+    # Subtest: wrong case
+    ok 4 - wrong case
+      ---
+      duration_ms: 0.803958
+      type: 'test'
+      ...
+    # Subtest: wrong selection
+    ok 5 - wrong selection
+      ---
+      duration_ms: 1.651375
+      type: 'test'
+      ...
+    # Subtest: changed tariff
+    ok 6 - changed tariff
+      ---
+      duration_ms: 0.82925
+      type: 'test'
+      ...
+    # Subtest: wrong mode
+    ok 7 - wrong mode
+      ---
+      duration_ms: 0.92425
+      type: 'test'
+      ...
+    # Subtest: wrong provider
+    ok 8 - wrong provider
+      ---
+      duration_ms: 0.661583
+      type: 'test'
+      ...
+    # Subtest: wrong model
+    ok 9 - wrong model
+      ---
+      duration_ms: 0.560375
+      type: 'test'
+      ...
+    # Subtest: changed cap
+    ok 10 - changed cap
+      ---
+      duration_ms: 0.548208
+      type: 'test'
+      ...
+    # Subtest: extra operation
+    ok 11 - extra operation
+      ---
+      duration_ms: 0.603458
+      type: 'test'
+      ...
+    # Subtest: different body
+    ok 12 - different body
+      ---
+      duration_ms: 0.6665
+      type: 'test'
+      ...
+    # Subtest: unsent operation
+    ok 13 - unsent operation
+      ---
+      duration_ms: 0.622542
+      type: 'test'
+      ...
+    # Subtest: wrong receipt operation
+    ok 14 - wrong receipt operation
+      ---
+      duration_ms: 0.634125
+      type: 'test'
+      ...
+    # Subtest: wrong receipt request
+    ok 15 - wrong receipt request
+      ---
+      duration_ms: 0.7665
+      type: 'test'
+      ...
+    # Subtest: late loss receipt
+    ok 16 - late loss receipt
+      ---
+      duration_ms: 0.512417
+      type: 'test'
+      ...
+    # Subtest: excess reservation
+    ok 17 - excess reservation
+      ---
+      duration_ms: 0.513875
+      type: 'test'
+      ...
+    # Subtest: wrong state
+    ok 18 - wrong state
+      ---
+      duration_ms: 2.18075
+      type: 'test'
+      ...
+    # Subtest: waiver charge
+    ok 19 - waiver charge
+      ---
+      duration_ms: 0.591708
+      type: 'test'
+      ...
+    # Subtest: missing reservation
+    ok 20 - missing reservation
+      ---
+      duration_ms: 0.552541
+      type: 'test'
+      ...
+    # Subtest: budget reset
+    ok 21 - budget reset
+      ---
+      duration_ms: 0.553
+      type: 'test'
+      ...
+    # Subtest: budget refund
+    ok 22 - budget refund
+      ---
+      duration_ms: 0.786625
+      type: 'test'
+      ...
+    # Subtest: budget arithmetic
+    ok 23 - budget arithmetic
+      ---
+      duration_ms: 0.533458
+      type: 'test'
+      ...
+    1..23
+ok 10 - wrong selection, case, exact body, receipt identity, cap, state or budget refuses recovery
+  ---
+  duration_ms: 18.176292
+  type: 'test'
+  ...
+# Subtest: invalid Ed25519 receipt and failed or substituted successor verifier are rejected
+ok 11 - invalid Ed25519 receipt and failed or substituted successor verifier are rejected
+  ---
+  duration_ms: 2.618791
+  type: 'test'
+  ...
+# Subtest: caller mutation during asynchronous verification cannot substitute accepted evidence
+ok 12 - caller mutation during asynchronous verification cannot substitute accepted evidence
+  ---
+  duration_ms: 1.106833
+  type: 'test'
+  ...
+# Subtest: later explicit demo reservations count globally without replacing acceptance-case recovery evidence
+ok 13 - later explicit demo reservations count globally without replacing acceptance-case recovery evidence
+  ---
+  duration_ms: 2.408833
+  type: 'test'
+  ...
+# Subtest: unstarted quote failure is read-only across active, mutual-close intent and closed journal
+ok 14 - unstarted quote failure is read-only across active, mutual-close intent and closed journal
+  ---
+  duration_ms: 1.46575
+  type: 'test'
+  ...
+# Subtest: unstarted recovery rejects changed checkpoint, saved AUTH/history, state, selection and budget
+    # Subtest: checkpoint case
+    ok 1 - checkpoint case
+      ---
+      duration_ms: 1.018917
+      type: 'test'
+      ...
+    # Subtest: checkpoint parent
+    ok 2 - checkpoint parent
+      ---
+      duration_ms: 0.73775
+      type: 'test'
+      ...
+    # Subtest: checkpoint scope
+    ok 3 - checkpoint scope
+      ---
+      duration_ms: 0.663209
+      type: 'test'
+      ...
+    # Subtest: checkpoint passed
+    ok 4 - checkpoint passed
+      ---
+      duration_ms: 0.63375
+      type: 'test'
+      ...
+    # Subtest: checkpoint full gate
+    ok 5 - checkpoint full gate
+      ---
+      duration_ms: 0.825208
+      type: 'test'
+      ...
+    # Subtest: checkpoint unknown field
+    ok 6 - checkpoint unknown field
+      ---
+      duration_ms: 0.699791
+      type: 'test'
+      ...
+    # Subtest: diagnostic unknown field
+    ok 7 - diagnostic unknown field
+      ---
+      duration_ms: 0.822
+      type: 'test'
+      ...
+    # Subtest: diagnostic missing field
+    ok 8 - diagnostic missing field
+      ---
+      duration_ms: 0.657
+      type: 'test'
+      ...
+    # Subtest: after quote
+    ok 9 - after quote
+      ---
+      duration_ms: 0.614709
+      type: 'test'
+      ...
+    # Subtest: wrong status
+    ok 10 - wrong status
+      ---
+      duration_ms: 0.640958
+      type: 'test'
+      ...
+    # Subtest: inference observed
+    ok 11 - inference observed
+      ---
+      duration_ms: 0.609042
+      type: 'test'
+      ...
+    # Subtest: settlement begun
+    ok 12 - settlement begun
+      ---
+      duration_ms: 0.759125
+      type: 'test'
+      ...
+    # Subtest: inference replay
+    ok 13 - inference replay
+      ---
+      duration_ms: 0.74425
+      type: 'test'
+      ...
+    # Subtest: negative timing
+    ok 14 - negative timing
+      ---
+      duration_ms: 0.702334
+      type: 'test'
+      ...
+    # Subtest: fractional timing
+    ok 15 - fractional timing
+      ---
+      duration_ms: 0.684708
+      type: 'test'
+      ...
+    # Subtest: oversized timing
+    ok 16 - oversized timing
+      ---
+      duration_ms: 0.634584
+      type: 'test'
+      ...
+    # Subtest: pending AUTH
+    ok 17 - pending AUTH
+      ---
+      duration_ms: 0.715041
+      type: 'test'
+      ...
+    # Subtest: settled history
+    ok 18 - settled history
+      ---
+      duration_ms: 0.837625
+      type: 'test'
+      ...
+    # Subtest: cleared AUTH evidence
+    ok 19 - cleared AUTH evidence
+      ---
+      duration_ms: 0.457542
+      type: 'test'
+      ...
+    # Subtest: missing witness
+    ok 20 - missing witness
+      ---
+      duration_ms: 0.429
+      type: 'test'
+      ...
+    # Subtest: different deposit witness
+    ok 21 - different deposit witness
+      ---
+      duration_ms: 0.437792
+      type: 'test'
+      ...
+    # Subtest: different original deposit
+    ok 22 - different original deposit
+      ---
+      duration_ms: 0.447166
+      type: 'test'
+      ...
+    # Subtest: different balance
+    ok 23 - different balance
+      ---
+      duration_ms: 0.465583
+      type: 'test'
+      ...
+    # Subtest: non-genesis anchor
+    ok 24 - non-genesis anchor
+      ---
+      duration_ms: 0.468125
+      type: 'test'
+      ...
+    # Subtest: signed successor
+    ok 25 - signed successor
+      ---
+      duration_ms: 0.449583
+      type: 'test'
+      ...
+    # Subtest: cap above deposit
+    ok 26 - cap above deposit
+      ---
+      duration_ms: 0.546916
+      type: 'test'
+      ...
+    # Subtest: missing context tariff
+    ok 27 - missing context tariff
+      ---
+      duration_ms: 0.581667
+      type: 'test'
+      ...
+    # Subtest: pending escape
+    ok 28 - pending escape
+      ---
+      duration_ms: 0.426209
+      type: 'test'
+      ...
+    # Subtest: escape operation
+    ok 29 - escape operation
+      ---
+      duration_ms: 0.434125
+      type: 'test'
+      ...
+    # Subtest: imported history
+    ok 30 - imported history
+      ---
+      duration_ms: 0.442959
+      type: 'test'
+      ...
+    # Subtest: historical escape
+    ok 31 - historical escape
+      ---
+      duration_ms: 0.453959
+      type: 'test'
+      ...
+    # Subtest: closed without mutual history
+    ok 32 - closed without mutual history
+      ---
+      duration_ms: 0.457584
+      type: 'test'
+      ...
+    # Subtest: profile mismatch
+    ok 33 - profile mismatch
+      ---
+      duration_ms: 0.849917
+      type: 'test'
+      ...
+    # Subtest: case mismatch
+    ok 34 - case mismatch
+      ---
+      duration_ms: 0.614292
+      type: 'test'
+      ...
+    # Subtest: selection mismatch
+    ok 35 - selection mismatch
+      ---
+      duration_ms: 0.60575
+      type: 'test'
+      ...
+    # Subtest: tariff mismatch
+    ok 36 - tariff mismatch
+      ---
+      duration_ms: 0.607916
+      type: 'test'
+      ...
+    # Subtest: budget identity mismatch
+    ok 37 - budget identity mismatch
+      ---
+      duration_ms: 0.6235
+      type: 'test'
+      ...
+    # Subtest: unexpected selected reservation
+    ok 38 - unexpected selected reservation
+      ---
+      duration_ms: 0.687792
+      type: 'test'
+      ...
+    # Subtest: wrong reservation amount
+    ok 39 - wrong reservation amount
+      ---
+      duration_ms: 0.73875
+      type: 'test'
+      ...
+    # Subtest: duplicate reservation
+    ok 40 - duplicate reservation
+      ---
+      duration_ms: 0.629458
+      type: 'test'
+      ...
+    # Subtest: budget arithmetic
+    ok 41 - budget arithmetic
+      ---
+      duration_ms: 0.600667
+      type: 'test'
+      ...
+    # Subtest: refund flag
+    ok 42 - refund flag
+      ---
+      duration_ms: 0.587166
+      type: 'test'
+      ...
+    1..42
+ok 15 - unstarted recovery rejects changed checkpoint, saved AUTH/history, state, selection and budget
+  ---
+  duration_ms: 26.880708
+  type: 'test'
+  ...
+# Subtest: unstarted guard preserves other consumed cases and also permits a never-used global campaign
+ok 16 - unstarted guard preserves other consumed cases and also permits a never-used global campaign
+  ---
+  duration_ms: 1.042459
+  type: 'test'
+  ...
+# Subtest: completed profile reuses original budget snapshot and exact report bytes after another profile reserves
+ok 17 - completed profile reuses original budget snapshot and exact report bytes after another profile reserves
+  ---
+  duration_ms: 13.987917
+  type: 'test'
+  ...
+# Subtest: first completion is durable and a same-snapshot reopen does not rewrite it
+ok 18 - first completion is durable and a same-snapshot reopen does not rewrite it
+  ---
+  duration_ms: 19.192208
+  type: 'test'
+  ...
+# Subtest: explicit demo reservation shares aggregate budget without changing historical acceptance report
+ok 19 - explicit demo reservation shares aggregate budget without changing historical acceptance report
+  ---
+  duration_ms: 11.547125
+  type: 'test'
+  ...
+# Subtest: budget rollback, substitution, malformed arithmetic and mutable profile evidence fail without changing report
+ok 20 - budget rollback, substitution, malformed arithmetic and mutable profile evidence fail without changing report
+  ---
+  duration_ms: 21.950875
+  type: 'test'
+  ...
+# Subtest: saved snapshot must include the completed profile case even if a later valid budget does
+ok 21 - saved snapshot must include the completed profile case even if a later valid budget does
+  ---
+  duration_ms: 1.001708
+  type: 'test'
+  ...
+# Subtest: failure checkpoint accepts only bounded fixed metadata and preserves original bytes
+ok 22 - failure checkpoint accepts only bounded fixed metadata and preserves original bytes
+  ---
+  duration_ms: 11.556209
+  type: 'test'
+  ...
+# Subtest: direct_openrouter acceptance uses the authorizing client's volatile key after its AUTH timeout expires
+ok 23 - direct_openrouter acceptance uses the authorizing client's volatile key after its AUTH timeout expires
+  ---
+  duration_ms: 297.147333
+  type: 'test'
+  ...
+# Subtest: direct_oa acceptance uses the authorizing client's volatile key after its AUTH timeout expires
+ok 24 - direct_oa acceptance uses the authorizing client's volatile key after its AUTH timeout expires
+  ---
+  duration_ms: 283.780125
+  type: 'test'
+  ...
+# Subtest: direct_openrouter 503_once retries only the saved AUTH on the same key-owning client
+ok 25 - direct_openrouter 503_once retries only the saved AUTH on the same key-owning client
+  ---
+  duration_ms: 1128.574208
+  type: 'test'
+  ...
+# Subtest: direct_openrouter unknown_once retries only the saved AUTH on the same key-owning client
+ok 26 - direct_openrouter unknown_once retries only the saved AUTH on the same key-owning client
+  ---
+  duration_ms: 1151.820167
+  type: 'test'
+  ...
+# Subtest: direct_oa 503_once retries only the saved AUTH on the same key-owning client
+ok 27 - direct_oa 503_once retries only the saved AUTH on the same key-owning client
+  ---
+  duration_ms: 1154.496875
+  type: 'test'
+  ...
+# Subtest: direct_oa unknown_once retries only the saved AUTH on the same key-owning client
+ok 28 - direct_oa unknown_once retries only the saved AUTH on the same key-owning client
+  ---
+  duration_ms: 1127.4435
+  type: 'test'
+  ...
+# Subtest: an AUTH deadline also bounds OA verification without saving a key or sending inference
+ok 29 - an AUTH deadline also bounds OA verification without saving a key or sending inference
+  ---
+  duration_ms: 1094.252667
+  type: 'test'
+  ...
+# Subtest: direct_openrouter uncertain inference closes once and never replays after orchestration failure
+ok 30 - direct_openrouter uncertain inference closes once and never replays after orchestration failure
+  ---
+  duration_ms: 111.979417
+  type: 'test'
+  ...
+# Subtest: direct_oa uncertain inference closes once and never replays after orchestration failure
+ok 31 - direct_oa uncertain inference closes once and never replays after orchestration failure
+  ---
+  duration_ms: 102.501083
+  type: 'test'
+  ...
+# Subtest: quote 503_once repeats fixed parameters before one proof/reservation/AUTH/inference
+ok 32 - quote 503_once repeats fixed parameters before one proof/reservation/AUTH/inference
+  ---
+  duration_ms: 1150.685458
+  type: 'test'
+  ...
+# Subtest: quote unknown_once repeats fixed parameters before one proof/reservation/AUTH/inference
+ok 33 - quote unknown_once repeats fixed parameters before one proof/reservation/AUTH/inference
+  ---
+  duration_ms: 1155.2185
+  type: 'test'
+  ...
+# Subtest: quote permanent stops without any financial journal write/proof/reservation/AUTH/inference
+ok 34 - quote permanent stops without any financial journal write/proof/reservation/AUTH/inference
+  ---
+  duration_ms: 12.6985
+  type: 'test'
+  ...
+# Subtest: quote deadline stops without any financial journal write/proof/reservation/AUTH/inference
+ok 35 - quote deadline stops without any financial journal write/proof/reservation/AUTH/inference
+  ---
+  duration_ms: 12.134458
+  type: 'test'
+  ...
+# Subtest: quote slow stops without any financial journal write/proof/reservation/AUTH/inference
+ok 36 - quote slow stops without any financial journal write/proof/reservation/AUTH/inference
+  ---
+  duration_ms: 42.62775
+  type: 'test'
+  ...
+# Subtest: quote invalid_quote stops without any financial journal write/proof/reservation/AUTH/inference
+ok 37 - quote invalid_quote stops without any financial journal write/proof/reservation/AUTH/inference
+  ---
+  duration_ms: 11.8455
+  type: 'test'
+  ...
+# Subtest: quote expired_quote stops without any financial journal write/proof/reservation/AUTH/inference
+ok 38 - quote expired_quote stops without any financial journal write/proof/reservation/AUTH/inference
+  ---
+  duration_ms: 12.876167
+  type: 'test'
+  ...
+# Subtest: retried quote keeps its signed AUTH expiry and is never replaced after AUTH becomes uncertain
+ok 39 - retried quote keeps its signed AUTH expiry and is never replaced after AUTH becomes uncertain
+  ---
+  duration_ms: 1074.587209
+  type: 'test'
+  ...
+# Subtest: invalid quote retry limits fail before quote, proof, reservation or AUTH
+ok 40 - invalid quote retry limits fail before quote, proof, reservation or AUTH
+  ---
+  duration_ms: 14.232625
+  type: 'test'
+  ...
+# Subtest: unknown persists static failure diagnostics after SDK settlement, with no body/error/token or replay
+ok 41 - unknown persists static failure diagnostics after SDK settlement, with no body/error/token or replay
+  ---
+  duration_ms: 134.169875
+  type: 'test'
+  ...
+# Subtest: http502 persists static failure diagnostics after SDK settlement, with no body/error/token or replay
+ok 42 - http502 persists static failure diagnostics after SDK settlement, with no body/error/token or replay
+  ---
+  duration_ms: 131.169459
+  type: 'test'
+  ...
+# Subtest: malformed persists static failure diagnostics after SDK settlement, with no body/error/token or replay
+ok 43 - malformed persists static failure diagnostics after SDK settlement, with no body/error/token or replay
+  ---
+  duration_ms: 126.462208
+  type: 'test'
+  ...
+# Subtest: stream_break persists static failure diagnostics after SDK settlement, with no body/error/token or replay
+ok 44 - stream_break persists static failure diagnostics after SDK settlement, with no body/error/token or replay
+  ---
+  duration_ms: 127.624542
+  type: 'test'
+  ...
+# Subtest: error_header_canary persists static failure diagnostics after SDK settlement, with no body/error/token or replay
+ok 45 - error_header_canary persists static failure diagnostics after SDK settlement, with no body/error/token or replay
+  ---
+  duration_ms: 128.041792
+  type: 'test'
+  ...
+# Subtest: missing_evidence persists static failure diagnostics after SDK settlement, with no body/error/token or replay
+ok 46 - missing_evidence persists static failure diagnostics after SDK settlement, with no body/error/token or replay
+  ---
+  duration_ms: 131.844708
+  type: 'test'
+  ...
+# Subtest: 503_once recovers identical durable AUTH before one inference
+ok 47 - 503_once recovers identical durable AUTH before one inference
+  ---
+  duration_ms: 1156.893042
+  type: 'test'
+  ...
+# Subtest: unknown_once recovers identical durable AUTH before one inference
+ok 48 - unknown_once recovers identical durable AUTH before one inference
+  ---
+  duration_ms: 1137.883292
+  type: 'test'
+  ...
+# Subtest: expired_unknown preserves uncertain AUTH without inference, replacement or restart replay
+ok 49 - expired_unknown preserves uncertain AUTH without inference, replacement or restart replay
+  ---
+  duration_ms: 45.123708
+  type: 'test'
+  ...
+# Subtest: permanent preserves uncertain AUTH without inference, replacement or restart replay
+ok 50 - permanent preserves uncertain AUTH without inference, replacement or restart replay
+  ---
+  duration_ms: 43.630833
+  type: 'test'
+  ...
+# Subtest: slow preserves uncertain AUTH without inference, replacement or restart replay
+ok 51 - slow preserves uncertain AUTH without inference, replacement or restart replay
+  ---
+  duration_ms: 56.4105
+  type: 'test'
+  ...
+# Subtest: native request bodies bound output and disallow silent mode/provider changes
+ok 52 - native request bodies bound output and disallow silent mode/provider changes
+  ---
+  duration_ms: 0.282
+  type: 'test'
+  ...
+# Subtest: actual SDK plain sends once, verifies settlement and never returns raw provider text
+ok 53 - actual SDK plain sends once, verifies settlement and never returns raw provider text
+  ---
+  duration_ms: 121.3925
+  type: 'test'
+  ...
+# Subtest: actual SDK sse sends once, verifies settlement and never returns raw provider text
+ok 54 - actual SDK sse sends once, verifies settlement and never returns raw provider text
+  ---
+  duration_ms: 123.291333
+  type: 'test'
+  ...
+# Subtest: uncertain inference closes same session, retains durable send and cannot pass on a waived receipt
+ok 55 - uncertain inference closes same session, retains durable send and cannot pass on a waived receipt
+  ---
+  duration_ms: 118.9645
+  type: 'test'
+  ...
+# Subtest: missing provider evidence fails acceptance even if an injected fixture verifier accepts settlement
+ok 56 - missing provider evidence fails acceptance even if an injected fixture verifier accepts settlement
+  ---
+  duration_ms: 111.413125
+  type: 'test'
+  ...
+# Subtest: tool-name refusal cannot pass SSE acceptance or trigger replay after the same SDK session settles
+ok 57 - tool-name refusal cannot pass SSE acceptance or trigger replay after the same SDK session settles
+  ---
+  duration_ms: 116.932417
+  type: 'test'
+  ...
+# Subtest: chat_completions SSE requires an actual tool event and a dispatched successful terminal
+ok 58 - chat_completions SSE requires an actual tool event and a dispatched successful terminal
+  ---
+  duration_ms: 5.640958
+  type: 'test'
+  ...
+# Subtest: responses SSE requires an actual tool event and a dispatched successful terminal
+ok 59 - responses SSE requires an actual tool event and a dispatched successful terminal
+  ---
+  duration_ms: 5.527583
+  type: 'test'
+  ...
+# Subtest: messages SSE requires an actual tool event and a dispatched successful terminal
+ok 60 - messages SSE requires an actual tool event and a dispatched successful terminal
+  ---
+  duration_ms: 4.57775
+  type: 'test'
+  ...
+# Subtest: chat fragmented tool names bind one choice/tool index, and ambiguous or wrong-endpoint events fail
+ok 61 - chat fragmented tool names bind one choice/tool index, and ambiguous or wrong-endpoint events fail
+  ---
+  duration_ms: 0.590625
+  type: 'test'
+  ...
+# Subtest: chat_completions nonstream tools require the endpoint-specific tool type and name
+ok 62 - chat_completions nonstream tools require the endpoint-specific tool type and name
+  ---
+  duration_ms: 0.532333
+  type: 'test'
+  ...
+# Subtest: responses nonstream tools require the endpoint-specific tool type and name
+ok 63 - responses nonstream tools require the endpoint-specific tool type and name
+  ---
+  duration_ms: 0.357209
+  type: 'test'
+  ...
+# Subtest: messages nonstream tools require the endpoint-specific tool type and name
+ok 64 - messages nonstream tools require the endpoint-specific tool type and name
+  ---
+  duration_ms: 0.293125
+  type: 'test'
+  ...
+# Subtest: denied budget leaves SDK AUTH absent and does not send to provider
+ok 65 - denied budget leaves SDK AUTH absent and does not send to provider
+  ---
+  duration_ms: 20.05175
+  type: 'test'
+  ...
+# Subtest: completed-case resume binds exact budget, plan, tariff, SDK bytes, receipt and successor without sending
+ok 66 - completed-case resume binds exact budget, plan, tariff, SDK bytes, receipt and successor without sending
+  ---
+  duration_ms: 122.6785
+  type: 'test'
+  ...
+1..66
+# tests 131
+# suites 0
+# pass 131
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 14081.876292

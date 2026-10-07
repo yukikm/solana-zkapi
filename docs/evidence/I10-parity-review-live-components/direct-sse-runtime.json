@@ -1,0 +1,301 @@
+{
+  "passed": true,
+  "provider_acceptance": {
+    "schema": 1,
+    "passed": true,
+    "scope": "selected real-provider cases using actual devnet SDK/control/ledger",
+    "plan_sha256": "50f3f10040671f27ecd2ff59db3d3d6474a58de67bb0cf38e7a2cd41d7577167",
+    "campaign_id": "i10-provider-acceptance",
+    "pool": "uyqxw5LzgDkJuTbXX3Bnq8f2wzkVzkrcENeQWpFkQob",
+    "cases": [
+      {
+        "schema": 1,
+        "passed": true,
+        "scope": "one real-provider case via existing ControlClient; no wallet UI or full G3 claim",
+        "case_id": "openrouter-direct-sse",
+        "mode": "direct_openrouter",
+        "provider": "openrouter",
+        "model": "openai/gpt-4o-mini",
+        "stream": true,
+        "tools": false,
+        "operation_id": "53cb0c8a-1ba7-4071-a7e6-b041b56cd6f2",
+        "endpoint": "/v1/chat/completions",
+        "http_status": 200,
+        "response_bytes": 1706,
+        "response_sha256": "86f9d6b716c82ba44501c79dd71a9875fbc54d9eb07482823f0dfd93438205f8",
+        "inference_sends": 1,
+        "inference_observation": {
+          "stage": "complete",
+          "elapsed_ms": 1411,
+          "http_status": 200,
+          "service_error_code": null,
+          "response_bytes": 1706,
+          "sdk_send_invoked": true
+        },
+        "request_id": "4d286c8b-44d9-479b-9046-74cc40bdf570",
+        "receipt_id": "f06992ea-e535-4f8f-97c1-65520fa700c1",
+        "receipt_hash": "e11dd023116c47d10b3d4d33a507d3d650240ed4219396d0d5e81c029d102c81",
+        "evidence_kind": "OPENROUTER_USAGE",
+        "charged_micro_usdc": "4",
+        "reserved_micro_usdc": "1000000",
+        "plan_sha256": "50f3f10040671f27ecd2ff59db3d3d6474a58de67bb0cf38e7a2cd41d7577167",
+        "tariff_hash": "798ac2ab8f94ff4ba57e5fe6d2fc95cd0dc974239ea3cde3c745aa1edfee768b",
+        "signed_successor_verified_by_sdk": true,
+        "authorization_recovery_attempts": 1,
+        "quote_request_attempts": 1,
+        "inference_replays": 0,
+        "full_g3_passed": false
+      }
+    ],
+    "selection": {
+      "case_ids": [
+        "openrouter-direct-sse"
+      ],
+      "parent_plan_sha256": "50f3f10040671f27ecd2ff59db3d3d6474a58de67bb0cf38e7a2cd41d7577167",
+      "profile": "parity-direct-sse-fresh",
+      "role": "direct_openrouter",
+      "schema": 1
+    },
+    "budget": {
+      "identity": {
+        "schema": 1,
+        "campaign_id": "i10-provider-acceptance",
+        "plan_sha256": "50f3f10040671f27ecd2ff59db3d3d6474a58de67bb0cf38e7a2cd41d7577167",
+        "budget_micro_usdc": "10000000",
+        "max_requests": 18
+      },
+      "reserved_micro_usdc": "2154216",
+      "remaining_micro_usdc": "7845784",
+      "reservations": [
+        {
+          "case_id": "openai-responses-plain",
+          "max_cost_micro_usdc": "19277",
+          "state": "reserved_no_automatic_replay"
+        },
+        {
+          "case_id": "openrouter-proxy-plain",
+          "max_cost_micro_usdc": "19277",
+          "state": "reserved_no_automatic_replay"
+        },
+        {
+          "case_id": "openrouter-proxy-tools",
+          "max_cost_micro_usdc": "19277",
+          "state": "reserved_no_automatic_replay"
+        },
+        {
+          "case_id": "openai-chat-plain",
+          "max_cost_micro_usdc": "19277",
+          "state": "reserved_no_automatic_replay"
+        },
+        {
+          "case_id": "demo-3158cfca-c7b3-4891-aef0-54b9975b243e",
+          "kind": "explicit_demo",
+          "max_cost_micro_usdc": "19277",
+          "operation_id": "3158cfca-c7b3-4891-aef0-54b9975b243e",
+          "request_id": "4f8434a4-9766-4903-9128-f0f33c3acdae",
+          "state": "reserved_no_automatic_replay",
+          "template_case_id": "openai-chat-plain"
+        },
+        {
+          "case_id": "demo-79a28871-fb7f-4465-b8fd-c677d6577a0d",
+          "kind": "explicit_demo",
+          "max_cost_micro_usdc": "19277",
+          "operation_id": "79a28871-fb7f-4465-b8fd-c677d6577a0d",
+          "request_id": "db43878a-fd0f-485e-9712-2032a84583b2",
+          "state": "reserved_no_automatic_replay",
+          "template_case_id": "openai-chat-plain"
+        },
+        {
+          "case_id": "demo-a771e969-5fee-4248-9dea-d494e0277ed0",
+          "kind": "explicit_demo",
+          "max_cost_micro_usdc": "19277",
+          "operation_id": "a771e969-5fee-4248-9dea-d494e0277ed0",
+          "request_id": "70a75070-1ef4-4ea9-8c5d-6bd72a347a3d",
+          "state": "reserved_no_automatic_replay",
+          "template_case_id": "openai-chat-plain"
+        },
+        {
+          "case_id": "demo-f5b35e41-1daa-4f4f-885b-2141f17c9376",
+          "kind": "explicit_demo",
+          "max_cost_micro_usdc": "19277",
+          "operation_id": "f5b35e41-1daa-4f4f-885b-2141f17c9376",
+          "request_id": "1d7830e8-29a8-44bc-a3c7-7cc40e1a6449",
+          "state": "reserved_no_automatic_replay",
+          "template_case_id": "openai-chat-plain"
+        },
+        {
+          "case_id": "openrouter-direct-plain",
+          "max_cost_micro_usdc": "1000000",
+          "state": "reserved_no_automatic_replay"
+        },
+        {
+          "case_id": "openrouter-direct-sse",
+          "max_cost_micro_usdc": "1000000",
+          "state": "reserved_no_automatic_replay"
+        }
+      ],
+      "refunds_supported": false,
+      "inference_replays_supported": false
+    },
+    "source_sha256": {
+      "scripts/provider_acceptance.py": "5911ca26cd21a342e6a3f6a29c65088028ffcac2807c3f1366b54db25715b2ae",
+      "scripts/provider_acceptance_client.ts": "48b4866e4f864bcfb3b009e9399a8ff9d24ec4cf082858abe7204ed92041f023",
+      "scripts/i10_devnet_provider.ts": "16152b42a7dc2171d644505afd3391ea469eee8df126e59817e8942ecfa86b0c"
+    },
+    "full_g3_passed": false,
+    "wallet_ui_verified": false
+  },
+  "unaccepted_provider_auth_recovered": false,
+  "settled_provider_recovery": null,
+  "unstarted_provider_recovery": null,
+  "balance_observation_slots": {
+    "wallet": 508167041,
+    "vault": 508167041
+  },
+  "finalized_withdrawal_slot": 508166996,
+  "scope": "public devnet Vault deposit -> selected real provider cases -> verified signed settlement -> mutual close with existing SDK/shared ledger",
+  "program_id": "8iwjnYVNuRQhyijbcYGWGctyty7d8FEt8JnT8dWmCjSd",
+  "pool": "uyqxw5LzgDkJuTbXX3Bnq8f2wzkVzkrcENeQWpFkQob",
+  "mint": "4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU",
+  "genesis": "EtWTRABZaYq6iMfeYKouRu166VU2xqa1wcaWoxPkrZBG",
+  "wallet_public_key": "nHSjCbSd3XD3UwGy5uAAUqEfDf4kBDYaJZ4eF82nCDZ",
+  "deposit_micro_usdc": "10000000",
+  "balance_before": {
+    "wallet_micro_usdc": "36010000",
+    "vault_micro_usdc": "0"
+  },
+  "wallet_after_micro_usdc": "36010000",
+  "vault_after_micro_usdc": "0",
+  "rows": [
+    {
+      "signature": "5GVFUMnHPau7NgoPh4W3LufLH5fozrnJaxPNCzPiGeQuRkR47Y6XnCfKj3KCsFC4wFm8pQpYX6KQ7GswvSTU4P4U",
+      "kind": "deposit_inline",
+      "wire_sha256": "18c1d62b9d9773fbc6567903f3f12570871dc49df03b295a9c525eee4d708910",
+      "wire_bytes": 995,
+      "recorded_before_send": true,
+      "slot": 508165881,
+      "fee_lamports": "5000",
+      "compute_units": 176917,
+      "finalized": true
+    },
+    {
+      "signature": "423rPztQjYvBkM4eXSvCjYR7YNVzUBW92oWBKycMn5Ec3RWMz7ZYT8z9YgCyiKyQmj9QZoaNeKGGzKtdNeBxPAXW",
+      "kind": "create",
+      "wire_sha256": "b00664c37368ae1a2a0f8713d2da4ec0bc016b4cd3f60fa7550f54528ea857db",
+      "wire_bytes": 397,
+      "recorded_before_send": true,
+      "slot": 508166939,
+      "fee_lamports": "5000",
+      "compute_units": 9833,
+      "finalized": true
+    },
+    {
+      "signature": "eT9i7bE4drVnhqQMRb1MDj2Vg9cbGGqQZUj8ienQGXq838M8QnbKSNdQUTebv1ZHDzdfQcK4giTKe4tAKhhLLT2",
+      "kind": "append",
+      "wire_sha256": "81c834bdbc6a05ab476e0df59366c0a45b41b120b881d18a2687fbaf56d0ba14",
+      "wire_bytes": 1232,
+      "recorded_before_send": true,
+      "slot": 508166954,
+      "fee_lamports": "5000",
+      "compute_units": 7256,
+      "finalized": true
+    },
+    {
+      "signature": "26EQTqHnrayK7LWBQbGJw4GZM8g1Mz9JR7Nqqoa5Cu2yYPNKKhRE5aYGemEQK9twLX1Cwb6mB6tJbDtPFEQZFsd1",
+      "kind": "append",
+      "wire_sha256": "954afed665ea4e9db3623ec248d9e8cc3deb31300dc7a40abfc6a4ee6754539b",
+      "wire_bytes": 670,
+      "recorded_before_send": true,
+      "slot": 508166968,
+      "fee_lamports": "5000",
+      "compute_units": 7256,
+      "finalized": true
+    },
+    {
+      "signature": "2kWYFUqESwRAJcAAQ3t4BvwKcUwJmnyC698N3Freig4p9aaCRQ8tL2xFLH1yh4DtF5eFNATeCF9uVU3dV8Q6FqfH",
+      "kind": "seal",
+      "wire_sha256": "35b26319630dc665c9b171ff659dd39f84b94164fd76cbdf60973789ff4ba632",
+      "wire_bytes": 286,
+      "recorded_before_send": true,
+      "slot": 508166983,
+      "fee_lamports": "5000",
+      "compute_units": 7820,
+      "finalized": true
+    },
+    {
+      "signature": "4MKLJzsexxCj6vEB3btue6w3dZxrd1RKQjmQhD8dByteSNxT6WFep3BXBNQ1LsCp4iSAiEx6JRp6FczU8UBwsDjV",
+      "kind": "execute",
+      "wire_sha256": "d9627c4c9fcc0d108ee9245010cade385e2b47a32849797fb60f4c51454db37e",
+      "wire_bytes": 656,
+      "recorded_before_send": true,
+      "slot": 508166996,
+      "fee_lamports": "5000",
+      "compute_units": 344935,
+      "finalized": true
+    }
+  ],
+  "max_transaction_bytes": 1232,
+  "max_cu": 344935,
+  "automatic_resends": 0,
+  "finalized_balance_conservation": true,
+  "coherent_snapshot_retries": 7,
+  "snapshot_wait_limit_seconds": 300,
+  "snapshot_wait_scope": "Acceptance read-only wait; not a latency/SLO pass or financial retry policy",
+  "snapshot_wait_calls": 6,
+  "snapshot_wait_total_elapsed_ms": 69698,
+  "snapshot_wait_max_elapsed_ms": 28565,
+  "snapshot_wait_timeouts": 0,
+  "indexer_retry_log_events": 1,
+  "indexer_process_ownership": "runner",
+  "indexer_readiness_limit_seconds": 1800,
+  "indexer_readiness_elapsed_ms": 41064,
+  "encrypted_note_journal": true,
+  "runtime_binary_sha256": {
+    "native_prover": "e0f6891e4320040db6f54e03eb03b11f5de194a42ddd477ab26dd376c42df8d6",
+    "indexer": "2c1dd7d6b16823a630ddccdf6502c91c3e0cbcaf3bea32ad0eba9118439f6255",
+    "session_verifier": "c6972574f246a22b5f3bc6c0cec8f9f80100390d7590c64765c00bcc0cc83700"
+  },
+  "installed_artifact_sha256": {
+    "indexer": "2c1dd7d6b16823a630ddccdf6502c91c3e0cbcaf3bea32ad0eba9118439f6255"
+  },
+  "helper_source_sha256": null,
+  "proof_artifact_sha256": {
+    "idl": "cbc94a33608b3945ff7704efe530a374dac2662070b533e33ebe208d4032b111",
+    "requestPk": "c894b261a13f571d0df36be29734aabf2a8cd7162baddc5e08a50341aa076584",
+    "requestVk": "8011244c99fa1a8524870906462d430fc86366b8ad821736c5fa726b479e6d97",
+    "withdrawalPk": "8e41398092fdd02b9ff86c6ccbecbd7ce2402e6f22ec162e6124d1d04fe0a668",
+    "withdrawalVk": "2a8ea7f07176e369a93d1d816124192a798d1466c99fd6dc47850ba82094b679",
+    "treePk": "f5bb2a1a6979bf5fc0a175039fd36a3f1492febf405ad18064f1de6bedd2cc2e",
+    "treeVk": "4e62f971f0467a8cd1733194425904d9433cc59f2badaf2e12cc3fda87285443",
+    "treeSourceBundle": "6c6030526d80b862bdd2fc56369caf1739a34c7643a0707bc840925ad6d1cb14",
+    "treeVerifierConstants": "f4edbeb7bd68bf539a1672140298737dbbdcf33a096443fb61b4b582ebf304d1"
+  },
+  "lost_execute_ack_recovered_in_fresh_process": false,
+  "verified_program": {
+    "program_data": "5J2ZnQCE41AX14sHZ8ybg1FaSY8pG6SLErUa49bYzgGR",
+    "deployed_program_sha256": "42febb6f9e6e373f318fb596611af842a0c95271831f77ec0fe70eccc79803a1",
+    "upgrade_authority": "nHSjCbSd3XD3UwGy5uAAUqEfDf4kBDYaJZ4eF82nCDZ"
+  },
+  "source_sha256": "fda22a1103ee3b9dd66c1bb128f7e93f1ba0b1a76eaf50e2b31a3fafedffae00",
+  "execution_helper_sha256": {
+    "scripts/i10_devnet_transport.ts": "99834fc4ab78a45b74fcd2cc6072359511ddca048232f07774c69d5c54b90198",
+    "scripts/i10_devnet_snapshot_chain.ts": "e7b9bfecdb7965f4ebf772e7dde4a795efea6f37293564671e788833bdd21b61",
+    "scripts/i10_devnet_pool_instance.ts": "b3c580fb7db243ce93b68a8618008688ec3b23b84a41c3849e9b15934723cf1f",
+    "scripts/i10_public_devnet_profile.ts": "19a8c26c435daea3524b61e4269161a2d2dde6ce2685da18dce54b7756c2d925",
+    "scripts/i10_devnet_provider.ts": "16152b42a7dc2171d644505afd3391ea469eee8df126e59817e8942ecfa86b0c",
+    "scripts/provider_acceptance_client.ts": "48b4866e4f864bcfb3b009e9399a8ff9d24ec4cf082858abe7204ed92041f023",
+    "scripts/provider_acceptance.py": "5911ca26cd21a342e6a3f6a29c65088028ffcac2807c3f1366b54db25715b2ae"
+  },
+  "withdrawal_mode": "mutual_close",
+  "daemon_challenge_observation": null,
+  "clearance_signature_verified": true,
+  "elf_sha256": "42febb6f9e6e373f318fb596611af842a0c95271831f77ec0fe70eccc79803a1",
+  "idl_sha256": "cbc94a33608b3945ff7704efe530a374dac2662070b533e33ebe208d4032b111",
+  "manifest_sha256": "544a114965bf639b9e88fbbbf2c220f3081badd86981f7974142199650b6b68e",
+  "build_manifest_sha256": "ac579def463b72df4193d1601652d0afd39b65444eb27367096e76799845d2cc",
+  "verified_at_utc": "2026-10-06T17:23:37.908Z",
+  "live_provider_verified": true,
+  "wallet_UI_verified": false,
+  "I10_complete": false,
+  "release_gates_passed": []
+}

@@ -1,0 +1,843 @@
+TAP version 13
+# Subtest: one chat call quotes, proves, authorizes, sends once and verifies settlement; model switch uses its tariff
+ok 1 - one chat call quotes, proves, authorizes, sends once and verifies settlement; model switch uses its tariff
+  ---
+  duration_ms: 749.280292
+  type: 'test'
+  ...
+# Subtest: lists and notifications are detached and omit secrets, prompt bodies and provider keys
+ok 2 - lists and notifications are detached and omit secrets, prompt bodies and provider keys
+  ---
+  duration_ms: 259.88025
+  type: 'test'
+  ...
+# Subtest: quote rejection never reaches proof, AUTH or inference
+ok 3 - quote rejection never reaches proof, AUTH or inference
+  ---
+  duration_ms: 38.835458
+  type: 'test'
+  ...
+# Subtest: reopening pending AUTH is read-only; new sends are blocked and recovery sends only saved AUTH
+ok 4 - reopening pending AUTH is read-only; new sends are blocked and recovery sends only saved AUTH
+  ---
+  duration_ms: 231.258291
+  type: 'test'
+  ...
+# Subtest: explicit unaccepted AUTH recovery verifies permanent clearance and archives expired work without replay or signing
+ok 5 - explicit unaccepted AUTH recovery verifies permanent clearance and archives expired work without replay or signing
+  ---
+  duration_ms: 219.7235
+  type: 'test'
+  ...
+# Subtest: unavailable or invalid clearance preserves the exact AUTH and state for explicit same-note retry
+ok 6 - unavailable or invalid clearance preserves the exact AUTH and state for explicit same-note retry
+  ---
+  duration_ms: 265.638875
+  type: 'test'
+  ...
+# Subtest: clearance holds the shared action lock and another facade re-verifies the completed archive
+ok 7 - clearance holds the shared action lock and another facade re-verifies the completed archive
+  ---
+  duration_ms: 287.566834
+  type: 'test'
+  ...
+# Subtest: clearance eligibility excludes accepted, used, prepared, closing and wallet-busy notes
+ok 8 - clearance eligibility excludes accepted, used, prepared, closing and wallet-busy notes
+  ---
+  duration_ms: 1104.162875
+  type: 'test'
+  ...
+# Subtest: explicit emergency escape preserves uncertain inference before proof work and keeps recovery fenced after reopen
+ok 9 - explicit emergency escape preserves uncertain inference before proof work and keeps recovery fenced after reopen
+  ---
+  duration_ms: 412.092375
+  type: 'test'
+  ...
+# Subtest: emergency escape stays explicit and refuses a never-sent authorization or an unrelated note
+ok 10 - emergency escape stays explicit and refuses a never-sent authorization or an unrelated note
+  ---
+  duration_ms: 169.157709
+  type: 'test'
+  ...
+# Subtest: challenge recovery remains visible after finalization preparation without treating its status hint as chain evidence
+ok 11 - challenge recovery remains visible after finalization preparation without treating its status hint as chain evidence
+  ---
+  duration_ms: 322.724792
+  type: 'test'
+  ...
+# Subtest: response loss and failed settlement retain operation; restarting never replays it
+ok 12 - response loss and failed settlement retain operation; restarting never replays it
+  ---
+  duration_ms: 652.492541
+  type: 'test'
+  ...
+# Subtest: an unverified successor never becomes available balance
+ok 13 - an unverified successor never becomes available balance
+  ---
+  duration_ms: 307.210791
+  type: 'test'
+  ...
+# Subtest: stream holds action lock; cancellation closes shared lifecycle and releases the client
+ok 14 - stream holds action lock; cancellation closes shared lifecycle and releases the client
+  ---
+  duration_ms: 271.397125
+  type: 'test'
+  ...
+# Subtest: stream helpers finish settlement before returning to the next send
+ok 15 - stream helpers finish settlement before returning to the next send
+  ---
+  duration_ms: 874.769167
+  type: 'test'
+  ...
+# Subtest: stream errors await the existing close finalizer before releasing the application lock
+ok 16 - stream errors await the existing close finalizer before releasing the application lock
+  ---
+  duration_ms: 354.199916
+  type: 'test'
+  ...
+# Subtest: cancelling a pending read retains the application lock through settlement
+ok 17 - cancelling a pending read retains the application lock through settlement
+  ---
+  duration_ms: 319.162583
+  type: 'test'
+  ...
+# Subtest: separate instances share a note lock through body consumption
+ok 18 - separate instances share a note lock through body consumption
+  ---
+  duration_ms: 537.567459
+  type: 'test'
+  ...
+# Subtest: invalid model, API, ID and body cannot start an authorization; abort-before-send is side-effect free
+ok 19 - invalid model, API, ID and body cannot start an authorization; abort-before-send is side-effect free
+  ---
+  duration_ms: 49.736042
+  type: 'test'
+  ...
+# Subtest: expired, cleared, closed and insufficient notes cannot start chat
+ok 20 - expired, cleared, closed and insufficient notes cannot start chat
+  ---
+  duration_ms: 292.724708
+  type: 'test'
+  ...
+# Subtest: dispose does not settle or erase storage and refuses later actions
+ok 21 - dispose does not settle or erase storage and refuses later actions
+  ---
+  duration_ms: 27.691625
+  type: 'test'
+  ...
+# Subtest: model switch settles the old session and dispatches the original new operation once
+ok 22 - model switch settles the old session and dispatches the original new operation once
+  ---
+  duration_ms: 579.449916
+  type: 'test'
+  ...
+# Subtest: model switch cannot close a session with an active response
+ok 23 - model switch cannot close a session with an active response
+  ---
+  duration_ms: 447.219375
+  type: 'test'
+  ...
+# Subtest: unfinished or unverifiable close blocks new-model authorization without replay
+ok 24 - unfinished or unverifiable close blocks new-model authorization without replay
+  ---
+  duration_ms: 1422.34725
+  type: 'test'
+  ...
+# Subtest: aborting during old-session settlement never authorizes the new model
+ok 25 - aborting during old-session settlement never authorizes the new model
+  ---
+  duration_ms: 229.963542
+  type: 'test'
+  ...
+# Subtest: shutdown during model-switch settlement closes without admitting the new send
+ok 26 - shutdown during model-switch settlement closes without admitting the new send
+  ---
+  duration_ms: 230.638709
+  type: 'test'
+  ...
+# Subtest: reuse expiry and a concurrent maintenance tick admit a new request once after settlement
+ok 27 - reuse expiry and a concurrent maintenance tick admit a new request once after settlement
+  ---
+  duration_ms: 376.932417
+  type: 'test'
+  ...
+# Subtest: validated model policies drive the advertised provider and reject unsupported APIs before AUTH
+ok 28 - validated model policies drive the advertised provider and reject unsupported APIs before AUTH
+  ---
+  duration_ms: 225.94725
+  type: 'test'
+  ...
+# Subtest: direct client tools accept arbitrary JSON Schema property names without admitting unsupported modalities
+ok 29 - direct client tools accept arbitrary JSON Schema property names without admitting unsupported modalities
+  ---
+  duration_ms: 646.413416
+  type: 'test'
+  ...
+# Subtest: direct identity and transport metadata is rejected before AUTH or inference
+ok 30 - direct identity and transport metadata is rejected before AUTH or inference
+  ---
+  duration_ms: 63.517042
+  type: 'test'
+  ...
+# Subtest: direct structured text formats are supported only at the native API format paths
+ok 31 - direct structured text formats are supported only at the native API format paths
+  ---
+  duration_ms: 1276.962042
+  type: 'test'
+  ...
+# Subtest: direct Responses requires explicit disabled storage before AUTH
+ok 32 - direct Responses requires explicit disabled storage before AUTH
+  ---
+  duration_ms: 213.766584
+  type: 'test'
+  ...
+# Subtest: daemon exposes inference headers without upstream cookies or tracking headers
+ok 33 - daemon exposes inference headers without upstream cookies or tracking headers
+  ---
+  duration_ms: 841.243375
+  type: 'test'
+  ...
+# Subtest: clientd shares encrypted journal, streams once, reuses 60-second session and closes idle
+ok 34 - clientd shares encrypted journal, streams once, reuses 60-second session and closes idle
+  ---
+  duration_ms: 379.019083
+  type: 'test'
+  ...
+# Subtest: reuse zero closes after every request and duplicate operation cannot cross settled sessions
+ok 35 - reuse zero closes after every request and duplicate operation cannot cross settled sessions
+  ---
+  duration_ms: 476.217333
+  type: 'test'
+  ...
+# Subtest: uncertain direct inference is never replayed after restart; volatile key, same mode
+ok 36 - uncertain direct inference is never replayed after restart; volatile key, same mode
+  ---
+  duration_ms: 208.716125
+  type: 'test'
+  ...
+# Subtest: restart keeps admin reachable for explicit absent-operation reconciliation without inference replay
+ok 37 - restart keeps admin reachable for explicit absent-operation reconciliation without inference replay
+  ---
+  duration_ms: 483.620041
+  type: 'test'
+  ...
+# Subtest: restart outage keeps inference blocked until explicit recovery closes the previous session
+ok 38 - restart outage keeps inference blocked until explicit recovery closes the previous session
+  ---
+  duration_ms: 319.22825
+  type: 'test'
+  ...
+# Subtest: startup rejects a tampered encrypted journal before contacting control
+ok 39 - startup rejects a tampered encrypted journal before contacting control
+  ---
+  duration_ms: 108.151708
+  type: 'test'
+  ...
+# Subtest: expired never-sent authorization has explicit admin cancellation; uncertain inference cannot be canceled
+ok 40 - expired never-sent authorization has explicit admin cancellation; uncertain inference cannot be canceled
+  ---
+  duration_ms: 130.405459
+  type: 'test'
+  ...
+# Subtest: direct 202 with missing key closes without inference or proxy fallback
+ok 41 - direct 202 with missing key closes without inference or proxy fallback
+  ---
+  duration_ms: 67.111292
+  type: 'test'
+  ...
+# Subtest: OA key is independently verified before clientd inference and reused only within the same session
+ok 42 - OA key is independently verified before clientd inference and reused only within the same session
+  ---
+  duration_ms: 89.170208
+  type: 'test'
+  ...
+# Subtest: OA verifier rejection closes the same authorization without saving a key or sending inference
+ok 43 - OA verifier rejection closes the same authorization without saving a key or sending inference
+  ---
+  duration_ms: 72.110917
+  type: 'test'
+  ...
+# Subtest: stream cancel still closes reuse-zero session, unsupported direct modalities never authorize
+ok 44 - stream cancel still closes reuse-zero session, unsupported direct modalities never authorize
+  ---
+  duration_ms: 100.6675
+  type: 'test'
+  ...
+# Subtest: graceful shutdown waits for delivered streams and durable session close
+ok 45 - graceful shutdown waits for delivered streams and durable session close
+  ---
+  duration_ms: 145.057459
+  type: 'test'
+  ...
+# Subtest: canceling a pending read retains native admission until upstream cancellation finishes
+ok 46 - canceling a pending read retains native admission until upstream cancellation finishes
+  ---
+  duration_ms: 312.665667
+  type: 'test'
+  ...
+# Subtest: graceful shutdown also waits for admission already preparing its authorization
+ok 47 - graceful shutdown also waits for admission already preparing its authorization
+  ---
+  duration_ms: 115.748792
+  type: 'test'
+  ...
+# Subtest: native custody wraps random key, authenticates passphrase and metadata, and refuses reset
+ok 48 - native custody wraps random key, authenticates passphrase and metadata, and refuses reset
+  ---
+  duration_ms: 222.313958
+  type: 'test'
+  ...
+# Subtest: actual Unix HTTP disconnect cancels upstream response and waits for stream finalizer
+ok 49 - actual Unix HTTP disconnect cancels upstream response and waits for stream finalizer
+  ---
+  duration_ms: 32.075291
+  type: 'test'
+  ...
+# Subtest: disconnect before upstream headers aborts inference and retains its non-replayable intent
+ok 50 - disconnect before upstream headers aborts inference and retains its non-replayable intent
+  ---
+  duration_ms: 247.508542
+  type: 'test'
+  ...
+# Subtest: already disconnected Unix response cancels a late body without waiting for its first byte
+ok 51 - already disconnected Unix response cancels a late body without waiting for its first byte
+  ---
+  duration_ms: 2.616042
+  type: 'test'
+  ...
+# Subtest: explicit absent-operation reconciliation requires terminal settlement and original crypto verification
+ok 52 - explicit absent-operation reconciliation requires terminal settlement and original crypto verification
+  ---
+  duration_ms: 319.995542
+  type: 'test'
+  ...
+# Subtest: absent-operation reconciliation does not persist exclusions when the signed successor fails verification
+ok 53 - absent-operation reconciliation does not persist exclusions when the signed successor fails verification
+  ---
+  duration_ms: 244.478167
+  type: 'test'
+  ...
+# Subtest: prepare snapshots exact authorization and credentials; send_unknown is durable before the first POST
+ok 54 - prepare snapshots exact authorization and credentials; send_unknown is durable before the first POST
+  ---
+  duration_ms: 112.967833
+  type: 'test'
+  ...
+# Subtest: two callers cannot prepare two unresolved authorizations for the same note
+ok 55 - two callers cannot prepare two unresolved authorizations for the same note
+  ---
+  duration_ms: 89.488291
+  type: 'test'
+  ...
+# Subtest: authorization response loss recovers only identical proof/body/token, even after restart
+ok 56 - authorization response loss recovers only identical proof/body/token, even after restart
+  ---
+  duration_ms: 166.820375
+  type: 'test'
+  ...
+# Subtest: close of an unknown create preserves exact authorization recovery and durable close intent
+ok 57 - close of an unknown create preserves exact authorization recovery and durable close intent
+  ---
+  duration_ms: 181.065875
+  type: 'test'
+  ...
+# Subtest: closing an unknown direct create withholds a newly delivered key and resumes close after response loss
+ok 58 - closing an unknown direct create withholds a newly delivered key and resumes close after response loss
+  ---
+  duration_ms: 147.319292
+  type: 'test'
+  ...
+# Subtest: direct 202 or missing first key persists closing and uses saved control credential, without changing mode
+ok 59 - direct 202 or missing first key persists closing and uses saved control credential, without changing mode
+  ---
+  duration_ms: 215.333167
+  type: 'test'
+  ...
+# Subtest: direct key stays only in the current client and restart closes the same keyless session
+ok 60 - direct key stays only in the current client and restart closes the same keyless session
+  ---
+  duration_ms: 228.423417
+  type: 'test'
+  ...
+# Subtest: legacy persisted direct keys remain readable but cannot authorize inference after restart
+    # Subtest: direct_oa
+    ok 1 - direct_oa
+      ---
+      duration_ms: 142.654417
+      type: 'test'
+      ...
+    # Subtest: direct_openrouter
+    ok 2 - direct_openrouter
+      ---
+      duration_ms: 153.410083
+      type: 'test'
+      ...
+    1..2
+ok 61 - legacy persisted direct keys remain readable but cannot authorize inference after restart
+  ---
+  duration_ms: 296.457416
+  type: 'test'
+  ...
+# Subtest: failed key-delivery persistence cannot leave a usable volatile key or change saved AUTH
+ok 62 - failed key-delivery persistence cannot leave a usable volatile key or change saved AUTH
+  ---
+  duration_ms: 137.858417
+  type: 'test'
+  ...
+# Subtest: a volatile direct key cannot hydrate a changed authorization or be replaced by a persisted key field
+ok 63 - a volatile direct key cannot hydrate a changed authorization or be replaced by a persisted key field
+  ---
+  duration_ms: 231.927625
+  type: 'test'
+  ...
+# Subtest: forgetting volatile keys does not alter custody and same-session recovery settles without another key
+ok 64 - forgetting volatile keys does not alter custody and same-session recovery settles without another key
+  ---
+  duration_ms: 151.892166
+  type: 'test'
+  ...
+# Subtest: OA key without independently verifiable evidence is withheld and the same session closes
+ok 65 - OA key without independently verifiable evidence is withheld and the same session closes
+  ---
+  duration_ms: 128.1635
+  type: 'test'
+  ...
+# Subtest: OA evidence is checked before volatile key delivery and a restarted SDK cannot revive the key
+ok 66 - OA evidence is checked before volatile key delivery and a restarted SDK cannot revive the key
+  ---
+  duration_ms: 124.056625
+  type: 'test'
+  ...
+# Subtest: untrusted OA evidence and verifier failures close without exposing or persisting a usable key
+    # Subtest: missing independent pin
+    ok 1 - missing independent pin
+      ---
+      duration_ms: 114.565166
+      type: 'test'
+      ...
+    # Subtest: missing evidence
+    ok 2 - missing evidence
+      ---
+      duration_ms: 93.735375
+      type: 'test'
+      ...
+    # Subtest: null evidence
+    ok 3 - null evidence
+      ---
+      duration_ms: 112.875958
+      type: 'test'
+      ...
+    # Subtest: injected verifier URL
+    ok 4 - injected verifier URL
+      ---
+      duration_ms: 67.799667
+      type: 'test'
+      ...
+    # Subtest: wrong station
+    ok 5 - wrong station
+      ---
+      duration_ms: 137.14375
+      type: 'test'
+      ...
+    # Subtest: malformed signature
+    ok 6 - malformed signature
+      ---
+      duration_ms: 145.804916
+      type: 'test'
+      ...
+    # Subtest: unknown evidence field
+    ok 7 - unknown evidence field
+      ---
+      duration_ms: 142.43175
+      type: 'test'
+      ...
+    # Subtest: wrong attestation flag type
+    ok 8 - wrong attestation flag type
+      ---
+      duration_ms: 114.533042
+      type: 'test'
+      ...
+    # Subtest: string evidence expiry
+    ok 9 - string evidence expiry
+      ---
+      duration_ms: 106.130916
+      type: 'test'
+      ...
+    # Subtest: unsafe evidence expiry
+    ok 10 - unsafe evidence expiry
+      ---
+      duration_ms: 126.84475
+      type: 'test'
+      ...
+    # Subtest: fractional evidence expiry
+    ok 11 - fractional evidence expiry
+      ---
+      duration_ms: 98.766042
+      type: 'test'
+      ...
+    # Subtest: numeric lease expiry
+    ok 12 - numeric lease expiry
+      ---
+      duration_ms: 97.22675
+      type: 'test'
+      ...
+    # Subtest: noncanonical lease expiry
+    ok 13 - noncanonical lease expiry
+      ---
+      duration_ms: 132.591375
+      type: 'test'
+      ...
+    # Subtest: missing lease expiry
+    ok 14 - missing lease expiry
+      ---
+      duration_ms: 107.582584
+      type: 'test'
+      ...
+    # Subtest: expired lease
+    ok 15 - expired lease
+      ---
+      duration_ms: 100.435958
+      type: 'test'
+      ...
+    # Subtest: evidence expires before lease
+    ok 16 - evidence expires before lease
+      ---
+      duration_ms: 119.838833
+      type: 'test'
+      ...
+    # Subtest: excessive expiry skew
+    ok 17 - excessive expiry skew
+      ---
+      duration_ms: 130.562041
+      type: 'test'
+      ...
+    # Subtest: verifier rejects substituted key
+    ok 18 - verifier rejects substituted key
+      ---
+      duration_ms: 105.162334
+      type: 'test'
+      ...
+    # Subtest: HTTP failure with verified body
+    ok 19 - HTTP failure with verified body
+      ---
+      duration_ms: 107.014166
+      type: 'test'
+      ...
+    # Subtest: network timeout
+    ok 20 - network timeout
+      ---
+      duration_ms: 73.553875
+      type: 'test'
+      ...
+    # Subtest: duplicate JSON status
+    ok 21 - duplicate JSON status
+      ---
+      duration_ms: 125.34225
+      type: 'test'
+      ...
+    # Subtest: wrong verifier status type
+    ok 22 - wrong verifier status type
+      ---
+      duration_ms: 120.635166
+      type: 'test'
+      ...
+    # Subtest: expiry crossed during verification
+    ok 23 - expiry crossed during verification
+      ---
+      duration_ms: 118.404167
+      type: 'test'
+      ...
+    1..23
+ok 67 - untrusted OA evidence and verifier failures close without exposing or persisting a usable key
+  ---
+  duration_ms: 2601.142292
+  type: 'test'
+  ...
+# Subtest: OA verifier pins are detached from mutable caller options and the existing 65-second issuer skew is accepted
+ok 68 - OA verifier pins are detached from mutable caller options and the existing 65-second issuer skew is accepted
+  ---
+  duration_ms: 110.863
+  type: 'test'
+  ...
+# Subtest: OA failed close retains keyless closing state and can settle without verifier access
+ok 69 - OA failed close retains keyless closing state and can settle without verifier access
+  ---
+  duration_ms: 160.107084
+  type: 'test'
+  ...
+# Subtest: changed saved OA evidence is independently rechecked against the current in-memory key
+    # Subtest: legacy
+    ok 1 - legacy
+      ---
+      duration_ms: 197.802666
+      type: 'test'
+      ...
+    # Subtest: evidence
+    ok 2 - evidence
+      ---
+      duration_ms: 231.364
+      type: 'test'
+      ...
+    # Subtest: expiry
+    ok 3 - expiry
+      ---
+      duration_ms: 231.312625
+      type: 'test'
+      ...
+    1..3
+ok 70 - changed saved OA evidence is independently rechecked against the current in-memory key
+  ---
+  duration_ms: 661.002334
+  type: 'test'
+  ...
+# Subtest: SETTLED text with failed successor verification preserves old note and unresolved authorization
+ok 71 - SETTLED text with failed successor verification preserves old note and unresolved authorization
+  ---
+  duration_ms: 180.971458
+  type: 'test'
+  ...
+# Subtest: verified successor is committed with old state and transcript before a note becomes available
+ok 72 - verified successor is committed with old state and transcript before a note becomes available
+  ---
+  duration_ms: 196.133208
+  type: 'test'
+  ...
+# Subtest: server session identity substitution cannot change the note
+ok 73 - server session identity substitution cannot change the note
+  ---
+  duration_ms: 105.706375
+  type: 'test'
+  ...
+# Subtest: duplicate receipt and nonadvancing cursor both block settlement before the verifier
+ok 74 - duplicate receipt and nonadvancing cursor both block settlement before the verifier
+  ---
+  duration_ms: 269.076208
+  type: 'test'
+  ...
+# Subtest: inference persists exact bytes before send; response loss and restart cannot auto replay
+ok 75 - inference persists exact bytes before send; response loss and restart cannot auto replay
+  ---
+  duration_ms: 201.068917
+  type: 'test'
+  ...
+# Subtest: concurrent senders dispatch one inference and 409 points at status without retrying
+ok 76 - concurrent senders dispatch one inference and 409 points at status without retrying
+  ---
+  duration_ms: 191.293209
+  type: 'test'
+  ...
+# Subtest: failed durable save stops authorization dispatch and failed RP verification never creates pending state
+ok 77 - failed durable save stops authorization dispatch and failed RP verification never creates pending state
+  ---
+  duration_ms: 105.88975
+  type: 'test'
+  ...
+# Subtest: duplicate JSON fields in status fail closed without advancing state
+ok 78 - duplicate JSON fields in status fail closed without advancing state
+  ---
+  duration_ms: 97.734125
+  type: 'test'
+  ...
+# Subtest: browser-compatible credential encoding is byte-identical to Node base64url including both substituted alphabet characters and padding
+ok 79 - browser-compatible credential encoding is byte-identical to Node base64url including both substituted alphabet characters and padding
+  ---
+  duration_ms: 1.431333
+  type: 'test'
+  ...
+# Subtest: credential mode is explicit and expiry warning includes the Active principal treasury consequence
+ok 80 - credential mode is explicit and expiry warning includes the Active principal treasury consequence
+  ---
+  duration_ms: 0.265959
+  type: 'test'
+  ...
+# Subtest: quote verifies real Ed25519 and signed tariff binding while preserving request/price snapshots
+ok 81 - quote verifies real Ed25519 and signed tariff binding while preserving request/price snapshots
+  ---
+  duration_ms: 28.036333
+  type: 'test'
+  ...
+# Subtest: quote rejects altered signature, body digest, tariff bytes and unpinned tariff
+ok 82 - quote rejects altered signature, body digest, tariff bytes and unpinned tariff
+  ---
+  duration_ms: 33.020208
+  type: 'test'
+  ...
+# Subtest: validly signed quotes cannot substitute deployment, pool, mode, provider, model, tariff or API origins
+ok 83 - validly signed quotes cannot substitute deployment, pool, mode, provider, model, tariff or API origins
+  ---
+  duration_ms: 34.144791
+  type: 'test'
+  ...
+# Subtest: quote admission accepts issued_at and rejects expires_at equality, future quotes, bad TTL and concurrency
+ok 84 - quote admission accepts issued_at and rejects expires_at equality, future quotes, bad TTL and concurrency
+  ---
+  duration_ms: 85.2415
+  type: 'test'
+  ...
+# Subtest: tariff validity is bound to quote issue time including the exclusive valid_until boundary
+ok 85 - tariff validity is bound to quote issue time including the exclusive valid_until boundary
+  ---
+  duration_ms: 36.323375
+  type: 'test'
+  ...
+# Subtest: quote rejects extra prompt/secret fields, implicit mode and invalid selection before any request leaves the client
+ok 86 - quote rejects extra prompt/secret fields, implicit mode and invalid selection before any request leaves the client
+  ---
+  duration_ms: 30.296042
+  type: 'test'
+  ...
+# Subtest: expired never-sent authorization remains cancellable and can be replaced without changing the note state
+ok 87 - expired never-sent authorization remains cancellable and can be replaced without changing the note state
+  ---
+  duration_ms: 184.678416
+  type: 'test'
+  ...
+# Subtest: possibly-sent authorization cannot be cancelled and recovers identical bytes after quote expiry
+ok 88 - possibly-sent authorization cannot be cancelled and recovers identical bytes after quote expiry
+  ---
+  duration_ms: 128.950583
+  type: 'test'
+  ...
+# Subtest: schema 2 survives every ControlClient authorization, inference, recovery and settlement writer
+ok 89 - schema 2 survives every ControlClient authorization, inference, recovery and settlement writer
+  ---
+  duration_ms: 173.068292
+  type: 'test'
+  ...
+# Subtest: accepted AUTH plus lost inference and close 503 escapes in the same encrypted journal, then finalizes only after deadline
+ok 90 - accepted AUTH plus lost inference and close 503 escapes in the same encrypted journal, then finalizes only after deadline
+  ---
+  duration_ms: 1574.808125
+  type: 'test'
+  ...
+# Subtest: a new emergency archive omits a legacy direct key while preserving exact financial and inference evidence
+ok 91 - a new emergency archive omits a legacy direct key while preserving exact financial and inference evidence
+  ---
+  duration_ms: 383.366791
+  type: 'test'
+  ...
+# Subtest: finalized challenge restores only close/status recovery and a verified successor; no AUTH or inference replay
+ok 92 - finalized challenge restores only close/status recovery and a verified successor; no AUTH or inference replay
+  ---
+  duration_ms: 1207.446792
+  type: 'test'
+  ...
+# Subtest: challenge before escape execute ACK reconciles exact receipt without another financial send
+ok 93 - challenge before escape execute ACK reconciles exact receipt without another financial send
+  ---
+  duration_ms: 997.420875
+  type: 'test'
+  ...
+# Subtest: unacknowledged AUTH escape recovery never repeats AUTH even if original saved phase is send_unknown
+ok 94 - unacknowledged AUTH escape recovery never repeats AUTH even if original saved phase is send_unknown
+  ---
+  duration_ms: 931.117208
+  type: 'test'
+  ...
+# Subtest: emergency archive rejects fabricated phase, missing exact receipt, modified state/request/operations and unsafe active reuse
+    # Subtest: duplicate archive
+    ok 1 - duplicate archive
+      ---
+      duration_ms: 359.062042
+      type: 'test'
+      ...
+    # Subtest: phase
+    ok 2 - phase
+      ---
+      duration_ms: 360.193959
+      type: 'test'
+      ...
+    # Subtest: previous
+    ok 3 - previous
+      ---
+      duration_ms: 376.300667
+      type: 'test'
+      ...
+    # Subtest: request
+    ok 4 - request
+      ---
+      duration_ms: 430.936292
+      type: 'test'
+      ...
+    # Subtest: nullifier
+    ok 5 - nullifier
+      ---
+      duration_ms: 338.6805
+      type: 'test'
+      ...
+    # Subtest: operation identity
+    ok 6 - operation identity
+      ---
+      duration_ms: 334.826333
+      type: 'test'
+      ...
+    # Subtest: active reuse
+    ok 7 - active reuse
+      ---
+      duration_ms: 344.444209
+      type: 'test'
+      ...
+    # Subtest: receipt
+    ok 8 - receipt
+      ---
+      duration_ms: 365.281042
+      type: 'test'
+      ...
+    # Subtest: extra fields
+    ok 9 - extra fields
+      ---
+      duration_ms: 263.543292
+      type: 'test'
+      ...
+    1..9
+ok 95 - emergency archive rejects fabricated phase, missing exact receipt, modified state/request/operations and unsafe active reuse
+  ---
+  duration_ms: 3889.572542
+  type: 'test'
+  ...
+# Subtest: completed emergency recovery rejects duplicated settlement history or a fabricated settled archive
+ok 96 - completed emergency recovery rejects duplicated settlement history or a fabricated settled archive
+  ---
+  duration_ms: 756.221
+  type: 'test'
+  ...
+# Subtest: challenge reconciliation cancels only unsigned or conclusively rejected finalization attempts, retaining every signed byte
+    # Subtest: unsigned
+    ok 1 - unsigned
+      ---
+      duration_ms: 660.852666
+      type: 'test'
+      ...
+    # Subtest: unknown
+    ok 2 - unknown
+      ---
+      duration_ms: 765.057084
+      type: 'test'
+      ...
+    # Subtest: successful
+    ok 3 - successful
+      ---
+      duration_ms: 638.863792
+      type: 'test'
+      ...
+    # Subtest: rejected
+    ok 4 - rejected
+      ---
+      duration_ms: 645.573334
+      type: 'test'
+      ...
+    1..4
+ok 97 - challenge reconciliation cancels only unsigned or conclusively rejected finalization attempts, retaining every signed byte
+  ---
+  duration_ms: 2710.776375
+  type: 'test'
+  ...
+1..97
+# tests 138
+# suites 0
+# pass 138
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 12824.281

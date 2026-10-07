@@ -1,0 +1,3 @@
+ok  	solana-zkapi/clientd/cmd/clientd	1.461s
+ok  	solana-zkapi/clientd/internal/daemon	1.845s
+ok  	solana-zkapi/clientd/internal/egress	(cached)

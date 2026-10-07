@@ -1,0 +1,177 @@
+{
+  "schema": 1,
+  "passed": true,
+  "scope": "Read-only OpenRouter direct management checkpoint corroboration",
+  "case": {
+    "case_id": "openrouter-direct-sse",
+    "request_id": "4d286c8b-44d9-479b-9046-74cc40bdf570",
+    "operation_id": "53cb0c8a-1ba7-4071-a7e6-b041b56cd6f2",
+    "stream": true,
+    "charged_micro_usdc": "4",
+    "http_status": 200,
+    "inference_sends_reported_by_case": 1,
+    "inference_replays_reported_by_case": 0,
+    "signed_successor_verified_by_sdk_reported_by_case": true
+  },
+  "database_read_only": true,
+  "database_role": "i10_provider_reader",
+  "session": {
+    "state": "SETTLED",
+    "mode": "direct_openrouter",
+    "provider": "openrouter",
+    "close_requested": true,
+    "cap_micro": "1000000",
+    "charged_nano": "3300",
+    "reserved_nano": "0",
+    "active_operations": 0
+  },
+  "dispatch_attempts": [
+    {
+      "kind": "DIRECT_ISSUANCE",
+      "send_claimed": true,
+      "finished": true,
+      "fenced": false,
+      "count": "1"
+    }
+  ],
+  "checkpoint_history": [
+    {
+      "id": "1",
+      "recorded_at_epoch": "1791307179.638865",
+      "reference_present": false,
+      "disabled_at_epoch": null,
+      "observation_at_epoch": null,
+      "observation_usd": null,
+      "observation_nano": null,
+      "observation_kind": null,
+      "final_usd": null,
+      "final_nano": null,
+      "final_kind": null,
+      "deleted": false
+    },
+    {
+      "id": "2",
+      "recorded_at_epoch": "1791307181.282107",
+      "reference_present": true,
+      "disabled_at_epoch": null,
+      "observation_at_epoch": null,
+      "observation_usd": null,
+      "observation_nano": null,
+      "observation_kind": null,
+      "final_usd": null,
+      "final_nano": null,
+      "final_kind": null,
+      "deleted": false
+    },
+    {
+      "id": "3",
+      "recorded_at_epoch": "1791307193.417653",
+      "reference_present": true,
+      "disabled_at_epoch": "1791307193",
+      "observation_at_epoch": null,
+      "observation_usd": null,
+      "observation_nano": null,
+      "observation_kind": null,
+      "final_usd": null,
+      "final_nano": null,
+      "final_kind": null,
+      "deleted": false
+    },
+    {
+      "id": "4",
+      "recorded_at_epoch": "1791307254.143442",
+      "reference_present": true,
+      "disabled_at_epoch": "1791307193",
+      "observation_at_epoch": "1791307253",
+      "observation_usd": "0",
+      "observation_nano": "0",
+      "observation_kind": "OPENROUTER_USAGE",
+      "final_usd": null,
+      "final_nano": null,
+      "final_kind": null,
+      "deleted": false
+    },
+    {
+      "id": "5",
+      "recorded_at_epoch": "1791307314.177393",
+      "reference_present": true,
+      "disabled_at_epoch": "1791307193",
+      "observation_at_epoch": "1791307313",
+      "observation_usd": "0.0000033",
+      "observation_nano": "3300",
+      "observation_kind": "OPENROUTER_USAGE",
+      "final_usd": null,
+      "final_nano": null,
+      "final_kind": null,
+      "deleted": false
+    },
+    {
+      "id": "6",
+      "recorded_at_epoch": "1791307375.183520",
+      "reference_present": true,
+      "disabled_at_epoch": "1791307193",
+      "observation_at_epoch": "1791307313",
+      "observation_usd": "0.0000033",
+      "observation_nano": "3300",
+      "observation_kind": "OPENROUTER_USAGE",
+      "final_usd": "0.0000033",
+      "final_nano": "3300",
+      "final_kind": "OPENROUTER_USAGE",
+      "deleted": false
+    },
+    {
+      "id": "7",
+      "recorded_at_epoch": "1791307377.065625",
+      "reference_present": true,
+      "disabled_at_epoch": "1791307193",
+      "observation_at_epoch": "1791307313",
+      "observation_usd": "0.0000033",
+      "observation_nano": "3300",
+      "observation_kind": "OPENROUTER_USAGE",
+      "final_usd": "0.0000033",
+      "final_nano": "3300",
+      "final_kind": "OPENROUTER_USAGE",
+      "deleted": true
+    }
+  ],
+  "checks": {
+    "single_finished_issuance_attempt": true,
+    "management_reference_present": true,
+    "disable_recorded": true,
+    "equal_final_and_prior_usage": true,
+    "minimum_stability_seconds": 60,
+    "first_usage_observed_after_disable_grace": true,
+    "final_usage_recorded_after_observation_grace": true,
+    "final_usage_checkpoint_precedes_deleted_checkpoint": true,
+    "settled_session_charge_matches_case_and_usage": true
+  },
+  "limitations": [
+    "This SELECT corroborates saved runtime checkpoint history, not independent provider packet capture. Outbox history is protected by runtime CAS/order checks, not a database immutability trigger.",
+    "The final usage has no independent observation timestamp. The database records when its checkpoint was saved; the second poll's >=60-second delay additionally relies on the reviewed OpenRouter runtime and public configuration invariant.",
+    "The deleted flag records successful runtime deletion confirmation (including already-absent responses); exact provider HTTP statuses and response bodies are not retained here.",
+    "One issuance attempt is not an inference count. HTTP success, one inference, zero replays and successor verification are reported by the saved case, not independently reverified by this collector.",
+    "No raw checkpoints, management references, reference hashes, keys or provider response bodies are read by this process or exported. Final checkpoint stop-evidence binding and cryptographic signatures are not reverified here.",
+    "This report does not establish wallet withdrawal, browser/Phantom acceptance, other providers, full I10 or release gates."
+  ],
+  "collector_actions": {
+    "provider_network_calls": 0,
+    "chain_sends": 0,
+    "database_mutations": 0,
+    "budget_or_journal_mutations": 0
+  },
+  "collected_at_utc": "2026-10-06T17:23:28.608779+00:00",
+  "case_file": "target/public-devnet/parity-review-20261007/deployment/pools/provider/parity-direct-sse-fresh/mutual-close/provider-case-openrouter-direct-sse.json",
+  "case_file_sha256": "f478e2001cb550267018582bfc39068867e2e73439c842e187ac37da96fd1d3c",
+  "collector_source_sha256": "9e5def398fb66bb6e98e34a504939969249764f84b449ebfdd8eed5553c1ba90",
+  "method": "One SELECT snapshot through i10_provider_reader on a local Unix socket with transaction_read_only=on, statement timeout, explicit scalar projections and no provider calls.",
+  "command_arguments": [
+    "--case-json",
+    "target/public-devnet/parity-review-20261007/deployment/pools/provider/parity-direct-sse-fresh/mutual-close/provider-case-openrouter-direct-sse.json",
+    "--socket",
+    "target/pd-sse2/socket",
+    "--port",
+    "55451",
+    "--output",
+    "docs/evidence/I10-parity-review-live-components/direct-sse-management-lifecycle.json"
+  ]
+}

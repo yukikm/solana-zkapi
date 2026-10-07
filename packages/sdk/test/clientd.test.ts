@@ -58,7 +58,7 @@ async function fixture(t:TestContext,mode:Mode='proxy',reuse=60,models:DaemonOpt
   const service=new ClientDaemon(options);await service.start();
   return{service,journal,dir,sentRequests,beforeClose:(handler:()=>Promise<void>)=>{beforeClose=handler;},closeDraining:(value=true)=>{closeDraining=value;},rejectSettlement:(value=true)=>{settlementRejected=value;},pendingPreparation:(handler:()=>Promise<void>)=>{pendingPreparation=handler;},pendingInference:(handler:(signal:AbortSignal)=>Promise<Response>)=>{pendingInference=handler;},restart:()=>{const recoveredJournal=new EncryptedJournal<NoteJournal>(store,key,{deploymentId:'fixture',pool:'pool'},validateNoteJournal);return new ClientDaemon({...options,journal:recoveredJournal,client:new ControlClient({...clientOptions,journal:recoveredJournal})});},prepareUnsent:async()=>{const p=await options.prepare('m',await createCredentials(mode));await client.prepare('note',p.prepared,p.root);},counts:()=>({creates,closes,sends}),oaVerifications:()=>oaVerifications,rejectOa:()=>{oaRejected=true;},controlRequests:()=>controlRequests,advance:()=>{now+=61n;},lose:(value=true)=>{loss=value;},directUnknown:()=>{direct202=true;},missingSettlement:(value=true)=>{missingSettlement=value;},controlUnavailable:(value=true)=>{controlUnavailable=value;}};
 }
-const body=new TextEncoder().encode('{"model":"m","stream":true}');
+const body=new TextEncoder().encode('{"model":"m","stream":true,"store":false}');
 const otherBody=new TextEncoder().encode('{"model":"n","messages":[{"role":"user","content":"original new send"}],"stream":true}');
 test('model switch settles the old session and dispatches the original new operation once',async t=>{
   const f=await fixture(t),oldId=crypto.randomUUID(),newId=crypto.randomUUID();
@@ -128,6 +128,83 @@ test('validated model policies drive the advertised provider and reject unsuppor
   assert.deepEqual(f.counts(),{creates:0,closes:0,sends:0});
   await(await f.service.infer('/v1/chat/completions',body)).text();assert.equal(f.counts().sends,1);
 });
+test('direct client tools accept arbitrary JSON Schema property names without admitting unsupported modalities',async t=>{
+  const parameters={type:'object',properties:{type:{type:'string',enum:['image_url','function']},image_url:{type:'string'},audio:{type:'boolean'},background:{type:'string'},conversation:{type:'string'}},required:['type'],additionalProperties:false};
+  for(const [mode,path] of [['direct_openrouter','/v1/chat/completions'],['direct_oa','/v1/chat/completions'],['direct_oa','/v1/responses']] as const){
+    const f=await fixture(t,mode,0),responses=path==='/v1/responses';
+    const tool=responses?{type:'function',name:'record_metadata',parameters}:{type:'function',function:{name:'record_metadata',parameters}};
+    const input=responses?{input:'Record metadata'}:{messages:[{role:'user',content:'Record metadata'}]};
+    const payload={model:'m',...input,tools:[tool],store:false};
+    const bytes=new TextEncoder().encode(JSON.stringify(payload));
+    await(await f.service.infer(path,bytes)).text();
+    assert.equal(f.sentRequests[0].body,new TextDecoder().decode(bytes));
+    assert.deepEqual(f.counts(),{creates:1,closes:1,sends:1});
+    for(const invalid of [
+      {...payload,image_url:'https://private.invalid/image'},
+      {...payload,tools:[{type:'web_search_preview'}]},
+      {...payload,...(responses?{input:[{role:'user',content:[{type:'input_image',image_url:'https://private.invalid/image'}]}]}:{messages:[{role:'user',content:[{type:'image_url',image_url:{url:'https://private.invalid/image'}}]}]})},
+    ])await assert.rejects(f.service.infer(path,new TextEncoder().encode(JSON.stringify(invalid))),/unsupported modality or hosted tool/);
+    assert.deepEqual(f.counts(),{creates:1,closes:1,sends:1});
+  }
+});
+test('direct identity and transport metadata is rejected before AUTH or inference',async t=>{
+  for(const [mode,path] of [['direct_openrouter','/v1/chat/completions'],['direct_oa','/v1/responses']] as const){
+    const f=await fixture(t,mode);
+    for(const field of ['user','metadata','safety_identifier','prompt_cache_key','extra_headers','provider']){
+      const bytes=new TextEncoder().encode(JSON.stringify({model:'m',store:false,[field]:field==='metadata'?{email:'private@example.invalid'}:'private-identity'}));
+      await assert.rejects(f.service.infer(path,bytes),/unsupported identity or transport metadata/);
+    }
+    assert.deepEqual(f.counts(),{creates:0,closes:0,sends:0});
+    assert.equal((await f.journal.read('note'))!.value.pending,null);
+  }
+});
+test('direct structured text formats are supported only at the native API format paths',async t=>{
+  const schema={type:'object',properties:{type:{type:'string'},image_url:{type:'string'},audio:{type:'boolean'}},required:['type'],additionalProperties:false};
+  for(const [mode,path] of [['direct_openrouter','/v1/chat/completions'],['direct_oa','/v1/chat/completions'],['direct_oa','/v1/responses']] as const){
+    const f=await fixture(t,mode,0),responses=path==='/v1/responses';
+    for(const structured of [false,true]){
+      const format=structured?(responses?{type:'json_schema',name:'metadata',schema,strict:true}:{type:'json_schema',json_schema:{name:'metadata',schema,strict:true}}):{type:'json_object'};
+      const payload={model:'m',store:false,...(responses?{input:'Return JSON',text:{format}}:{messages:[{role:'user',content:'Return JSON'}],response_format:format})};
+      const bytes=new TextEncoder().encode(JSON.stringify(payload));
+      await(await f.service.infer(path,bytes)).text();
+      assert.equal(f.sentRequests.at(-1)!.body,new TextDecoder().decode(bytes));
+      for(const invalid of [
+        {...payload,tools:[{type:'web_search_preview'}]},
+        {...payload,...(responses?{text:{format:{type:'input_image',image_url:'https://private.invalid/image'}}}:{response_format:{type:'image_url',image_url:'https://private.invalid/image'}})},
+        {...payload,...(responses?{input:[{type:'json_schema',schema}]}:{messages:[{role:'user',content:[{type:'json_schema',schema}]}]})},
+      ])await assert.rejects(f.service.infer(path,new TextEncoder().encode(JSON.stringify(invalid))),/unsupported modality or hosted tool/);
+    }
+    assert.deepEqual(f.counts(),{creates:2,closes:2,sends:2});
+  }
+});
+test('direct Responses requires explicit disabled storage before AUTH',async t=>{
+  const f=await fixture(t,'direct_oa',0);
+  for(const store of [undefined,null,true,'false',0]){
+    const bytes=new TextEncoder().encode(JSON.stringify({model:'m',input:'private prompt',store}));
+    await assert.rejects(f.service.infer('/v1/responses',bytes),/direct Responses requires store:false/);
+  }
+  assert.deepEqual(f.counts(),{creates:0,closes:0,sends:0});
+  assert.equal((await f.journal.read('note'))!.value.pending,null);
+  const bytes=new TextEncoder().encode(JSON.stringify({model:'m',input:'private prompt',store:false}));
+  await(await f.service.infer('/v1/responses',bytes)).text();
+  assert.equal(f.sentRequests[0].body,new TextDecoder().decode(bytes));
+  assert.deepEqual(f.counts(),{creates:1,closes:1,sends:1});
+});
+test('daemon exposes inference headers without upstream cookies or tracking headers',async t=>{
+  for(const mode of ['proxy','direct_openrouter','direct_oa'] as const){
+    const f=await fixture(t,mode,0),id=crypto.randomUUID();
+    f.pendingInference(async()=>new Response('data: [DONE]\n\n',{headers:{'Content-Type':'text/event-stream','Retry-After':'3','Set-Cookie':'provider_identity=private; Path=/','X-Request-Id':'private-correlation','Access-Control-Allow-Origin':'*','X-Zkapi-Operation-Id':'untrusted-id','Cache-Control':'public, max-age=3600'}}));
+    const response=await f.service.infer('/v1/chat/completions',body,id);await response.text();
+    assert.equal(response.headers.get('Set-Cookie'),null);
+    assert.equal(response.headers.get('X-Request-Id'),null);
+    assert.equal(response.headers.get('Access-Control-Allow-Origin'),null);
+    assert.equal(response.headers.get('Content-Type'),'text/event-stream');
+    assert.equal(response.headers.get('Retry-After'),'3');
+    assert.equal(response.headers.get('Cache-Control'),'no-store');
+    assert.equal(response.headers.get('X-Zkapi-Operation-Id'),id);
+    assert.deepEqual(f.counts(),{creates:1,closes:1,sends:1});
+  }
+});
 test('clientd shares encrypted journal, streams once, reuses 60-second session and closes idle',async t=>{
   const f=await fixture(t);for(let i=0;i<2;i++)assert.match(await(await f.service.infer('/v1/chat/completions',body)).text(),/DONE/);
   assert.deepEqual(f.counts(),{creates:1,closes:0,sends:2});f.advance();await f.service.maintenance();assert.deepEqual(f.counts(),{creates:1,closes:1,sends:2});assert.equal((await f.journal.read('note'))!.value.pending,null);
@@ -136,9 +213,9 @@ test('reuse zero closes after every request and duplicate operation cannot cross
   const f=await fixture(t,'proxy',0),id=crypto.randomUUID();await(await f.service.infer('/v1/responses',body,id)).text();
   await assert.rejects(f.service.infer('/v1/responses',body,id),DaemonConflict);await(await f.service.infer('/v1/responses',body)).text();assert.deepEqual(f.counts(),{creates:2,closes:2,sends:2});
 });
-test('uncertain direct inference is never replayed after restart; one encrypted key, same mode',async t=>{
+test('uncertain direct inference is never replayed after restart; volatile key, same mode',async t=>{
   const f=await fixture(t,'direct_openrouter'),id=crypto.randomUUID();f.lose();await assert.rejects(f.service.infer('/v1/chat/completions',body,id));
-  assert.equal((await f.journal.read('note'))!.value.pending!.providerKey,'provider-secret');const resumed=f.restart();await resumed.start();
+  assert.equal((await f.journal.read('note'))!.value.pending!.providerKey,undefined);const resumed=f.restart();await resumed.start();
   assert.deepEqual(f.counts(),{creates:1,closes:1,sends:1});await assert.rejects(resumed.infer('/v1/chat/completions',body,id),DaemonConflict);
 });
 test('restart keeps admin reachable for explicit absent-operation reconciliation without inference replay',async t=>{
@@ -181,7 +258,7 @@ test('OA key is independently verified before clientd inference and reused only 
   const f=await fixture(t,'direct_oa');
   for(let i=0;i<2;i++)assert.match(await(await f.service.infer('/v1/responses',body)).text(),/DONE/);
   assert.equal(f.oaVerifications(),1);assert.deepEqual(f.counts(),{creates:1,closes:0,sends:2});
-  assert.equal((await f.journal.read('note'))!.value.pending!.providerKey,'provider-secret');
+  assert.equal((await f.journal.read('note'))!.value.pending!.providerKey,undefined);
 });
 test('OA verifier rejection closes the same authorization without saving a key or sending inference',async t=>{
   const f=await fixture(t,'direct_oa');f.rejectOa();
@@ -200,6 +277,28 @@ test('graceful shutdown waits for delivered streams and durable session close',a
   const f=await fixture(t,'direct_oa');const stream=await f.service.infer('/v1/chat/completions',body);
   let done=false;const shutdown=f.service.shutdown().then(()=>{done=true;});await new Promise(resolve=>setTimeout(resolve,20));assert.equal(done,false);
   await stream.body!.cancel();await shutdown;assert.equal((await f.journal.read('note'))!.value.pending,null);assert.equal(f.counts().closes,1);
+});
+test('canceling a pending read retains native admission until upstream cancellation finishes',async t=>{
+  for(const mode of ['proxy','direct_openrouter'] as const){
+    const f=await fixture(t,mode,0);
+    let reading!:()=>void,canceling!:()=>void,release!:()=>void;
+    const readStarted=new Promise<void>(resolve=>{reading=resolve;}),cancelStarted=new Promise<void>(resolve=>{canceling=resolve;}),blocked=new Promise<void>(resolve=>{release=resolve;});
+    f.pendingInference(async()=>new Response(new ReadableStream<Uint8Array>({pull(){reading();},async cancel(){canceling();await blocked;}},{highWaterMark:0})));
+    const response=await f.service.infer('/v1/chat/completions',body),reader=response.body!.getReader();
+    const pendingRead=reader.read();await readStarted;
+    const canceled=reader.cancel();await cancelStarted;await pendingRead;
+    // Web Streams resolves pending read() as EOF before cancel() settles.
+    // That EOF must not free the financial admission boundary.
+    try{
+      await new Promise(resolve=>setImmediate(resolve));
+      assert.equal((await f.service.status() as any).in_flight,1);
+      await assert.rejects(f.service.infer('/v1/chat/completions',body),DaemonConflict);
+      await assert.rejects(f.service.management('close'),DaemonConflict);
+      assert.deepEqual(f.counts(),{creates:1,closes:0,sends:1});
+    }finally{release();await canceled;}
+    assert.equal((await f.service.status() as any).in_flight,0);
+    assert.deepEqual(f.counts(),{creates:1,closes:1,sends:1});
+  }
 });
 test('graceful shutdown also waits for admission already preparing its authorization',async t=>{
   const f=await fixture(t,'direct_oa');let preparing!:()=>void,resume!:()=>void;

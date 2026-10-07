@@ -3,6 +3,7 @@
 import {createServer, request as httpsRequest, type Server} from 'node:https';
 import {request as httpRequest, type IncomingMessage} from 'node:http';
 import {once} from 'node:events';
+import {MAX_SESSION_SNAPSHOT_BYTES} from '../packages/sdk/src/session-snapshot.ts';
 
 type Kind = 'indexer' | 'control' | 'inference';
 const REQUEST_LIMIT = 2_000_000, INFERENCE_LIMIT = 8_388_608;
@@ -22,7 +23,7 @@ function pathAllowed(kind: Kind, path: string, method: string): boolean {
   if (cursor !== undefined) return BigInt(cursor) <= 9_223_372_036_854_775_807n;
   if (path.includes('?') || path.includes('#') || path.includes('%') || path.includes('\\')) return false;
   if (kind === 'inference') return method === 'POST' && ['/v1/chat/completions', '/v1/responses', '/v1/messages', '/v1/messages/count_tokens'].includes(path);
-  if (kind === 'indexer') return method === 'GET' && /^\/zkapi\/v1\/tree\/(root|notes\/\d+\/(path|zero-path))$/.test(path);
+  if (kind === 'indexer') return method === 'GET' && /^\/zkapi\/v1\/tree\/(root|snapshot|snapshots\/[0-9a-f]{64}\.json|notes\/\d+\/(path|zero-path))$/.test(path);
   return ['GET', 'POST'].includes(method) && path.startsWith('/zkapi/v1/') && !path.split('/').includes('..');
 }
 function requestBody(value: BodyInit | null | undefined): Buffer | undefined {
@@ -93,7 +94,8 @@ export async function startDevnetFrontend(options: DevnetFrontendOptions): Promi
       for (const name of requestHeaders) if (typeof request.headers[name] === 'string') headers[name] = request.headers[name];
       if (inferenceAuthority) headers.host = inferenceAuthority;
       upstream = await requestOnce(new URL(options.upstreamOrigin + path), {method, headers, body: chunks.length ? Buffer.concat(chunks) : undefined,
-        signal: AbortSignal.any([abort.signal, AbortSignal.timeout(options.kind === 'inference' ? 600_000 : 60_000)]), maximum: INFERENCE_LIMIT});
+        signal: AbortSignal.any([abort.signal, AbortSignal.timeout(options.kind === 'inference' ? 600_000 : 60_000)]),
+        maximum: options.kind === 'indexer' && /^\/zkapi\/v1\/tree\/snapshots\/[0-9a-f]{64}\.json$/.test(path) ? MAX_SESSION_SNAPSHOT_BYTES : INFERENCE_LIMIT});
       const returned: Record<string,string> = {}; upstream.headers.forEach((value, key) => { returned[key] = value; });
       response.writeHead(upstream.status, returned); response.flushHeaders();
       if (upstream.body) {
@@ -143,8 +145,11 @@ export function createDevnetPinnedFetch(options: DevnetPinnedFetchOptions): type
     const headers: Record<string,string> = {};
     new Headers(init?.headers ?? source?.headers).forEach((value, name) => { if (isOaVerifier ? name === 'content-type' : requestHeaders.includes(name)) headers[name] = value; });
     const body = requestBody(init?.body ?? (source && !['GET','HEAD'].includes(method) ? await source.arrayBuffer() : undefined));
+    const maximum = !isOaVerifier && (isDirect || kind === 'inference') ? INFERENCE_LIMIT
+      : kind === 'indexer' && /^\/zkapi\/v1\/tree\/snapshots\/[0-9a-f]{64}\.json$/.test(target.pathname)
+        ? MAX_SESSION_SNAPSHOT_BYTES : 65536;
     const result = await requestOnce(target, {method, headers, body, signal: init?.signal ?? source?.signal,
-      ...(!external ? {ca: options.ca} : {}), maximum: !isOaVerifier && (isDirect || kind === 'inference') ? INFERENCE_LIMIT : 65536});
+      ...(!external ? {ca: options.ca} : {}), maximum});
     if (kind === 'control' && target.pathname === '/zkapi/v1/withdraw/clearance') options.onClearanceStatus?.(result.status);
     return result;
   };

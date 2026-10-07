@@ -1,0 +1,23 @@
+{
+  "scope": "Two new test backends stopped after settlement and finalized withdrawal; no continuous availability claim",
+  "backends": [
+    {
+      "profile": "parity-direct-plain",
+      "status": "stopped",
+      "clean_shutdown": true,
+      "database_accepting": false,
+      "updated_at_utc": "2026-10-06T17:22:48.073498+00:00",
+      "launcher_observed_exit_code": 0
+    },
+    {
+      "profile": "parity-direct-sse-fresh",
+      "status": "stopped",
+      "clean_shutdown": true,
+      "database_accepting": false,
+      "updated_at_utc": "2026-10-06T17:27:17.226123+00:00",
+      "launcher_observed_exit_code": 0
+    }
+  ],
+  "indexers": "Plain external indexer stopped by SIGTERM, observed exit 143; SSE indexer terminated by runner cleanup. These are not asserted graceful stops.",
+  "funded_notes_remaining_in_these_two_runs": 0
+}

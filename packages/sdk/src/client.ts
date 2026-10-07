@@ -308,10 +308,10 @@ export class ZkApiClient {
   settle(): Promise<void> { return this.action(async () => { await this.daemon.management('close'); }); }
   cancelUnsentAuthorization(): Promise<void> { return this.action(async () => { await this.daemon.management('cancel-unsent'); }); }
   reconcileAbsentOperations(): Promise<void> { return this.action(async () => { await this.daemon.management('reconcile'); }); }
-  /** Release local observers only. Does not settle, delete storage or stop a caller-owned prover. */
+  /** Release observers and volatile provider keys. Does not settle, delete storage or stop a caller-owned prover. */
   dispose(): void {
     if (this.busy) throw new ClientActionError('busy', 'Consume or cancel the current response before disposal.');
-    this.disposed = true; this.listeners.clear();
+    this.disposed = true; this.listeners.clear(); this.options.control.clearEphemeralKeys();
   }
 }
 

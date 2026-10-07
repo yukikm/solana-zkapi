@@ -340,8 +340,6 @@ export async function runDevnetProviderAcceptance(options: DevnetProviderContext
       requireTrue(!budget.reservations.some(r => r.case_id === testCase.id));
       let report: CaseReport;
       try { report = await runProviderAcceptanceCase({client, journal: o.journal, prover: o.prover, chain: o.chain,
-        authorizationClient: signal => new ControlClient({context, journal: o.journal, verifier, ...providerOptions,
-          fetch: (url, init) => o.pinnedFetch(url, {...init, signal: init?.signal ? AbortSignal.any([signal, init.signal]) : signal})}),
         noteId, tariff, testCase, async reserve(c) {
           requireTrue(same(c, testCase));
           const result = await coordinator('reserve', o.planPath, o.stateDir, c.id) as {case_id: string; reserved_micro_usdc: string; plan_sha256: string; send_authorized_once: true};

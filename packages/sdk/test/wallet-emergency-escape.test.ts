@@ -142,6 +142,28 @@ test('accepted AUTH plus lost inference and close 503 escapes in the same encryp
   assert.equal(h.calls.filter(c=>c.url.endsWith('/v1/responses')).length,1);assert.deepEqual(h.counts(),{sends:h.receipts.size,signs:h.receipts.size});
 });
 
+test('a new emergency archive omits a legacy direct key while preserving exact financial and inference evidence',async t=>{
+  const h=await setup(t);
+  await h.corrupt(value=>{
+    const p=value.pending!;
+    p.prepared.request.authorization.mode='direct_openrouter';p.prepared.request.authorization.proxy_secret_hash=null;
+    p.prepared.request.quote.body.mode='direct_openrouter';p.prepared.request.quote.body.provider='openrouter';
+    p.prepared.proxy_token=null;p.exactRequest=JSON.stringify(p.prepared.request);p.providerKey='legacy-key-must-not-be-copied';
+  });
+  const before=(await h.open().read('note'))!.value;
+  await h.restart().beginEmergencyEscape('note',h.owner,h.roles);
+  const after=(await h.open().read('note'))!.value,archived=after.wallet!.emergencyEscapes![0].pending;
+  const expected=structuredClone(before.pending!);delete expected.providerKey;
+  assert.deepEqual(archived,expected);assert.deepEqual(after.state,before.state);
+  assert.equal(JSON.stringify(after).includes('legacy-key-must-not-be-copied'),false);
+  // Existing historical archives are not destructively migrated when reopened.
+  await h.corrupt(value=>{value.wallet!.emergencyEscapes![0].pending.providerKey='historical-archive-key';});
+  const historical=(await h.open().read('note'))!;
+  await assert.rejects(h.control().sendDirectOperation('note',crypto.randomUUID(),'/v1/chat/completions',new TextEncoder().encode('{}')),/fences inference/);
+  assert.deepEqual((await h.open().read('note'))!.head,historical.head);
+  assert.equal((await h.open().read('note'))!.value.wallet!.emergencyEscapes![0].pending.providerKey,'historical-archive-key');
+});
+
 test('finalized challenge restores only close/status recovery and a verified successor; no AUTH or inference replay',async t=>{
   const h=await setup(t);await h.restart().beginEmergencyEscape('note',h.owner,h.roles);await h.drive();
   const archived=(await h.open().read('note'))!.value.wallet!.emergencyEscapes![0];

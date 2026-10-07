@@ -148,7 +148,8 @@ export class WalletClient {
       requireTrue(!w.clearance||w.clearance.phase==='requested'&&w.clearance.signature===undefined
         &&w.clearance.nullifier===nullifier,'escape conflicts with permanent clearance');
       const operationId=crypto.randomUUID();
-      (w.emergencyEscapes??=[]).push({pending:structuredClone(p),previous:structuredClone(r.value.state),
+      const archived=structuredClone(p);delete archived.providerKey;
+      (w.emergencyEscapes??=[]).push({pending:archived,previous:structuredClone(r.value.state),
         nullifier,operationId,phase:'escaping'});
       r.value.pending=null;
       w.operation={id:operationId,kind:'initiate_escape',phase:'proving',roles,destinationOwner,step:0,attempts:[],finalized:[]};

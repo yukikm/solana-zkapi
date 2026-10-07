@@ -1,0 +1,30 @@
+✔ USDC input is exact integer arithmetic and rejects rounding, exponent and negative inputs (1.140625ms)
+✔ only completed turns become future context; each explicit send gets one distinct operation ID (12.846875ms)
+✔ uncertain inference is not replayed and incomplete content is excluded from the next explicit send (0.31175ms)
+✔ a truncated SSE answer is visible as interrupted and never reused as conversation context (0.616958ms)
+✔ pending or expired status prevents inference even with a stale presentation state (0.157833ms)
+✔ cancel holds the conversation lock through delayed response cleanup and never dispatches a second request (2.258209ms)
+✔ privacy copy distinguishes operator content visibility from direct provider usage and metadata (0.14125ms)
+✔ reviewed public JSON rejects private configuration and nonlocal asset/transport substitutions (4.714709ms)
+✔ relay maps bounded control/indexer/RPC calls, keeps direct body and credentials off the relay, and preserves abort (7.977625ms)
+✔ unknown destination/method/query and unsupported RPC fail before network and never fall back (1.179958ms)
+✔ build installs only hash-pinned public JSON into isolated assets and records exact output hashes (430.359458ms)
+✔ public admission hints require exact integer totals and distinguish host enablement from reserved charges (0.487916ms)
+✔ native JSON text readers normalize Responses and Anthropic text without trusting usage (12.67625ms)
+✔ native JSON rejects provider errors, partial Responses and unsupported tool output with redacted errors (0.817791ms)
+✔ both native SSE readers handle every byte split, UTF-8 and CR/CRLF termination (71.218625ms)
+✔ terminal native events are mandatory; a Chat Completions DONE marker is insufficient (0.371791ms)
+✔ Responses completion must agree with displayed deltas and rejects failed/incomplete events (0.228583ms)
+✔ Anthropic block order and terminal reason must complete before a turn is retained (0.204583ms)
+✔ provider error frames and event type mismatches never expose their payloads (0.125417ms)
+✔ early stream exit awaits cancellation, including a delayed SDK settlement attempt (1.683584ms)
+✔ HTTP rejection, decode failures and cleanup failures stay redacted (0.435625ms)
+✔ response and SSE event bounds cancel oversized inputs (0.777833ms)
+ℹ tests 22
+ℹ suites 0
+ℹ pass 22
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 561.788792

@@ -1,0 +1,140 @@
+{
+  "schema": 1,
+  "passed": true,
+  "scope": "selected real-provider cases using actual devnet SDK/control/ledger",
+  "plan_sha256": "50f3f10040671f27ecd2ff59db3d3d6474a58de67bb0cf38e7a2cd41d7577167",
+  "campaign_id": "i10-provider-acceptance",
+  "pool": "DgpRQxGizhyEitiqh1hfi7qxuHJuf1HPnEotvfis5aos",
+  "cases": [
+    {
+      "schema": 1,
+      "passed": true,
+      "scope": "one real-provider case via existing ControlClient; no wallet UI or full G3 claim",
+      "case_id": "openrouter-direct-plain",
+      "mode": "direct_openrouter",
+      "provider": "openrouter",
+      "model": "openai/gpt-4o-mini",
+      "stream": false,
+      "tools": false,
+      "operation_id": "b70f77ab-ab0c-459b-a0ee-58016c58ae9f",
+      "endpoint": "/v1/chat/completions",
+      "http_status": 200,
+      "response_bytes": 817,
+      "response_sha256": "7839e062f219fb913de78be2fa92b5cd007c1d8db8f97eaebf810930c80db9be",
+      "inference_sends": 1,
+      "inference_observation": {
+        "stage": "complete",
+        "elapsed_ms": 1494,
+        "http_status": 200,
+        "service_error_code": null,
+        "response_bytes": 817,
+        "sdk_send_invoked": true
+      },
+      "request_id": "6114e9d8-be6d-47ac-a07f-a2a5657ff4e6",
+      "receipt_id": "eee4b976-02b7-4fe0-a33e-3029077fa5b6",
+      "receipt_hash": "09dd33089bf0b21c151d1bd834385d5a7f7ddea517d1c06d09ef19f317df9e7c",
+      "evidence_kind": "OPENROUTER_USAGE",
+      "charged_micro_usdc": "4",
+      "reserved_micro_usdc": "1000000",
+      "plan_sha256": "50f3f10040671f27ecd2ff59db3d3d6474a58de67bb0cf38e7a2cd41d7577167",
+      "tariff_hash": "798ac2ab8f94ff4ba57e5fe6d2fc95cd0dc974239ea3cde3c745aa1edfee768b",
+      "signed_successor_verified_by_sdk": true,
+      "authorization_recovery_attempts": 1,
+      "quote_request_attempts": 1,
+      "inference_replays": 0,
+      "full_g3_passed": false
+    }
+  ],
+  "selection": {
+    "case_ids": [
+      "openrouter-direct-plain"
+    ],
+    "parent_plan_sha256": "50f3f10040671f27ecd2ff59db3d3d6474a58de67bb0cf38e7a2cd41d7577167",
+    "profile": "parity-direct-plain",
+    "role": "direct_openrouter",
+    "schema": 1
+  },
+  "budget": {
+    "identity": {
+      "schema": 1,
+      "campaign_id": "i10-provider-acceptance",
+      "plan_sha256": "50f3f10040671f27ecd2ff59db3d3d6474a58de67bb0cf38e7a2cd41d7577167",
+      "budget_micro_usdc": "10000000",
+      "max_requests": 18
+    },
+    "reserved_micro_usdc": "1154216",
+    "remaining_micro_usdc": "8845784",
+    "reservations": [
+      {
+        "case_id": "openai-responses-plain",
+        "max_cost_micro_usdc": "19277",
+        "state": "reserved_no_automatic_replay"
+      },
+      {
+        "case_id": "openrouter-proxy-plain",
+        "max_cost_micro_usdc": "19277",
+        "state": "reserved_no_automatic_replay"
+      },
+      {
+        "case_id": "openrouter-proxy-tools",
+        "max_cost_micro_usdc": "19277",
+        "state": "reserved_no_automatic_replay"
+      },
+      {
+        "case_id": "openai-chat-plain",
+        "max_cost_micro_usdc": "19277",
+        "state": "reserved_no_automatic_replay"
+      },
+      {
+        "case_id": "demo-3158cfca-c7b3-4891-aef0-54b9975b243e",
+        "kind": "explicit_demo",
+        "max_cost_micro_usdc": "19277",
+        "operation_id": "3158cfca-c7b3-4891-aef0-54b9975b243e",
+        "request_id": "4f8434a4-9766-4903-9128-f0f33c3acdae",
+        "state": "reserved_no_automatic_replay",
+        "template_case_id": "openai-chat-plain"
+      },
+      {
+        "case_id": "demo-79a28871-fb7f-4465-b8fd-c677d6577a0d",
+        "kind": "explicit_demo",
+        "max_cost_micro_usdc": "19277",
+        "operation_id": "79a28871-fb7f-4465-b8fd-c677d6577a0d",
+        "request_id": "db43878a-fd0f-485e-9712-2032a84583b2",
+        "state": "reserved_no_automatic_replay",
+        "template_case_id": "openai-chat-plain"
+      },
+      {
+        "case_id": "demo-a771e969-5fee-4248-9dea-d494e0277ed0",
+        "kind": "explicit_demo",
+        "max_cost_micro_usdc": "19277",
+        "operation_id": "a771e969-5fee-4248-9dea-d494e0277ed0",
+        "request_id": "70a75070-1ef4-4ea9-8c5d-6bd72a347a3d",
+        "state": "reserved_no_automatic_replay",
+        "template_case_id": "openai-chat-plain"
+      },
+      {
+        "case_id": "demo-f5b35e41-1daa-4f4f-885b-2141f17c9376",
+        "kind": "explicit_demo",
+        "max_cost_micro_usdc": "19277",
+        "operation_id": "f5b35e41-1daa-4f4f-885b-2141f17c9376",
+        "request_id": "1d7830e8-29a8-44bc-a3c7-7cc40e1a6449",
+        "state": "reserved_no_automatic_replay",
+        "template_case_id": "openai-chat-plain"
+      },
+      {
+        "case_id": "openrouter-direct-plain",
+        "max_cost_micro_usdc": "1000000",
+        "state": "reserved_no_automatic_replay"
+      }
+    ],
+    "refunds_supported": false,
+    "inference_replays_supported": false
+  },
+  "source_sha256": {
+    "scripts/provider_acceptance.py": "5911ca26cd21a342e6a3f6a29c65088028ffcac2807c3f1366b54db25715b2ae",
+    "scripts/provider_acceptance_client.ts": "48b4866e4f864bcfb3b009e9399a8ff9d24ec4cf082858abe7204ed92041f023",
+    "scripts/i10_devnet_provider.ts": "16152b42a7dc2171d644505afd3391ea469eee8df126e59817e8942ecfa86b0c"
+  },
+  "full_g3_passed": false,
+  "wallet_ui_verified": false
+}

@@ -1,0 +1,67 @@
+{
+  "identity": {
+    "budget_micro_usdc": "10000000",
+    "campaign_id": "i10-provider-acceptance",
+    "max_requests": 18,
+    "plan_sha256": "50f3f10040671f27ecd2ff59db3d3d6474a58de67bb0cf38e7a2cd41d7577167",
+    "schema": 1
+  },
+  "reservations": [
+    {
+      "case_id": "openai-responses-plain",
+      "max_cost_micro_usdc": "19277",
+      "state": "reserved_no_automatic_replay"
+    },
+    {
+      "case_id": "openrouter-proxy-plain",
+      "max_cost_micro_usdc": "19277",
+      "state": "reserved_no_automatic_replay"
+    },
+    {
+      "case_id": "openrouter-proxy-tools",
+      "max_cost_micro_usdc": "19277",
+      "state": "reserved_no_automatic_replay"
+    },
+    {
+      "case_id": "openai-chat-plain",
+      "max_cost_micro_usdc": "19277",
+      "state": "reserved_no_automatic_replay"
+    },
+    {
+      "case_id": "demo-3158cfca-c7b3-4891-aef0-54b9975b243e",
+      "kind": "explicit_demo",
+      "max_cost_micro_usdc": "19277",
+      "operation_id": "3158cfca-c7b3-4891-aef0-54b9975b243e",
+      "request_id": "4f8434a4-9766-4903-9128-f0f33c3acdae",
+      "state": "reserved_no_automatic_replay",
+      "template_case_id": "openai-chat-plain"
+    },
+    {
+      "case_id": "demo-79a28871-fb7f-4465-b8fd-c677d6577a0d",
+      "kind": "explicit_demo",
+      "max_cost_micro_usdc": "19277",
+      "operation_id": "79a28871-fb7f-4465-b8fd-c677d6577a0d",
+      "request_id": "db43878a-fd0f-485e-9712-2032a84583b2",
+      "state": "reserved_no_automatic_replay",
+      "template_case_id": "openai-chat-plain"
+    },
+    {
+      "case_id": "demo-a771e969-5fee-4248-9dea-d494e0277ed0",
+      "kind": "explicit_demo",
+      "max_cost_micro_usdc": "19277",
+      "operation_id": "a771e969-5fee-4248-9dea-d494e0277ed0",
+      "request_id": "70a75070-1ef4-4ea9-8c5d-6bd72a347a3d",
+      "state": "reserved_no_automatic_replay",
+      "template_case_id": "openai-chat-plain"
+    },
+    {
+      "case_id": "demo-f5b35e41-1daa-4f4f-885b-2141f17c9376",
+      "kind": "explicit_demo",
+      "max_cost_micro_usdc": "19277",
+      "operation_id": "f5b35e41-1daa-4f4f-885b-2141f17c9376",
+      "request_id": "1d7830e8-29a8-44bc-a3c7-7cc40e1a6449",
+      "state": "reserved_no_automatic_replay",
+      "template_case_id": "openai-chat-plain"
+    }
+  ]
+}

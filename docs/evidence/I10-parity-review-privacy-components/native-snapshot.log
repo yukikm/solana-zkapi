@@ -1,0 +1,15 @@
+   Compiling zkapi-layout2 v0.1.0 (/Users/yukikimura/work/solana-zkapi/crates/zkapi-layout2)
+   Compiling zkapi-solana-types v0.1.0 (/Users/yukikimura/work/solana-zkapi/crates/zkapi-solana-types)
+   Compiling zkapi-solana-crypto v0.1.0 (/Users/yukikimura/work/solana-zkapi/crates/zkapi-solana-crypto)
+   Compiling zkapi-tree-prover v0.1.0 (/Users/yukikimura/work/solana-zkapi/crates/zkapi-tree-prover)
+   Compiling zkapi-client-prover v0.1.0 (/Users/yukikimura/work/solana-zkapi/apps/clientd/prover)
+    Finished `test` profile [optimized + debuginfo] target(s) in 3.34s
+     Running unittests src/lib.rs (apps/clientd/prover/target/debug/deps/zkapi_client_prover-4640dc6dead068a4)
+
+running 3 tests
+test snapshot::tests::rejects_changed_omitted_duplicate_unsorted_or_noncanonical_notes ... ok
+test snapshot::tests::paths_match_original_circuit_including_last_possible_leaf ... ok
+test snapshot::tests::multiple_note_paths_match_upstream_tree_and_detect_omission ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.03s
+

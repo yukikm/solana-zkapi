@@ -69,6 +69,38 @@ Use the same operation ID when referring to an uncertain request. Its response
 is not replayable. A new ID is an explicit new billable request, not recovery.
 Avoid generic retry middleware around `chat()` or `request()`.
 
+## Local request retention
+
+The encrypted note journal saves each canonical inference request body before
+dispatch in both direct and proxy modes. It retains those bytes in session
+history after settlement and in unresolved emergency-escape archives. A request
+can contain the user's prompt, tool data and earlier assistant responses sent as
+conversation context. Returned response bodies are not separately journaled by
+the SDK, but any content included in a later request becomes part of that saved
+request.
+
+Newly received direct provider keys stay in the current `ControlClient`'s memory
+and are omitted from journal writes and new emergency-escape archives. Only a
+successful durable session commit permits that in-memory key to be used. Close,
+settlement and application disposal forget it. After restart, the SDK closes and
+settles the same saved session without reviving a key or replaying inference.
+OA verification evidence may persist, but it cannot replace a live verified key.
+
+Earlier versions saved direct provider keys in encrypted pending sessions and
+emergency archives. Those historical records remain readable without automatic
+migration; their keys never authorize inference in a fresh client. Expiry or
+revocation does not erase old local bytes. Existing backups may retain request
+bodies and credentials. Control/proxy recovery credentials and financial evidence
+remain encrypted in the journal.
+
+Reloading, clearing the visible conversation or disposing the client does not
+erase the journal. There is currently no public API for selective prompt erasure.
+Do not edit operation bytes or delete custody to implement a chat-clear button:
+the journal also carries funds and recovery evidence. Browser encryption does
+not hide retained text from app code running in that origin or from a compromised
+device. Explain this local retention separately from provider/proxy visibility
+and from the UI's choice to keep its displayed transcript only in memory.
+
 ## Withdrawals and expiry
 
 Mutual close uses signed permanent clearance and saves the destination before
