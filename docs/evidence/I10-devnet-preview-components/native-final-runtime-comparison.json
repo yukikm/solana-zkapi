@@ -1,0 +1,244 @@
+{
+  "passed": true,
+  "binaries": 4,
+  "runtime": 1,
+  "compiled_sdk_files": 54,
+  "files": {
+    "bin/node": {
+      "before": "27db838bb204ef7c21df2931f5656e4c8fb32e6e947f363a402b49714d32b5b1",
+      "after": "27db838bb204ef7c21df2931f5656e4c8fb32e6e947f363a402b49714d32b5b1"
+    },
+    "bin/clientd": {
+      "before": "78d095f093b874f8417fe904797c4f55b9e4d64f8de4b63092c0fbc412cb4b5a",
+      "after": "78d095f093b874f8417fe904797c4f55b9e4d64f8de4b63092c0fbc412cb4b5a"
+    },
+    "bin/zkapi-client-prover": {
+      "before": "e0f6891e4320040db6f54e03eb03b11f5de194a42ddd477ab26dd376c42df8d6",
+      "after": "e0f6891e4320040db6f54e03eb03b11f5de194a42ddd477ab26dd376c42df8d6"
+    },
+    "bin/zkapi-client-verify": {
+      "before": "40e74a583b793b7b13cabde9f47e766babb03443a0f58fb75de747bc7c2f3400",
+      "after": "40e74a583b793b7b13cabde9f47e766babb03443a0f58fb75de747bc7c2f3400"
+    },
+    "apps/clientd/runtime.ts": {
+      "before": "23a3562f0c8e7a25115a552f13dce61a39c701d6a1c96f277bcc0babc0efab68",
+      "after": "23a3562f0c8e7a25115a552f13dce61a39c701d6a1c96f277bcc0babc0efab68"
+    },
+    "node_modules/@zkapi/solana-sdk/dist/trust.d.ts": {
+      "before": "4070e28a6d5fd4c7884a8352d4b5602338737006722fc1de4c6417a31980f524",
+      "after": "4070e28a6d5fd4c7884a8352d4b5602338737006722fc1de4c6417a31980f524"
+    },
+    "node_modules/@zkapi/solana-sdk/dist/chat.d.ts": {
+      "before": "bcd9d3d5b59a6197d0c1a4acff9ab16b3193d91aadba42fa8a2b4da9094fb82f",
+      "after": "bcd9d3d5b59a6197d0c1a4acff9ab16b3193d91aadba42fa8a2b4da9094fb82f"
+    },
+    "node_modules/@zkapi/solana-sdk/dist/clientd-network.js": {
+      "before": "a262ac8b3482c4f7d5a032be4532ea6e73de04d5262a81c90726ae05670e766a",
+      "after": "a262ac8b3482c4f7d5a032be4532ea6e73de04d5262a81c90726ae05670e766a"
+    },
+    "node_modules/@zkapi/solana-sdk/dist/client.js": {
+      "before": "239324c283f392d477d872659b4119e71b221dae5fa680a45c656ca39d9c7501",
+      "after": "239324c283f392d477d872659b4119e71b221dae5fa680a45c656ca39d9c7501"
+    },
+    "node_modules/@zkapi/solana-sdk/dist/wallet-chain.js": {
+      "before": "d566d473ddfee46956737423b45b3ad4865f2dab73f098c4fa43963f4251a254",
+      "after": "d566d473ddfee46956737423b45b3ad4865f2dab73f098c4fa43963f4251a254"
+    },
+    "node_modules/@zkapi/solana-sdk/dist/browser-storage.d.ts": {
+      "before": "78a0c7b28db2fdc89d51df10a6f1b379a81fa21752da67e4780209496fdd78ac",
+      "after": "78a0c7b28db2fdc89d51df10a6f1b379a81fa21752da67e4780209496fdd78ac"
+    },
+    "node_modules/@zkapi/solana-sdk/dist/control.js": {
+      "before": "35be3ce49f385ee05072b99c2d070ff6fdd622723ec0a5b87ab4378d870dcb02",
+      "after": "35be3ce49f385ee05072b99c2d070ff6fdd622723ec0a5b87ab4378d870dcb02"
+    },
+    "node_modules/@zkapi/solana-sdk/dist/secret-custody.d.ts": {
+      "before": "67f67eb06ed1da14f2764511e96ab26ff85d77238fcb1b0426ac9b65d8d913c4",
+      "after": "67f67eb06ed1da14f2764511e96ab26ff85d77238fcb1b0426ac9b65d8d913c4"
+    },
+    "node_modules/@zkapi/solana-sdk/dist/layout2.d.ts": {
+      "before": "d27e6e9a9724101f865ae78f7cef41f36330335992eca82fc64eb9797c56b721",
+      "after": "d27e6e9a9724101f865ae78f7cef41f36330335992eca82fc64eb9797c56b721"
+    },
+    "node_modules/@zkapi/solana-sdk/dist/encoding.d.ts": {
+      "before": "d7b9b0db68e4805386d6baab9973945e32b91274022e978e19e210e6b66463a0",
+      "after": "d7b9b0db68e4805386d6baab9973945e32b91274022e978e19e210e6b66463a0"
+    },
+    "node_modules/@zkapi/solana-sdk/dist/clientd-models.js": {
+      "before": "820aea9c8d1d7fc3a18f3007cee450be3993c893635db71e8a3e2876ae6b9f4c",
+      "after": "820aea9c8d1d7fc3a18f3007cee450be3993c893635db71e8a3e2876ae6b9f4c"
+    },
+    "node_modules/@zkapi/solana-sdk/dist/deployment.d.ts": {
+      "before": "11b6146c0514f445aa658d1608be9f6731042f1c254fcdf2f30d3524409849e6",
+      "after": "11b6146c0514f445aa658d1608be9f6731042f1c254fcdf2f30d3524409849e6"
+    },
+    "node_modules/@zkapi/solana-sdk/dist/prover.d.ts": {
+      "before": "7050bbc72e553cc07ec0e92163032b0f802902a030f31411849f000a88ccd0aa",
+      "after": "7050bbc72e553cc07ec0e92163032b0f802902a030f31411849f000a88ccd0aa"
+    },
+    "node_modules/@zkapi/solana-sdk/dist/journal-node.d.ts": {
+      "before": "d5b32aa2bc2d4286b439a2e0e3728ea82fc44ca0c67a6abef37cf56ee728a283",
+      "after": "d5b32aa2bc2d4286b439a2e0e3728ea82fc44ca0c67a6abef37cf56ee728a283"
+    },
+    "node_modules/@zkapi/solana-sdk/dist/clientd-models.d.ts": {
+      "before": "c2b4fe1618aa0401d6e5e926e76cf80e7fb4b0aa262aab181717c08712c65671",
+      "after": "c2b4fe1618aa0401d6e5e926e76cf80e7fb4b0aa262aab181717c08712c65671"
+    },
+    "node_modules/@zkapi/solana-sdk/dist/clientd-network.d.ts": {
+      "before": "f9f33d724b23cded716d5edf7eb3139980de8cc960d758bbad2c19ae037086b0",
+      "after": "f9f33d724b23cded716d5edf7eb3139980de8cc960d758bbad2c19ae037086b0"
+    },
+    "node_modules/@zkapi/solana-sdk/dist/prover-worker.js": {
+      "before": "19b4496bd828452bd578b60f8da93602f2aebebf8b182b28dfccfa5966896dad",
+      "after": "19b4496bd828452bd578b60f8da93602f2aebebf8b182b28dfccfa5966896dad"
+    },
+    "node_modules/@zkapi/solana-sdk/dist/wallet.d.ts": {
+      "before": "34e93c6e5de00593b7d61cfc897e96747889f594eef9efab50767b50c7a06de8",
+      "after": "34e93c6e5de00593b7d61cfc897e96747889f594eef9efab50767b50c7a06de8"
+    },
+    "node_modules/@zkapi/solana-sdk/dist/challenger.d.ts": {
+      "before": "33099084a5f2eab8eea15a70ae03fa49b77c48cb99c94736770902ccb0b19e11",
+      "after": "33099084a5f2eab8eea15a70ae03fa49b77c48cb99c94736770902ccb0b19e11"
+    },
+    "node_modules/@zkapi/solana-sdk/dist/transport.js": {
+      "before": "e3ae4d5ae7166b1c84acff11e303e6fce1bfef6a4b66002a92d9bbe7a194362e",
+      "after": "e3ae4d5ae7166b1c84acff11e303e6fce1bfef6a4b66002a92d9bbe7a194362e"
+    },
+    "node_modules/@zkapi/solana-sdk/dist/clientd-bridge.d.ts": {
+      "before": "74052b94e67453462d5e61cac99763842e9cbe0be421647b95682bb34c0211ae",
+      "after": "74052b94e67453462d5e61cac99763842e9cbe0be421647b95682bb34c0211ae"
+    },
+    "node_modules/@zkapi/solana-sdk/dist/deployment.js": {
+      "before": "7923a97d761bfc24f83be560d4117ed8959b4cd42f6da8c96784976d7725bae2",
+      "after": "7923a97d761bfc24f83be560d4117ed8959b4cd42f6da8c96784976d7725bae2"
+    },
+    "node_modules/@zkapi/solana-sdk/dist/encoding.js": {
+      "before": "6c3a595dc4a60a64b3efbc11a40d1e54570c4917b1fb29a55addd9644072aa08",
+      "after": "6c3a595dc4a60a64b3efbc11a40d1e54570c4917b1fb29a55addd9644072aa08"
+    },
+    "node_modules/@zkapi/solana-sdk/dist/control-prover.d.ts": {
+      "before": "92fd47e874b776df70c14753f64c7a4f2e3d2c6f78c9e23801bfa065c1943988",
+      "after": "92fd47e874b776df70c14753f64c7a4f2e3d2c6f78c9e23801bfa065c1943988"
+    },
+    "node_modules/@zkapi/solana-sdk/dist/clientd-bridge.js": {
+      "before": "004856236e6f4dbf2841d162b1aba789bbea8ae14b76b291d29299b60ab5af7c",
+      "after": "004856236e6f4dbf2841d162b1aba789bbea8ae14b76b291d29299b60ab5af7c"
+    },
+    "node_modules/@zkapi/solana-sdk/dist/wallet-standard.d.ts": {
+      "before": "1e43f26a47bf3334486364fe7a4a8d0eeea2d1ad241bad96160bfa73ad568101",
+      "after": "1e43f26a47bf3334486364fe7a4a8d0eeea2d1ad241bad96160bfa73ad568101"
+    },
+    "node_modules/@zkapi/solana-sdk/dist/journal.js": {
+      "before": "4335997d5f5a93a72d79474074d41eaa153478253ddf1b658148db38965be25d",
+      "after": "4335997d5f5a93a72d79474074d41eaa153478253ddf1b658148db38965be25d"
+    },
+    "node_modules/@zkapi/solana-sdk/dist/challenger.js": {
+      "before": "c837022872a5ba599dec06088b94189c95d0c80fe75fc632e86dca897800dcbf",
+      "after": "c837022872a5ba599dec06088b94189c95d0c80fe75fc632e86dca897800dcbf"
+    },
+    "node_modules/@zkapi/solana-sdk/dist/wallet-chain.d.ts": {
+      "before": "f88c9dd1cc233a87cb471814e720ce768e565f506f139770523f330bfe288bfb",
+      "after": "f88c9dd1cc233a87cb471814e720ce768e565f506f139770523f330bfe288bfb"
+    },
+    "node_modules/@zkapi/solana-sdk/dist/journal-node.js": {
+      "before": "faab56e7e207569e22a5ae3f5a47bee2b3b40a669296c99bab5e1e7d48a65437",
+      "after": "faab56e7e207569e22a5ae3f5a47bee2b3b40a669296c99bab5e1e7d48a65437"
+    },
+    "node_modules/@zkapi/solana-sdk/dist/prover-worker.d.ts": {
+      "before": "8e609bb71c20b858c77f0e9f90bb1319db8477b13f9f965f1a1e18524bf50881",
+      "after": "8e609bb71c20b858c77f0e9f90bb1319db8477b13f9f965f1a1e18524bf50881"
+    },
+    "node_modules/@zkapi/solana-sdk/dist/journal.d.ts": {
+      "before": "bc73f522948891a77cb3520442d6f5ca60c5cbf989a20e3765ef69d1b06ac99b",
+      "after": "bc73f522948891a77cb3520442d6f5ca60c5cbf989a20e3765ef69d1b06ac99b"
+    },
+    "node_modules/@zkapi/solana-sdk/dist/prover.js": {
+      "before": "d492c64384a1d448566dd9254f963eeab01c20e213c3558c638326117655b9b5",
+      "after": "d492c64384a1d448566dd9254f963eeab01c20e213c3558c638326117655b9b5"
+    },
+    "node_modules/@zkapi/solana-sdk/dist/session-snapshot.d.ts": {
+      "before": "7674f635b466479342e0204b91e6c296a55aa12b2c53a01cb2047c2319723b7f",
+      "after": "7674f635b466479342e0204b91e6c296a55aa12b2c53a01cb2047c2319723b7f"
+    },
+    "node_modules/@zkapi/solana-sdk/dist/transport.d.ts": {
+      "before": "bc0d33ba3f836d9c068239bca88db1ab75bbf7f95d1ff5e0a54e944508acfa35",
+      "after": "bc0d33ba3f836d9c068239bca88db1ab75bbf7f95d1ff5e0a54e944508acfa35"
+    },
+    "node_modules/@zkapi/solana-sdk/dist/wallet.js": {
+      "before": "3f6e1a34c381a833f9ca91c80a992946e76e7dc2e751d0dc5b0e5ebe7c6a2f06",
+      "after": "3f6e1a34c381a833f9ca91c80a992946e76e7dc2e751d0dc5b0e5ebe7c6a2f06"
+    },
+    "node_modules/@zkapi/solana-sdk/dist/control-prover.js": {
+      "before": "68d94c12f4838dc6a22bc50136011821390d7066f12e3610a543039b650b23fa",
+      "after": "68d94c12f4838dc6a22bc50136011821390d7066f12e3610a543039b650b23fa"
+    },
+    "node_modules/@zkapi/solana-sdk/dist/wallet-standard.js": {
+      "before": "a49ddab95cc3290190be6dc7ee25e53209d8dc037b97d9272ef5255cdbf3257e",
+      "after": "a49ddab95cc3290190be6dc7ee25e53209d8dc037b97d9272ef5255cdbf3257e"
+    },
+    "node_modules/@zkapi/solana-sdk/dist/control-node.d.ts": {
+      "before": "17d33add1da23f79250d3de0114dbac489299f1ce7146bc3efec747527f4de7f",
+      "after": "17d33add1da23f79250d3de0114dbac489299f1ce7146bc3efec747527f4de7f"
+    },
+    "node_modules/@zkapi/solana-sdk/dist/chat.js": {
+      "before": "7aeeb7613e7a3ff4550ec34d243248f0a10b0cbfe97e042a2a0c608e050a8b31",
+      "after": "7aeeb7613e7a3ff4550ec34d243248f0a10b0cbfe97e042a2a0c608e050a8b31"
+    },
+    "node_modules/@zkapi/solana-sdk/dist/control.d.ts": {
+      "before": "7cc4c5834d147876870f2f787dca77691900a585f1d0f9face976b45b308db2a",
+      "after": "7cc4c5834d147876870f2f787dca77691900a585f1d0f9face976b45b308db2a"
+    },
+    "node_modules/@zkapi/solana-sdk/dist/prover-runtime.d.ts": {
+      "before": "9e2e2d375d2dcac6100b9563474a06cd862d8b220f8dd98f3136417d833e1090",
+      "after": "9e2e2d375d2dcac6100b9563474a06cd862d8b220f8dd98f3136417d833e1090"
+    },
+    "node_modules/@zkapi/solana-sdk/dist/layout2.js": {
+      "before": "05732ef2dd177bc20b59f8aaa58fffe3a315dcf49141c3bfe9a9c0cbc910cbdf",
+      "after": "05732ef2dd177bc20b59f8aaa58fffe3a315dcf49141c3bfe9a9c0cbc910cbdf"
+    },
+    "node_modules/@zkapi/solana-sdk/dist/prover-node.js": {
+      "before": "2208fd91674333c376961db1306e21b98964547f1e3454364e1530192827af9e",
+      "after": "2208fd91674333c376961db1306e21b98964547f1e3454364e1530192827af9e"
+    },
+    "node_modules/@zkapi/solana-sdk/dist/secret-custody.js": {
+      "before": "a168eb4a1892bbfa1129b457bcc65fc140e3b10330cc12672d1605f7691c5a96",
+      "after": "a168eb4a1892bbfa1129b457bcc65fc140e3b10330cc12672d1605f7691c5a96"
+    },
+    "node_modules/@zkapi/solana-sdk/dist/browser.js": {
+      "before": "95a29eee30bd7eb1f138becce3c7c0fc8e959d612d176872fac7f2d71b9eb5dd",
+      "after": "95a29eee30bd7eb1f138becce3c7c0fc8e959d612d176872fac7f2d71b9eb5dd"
+    },
+    "node_modules/@zkapi/solana-sdk/dist/client.d.ts": {
+      "before": "275b221c4a9be54b17034b747a9b41ef73103d376848f65b1380939bbe6f1e51",
+      "after": "275b221c4a9be54b17034b747a9b41ef73103d376848f65b1380939bbe6f1e51"
+    },
+    "node_modules/@zkapi/solana-sdk/dist/prover-node.d.ts": {
+      "before": "6206464c8ce6ca6548c7c1b5e1c9bda7ae51a42df016eeee96de3df4c39f8c33",
+      "after": "6206464c8ce6ca6548c7c1b5e1c9bda7ae51a42df016eeee96de3df4c39f8c33"
+    },
+    "node_modules/@zkapi/solana-sdk/dist/browser-storage.js": {
+      "before": "94c2d26a3defdc9efeac7d1091b7f6efc0768058d88d89dd01c4cf4e72f83df4",
+      "after": "94c2d26a3defdc9efeac7d1091b7f6efc0768058d88d89dd01c4cf4e72f83df4"
+    },
+    "node_modules/@zkapi/solana-sdk/dist/browser.d.ts": {
+      "before": "b039eccb3e9830607a5967d8758031b31f1cd2af51f0af357f05fe320182a89f",
+      "after": "b039eccb3e9830607a5967d8758031b31f1cd2af51f0af357f05fe320182a89f"
+    },
+    "node_modules/@zkapi/solana-sdk/dist/control-node.js": {
+      "before": "6e4888456222e30b070f82366d09166f98dc264af424c1fc855761325f3cf2bc",
+      "after": "6e4888456222e30b070f82366d09166f98dc264af424c1fc855761325f3cf2bc"
+    },
+    "node_modules/@zkapi/solana-sdk/dist/session-snapshot.js": {
+      "before": "40eb21b1820a2ce6c3a8087c1d05c561dcc040d3a873af3106598e35bcdcb3de",
+      "after": "40eb21b1820a2ce6c3a8087c1d05c561dcc040d3a873af3106598e35bcdcb3de"
+    },
+    "node_modules/@zkapi/solana-sdk/dist/prover-runtime.js": {
+      "before": "0b0a121010b45825ef6f4b273231717ed86c38bcf1a2ed0747198c8713d43323",
+      "after": "0b0a121010b45825ef6f4b273231717ed86c38bcf1a2ed0747198c8713d43323"
+    },
+    "node_modules/@zkapi/solana-sdk/dist/trust.js": {
+      "before": "2fa5854fcef73fc913fdf5fd2701e3eae1bf24220d69da57444a8f9f3b345411",
+      "after": "2fa5854fcef73fc913fdf5fd2701e3eae1bf24220d69da57444a8f9f3b345411"
+    }
+  }
+}

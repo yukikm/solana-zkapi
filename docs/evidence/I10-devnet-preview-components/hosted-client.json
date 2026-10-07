@@ -1,0 +1,91 @@
+{
+  "conclusion": "success",
+  "headSha": "b5f623a4fa5a2905ba9955eb76c224446cab9d58",
+  "jobs": [
+    {
+      "completedAt": "2026-10-07T04:29:11Z",
+      "conclusion": "success",
+      "databaseId": 112631395903,
+      "name": "browser-applications",
+      "startedAt": "2026-10-07T04:28:48Z",
+      "status": "completed",
+      "steps": [
+        {
+          "completedAt": "2026-10-07T04:28:49Z",
+          "conclusion": "success",
+          "name": "Set up job",
+          "number": 1,
+          "startedAt": "2026-10-07T04:28:48Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-07T04:28:50Z",
+          "conclusion": "success",
+          "name": "Run actions/checkout@11d5960a326750d5838078e36cf38b85af677262",
+          "number": 2,
+          "startedAt": "2026-10-07T04:28:49Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-07T04:28:54Z",
+          "conclusion": "success",
+          "name": "Run actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020",
+          "number": 3,
+          "startedAt": "2026-10-07T04:28:50Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-07T04:28:58Z",
+          "conclusion": "success",
+          "name": "Install pinned npm and dependencies",
+          "number": 4,
+          "startedAt": "2026-10-07T04:28:54Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-07T04:29:07Z",
+          "conclusion": "success",
+          "name": "Verify independent installation, both builds and all browser tests",
+          "number": 5,
+          "startedAt": "2026-10-07T04:28:58Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-07T04:29:08Z",
+          "conclusion": "success",
+          "name": "Run actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02",
+          "number": 6,
+          "startedAt": "2026-10-07T04:29:07Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-07T04:29:08Z",
+          "conclusion": "success",
+          "name": "Post Run actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020",
+          "number": 11,
+          "startedAt": "2026-10-07T04:29:08Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-07T04:29:09Z",
+          "conclusion": "success",
+          "name": "Post Run actions/checkout@11d5960a326750d5838078e36cf38b85af677262",
+          "number": 12,
+          "startedAt": "2026-10-07T04:29:08Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-07T04:29:09Z",
+          "conclusion": "success",
+          "name": "Complete job",
+          "number": 13,
+          "startedAt": "2026-10-07T04:29:09Z",
+          "status": "completed"
+        }
+      ],
+      "url": "https://github.com/yukikm/solana-zkapi-client/actions/runs/37571647210/job/112631395903"
+    }
+  ],
+  "status": "completed",
+  "url": "https://github.com/yukikm/solana-zkapi-client/actions/runs/37571647210"
+}

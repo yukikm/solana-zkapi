@@ -1,0 +1,17 @@
+TAP version 13
+# Subtest: installed Go clientd drives encrypted native wallet deposit and withdrawal through actual SBF
+ok 1 - installed Go clientd drives encrypted native wallet deposit and withdrawal through actual SBF
+  ---
+  duration_ms: 9855.191958
+  type: 'test'
+  ...
+# Go→SDK→native→Vault: 9 signed tx, max 418509 CU / 1232 bytes
+1..1
+# tests 1
+# suites 0
+# pass 1
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 9988.095833

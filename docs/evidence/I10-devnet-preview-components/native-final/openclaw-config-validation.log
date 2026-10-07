@@ -1,0 +1,1 @@
+{"valid":true,"path":"/private/var/folders/d5/cmyw7m5n7fzc9dq4ttm4kn9m0000gn/T/zkapi-final-setup-flcjty14/openclaw.json","warnings":[{"path":"agents.entries","message":"Moved agents.list to keyed agents.entries."},{"path":"agents.entries","message":"Removed retired agents.entries.*.default markers."}]}

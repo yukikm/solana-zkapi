@@ -1,0 +1,1 @@
+{"base_url":"http://127.0.0.1:8787/v1","custody_initialized":false,"funded":false,"next":"run this profile with initialize_key:true exactly once; supply passphrase and wallet seed only on stdin","profile":"/private/var/folders/d5/cmyw7m5n7fzc9dq4ttm4kn9m0000gn/T/zkapi-final-setup-flcjty14/profile"}

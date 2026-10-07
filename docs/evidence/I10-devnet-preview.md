@@ -88,3 +88,39 @@ live evidence still used a custom bounded devnet relay. Claude Code and Codex
 remain blocked by their actual request formats. No new public-provider, mainnet,
 full I10/G1–G4 or audit acceptance is claimed. All earlier failures and immutable
 budget reservations remain preserved.
+
+## Exact release candidate and hosted results
+
+A staging-only whitespace check found a trailing blank line in the newly tracked
+operator relay parser. It was removed before publication. This does not change
+native runtime behavior. A fresh build from source commit
+`5969f3336444b5ed681d011863efc139dc803afd` captured **503 unchanged inputs**.
+All four native executables, runtime and 54 SDK compiled files match the prior
+validated candidate. Its installed supervisor passed nine local SBF transactions
+(maximum **418,509 CU / 1,232 bytes**) and six production setup/OpenClaw
+configuration smoke checks. The previous full ten OpenClaw fixture checks are
+retained, not relabeled as rerun on a different manifest.
+
+The exact installed release manifest SHA256 is
+`1c414ae48310e0d24328346a7eaefe42c283a8db5015b6bd84c8b62ffc2aaf5b`.
+The normalized native archive SHA256 is
+`402a19ff875f9b2b1c0d9c3f33bfae64e436e867391ec9e0d2fba904650c30ee`.
+
+Both repositories were changed to Public after the user's explicit choice and
+the limited history/log scan. The focused hosted
+[SDK/clientd run](https://github.com/yukikm/solana-zkapi/actions/runs/37571622745)
+passed on commit `5969f33`: **315 SDK tests, no skips**, exact matching SDK
+archive SHA, isolated package checks, Go races and helper/provenance tests.
+The independent [client run](https://github.com/yukikm/solana-zkapi-client/actions/runs/37571647210)
+passed on `b5f623a4fa5a2905ba9955eb76c224446cab9d58`.
+This evidence-only follow-up preserves all 503 build inputs; release packaging
+joins them again to the final source commit.
+
+The older full implementation run remains non-green. The inspected Rust job
+failed the existing historical snapshot gate (93 hash differences / 38 moved or
+missing paths). Its Node job passed 314/315 tests but its automatically selected
+browser failed to launch under the runner's AppArmor/sandbox; no SDK behavior
+assertion ran in that failed test. The focused preview explicitly selected the
+runner's Google Chrome and passed all 315. The exact failed executable was not
+logged, so a specific browser-selection cause is not asserted. These failures
+are preserved and are not converted to a full implementation pass.
