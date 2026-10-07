@@ -1,0 +1,203 @@
+{
+  "schema": 1,
+  "recordedAt": "2026-10-07T03:41:37.545063+00:00",
+  "claudeVersion": "2.1.220 (Claude Code)",
+  "scope": "actual installed Claude Code CLI to localhost Anthropic SSE/tool/error fixture and production Go route rejection; no shared SDK, financial service or provider",
+  "externalNetworkBlocked": true,
+  "realCredentialsUsed": false,
+  "publicDevnet": false,
+  "liveProvider": false,
+  "outcomes": [
+    {
+      "name": "plain",
+      "exitCode": 0,
+      "timedOut": false,
+      "fixtureBackendPackets": 1,
+      "fixtureTextReceived": true,
+      "toolResultReceived": false,
+      "apiErrorStatus": null
+    },
+    {
+      "name": "tool",
+      "exitCode": 0,
+      "timedOut": false,
+      "fixtureBackendPackets": 2,
+      "fixtureTextReceived": false,
+      "toolResultReceived": true,
+      "apiErrorStatus": null
+    },
+    {
+      "name": "http503",
+      "exitCode": 1,
+      "timedOut": false,
+      "fixtureBackendPackets": 1,
+      "fixtureTextReceived": false,
+      "toolResultReceived": false,
+      "apiErrorStatus": 503
+    },
+    {
+      "name": "production_frontend",
+      "exitCode": 1,
+      "timedOut": false,
+      "fixtureBackendPackets": 0,
+      "fixtureTextReceived": false,
+      "toolResultReceived": false,
+      "apiErrorStatus": 400
+    }
+  ],
+  "requests": [
+    {
+      "case": "plain",
+      "method": "POST",
+      "path": "/v1/messages?beta=true",
+      "authorizationMatchesFixtureToken": true,
+      "anthropicVersion": "2023-06-01",
+      "anthropicBeta": "claude-code-20250219,interleaved-thinking-2025-05-14",
+      "idempotencyKeyPresent": false,
+      "bodySha256": "83950bebb0bff979cc7f871d6bb178bfdec297f66665d9cf9b0a42abfdb48a15",
+      "bodyBytes": 975,
+      "bodyKeys": [
+        "max_tokens",
+        "messages",
+        "metadata",
+        "model",
+        "stream",
+        "system",
+        "temperature",
+        "tools"
+      ],
+      "model": "claude-sonnet-4-20250514",
+      "stream": true,
+      "metadataKeys": [
+        "user_id"
+      ],
+      "toolNames": [],
+      "toolFieldNames": [],
+      "toolResultObserved": false
+    },
+    {
+      "case": "tool",
+      "method": "POST",
+      "path": "/v1/messages?beta=true",
+      "authorizationMatchesFixtureToken": true,
+      "anthropicVersion": "2023-06-01",
+      "anthropicBeta": "claude-code-20250219,interleaved-thinking-2025-05-14",
+      "idempotencyKeyPresent": false,
+      "bodySha256": "721a01c9eb1c522b07a20791c21d7c1b479a084a2c99f1fd8f3551a1e1aea9b1",
+      "bodyBytes": 1798,
+      "bodyKeys": [
+        "max_tokens",
+        "messages",
+        "metadata",
+        "model",
+        "stream",
+        "system",
+        "temperature",
+        "tools"
+      ],
+      "model": "claude-sonnet-4-20250514",
+      "stream": true,
+      "metadataKeys": [
+        "user_id"
+      ],
+      "toolNames": [
+        "Read"
+      ],
+      "toolFieldNames": [
+        "description",
+        "input_schema",
+        "name"
+      ],
+      "toolResultObserved": false
+    },
+    {
+      "case": "tool",
+      "method": "POST",
+      "path": "/v1/messages?beta=true",
+      "authorizationMatchesFixtureToken": true,
+      "anthropicVersion": "2023-06-01",
+      "anthropicBeta": "claude-code-20250219,interleaved-thinking-2025-05-14",
+      "idempotencyKeyPresent": false,
+      "bodySha256": "fe22158e556a5a8f3e01818b5deb85d04d69fe4509e540fa548894898c515bcd",
+      "bodyBytes": 2133,
+      "bodyKeys": [
+        "max_tokens",
+        "messages",
+        "metadata",
+        "model",
+        "stream",
+        "system",
+        "temperature",
+        "tools"
+      ],
+      "model": "claude-sonnet-4-20250514",
+      "stream": true,
+      "metadataKeys": [
+        "user_id"
+      ],
+      "toolNames": [
+        "Read"
+      ],
+      "toolFieldNames": [
+        "description",
+        "input_schema",
+        "name"
+      ],
+      "toolResultObserved": true
+    },
+    {
+      "case": "http503",
+      "method": "POST",
+      "path": "/v1/messages?beta=true",
+      "authorizationMatchesFixtureToken": true,
+      "anthropicVersion": "2023-06-01",
+      "anthropicBeta": "claude-code-20250219,interleaved-thinking-2025-05-14",
+      "idempotencyKeyPresent": false,
+      "bodySha256": "9b3e7aebc84820cb7fbd3bee54e8d5c25746483d55d74ba7023d1dfff5c253aa",
+      "bodyBytes": 975,
+      "bodyKeys": [
+        "max_tokens",
+        "messages",
+        "metadata",
+        "model",
+        "stream",
+        "system",
+        "temperature",
+        "tools"
+      ],
+      "model": "claude-sonnet-4-20250514",
+      "stream": true,
+      "metadataKeys": [
+        "user_id"
+      ],
+      "toolNames": [],
+      "toolFieldNames": [],
+      "toolResultObserved": false
+    }
+  ],
+  "productionFrontendResponse": {
+    "status": 400,
+    "body": {
+      "error": {
+        "type": "zkapi_client_error",
+        "code": "unsupported_route",
+        "message": "Request was not replayed. Inspect local status before retrying."
+      }
+    }
+  },
+  "probeChecksPassed": true,
+  "compatibilityPassed": false,
+  "blockingObservations": [
+    "production frontend rejects the observed ?beta=true query before reaching its backend",
+    "observed metadata.user_id is outside the existing Anthropic proxy body allowlist",
+    "observed beta header remains despite disabling experimental betas; no reviewed proxy pass-through exists"
+  ],
+  "authRequests": 0,
+  "providerInferenceRequests": 0,
+  "sourceSha256": {
+    "scripts/run_claude_code_clientd_acceptance.py": "16503a6c02a8632ef5b2aac39fe92f8e1ded509ca800eb95fa532d06c89e8a25",
+    "apps/clientd/internal/daemon/server.go": "571a8fb21399cd362f0b0817d5b63338c2f0e004957ab8bbffb2daa2db77175a",
+    "services/control/src/proxy/request.rs": "0e623b4a883a209d35181ab5b3a1d5a2a5576f9996995f9c00c03cdd945289fd",
+    "apps/clientd/testdata/openclaw-frontend.go": "d6eb68cc2c5056def6aeee75fe4f40f52bca3e22ed16d879ba3a7598b6c117c5"
+  }
+}

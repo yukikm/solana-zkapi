@@ -57,22 +57,30 @@ export async function* readChatDeltas(response: Response): AsyncGenerator<string
   await check(response, true);
   const reader = response.body?.getReader(); if (!reader) throw failure(response, 'invalid_response');
   const decoder = new TextDecoder('utf-8', { fatal: true });
-  let buffer = '', data: string[] = [], frameSize = 0, total = 0, done = false, failed = false, finished = false;
+  let buffer = '', data: string[] = [], frameSize = 0, total = 0, done = false, failed = false;
+  let finishReason: string | null = null;
   function event(): string | null {
     const source = data.join('\n'); data = []; frameSize = 0;
     if (!source) return null;
     if (source === '[DONE]') {
-      if (!finished) throw failure(response, 'incomplete_stream');
+      if (!finishReason) throw failure(response, 'incomplete_stream');
       done = true; return null;
     }
     const value = JSON.parse(source);
     if (value.error || !Array.isArray(value.choices) || value.choices.length > 1) throw failure(response, 'invalid_response');
     if (!value.choices.length) return null; // Optional final usage metadata, never billing authority.
     const choice = value.choices[0];
-    if (finished || choice.index !== 0 || !textMessage(choice.delta)) throw failure(response, 'invalid_response');
+    if (choice.index !== 0 || !textMessage(choice.delta)) throw failure(response, 'invalid_response');
+    if (finishReason) {
+      // OpenRouter can repeat the empty terminal choice in its final usage frame.
+      // Accept metadata only; it cannot append text or change the completed choice.
+      if (!value.usage || typeof value.usage !== 'object' || Array.isArray(value.usage)
+        || choice.finish_reason !== finishReason || (choice.delta.content ?? '') !== '') throw failure(response, 'invalid_response');
+      return null;
+    }
     if (choice.finish_reason !== undefined && choice.finish_reason !== null) {
       if (!textFinishReasons.has(choice.finish_reason)) throw failure(response, 'invalid_response');
-      finished = true;
+      finishReason = choice.finish_reason;
     }
     const content = choice.delta.content;
     if (content !== undefined && content !== null && typeof content !== 'string') throw failure(response, 'invalid_response');

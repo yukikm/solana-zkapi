@@ -175,6 +175,18 @@ check(re.findall(r'^\| (TT\d\d) \|',tree_spec,re.M)==[f'TT{i:02}' for i in range
       'Tree transition acceptance matrix')
 
 link_count=0
+# Historical evidence keeps the exact paths tested at that source revision.
+# Presentation source moved to an independent repository; current guides must
+# use current links, while these explicitly inventoried historical links refer
+# to the immutable original Git snapshot recorded in source-migrations.json.
+migrations = documents.get('docs/source-migrations.json', {})
+historical_paths = migrations.get('paths', {})
+check(migrations.get('schema') == 1 and bool(re.fullmatch(r'[0-9a-f]{40}', migrations.get('source_revision', ''))),
+      'Historical source migration revision')
+for name, entry in historical_paths.items():
+    check(name.startswith(('examples/browser-chat/', 'scripts/i10-wallet-ui/'))
+          and '..' not in Path(name).parts and bool(re.fullmatch(r'[0-9a-f]{64}', entry.get('sha256', ''))),
+          'Invalid historical source migration: ' + name)
 for path in [ROOT/'README.md', *sorted((ROOT/'docs').rglob('*.md'))]:
     text=path.read_text()
     check(text.count('```')%2==0,'Unclosed code fence '+str(path))
@@ -183,7 +195,11 @@ for path in [ROOT/'README.md', *sorted((ROOT/'docs').rglob('*.md'))]:
         link=link.split('#',1)[0]
         if not link: continue
         link_count+=1
-        check((path.parent/link).exists(),f'Broken local link {path.name}: {link}')
+        target = (path.parent/link).resolve()
+        historical = False
+        if path.is_relative_to(ROOT/'docs/evidence') and target.is_relative_to(ROOT):
+            historical = target.relative_to(ROOT).as_posix() in historical_paths
+        check(target.exists() or historical, f'Broken local link {path.name}: {link}')
 
 generated=subprocess.run([sys.executable,str(ROOT/'work/design/generate_contracts.py'),'--check'],capture_output=True,text=True)
 check(generated.returncode==0, generated.stdout+generated.stderr)

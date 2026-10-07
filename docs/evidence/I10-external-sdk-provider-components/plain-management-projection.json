@@ -1,0 +1,125 @@
+{
+  "role": "i10_provider_reader",
+  "attempts": [
+    {
+      "kind": "DIRECT_ISSUANCE",
+      "count": "1",
+      "fenced": false,
+      "finished": true,
+      "send_claimed": true
+    }
+  ],
+  "sessions": [
+    {
+      "mode": "direct_openrouter",
+      "state": "SETTLED",
+      "provider": "openrouter",
+      "cap_micro": "1000000",
+      "charged_nano": "3150",
+      "reserved_nano": "0",
+      "close_requested": true,
+      "active_operations": 0
+    }
+  ],
+  "read_only": "on",
+  "checkpoints": [
+    {
+      "id": "1",
+      "deleted": false,
+      "final_usd": null,
+      "final_kind": null,
+      "final_nano": null,
+      "observation_usd": null,
+      "observation_kind": null,
+      "observation_nano": null,
+      "disabled_at_epoch": null,
+      "recorded_at_epoch": "1791340973.864566",
+      "reference_present": false,
+      "observation_at_epoch": null
+    },
+    {
+      "id": "2",
+      "deleted": false,
+      "final_usd": null,
+      "final_kind": null,
+      "final_nano": null,
+      "observation_usd": null,
+      "observation_kind": null,
+      "observation_nano": null,
+      "disabled_at_epoch": null,
+      "recorded_at_epoch": "1791340975.824951",
+      "reference_present": true,
+      "observation_at_epoch": null
+    },
+    {
+      "id": "3",
+      "deleted": false,
+      "final_usd": null,
+      "final_kind": null,
+      "final_nano": null,
+      "observation_usd": null,
+      "observation_kind": null,
+      "observation_nano": null,
+      "disabled_at_epoch": "1791340988",
+      "recorded_at_epoch": "1791340988.434602",
+      "reference_present": true,
+      "observation_at_epoch": null
+    },
+    {
+      "id": "4",
+      "deleted": false,
+      "final_usd": null,
+      "final_kind": null,
+      "final_nano": null,
+      "observation_usd": "0",
+      "observation_kind": "OPENROUTER_USAGE",
+      "observation_nano": "0",
+      "disabled_at_epoch": "1791340988",
+      "recorded_at_epoch": "1791341052.764435",
+      "reference_present": true,
+      "observation_at_epoch": "1791341051"
+    },
+    {
+      "id": "5",
+      "deleted": false,
+      "final_usd": null,
+      "final_kind": null,
+      "final_nano": null,
+      "observation_usd": "0.00000315",
+      "observation_kind": "OPENROUTER_USAGE",
+      "observation_nano": "3150",
+      "disabled_at_epoch": "1791340988",
+      "recorded_at_epoch": "1791341118.179437",
+      "reference_present": true,
+      "observation_at_epoch": "1791341117"
+    },
+    {
+      "id": "6",
+      "deleted": false,
+      "final_usd": "0.00000315",
+      "final_kind": "OPENROUTER_USAGE",
+      "final_nano": "3150",
+      "observation_usd": "0.00000315",
+      "observation_kind": "OPENROUTER_USAGE",
+      "observation_nano": "3150",
+      "disabled_at_epoch": "1791340988",
+      "recorded_at_epoch": "1791341179.746583",
+      "reference_present": true,
+      "observation_at_epoch": "1791341117"
+    },
+    {
+      "id": "7",
+      "deleted": true,
+      "final_usd": "0.00000315",
+      "final_kind": "OPENROUTER_USAGE",
+      "final_nano": "3150",
+      "observation_usd": "0.00000315",
+      "observation_kind": "OPENROUTER_USAGE",
+      "observation_nano": "3150",
+      "disabled_at_epoch": "1791340988",
+      "recorded_at_epoch": "1791341182.178430",
+      "reference_present": true,
+      "observation_at_epoch": "1791341117"
+    }
+  ]
+}

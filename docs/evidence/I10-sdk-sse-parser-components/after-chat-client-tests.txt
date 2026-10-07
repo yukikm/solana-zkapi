@@ -1,0 +1,202 @@
+TAP version 13
+# Subtest: Chat SSE accepts UTF-8, comments, CRLF splits, usage events and multiline data at every byte boundary
+ok 1 - Chat SSE accepts UTF-8, comments, CRLF splits, usage events and multiline data at every byte boundary
+  ---
+  duration_ms: 17.865875
+  type: 'test'
+  ...
+# Subtest: SSE rejects truncated streams, provider errors, bad UTF-8 and oversized frames
+ok 2 - SSE rejects truncated streams, provider errors, bad UTF-8 and oversized frames
+  ---
+  duration_ms: 1.488333
+  type: 'test'
+  ...
+# Subtest: SSE accepts CR-only event endings, including a final CR at EOF
+ok 3 - SSE accepts CR-only event endings, including a final CR at EOF
+  ---
+  duration_ms: 3.836208
+  type: 'test'
+  ...
+# Subtest: breaking delta iteration cancels unread response; HTTP errors are bounded and redacted
+ok 4 - breaking delta iteration cancels unread response; HTTP errors are bounded and redacted
+  ---
+  duration_ms: 0.535792
+  type: 'test'
+  ...
+# Subtest: text helper accepts one text choice and refuses tool-only, malformed and oversized responses
+ok 5 - text helper accepts one text choice and refuses tool-only, malformed and oversized responses
+  ---
+  duration_ms: 2.158709
+  type: 'test'
+  ...
+# Subtest: reader and cancellation failures never expose private errors from text or SSE helpers
+ok 6 - reader and cancellation failures never expose private errors from text or SSE helpers
+  ---
+  duration_ms: 1.621667
+  type: 'test'
+  ...
+# Subtest: SSE cancellation failures after DONE or early exit are redacted
+ok 7 - SSE cancellation failures after DONE or early exit are redacted
+  ---
+  duration_ms: 0.194667
+  type: 'test'
+  ...
+# Subtest: text helpers refuse tool calls mixed with text and missing or unsupported terminal reasons
+ok 8 - text helpers refuse tool calls mixed with text and missing or unsupported terminal reasons
+  ---
+  duration_ms: 0.70375
+  type: 'test'
+  ...
+# Subtest: SSE requires a terminal choice before DONE and rejects content after a terminal choice
+ok 9 - SSE requires a terminal choice before DONE and rejects content after a terminal choice
+  ---
+  duration_ms: 0.167209
+  type: 'test'
+  ...
+# Subtest: SSE accepts empty terminal usage choices after the same terminal reason at every byte boundary
+ok 10 - SSE accepts empty terminal usage choices after the same terminal reason at every byte boundary
+  ---
+  duration_ms: 15.439958
+  type: 'test'
+  ...
+# Subtest: SSE terminal usage metadata cannot append content, change terminal reason, or carry tool calls
+ok 11 - SSE terminal usage metadata cannot append content, change terminal reason, or carry tool calls
+  ---
+  duration_ms: 0.409666
+  type: 'test'
+  ...
+# Subtest: one chat call quotes, proves, authorizes, sends once and verifies settlement; model switch uses its tariff
+ok 12 - one chat call quotes, proves, authorizes, sends once and verifies settlement; model switch uses its tariff
+  ---
+  duration_ms: 265.819125
+  type: 'test'
+  ...
+# Subtest: lists and notifications are detached and omit secrets, prompt bodies and provider keys
+ok 13 - lists and notifications are detached and omit secrets, prompt bodies and provider keys
+  ---
+  duration_ms: 101.030917
+  type: 'test'
+  ...
+# Subtest: quote rejection never reaches proof, AUTH or inference
+ok 14 - quote rejection never reaches proof, AUTH or inference
+  ---
+  duration_ms: 12.439375
+  type: 'test'
+  ...
+# Subtest: reopening pending AUTH is read-only; new sends are blocked and recovery sends only saved AUTH
+ok 15 - reopening pending AUTH is read-only; new sends are blocked and recovery sends only saved AUTH
+  ---
+  duration_ms: 93.304834
+  type: 'test'
+  ...
+# Subtest: explicit unaccepted AUTH recovery verifies permanent clearance and archives expired work without replay or signing
+ok 16 - explicit unaccepted AUTH recovery verifies permanent clearance and archives expired work without replay or signing
+  ---
+  duration_ms: 94.748
+  type: 'test'
+  ...
+# Subtest: unavailable or invalid clearance preserves the exact AUTH and state for explicit same-note retry
+ok 17 - unavailable or invalid clearance preserves the exact AUTH and state for explicit same-note retry
+  ---
+  duration_ms: 93.85325
+  type: 'test'
+  ...
+# Subtest: clearance holds the shared action lock and another facade re-verifies the completed archive
+ok 18 - clearance holds the shared action lock and another facade re-verifies the completed archive
+  ---
+  duration_ms: 122.137625
+  type: 'test'
+  ...
+# Subtest: clearance eligibility excludes accepted, used, prepared, closing and wallet-busy notes
+ok 19 - clearance eligibility excludes accepted, used, prepared, closing and wallet-busy notes
+  ---
+  duration_ms: 454.936791
+  type: 'test'
+  ...
+# Subtest: explicit emergency escape preserves uncertain inference before proof work and keeps recovery fenced after reopen
+ok 20 - explicit emergency escape preserves uncertain inference before proof work and keeps recovery fenced after reopen
+  ---
+  duration_ms: 140.698334
+  type: 'test'
+  ...
+# Subtest: emergency escape stays explicit and refuses a never-sent authorization or an unrelated note
+ok 21 - emergency escape stays explicit and refuses a never-sent authorization or an unrelated note
+  ---
+  duration_ms: 52.388792
+  type: 'test'
+  ...
+# Subtest: challenge recovery remains visible after finalization preparation without treating its status hint as chain evidence
+ok 22 - challenge recovery remains visible after finalization preparation without treating its status hint as chain evidence
+  ---
+  duration_ms: 138.249666
+  type: 'test'
+  ...
+# Subtest: response loss and failed settlement retain operation; restarting never replays it
+ok 23 - response loss and failed settlement retain operation; restarting never replays it
+  ---
+  duration_ms: 251.934875
+  type: 'test'
+  ...
+# Subtest: an unverified successor never becomes available balance
+ok 24 - an unverified successor never becomes available balance
+  ---
+  duration_ms: 136.515916
+  type: 'test'
+  ...
+# Subtest: stream holds action lock; cancellation closes shared lifecycle and releases the client
+ok 25 - stream holds action lock; cancellation closes shared lifecycle and releases the client
+  ---
+  duration_ms: 258.109292
+  type: 'test'
+  ...
+# Subtest: stream helpers finish settlement before returning to the next send
+ok 26 - stream helpers finish settlement before returning to the next send
+  ---
+  duration_ms: 357.347833
+  type: 'test'
+  ...
+# Subtest: stream errors await the existing close finalizer before releasing the application lock
+ok 27 - stream errors await the existing close finalizer before releasing the application lock
+  ---
+  duration_ms: 103.657584
+  type: 'test'
+  ...
+# Subtest: cancelling a pending read retains the application lock through settlement
+ok 28 - cancelling a pending read retains the application lock through settlement
+  ---
+  duration_ms: 293.618625
+  type: 'test'
+  ...
+# Subtest: separate instances share a note lock through body consumption
+ok 29 - separate instances share a note lock through body consumption
+  ---
+  duration_ms: 287.903375
+  type: 'test'
+  ...
+# Subtest: invalid model, API, ID and body cannot start an authorization; abort-before-send is side-effect free
+ok 30 - invalid model, API, ID and body cannot start an authorization; abort-before-send is side-effect free
+  ---
+  duration_ms: 12.03675
+  type: 'test'
+  ...
+# Subtest: expired, cleared, closed and insufficient notes cannot start chat
+ok 31 - expired, cleared, closed and insufficient notes cannot start chat
+  ---
+  duration_ms: 79.842875
+  type: 'test'
+  ...
+# Subtest: dispose does not settle or erase storage and refuses later actions
+ok 32 - dispose does not settle or erase storage and refuses later actions
+  ---
+  duration_ms: 8.4225
+  type: 'test'
+  ...
+1..32
+# tests 32
+# suites 0
+# pass 32
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 3499.662917

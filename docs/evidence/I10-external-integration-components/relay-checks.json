@@ -1,0 +1,50 @@
+{
+  "schema": 1,
+  "scope": "Relocated bounded operator host plus standalone/legacy launchers; no public sends",
+  "tests": 26,
+  "passed": true,
+  "logs": [
+    {
+      "path": "relay-tests-final.txt",
+      "sha256": "66ee3904181d48d0d96bf8bf87e2fa8e785682960b715e0d231dc162671db09c"
+    },
+    {
+      "path": "relay-types-final.txt",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  ],
+  "commands": [
+    [
+      "target/i08-toolchain/bin/node",
+      "--test",
+      "--test-reporter=tap",
+      "scripts/devnet-browser-relay/host.test.ts",
+      "scripts/browser_chat_devnet_host.test.ts"
+    ],
+    [
+      "target/i08-toolchain/bin/node",
+      "node_modules/typescript/bin/tsc",
+      "--noEmit",
+      "--strict",
+      "--target",
+      "ES2023",
+      "--module",
+      "NodeNext",
+      "--moduleResolution",
+      "NodeNext",
+      "--allowImportingTsExtensions",
+      "--lib",
+      "ES2023,DOM",
+      "--types",
+      "node",
+      "scripts/devnet-browser-relay/host.ts",
+      "scripts/devnet-browser-relay/profile.ts",
+      "scripts/browser_chat_devnet_host.ts",
+      "scripts/legacy_browser_devnet_host.ts"
+    ]
+  ],
+  "exit_codes": [
+    0,
+    0
+  ]
+}

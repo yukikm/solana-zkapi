@@ -1,0 +1,90 @@
+{
+  "circuit_id": "zkapi-v2-note-bound-v1",
+  "protocol_layout_version": 2,
+  "request_pk_hash": "c894b261a13f571d0df36be29734aabf2a8cd7162baddc5e08a50341aa076584",
+  "request_vk_hash": "8011244c99fa1a8524870906462d430fc86366b8ad821736c5fa726b479e6d97",
+  "withdrawal_pk_hash": "8e41398092fdd02b9ff86c6ccbecbd7ce2402e6f22ec162e6124d1d04fe0a668",
+  "withdrawal_vk_hash": "2a8ea7f07176e369a93d1d816124192a798d1466c99fd6dc47850ba82094b679",
+  "setup_profile": "test_only",
+  "setup_transcript_hashes": {
+    "request": null,
+    "tree": null,
+    "withdrawal": null
+  },
+  "tree_backend": "transition_proof",
+  "tree_proof_artifacts": {
+    "circuit_id": "solana.zkapi.tree.v1",
+    "pk_hash": "f5bb2a1a6979bf5fc0a175039fd36a3f1492febf405ad18064f1de6bedd2cc2e",
+    "public_inputs": 11,
+    "setup_transcript_hash": null,
+    "source_bundle_hash": "6c6030526d80b862bdd2fc56369caf1739a34c7643a0707bc840925ad6d1cb14",
+    "verifier_constants_hash": "f4edbeb7bd68bf539a1672140298737dbbdcf33a096443fb61b4b582ebf304d1",
+    "vk_hash": "4e62f971f0467a8cd1733194425904d9433cc59f2badaf2e12cc3fda87285443"
+  },
+  "tree_tag_policy": "proof_bound",
+  "circuit_profile_hash": "1ec31b5b39c957dce8e8d424838e19dbeb7ded571c14fdcd469496c2e4a2b233",
+  "state_key": {
+    "x": "0x0cb0569a045d0ef3efd576a6586b87e94ba44942dc3a3f608faf49c333ccc281",
+    "y": "0x2aefe9f8bdc0109040d61690f8935f9c25c2bf8c68ca7975de651a49bdfb756d"
+  },
+  "clearance_key": {
+    "x": "0x0663b45466c8fce0ac6e624af49a5002b7487acbda56e2ad323e8c7f2b301342",
+    "y": "0x2ae2268ff99adfa49ef2752701139aa172275b922b407b64c389f1e655f08d16"
+  },
+  "quote_public_key": "HvMXXxwcMBTPYFrctntp7ByeRpvJi6aYxTT45kBVqktP",
+  "receipt_public_key": "F1pH76GWzqow3BirHtBfg7uG9neK4qBfF3HecfJdkL88",
+  "decimals": 6,
+  "transaction_formats": [
+    "v0_buffer",
+    "v0_inline_deposit_v1"
+  ],
+  "api_endpoints": [
+    "/zkapi/v1/config",
+    "/zkapi/v1/catalog",
+    "/zkapi/v1/quotes",
+    "/zkapi/v1/sessions",
+    "/zkapi/v1/withdraw/clearance",
+    "/v1/models",
+    "/v1/chat/completions",
+    "/v1/responses",
+    "/v1/messages",
+    "/v1/messages/count_tokens"
+  ],
+  "tariff_hashes": [
+    "798ac2ab8f94ff4ba57e5fe6d2fc95cd0dc974239ea3cde3c745aa1edfee768b"
+  ],
+  "db_schema_version": "2",
+  "deployment_id": "i10-devnet-8iwjnYVNuRQhyijbcYGWGctyty7d8FEt8JnT8dWmCjSd-provider-parity-chat",
+  "deployment_environment": "devnet",
+  "genesis_hash": "EtWTRABZaYq6iMfeYKouRu166VU2xqa1wcaWoxPkrZBG",
+  "program_id": "8iwjnYVNuRQhyijbcYGWGctyty7d8FEt8JnT8dWmCjSd",
+  "pool": "2aeTCsHthoockF8LC8N3UfP312BZ8uJ6sfuMbA2rot1w",
+  "mint": "4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU",
+  "token_program": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA",
+  "control_api_origin": "https://127.0.0.1:19685",
+  "inference_api_origin": "https://127.0.0.1:19686",
+  "proving_keys_base_url": "https://127.0.0.1:19685/keys",
+  "note_ttl_seconds": "3600",
+  "challenge_seconds": "60",
+  "cap_micro_usdc": "1000000",
+  "idl_hash": "cbc94a33608b3945ff7704efe530a374dac2662070b533e33ebe208d4032b111",
+  "vault_binding": "0x0f2d2af22589ff524b95948add9936f08d67e4c371ed38af678084177c50c9cb",
+  "authorities": {
+    "admin": {
+      "kind": "devnet_test_single_key",
+      "authority": "nHSjCbSd3XD3UwGy5uAAUqEfDf4kBDYaJZ4eF82nCDZ"
+    },
+    "upgrade": {
+      "kind": "devnet_test_single_key",
+      "authority": "nHSjCbSd3XD3UwGy5uAAUqEfDf4kBDYaJZ4eF82nCDZ"
+    }
+  },
+  "artifact_digests": {
+    "vault_idl": "cbc94a33608b3945ff7704efe530a374dac2662070b533e33ebe208d4032b111",
+    "vault_program": "42febb6f9e6e373f318fb596611af842a0c95271831f77ec0fe70eccc79803a1",
+    "devnet_build_manifest": "ac579def463b72df4193d1601652d0afd39b65444eb27367096e76799845d2cc",
+    "public_devnet_profile": "3933fcae97f544f0be368532cc9c2127af8f7fc008cbebcf2ddd0f803abfd311"
+  },
+  "manifest_hash": "0e003f5d03109870af469e430eb268d160d0098ea114049eb454c039eaca8b7d",
+  "manifest_signature": "ELL4IH4RQLgYpD6meRFMUyPVa06VXPMfYpjIjW4g2akpGlp97VYwLaq4GxNV6qhwW8O1aaCTD6URuvB39FToAw=="
+}

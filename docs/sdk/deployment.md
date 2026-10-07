@@ -7,7 +7,7 @@ configured operator. This guide does not advertise a public production service.
 
 ## Public bundle
 
-The [example loader](../../examples/browser-chat/load-deployment.ts) accepts a
+The [reference application loader](https://github.com/yukikm/solana-zkapi-client) accepts a
 `ReviewedBrowserProfile` containing:
 
 | Input | Source and checks |
@@ -33,7 +33,7 @@ the server returned. Protect the JS worker through your trusted app build too.
 `ArtifactBundle` and `ManifestTrustPolicy` in [trust.ts](../../packages/sdk/src/trust.ts)
 are the exact contracts. The existing [operator services](../../services/control/README.md)
 and [deployment operations](../../deploy/operations/README.md) produce and run
-these components. The [browser host](../../scripts/i10-wallet-ui/README.md)
+these components. The [operator browser relay](../../scripts/devnet-browser-relay/README.md)
 demonstrates same-origin relays without exposing private RPC credentials.
 
 ## Model configuration
@@ -66,7 +66,8 @@ Configuration never permits fallback from direct to proxy.
 Serve over HTTPS (localhost for development), with module Worker, IndexedDB,
 Web Locks and Web Crypto support. Allow the intended worker/connect destinations
 in CSP. Control/indexer/inference endpoints need suitable CORS or a narrowly
-routed app relay. The example uses no relay; configure one in your app if needed.
+routed app relay. The reference app can use the bounded local devnet relay; hosted apps need their
+own reviewed CORS or relay configuration.
 
 Custom `deployment.fetch` must preserve `credentials: 'omit'`, redirect refusal,
 abort signals, exact request bodies and the no-retry policy. Configure RPC

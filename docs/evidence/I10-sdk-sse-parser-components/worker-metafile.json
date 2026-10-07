@@ -1,0 +1,50 @@
+{
+  "inputs": {
+    "node_modules/@zkapi/solana-sdk/dist/prover-runtime.js": {
+      "bytes": 6389,
+      "imports": [],
+      "format": "esm"
+    },
+    "node_modules/@zkapi/solana-sdk/dist/prover-worker.js": {
+      "bytes": 971,
+      "imports": [
+        {
+          "path": "node_modules/@zkapi/solana-sdk/dist/prover-runtime.js",
+          "kind": "import-statement",
+          "original": "./prover-runtime.js"
+        }
+      ],
+      "format": "esm"
+    },
+    "worker.ts": {
+      "bytes": 42,
+      "imports": [
+        {
+          "path": "node_modules/@zkapi/solana-sdk/dist/prover-worker.js",
+          "kind": "import-statement",
+          "original": "@zkapi/solana-sdk/prover-worker"
+        }
+      ],
+      "format": "esm"
+    }
+  },
+  "outputs": {
+    "worker.js": {
+      "imports": [],
+      "exports": [],
+      "entryPoint": "worker.ts",
+      "inputs": {
+        "node_modules/@zkapi/solana-sdk/dist/prover-runtime.js": {
+          "bytesInOutput": 3111
+        },
+        "node_modules/@zkapi/solana-sdk/dist/prover-worker.js": {
+          "bytesInOutput": 722
+        },
+        "worker.ts": {
+          "bytesInOutput": 0
+        }
+      },
+      "bytes": 3947
+    }
+  }
+}

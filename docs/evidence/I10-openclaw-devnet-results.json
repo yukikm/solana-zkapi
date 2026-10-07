@@ -1,0 +1,250 @@
+{
+  "schema": 1,
+  "passed": true,
+  "recorded_at_utc": "2026-10-07T03:19:57.460476+00:00",
+  "scope": "Actual OpenClaw 2026.9.8 CLI, installed native SDK runtime and production Go HTTP handler with bounded operator devnet Unix egress; actual devnet and direct OpenRouter; separate from complete installed supervisor public acceptance",
+  "model": "openai/gpt-4o-mini",
+  "public_devnet": true,
+  "live_provider": true,
+  "native_proof": true,
+  "openclaw": {
+    "version": "2026.9.8 (fc23bc8)",
+    "package_integrity": "sha512-G+JkNUhtpDE3cXR4AEi2NyyG9fqI/T2WUSl8ZnR8AATH8Dh1kC3qYFL7wwPoZtgHiP/cszA86PEiE0PDysxb9Q==",
+    "provider_max_retries": 0,
+    "model_fallbacks": [],
+    "key_reuse_seconds": 60,
+    "cases": {
+      "text": {
+        "exitCode": 0,
+        "logSha256": "9e2a099cc79a73b1b83c86ee93a6b0749cb40f046d41ea5ec0f0bbc582c151df",
+        "visibleText": "ZKAPI_NATIVE_TEXT_OK",
+        "stopReason": "stop",
+        "completion": {
+          "stopReason": "stop",
+          "finishReason": "stop"
+        },
+        "durationMs": 30029,
+        "aborted": false,
+        "toolSummary": null,
+        "replayInvalid": false
+      },
+      "tools": {
+        "exitCode": 0,
+        "logSha256": "888961fa1cbf9b8bea54aa88eebe47723236ecf11bc80f2d99b2f01069e228e5",
+        "visibleText": "ZKAPI_NATIVE_TOOL_OK",
+        "stopReason": "stop",
+        "completion": {
+          "stopReason": "stop",
+          "finishReason": "stop"
+        },
+        "durationMs": 28564,
+        "aborted": false,
+        "toolSummary": {
+          "calls": 1,
+          "tools": [
+            "read"
+          ],
+          "failures": 0
+        },
+        "replayInvalid": false
+      }
+    },
+    "saved_native_tool_roundtrip": {
+      "passed": true,
+      "scope": "Decrypted native saved exact requests corroborate actual OpenClaw read call and matching tool result in distinct continuation request",
+      "callName": "read",
+      "toolCallId": "callFB1u40E8T1ZpxRvhTalcc44G",
+      "assistantToolCalls": 1,
+      "toolResults": 1,
+      "containsExpectedReadResult": true,
+      "operationIds": [
+        "d4b36a6a-e48d-4d94-b1e1-cf78f3bab0fb",
+        "69724ca7-d1ec-4a2c-b6db-ca2a1941f1ef"
+      ],
+      "requestBodySha256": [
+        "7ecef53cdef9f1feb4460b11f1c636f83ed5e9faecdb599e99f48fae0aea1523",
+        "3f47866881b42505a8aa2a0d4229579d070e3f1b76be8782bdc0a7117d3381be"
+      ],
+      "providerResponses": [
+        {
+          "operationId": "d4b36a6a-e48d-4d94-b1e1-cf78f3bab0fb",
+          "responseSha256": "2af3ac0a9559dccf17c5fa8384d245b530f9c7f25fc9e76a76f1eb8af2c191c4",
+          "status": 200,
+          "completed": true
+        },
+        {
+          "operationId": "69724ca7-d1ec-4a2c-b6db-ca2a1941f1ef",
+          "responseSha256": "48f97c3a4502386b6c3d4a166a838053293feb1ecc2a11495c7d07481a289eb6",
+          "status": 200,
+          "completed": true
+        }
+      ]
+    }
+  },
+  "limits": {
+    "max_unique_authorizations": 2,
+    "max_inference_dispatches": 3,
+    "deposit_micro_usdc": "2000000",
+    "authorization_cap_micro_usdc": "1000000",
+    "new_parent_budget_reservations_micro_usdc": "2000000"
+  },
+  "recorded_unique_authorizations": 2,
+  "auth_http_packet_count": null,
+  "inference_dispatches": 3,
+  "inference_replays": 0,
+  "automatic_exact_signature_resends": 0,
+  "dispatch_count_note": "AUTH records are distinct exact-body request UUIDs, not independent HTTP packet counts. Inference operation UUID and transaction signature repeats were rejected by the durable acceptance dispatch fence; the chain collector does not independently count network packets.",
+  "provider_responses": [
+    {
+      "operationId": "17482269-e60b-460a-bc71-139785a9ac92",
+      "action": "text",
+      "httpStatus": 200,
+      "bytes": 2959,
+      "responseSha256": "b77ed3c14aa734711950e2a7a01f1ecb7d63ec64c1cb0433d5d1c0dca91ba3ad",
+      "done": true,
+      "jsonFrames": 8,
+      "contentDeltaFrames": 6,
+      "toolDeltaFrames": 0,
+      "finishReasons": [
+        "stop"
+      ]
+    },
+    {
+      "operationId": "d4b36a6a-e48d-4d94-b1e1-cf78f3bab0fb",
+      "action": "tools",
+      "httpStatus": 200,
+      "bytes": 4130,
+      "responseSha256": "2af3ac0a9559dccf17c5fa8384d245b530f9c7f25fc9e76a76f1eb8af2c191c4",
+      "done": true,
+      "jsonFrames": 10,
+      "contentDeltaFrames": 0,
+      "toolDeltaFrames": 8,
+      "finishReasons": [
+        "tool_calls"
+      ]
+    },
+    {
+      "operationId": "69724ca7-d1ec-4a2c-b6db-ca2a1941f1ef",
+      "action": "tools",
+      "httpStatus": 200,
+      "bytes": 2962,
+      "responseSha256": "48f97c3a4502386b6c3d4a166a838053293feb1ecc2a11495c7d07481a289eb6",
+      "done": true,
+      "jsonFrames": 8,
+      "contentDeltaFrames": 6,
+      "toolDeltaFrames": 0,
+      "finishReasons": [
+        "stop"
+      ]
+    }
+  ],
+  "sdk_verified_settlements": [
+    {
+      "chargeMicroUsdc": "627",
+      "operationIds": [
+        "17482269-e60b-460a-bc71-139785a9ac92"
+      ],
+      "signedSuccessorSha256": "4575056fbe981eaaa3b6615ba6cea892368c4c3b1e653c2dfe72b1c40b4c7bd0"
+    },
+    {
+      "chargeMicroUsdc": "659",
+      "operationIds": [
+        "d4b36a6a-e48d-4d94-b1e1-cf78f3bab0fb",
+        "69724ca7-d1ec-4a2c-b6db-ca2a1941f1ef"
+      ],
+      "signedSuccessorSha256": "af86a50e105a3a8a2799116cf957741103527025e556075582a7ad11236dd0ba"
+    }
+  ],
+  "total_charge_micro_usdc": "1286",
+  "withdrawal_micro_usdc": "1998714",
+  "final_wallet_status": "closed",
+  "final_session": null,
+  "final_wallet_operation": null,
+  "clean_settled_restart": {
+    "passed": true,
+    "scope": "clean restart after signed settlement, not uncertain crash recovery",
+    "firstProcessExitCode": 0,
+    "custodyInitializedOnRestart": false,
+    "unchangedJournalHead": {
+      "revision": 651,
+      "digest": "203c5732a9acc45f09f4d28ca69c350c371bd42b9d90ed8eb9bdb1219ad3e2a1"
+    },
+    "balanceMicroUsdc": "1998714",
+    "authorizations": 2,
+    "inferenceSends": 3,
+    "transactionSends": 1,
+    "preInspectionSha256": "45c6f5cc62e60107d9e2f665aca6ce8e6d2626000659cd32713d3af36f0a8764",
+    "postInspectionSha256": "45c6f5cc62e60107d9e2f665aca6ce8e6d2626000659cd32713d3af36f0a8764",
+    "completedAt": "2026-10-07T03:14:36.352297+00:00",
+    "finalStoppedAfterWithdrawal": true,
+    "finalHarnessExitCode": 0,
+    "finalServeLogSha256": "80bb7ed36d354ce49caa0bdb399a5bb9ba76188d1107d52671064cceeb7173c4"
+  },
+  "live_installation": {
+    "authSendsFieldMeaning": "Distinct exact-body authorization UUIDs accepted by the dispatch fence, not an independent HTTP packet count",
+    "description": "Public SDK-shaped projection from native acceptance dispatch ledger and decrypted installed-runtime journal; independent collector reads only this projection and public manifest.",
+    "scope": "Installed native SDK runtime and production Go HTTP handler with custom bounded devnet Unix egress, not the full installed Go serve supervisor",
+    "sdkArchiveSha256": "3e601fae1d41a804a3c59b10c0eb88052bbedd0ba9317ad88e7cdb9fad06ebbd",
+    "distributionSha256": "1cf1b2f558560c8deeefef493c596ee2509f144283127706cb214ca1abde4382",
+    "ledgerSha256": "5ed75c94865ecc09528ce71ea5dbb7bda85fe6df7ee51211ac98895882fc8233",
+    "harnessSha256": "add295eee2e583b03d0b1f2de72d7972a29aaea3e6d4741ff2287c34d14a9e7c",
+    "runtimeSha256": "23a3562f0c8e7a25115a552f13dce61a39c701d6a1c96f277bcc0babc0efab68",
+    "journalHead": {
+      "revision": 664,
+      "digest": "6e9d4ddb0ee86348f2f5099d24ed510874c7913fb920936ea818bb651997ff5b"
+    },
+    "publicProfileSha256": "270ff0fea81bed8b809b3d4335af7392a95dc122a12414ed0f058abd6af2eaf4",
+    "manifestFileSha256": "96caa60a67a79e076804b6fdf204b8ce44522e6a43bcaf8ee8ddfc6d5181a6b5"
+  },
+  "final_portable_package": {
+    "sdk_tarball_sha256": "fc37358ce00fa7bcb5c43367c8f09b3908c617f9235e8646ae78003a21040c91",
+    "distribution_sha256": "1902708439fe8551e803845ecc03a25fd985efb2838ef5157130494477c19677",
+    "separate_local_results": "I10-clientd-external-results.json",
+    "live_profile_replaced": false,
+    "note": "Native OpenClaw uses raw SSE and its own reader. Final portable archive includes the later optional SDK SSE-reader fix and passed fresh installed native/SBF and actual OpenClaw fixtures."
+  },
+  "independent_chain_collection": {
+    "file": "I10-native-openclaw-devnet-chain-results.json",
+    "sha256": "d5b91403f7c42b49c331ca69cef67d8e825e27c5c5b36386083b5f59b3986181",
+    "passed": true,
+    "finalized_transactions": 6,
+    "max_compute_units": 348111,
+    "max_wire_bytes": 1232,
+    "finalized_balance_cut": {
+      "slot": 508316171,
+      "blockhash": "HognVdwqccLAn8ZtACkxxKjECeQyu1TDv5zHFUWMXGb8",
+      "block_height": 495556015,
+      "wallet_owner": "nHSjCbSd3XD3UwGy5uAAUqEfDf4kBDYaJZ4eF82nCDZ",
+      "wallet_token_account": "5hqqAJYqDTycwP7DdKj1M3a7f62kn2672Mr8qAobbQAE",
+      "vault_token_account": "F1oU4487BXUDwZ6xpxYYQB28TwCDCDZ4xX4WSb6W29Yc",
+      "vault_authority": "8jYdbmaD4NXdDgwtqsF2F5pWzGkWGcW3NE3aNxKtLx58",
+      "treasury_owner": "nHSjCbSd3XD3UwGy5uAAUqEfDf4kBDYaJZ4eF82nCDZ",
+      "note_account": "5vc5yNNS36eXRbp1fPpGQrMptA4KRHm18qavm4nd9mG4",
+      "note_status": "closed",
+      "wallet_micro_usdc": "36010000",
+      "vault_micro_usdc": "0",
+      "wallet_owner_is_treasury_owner": true
+    },
+    "separately_reverified_provider_billing": false
+  },
+  "preserved": {
+    "private_profile": "target/native-openclaw-devnet",
+    "public_inputs": "I10-native-openclaw-live-components/independent-collector-inputs",
+    "old_private_profiles_and_deployment_pins_unchanged": true,
+    "original_operator_host_backend_indexer_still_running": true,
+    "new_acceptance_processes_stopped": true
+  },
+  "source_sha256": {
+    "scripts/clientd_devnet_live.mjs": "add295eee2e583b03d0b1f2de72d7972a29aaea3e6d4741ff2287c34d14a9e7c",
+    "scripts/external_sdk_live.mjs": "0934115b21490f0dfecbd9eb8214aa4e679b4fe738c9c64c9fe1eeb8bbfc0849",
+    "apps/clientd/testdata/openclaw-frontend.go": "d6eb68cc2c5056def6aeee75fe4f40f52bca3e22ed16d879ba3a7598b6c117c5"
+  },
+  "full_installed_supervisor_public_acceptance": false,
+  "public_unknown_inference_crash_recovery": false,
+  "local_failure_recovery_results": "I10-clientd-external-results.json",
+  "production_signed": false,
+  "hosted_ci": false,
+  "phantom": false,
+  "full_i10": false,
+  "release_gates_passed": []
+}

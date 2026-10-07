@@ -56,7 +56,7 @@ def source_hashes():
         if not name or not (name.startswith(('apps/', 'crates/', 'packages/', 'programs/', 'scripts/', 'services/', 'tests/', 'tools/', 'deploy/', 'config/', 'docs/contracts/', 'vendor/ethereum-zkapi/', '.cargo/')) or name in root_inputs):
             continue
         path = ROOT / name
-        if path.is_file() and (path.suffix in {'.rs', '.ts', '.py', '.go', '.toml', '.sql', '.sh', '.json', '.lock', '.mod', '.sum', '.pk', '.vk', '.bin', '.html', '.css'} or name in root_inputs):
+        if path.is_file() and (path.suffix in {'.rs', '.ts', '.mjs', '.py', '.go', '.toml', '.sql', '.sh', '.json', '.lock', '.mod', '.sum', '.pk', '.vk', '.bin', '.html', '.css'} or name in root_inputs):
             result[name] = sha(path)
     result['gitlink:' + vendor] = subprocess.check_output(
         ['git', '-C', vendor, 'rev-parse', 'HEAD'], cwd=ROOT).decode().strip()

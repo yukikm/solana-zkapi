@@ -1,0 +1,89 @@
+{
+  "schema": 1,
+  "scope": "Offline parsing of saved provider bytes; no request, no body content disclosure",
+  "captureBytes": 2008,
+  "captureSha256": "1d655e565ddad3c816d9ac07474e4785b6af6dab993827e47c745585af282e13",
+  "frames": [
+    {
+      "choices": 1,
+      "hasUsage": false,
+      "choice": {
+        "index": 0,
+        "finishReason": null,
+        "deltaKeys": [
+          "content",
+          "role"
+        ],
+        "contentLength": 6
+      }
+    },
+    {
+      "choices": 1,
+      "hasUsage": false,
+      "choice": {
+        "index": 0,
+        "finishReason": null,
+        "deltaKeys": [
+          "content",
+          "role"
+        ],
+        "contentLength": 6
+      }
+    },
+    {
+      "choices": 1,
+      "hasUsage": false,
+      "choice": {
+        "index": 0,
+        "finishReason": null,
+        "deltaKeys": [
+          "content",
+          "role"
+        ],
+        "contentLength": 1
+      }
+    },
+    {
+      "choices": 1,
+      "hasUsage": false,
+      "choice": {
+        "index": 0,
+        "finishReason": "stop",
+        "deltaKeys": [
+          "content",
+          "role"
+        ],
+        "contentLength": 0
+      }
+    },
+    {
+      "choices": 1,
+      "hasUsage": true,
+      "choice": {
+        "index": 0,
+        "finishReason": "stop",
+        "deltaKeys": [
+          "content",
+          "role"
+        ],
+        "contentLength": 0
+      }
+    }
+  ],
+  "original": {
+    "deltas": 3,
+    "characters": 13,
+    "completed": false,
+    "errorName": "ChatResponseError",
+    "errorCode": "invalid_response"
+  },
+  "corrected": {
+    "deltas": 3,
+    "characters": 13,
+    "completed": false,
+    "errorName": "ChatResponseError",
+    "errorCode": "incomplete_stream"
+  },
+  "doneObserved": false,
+  "limitation": "Old parser cancelled before DONE; corrected replay must remain incomplete_stream. No success is inferred for this failed live case."
+}

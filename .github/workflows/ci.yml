@@ -218,6 +218,10 @@ jobs:
           sudo apt-get update
           sudo apt-get install --yes postgresql-16 openssl
           command -v google-chrome
+      - name: Compile SDK and verify isolated package consumption
+        run: |
+          npm run build:sdk
+          npm run test:sdk-distribution
       - name: Generate actual Vault archive
         env:
           RAYON_NUM_THREADS: '4'
@@ -225,9 +229,9 @@ jobs:
           bash scripts/run_i04.sh
       - name: I10 local SDK, WASM, Go, challenger, backend, operations and integration acceptance
         run: PATH="/usr/lib/postgresql/16/bin:$PATH" python3 scripts/run_i10_acceptance.py
-      - name: I10 offline provider preparation, wallet UI and shutdown regression
+      - name: I10 offline provider preparation, financial relay and shutdown regression
         run: |
-          node --test scripts/provider_acceptance_client.test.ts scripts/i10_devnet_provider_config.test.ts scripts/i10_devnet_transport.test.ts scripts/i10-wallet-ui/*.test.ts
+          node --test scripts/provider_acceptance_client.test.ts scripts/i10_devnet_provider_config.test.ts scripts/i10_devnet_transport.test.ts scripts/devnet-browser-relay/*.test.ts scripts/browser_chat_devnet_host.test.ts
           python3 scripts/test_provider_acceptance.py
           PATH="/usr/lib/postgresql/16/bin:$PATH" python3 scripts/test_i10_provider_backend.py
           python3 scripts/test_i10_challenger_shutdown.py

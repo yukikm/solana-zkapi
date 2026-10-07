@@ -8,12 +8,15 @@ model selection and chat history. SOL pays network fees; API usage is accounted
 for in integer micro-USDC (1 USDC = 1,000,000 micro-USDC).
 
 **Development preview.** Local protocol tests and selected Devnet/provider demos
-have passed. The application SDK has separate local tests. Full provider
+have passed. Independent SDK installation and selected devnet/provider lifecycles
+also have [separate evidence](docs/evidence/I10-external-integration.md). Full provider
 acceptance, production setup, audits and release gates remain incomplete.
+The [Devnet Preview release](docs/releases/devnet-preview.md) provides an SDK
+tarball and a macOS ARM64 clientd distribution.
 There is no published npm release or ready-to-use production deployment bundle.
 See [supported features and evidence](docs/sdk/status.md).
 
-[Quickstart](docs/sdk/quickstart.md)
+[SDK quickstart](docs/sdk/quickstart.md) · [SDK tarball](docs/sdk/distribution.md) · [Local clientd](docs/sdk/clientd-quickstart.md)
 
 ## Build an application
 
@@ -40,20 +43,24 @@ const status = await client.status(); // verified balance and pending settlement
 This excerpt assumes a funded, available note. Always consume or cancel the
 response, inspect pending settlement, and recover saved work before a new send.
 The SDK never automatically retries inference. See the [standalone browser chat
-application](examples/browser-chat/README.md) and [API reference](docs/sdk/api.md).
+application](https://github.com/yukikm/solana-zkapi-client) and [API reference](docs/sdk/api.md).
 The application includes model/API selection, conversation history, streaming
 and recovery controls. Install a reviewed deployment bundle before real use.
+
+The demonstration UI is maintained in the separate
+[solana-zkapi-client repository](https://github.com/yukikm/solana-zkapi-client). The core SDK, native daemon
+and their acceptance tests do not require that repository.
 
 ## Choose an integration
 
 | You want to… | Start here |
 |---|---|
 | Build a browser chat app | [Application SDK quickstart](docs/sdk/quickstart.md) |
-| Run the provided chat interface | [Browser application](examples/browser-chat/README.md) |
-| Connect a local OpenAI-compatible client | [clientd](apps/clientd/README.md) |
+| Run the provided chat interface | [Browser application](https://github.com/yukikm/solana-zkapi-client) |
+| Connect a local AI client or agent | [clientd quickstart](docs/sdk/clientd-quickstart.md), [application guides and compatibility](docs/integrations/README.md) |
 | Operate a deployment | [Operator configuration](docs/sdk/deployment.md), [control service](services/control/README.md), [operations](deploy/operations/README.md) |
 | Understand or change the protocol | [Implementation contract](docs/implementation-ready.md), [implementation plan](docs/implementation-plan.md) |
-| Inspect what was actually verified | [Current boundaries](docs/sdk/status.md), [parity review and direct-provider evidence](docs/evidence/I10-parity-review.md), [historical I10 evidence](docs/evidence/I10.md) |
+| Inspect what was actually verified | [Current boundaries](docs/sdk/status.md), [external integration evidence](docs/evidence/I10-external-integration.md), [historical I10 evidence](docs/evidence/I10.md) |
 
 In **direct** mode, prompts go to the selected provider using a short-lived key.
 In **proxy** mode, the operator relays requests and can read prompts and responses.
@@ -70,7 +77,8 @@ git submodule update --init --recursive
 python3 scripts/check_upstream.py
 npm ci --ignore-scripts
 npm run typecheck
-npm run typecheck:examples
+npm run build:sdk
+npm run test:sdk-distribution
 npm test
 ```
 
@@ -83,9 +91,10 @@ not spend provider credits or submit public transactions. See
 Based on [`ethereum/zkapi`](https://github.com/ethereum/zkapi) at
 `045b444ea1b52538d1b40273c7cb6ed09468a052`. Solana bindings, USDC accounting and
 transaction transport are intentional differences. Original notices and licenses
-are retained; see [source provenance](vendor/README.md). A license for the new
-repository-wide work has not yet been selected; do not infer one from an upstream
-component's license.
+are retained; see [source provenance](vendor/README.md) and
+[third-party notices](THIRD_PARTY_NOTICES.md). Newly authored Solana zkAPI code
+and documentation are available under the [MIT license](LICENSE). Vendored and
+third-party components retain their own license terms.
 
 Historical status prose from the previous README is preserved in the
 [README archive](docs/evidence/I10-readme-before-app-sdk.md). Historical reports

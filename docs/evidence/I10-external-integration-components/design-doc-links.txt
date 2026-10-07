@@ -1,0 +1,4 @@
+PASS: 326 JSON documents; 25 API paths; 85 schema references; 1011 local links.
+PASS: 36 required features; 20 acceptance scenarios; 4 binding vectors; 8 rounding vectors.
+PASS: layout 2 wire/op/profile contract and 8 tree-transition acceptance conditions.
+NOT CHECKED BY THIS SCRIPT: real proofs, SVM/CU, PostgreSQL migration, provider integration, independent audit.

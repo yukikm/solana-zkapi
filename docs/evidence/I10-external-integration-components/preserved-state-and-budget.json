@@ -1,0 +1,141 @@
+{
+  "schema": 1,
+  "passed": true,
+  "observed_at_utc": "2026-10-07T03:18:02.253773+00:00",
+  "scope": "Exactly 19 previously snapshotted pin/profile/journal/budget files, plus immutable old budget prefix; not an inventory of every private file",
+  "files": [
+    {
+      "path": "target/i10-provider-acceptance/budget-state.json",
+      "before_sha256": "3a5c4667f936ab1af4888a622b8249297f077038f1aab9ac98d7a5c46b82a21a",
+      "after_sha256": "513d46d07ac617d07e9620f3aac1d1809a8f5474cb22e442e46481f9055a2e29",
+      "changed": true
+    },
+    {
+      "path": "target/parity-chat-demo-pinned/private-host-config.json",
+      "before_sha256": "88b59063524705a308b3594ae62a8b600e44e155ec67c80de60208b20570b059",
+      "after_sha256": "88b59063524705a308b3594ae62a8b600e44e155ec67c80de60208b20570b059",
+      "changed": false
+    },
+    {
+      "path": "target/parity-chat-demo-pinned/reviewed-profile.json",
+      "before_sha256": "270ff0fea81bed8b809b3d4335af7392a95dc122a12414ed0f058abd6af2eaf4",
+      "after_sha256": "270ff0fea81bed8b809b3d4335af7392a95dc122a12414ed0f058abd6af2eaf4",
+      "changed": false
+    },
+    {
+      "path": "target/public-devnet/parity-review-20261007/deployment/build-manifest.json",
+      "before_sha256": "ac579def463b72df4193d1601652d0afd39b65444eb27367096e76799845d2cc",
+      "after_sha256": "ac579def463b72df4193d1601652d0afd39b65444eb27367096e76799845d2cc",
+      "changed": false
+    },
+    {
+      "path": "target/public-devnet/parity-review-20261007/deployment/pools/provider/parity-chat/build-manifest.json",
+      "before_sha256": "ac579def463b72df4193d1601652d0afd39b65444eb27367096e76799845d2cc",
+      "after_sha256": "ac579def463b72df4193d1601652d0afd39b65444eb27367096e76799845d2cc",
+      "changed": false
+    },
+    {
+      "path": "target/public-devnet/parity-review-20261007/deployment/pools/provider/parity-chat/public-manifest.json",
+      "before_sha256": "96caa60a67a79e076804b6fdf204b8ce44522e6a43bcaf8ee8ddfc6d5181a6b5",
+      "after_sha256": "96caa60a67a79e076804b6fdf204b8ce44522e6a43bcaf8ee8ddfc6d5181a6b5",
+      "changed": false
+    },
+    {
+      "path": "target/public-devnet/parity-review-20261007/deployment/pools/provider/parity-direct-plain/build-manifest.json",
+      "before_sha256": "ac579def463b72df4193d1601652d0afd39b65444eb27367096e76799845d2cc",
+      "after_sha256": "ac579def463b72df4193d1601652d0afd39b65444eb27367096e76799845d2cc",
+      "changed": false
+    },
+    {
+      "path": "target/public-devnet/parity-review-20261007/deployment/pools/provider/parity-direct-plain/mutual-close/journal/4e103dd9ff271973ad1358dc4c9d8e0700e15f9803c09870e67cb653e8c11d27.json",
+      "before_sha256": "7da1fb4c4a3ef671dfc92e84d14e06f171d3c19495d6b72493fe835c60791cb5",
+      "after_sha256": "7da1fb4c4a3ef671dfc92e84d14e06f171d3c19495d6b72493fe835c60791cb5",
+      "changed": false
+    },
+    {
+      "path": "target/public-devnet/parity-review-20261007/deployment/pools/provider/parity-direct-plain/mutual-close/journal/5574d45f75674a29eb07cea5c40c4334e8325573dafbdfdf48308c2e1970e5a2.sqlite",
+      "before_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "after_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "changed": false
+    },
+    {
+      "path": "target/public-devnet/parity-review-20261007/deployment/pools/provider/parity-direct-plain/mutual-close/journal/d52001128cc5668f36ef06e244b99e5385b091e7e54f97a958f4e9b9f4246827.sqlite",
+      "before_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "after_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "changed": false
+    },
+    {
+      "path": "target/public-devnet/parity-review-20261007/deployment/pools/provider/parity-direct-plain/public-manifest.json",
+      "before_sha256": "2b23223ff75010ec724c968be97973f703fc25f4b7e61736d53a67b1093aa77f",
+      "after_sha256": "2b23223ff75010ec724c968be97973f703fc25f4b7e61736d53a67b1093aa77f",
+      "changed": false
+    },
+    {
+      "path": "target/public-devnet/parity-review-20261007/deployment/pools/provider/parity-direct-sse/build-manifest.json",
+      "before_sha256": "ac579def463b72df4193d1601652d0afd39b65444eb27367096e76799845d2cc",
+      "after_sha256": "ac579def463b72df4193d1601652d0afd39b65444eb27367096e76799845d2cc",
+      "changed": false
+    },
+    {
+      "path": "target/public-devnet/parity-review-20261007/deployment/pools/provider/parity-direct-sse/public-manifest.json",
+      "before_sha256": "1f9eb6021008249280011ef207bd6dcdff3635b1af317fd49299bc80b08c0d5f",
+      "after_sha256": "1f9eb6021008249280011ef207bd6dcdff3635b1af317fd49299bc80b08c0d5f",
+      "changed": false
+    },
+    {
+      "path": "target/public-devnet/parity-review-20261007/deployment/pools/provider/parity-direct-sse-fresh/build-manifest.json",
+      "before_sha256": "ac579def463b72df4193d1601652d0afd39b65444eb27367096e76799845d2cc",
+      "after_sha256": "ac579def463b72df4193d1601652d0afd39b65444eb27367096e76799845d2cc",
+      "changed": false
+    },
+    {
+      "path": "target/public-devnet/parity-review-20261007/deployment/pools/provider/parity-direct-sse-fresh/mutual-close/journal/34fc13f9510d54c0387bc07a8c074cd21913a6cc65a7bbc50758c1954819f8d6.sqlite",
+      "before_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "after_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "changed": false
+    },
+    {
+      "path": "target/public-devnet/parity-review-20261007/deployment/pools/provider/parity-direct-sse-fresh/mutual-close/journal/467f0f04c82d755c7173ab0d6823352b0328feee3239a2f9700ace4dac51dc63.json",
+      "before_sha256": "c7194ee1ac5a0e8941ceba20dc07b85638925db824dab28162e914154bc91fac",
+      "after_sha256": "c7194ee1ac5a0e8941ceba20dc07b85638925db824dab28162e914154bc91fac",
+      "changed": false
+    },
+    {
+      "path": "target/public-devnet/parity-review-20261007/deployment/pools/provider/parity-direct-sse-fresh/mutual-close/journal/699eb1851104f5996a9db62163aac6ea037ec4f866eb56464d697d3314927687.sqlite",
+      "before_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "after_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "changed": false
+    },
+    {
+      "path": "target/public-devnet/parity-review-20261007/deployment/pools/provider/parity-direct-sse-fresh/public-manifest.json",
+      "before_sha256": "c7daf196ae4245ad0f18c23f6538fe231a63e3f72577d52afe54140bb9e8279d",
+      "after_sha256": "c7daf196ae4245ad0f18c23f6538fe231a63e3f72577d52afe54140bb9e8279d",
+      "changed": false
+    },
+    {
+      "path": "target/public-devnet/parity-review-20261007/public-profile.json",
+      "before_sha256": "3933fcae97f544f0be368532cc9c2127af8f7fc008cbebcf2ddd0f803abfd311",
+      "after_sha256": "3933fcae97f544f0be368532cc9c2127af8f7fc008cbebcf2ddd0f803abfd311",
+      "changed": false
+    }
+  ],
+  "expected_changed_files": [
+    "target/i10-provider-acceptance/budget-state.json"
+  ],
+  "original_reservation_count": 10,
+  "original_budget_byte_sha256": "3a5c4667f936ab1af4888a622b8249297f077038f1aab9ac98d7a5c46b82a21a",
+  "reconstructed_original_budget_matches_before_sha256": true,
+  "original_reservations_and_identity_unchanged": true,
+  "new_reservations": 7,
+  "reservation_count": 17,
+  "reserved_micro_usdc": "9154216",
+  "remaining_micro_usdc": "845784",
+  "authorized_parent_budget_micro_usdc": "10000000",
+  "budget_reset": false,
+  "reservation_released": false,
+  "reservations_are_worst_case_bounds_not_actual_charges": true,
+  "actual_new_sdk_verified_charges_micro_usdc": "1294",
+  "sdk_charge_micro_usdc": "8",
+  "native_charge_micro_usdc": "1286",
+  "remaining_less_than_next_full_cap_of_1000000": true
+}

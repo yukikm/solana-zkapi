@@ -1,0 +1,32 @@
+{
+  "passed": true,
+  "scope": "actual OpenClaw CLI, production Go HTTP frontend, compiled shared SDK, encrypted journal; synthetic control/provider/proof fixtures",
+  "openclaw": "OpenClaw 2026.9.8 (fc23bc8)",
+  "openclawPackageIntegrity": "sha512-G+JkNUhtpDE3cXR4AEi2NyyG9fqI/T2WUSl8ZnR8AATH8Dh1kC3qYFL7wwPoZtgHiP/cszA86PEiE0PDysxb9Q==",
+  "checks": [
+    "actual pinned OpenClaw 2026.9.8 CLI",
+    "installed setup creates private tokens and profile",
+    "OpenClaw validates generated file SecretRef configuration",
+    "ordinary Chat JSON through Go and shared SDK",
+    "actual OpenClaw streamed text: one inference",
+    "actual OpenClaw read tool execution and tool-result continuation: two distinct inferences",
+    "actual OpenClaw HTTP503: one inference, provider retry disabled",
+    "actual OpenClaw process termination cancels its stream and closes shared SDK session",
+    "actual OpenClaw transport loss and next process held until explicit SDK recovery; zero inference replay",
+    "actual OpenClaw new process succeeds after explicit SDK recovery"
+  ],
+  "inferenceSends": 8,
+  "authorizations": 8,
+  "closes": 8,
+  "uncertainInferenceReplays": 0,
+  "publicDevnet": false,
+  "liveProvider": false,
+  "nativeProof": false,
+  "actualVault": false,
+  "openclawProcessCancellationAndRestart": true,
+  "clientdProcessRestart": false,
+  "sourceSha256": {
+    "scripts/run_openclaw_clientd_acceptance.ts": "cce9fb81c4d6572eb5793caaecd60af2a199917f871aaa8324e5e4e5a1478f55",
+    "apps/clientd/testdata/openclaw-frontend.go": "d6eb68cc2c5056def6aeee75fe4f40f52bca3e22ed16d879ba3a7598b6c117c5"
+  }
+}

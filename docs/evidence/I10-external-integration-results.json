@@ -1,0 +1,108 @@
+{
+  "schema": 1,
+  "completed_at_utc": "2026-10-07T03:21:47.602704+00:00",
+  "requested_integration_scope_completed": true,
+  "scope": "Requested UI repository separation, independent SDK distribution/consumption and selected SDK/OpenClaw devnet-provider funding-to-withdrawal integration",
+  "full_I10_complete": false,
+  "production_release_verified": false,
+  "hosted_ci_verified": false,
+  "repository_changes_committed": false,
+  "repository_changes_pushed": false,
+  "core_base_revision": "8b550e95a3682f4a864d64784dde18cd7b7c8eb8",
+  "client_repository": "https://github.com/yukikm/solana-zkapi-client",
+  "sdk_tarball_sha256": "fc37358ce00fa7bcb5c43367c8f09b3908c617f9235e8646ae78003a21040c91",
+  "component_reports": {
+    "sdk_aggregate": {
+      "path": "docs/evidence/I10-external-integration-components/app-sdk-results.json",
+      "sha256": "0465098a4b3ccd132bdafd74d5a4a9c5046a586c7c990f9e7d03b4247877889b"
+    },
+    "sdk_distribution": {
+      "path": "docs/evidence/I10-sdk-sse-parser-components/results.json",
+      "sha256": "46b2f365dc86e21770351dbecbed7457c041399db06be00010f45d22725e424a"
+    },
+    "native_local": {
+      "path": "docs/evidence/I10-clientd-external-results.json",
+      "sha256": "889fe01b1eeb81c91b6c97f5198a2a57e6bedcace1b46b526496106b5e1b3dc9"
+    },
+    "sdk_live_provider": {
+      "path": "docs/evidence/I10-external-sdk-provider-results.json",
+      "sha256": "0fe9e9ff1de9acdd38ae15922880e5d00be5402571f04882e44e3f8234eed3b4"
+    },
+    "sdk_live_chain": {
+      "path": "docs/evidence/I10-external-sdk-devnet-results.json",
+      "sha256": "ec358642fb76fe998fd83668b6527ac97f991a64ed882c5ab05825804ed4ed41"
+    },
+    "openclaw_live": {
+      "path": "docs/evidence/I10-openclaw-devnet-results.json",
+      "sha256": "41ad4708188d819d148d168cabd66a6a7b966584a4a0ad341ee0aef4ded348d6"
+    },
+    "openclaw_live_chain": {
+      "path": "docs/evidence/I10-native-openclaw-devnet-chain-results.json",
+      "sha256": "d5b91403f7c42b49c331ca69cef67d8e825e27c5c5b36386083b5f59b3986181"
+    },
+    "preservation_and_budget": {
+      "path": "docs/evidence/I10-external-integration-components/preserved-state-and-budget.json",
+      "sha256": "b9ea4f196fae4fba39f6ea610b4b21aa693d61b1b975a9c16a9c08a3f821a05c"
+    }
+  },
+  "client_local_reports": [
+    {
+      "path": "docs/evidence/migration-isolated-results.json",
+      "sha256": "3ea7b1a99c84202a6e401c51dfe78b58e5d8f026a8575431c2fe9238b18a709c"
+    },
+    {
+      "path": "docs/evidence/configured-build-results.json",
+      "sha256": "8bd0f60eb5f99b1f89d76654690559289000545289442c64b6c471a14b5e36d9"
+    }
+  ],
+  "runtime_guard": {
+    "source_inputs": 495,
+    "unchanged_during_run": true,
+    "runtime_sources_still_unchanged": true,
+    "documentation_only_changes_after_run": [
+      "README.md",
+      "docs/sdk/status.md",
+      "docs/sdk/README.md"
+    ]
+  },
+  "local_tests": {
+    "sdk": 315,
+    "separate_ui": 77,
+    "installed_sdk": 59,
+    "installed_real_native_wasm": 1,
+    "go_tests_and_subtests_with_race": 43,
+    "native_secret_helper": 5,
+    "openclaw_fixture_checks": 10,
+    "relocated_relay": 26,
+    "counts_overlap": true
+  },
+  "new_live": {
+    "sdk_inferences": 5,
+    "sdk_response_consumption_passes": 3,
+    "native_inferences": 3,
+    "native_response_consumption_passes": 3,
+    "sdk_verified_charge_micro_usdc": "8",
+    "native_verified_charge_micro_usdc": "1286",
+    "total_verified_charge_micro_usdc": "1294",
+    "finalized_transactions": 12,
+    "both_notes_closed": true,
+    "vault_final_balance_micro_usdc": "0",
+    "provider_mode": "direct_openrouter",
+    "api": "Chat Completions",
+    "model": "openai/gpt-4o-mini"
+  },
+  "legacy_evidence_checker": {
+    "passed": false,
+    "baseline_hash_mismatches": 95,
+    "baseline_missing": 0,
+    "post_migration_hash_mismatches": 93,
+    "post_migration_removed_presentation_paths": 38,
+    "historical_pins_preserved": true
+  },
+  "limitations": [
+    "Native public acceptance used a custom bounded devnet relay plus production Go handler and an immutable earlier SDK package; final complete installed supervisor/package was tested separately with local SBF and OpenClaw fixtures.",
+    "Actual Phantom, other APIs/models/providers, public production service, cross-platform signed installers, repository-wide license selection, mainnet, audit and full release gates remain unverified.",
+    "Public response failures and subsequent exact-operation recovery remain retained; no earlier failed attempt is converted into a success.",
+    "The original operator host/backend/indexer remain running; new native acceptance processes stopped, with all private custody/journals preserved."
+  ]
+}

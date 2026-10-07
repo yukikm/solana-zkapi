@@ -4,16 +4,25 @@ This guide targets a browser app with a Wallet Standard wallet. It is a
 development preview: you need an operator-supplied, reviewed deployment bundle.
 No supported public production bundle or npm release is advertised yet.
 
-## 1. Use the source workspace
+## 1. Install the SDK in your own repository
 
-Clone a reviewed revision, initialize its submodules, and run
-`npm ci --ignore-scripts` with Node 24.19.0/npm 11.9.0. The workspace resolves
-`@zkapi/solana-sdk` locally. Start your app in this workspace or use the checked
-source as a reviewed local dependency. The exports are TypeScript source;
-bundle them for browsers. A bare `<script>` cannot import them directly.
+Obtain an independently reviewed `zkapi-solana-sdk-0.1.0.tgz` and verify its
+published SHA256 through your trusted distribution channel. Then install it in
+your application with Node 24.19.0/npm 11.9.0:
 
-The [integration example](../../examples/browser-chat/README.md) has complete,
-typechecked functions and build instructions. Provider secrets stay with the
+```sh
+npm install --save-exact /absolute/path/zkapi-solana-sdk-0.1.0.tgz
+```
+
+The package contains compiled ES modules and TypeScript declarations. No source
+checkout or demo UI is required. Keep the tarball in your artifact store or
+repository when using a file dependency so a clean install can retrieve it.
+See [building and checking the distribution](../../packages/sdk/DISTRIBUTION.md).
+Bundle `@zkapi/solana-sdk/prover-worker` as a browser module worker; public proof
+artifacts and the independently pinned WASM are separate deployment inputs.
+
+The [separate reference application](https://github.com/yukikm/solana-zkapi-client) has
+complete integration and build instructions. Provider secrets stay with the
 operator; the browser does not need the operator's API key.
 
 ## 2. Configure the deployment once

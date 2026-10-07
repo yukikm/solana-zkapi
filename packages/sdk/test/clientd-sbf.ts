@@ -7,12 +7,12 @@ import {createInterface} from 'node:readline';
 import {once} from 'node:events';
 import {createServer} from 'node:http';
 import {mkdtemp,mkdir,writeFile,readFile,rm} from 'node:fs/promises';
-import {join,resolve} from 'node:path';
+import {dirname,join,resolve} from 'node:path';
 import {tmpdir} from 'node:os';
 import {Keypair} from '@solana/web3.js';
 import bs58 from 'bs58';
 import {walletFixture} from './wallet-fixture.ts';
-import {manifestDigest} from '../src/trust.ts';
+import {manifestDigest,sha256Hex} from '../src/trust.ts';
 
 test('installed Go clientd drives encrypted native wallet deposit and withdrawal through actual SBF',{timeout:240_000},async t=>{
   const directory=await mkdtemp(join(tmpdir(),'zkapi-clientd-sbf-'));t.after(()=>rm(directory,{recursive:true,force:true}));
@@ -22,6 +22,9 @@ test('installed Go clientd drives encrypted native wallet deposit and withdrawal
   const call=(value:object)=>new Promise<any>((resolve,reject)=>{queue.push({resolve,reject});svm.stdin.write(JSON.stringify(value)+'\n');});
   t.after(async()=>{if(svm.exitCode===null){const exited=once(svm,'exit');svm.stdin.end();await exited;}});
   const {manifest:base,artifacts}=await walletFixture();const manifest=structuredClone(base) as any;
+  // This isolated local fixture advertises the compiler IDL supplied below.
+  // Do not rewrite the older target/i05 manifest or any deployment pins.
+  manifest.idl_hash=await sha256Hex(artifacts.idl);manifest.artifact_digests.vault_idl=manifest.idl_hash;
   const testTariff=JSON.parse(await readFile('target/i08/prepare-command.json','utf8')).prepared.tariff;
   // The generated wallet-only fixture must also truthfully pin its advertised API tariff.
   manifest.tariff_hashes=[testTariff.tariff_hash];
@@ -56,7 +59,7 @@ test('installed Go clientd drives encrypted native wallet deposit and withdrawal
   manifest.control_api_origin=origin;manifest.inference_api_origin=origin;manifest.proving_keys_base_url=origin+'/keys';manifest.manifest_hash=await manifestDigest(manifest);
   const manifestPath=join(directory,'manifest.json');await writeFile(manifestPath,JSON.stringify(manifest),{mode:0o600});
   const artifactPaths:any={additional:{}};for(const[name,value]of Object.entries(artifacts))if(name!=='additional'){const path=join(directory,name);await writeFile(path,value as Uint8Array);artifactPaths[name]=path;}for(const[name,value]of Object.entries(artifacts.additional)){const path=join(directory,'additional-'+name);await writeFile(path,value);artifactPaths.additional[name]=path;}
-  const built=JSON.parse(await readFile('target/i08-clientd/distribution-result.json','utf8')),release=JSON.parse(await readFile(built.distribution,'utf8')),installed=resolve('target/i08-clientd/distribution');
+  const built=JSON.parse(await readFile(process.env.ZKAPI_TEST_CLIENTD_DISTRIBUTION_RESULT??'target/i08-clientd/distribution-result.json','utf8')),release=JSON.parse(await readFile(built.distribution,'utf8')),installed=dirname(resolve(built.distribution));
   const policy={anchor:{kind:'hash',sha256:manifest.manifest_hash},expected:{deployment_id:manifest.deployment_id,deployment_environment:manifest.deployment_environment,genesis_hash:manifest.genesis_hash,program_id:manifest.program_id,pool:manifest.pool,mint:manifest.mint,token_program:manifest.token_program,control_api_origin:origin,inference_api_origin:origin},build:{stateKey:manifest.state_key,clearanceKey:manifest.clearance_key,circuitProfileHash:manifest.circuit_profile_hash,idlHash:manifest.idl_hash,setupProfile:manifest.setup_profile}};
   const tariffPath=join(directory,'tariff.json');await writeFile(tariffPath,JSON.stringify(testTariff));
   const runtime={manifest:manifestPath,policy,artifacts:artifactPaths,verifier:{path:join(installed,'bin/zkapi-client-verify'),sha256:release.files['bin/zkapi-client-verify']},prover:{path:join(installed,'bin/zkapi-client-prover'),sha256:release.files['bin/zkapi-client-prover']},journal:join(directory,'journal'),custody:join(directory,'custody.json'),note_id:'local-note',mode:'proxy',models:[testTariff.model],tariff:tariffPath,rpc:origin+'/rpc',indexer:origin};

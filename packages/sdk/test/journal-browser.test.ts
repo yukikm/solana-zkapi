@@ -85,10 +85,41 @@ class Cdp {
   }
 }
 
+/** Only the read-only readiness probe may be retried across navigation. */
+async function waitForDocument(cdp: Pick<Cdp, 'evaluate'>, url: string): Promise<void> {
+  const expected = new URL(url).href, deadline = Date.now() + 5000;
+  while (Date.now() < deadline) {
+    try {
+      if (await cdp.evaluate(`location.href === ${JSON.stringify(expected)} && document.readyState === 'complete'`)) return;
+    } catch (error) {
+      // A probe can straddle the old about:blank context being replaced.
+      if (!(error instanceof Error) || error.message !== 'Execution context was destroyed.') throw error;
+    }
+    await delay(10);
+  }
+  throw new Error('browser document did not become ready before journal initialization');
+}
+
 test('browser readiness ignores empty or partially written DevTools port files', () => {
   for (const value of ['', '12345', '0\n', '65536\n', 'not-a-port\n']) assert.equal(debuggerPort(value), undefined);
   assert.equal(debuggerPort('12345\n/devtools/browser/fixture'), 12345);
   assert.equal(debuggerPort('12345\r\n/devtools/browser/fixture'), 12345);
+});
+test('browser document readiness waits through navigation before initialization', async () => {
+  let probes = 0;
+  await waitForDocument({ async evaluate(expression) {
+    assert.ok(expression.includes('location.href === "http://127.0.0.1:1234/"'));
+    assert.ok(expression.includes("document.readyState === 'complete'"));
+    probes++;
+    if (probes === 1) throw new Error('Execution context was destroyed.');
+    return probes === 3;
+  } }, 'http://127.0.0.1:1234');
+  assert.equal(probes, 3);
+});
+test('browser document readiness does not retry unrelated debugger failures', async () => {
+  let probes = 0;
+  await assert.rejects(waitForDocument({ async evaluate() { probes++; throw new Error('browser target closed'); } }, 'http://127.0.0.1:1234'), /browser target closed/);
+  assert.equal(probes, 1);
 });
 test('browser cleanup does not await an already observed signal exit', { timeout: 5000 }, async () => {
   const child = spawn(process.execPath, ['-e', 'process.kill(process.pid, "SIGTERM")'], { stdio: ['ignore', 'pipe', 'pipe'] });
@@ -146,8 +177,12 @@ test('real browser journal: atomic cross-tab CAS, encrypted restart, Web Locks a
   const browserFetch = (url: string, init: RequestInit = {}) => fetch(url, { ...init, signal: AbortSignal.timeout(5000) });
   t.diagnostic(`Runtime browser: ${(await (await browserFetch(`${debuggerOrigin}/json/version`)).json() as { Browser: string }).Browser}`);
   const createTab = async () => {
-    const target = await (await browserFetch(`${debuggerOrigin}/json/new?${encodeURIComponent(origin)}`, { method: 'PUT' })).json() as { id: string; webSocketDebuggerUrl: string };
+    const target = await (await browserFetch(`${debuggerOrigin}/json/new?about:blank`, { method: 'PUT' })).json() as { id: string; webSocketDebuggerUrl: string };
     const cdp = await Cdp.connect(target.webSocketDebuggerUrl); debuggers.push(cdp);
+    await cdp.call('Page.enable');
+    const navigation = await cdp.call('Page.navigate', { url: origin });
+    assert.equal(navigation.errorText, undefined);
+    await waitForDocument(cdp, origin);
     await cdp.evaluate(`(async () => {
       globalThis.mod = await import(${JSON.stringify(`${origin}/journal.js`)});
       globalThis.store = await mod.IndexedDbJournalStore.open('zkapi-test-journal');

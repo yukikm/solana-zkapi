@@ -91,3 +91,39 @@ test('SSE requires a terminal choice before DONE and rejects content after a ter
   const source = 'data: {"choices":[{"index":0,"delta":{},"finish_reason":"stop"}]}\n\ndata: {"choices":[{"index":0,"delta":{"content":"late"}}]}\n\ndata: [DONE]\n\n';
   await assert.rejects(text(chunks(encode(source), 1).response), ChatResponseError);
 });
+
+test('SSE accepts empty terminal usage choices after the same terminal reason at every byte boundary', async () => {
+  const frame = (value: unknown) => `data: ${JSON.stringify(value)}\n\n`;
+  for (const finish_reason of ['stop', 'length', 'content_filter']) {
+    const source = frame({ choices: [{ index: 0, delta: { role: 'assistant', content: 'answer' } }] })
+      + frame({ choices: [{ index: 0, delta: { role: 'assistant', content: '' }, finish_reason }] })
+      + frame({ choices: [{ index: 0, delta: { role: 'assistant', content: '' }, finish_reason }], usage: { total_tokens: 2 } });
+    const bytes = encode(source + 'data: [DONE]\n\n');
+    for (let split = 0; split <= bytes.length; split++) assert.equal(await text(chunks(bytes, split).response), 'answer');
+    // Accepting metadata must not turn an interrupted stream into a completed one.
+    await assert.rejects(text(chunks(encode(source), 1).response), e => e instanceof ChatResponseError && e.code === 'incomplete_stream');
+  }
+});
+
+test('SSE terminal usage metadata cannot append content, change terminal reason, or carry tool calls', async () => {
+  const frame = (value: unknown) => `data: ${JSON.stringify(value)}\n\n`;
+  const terminal = frame({ choices: [{ index: 0, delta: {}, finish_reason: 'stop' }] });
+  const choice = { index: 0, delta: { role: 'assistant', content: '' }, finish_reason: 'stop' };
+  const usage = { total_tokens: 2 };
+  for (const value of [
+    { choices: [{ ...choice, delta: { content: 'late' } }], usage },
+    { choices: [{ ...choice, finish_reason: 'length' }], usage },
+    { choices: [{ ...choice, finish_reason: null }], usage },
+    { choices: [{ ...choice, index: 1 }], usage },
+    { choices: [{ ...choice, delta: { content: '', tool_calls: [{ id: 'PRIVATE' }] } }], usage },
+    { choices: [{ ...choice, delta: { function_call: { arguments: 'PRIVATE' } } }], usage },
+    { choices: [choice] },
+    { choices: [choice], usage: null },
+    { choices: [choice], usage: [] },
+    { choices: [choice], usage: 'PRIVATE' },
+    { choices: [choice], usage, error: { message: 'PRIVATE' } },
+  ]) {
+    await assert.rejects(text(chunks(encode(terminal + frame(value) + 'data: [DONE]\n\n'), 1).response),
+      e => e instanceof ChatResponseError && e.code === 'invalid_response' && !e.message.includes('PRIVATE'));
+  }
+});

@@ -2,6 +2,17 @@
 
 The Go daemon exposes the supported inference routes, count_tokens, SSE and wallet management on **127.0.0.1:8787**. Note, authorization, billing and recovery state belongs to the existing encrypted SDK journal. Go has no second financial state machine. `runtime.ts` connects the journal to the real native prover/verifier, finalized RPC/indexer observations, v0 buffers and authenticated compact deposits.
 
+For a new installation, follow the [native quickstart](../../docs/sdk/clientd-quickstart.md).
+`clientd setup` accepts independently pinned installation/deployment inputs and
+creates a private profile with separate random local tokens. `run`, `request`
+and `openclaw-config` use that profile. The [OpenClaw integration](../../docs/integrations/openclaw.md)
+uses a file SecretRef, a dedicated agent and disabled provider retries. Neither
+setup nor configuration generation funds a note or performs inference.
+
+The [application compatibility table](../../docs/integrations/README.md) also
+links Claude Code and Codex settings. Their current CLI request formats still
+hit deliberate validation guards; the settings are not a funded-use recipe.
+
 The management-authenticated `POST /admin/wallet` also exposes explicit recovery
 actions: `clear-unaccepted-auth` obtains signed permanent clearance for an
 unaccepted AUTH; `emergency-escape` takes `destination_owner` and `roles` and
@@ -35,7 +46,7 @@ python3 scripts/run_i08_clientd.py
 
 ## Distribution and configuration
 
-`python3 scripts/build_clientd_distribution.py` assembles the current OS package under `target/i08-clientd/distribution`: Node, Go, native binaries, SDK, locked npm dependencies and upstream license. `distribution-result.json` supplies these configuration fields:
+`python3 scripts/build_clientd_distribution.py` assembles the current OS package under `target/i08-clientd/distribution`; pass `--output /absolute/new-install` to preserve older installations. It includes Node, Go, native binaries, the compiled SDK installed from its tarball, npm dependencies pinned to the repository lock, and upstream license. The package has no workspace-source or demo dependency. A build refuses existing output. The resulting installation is portable on the same OS/architecture; setup binds paths after relocation. `distribution-result.json` supplies these configuration fields:
 
 - `distribution`, `distribution_sha256`: whole-install manifest and independent digest pin.
 - `node`, `node_sha256`, `runtime`, `runtime_sha256`: installed runtime paths and hashes.
@@ -58,6 +69,13 @@ Example network configuration (placeholder origins, not deployed services):
 }
 ```
 
+An operator using a private CA can explicitly add
+`"extra_ca": {"path":"/absolute/reviewed/operator-ca.pem","sha256":"INDEPENDENTLY_REVIEWED_SHA256"}`.
+The bounded regular file must be immutable to other users and match its pin.
+The CA extends system roots; hostname/certificate verification, TLS 1.2 minimum,
+route allowlists and no-redirect behavior stay enabled. Never derive this pin
+from an untrusted server certificate or disable certificate checks.
+
 Mode must explicitly be `direct` or `tor`. For direct provider sessions add the independently configured provider origin/API path. For `direct_oa`, also allow the separately trusted verifier's `/submit_key` path: for `oa_verifier.base: "https://verifier.example/api"`, add `{"origin":"https://verifier.example","prefix":"/api/submit_key"}`. Tor uses SOCKS5 domain-name addresses, no direct fallback and no redirect following. **Control, provider, OA verifier, indexer and RPC** use this same private Unix relay. Companion/prover processes are offline and receive secrets through stdin with a cleared environment. This is not a promise of complete anonymity.
 
 `runtime.json` follows the `RuntimeConfig` interface in `runtime.ts`:
@@ -67,6 +85,7 @@ Mode must explicitly be `direct` or `tor`. For direct provider sessions add the 
 - Private `journal` directory, `custody` envelope file, local `note_id`.
 - Explicit `mode` (`proxy`, `direct_oa`, `direct_openrouter`), per-model provider/API/tariff configuration, `rpc` URL, `indexer` origin, optional `direct_provider_bases`.
 - For `direct_oa`, independently install `oa_verifier: {"base":"https://verifier.example/api","stationId":"trusted-station"}`. Use the canonical HTTPS base without a trailing slash; do not derive these pins from the control server or key response. The SDK verifies the received key and its signed evidence directly with this verifier before saving or using the key. Missing pins, mismatched evidence or verifier rejection close the same session without inference or mode fallback.
+- Optional `preparation_commitment`: `confirmed` or `finalized` (default). This controls only blockhash acquisition and preflight; note/account/receipt acceptance remains finalized. A reviewed public deployment can use `confirmed` to avoid an already-old finalized blockhash expiring during a proof/sign/send workflow.
 - `key_reuse_seconds`: default 60, range 0–300. A nonzero value also requests that session TTL. Zero requests a 60-second TTL and closes after each request.
 
 The runtime checks actual finalized PoolConfig/genesis/keys/profile/artifact hashes before serving. Custody's parent directory must be mode 0700. Never reset missing/corrupt custody automatically.

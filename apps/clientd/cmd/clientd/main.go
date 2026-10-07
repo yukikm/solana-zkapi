@@ -75,8 +75,11 @@ func listenAddress(value string) (*net.TCPAddr, error) {
 }
 
 func run() error {
+	if len(os.Args) >= 2 && os.Args[1] != "serve" {
+		return profileCommand(os.Args[1:], os.Stdin, os.Stdout)
+	}
 	if len(os.Args) != 3 || os.Args[1] != "serve" {
-		return errors.New("usage: clientd serve /absolute/config.json (secrets JSON from stdin)")
+		return errors.New(commandHelp)
 	}
 	raw, err := os.ReadFile(os.Args[2])
 	if err != nil {
@@ -88,6 +91,10 @@ func run() error {
 	if d.Decode(&c) != nil {
 		return errors.New("invalid configuration")
 	}
+	return runConfig(c, os.Stdin)
+}
+
+func runConfig(c Config, secretInput io.Reader) error {
 	if c.Listen == "" {
 		c.Listen = "127.0.0.1:8787"
 	}
@@ -110,7 +117,11 @@ func run() error {
 			return errors.New("runtime must be inside pinned distribution")
 		}
 	}
-	input := bufio.NewReader(io.LimitReader(os.Stdin, 16*1024))
+	return serve(c, address, secretInput)
+}
+
+func serve(c Config, address *net.TCPAddr, secretInput io.Reader) error {
+	input := bufio.NewReader(io.LimitReader(secretInput, 16*1024))
 	line, err := input.ReadBytes('\n')
 	if err != nil {
 		return errors.New("secrets JSON line required on stdin")

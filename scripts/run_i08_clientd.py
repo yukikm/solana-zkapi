@@ -35,6 +35,7 @@ gotests=run('go-tests',[GO,'-C','apps/clientd','test','-race','-count=1','-json'
 rows=[json.loads(x) for x in gotests.splitlines() if x.startswith('{')]
 if any(x['Action'] in ['skip','fail'] for x in rows):raise RuntimeError('Go tests failed or skipped')
 count=sum(x['Action']=='pass' and 'Test'in x for x in rows)
+run('sdk-build',[NODE,'packages/sdk/build.mjs'])
 run('runtime-types',[NODE,'node_modules/typescript/bin/tsc','--noEmit','-p','apps/clientd/tsconfig.json'])
 sdk=run('client-tests',[NODE,'--test','--test-reporter=tap','packages/sdk/test/clientd.test.ts','packages/sdk/test/control.test.ts'])
 if re.search(r'^# (fail|skipped) [1-9]',sdk,re.M):raise RuntimeError('SDK tests failed/skipped')

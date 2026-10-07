@@ -1,0 +1,90 @@
+TAP version 13
+# Subtest: Chat SSE accepts UTF-8, comments, CRLF splits, usage events and multiline data at every byte boundary
+ok 1 - Chat SSE accepts UTF-8, comments, CRLF splits, usage events and multiline data at every byte boundary
+  ---
+  duration_ms: 14.653833
+  type: 'test'
+  ...
+# Subtest: SSE rejects truncated streams, provider errors, bad UTF-8 and oversized frames
+ok 2 - SSE rejects truncated streams, provider errors, bad UTF-8 and oversized frames
+  ---
+  duration_ms: 1.406
+  type: 'test'
+  ...
+# Subtest: SSE accepts CR-only event endings, including a final CR at EOF
+ok 3 - SSE accepts CR-only event endings, including a final CR at EOF
+  ---
+  duration_ms: 3.156792
+  type: 'test'
+  ...
+# Subtest: breaking delta iteration cancels unread response; HTTP errors are bounded and redacted
+ok 4 - breaking delta iteration cancels unread response; HTTP errors are bounded and redacted
+  ---
+  duration_ms: 0.49425
+  type: 'test'
+  ...
+# Subtest: text helper accepts one text choice and refuses tool-only, malformed and oversized responses
+ok 5 - text helper accepts one text choice and refuses tool-only, malformed and oversized responses
+  ---
+  duration_ms: 1.942583
+  type: 'test'
+  ...
+# Subtest: reader and cancellation failures never expose private errors from text or SSE helpers
+ok 6 - reader and cancellation failures never expose private errors from text or SSE helpers
+  ---
+  duration_ms: 1.366791
+  type: 'test'
+  ...
+# Subtest: SSE cancellation failures after DONE or early exit are redacted
+ok 7 - SSE cancellation failures after DONE or early exit are redacted
+  ---
+  duration_ms: 0.135
+  type: 'test'
+  ...
+# Subtest: text helpers refuse tool calls mixed with text and missing or unsupported terminal reasons
+ok 8 - text helpers refuse tool calls mixed with text and missing or unsupported terminal reasons
+  ---
+  duration_ms: 0.507709
+  type: 'test'
+  ...
+# Subtest: SSE requires a terminal choice before DONE and rejects content after a terminal choice
+ok 9 - SSE requires a terminal choice before DONE and rejects content after a terminal choice
+  ---
+  duration_ms: 0.12775
+  type: 'test'
+  ...
+# Subtest: SSE accepts empty terminal usage choices after the same terminal reason at every byte boundary
+not ok 10 - SSE accepts empty terminal usage choices after the same terminal reason at every byte boundary
+  ---
+  duration_ms: 0.153666
+  type: 'test'
+  location: '/Users/yukikimura/work/solana-zkapi/packages/sdk/test/chat.test.ts:95:1'
+  failureType: 'testCodeFailure'
+  error: 'Chat invalid_response; inspect SDK status before sending a new request.'
+  code: 'invalid_response'
+  name: 'ChatResponseError'
+  stack: |-
+    failure (file:///Users/yukikimura/work/solana-zkapi/packages/sdk/src/chat.ts:12:10)
+    event (file:///Users/yukikimura/work/solana-zkapi/packages/sdk/src/chat.ts:72:77)
+    readChatDeltas (file:///Users/yukikimura/work/solana-zkapi/packages/sdk/src/chat.ts:95:38)
+    readChatDeltas.next (<anonymous>)
+    text (file:///Users/yukikimura/work/solana-zkapi/packages/sdk/test/chat.test.ts:10:77)
+    async TestContext.<anonymous> (file:///Users/yukikimura/work/solana-zkapi/packages/sdk/test/chat.test.ts:102:70)
+    async Test.run (node:internal/test_runner/test:1389:7)
+    async Test.processPendingSubtests (node:internal/test_runner/test:960:7)
+  ...
+# Subtest: SSE terminal usage metadata cannot append content, change terminal reason, or carry tool calls
+ok 11 - SSE terminal usage metadata cannot append content, change terminal reason, or carry tool calls
+  ---
+  duration_ms: 0.351584
+  type: 'test'
+  ...
+1..11
+# tests 11
+# suites 0
+# pass 10
+# fail 1
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 89.087

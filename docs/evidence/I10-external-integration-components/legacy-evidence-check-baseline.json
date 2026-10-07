@@ -1,0 +1,9 @@
+{
+  "passed": false,
+  "scope": "Read-only historical artifact hash comparison; not new runtime acceptance",
+  "baseline_revision": "8b550e95a3682f4a864d64784dde18cd7b7c8eb8",
+  "recorded_artifacts": 811,
+  "baseline_stale_artifact_hashes": 95,
+  "baseline_missing": 0,
+  "explanation": "check_evidence.py compares current source with an older implementation-results.json source snapshot. The 95 mismatches existed before this task. Historical report pins were preserved; removed demo files are mapped in docs/source-migrations.json."
+}

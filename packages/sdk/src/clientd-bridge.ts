@@ -74,7 +74,11 @@ export class ClientDaemon {
     await this.maintenance();
   }
   async status(): Promise<unknown> {
-    const {value,head} = await this.record();
+    const record = await this.o.journal.read(this.o.noteId);
+    if (!record) return { mode:this.o.mode, balance_micro_usdc:'0', phase:'unfunded', in_flight:this.inflight, recovery_required:false,
+      unresolved_operations:[], key_reuse_seconds:this.reuse, journal_head:null, privacy_notice:PROXY_PRIVACY_NOTICE,
+      wallet_status:'unfunded', wallet_operation:null, wallet_emergency_escape:null };
+    const {value,head} = record;
     const witness = (value as NoteJournal & { witness?: {expiry:string} }).witness;
     const emergency=value.wallet?.emergencyEscapes?.find(e=>e.phase!=='settled'),closed=value.wallet?.status==='closed';
     return { mode:this.o.mode, balance_micro_usdc:value.state.balance_micro_usdc, phase:value.pending?.phase ?? (closed?'closed':emergency?'emergency_escape':'ready'), in_flight:this.inflight, recovery_required:(!closed||!!value.pending)&&(this.recoveryRequired||!!emergency),

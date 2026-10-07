@@ -26,7 +26,7 @@ def snapshot():
     sources = source_hashes()
     files = [ROOT / 'README.md', ROOT / 'CONTRIBUTING.md', ROOT / 'vendor/README.md',
              ROOT / 'packages/sdk/README.md', ROOT / 'packages/sdk/INTERNALS.md', Path(__file__)]
-    for directory in ('docs/sdk', 'examples/browser-chat'):
+    for directory in ('docs/sdk',):
         files.extend(p for p in (ROOT / directory).rglob('*') if p.is_file())
     for path in files:
         sources[str(path.relative_to(ROOT))] = sha(path)
@@ -36,13 +36,15 @@ def snapshot():
 def main():
     OUT.mkdir(parents=True, exist_ok=True)
     run = Path(tempfile.mkdtemp(prefix='run-', dir=OUT))
-    node = os.environ.get('ZKAPI_NODE') or str(ROOT / 'target/i08-toolchain/bin/node')
+    bundled_node = ROOT / 'target/i08-toolchain/bin/node'
+    node = os.environ.get('ZKAPI_NODE') or (str(bundled_node) if bundled_node.is_file() else 'node')
     node = shutil.which(node)
     if not node:
         raise SystemExit('Set ZKAPI_NODE to the pinned Node 24.19.0 executable')
     env = {k: os.environ[k] for k in ('HOME', 'PATH', 'TMPDIR', 'LANG', 'LC_ALL', 'ZKAPI_TEST_CHROME') if k in os.environ}
+    env['ZKAPI_NODE'] = node
     env['PATH'] = str(Path(node).parent) + os.pathsep + env.get('PATH', '')
-    report = {'schema': 1, 'passed': False, 'scope': 'Local application SDK, fixture lifecycle, real browser custody, docs and example bundle',
+    report = {'schema': 1, 'passed': False, 'scope': 'Local application SDK, fixture lifecycle, real browser custody, isolated npm tarball consumption and docs',
               'started_at_utc': datetime.datetime.now(datetime.timezone.utc).isoformat(),
               'public_chain_verified': False, 'live_provider_verified': False, 'phantom_verified': False,
               'I10_complete': False, 'release_gates_passed': [], 'stages': [], 'run_directory': str(run.relative_to(ROOT))}
@@ -56,9 +58,9 @@ def main():
         tsc = str(ROOT / 'node_modules/typescript/bin/tsc')
         commands = [
             ('sdk-typecheck', [node, tsc, '--noEmit', '-p', 'packages/sdk/tsconfig.json']),
-            ('example-typecheck', [node, tsc, '--noEmit', '-p', 'examples/browser-chat/tsconfig.json']),
+            ('sdk-build', [node, 'packages/sdk/build.mjs']),
             ('sdk-tests', [node, '--test', '--test-reporter=tap', *[str(p.relative_to(ROOT)) for p in sorted((ROOT / 'packages/sdk/test').glob('*.test.ts'))]]),
-            ('browser-example-build', [node, 'examples/browser-chat/build.mjs']),
+            ('external-package', [sys.executable, 'scripts/run_external_sdk_acceptance.py', '--output', str(run / 'external-package')]),
             ('design-doc-links', [sys.executable, 'scripts/check_design.py']),
             ('diff-check', ['git', 'diff', '--check']),
         ]
@@ -90,7 +92,7 @@ def main():
         report['source_inputs_unchanged'] = before == after
         if before != after:
             raise RuntimeError('Source inputs changed during acceptance')
-        report['bundle_sha256'] = {str(p.relative_to(ROOT)): sha(p) for p in sorted((ROOT / 'target/app-sdk-example').glob('*.js'))}
+        report['package_result'] = json.loads((run / 'external-package/results.json').read_text())
         report['passed'] = True
     except Exception as error:
         report['error'] = str(error)

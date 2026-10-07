@@ -1,0 +1,136 @@
+name: SDK and clientd devnet preview
+
+# Credential-free source and package checks. These jobs do not establish live
+# provider, public-chain, installed native/SBF, or full I10/release acceptance.
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/client-preview.yml
+      - .node-version
+      - package.json
+      - package-lock.json
+      - LICENSE
+      - packages/sdk/**
+      - apps/clientd/**
+      - docs/contracts/**
+      - tests/fixtures/**
+      - vendor/ethereum-zkapi
+      - .gitmodules
+      - scripts/run_external_sdk_acceptance.py
+      - scripts/clientd_secrets.py
+      - scripts/test_clientd_secrets.py
+      - scripts/build_clientd_distribution.py
+      - scripts/collect_clientd_release_notices.py
+      - scripts/test_clientd_release_notices.py
+      - scripts/prepare_devnet_preview.py
+      - scripts/clientd_release_provenance.py
+      - scripts/test_clientd_release_provenance.py
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  sdk:
+    name: SDK fixtures, real Chrome custody, isolated tarball
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    env:
+      ZKAPI_NODE: node
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          submodules: recursive
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: '24.19.0'
+      - name: Install pinned npm and locked SDK dependencies
+        run: |
+          test "$(node --version)" = v24.19.0
+          test "$(cat .node-version)" = 24.19.0
+          npm install --global npm@11.9.0
+          test "$(npm --version)" = 11.9.0
+          npm ci --ignore-scripts --no-audit --no-fund
+          mkdir -p target/client-preview
+      - name: Require the hosted runner's real Chrome
+        run: |
+          zkapi_chrome="$(command -v google-chrome)"
+          test -x "$zkapi_chrome"
+          "$zkapi_chrome" --version | tee target/client-preview/chrome.log
+          printf 'ZKAPI_TEST_CHROME=%s\n' "$zkapi_chrome" >> "$GITHUB_ENV"
+      - name: Compile and typecheck the SDK
+        run: |
+          npm run build:sdk 2>&1 | tee target/client-preview/sdk-build.log
+          npm run typecheck 2>&1 | tee target/client-preview/sdk-typecheck.log
+      - name: Run every SDK fixture and browser custody test without skips
+        timeout-minutes: 5
+        run: |
+          node --test --test-reporter=tap packages/sdk/test/*.test.ts 2>&1 | tee target/client-preview/sdk-tests.log
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          import re
+          log = Path('target/client-preview/sdk-tests.log').read_text()
+          counts = {}
+          for key in ('tests', 'pass', 'fail', 'cancelled', 'skipped', 'todo'):
+              matches = re.findall(r'^# ' + key + r' (\d+)\s*$', log, re.M)
+              assert len(matches) == 1, 'Missing or ambiguous TAP summary: ' + key
+              counts[key] = int(matches[0])
+          assert counts['tests'] > 0 and counts['tests'] == counts['pass']
+          assert all(counts[key] == 0 for key in ('fail', 'cancelled', 'skipped', 'todo'))
+          Path('target/client-preview/sdk-test-counts.json').write_text(json.dumps(counts, indent=2) + '\n')
+          PY
+      - name: Install and verify the actual tarball in an independent application
+        timeout-minutes: 5
+        run: python3 scripts/run_external_sdk_acceptance.py --output target/client-preview/external-package
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        if: always()
+        with:
+          name: sdk-preview-fixtures-browser-package-logs
+          path: |
+            target/client-preview/*.log
+            target/client-preview/sdk-test-counts.json
+            target/client-preview/external-package/*.log
+            target/client-preview/external-package/results.json
+          if-no-files-found: warn
+          retention-days: 14
+
+  clientd:
+    name: clientd Go race and synthetic secret-helper tests
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    env:
+      GOTOOLCHAIN: local
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5
+        with:
+          go-version: '1.25.0'
+          cache: false
+      - name: Verify pinned Go and prepare logs
+        run: |
+          test "$(go env GOVERSION)" = go1.25.0
+          mkdir -p target/client-preview
+      - name: Test local profile, daemon and egress behavior under the race detector
+        run: go -C apps/clientd test -mod=readonly -race -count=1 -timeout=3m ./cmd/clientd ./internal/daemon ./internal/egress 2>&1 | tee target/client-preview/clientd-go-race.log
+      - name: Test the secret helper using synthetic inputs
+        run: python3 scripts/test_clientd_secrets.py 2>&1 | tee target/client-preview/clientd-secrets.log
+      - name: Test third-party notice collection with synthetic packages
+        run: python3 scripts/test_clientd_release_notices.py 2>&1 | tee target/client-preview/clientd-notices.log
+      - name: Test release source provenance using disposable Git repositories
+        run: python3 scripts/test_clientd_release_provenance.py 2>&1 | tee target/client-preview/clientd-provenance.log
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        if: always()
+        with:
+          name: clientd-preview-local-fixture-logs
+          path: target/client-preview/*.log
+          if-no-files-found: warn
+          retention-days: 14

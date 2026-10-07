@@ -6,17 +6,22 @@ Applications keep control of their UI, conversation history and provider mode.
 
 **Start here:** [Quickstart](../../docs/sdk/quickstart.md) ·
 [API reference](../../docs/sdk/api.md) ·
-[integration example](../../examples/browser-chat/README.md).
+[separate reference client](https://github.com/yukikm/solana-zkapi-client).
 
-This is a source package in the repository's npm workspace, version `0.1.0`,
-with `private: true`. It is not published on npm. Use the pinned checkout and a
-TypeScript-aware browser bundler, or Node 24.19.0. Do not use an unrelated package
-from the npm registry just because it has this name.
+Install the reviewed npm tarball with compiled ES modules and TypeScript
+declarations from an independent application. See [distribution and artifact
+setup](DISTRIBUTION.md). The package is version `0.1.0-devnet.1`, with `private: true` to
+prevent accidental npm publication. Node integrations use Node 24.19.0; browser
+integrations bundle the browser entry points. Do not install an unrelated
+registry package just because it has this name.
+
+The SDK is [MIT licensed](LICENSE). Its dependencies retain their own licenses.
 
 | Import | Purpose |
 |---|---|
 | `@zkapi/solana-sdk` | `createZkApiClient`, `ZkApiClient`, application types |
 | `@zkapi/solana-sdk/browser` | Browser factory, durable custody, Wallet Standard adapter |
+| `@zkapi/solana-sdk/deployment` | Download and verify an independently pinned public artifact bundle |
 | `@zkapi/solana-sdk/chat` | Bounded text and streaming response readers |
 | `@zkapi/solana-sdk/prover-worker` | Entry point to bundle as a module Worker |
 | Existing subpaths (`./wallet`, `./control`, etc.) | Advanced integration; preserved |

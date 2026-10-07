@@ -1,0 +1,131 @@
+FAIL: artifact SHA-256 mismatch: .github/workflows/ci.yml
+FAIL: artifact SHA-256 mismatch: .gitignore
+FAIL: artifact SHA-256 mismatch: AGENTS.md
+FAIL: artifact SHA-256 mismatch: CONTRIBUTING.md
+FAIL: artifact SHA-256 mismatch: README.md
+FAIL: artifact SHA-256 mismatch: apps/clientd/README.md
+FAIL: artifact SHA-256 mismatch: apps/clientd/cmd/clientd/main.go
+FAIL: artifact SHA-256 mismatch: apps/clientd/companion/Cargo.lock
+FAIL: artifact SHA-256 mismatch: apps/clientd/internal/egress/egress.go
+FAIL: artifact SHA-256 mismatch: apps/clientd/prover/src/lib.rs
+FAIL: artifact SHA-256 mismatch: apps/clientd/runtime.ts
+FAIL: artifact SHA-256 mismatch: docs/evidence/I10.md
+FAIL: artifact SHA-256 mismatch: docs/sdk/README.md
+FAIL: artifact SHA-256 mismatch: docs/sdk/api.md
+FAIL: artifact SHA-256 mismatch: docs/sdk/deployment.md
+FAIL: artifact SHA-256 mismatch: docs/sdk/quickstart.md
+FAIL: artifact SHA-256 mismatch: docs/sdk/recovery.md
+FAIL: artifact SHA-256 mismatch: docs/sdk/status.md
+FAIL: missing or invalid artifact: examples/browser-chat/README.md
+FAIL: missing or invalid artifact: examples/browser-chat/build.mjs
+FAIL: missing or invalid artifact: examples/browser-chat/integration.ts
+FAIL: missing or invalid artifact: examples/browser-chat/load-deployment.ts
+FAIL: missing or invalid artifact: examples/browser-chat/tsconfig.json
+FAIL: artifact SHA-256 mismatch: package-lock.json
+FAIL: artifact SHA-256 mismatch: package.json
+FAIL: artifact SHA-256 mismatch: packages/sdk/INTERNALS.md
+FAIL: artifact SHA-256 mismatch: packages/sdk/README.md
+FAIL: artifact SHA-256 mismatch: packages/sdk/package.json
+FAIL: artifact SHA-256 mismatch: packages/sdk/src/browser-storage.ts
+FAIL: artifact SHA-256 mismatch: packages/sdk/src/browser.ts
+FAIL: artifact SHA-256 mismatch: packages/sdk/src/chat.ts
+FAIL: artifact SHA-256 mismatch: packages/sdk/src/client.ts
+FAIL: artifact SHA-256 mismatch: packages/sdk/src/clientd-bridge.ts
+FAIL: artifact SHA-256 mismatch: packages/sdk/src/control.ts
+FAIL: artifact SHA-256 mismatch: packages/sdk/src/prover.ts
+FAIL: artifact SHA-256 mismatch: packages/sdk/src/wallet-chain.ts
+FAIL: artifact SHA-256 mismatch: packages/sdk/src/wallet.ts
+FAIL: artifact SHA-256 mismatch: packages/sdk/test/chat.test.ts
+FAIL: artifact SHA-256 mismatch: packages/sdk/test/client.test.ts
+FAIL: artifact SHA-256 mismatch: packages/sdk/test/clientd-sbf.ts
+FAIL: artifact SHA-256 mismatch: packages/sdk/test/clientd.test.ts
+FAIL: artifact SHA-256 mismatch: packages/sdk/test/control.test.ts
+FAIL: artifact SHA-256 mismatch: packages/sdk/test/i10-e2e.ts
+FAIL: artifact SHA-256 mismatch: packages/sdk/test/journal-browser.test.ts
+FAIL: artifact SHA-256 mismatch: packages/sdk/test/wallet-chain.test.ts
+FAIL: artifact SHA-256 mismatch: packages/sdk/test/wallet-create-expiry.test.ts
+FAIL: artifact SHA-256 mismatch: programs/i02-harness/Cargo.lock
+FAIL: artifact SHA-256 mismatch: programs/i02-harness/Cargo.toml
+FAIL: artifact SHA-256 mismatch: programs/i02-layout2/Cargo.lock
+FAIL: artifact SHA-256 mismatch: programs/i02-layout2/Cargo.toml
+FAIL: artifact SHA-256 mismatch: programs/zkapi-vault/Cargo.lock
+FAIL: artifact SHA-256 mismatch: programs/zkapi-vault/Cargo.toml
+FAIL: artifact SHA-256 mismatch: programs/zkapi-vault/build.rs
+FAIL: artifact SHA-256 mismatch: programs/zkapi-vault/src/lib.rs
+FAIL: artifact SHA-256 mismatch: scripts/build_clientd_distribution.py
+FAIL: artifact SHA-256 mismatch: scripts/check_design.py
+FAIL: missing or invalid artifact: scripts/i10-wallet-ui/.gitignore
+FAIL: missing or invalid artifact: scripts/i10-wallet-ui/README.md
+FAIL: missing or invalid artifact: scripts/i10-wallet-ui/app.ts
+FAIL: missing or invalid artifact: scripts/i10-wallet-ui/browser.test.ts
+FAIL: missing or invalid artifact: scripts/i10-wallet-ui/build.test.ts
+FAIL: missing or invalid artifact: scripts/i10-wallet-ui/build.ts
+FAIL: missing or invalid artifact: scripts/i10-wallet-ui/demo-entry.ts
+FAIL: missing or invalid artifact: scripts/i10-wallet-ui/demo-notes.test.ts
+FAIL: missing or invalid artifact: scripts/i10-wallet-ui/demo-notes.ts
+FAIL: missing or invalid artifact: scripts/i10-wallet-ui/demo.css
+FAIL: missing or invalid artifact: scripts/i10-wallet-ui/demo.html
+FAIL: missing or invalid artifact: scripts/i10-wallet-ui/demo.test.ts
+FAIL: missing or invalid artifact: scripts/i10-wallet-ui/demo.ts
+FAIL: missing or invalid artifact: scripts/i10-wallet-ui/diagnostics.test.ts
+FAIL: missing or invalid artifact: scripts/i10-wallet-ui/diagnostics.ts
+FAIL: missing or invalid artifact: scripts/i10-wallet-ui/fixture.ts
+FAIL: missing or invalid artifact: scripts/i10-wallet-ui/host.test.ts
+FAIL: missing or invalid artifact: scripts/i10-wallet-ui/host.ts
+FAIL: missing or invalid artifact: scripts/i10-wallet-ui/index.html
+FAIL: missing or invalid artifact: scripts/i10-wallet-ui/launch.ts
+FAIL: missing or invalid artifact: scripts/i10-wallet-ui/live-view.test.ts
+FAIL: missing or invalid artifact: scripts/i10-wallet-ui/live-view.ts
+FAIL: missing or invalid artifact: scripts/i10-wallet-ui/main.ts
+FAIL: missing or invalid artifact: scripts/i10-wallet-ui/package-lock.json
+FAIL: missing or invalid artifact: scripts/i10-wallet-ui/package.json
+FAIL: missing or invalid artifact: scripts/i10-wallet-ui/provider-diagnostics.ts
+FAIL: missing or invalid artifact: scripts/i10-wallet-ui/provider.fixture.ts
+FAIL: missing or invalid artifact: scripts/i10-wallet-ui/provider.test.ts
+FAIL: missing or invalid artifact: scripts/i10-wallet-ui/provider.ts
+FAIL: missing or invalid artifact: scripts/i10-wallet-ui/signing-diagnostics.test.ts
+FAIL: missing or invalid artifact: scripts/i10-wallet-ui/signing-diagnostics.ts
+FAIL: missing or invalid artifact: scripts/i10-wallet-ui/storage.ts
+FAIL: missing or invalid artifact: scripts/i10-wallet-ui/style.css
+FAIL: artifact SHA-256 mismatch: scripts/i10_devnet_challenge.ts
+FAIL: artifact SHA-256 mismatch: scripts/i10_devnet_provider.ts
+FAIL: artifact SHA-256 mismatch: scripts/i10_devnet_provider_recovery.test.ts
+FAIL: artifact SHA-256 mismatch: scripts/i10_devnet_provider_recovery.ts
+FAIL: artifact SHA-256 mismatch: scripts/i10_devnet_transport.test.ts
+FAIL: artifact SHA-256 mismatch: scripts/i10_devnet_transport.ts
+FAIL: artifact SHA-256 mismatch: scripts/provider_acceptance_client.test.ts
+FAIL: artifact SHA-256 mismatch: scripts/provider_acceptance_client.ts
+FAIL: artifact SHA-256 mismatch: scripts/run_app_sdk_acceptance.py
+FAIL: artifact SHA-256 mismatch: scripts/run_i08_clientd.py
+FAIL: artifact SHA-256 mismatch: scripts/run_i10_acceptance.py
+FAIL: artifact SHA-256 mismatch: scripts/run_i10_devnet_backend.py
+FAIL: artifact SHA-256 mismatch: scripts/run_i10_devnet_vault.ts
+FAIL: artifact SHA-256 mismatch: scripts/run_single_deposit_acceptance.py
+FAIL: artifact SHA-256 mismatch: scripts/test_i10_devnet_challenger.py
+FAIL: artifact SHA-256 mismatch: services/challenger/Cargo.lock
+FAIL: artifact SHA-256 mismatch: services/challenger/src/tests/devnet.rs
+FAIL: artifact SHA-256 mismatch: services/control/Cargo.lock
+FAIL: artifact SHA-256 mismatch: services/control/Cargo.toml
+FAIL: artifact SHA-256 mismatch: services/control/src/chain.rs
+FAIL: artifact SHA-256 mismatch: services/control/src/config.rs
+FAIL: artifact SHA-256 mismatch: services/control/src/signer.rs
+FAIL: artifact SHA-256 mismatch: services/control/tests/binding_chain.rs
+FAIL: artifact SHA-256 mismatch: services/control/tests/devnet_config.rs
+FAIL: artifact SHA-256 mismatch: services/control/tests/signer_process.rs
+FAIL: artifact SHA-256 mismatch: services/indexer/Cargo.lock
+FAIL: artifact SHA-256 mismatch: services/indexer/Cargo.toml
+FAIL: artifact SHA-256 mismatch: tests/key-validation-diagnostic/host/Cargo.lock
+FAIL: artifact SHA-256 mismatch: tests/key-validation-diagnostic/host/Cargo.toml
+FAIL: artifact SHA-256 mismatch: tests/key-validation-diagnostic/host/src/main.rs
+FAIL: artifact SHA-256 mismatch: tests/key-validation-diagnostic/program/Cargo.lock
+FAIL: artifact SHA-256 mismatch: tests/key-validation-diagnostic/program/Cargo.toml
+FAIL: artifact SHA-256 mismatch: tests/svm/Cargo.lock
+FAIL: artifact SHA-256 mismatch: tests/svm/Cargo.toml
+FAIL: artifact SHA-256 mismatch: tests/svm/src/bin/layout2.rs
+FAIL: artifact SHA-256 mismatch: tests/svm/src/bin/poseidon_probe.rs
+FAIL: artifact SHA-256 mismatch: tests/svm/src/bin/vault.rs
+FAIL: artifact SHA-256 mismatch: tests/svm/src/bin/wallet.rs
+FAIL: artifact SHA-256 mismatch: tests/svm/src/runner.rs
+FAIL: artifact SHA-256 mismatch: tests/svm/src/vault_support.rs
+FAIL: artifact SHA-256 mismatch: tools/vault-idl/Cargo.lock
+FAIL: artifact SHA-256 mismatch: tools/vault-idl/Cargo.toml

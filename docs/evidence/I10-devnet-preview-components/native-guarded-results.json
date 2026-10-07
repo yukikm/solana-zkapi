@@ -1,0 +1,142 @@
+{
+  "passed": true,
+  "scope": "guarded native distribution; installed supervisor/SDK/native proof/actual local Vault SBF; actual OpenClaw CLI using synthetic control/provider/proof",
+  "distribution": {
+    "distribution": "/Users/yukikimura/work/solana-zkapi/target/devnet-preview/native-guarded/distribution/release.json",
+    "distribution_sha256": "be30b5edada52e8754d46c5b861026698b22817e67ff7d1a248a75b4a6d456d0",
+    "node": "/Users/yukikimura/work/solana-zkapi/target/devnet-preview/native-guarded/distribution/bin/node",
+    "node_sha256": "27db838bb204ef7c21df2931f5656e4c8fb32e6e947f363a402b49714d32b5b1",
+    "runtime": "/Users/yukikimura/work/solana-zkapi/target/devnet-preview/native-guarded/distribution/apps/clientd/runtime.ts",
+    "runtime_sha256": "23a3562f0c8e7a25115a552f13dce61a39c701d6a1c96f277bcc0babc0efab68",
+    "node_version": "v24.19.0",
+    "go_version": "go version go1.25.0 darwin/arm64",
+    "production_signed": false,
+    "source_lock_sha256": "72e041fb371cd8223c12072d191a0c24380d3b90629132e9ea0520f68447515d",
+    "installed_lock_sha256": "9cc2bd6c8346a122f036d582f016395ede6914787011147c11bbef24288f5094",
+    "sdk_tarball_sha256": "eb3164d5b7a54c7b97e523ec742033b39547eda5842648490ae9f68048b07504",
+    "notices": {
+      "notice_index": "share/zkapi-clientd/third-party/dependencies.json",
+      "rust_packages": 265,
+      "npm_packages": 61,
+      "declaration_only_rust": [
+        "zkapi-core@0.1.0",
+        "zkapi-proof@0.1.0",
+        "zkapi-types@0.1.0",
+        "ark-snark@0.5.1",
+        "five8@0.2.1",
+        "five8_const@0.1.4",
+        "five8_core@0.1.2",
+        "objc2-core-foundation@0.3.2",
+        "objc2-system-configuration@0.3.2",
+        "solana-atomic-u64@2.2.1",
+        "solana-bn254@2.2.2",
+        "solana-decode-error@2.3.0",
+        "solana-define-syscall@2.3.0",
+        "solana-hash@2.3.0",
+        "solana-pubkey@2.4.0",
+        "solana-sanitize@2.2.1",
+        "solana-sha256-hasher@2.3.0"
+      ],
+      "declaration_only_npm": [
+        "bs58@4.0.1",
+        "bs58@4.0.1",
+        "es6-promisify@5.0.0",
+        "tr46@0.0.3"
+      ],
+      "platform": {
+        "os": "darwin",
+        "architecture": "arm64",
+        "binary_minimum_os_versions": {
+          "node": "13.5",
+          "clientd": "12.0",
+          "zkapi-client-prover": "11.0",
+          "zkapi-client-verify": "11.0"
+        },
+        "minimum_os_version": "13.5"
+      }
+    },
+    "build_inputs": {
+      "path": "share/zkapi-clientd/build-inputs.json",
+      "sha256": "0ce3eb2cc7568f200831a77d6a92d4356ffdfdeb4cad8c75b2282611ed0f0751",
+      "source_inputs_unchanged": true
+    }
+  },
+  "commands": [
+    {
+      "name": "installed-sbf",
+      "argv": [
+        "/Users/yukikimura/work/solana-zkapi/target/i08-toolchain/bin/node",
+        "--test",
+        "--test-reporter=tap",
+        "packages/sdk/test/clientd-sbf.ts"
+      ],
+      "exit_code": 0,
+      "seconds": 11.743,
+      "log_sha256": "9902d9661b0b1ecfd0f48a8f9888b1d246ef003ef46ba862c15bcf44659f07cc"
+    },
+    {
+      "name": "openclaw",
+      "argv": [
+        "/Users/yukikimura/work/solana-zkapi/target/i08-toolchain/bin/node",
+        "scripts/run_openclaw_clientd_acceptance.ts",
+        "/Users/yukikimura/work/solana-zkapi/target/devnet-preview/validation-native-guarded/openclaw",
+        "/Users/yukikimura/work/solana-zkapi/target/devnet-preview/native-guarded/distribution"
+      ],
+      "exit_code": 0,
+      "seconds": 34.32,
+      "log_sha256": "7015f0d93a5b3306ec95de7b28efab2f7ed6776074a345415ac52eea702a5e0f"
+    }
+  ],
+  "tests": {
+    "installed_actual_sbf": 1,
+    "actual_openclaw_checks": 10
+  },
+  "svm": {
+    "signed_transactions": 9,
+    "max_compute_units": 421504,
+    "max_transaction_bytes": 1232
+  },
+  "openclaw": {
+    "passed": true,
+    "scope": "actual OpenClaw CLI, production Go HTTP frontend, compiled shared SDK, encrypted journal; synthetic control/provider/proof fixtures",
+    "openclaw": "OpenClaw 2026.9.8 (fc23bc8)",
+    "openclawPackageIntegrity": "sha512-G+JkNUhtpDE3cXR4AEi2NyyG9fqI/T2WUSl8ZnR8AATH8Dh1kC3qYFL7wwPoZtgHiP/cszA86PEiE0PDysxb9Q==",
+    "checks": [
+      "actual pinned OpenClaw 2026.9.8 CLI",
+      "installed setup creates private tokens and profile",
+      "OpenClaw validates generated file SecretRef configuration",
+      "ordinary Chat JSON through Go and shared SDK",
+      "actual OpenClaw streamed text: one inference",
+      "actual OpenClaw read tool execution and tool-result continuation: two distinct inferences",
+      "actual OpenClaw HTTP503: one inference, provider retry disabled",
+      "actual OpenClaw process termination cancels its stream and closes shared SDK session",
+      "actual OpenClaw transport loss and next process held until explicit SDK recovery; zero inference replay",
+      "actual OpenClaw new process succeeds after explicit SDK recovery"
+    ],
+    "inferenceSends": 8,
+    "authorizations": 8,
+    "closes": 8,
+    "uncertainInferenceReplays": 0,
+    "publicDevnet": false,
+    "liveProvider": false,
+    "nativeProof": false,
+    "actualVault": false,
+    "openclawProcessCancellationAndRestart": true,
+    "clientdProcessRestart": false,
+    "sourceSha256": {
+      "scripts/run_openclaw_clientd_acceptance.ts": "cce9fb81c4d6572eb5793caaecd60af2a199917f871aaa8324e5e4e5a1478f55",
+      "apps/clientd/testdata/openclaw-frontend.go": "d6eb68cc2c5056def6aeee75fe4f40f52bca3e22ed16d879ba3a7598b6c117c5"
+    }
+  },
+  "fixture_sdk_matches_installed": true,
+  "compiled_sdk_files": 54,
+  "compiled_sdk_hashes_sha256": "152643a83d58f460014a68fd54b2fd2698ad19afd5d866afe908abca61099bbc",
+  "runtime_bytes_match_previous_candidate": true,
+  "runtime_comparison_report": "runtime-comparison.json",
+  "prior_unchanged_go_helper_report": "../validation-native/results.json",
+  "elapsed_seconds": 34.322,
+  "live_provider": false,
+  "public_devnet": false,
+  "production_signed": false,
+  "release_gates_passed": []
+}

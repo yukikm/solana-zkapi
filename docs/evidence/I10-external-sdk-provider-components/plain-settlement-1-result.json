@@ -1,0 +1,54 @@
+{
+  "command": "settle",
+  "completedAt": "2026-10-07T02:44:33.546Z",
+  "result": {},
+  "status": {
+    "noteId": "external-sdk-20261007",
+    "mode": "direct_openrouter",
+    "wallet": "active",
+    "settledBalanceMicroUsdc": "2000000",
+    "authorizationCapMicroUsdc": "1000000",
+    "canRequest": false,
+    "canReconcileUnacceptedAuthorization": false,
+    "canPrepareEmergencyEscape": true,
+    "canReconcileChallengedEscape": false,
+    "emergencyEscape": null,
+    "busy": false,
+    "session": {
+      "id": "ff3cbf9a-7205-4571-a58e-4f4e24a55467",
+      "phase": "closing",
+      "operations": [
+        {
+          "id": "2fccf53c-fa1b-40ef-b0dd-504c0175ee1b",
+          "phase": "send_unknown"
+        }
+      ]
+    },
+    "walletOperation": null,
+    "expiry": {
+      "severity": "one_day",
+      "message": "Note expiry: 1791417600 (Unix seconds). After expiry, the entire principal of an Active note can be transferred to the treasury."
+    },
+    "lastSettlement": null,
+    "privacyNotice": "Prompts go to the selected provider. The provider sees content and network metadata."
+  },
+  "authSends": 1,
+  "inferenceSends": 1,
+  "inferenceReplays": 0,
+  "automaticTransactionResends": 0,
+  "transactions": [
+    {
+      "signature": "2VqGKqznGEmL2ksVge1WKfcYZpgNHofwHr42NAnedBGjcCL9k1iVkChEiKnyRRrkigpDWXzVEcFymXkPbds4hjLX",
+      "wireSha256": "2a78821df310f27cf98545630713b3955dcccbd8ba95bb6d80c2c9ab7dd6add3",
+      "bytes": 995,
+      "sendRecordedAt": "2026-10-07T02:41:13.304Z"
+    }
+  ],
+  "finalized": [
+    {
+      "signature": "2VqGKqznGEmL2ksVge1WKfcYZpgNHofwHr42NAnedBGjcCL9k1iVkChEiKnyRRrkigpDWXzVEcFymXkPbds4hjLX",
+      "slot": 508307004,
+      "kind": "deposit"
+    }
+  ]
+}

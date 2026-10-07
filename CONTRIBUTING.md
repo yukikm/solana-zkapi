@@ -11,7 +11,8 @@ upstream submodule. After `npm ci --ignore-scripts`:
 
 ```sh
 npm run typecheck
-npm run typecheck:examples
+npm run build:sdk
+npm run test:sdk-distribution
 npm test
 python3 scripts/check_design.py
 ```
@@ -24,6 +25,10 @@ For SDK/compact transport changes, `python3 scripts/run_single_deposit_acceptanc
 runs the existing isolated local matrix with pinned toolchains. It has additional
 local Rust/SBF/proof-artifact prerequisites; see its [evidence](docs/evidence/I10-single-deposit-review.md).
 No provider keys or public-chain sends are needed for ordinary SDK tests.
+
+The demonstration UI is maintained and tested in the separate
+[client repository](https://github.com/yukikm/solana-zkapi-client). Core checks do
+not require that checkout.
 
 ## Change boundaries
 
@@ -40,5 +45,6 @@ No provider keys or public-chain sends are needed for ordinary SDK tests.
   synthetic tests and live acceptance separately. Never include `.env`, keys,
   RPC secrets, note secrets or raw private logs in commits.
 
-Preserve upstream license notices and source pins. The repository-wide license
-for new work is still a release decision; see [provenance](vendor/README.md).
+Newly authored work uses the [MIT license](LICENSE). Preserve upstream license
+notices and source pins; see [provenance](vendor/README.md) and
+[third-party notices](THIRD_PARTY_NOTICES.md).

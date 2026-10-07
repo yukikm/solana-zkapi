@@ -73,7 +73,7 @@ def execute():
     run_dir = Path(tempfile.mkdtemp(prefix='run-', dir=OUT))
     start = time.monotonic()
     report = {'schema': 1, 'passed': False, 'started_at_utc': now(),
-              'scope': 'Offline compact deposit codecs, compiler IDL, real-proof local SBF, SDK signing/journal, indexer and synthetic browser/provider fixtures',
+              'scope': 'Offline compact deposit codecs, compiler IDL, real-proof local SBF, SDK signing/journal, indexer and local relay/provider fixtures',
               'public_deployment_verified': False, 'public_finality_verified': False,
               'phantom_verified': False, 'live_provider_verified': False,
               'I10_complete': False, 'release_gates_passed': [],
@@ -190,12 +190,13 @@ def execute():
         run('sdk-types', [*tsc, '-p', 'packages/sdk/tsconfig.json'])
         run('sdk-tests', [node, '--test', '--test-reporter=tap', '--test-concurrency=1',
             *sorted(ROOT.glob('packages/sdk/test/*.test.ts'))], tap=True)
+        run('sdk-build', [node, 'packages/sdk/build.mjs'])
         run('clientd-types', [*tsc, '-p', 'apps/clientd/tsconfig.json'])
-        run('ui-types', [*tsc, '--strict', '--target', 'ES2023', '--module', 'NodeNext',
+        run('relay-types', [*tsc, '--strict', '--target', 'ES2023', '--module', 'NodeNext',
             '--moduleResolution', 'NodeNext', '--allowImportingTsExtensions', '--resolveJsonModule',
-            '--lib', 'ES2023,DOM', '--types', 'node', *sorted(ROOT.glob('scripts/i10-wallet-ui/*.ts'))])
-        run('ui-tests', [node, '--test', '--test-reporter=tap', '--test-concurrency=1',
-            *sorted(ROOT.glob('scripts/i10-wallet-ui/*.test.ts'))], tap=True)
+            '--lib', 'ES2023,DOM', '--types', 'node', *sorted(ROOT.glob('scripts/devnet-browser-relay/*.ts'))])
+        run('relay-tests', [node, '--test', '--test-reporter=tap', '--test-concurrency=1',
+            *sorted(ROOT.glob('scripts/devnet-browser-relay/*.test.ts'))], tap=True)
         run('control-capabilities', ['cargo', 'test', '--locked', '--manifest-path', 'services/control/Cargo.toml', '--test', 'devnet_config'])
         run('openapi', [schema_python, 'scripts/check_openapi_contract.py'])
         run('design', ['python3', 'scripts/check_design.py'])

@@ -10,7 +10,7 @@ import {execFile} from 'node:child_process';
 import {promisify} from 'node:util';
 import bs58 from 'bs58';
 import {directControlRelay, localForwarder, loadBrowserChatBudget} from './browser_chat_devnet_host.ts';
-import {startUiHost, type HostOptions} from './i10-wallet-ui/host.ts';
+import {startUiHost, type HostOptions} from './devnet-browser-relay/host.ts';
 import {jcsBytes, sha256Hex, type VerifiedManifest} from '../packages/sdk/src/trust.ts';
 import type {Tariff} from '../packages/sdk/src/control.ts';
 

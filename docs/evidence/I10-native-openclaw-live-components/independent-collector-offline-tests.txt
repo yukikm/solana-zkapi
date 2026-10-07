@@ -1,0 +1,14 @@
+✔ exact finalized signed bytes match saved dispatch; digest, signature, CU and Pool substitutions are rejected (10.322666ms)
+✔ cumulative reports do not double count sends; changed dispatch, duplicate and still-active outcomes fail (2.480917ms)
+✔ SPL account bytes require exact token owner, mint and initialized state (0.6965ms)
+✔ collector transport rejects write RPCs before dispatch and sends no credentials or redirects (7.113875ms)
+✔ public mutual-close payload reconstructs amount and rejects relabelled operation, changed chunks and destination (9.375792ms)
+✔ deposit and withdrawal token deltas match decoded amounts, including a shared wallet/treasury ATA (0.312583ms)
+ℹ tests 6
+ℹ suites 0
+ℹ pass 6
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 117.048542

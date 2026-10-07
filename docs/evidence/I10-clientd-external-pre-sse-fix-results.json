@@ -1,0 +1,82 @@
+{
+  "passed": true,
+  "scope": "local external native distribution, profile CLI, pinned private CA, actual OpenClaw CLI fixture compatibility, installed Go to SDK to native prover to actual local Vault SBF",
+  "date_jst": "2026-10-07",
+  "tests": {
+    "go_race_with_subtests": 43,
+    "secret_pipe_helper": 5,
+    "installed_native_actual_sbf": 1,
+    "actual_openclaw_checks": 10
+  },
+  "svm": {
+    "signed_transactions": 9,
+    "max_compute_units": 415504,
+    "max_transaction_bytes": 1232
+  },
+  "distribution": {
+    "distribution": "/Users/yukikimura/work/solana-zkapi/target/clientd-native-devnet-install/distribution/release.json",
+    "distribution_sha256": "1cf1b2f558560c8deeefef493c596ee2509f144283127706cb214ca1abde4382",
+    "node": "/Users/yukikimura/work/solana-zkapi/target/clientd-native-devnet-install/distribution/bin/node",
+    "node_sha256": "27db838bb204ef7c21df2931f5656e4c8fb32e6e947f363a402b49714d32b5b1",
+    "runtime": "/Users/yukikimura/work/solana-zkapi/target/clientd-native-devnet-install/distribution/apps/clientd/runtime.ts",
+    "runtime_sha256": "23a3562f0c8e7a25115a552f13dce61a39c701d6a1c96f277bcc0babc0efab68",
+    "node_version": "v24.19.0",
+    "go_version": "go version go1.25.0 darwin/arm64",
+    "production_signed": false,
+    "source_lock_sha256": "df12add3577be56dceb75f942cba0941366e7f91bd05f6eb9774948cf31f6e68",
+    "installed_lock_sha256": "7d6826dbc118ca693bbed6923c47dc5cae88abea4f6056764080e3b78784d26d",
+    "sdk_tarball_sha256": "3e601fae1d41a804a3c59b10c0eb88052bbedd0ba9317ad88e7cdb9fad06ebbd"
+  },
+  "openclaw": {
+    "passed": true,
+    "scope": "actual OpenClaw CLI, production Go HTTP frontend, compiled shared SDK, encrypted journal; synthetic control/provider/proof fixtures",
+    "openclaw": "OpenClaw 2026.9.8 (fc23bc8)",
+    "openclawPackageIntegrity": "sha512-G+JkNUhtpDE3cXR4AEi2NyyG9fqI/T2WUSl8ZnR8AATH8Dh1kC3qYFL7wwPoZtgHiP/cszA86PEiE0PDysxb9Q==",
+    "checks": [
+      "actual pinned OpenClaw 2026.9.8 CLI",
+      "installed setup creates private tokens and profile",
+      "OpenClaw validates generated file SecretRef configuration",
+      "ordinary Chat JSON through Go and shared SDK",
+      "actual OpenClaw streamed text: one inference",
+      "actual OpenClaw read tool execution and tool-result continuation: two distinct inferences",
+      "actual OpenClaw HTTP503: one inference, provider retry disabled",
+      "actual OpenClaw process termination cancels its stream and closes shared SDK session",
+      "actual OpenClaw transport loss and next process held until explicit SDK recovery; zero inference replay",
+      "actual OpenClaw new process succeeds after explicit SDK recovery"
+    ],
+    "inferenceSends": 8,
+    "authorizations": 8,
+    "closes": 8,
+    "uncertainInferenceReplays": 0,
+    "publicDevnet": false,
+    "liveProvider": false,
+    "nativeProof": false,
+    "actualVault": false,
+    "openclawProcessCancellationAndRestart": true,
+    "clientdProcessRestart": false,
+    "sourceSha256": {
+      "scripts/run_openclaw_clientd_acceptance.ts": "cce9fb81c4d6572eb5793caaecd60af2a199917f871aaa8324e5e4e5a1478f55",
+      "apps/clientd/testdata/openclaw-frontend.go": "d6eb68cc2c5056def6aeee75fe4f40f52bca3e22ed16d879ba3a7598b6c117c5"
+    }
+  },
+  "source_sha256": {
+    "apps/clientd/cmd/clientd/main.go": "23085200597487ccba6a12e46a07c10fae4068badc9fd4dd1cf5746dcc509a35",
+    "apps/clientd/cmd/clientd/profile.go": "c044309e12b96b310bf2c7b6785eb8a850be6c3b78b886dce6db6fba4e6f57c1",
+    "apps/clientd/cmd/clientd/profile_test.go": "01c4208387660cac3c23cb30527504cf19d912fb47a999cf535de03186011457",
+    "apps/clientd/internal/egress/egress.go": "7c115362b60b2062682e4f525b5ced6a56ef6c7337b634ca476a1afd580e3d9b",
+    "apps/clientd/internal/egress/ca_test.go": "2ecaec5f66326ebe4f8dd48cc4456735e1dcb13617c3cd31e8406b787431381e",
+    "apps/clientd/runtime.ts": "23a3562f0c8e7a25115a552f13dce61a39c701d6a1c96f277bcc0babc0efab68",
+    "apps/clientd/testdata/openclaw-frontend.go": "d6eb68cc2c5056def6aeee75fe4f40f52bca3e22ed16d879ba3a7598b6c117c5",
+    "scripts/build_clientd_distribution.py": "c27bbc35c1e113bd2adca42abe63abee534cdddfa78a7a50168288b8af31dd6b",
+    "scripts/clientd_secrets.py": "ecac1f13e67015ef927ef30a8dba1f57bd72740a34171e08d6aa719e1cf766fc",
+    "scripts/test_clientd_secrets.py": "549b0f8f4457b93a1f7932d7cafef20a496e0a2537ca2286f9bb26b26cceaff8",
+    "scripts/run_openclaw_clientd_acceptance.ts": "cce9fb81c4d6572eb5793caaecd60af2a199917f871aaa8324e5e4e5a1478f55",
+    "packages/sdk/test/clientd-sbf.ts": "46c858f2e61faa9d4a1aa47d4a2a1455f73f7bba8f00be79183d8bddf9cfe69f"
+  },
+  "public_devnet": false,
+  "live_provider": false,
+  "production_signed": false,
+  "hosted_ci": false,
+  "release_gates_passed": [],
+  "preserved_failure": "target/clientd-external-final/sbf-test.log: stale synthetic I05 IDL pin; corrected only the in-memory test manifest, never historical target/i05 or funded deployment pins"
+}

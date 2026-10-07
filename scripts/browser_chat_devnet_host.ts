@@ -11,8 +11,8 @@ import {promisify} from 'node:util';
 import {parseField} from '../packages/sdk/src/encoding.ts';
 import {jcsBytes, parseStrictJson, sha256Hex, verifyEd25519, verifyManifest, type VerifiedManifest} from '../packages/sdk/src/trust.ts';
 import type {Tariff} from '../packages/sdk/src/control.ts';
-import {parseReviewedDevnetProfile} from '../examples/browser-chat/load-deployment.ts';
-import {GENESIS, startUiHost, type HostOptions, type UpstreamReply, type UiDirectProviderBudget} from './i10-wallet-ui/host.ts';
+import {parseReviewedDevnetProfile} from './devnet-browser-relay/profile.ts';
+import {GENESIS, startUiHost, type HostOptions, type UpstreamReply, type UiDirectProviderBudget} from './devnet-browser-relay/host.ts';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const execute = promisify(execFile);

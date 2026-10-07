@@ -1,0 +1,352 @@
+TAP version 13
+# Subtest: Chat SSE accepts UTF-8, comments, CRLF splits, usage events and multiline data at every byte boundary
+ok 1 - Chat SSE accepts UTF-8, comments, CRLF splits, usage events and multiline data at every byte boundary
+  ---
+  duration_ms: 26.679375
+  type: 'test'
+  ...
+# Subtest: SSE rejects truncated streams, provider errors, bad UTF-8 and oversized frames
+ok 2 - SSE rejects truncated streams, provider errors, bad UTF-8 and oversized frames
+  ---
+  duration_ms: 1.510167
+  type: 'test'
+  ...
+# Subtest: SSE accepts CR-only event endings, including a final CR at EOF
+ok 3 - SSE accepts CR-only event endings, including a final CR at EOF
+  ---
+  duration_ms: 2.377542
+  type: 'test'
+  ...
+# Subtest: breaking delta iteration cancels unread response; HTTP errors are bounded and redacted
+ok 4 - breaking delta iteration cancels unread response; HTTP errors are bounded and redacted
+  ---
+  duration_ms: 0.703959
+  type: 'test'
+  ...
+# Subtest: text helper accepts one text choice and refuses tool-only, malformed and oversized responses
+ok 5 - text helper accepts one text choice and refuses tool-only, malformed and oversized responses
+  ---
+  duration_ms: 8.25
+  type: 'test'
+  ...
+# Subtest: reader and cancellation failures never expose private errors from text or SSE helpers
+ok 6 - reader and cancellation failures never expose private errors from text or SSE helpers
+  ---
+  duration_ms: 2.951334
+  type: 'test'
+  ...
+# Subtest: SSE cancellation failures after DONE or early exit are redacted
+ok 7 - SSE cancellation failures after DONE or early exit are redacted
+  ---
+  duration_ms: 0.202166
+  type: 'test'
+  ...
+# Subtest: text helpers refuse tool calls mixed with text and missing or unsupported terminal reasons
+ok 8 - text helpers refuse tool calls mixed with text and missing or unsupported terminal reasons
+  ---
+  duration_ms: 0.650958
+  type: 'test'
+  ...
+# Subtest: SSE requires a terminal choice before DONE and rejects content after a terminal choice
+ok 9 - SSE requires a terminal choice before DONE and rejects content after a terminal choice
+  ---
+  duration_ms: 0.158083
+  type: 'test'
+  ...
+# Subtest: one chat call quotes, proves, authorizes, sends once and verifies settlement; model switch uses its tariff
+ok 10 - one chat call quotes, proves, authorizes, sends once and verifies settlement; model switch uses its tariff
+  ---
+  duration_ms: 299.438583
+  type: 'test'
+  ...
+# Subtest: lists and notifications are detached and omit secrets, prompt bodies and provider keys
+ok 11 - lists and notifications are detached and omit secrets, prompt bodies and provider keys
+  ---
+  duration_ms: 110.858916
+  type: 'test'
+  ...
+# Subtest: quote rejection never reaches proof, AUTH or inference
+ok 12 - quote rejection never reaches proof, AUTH or inference
+  ---
+  duration_ms: 13.794
+  type: 'test'
+  ...
+# Subtest: reopening pending AUTH is read-only; new sends are blocked and recovery sends only saved AUTH
+ok 13 - reopening pending AUTH is read-only; new sends are blocked and recovery sends only saved AUTH
+  ---
+  duration_ms: 105.390917
+  type: 'test'
+  ...
+# Subtest: explicit unaccepted AUTH recovery verifies permanent clearance and archives expired work without replay or signing
+ok 14 - explicit unaccepted AUTH recovery verifies permanent clearance and archives expired work without replay or signing
+  ---
+  duration_ms: 99.5335
+  type: 'test'
+  ...
+# Subtest: unavailable or invalid clearance preserves the exact AUTH and state for explicit same-note retry
+ok 15 - unavailable or invalid clearance preserves the exact AUTH and state for explicit same-note retry
+  ---
+  duration_ms: 106.021542
+  type: 'test'
+  ...
+# Subtest: clearance holds the shared action lock and another facade re-verifies the completed archive
+ok 16 - clearance holds the shared action lock and another facade re-verifies the completed archive
+  ---
+  duration_ms: 121.651
+  type: 'test'
+  ...
+# Subtest: clearance eligibility excludes accepted, used, prepared, closing and wallet-busy notes
+ok 17 - clearance eligibility excludes accepted, used, prepared, closing and wallet-busy notes
+  ---
+  duration_ms: 463.933708
+  type: 'test'
+  ...
+# Subtest: explicit emergency escape preserves uncertain inference before proof work and keeps recovery fenced after reopen
+ok 18 - explicit emergency escape preserves uncertain inference before proof work and keeps recovery fenced after reopen
+  ---
+  duration_ms: 149.292375
+  type: 'test'
+  ...
+# Subtest: emergency escape stays explicit and refuses a never-sent authorization or an unrelated note
+ok 19 - emergency escape stays explicit and refuses a never-sent authorization or an unrelated note
+  ---
+  duration_ms: 61.054667
+  type: 'test'
+  ...
+# Subtest: challenge recovery remains visible after finalization preparation without treating its status hint as chain evidence
+ok 20 - challenge recovery remains visible after finalization preparation without treating its status hint as chain evidence
+  ---
+  duration_ms: 164.521458
+  type: 'test'
+  ...
+# Subtest: response loss and failed settlement retain operation; restarting never replays it
+ok 21 - response loss and failed settlement retain operation; restarting never replays it
+  ---
+  duration_ms: 256.084958
+  type: 'test'
+  ...
+# Subtest: an unverified successor never becomes available balance
+ok 22 - an unverified successor never becomes available balance
+  ---
+  duration_ms: 147.385667
+  type: 'test'
+  ...
+# Subtest: stream holds action lock; cancellation closes shared lifecycle and releases the client
+ok 23 - stream holds action lock; cancellation closes shared lifecycle and releases the client
+  ---
+  duration_ms: 105.135042
+  type: 'test'
+  ...
+# Subtest: stream helpers finish settlement before returning to the next send
+ok 24 - stream helpers finish settlement before returning to the next send
+  ---
+  duration_ms: 383.718042
+  type: 'test'
+  ...
+# Subtest: stream errors await the existing close finalizer before releasing the application lock
+ok 25 - stream errors await the existing close finalizer before releasing the application lock
+  ---
+  duration_ms: 125.881584
+  type: 'test'
+  ...
+# Subtest: cancelling a pending read retains the application lock through settlement
+ok 26 - cancelling a pending read retains the application lock through settlement
+  ---
+  duration_ms: 116.55875
+  type: 'test'
+  ...
+# Subtest: separate instances share a note lock through body consumption
+ok 27 - separate instances share a note lock through body consumption
+  ---
+  duration_ms: 278.981042
+  type: 'test'
+  ...
+# Subtest: invalid model, API, ID and body cannot start an authorization; abort-before-send is side-effect free
+ok 28 - invalid model, API, ID and body cannot start an authorization; abort-before-send is side-effect free
+  ---
+  duration_ms: 10.664875
+  type: 'test'
+  ...
+# Subtest: expired, cleared, closed and insufficient notes cannot start chat
+ok 29 - expired, cleared, closed and insufficient notes cannot start chat
+  ---
+  duration_ms: 81.90225
+  type: 'test'
+  ...
+# Subtest: dispose does not settle or erase storage and refuses later actions
+ok 30 - dispose does not settle or erase storage and refuses later actions
+  ---
+  duration_ms: 11.794584
+  type: 'test'
+  ...
+# Subtest: each configured proxy model selects its own pinned provider/API/tariff and verifies its quote
+ok 31 - each configured proxy model selects its own pinned provider/API/tariff and verifies its quote
+  ---
+  duration_ms: 19.098875
+  type: 'test'
+  ...
+# Subtest: legacy single proxy tariff stays compatible but cannot advertise unrelated models
+ok 32 - legacy single proxy tariff stays compatible but cannot advertise unrelated models
+  ---
+  duration_ms: 0.873583
+  type: 'test'
+  ...
+# Subtest: legacy direct wildcard tariff supports multiple concrete IDs with the same explicit provider
+ok 33 - legacy direct wildcard tariff supports multiple concrete IDs with the same explicit provider
+  ---
+  duration_ms: 0.542208
+  type: 'test'
+  ...
+# Subtest: startup rejects mixed, ambiguous, unsupported, mismatched, tampered and unpinned model configuration
+ok 34 - startup rejects mixed, ambiguous, unsupported, mismatched, tampered and unpinned model configuration
+  ---
+  duration_ms: 0.720208
+  type: 'test'
+  ...
+# Subtest: model configuration and returned tariffs do not retain mutable caller-owned values
+ok 35 - model configuration and returned tariffs do not retain mutable caller-owned values
+  ---
+  duration_ms: 0.259625
+  type: 'test'
+  ...
+# Subtest: deployment loader requires independent descriptor pin and safe public transport before fetching
+ok 36 - deployment loader requires independent descriptor pin and safe public transport before fetching
+  ---
+  duration_ms: 0.848833
+  type: 'test'
+  ...
+# Subtest: descriptor mismatch prevents every artifact download and omits credentials
+ok 37 - descriptor mismatch prevents every artifact download and omits credentials
+  ---
+  duration_ms: 11.84125
+  type: 'test'
+  ...
+# Subtest: pinned descriptors cannot escape their static directory or remove artifact size bounds
+ok 38 - pinned descriptors cannot escape their static directory or remove artifact size bounds
+  ---
+  duration_ms: 6.523125
+  type: 'test'
+  ...
+# Subtest: oversized descriptor streams are canceled and private stream errors stay redacted
+ok 39 - oversized descriptor streams are canceled and private stream errors stay redacted
+  ---
+  duration_ms: 1.060875
+  type: 'test'
+  ...
+# Subtest: overall deadline and caller abort reach a pending fetch without retry
+ok 40 - overall deadline and caller abort reach a pending fetch without retry
+  ---
+  duration_ms: 18.622334
+  type: 'test'
+  ...
+# Subtest: deadline bounds custom stalled response bodies, cancellation and fetch implementations
+ok 41 - deadline bounds custom stalled response bodies, cancellation and fetch implementations
+  ---
+  duration_ms: 34.765125
+  type: 'test'
+  ...
+# Subtest: strict parser preserves JCS ordering/numbers and rejects duplicate/invalid JSON before hashing
+ok 42 - strict parser preserves JCS ordering/numbers and rejects duplicate/invalid JSON before hashing
+  ---
+  duration_ms: 1.353375
+  type: 'test'
+  ...
+# Subtest: strict parser defaults to 1 MiB and permits only an explicit bounded local archive size
+ok 43 - strict parser defaults to 1 MiB and permits only an explicit bounded local archive size
+  ---
+  duration_ms: 8.242292
+  type: 'test'
+  ...
+# Subtest: expanded local archive limit retains duplicate, fatal UTF-8, depth and number checks
+ok 44 - expanded local archive limit retains duplicate, fatal UTF-8, depth and number checks
+  ---
+  duration_ms: 53.110583
+  type: 'test'
+  ...
+# Subtest: authenticates a full OpenAPI manifest via external distribution signature or digest; immutable result
+ok 45 - authenticates a full OpenAPI manifest via external distribution signature or digest; immutable result
+  ---
+  duration_ms: 8.959875
+  type: 'test'
+  ...
+# Subtest: rejects signed mismatched deployment, role keys, build/profile, binding, and malformed wire
+ok 46 - rejects signed mismatched deployment, role keys, build/profile, binding, and malformed wire
+  ---
+  duration_ms: 11.5905
+  type: 'test'
+  ...
+# Subtest: ceremony assertion requires independently reviewed transcripts and mainnet rejects relabeled public test keys
+ok 47 - ceremony assertion requires independently reviewed transcripts and mainnet rejects relabeled public test keys
+  ---
+  duration_ms: 1.900458
+  type: 'test'
+  ...
+# Subtest: explicit devnet test-only single-key custody preserves distribution and finalized PoolConfig admin pins
+ok 48 - explicit devnet test-only single-key custody preserves distribution and finalized PoolConfig admin pins
+  ---
+  duration_ms: 4.098959
+  type: 'test'
+  ...
+# Subtest: single-key custody cannot be relabeled as local, mainnet, another genesis, or ceremony verified
+ok 49 - single-key custody cannot be relabeled as local, mainnet, another genesis, or ceremony verified
+  ---
+  duration_ms: 4.043541
+  type: 'test'
+  ...
+# Subtest: single-key authority discriminant and fields are strict for both roles
+ok 50 - single-key authority discriminant and fields are strict for both roles
+  ---
+  duration_ms: 4.838791
+  type: 'test'
+  ...
+# Subtest: checks finalized raw Vault PoolConfig PDA/owner/layout/role pins/cap/profile and never trusts an unverified object
+ok 51 - checks finalized raw Vault PoolConfig PDA/owner/layout/role pins/cap/profile and never trusts an unverified object
+  ---
+  duration_ms: 4.36975
+  type: 'test'
+  ...
+# Subtest: application factory authenticates independent pins, tariffs and finalized pool without sending or running proofs
+ok 52 - application factory authenticates independent pins, tariffs and finalized pool without sending or running proofs
+  ---
+  duration_ms: 11.350584
+  type: 'test'
+  ...
+# Subtest: compact deposit requires authenticated capability and an independent build capability pin
+ok 53 - compact deposit requires authenticated capability and an independent build capability pin
+  ---
+  duration_ms: 3.638958
+  type: 'test'
+  ...
+# Subtest: compact capability rejects a pinned but incompatible IDL before any wallet signing
+ok 54 - compact capability rejects a pinned but incompatible IDL before any wallet signing
+  ---
+  duration_ms: 9.598625
+  type: 'test'
+  ...
+# Subtest: hashes exact artifact bytes, rejects each changed/missing artifact, and returns detached copies
+ok 55 - hashes exact artifact bytes, rejects each changed/missing artifact, and returns detached copies
+  ---
+  duration_ms: 3.788959
+  type: 'test'
+  ...
+# Subtest: verified client bundle retains entry-time pool and artifact snapshots for the prover
+ok 56 - verified client bundle retains entry-time pool and artifact snapshots for the prover
+  ---
+  duration_ms: 2.639584
+  type: 'test'
+  ...
+# Subtest: client context rejects initially altered artifacts even if buffers change during pool verification
+ok 57 - client context rejects initially altered artifacts even if buffers change during pool verification
+  ---
+  duration_ms: 3.317666
+  type: 'test'
+  ...
+1..57
+# tests 57
+# suites 0
+# pass 57
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 3370.96275

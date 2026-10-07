@@ -5,26 +5,27 @@ import { createServer } from 'node:http';
 import { createInterface } from 'node:readline';
 import { once } from 'node:events';
 import { Connection, Keypair, VersionedTransaction } from '@solana/web3.js';
-import { verifyManifest, parseStrictJson, sha256Hex, type ArtifactBundle, type ManifestTrustPolicy } from '../../packages/sdk/src/trust.ts';
-import { ControlClient, verifiedClientBundle, validateNoteJournal, type NoteJournal, type Mode, type Tariff } from '../../packages/sdk/src/control.ts';
-import { NativeSessionVerifier } from '../../packages/sdk/src/control-node.ts';
-import { NativeJournalStore } from '../../packages/sdk/src/journal-node.ts';
-import { EncryptedJournal, importJournalKey } from '../../packages/sdk/src/journal.ts';
-import { unlockJournalKey, initializeJournalKey } from '../../packages/sdk/src/secret-custody.ts';
-import { relayFetch, writeNodeResponse } from '../../packages/sdk/src/clientd-network.ts';
-import { ClientDaemon } from '../../packages/sdk/src/clientd-bridge.ts';
-import { loadDaemonModels, type DaemonModelSource } from '../../packages/sdk/src/clientd-models.ts';
-import { NativeProver } from '../../packages/sdk/src/prover-node.ts';
-import { NoteProver } from '../../packages/sdk/src/prover.ts';
-import { SolanaWalletChain } from '../../packages/sdk/src/wallet-chain.ts';
-import { WalletClient, type WalletRoles } from '../../packages/sdk/src/wallet.ts';
-import { connectionTransport, type V0Wallet } from '../../packages/sdk/src/transport.ts';
+import { verifyManifest, parseStrictJson, sha256Hex, type ArtifactBundle, type ManifestTrustPolicy } from '@zkapi/solana-sdk/trust';
+import { ControlClient, verifiedClientBundle, validateNoteJournal, type NoteJournal, type Mode, type Tariff } from '@zkapi/solana-sdk/control';
+import { NativeSessionVerifier } from '@zkapi/solana-sdk/control-node';
+import { NativeJournalStore } from '@zkapi/solana-sdk/journal-node';
+import { EncryptedJournal, importJournalKey } from '@zkapi/solana-sdk/journal';
+import { unlockJournalKey, initializeJournalKey } from '@zkapi/solana-sdk/secret-custody';
+import { relayFetch, writeNodeResponse } from '@zkapi/solana-sdk/clientd-network';
+import { ClientDaemon } from '@zkapi/solana-sdk/clientd-bridge';
+import { loadDaemonModels, type DaemonModelSource } from '@zkapi/solana-sdk/clientd-models';
+import { NativeProver } from '@zkapi/solana-sdk/prover-node';
+import { NoteProver } from '@zkapi/solana-sdk/prover';
+import { SolanaWalletChain } from '@zkapi/solana-sdk/wallet-chain';
+import { WalletClient, type WalletRoles } from '@zkapi/solana-sdk/wallet';
+import { connectionTransport, type V0Wallet, type TransactionPreparationCommitment } from '@zkapi/solana-sdk/transport';
 
 interface RuntimeConfig {
   manifest: string; policy: ManifestTrustPolicy; artifacts: Record<Exclude<keyof ArtifactBundle,'additional'>,string> & {additional:Record<string,string>};
   verifier:{path:string;sha256:string}; prover:{path:string;sha256:string};
   journal:string; custody:string; note_id:string; mode:Mode; models:(string | DaemonModelSource)[]; tariff?:string; key_reuse_seconds?:number;
   rpc:string; indexer:string; direct_provider_bases?:Partial<Record<'direct_oa'|'direct_openrouter',string>>;
+  preparation_commitment?:TransactionPreparationCommitment;
   oa_verifier?:{base:string;stationId:string};
 }
 async function main(): Promise<void> {
@@ -58,10 +59,10 @@ async function main(): Promise<void> {
   if(!verifierInfo.isFile() || (verifierInfo.mode & 0o022)!==0 || await sha256Hex(new Uint8Array(await readFile(c.verifier.path)))!==c.verifier.sha256)throw Error('native verifier artifact mismatch');
   const store=await NativeJournalStore.open(c.journal),journal=new EncryptedJournal<NoteJournal>(store,key,{deploymentId:m.deployment_id,pool:m.pool},validateNoteJournal);
   const client=new ControlClient({context:bundle.context,journal,verifier:new NativeSessionVerifier(c.verifier.path,c.verifier.sha256),fetch:fetcher,allowLoopbackHttp:m.deployment_environment==='local',directProviderBases:c.direct_provider_bases,oaVerifier:c.oa_verifier});
-  const chain=new SolanaWalletChain(connection,m,c.indexer,{fetch:fetcher,allowLoopbackHttp:m.deployment_environment==='local'});
+  const chain=new SolanaWalletChain(connection,m,c.indexer,{fetch:fetcher,allowLoopbackHttp:m.deployment_environment==='local',preparationCommitment:c.preparation_commitment});
   const wallets:V0Wallet[]=[];
   if(secret.wallet_seed_base64){const seed=Buffer.from(secret.wallet_seed_base64,'base64');if(seed.length!==32||seed.toString('base64')!==secret.wallet_seed_base64)throw Error('invalid wallet seed');const pair=Keypair.fromSeed(seed);seed.fill(0);secret.wallet_seed_base64='';wallets.push({publicKey:pair.publicKey,supportedTransactionVersions:new Set([0]),signTransaction:async(tx:VersionedTransaction)=>{tx.sign([pair]);return tx;}});}
-  const rpc=connectionTransport(connection);
+  const rpc=connectionTransport(connection,{preparationCommitment:c.preparation_commitment});
   const wallet=new WalletClient({manifest:m,prover,journal,chain,rpc,wallets,fetch:fetcher});
   const service=new ClientDaemon({client,journal,noteId:c.note_id,mode:c.mode,models,keyReuseSeconds:c.key_reuse_seconds,
     prepare:async(model,credentials)=>{

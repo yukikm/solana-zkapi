@@ -1,0 +1,2 @@
+PASS: upstream 045b444ea1b52538d1b40273c7cb6ed09468a052; 23 pinned files; setup PK hashes match upstream deployment
+NOT ESTABLISHED: production setup trust, deployed bytecode, Solana runtime gates

@@ -1,0 +1,142 @@
+{
+  "command": "native-openclaw-mutual-withdraw",
+  "completedAt": "2026-10-07T03:17:08.896Z",
+  "status": {
+    "noteId": "note-d82b16a8535d93cbfa906396b80112c1bf2b0ea4eb90890dc93d07a2a70ce455",
+    "mode": "direct_openrouter",
+    "wallet": "closed",
+    "session": null,
+    "walletOperation": null,
+    "balanceMicroUsdc": "1998714"
+  },
+  "authSends": 2,
+  "inferenceSends": 3,
+  "inferenceReplays": 0,
+  "automaticTransactionResends": 0,
+  "transactions": [
+    {
+      "signature": "xfBHwmriWDebHHoja4RjkfVmUhHZxZA31Zsyy2sWYUJA6PkyNyGKn19yP7DDaGGXcMCB56So79uCw7sDNbQacuv",
+      "wireSha256": "d1a90d2341631d540f726383d608d6dfedb1e69c27d051c4684ec51b10444538",
+      "bytes": 995,
+      "sendRecordedAt": "2026-10-07T03:06:16.213Z"
+    },
+    {
+      "signature": "2oXznzSCVQQDArF2AGJK9eMdSps2ijav4kZ48M4tGzJFvHfa9TMovybiJF3LK21xVzZYXnYXdT7f52zDxG4R8TL",
+      "wireSha256": "0fc5b8352ff7fb84d58fc535e7a08ca58a8d84500cd98c2c3f824fe85ee71314",
+      "bytes": 397,
+      "sendRecordedAt": "2026-10-07T03:15:10.340Z"
+    },
+    {
+      "signature": "5rbRXUjakFPUc3iPSegs4MrbmwGWUVq8zgWYE5Epjyvbwka9VT45n3229VmawXWaXJnmaeMJqBe31QLhNyYK96K4",
+      "wireSha256": "8305f1862f99cc68f61583899bd1587f201d324ce977c4f0c64cd1e3f0a74834",
+      "bytes": 1232,
+      "sendRecordedAt": "2026-10-07T03:15:32.979Z"
+    },
+    {
+      "signature": "2k2pXgDdC2agCWpm5JtYXrdzsSq9ZQ5ofVGMiECzPsJxUNm3hZURQXXtRXK5Fdzfen9bY9nz6MAJ8nqLbcrc154v",
+      "wireSha256": "eac4627a50fedce0a7ff27fe48bd96cc60835b72553e7f2beb96392fe8ee93a8",
+      "bytes": 670,
+      "sendRecordedAt": "2026-10-07T03:15:55.906Z"
+    },
+    {
+      "signature": "66eNASAG8ACpoLtX2xi2EMTsJsEZCdb1qHrPdgu82aSXYK5BFxpn2PMcfDRPSQ333ABEZ1CaHEBZL7XY517GvHWy",
+      "wireSha256": "f2c0baab879e452265490671e3df8cac6920edbfd00866b8fca631400c37e0a2",
+      "bytes": 286,
+      "sendRecordedAt": "2026-10-07T03:16:18.915Z"
+    },
+    {
+      "signature": "5eikLGsBvX8zEu4AdPZDLjruW8VEfwkTuHP1uwf24QHVTRqViSZnTMfNsu8KXG6vn8yHiwZUYrn3zmX98HNgV7SG",
+      "wireSha256": "8687911f056a465c1d37c63e0d0b3fd204c03cace9d8de7dfa6a77787c1893d1",
+      "bytes": 656,
+      "sendRecordedAt": "2026-10-07T03:16:41.689Z"
+    }
+  ],
+  "finalized": [
+    {
+      "signature": "xfBHwmriWDebHHoja4RjkfVmUhHZxZA31Zsyy2sWYUJA6PkyNyGKn19yP7DDaGGXcMCB56So79uCw7sDNbQacuv",
+      "slot": 508313291,
+      "kind": "deposit"
+    },
+    {
+      "signature": "2oXznzSCVQQDArF2AGJK9eMdSps2ijav4kZ48M4tGzJFvHfa9TMovybiJF3LK21xVzZYXnYXdT7f52zDxG4R8TL",
+      "slot": 508315532,
+      "kind": "mutual_close"
+    },
+    {
+      "signature": "5rbRXUjakFPUc3iPSegs4MrbmwGWUVq8zgWYE5Epjyvbwka9VT45n3229VmawXWaXJnmaeMJqBe31QLhNyYK96K4",
+      "slot": 508315623,
+      "kind": "mutual_close"
+    },
+    {
+      "signature": "2k2pXgDdC2agCWpm5JtYXrdzsSq9ZQ5ofVGMiECzPsJxUNm3hZURQXXtRXK5Fdzfen9bY9nz6MAJ8nqLbcrc154v",
+      "slot": 508315716,
+      "kind": "mutual_close"
+    },
+    {
+      "signature": "66eNASAG8ACpoLtX2xi2EMTsJsEZCdb1qHrPdgu82aSXYK5BFxpn2PMcfDRPSQ333ABEZ1CaHEBZL7XY517GvHWy",
+      "slot": 508315813,
+      "kind": "mutual_close"
+    },
+    {
+      "signature": "5eikLGsBvX8zEu4AdPZDLjruW8VEfwkTuHP1uwf24QHVTRqViSZnTMfNsu8KXG6vn8yHiwZUYrn3zmX98HNgV7SG",
+      "slot": 508315908,
+      "kind": "mutual_close"
+    }
+  ],
+  "settlements": [
+    {
+      "chargeMicroUsdc": "627",
+      "operationIds": [
+        "17482269-e60b-460a-bc71-139785a9ac92"
+      ],
+      "signedSuccessorSha256": "4575056fbe981eaaa3b6615ba6cea892368c4c3b1e653c2dfe72b1c40b4c7bd0"
+    },
+    {
+      "chargeMicroUsdc": "659",
+      "operationIds": [
+        "d4b36a6a-e48d-4d94-b1e1-cf78f3bab0fb",
+        "69724ca7-d1ec-4a2c-b6db-ca2a1941f1ef"
+      ],
+      "signedSuccessorSha256": "af86a50e105a3a8a2799116cf957741103527025e556075582a7ad11236dd0ba"
+    }
+  ],
+  "responses": [
+    {
+      "operationId": "17482269-e60b-460a-bc71-139785a9ac92",
+      "status": 200,
+      "completed": true,
+      "responseSha256": "b77ed3c14aa734711950e2a7a01f1ecb7d63ec64c1cb0433d5d1c0dca91ba3ad",
+      "action": "text"
+    },
+    {
+      "operationId": "d4b36a6a-e48d-4d94-b1e1-cf78f3bab0fb",
+      "status": 200,
+      "completed": true,
+      "responseSha256": "2af3ac0a9559dccf17c5fa8384d245b530f9c7f25fc9e76a76f1eb8af2c191c4",
+      "action": "tools"
+    },
+    {
+      "operationId": "69724ca7-d1ec-4a2c-b6db-ca2a1941f1ef",
+      "status": 200,
+      "completed": true,
+      "responseSha256": "48f97c3a4502386b6c3d4a166a838053293feb1ecc2a11495c7d07481a289eb6",
+      "action": "tools"
+    }
+  ],
+  "projection_origin": {
+    "authSendsFieldMeaning": "Distinct exact-body authorization UUIDs accepted by the dispatch fence, not an independent HTTP packet count",
+    "description": "Public SDK-shaped projection from native acceptance dispatch ledger and decrypted installed-runtime journal; independent collector reads only this projection and public manifest.",
+    "scope": "Installed native SDK runtime and production Go HTTP handler with custom bounded devnet Unix egress, not the full installed Go serve supervisor",
+    "sdkArchiveSha256": "3e601fae1d41a804a3c59b10c0eb88052bbedd0ba9317ad88e7cdb9fad06ebbd",
+    "distributionSha256": "1cf1b2f558560c8deeefef493c596ee2509f144283127706cb214ca1abde4382",
+    "ledgerSha256": "5ed75c94865ecc09528ce71ea5dbb7bda85fe6df7ee51211ac98895882fc8233",
+    "harnessSha256": "add295eee2e583b03d0b1f2de72d7972a29aaea3e6d4741ff2287c34d14a9e7c",
+    "runtimeSha256": "23a3562f0c8e7a25115a552f13dce61a39c701d6a1c96f277bcc0babc0efab68",
+    "journalHead": {
+      "revision": 664,
+      "digest": "6e9d4ddb0ee86348f2f5099d24ed510874c7913fb920936ea818bb651997ff5b"
+    },
+    "publicProfileSha256": "270ff0fea81bed8b809b3d4335af7392a95dc122a12414ed0f058abd6af2eaf4",
+    "manifestFileSha256": "96caa60a67a79e076804b6fdf204b8ce44522e6a43bcaf8ee8ddfc6d5181a6b5"
+  }
+}

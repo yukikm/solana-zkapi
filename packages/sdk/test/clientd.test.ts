@@ -13,6 +13,16 @@ import { writeNodeResponse } from '../src/clientd-network.ts';
 import { createServer, request } from 'node:http';
 
 const field=(n:number)=>'0x'+n.toString(16).padStart(64,'0');
+test('new native profile reports unfunded status without creating a note or contacting control', async t => {
+  const dir=await mkdtemp(join(tmpdir(),'zkapi-clientd-unfunded-'));t.after(()=>rm(dir,{recursive:true,force:true}));
+  const store=await NativeJournalStore.open(dir),key=await importJournalKey(new Uint8Array(32).fill(4));
+  const journal=new EncryptedJournal<NoteJournal>(store,key,{deploymentId:'fixture',pool:'pool'},validateNoteJournal);
+  const service=new ClientDaemon({client:{} as ControlClient,journal,noteId:'new-note',mode:'proxy',models:['m'],prepare:async()=>{throw Error('must not authorize');}});
+  const status=await service.status() as any;
+  assert.equal(status.phase,'unfunded');assert.equal(status.wallet_status,'unfunded');assert.equal(status.balance_micro_usdc,'0');
+  assert.equal(status.journal_head,null);assert.equal(status.recovery_required,false);assert.deepEqual(status.unresolved_operations,[]);
+  assert.equal(await journal.read('new-note'),null);assert.deepEqual(await readdir(dir),[]);
+});
 async function fixture(t:TestContext,mode:Mode='proxy',reuse=60,models:DaemonOptions['models']=['m','n']){
   const dir=await mkdtemp(join(tmpdir(),'zkapi-clientd-'));t.after(()=>rm(dir,{recursive:true,force:true}));
   const key=await importJournalKey(new Uint8Array(32).fill(4)),store=await NativeJournalStore.open(dir);
