@@ -1,0 +1,170 @@
+{
+  "schema": 1,
+  "scope": "Actual same-authority disk-reader startup and bounded unfunded catch-up observation, not public readiness or financial acceptance",
+  "observation_date_utc": "2026-10-07",
+  "recorded_at_utc": "2026-10-07T21:24:21.086288+00:00",
+  "runtime": {
+    "challenger_sha256": "c73d58baebb1ad0d992ba63ca0827af4fb9636d93985440c9dffdd98e9fb7ac2",
+    "challenger_config_sha256": "399cded5e3d3c2babc10a1c9f85c1385644ecb165ef7f6fa7cd71750ba4f1c0e",
+    "indexer_sha256": "abd02d3a7febc8814e3feefc7f7472289f0e4af5c1e9762e739089f2af6e4e5b",
+    "indexer_config_sha256": "11889791b5f23e2d3393bd1f277f1808cf02a55fbc6ad8ce2f16b22a7cf1c7b0",
+    "original_start_slot": 508520236,
+    "same_original_owner_lock_verified": true,
+    "migration_repeated": false,
+    "journal_reset_or_history_skip": false
+  },
+  "dependency_isolation": {
+    "initial_attempt": "Stopped before installed-fragment mutation because unordered systemd Requires/After strings changed order; original attempt and candidate retained",
+    "continuation": "Separately reviewed one-time continuation authenticated all five retained attempt files and compared semantic dependency sets",
+    "only_removed_literal": "Wants=zka-control.service",
+    "original_fragment_sha256": "86d14785b3019bcba6c58d3335292077f14336161e70ec4b393ed1810317292b",
+    "temporary_fragment_sha256": "32f3f4bda2e3f730610119e675260e33b0d4228fb06f9547224d95f2bf46f3f0",
+    "daemon_reload_exit": 0,
+    "original_fragment_retained": true,
+    "restoration_status_at_cut": "Pending; restore before boot-enable or restart acceptance",
+    "control_observed_inactive_after_challenger_start": true
+  },
+  "startup": {
+    "started_at": "2026-10-07T21:07:57.341689+00:00",
+    "same_process_during_window": true,
+    "first_observed_new_durable_prefix_at": "2026-10-07T21:14:50.302664+00:00",
+    "first_observed_tail_slot": 508550502,
+    "first_observed_archive_blocks": 30020,
+    "first_observed_archive_chunks": 118,
+    "initial_health_was_stale_during_synchronous_cold_replay": true
+  },
+  "bounded_memory_observation": {
+    "samples": 37,
+    "max_sampled_rss_bytes": 47091712,
+    "max_observed_process_hwm_bytes": 47091712,
+    "min_sampled_available_bytes": 3350540288,
+    "stop_or_review_observed": false,
+    "full_stdout_sha256": "43da9504ef841bef696a1ca2420fca54fa13faab6d4738bbe4bb286c0e89ce49",
+    "full_stdout_bytes": 25261,
+    "stderr_bytes": 0
+  },
+  "memory_observation_window": {
+    "start": "2026-10-07T21:14:06.519877+00:00",
+    "end": "2026-10-07T21:17:07.464794+00:00",
+    "sampling_interval_seconds": 5,
+    "scope": "Observed process RSS/HWM and host MemAvailable; not full-cgroup peak or sustained-capacity qualification",
+    "first_guard_inline_output": "SSM truncated the first guard output at24KB; the later37-sample guard retained its complete output on host and emitted a bounded hash-pinned summary"
+  },
+  "steady_window": {
+    "window_seconds": 180.20141706600043,
+    "cpu_cores_mean": 0.04017726451811582,
+    "process_write_bytes_per_second": 446737.796576345,
+    "disk_write_bytes_per_second": 462807.99206731253,
+    "health_slot_advance": 901,
+    "durable_tail_slot_advance": 901,
+    "durable_block_count_advance": 887,
+    "journal_growth_bytes": 80381081,
+    "start": "2026-10-07T21:15:28.387667+00:00",
+    "end": "2026-10-07T21:18:28.589170+00:00",
+    "durable_slots_per_second": 4.999960681052805,
+    "start_health_lag_seconds": 8688,
+    "end_health_lag_seconds": 8661,
+    "rss_bytes": 47091712,
+    "end_data_free_bytes": 13828476928
+  },
+  "rpc_and_indexer": {
+    "challenger_actual_failure_status": 429,
+    "challenger_actual_failure_method": "getBlock",
+    "challenger_cooldown_seconds": 10,
+    "indexer_cut_at": "2026-10-07T21:20:28.440333+00:00",
+    "indexer_process_unchanged_since": "Wed 2026-10-07 17:49:21 UTC",
+    "indexer_config_and_original_start_unchanged": true,
+    "indexer_logged_http_errors": 22,
+    "indexer_logged_first_cursor": 508586969,
+    "indexer_logged_last_cursor": 508588223,
+    "indexer_error_http_status": "Not available in installed indexer log format; do not label its generic HTTP errors numerically",
+    "indexer_cursor_persistence": "Same-process memory only. Successfully decoded/applied prefixes survive refresh errors; process restart still begins at configured start slot.",
+    "local_indexer_root_http": 503,
+    "local_indexer_snapshot_http": 503,
+    "local_indexer_http_cut_at": "2026-10-07T21:17:42.535746+00:00",
+    "account_quota": "Unknown; no paid upgrade, fallback or fixed-tier assumption",
+    "catchup_eta": "Not established by this short variable-rate window"
+  },
+  "financial_scope": {
+    "new_admission_enabled": false,
+    "pending_challenger_jobs": 0,
+    "unknown_challenger_signatures": 0,
+    "provider_inference_sent_by_this_scope": false,
+    "auth_sent_by_this_scope": false,
+    "funding_sent_by_this_scope": false,
+    "budget_or_old_local_state_changed_by_this_scope": false
+  },
+  "remaining": [
+    "Complete catch-up and fresh indexer reconciliation; current read endpoints can return503.",
+    "Restore control under separately reviewed readiness checks and restore the original challenger unit dependency.",
+    "Independent installed-client preflight, separate admission decision and actual funded consumer acceptance.",
+    "Coherent protected backup and same-state restart/boot acceptance."
+  ],
+  "evidence": [
+    {
+      "local_private_evidence": "125b-isolate-challenger-unit-result.json",
+      "sha256": "c79dea8c543614a9fdb03dd121ab49c403c801b767de87ba0fa124f7396b76b4",
+      "bytes": 925
+    },
+    {
+      "local_private_evidence": "127-unit-isolation-diagnose-result.json",
+      "sha256": "7a10bf32f7955cdede987e540053d91749d8a41415db76a24b7705be8706c526",
+      "bytes": 2740
+    },
+    {
+      "local_private_evidence": "127b-unit-isolation-pins-result.json",
+      "sha256": "a8e60d1ac4d5227a8d106d155fa08572a7bf5cb0415f4557a35247d1e7b6f5b3",
+      "bytes": 3687
+    },
+    {
+      "local_private_evidence": "128-continue-unit-isolation-result.json",
+      "sha256": "8e4be5a71a68bd24983d22a9ce9b8fdd5233d3a61317d2ab30985ba6b679021b",
+      "bytes": 4471
+    },
+    {
+      "local_private_evidence": "120b-resume-disk-reader-result.json",
+      "sha256": "2850d43bf91aa77937d0a587258e9b5a11f278bbe9a88e1fa251f076f9afbdfe",
+      "bytes": 2873
+    },
+    {
+      "local_private_evidence": "123-reader-memory-guard-result.json",
+      "sha256": "68faf204dad736027250e813bc34a6964d8e1a0bb7c43dc6d81697294b7bc5e2",
+      "bytes": 26381
+    },
+    {
+      "local_private_evidence": "130b-reader-startup-cut-result.json",
+      "sha256": "25e1aeb0e8cf53987dee120fa17c63731aa1ec99ecb2729f8dfd76e3dbb1c606",
+      "bytes": 1635
+    },
+    {
+      "local_private_evidence": "130c-reader-startup-cut-result.json",
+      "sha256": "6516f82bd23e664573fc658f87607536c488709abe634edc741a92ed25204964",
+      "bytes": 1632
+    },
+    {
+      "local_private_evidence": "131-retained-reader-memory-guard-result.json",
+      "sha256": "20914fe900fa1e0e518fa82e9d0050f050ae79892f1bbc148c262f62f38ff0eb",
+      "bytes": 2801
+    },
+    {
+      "local_private_evidence": "121b-reader-steady-io-result.json",
+      "sha256": "9259d59536e60df026aaf3ce31bcc0f97e07eb3e016bb9b8ef4dc88aa3d0bdbb",
+      "bytes": 5398
+    },
+    {
+      "local_private_evidence": "122-reader-rpc-cut-result.json",
+      "sha256": "80caf8263036bbf8b452acfd7b3cd115e63d99f212954862a4cd3d39eef26d6a",
+      "bytes": 3340
+    },
+    {
+      "local_private_evidence": "132-live-reader-indexer-cut-result.json",
+      "sha256": "977a52ea131ae06c30a42161303b9b64c120605c6764cdc19905c7f75323fda6",
+      "bytes": 1759
+    },
+    {
+      "local_private_evidence": "133-indexer-readonly-diagnosis-result.json",
+      "sha256": "aa2d2ad3d76c8aa583b533670f2866f21a095f66a3220cdd99d398a88d13f886",
+      "bytes": 4747
+    }
+  ]
+}

@@ -120,6 +120,12 @@ jobs:
           scripts/install_sbf_tools.sh
           npm install --global npm@11.9.0
           npm ci --ignore-scripts
+      - name: Require the hosted runner's real Chrome
+        run: |
+          zkapi_chrome="$(command -v google-chrome)"
+          test -x "$zkapi_chrome"
+          "$zkapi_chrome" --version
+          printf 'ZKAPI_TEST_CHROME=%s\n' "$zkapi_chrome" >> "$GITHUB_ENV"
       - name: Reproduce I04 real transport and indexer evidence
         run: |
           bash scripts/run_i04.sh
@@ -218,6 +224,12 @@ jobs:
           sudo apt-get update
           sudo apt-get install --yes postgresql-16 openssl
           command -v google-chrome
+      - name: Require the hosted runner's real Chrome
+        run: |
+          zkapi_chrome="$(command -v google-chrome)"
+          test -x "$zkapi_chrome"
+          "$zkapi_chrome" --version
+          printf 'ZKAPI_TEST_CHROME=%s\n' "$zkapi_chrome" >> "$GITHUB_ENV"
       - name: Compile SDK and verify isolated package consumption
         run: |
           npm run build:sdk
@@ -275,6 +287,12 @@ jobs:
       - name: Pinned npm
         run: npm install --global npm@11.9.0
       - run: npm ci --ignore-scripts
+      - name: Require the hosted runner's real Chrome
+        run: |
+          zkapi_chrome="$(command -v google-chrome)"
+          test -x "$zkapi_chrome"
+          "$zkapi_chrome" --version
+          printf 'ZKAPI_TEST_CHROME=%s\n' "$zkapi_chrome" >> "$GITHUB_ENV"
       - run: npm run typecheck && npm test
       - name: Upstream SDK baseline
         working-directory: vendor/ethereum-zkapi

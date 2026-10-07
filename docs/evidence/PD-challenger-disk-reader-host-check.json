@@ -1,0 +1,66 @@
+{
+  "schema": 1,
+  "scope": "Actual offline same-archive reader validation on the existing preview host; no service start, catch-up or funded acceptance",
+  "observed_at_utc": "2026-10-07T20:49:16.939932+00:00",
+  "passed": true,
+  "source_report": {
+    "path": "target/public-devnet-live-20261008/119-reader-final-proof-cut-result.json",
+    "sha256": "511e5113a67779c36e06255e38cb31a064e4276e708bb1fd7325935cb2db94f1"
+  },
+  "reader_binary": {
+    "path": "target/public-devnet-live-20261008/linux-build/challenger-disk-reader/output/challengerd",
+    "sha256": "c73d58baebb1ad0d992ba63ca0827af4fb9636d93985440c9dffdd98e9fb7ac2",
+    "bytes": 11669872
+  },
+  "source_manifest_sha256": "3d2c0edacac02247ee083aad10ce1a3ac83b5827603bca09ffbb00d7bc78e945",
+  "source_files": 182,
+  "archive": {
+    "format": 2,
+    "blocks": 29844,
+    "chunks": 117,
+    "tail_slot": 508550323,
+    "head_sha256": "ab82591dc87c46e50ece3afa1fc59afe6a6013c71ca9a8b0688679548daa3da6",
+    "typed_head_digest_hex": "db8f2f6e2fad9431eb59a89853243c14c0d5f1c2eb3e340f1d6d3a022ae05bd0",
+    "legacy_sha256": "fbec86b6c8dfd6ddda5ee9aaa9c6be408098440449720b57baedd4042e37aa2b",
+    "legacy_bytes": 2912440894,
+    "legacy_and_head_equal_prior_migration": true,
+    "complete_inventory_unchanged": true,
+    "owner_lock_identity_unchanged": true,
+    "config_sha256": "399cded5e3d3c2babc10a1c9f85c1385644ecb165ef7f6fa7cd71750ba4f1c0e"
+  },
+  "memory_and_duration": {
+    "samples": 382,
+    "max_sampled_rss_bytes": 30580736,
+    "max_observed_process_hwm_bytes": 31084544,
+    "min_available_bytes": 3392995328,
+    "any_sigint_sent": false,
+    "exit": {
+      "command": "status",
+      "exit_code": 0,
+      "sigint_sent": false,
+      "cancellation_reason": null,
+      "elapsed_seconds": 382.642,
+      "finished_at": "2026-10-07T20:46:59.583345+00:00",
+      "stdout_bytes": 378,
+      "stderr_bytes": 0
+    }
+  },
+  "storage": {
+    "files": 119,
+    "logical_bytes": 5824957378,
+    "unique_allocated_bytes": 5825212416
+  },
+  "services": {
+    "control": "inactive_clean",
+    "challenger": "inactive_clean",
+    "reader_check": "inactive_clean"
+  },
+  "new_admission_enabled": false,
+  "migration_performed": false,
+  "financial_state_changed": false,
+  "limitations": [
+    "The status command validates all committed archive chunks and the full retained legacy prefix; it is not live catch-up or Scanner/RPC readiness.",
+    "The measurement excludes a running control/challenger service and does not qualify long-term 4 GiB full-stack capacity.",
+    "No new AUTH, provider request, funding, settlement, withdrawal, backup or restore occurred in this check."
+  ]
+}

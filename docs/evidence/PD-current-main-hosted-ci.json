@@ -1,0 +1,338 @@
+{
+  "schema": 1,
+  "observed_at": "2026-10-07T21:20:04Z",
+  "date_jst": "2026-10-08",
+  "scope": "Hosted checks on published server/docs followup source and separate local navigation/workflow corrections; not immutable client-release reproduction or funded acceptance",
+  "source_commit": "6e8ecac61a1ef6f3299f7611efb351c65b7771a9",
+  "immutable_client_release_source": "5ded36bf39de9b9fb6bf27a10d744437abc6a9c7",
+  "focused": {
+    "id": 37685365855,
+    "url": "https://github.com/yukikm/solana-zkapi/actions/runs/37685365855",
+    "conclusion": "success",
+    "completed_at": "2026-10-07T20:55:19Z",
+    "jobs": [
+      {
+        "id": 113011687075,
+        "name": "SDK fixtures, real Chrome custody, isolated tarball",
+        "conclusion": "success",
+        "url": "https://github.com/yukikm/solana-zkapi/actions/runs/37685365855/job/113011687075",
+        "failed_steps": []
+      },
+      {
+        "id": 113011687401,
+        "name": "clientd Go race and synthetic secret-helper tests",
+        "conclusion": "success",
+        "url": "https://github.com/yukikm/solana-zkapi/actions/runs/37685365855/job/113011687401",
+        "failed_steps": []
+      }
+    ],
+    "sdk_tests": {
+      "tests": 377,
+      "passed": 377,
+      "failed": 0,
+      "skipped": 0,
+      "cancelled": 0
+    },
+    "installed_package_runner_reported_passed": true,
+    "main_snapshot_tarball_sha256": "e5da3b8294ae3394c0876df4d29a7af1afc96e8ef1b32fb1cd4b7c4e2efd2282",
+    "immutable_release_tarball_sha256": "fe9917b7f11e4bec0837bc7aac7624ad2965aa9bca007d61b877f263620143dc",
+    "tarball_scope": "Current-source build includes later documentation; different bytes are not the released artifact and were not promoted. Passed status and digest are reported by the retained job log.",
+    "go_race_packages_passed": 3,
+    "python_synthetic_suites_passed": [
+      5,
+      7,
+      6
+    ]
+  },
+  "implementation": {
+    "id": 37685365958,
+    "url": "https://github.com/yukikm/solana-zkapi/actions/runs/37685365958",
+    "conclusion": "failure",
+    "completed_at": "2026-10-07T21:11:25Z",
+    "jobs": [
+      {
+        "id": 113011688002,
+        "name": "go",
+        "conclusion": "success",
+        "url": "https://github.com/yukikm/solana-zkapi/actions/runs/37685365958/job/113011688002",
+        "failed_steps": []
+      },
+      {
+        "id": 113011688236,
+        "name": "vault",
+        "conclusion": "success",
+        "url": "https://github.com/yukikm/solana-zkapi/actions/runs/37685365958/job/113011688236",
+        "failed_steps": []
+      },
+      {
+        "id": 113011688308,
+        "name": "transport",
+        "conclusion": "failure",
+        "url": "https://github.com/yukikm/solana-zkapi/actions/runs/37685365958/job/113011688308",
+        "failed_steps": [
+          "Reproduce I04 real transport and indexer evidence"
+        ]
+      },
+      {
+        "id": 113011688311,
+        "name": "node",
+        "conclusion": "failure",
+        "url": "https://github.com/yukikm/solana-zkapi/actions/runs/37685365958/job/113011688311",
+        "failed_steps": [
+          "Run npm run typecheck && npm test"
+        ]
+      },
+      {
+        "id": 113011688397,
+        "name": "client-challenger",
+        "conclusion": "failure",
+        "url": "https://github.com/yukikm/solana-zkapi/actions/runs/37685365958/job/113011688397",
+        "failed_steps": [
+          "Generate actual Vault archive"
+        ]
+      },
+      {
+        "id": 113011688404,
+        "name": "svm",
+        "conclusion": "success",
+        "url": "https://github.com/yukikm/solana-zkapi/actions/runs/37685365958/job/113011688404",
+        "failed_steps": []
+      },
+      {
+        "id": 113011688425,
+        "name": "control",
+        "conclusion": "failure",
+        "url": "https://github.com/yukikm/solana-zkapi/actions/runs/37685365958/job/113011688425",
+        "failed_steps": [
+          "Reproduce I05\u2013I07 PostgreSQL, provider HTTP fixtures, recovery, and SBF acceptance"
+        ]
+      },
+      {
+        "id": 113011688469,
+        "name": "rust",
+        "conclusion": "failure",
+        "url": "https://github.com/yukikm/solana-zkapi/actions/runs/37685365958/job/113011688469",
+        "failed_steps": [
+          "Check source and design pins"
+        ]
+      },
+      {
+        "id": 113011688518,
+        "name": "contracts",
+        "conclusion": "success",
+        "url": "https://github.com/yukikm/solana-zkapi/actions/runs/37685365958/job/113011688518",
+        "failed_steps": []
+      }
+    ],
+    "successful_jobs": 4,
+    "failed_jobs": 5,
+    "failures": {
+      "rust_and_control": "check_design.py rejects three Markdown links in PD-zkchat-integration.md into ignored target evidence.",
+      "node_transport_client_challenger": "Each SDK test run reports 376 passed and one failed, zero skips: real browser journal failed because Chromium did not start in about 4.76\u20134.88 seconds. No exclusive underlying launch cause is established."
+    },
+    "historical_evidence_gate_pass_claimed": false
+  },
+  "local_corrections": {
+    "pushed": false,
+    "hosted_rerun": false,
+    "navigation_only": {
+      "path": "docs/evidence/PD-zkchat-integration.md",
+      "before_sha256": "28f6cf4a5cba29bc05f41288a1467b5314faede8e7f9d6e6f7d75c613dcd35e6",
+      "after_sha256": "2954aced02cb492338e07d9f128134ca82b718e5037b16e4c9c58c2da4474dbd",
+      "removed_private_target_links": 3,
+      "original_dates_counts_scope_preserved": true,
+      "immutable_report": {
+        "path": "docs/evidence/PD-zkchat-integration.json",
+        "sha256": "9fcee9f1641515c51eaef9d0a2860cf2535c3355456d65b645923818120f33b7",
+        "bytes": 10756
+      },
+      "check_design_current_worktree_exit": 0,
+      "check_design_public_tree": {
+        "base": "6e8ecac61a1ef6f3299f7611efb351c65b7771a9",
+        "submodule": "045b444ea1b52538d1b40273c7cb6ed09468a052",
+        "ignored_target_present": false,
+        "before_exit": 1,
+        "before_failures": 3,
+        "after_same_tree_markdown_overlay_exit": 0,
+        "after_json_documents": 582,
+        "after_local_links": 1296
+      }
+    },
+    "workflow": {
+      "schema": 1,
+      "scope": "Static workflow alignment only; no browser or hosted rerun",
+      "parser": "Ruby standard-library YAML",
+      "changed_jobs": [
+        {
+          "job": "node",
+          "step_index": 4,
+          "before_first_sdk_or_browser_step": true,
+          "successful_preview_selection_body_equivalent": true,
+          "bash_syntax_exit": 0
+        },
+        {
+          "job": "transport",
+          "step_index": 3,
+          "before_first_sdk_or_browser_step": true,
+          "successful_preview_selection_body_equivalent": true,
+          "bash_syntax_exit": 0
+        },
+        {
+          "job": "client-challenger",
+          "step_index": 4,
+          "before_first_sdk_or_browser_step": true,
+          "successful_preview_selection_body_equivalent": true,
+          "bash_syntax_exit": 0
+        }
+      ],
+      "all_other_yaml_nodes_unchanged": true,
+      "workflow_before_sha256": "ba506ca3b5da37e10bb3a3c6b36e8141c476e0f16157b04ca85eb33f844cdf22",
+      "workflow_after_sha256": "36645e2d69be237023ec0902a38a4ec4b26cb2053db72f2165b145cfc504eb5a",
+      "runtime_and_tests_modified": false,
+      "hosted_rerun": false
+    },
+    "initial_diagnostic_limitations": [
+      "First archive-only link check lacked submodule contents and had four additional missing-vendor links; preserved and superseded by exact-submodule check.",
+      "Local PyYAML was unavailable; standard-library Ruby YAML parsed the workflows for structural equality, with bash -n for each new run body."
+    ]
+  },
+  "retrieval": {
+    "method": "Read-only GitHub connector run/job/artifact metadata and decoded job logs",
+    "local_logs_encoding": "UTF-8 decoded log text; CRLF normalized, not a downloaded ZIP archive",
+    "files": [
+      {
+        "path": "target/public-devnet-live-20261008/current-main-hosted-ci-20261008/job-113011687075.log",
+        "sha256": "de2a9e239293da28a3b785f38a887c0d8e6bbff19302ded24c4a060d835e03e6",
+        "bytes": 177754
+      },
+      {
+        "path": "target/public-devnet-live-20261008/current-main-hosted-ci-20261008/job-113011687401.log",
+        "sha256": "36117c9ec9552564e51228ee86bec79a673ade9cebbe9a4cbab2e9a9d62b9400",
+        "bytes": 21834
+      },
+      {
+        "path": "target/public-devnet-live-20261008/current-main-hosted-ci-20261008/job-113011688308.log",
+        "sha256": "131bb749f9c1f608e79d923fc3f4e5450e02a52b4c7a4f14b3d800e06d80bdd6",
+        "bytes": 230424
+      },
+      {
+        "path": "target/public-devnet-live-20261008/current-main-hosted-ci-20261008/job-113011688311.log",
+        "sha256": "8874cd2e6a6bb84f487b461184311ce85d51f5d265811c9a2fbeb85249b80daa",
+        "bytes": 66996
+      },
+      {
+        "path": "target/public-devnet-live-20261008/current-main-hosted-ci-20261008/job-113011688397.log",
+        "sha256": "f8378b3f6cba84a2418cb3e5c68b815370433f08a176e26f667de6ef6d0ee044",
+        "bytes": 249032
+      },
+      {
+        "path": "target/public-devnet-live-20261008/current-main-hosted-ci-20261008/job-113011688425.log",
+        "sha256": "3d0db2907f9f4247bfb7f8498f7ae5e61f21e0a565574da50edacca00c719090",
+        "bytes": 191153
+      },
+      {
+        "path": "target/public-devnet-live-20261008/current-main-hosted-ci-20261008/job-113011688469.log",
+        "sha256": "2ec2f8563d95b9dff478f9c059890460bf119e3e364c865c51727c503c421e99",
+        "bytes": 14619
+      },
+      {
+        "path": "target/public-devnet-live-20261008/current-main-hosted-ci-20261008/run-37685365855.json",
+        "sha256": "5655ba8b641c5cf4b6f01e9d13fb26478b01e712fb730a47c2f0b666d50cbb01",
+        "bytes": 11248
+      },
+      {
+        "path": "target/public-devnet-live-20261008/current-main-hosted-ci-20261008/run-37685365958.json",
+        "sha256": "e1930099b86022f0bbdb967ff1d91cc266b052e33270c67b4add5376b53cb5b0",
+        "bytes": 35639
+      }
+    ],
+    "github_reported_artifacts": [
+      {
+        "run_id": 37685365855,
+        "artifacts": [
+          {
+            "id": 11511001178,
+            "name": "sdk-preview-fixtures-browser-package-logs",
+            "bytes": 31171,
+            "github_reported_digest": "sha256:8d9cef4cd89d5bff45d0b05a8127b1adc40ecb90e95e8a197eb20693a31f7c19"
+          },
+          {
+            "id": 11509949466,
+            "name": "clientd-preview-local-fixture-logs",
+            "bytes": 737,
+            "github_reported_digest": "sha256:20ae0c641395dd5fda55e8112ffeb79cc323ef7db11b8b47a3cab1e41c09f016"
+          }
+        ]
+      },
+      {
+        "run_id": 37685365958,
+        "artifacts": [
+          {
+            "id": 11512296154,
+            "name": "sbf-I02-complete-full-Vault-G1-pending",
+            "bytes": 229879,
+            "github_reported_digest": "sha256:a0feb7d4ea85e721ad4ac5c76c92a9875a2c80fd5a784da7061be40462de509b"
+          },
+          {
+            "id": 11511947015,
+            "name": "I05-I07-local-provider-fixtures-Postgres-signer-SBF-not-production",
+            "bytes": 146796,
+            "github_reported_digest": "sha256:73b8be7e3c4b372ae2eb7ba1879eb0bfd026f233f030e9a3f8a3d72bb3985021"
+          },
+          {
+            "id": 11511786144,
+            "name": "I08-I10-local-runtime-not-release",
+            "bytes": 135201,
+            "github_reported_digest": "sha256:3a73c6953e20db31a63e5de879a4cc6fc98a0146b03fa80c69eeac88ed06c459"
+          },
+          {
+            "id": 11510993418,
+            "name": "I03-Anchor-Vault-test-profile",
+            "bytes": 231321,
+            "github_reported_digest": "sha256:5dece81f1e9abcf5d8139877d2857b64c30c26780786da3b889924fac776f29d"
+          }
+        ]
+      }
+    ],
+    "artifact_zip_download_verified_by_this_review": false
+  },
+  "local_check_logs": [
+    {
+      "path": "target/public-devnet-live-20261008/current-main-hosted-ci-20261008/check-design-local.log",
+      "sha256": "de6accca6802deccd603d2a2b760234dcb22d89191ceaad0f4c9897a1931d9bd",
+      "bytes": 369
+    },
+    {
+      "path": "target/public-devnet-live-20261008/current-main-hosted-ci-20261008/check-design-public-before.log",
+      "sha256": "169e19383b531149d5327159f569b1b2eebbf535adebe007cb92c46119da49ff",
+      "bytes": 876
+    },
+    {
+      "path": "target/public-devnet-live-20261008/current-main-hosted-ci-20261008/check-design-public-after.log",
+      "sha256": "d43e31e6c79b80d5c62af8e5a5825f59eba3c3e8dd68bbb49062ffe0ac02cdf0",
+      "bytes": 506
+    },
+    {
+      "path": "target/public-devnet-live-20261008/current-main-hosted-ci-20261008/check-design-complete-public-before.log",
+      "sha256": "13995f92ae142c112329fd03ab4db7e436437a557c8d9101816262411d21f023",
+      "bytes": 370
+    },
+    {
+      "path": "target/public-devnet-live-20261008/current-main-hosted-ci-20261008/check-design-complete-public-after.log",
+      "sha256": "91b78cc954508719f1f1c5abf36501df843d5a3d000515d6289d79075e1634f4",
+      "bytes": 369
+    },
+    {
+      "path": "target/public-devnet-live-20261008/current-main-hosted-ci-20261008/workflow-static-verification.json",
+      "sha256": "6247e3b655224b7f3e38844829e6cc385d8bfb1683602cf0df180e29040cda23",
+      "bytes": 1051
+    }
+  ],
+  "not_established": [
+    "All implementation CI success",
+    "Hosted result for the local two-file correction",
+    "Reproduction or replacement of immutable released client archives",
+    "New Linux server build from these CI jobs",
+    "Public provider, wallet funding, live browser/native lifecycle, crash recovery or withdrawal acceptance"
+  ]
+}
