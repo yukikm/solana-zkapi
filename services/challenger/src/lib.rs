@@ -1,5 +1,6 @@
 //! I09 first slice: finalized evidence, real proofs and independent durable jobs.
 //! No provider capability and no control ledger writer are owned by this crate.
+pub mod archive_indexer;
 pub mod journal;
 pub mod read_model;
 pub mod runtime;

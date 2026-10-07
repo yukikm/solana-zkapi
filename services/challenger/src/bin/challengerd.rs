@@ -13,17 +13,22 @@ async fn main() {
             "cleanup",
             "status",
             "migrate-archive",
+            "archive-indexer",
         ]
         .contains(&args[1].as_str())
     {
         eprintln!(
-            "usage: challengerd <init|scan|prove|once|run|recover|cleanup|status|migrate-archive> CONFIG.json"
+            "usage: challengerd <init|scan|prove|once|run|recover|cleanup|status|migrate-archive|archive-indexer> CONFIG.json"
         );
         std::process::exit(2);
     }
-    let result = match zkapi_challenger::runtime::read_config(std::path::Path::new(&args[2])) {
-        Ok(config) => zkapi_challenger::runtime::run(config, &args[1]).await,
-        Err(e) => Err(e),
+    let result = if args[1] == "archive-indexer" {
+        zkapi_challenger::archive_indexer::run(std::path::Path::new(&args[2])).await
+    } else {
+        match zkapi_challenger::runtime::read_config(std::path::Path::new(&args[2])) {
+            Ok(config) => zkapi_challenger::runtime::run(config, &args[1]).await,
+            Err(e) => Err(e),
+        }
     };
     if result.is_err() {
         eprintln!("challenger stopped: configuration, evidence or recovery unavailable");

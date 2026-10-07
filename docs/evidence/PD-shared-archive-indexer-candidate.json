@@ -1,0 +1,283 @@
+{
+  "schema": 1,
+  "recorded_date_jst": "2026-10-08",
+  "observed_at_utc": "2026-10-07T21:49:38.446720+00:00",
+  "scope": "Frozen local shared-archive indexer candidate, synthetic filesystem/RPC and saved-SBF fixtures, Linux release build and network-disabled ABI smoke; no hosted or financial acceptance",
+  "prior_candidate_evidence": "PD-challenger-disk-reader-candidate.json",
+  "source": {
+    "manifest": {
+      "path": "target/public-devnet-live-20261008/linux-build/archive-indexer/source-manifest.json",
+      "bytes": 34071,
+      "sha256": "b624cf278f184e3a5892de82ab36eacdd55fa3ead80a7d3759106ec8dd3ae90a"
+    },
+    "guarded_files": 187,
+    "source_and_frozen_inputs_rehashed_after_build": true,
+    "changed_files": [
+      {
+        "path": "services/challenger/src/bin/challengerd.rs",
+        "bytes": 1199,
+        "sha256": "94ec24cf504bb0423a979a9ef3382873cf88eadc64637ba04da89e25f852de63"
+      },
+      {
+        "path": "services/challenger/src/journal.rs",
+        "bytes": 38405,
+        "sha256": "047a5e0ed8f04d5e62fef75ecd98281dd664a5d820e7c09bc092b6c004af854a"
+      },
+      {
+        "path": "services/challenger/src/journal_segmented.rs",
+        "bytes": 30910,
+        "sha256": "20de49b631ac4fae8f2defd1449bfc9eba16b48e96ff10f50249c3453b093452"
+      },
+      {
+        "path": "services/challenger/src/lib.rs",
+        "bytes": 11241,
+        "sha256": "02c12a4c5ea8964704df85c721c849911b7e641c896ed2a8b5b079084c360d71"
+      },
+      {
+        "path": "services/indexer/src/runtime.rs",
+        "bytes": 46862,
+        "sha256": "e8dd1ccd37642865ffb15d50a4c3c34109d1209c0cc7673a1e350e79415819b6"
+      },
+      {
+        "path": "services/indexer/tests/runtime.rs",
+        "bytes": 26960,
+        "sha256": "0d0c78b9918b97296fbb3653de0e53dce4cad6812e7c4b476238eae9c922e124"
+      }
+    ],
+    "added_files": [
+      {
+        "path": "services/challenger/src/archive_indexer.rs",
+        "bytes": 6074,
+        "sha256": "a2b90aed9ec34748514e0528da0cd9bea726bc8cfd9d1ba2fa276deefedf6339"
+      },
+      {
+        "path": "services/challenger/src/journal_readonly.rs",
+        "bytes": 13462,
+        "sha256": "54f925fa9adeb0c1ff54cdced4f254ea036b1cf8d07f16a683e7e5e2aabb45bc"
+      },
+      {
+        "path": "services/challenger/src/journal_readonly_tests.rs",
+        "bytes": 12429,
+        "sha256": "178bd2160f0e6dc586011fc8f53e6080de30af1110edb1ba896e051681a946ce"
+      },
+      {
+        "path": "services/indexer/src/runtime_archive.rs",
+        "bytes": 7293,
+        "sha256": "32ed14dd7a0d714a52379d2d431f721874da1656c3952879883769e111b14979"
+      },
+      {
+        "path": "services/indexer/tests/support/archive_source.rs",
+        "bytes": 11071,
+        "sha256": "a72a8ba38705cb2011cb2072167f163f25223cf8702e6863f7d77f11019be29d"
+      }
+    ],
+    "dependency_versions_changed": false,
+    "journal_format_changed": false,
+    "writer_behavior_changed": false,
+    "independent_review": {
+      "path": "target/public-devnet-live-20261008/archive-indexer-candidate/independent-source-review.json",
+      "bytes": 7060,
+      "sha256": "a26b86d2e91386366bf89535a75510920f820d052d10a1f0925d3550f771ab2a"
+    },
+    "local_cargo_path_dependency_edges": 39
+  },
+  "contract": {
+    "command": "challengerd archive-indexer CONFIG.json",
+    "configuration_fields": [
+      "archive_directory",
+      "indexer"
+    ],
+    "source": "Existing v2 journal through explicit read-only fixed-head API; no raw RPC reconstruction",
+    "cold_validation": [
+      "same opened head inode",
+      "strict state digest and expected Pool",
+      "complete retained legacy prefix",
+      "all referenced chunk bytes, identities, counts and parent chain"
+    ],
+    "incremental_validation": [
+      "exact previously verified tail reference",
+      "unchanged Pool and legacy identity",
+      "fresh hashes of new chunks",
+      "trusted Unix device/inode/size/mtime/ctime continuity of prior files",
+      "fresh hashes of every replayed chunk"
+    ],
+    "trusted_local_filesystem_boundary": "No claim against privileged metadata forgery; metadata continuity avoids full historical rehash on each poll. Missing or changed prior files fail closed.",
+    "payload_memory": "One original chunk; existing oversized-single-block exception preserved; reference and indexer digest metadata still grow.",
+    "original_start_slot_preserved": true,
+    "independent_finalized_account_cut_and_anchor_required": true,
+    "captured_cut_max_age_seconds": 30,
+    "full_block_rpc_fallback": false,
+    "source_validation_failure_latched": true,
+    "source_writes": false,
+    "writer_lock_acquired_or_created": false,
+    "migration_or_orphan_adoption": false,
+    "db_fee_or_financial_runtime_loaded": false,
+    "separate_public_snapshot_writes": true,
+    "cold_shutdown": "Synchronous full validation precedes HTTP listener/Ctrl-C handler. Default signal termination can occur during cold open; no graceful cancellation claim."
+  },
+  "tests": [
+    {
+      "scope": "challenger_serial_library",
+      "passed": 64,
+      "failed": 0,
+      "ignored": 12,
+      "total_seconds": 18.975533542004996,
+      "test_seconds": 18.59,
+      "result": {
+        "path": "target/public-devnet-live-20261008/archive-indexer-candidate/root-challenger-serial-result.json",
+        "bytes": 194,
+        "sha256": "450531820dc9366e71f8b56bed694a99c27cef0a71e5f6bb6db257d642d122f6"
+      },
+      "log": {
+        "path": "target/public-devnet-live-20261008/archive-indexer-candidate/root-challenger-serial-test.log",
+        "bytes": 9447,
+        "sha256": "3d2f7e21ebd0803a946d68001c115cd846414de9af74f211d709f848448119a7"
+      }
+    },
+    {
+      "scope": "indexer_complete_ordinary_suite",
+      "passed": 59,
+      "failed": 0,
+      "ignored": 1,
+      "total_seconds": 13.317738542013103,
+      "test_seconds": null,
+      "result": {
+        "path": "target/public-devnet-live-20261008/archive-indexer-candidate/root-indexer-all-result.json",
+        "bytes": 194,
+        "sha256": "bb2d33f6d81a90fd69f0a19f91368f93f05d5b5171fc7b53cbae1adc1dd3b80b"
+      },
+      "log": {
+        "path": "target/public-devnet-live-20261008/archive-indexer-candidate/root-indexer-all-test.log",
+        "bytes": 6897,
+        "sha256": "a5485e48680bbb78feb2403d262a026aabb4b2cc3b33cddbcaa23eacb9d3d52d"
+      }
+    },
+    {
+      "scope": "indexer_runtime_selected",
+      "passed": 17,
+      "failed": 0,
+      "ignored": 0,
+      "total_seconds": 4.627668084009201,
+      "test_seconds": 0.31,
+      "result": {
+        "path": "target/public-devnet-live-20261008/archive-indexer-candidate/root-indexer-runtime-result.json",
+        "bytes": 289,
+        "sha256": "5f3a7468836a1587e045c904ce3cbb686fdfda8c95590e4fc71a86e2a5158ada"
+      },
+      "log": {
+        "path": "target/public-devnet-live-20261008/archive-indexer-candidate/root-indexer-runtime-test.log",
+        "bytes": 1921,
+        "sha256": "00bb759ce443063a49281e422378041a4172770b1bba64bebabc8815a32c688c"
+      }
+    }
+  ],
+  "focused_reader_test": {
+    "command": "cargo +1.93.0 test --locked --offline --manifest-path services/challenger/Cargo.toml --lib readonly_archive -- --test-threads=1",
+    "passed": 11,
+    "failed": 0,
+    "ignored": 0,
+    "seconds": 0.82,
+    "log": "target/public-devnet-live-20261008/archive-follower-candidate/unit-final-verified.log",
+    "log_sha256": "b0cd401cfcfe5a66ec7b0ceb037ffe5dd7bae0b8be757a8421437fa62db3ef3a"
+  },
+  "test_scope_overlap": "Do not sum: separately selected17 indexer runtime tests and11 reader fixtures are included in the ordinary suites. Existing ignored scopes were not comprehensively executed by these commands.",
+  "preserved_initial_observations": {
+    "record": {
+      "path": "target/public-devnet-live-20261008/archive-indexer-candidate/local-check-observations.json",
+      "bytes": 949,
+      "sha256": "f588532c354f8bd5e14ab1849ad950451112c2c2e8644e5cbe192cd4e35910b3"
+    },
+    "initial_earlier_source_consumer_fixtures_passed": 5,
+    "later_sandbox_bind_failures_before_requests": 5,
+    "sandbox_failure": "TcpListener::bind PermissionDenied OS code1, before RPC fixture requests; final parent-run frozen source passed outside sandbox.",
+    "production_assertions_weakened": false
+  },
+  "linux": {
+    "schema": 1,
+    "scope": "Frozen-source local Linux x86_64 archive-indexer candidate build and networkless ABI smoke; no installation",
+    "observed_at_utc": "2026-10-07T21:46:59.135554+00:00",
+    "passed": true,
+    "source_manifest_sha256": "b624cf278f184e3a5892de82ab36eacdd55fa3ead80a7d3759106ec8dd3ae90a",
+    "source_files": 187,
+    "source_and_frozen_inputs_unchanged": true,
+    "rust_version": "1.90.0",
+    "binary_sha256": "7b2a41955e8a280a74235611388225a1b459b8bea73dfc2a4cd0b5ca955afce8",
+    "binary_bytes": 12690424,
+    "maximum_glibc": "2.34",
+    "no_config_exit": 2,
+    "archive_mode_missing_config_exit": 1,
+    "smoke_network": "none",
+    "previous_binaries_unchanged": true,
+    "build_log_sha256": "2d6bec661eceb5db0b26044a220c9322742546f57468ceb94cda7e53f73443ce",
+    "binary": {
+      "path": "target/public-devnet-live-20261008/linux-build/archive-indexer/output/challengerd",
+      "bytes": 12690424,
+      "sha256": "7b2a41955e8a280a74235611388225a1b459b8bea73dfc2a4cd0b5ca955afce8"
+    },
+    "verification": {
+      "path": "target/public-devnet-live-20261008/linux-build/archive-indexer/verification.json",
+      "bytes": 770,
+      "sha256": "d79c58b65a65833f237d4e85dd9ec32733b2a39332045a5b52bcdba0e1c63b13"
+    },
+    "build_log": {
+      "path": "target/public-devnet-live-20261008/linux-build/archive-indexer/build.log",
+      "bytes": 1941,
+      "sha256": "2d6bec661eceb5db0b26044a220c9322742546f57468ceb94cda7e53f73443ce"
+    },
+    "build_seconds": 127,
+    "smoke_files": [
+      {
+        "path": "target/public-devnet-live-20261008/linux-build/archive-indexer/smoke/archive-mode-no-config-exit.txt",
+        "bytes": 2,
+        "sha256": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865"
+      },
+      {
+        "path": "target/public-devnet-live-20261008/linux-build/archive-indexer/smoke/archive-mode-no-config.log",
+        "bytes": 68,
+        "sha256": "cff279a1091393dfef50366515d0f98d8556d89958afe82ed5727e48f1ab363c"
+      },
+      {
+        "path": "target/public-devnet-live-20261008/linux-build/archive-indexer/smoke/dependencies.txt",
+        "bytes": 214,
+        "sha256": "9a5ce4de79e967fbb000954ea855f550d5054224122ef8305ab277fce2913d4c"
+      },
+      {
+        "path": "target/public-devnet-live-20261008/linux-build/archive-indexer/smoke/glibc-versions.txt",
+        "bytes": 4988,
+        "sha256": "1caff544aefb549c1ef2fb44b4a3f8e0bf430d995e4ffebd5c59e7d6db79daf3"
+      },
+      {
+        "path": "target/public-devnet-live-20261008/linux-build/archive-indexer/smoke/no-config-exit.txt",
+        "bytes": 2,
+        "sha256": "53c234e5e8472b6ac51c1ae1cab3fe06fad053beb8ebfd8977b010655bfdd3c3"
+      },
+      {
+        "path": "target/public-devnet-live-20261008/linux-build/archive-indexer/smoke/no-config.log",
+        "bytes": 113,
+        "sha256": "e4c3c1070e4fbc324c596962e3d4e1ba6eadc91e381a5d632d60da714fef9dfb"
+      }
+    ]
+  },
+  "independent_cross_boundary_review": {
+    "blocking_findings": [],
+    "checked": [
+      "fixed verified head and append-only extension",
+      "active writer lock untouched",
+      "borrowed range replay with callback error propagation",
+      "original-start and skipped-slot coverage",
+      "fixed target and account cut freshness",
+      "terminal source failure revokes readiness",
+      "no full-block RPC fallback",
+      "canonical source/output path separation",
+      "cold validation precedes networking"
+    ]
+  },
+  "limits": [
+    "No host installation, live readiness or catch-up-rate claim",
+    "No funded native/browser/provider acceptance",
+    "No source cursor, Pool, signed attempt, reservation or financial mutation by these checks",
+    "No sustained monthly capacity or graceful cold-open cancellation claim",
+    "Existing writer binary and immutable client release artifacts remain separate",
+    "Actual post-duplicate-indexer-stop throughput used the prior writer, not this candidate"
+  ]
+}

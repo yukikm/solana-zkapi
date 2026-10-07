@@ -17,6 +17,9 @@ use std::{collections::BTreeMap, error::Error, path::PathBuf, sync::Arc, time::D
 use tokio::sync::{watch, OwnedRwLockReadGuard, RwLock};
 
 type Result<T> = std::result::Result<T, Box<dyn Error + Send + Sync>>;
+#[path = "runtime_archive.rs"]
+mod archive_source;
+pub use archive_source::{ArchiveRefresh, ArchiveSourceResult, FinalizedArchiveSource};
 #[derive(Clone, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct Config {
@@ -655,6 +658,20 @@ async fn download(State(s): State<HttpState>, Path(name): Path<String>) -> Respo
     ([(header::CONTENT_TYPE, "application/json")], bytes).into_response()
 }
 pub async fn serve(cfg: Config) -> Result<()> {
+    serve_source(cfg, None).await
+}
+/// Explicit local archive mode. RPC still authenticates the finalized account
+/// cut and block anchor; it never supplies a missing full history block.
+pub async fn serve_with_archive(
+    cfg: Config,
+    archive: impl FinalizedArchiveSource + 'static,
+) -> Result<()> {
+    serve_source(cfg, Some(Box::new(archive))).await
+}
+async fn serve_source(
+    cfg: Config,
+    mut archive: Option<Box<dyn FinalizedArchiveSource>>,
+) -> Result<()> {
     let program = key(&cfg.program_id)?;
     let pool = key(&cfg.pool)?;
     key(&cfg.genesis_hash)?;
@@ -692,13 +709,25 @@ pub async fn serve(cfg: Config) -> Result<()> {
     let worker = tokio::spawn(async move {
         let mut index = Indexer::new(program, pool);
         let mut next = config.start_slot;
+        let mut archive_refresh = ArchiveRefresh::default();
         loop {
             {
                 let mut published = state.write().await;
                 published.available = false;
                 published.refreshing = true;
             }
-            let result = rpc.refresh(&config, &mut index, &mut next).await;
+            let result = if let Some(source) = archive.as_mut() {
+                rpc.refresh_from_archive(
+                    &config,
+                    &mut index,
+                    &mut next,
+                    source.as_mut(),
+                    &mut archive_refresh,
+                )
+                .await
+            } else {
+                rpc.refresh(&config, &mut index, &mut next).await
+            };
             if result.is_ok() {
                 *state.write().await = Published {
                     index: index.clone(),
@@ -972,6 +1001,62 @@ mod http_tests {
             note_path(State(shared.clone()), Path("0".into()))
                 .await
                 .status(),
+            StatusCode::SERVICE_UNAVAILABLE
+        );
+        assert_eq!(
+            snapshot(State(shared)).await.status(),
+            StatusCode::SERVICE_UNAVAILABLE
+        );
+    }
+
+    #[tokio::test]
+    async fn archive_source_failure_revokes_ready_index_and_public_endpoints() {
+        struct Broken;
+        impl FinalizedArchiveSource for Broken {
+            fn refresh(&mut self) -> ArchiveSourceResult<()> {
+                Err("private source failure".into())
+            }
+            fn first(&self) -> Option<(u64, u64)> {
+                None
+            }
+            fn tail(&self) -> Option<(u64, Bytes32)> {
+                None
+            }
+            fn replay_range(
+                &self,
+                _: u64,
+                _: u64,
+                _: &mut dyn FnMut(&crate::FinalizedBlock) -> ArchiveSourceResult<()>,
+            ) -> ArchiveSourceResult<()> {
+                panic!("failed source must not replay")
+            }
+        }
+        let (mut index, config) = fixture();
+        assert!(index.is_ready());
+        let result = ArchiveRpc::new(config.rpc_url.clone())
+            .unwrap()
+            .refresh_from_archive(
+                &config,
+                &mut index,
+                &mut config.start_slot.clone(),
+                &mut Broken,
+                &mut ArchiveRefresh::default(),
+            )
+            .await;
+        assert!(result.is_err());
+        assert!(!index.is_ready());
+        let (_updated, changes) = watch::channel(());
+        let shared = HttpState {
+            state: Arc::new(RwLock::new(Published {
+                index,
+                available: result.is_ok(),
+                refreshing: false,
+            })),
+            config: Arc::new(config),
+            updated: changes,
+        };
+        assert_eq!(
+            root(State(shared.clone())).await.status(),
             StatusCode::SERVICE_UNAVAILABLE
         );
         assert_eq!(

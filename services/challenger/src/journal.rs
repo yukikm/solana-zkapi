@@ -15,6 +15,7 @@ use zkapi_indexer::Position;
 #[path = "journal_segmented.rs"]
 mod segmented;
 pub use segmented::MigrationReport;
+pub use segmented::ReadOnlyArchive;
 
 /// Small committed archive cursor. Full v2 block payloads stay on disk.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]

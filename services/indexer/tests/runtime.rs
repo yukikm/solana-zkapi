@@ -1,5 +1,7 @@
 //! Mock archive HTTP boundaries using account bytes emitted by the real SBF
 //! integration harness. These checks do not claim live RPC/finality validation.
+#[path = "support/archive_source.rs"]
+mod archive_source_cases;
 use axum::{extract::State, routing::post, Json, Router};
 use base64::{engine::general_purpose::STANDARD, Engine};
 use serde_json::{json, Value};

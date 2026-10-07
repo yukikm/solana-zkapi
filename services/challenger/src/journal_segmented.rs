@@ -7,6 +7,10 @@ use serde::de::DeserializeOwned;
 use std::io::{Read, Result as IoResult};
 use zkapi_indexer::FinalizedBlock;
 
+#[path = "journal_readonly.rs"]
+mod readonly;
+pub use readonly::ReadOnlyArchive;
+
 const ARCHIVE_DIR: &str = "archive-v2";
 const BACKUP: &str = "legacy-v1.json";
 const CHUNK_BLOCKS: usize = 256;
@@ -230,6 +234,11 @@ fn read_chunk(path: &Path, current: &ChunkRef, pool: Hash) -> Result<Chunk<Vec<F
         return Err(Error::Conflict("archive chunk byte count"));
     }
     let (chunk, hash, bytes): (Chunk<Vec<FinalizedBlock>>, _, _) = read_json(file)?;
+    validate_chunk(chunk, hash, bytes, current, pool)
+}
+fn validate_chunk(
+    chunk: Chunk<Vec<FinalizedBlock>>, hash: Hash, bytes: u64, current: &ChunkRef, pool: Hash,
+) -> Result<Chunk<Vec<FinalizedBlock>>> {
     if hash != current.sha256
         || bytes != current.bytes
         || chunk.version != 2
@@ -397,6 +406,12 @@ impl<'de> Deserialize<'de> for ArchiveSummary {
     }
 }
 pub(super) fn load(root: &Path, pool: Hash, head: Head) -> Result<Archive> {
+    load_observed(root, pool, head, None)
+}
+fn load_observed(
+    root: &Path, pool: Hash, head: Head,
+    mut observations: Option<&mut readonly::Observations>,
+) -> Result<Archive> {
     let path = archive_directory(root)?;
     if head.version != 2
         || head.pool != pool
@@ -431,7 +446,8 @@ pub(super) fn load(root: &Path, pool: Hash, head: Head) -> Result<Archive> {
         digest: Hash,
         state: LegacyState,
     }
-    let (legacy, hash, bytes): (LegacyDigest, _, _) = read_json(regular(&root.join(BACKUP))?)?;
+    let (legacy, hash, bytes): (LegacyDigest, _, _) =
+        readonly::read_json_observed(&root.join(BACKUP), observations.as_deref_mut())?;
     if (hash, bytes) != (head.legacy.sha256, head.legacy.bytes)
         || legacy.digest != head.legacy.state_digest
         || legacy.state.version != 1
@@ -449,7 +465,7 @@ pub(super) fn load(root: &Path, pool: Hash, head: Head) -> Result<Archive> {
         if current.sequence != expected_sequence {
             return Err(Error::Conflict("archive chunk sequence/count"));
         }
-        let chunk = read_chunk(&path, &current, pool)?;
+        let chunk = readonly::read_chunk_observed(&path, &current, pool, observations.as_deref_mut())?;
         if tail.is_none() {
             tail = chunk.blocks.last().map(ArchiveTail::from);
         }
@@ -483,7 +499,15 @@ pub(super) fn load(root: &Path, pool: Hash, head: Head) -> Result<Archive> {
         if prefix.blocks == legacy.state.archive.blocks {
             break;
         }
-        let chunk = archive.read_indexed(&path, index)?;
+        let chunk = if let Some(observations) = observations.as_deref_mut() {
+            let chunk = readonly::read_chunk_observed(&path, &archive.references[index], pool, Some(observations))?;
+            if chunk.previous.as_ref() != index.checked_sub(1).map(|i| &archive.references[i]) {
+                return Err(Error::Conflict("archive indexed parent"));
+            }
+            chunk
+        } else {
+            archive.read_indexed(&path, index)?
+        };
         for block in &chunk.blocks {
             if prefix.blocks == legacy.state.archive.blocks {
                 break;

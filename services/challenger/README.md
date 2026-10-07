@@ -96,6 +96,22 @@ Each run/once tick also atomically writes `journal_directory/health.json` with m
 
 `daemon-performance.json` records local end-to-end samples for normal, lost response, stale-root cleanup/regeneration, restart before send, confirmed-only hold, expired-upload refresh, expired execute buffer and rejected upload, p50/p95, regeneration/attempt counts, and the resident KiB of the native test process after each sample. The RSS sample includes the test harness/prover and is not a peak bound for the whole process tree. The RPC outcomes are synthetic; the actual-Vault signed-v0 case is a separate test. These local samples do not establish production five-minute SLO, outage/load/queue capacity, or public-RPC behavior.
 
+## Read-only indexer over an existing v2 archive
+
+The explicit `archive-indexer` mode lets the public indexer replay the challenger's committed blocks without fetching the same full blocks from RPC:
+
+```sh
+services/challenger/target/debug/challengerd archive-indexer /absolute/path/archive-indexer.json
+```
+
+Its strict configuration has two fields: `archive_directory`, the canonical absolute path to an existing v2 challenger journal, and `indexer`, the complete existing indexer configuration. Preserve the original `start_slot`, Pool, program, genesis and profile pins. Use a separate snapshot output directory; source/output overlap, parent traversal and aliases into the archive are rejected. Grant this process read access to the source, preferably through a read-only filesystem mount, and write access only to its separate indexer snapshots. It does not initialize or migrate storage, acquire or create `owner.lock`, write challenger health, load a DB or fee key, or construct the financial challenger runtime. Ordinary writer commands and the default RPC indexer remain separate modes.
+
+Cold open checks the fixed head, its state checksum and Pool, the retained complete legacy prefix, and every referenced chunk. It streams the stored `FinalizedBlock` values through the existing indexer replay; these are decoded evidence, not reconstructed original RPC responses. Incremental refresh accepts only an authenticated extension of the exact prior tail. Already verified immutable files use trusted Unix device/inode/size/mtime/ctime continuity; new and replayed chunks are always hashed. Missing or changed files, rollback and replacement fail closed. This metadata shortcut does not defend against a privileged actor able to forge filesystem metadata. Unreferenced files are never adopted or removed.
+
+The indexer retains a fixed finalized target and account cut while waiting for committed history. It still obtains and validates the independent finalized account cut and block anchor; it never fills missing full blocks from RPC or advances the configured start. Captured account cuts older than 30 seconds must be recaptured before publication. Source validation failures latch the process unavailable until operator review and restart. A newer atomic head does not alter the snapshot currently being replayed.
+
+Cold validation is synchronous and occurs before the HTTP listener and its Ctrl-C handler are installed. A signal during that phase uses default process termination; this mode does not inherit the writer runtime's latched shutdown behavior, and no graceful cold-open cancellation is claimed. It performs no source writes to flush. The [local candidate evidence](../../docs/evidence/PD-shared-archive-indexer-candidate.md) records the frozen source, tests and Linux build separately from host installation, catch-up and funded acceptance.
+
 ## Reproduce
 
 ```sh
