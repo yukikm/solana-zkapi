@@ -1,6 +1,6 @@
 /** Operator-side validation of the public browser profile wire format.
  * No application UI or runtime fetch dependency. Keep compatibility with independently built clients. */
-import { PublicKey } from '@solana/web3.js';
+import { address } from '@solana/kit';
 import type { ArtifactBundle, CreateClientOptions, ManifestTrustPolicy, ModelConfiguration, Mode } from '../../packages/sdk/src/client.ts';
 import { parseStrictJson } from '../../packages/sdk/src/trust.ts';
 
@@ -45,7 +45,7 @@ function fields(value: any, required: string[], optional: string[] = []) {
 function digest(value: unknown) { requireProfile(typeof value === 'string' && /^[0-9a-f]{64}$/.test(value)); }
 function publicKey(value: unknown) {
   requireProfile(typeof value === 'string' && /^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(value));
-  requireProfile(new PublicKey(value).toBase58() === value);
+  requireProfile(address(value) === value);
 }
 function origin(value: unknown) {
   requireProfile(typeof value === 'string'); const url = new URL(value);

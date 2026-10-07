@@ -1,3 +1,6 @@
+import {fixtureSigner} from './kit-helpers.ts';
+/** Real Go process + installed SDK runtime + native proof + actual Vault SBF.
+ * JSON-RPC/indexer envelopes are local deterministic adapters, not public RPC. */
 /** Real Go process + installed SDK runtime + native proof + actual Vault SBF.
  * JSON-RPC/indexer envelopes are local deterministic adapters, not public RPC. */
 import {test} from 'node:test';
@@ -9,7 +12,7 @@ import {createServer} from 'node:http';
 import {mkdtemp,mkdir,writeFile,readFile,rm} from 'node:fs/promises';
 import {dirname,join,resolve} from 'node:path';
 import {tmpdir} from 'node:os';
-import {Keypair} from '@solana/web3.js';
+
 import bs58 from 'bs58';
 import {walletFixture} from './wallet-fixture.ts';
 import {manifestDigest,sha256Hex} from '../src/trust.ts';
@@ -28,7 +31,7 @@ test('installed Go clientd drives encrypted native wallet deposit and withdrawal
   const testTariff=JSON.parse(await readFile('target/i08/prepare-command.json','utf8')).prepared.tariff;
   // The generated wallet-only fixture must also truthfully pin its advertised API tariff.
   manifest.tariff_hashes=[testTariff.tariff_hash];
-  let hideReceipt=false;let sends=0;const sent:string[]=[];
+  let hideReceipt=false;let sends=0;const sent:string[]=[],sentWire=new Map<string,string>();
   const upstream=createServer(async(req,res)=>{try{
     const parts:Buffer[]=[];for await(const chunk of req)parts.push(chunk);const body=Buffer.concat(parts);
     let result:any;
@@ -42,8 +45,8 @@ test('installed Go clientd drives encrypted native wallet deposit and withdrawal
         case'getLatestBlockhash':result={context:{slot:100},value:await call({kind:'blockhash'})};break;
         case'getSignatureStatuses':result={context:{slot:100},value:[null]};break;
         case'getBlockHeight':result=100;break;
-        case'getTransaction':{const receipt=await call({kind:'receipt',signature:a[0]});result=hideReceipt?null:receipt?.rpc??null;break;}
-        case'sendTransaction':{sends++;const sentResult=await call({kind:'send',base64:a[0]});result=sentResult.signature;sent.push(result);break;}
+        case'getTransaction':{assert.equal(a[1].encoding,'base64');const receipt=await call({kind:'receipt',signature:a[0]});result=hideReceipt?null:receipt?.rpc?{...receipt.rpc,transaction:[sentWire.get(a[0]),'base64']}:null;break;}
+        case'sendTransaction':{sends++;const sentResult=await call({kind:'send',base64:a[0]});result=sentResult.signature;sent.push(result);sentWire.set(result,a[0]);break;}
         default:throw Error('unexpected RPC '+rpc.method);
       }
       res.setHeader('Content-Type','application/json');res.end(JSON.stringify({jsonrpc:'2.0',id:rpc.id,result}));return;
@@ -74,7 +77,7 @@ test('installed Go clientd drives encrypted native wallet deposit and withdrawal
   await start(true);
   const request=async(path:string,body?:unknown,credential='m')=>{const response=await fetch(`http://127.0.0.1:${listenPort}${path}`,{method:body===undefined?'GET':'POST',headers:{Authorization:'Bearer '+credential.repeat(40),'Content-Type':'application/json'},body:body===undefined?undefined:JSON.stringify(body)});const result=await response.json();assert.equal(response.status,200,JSON.stringify(result));return result as any;};
   assert.equal((await request('/v1/models',undefined,'i')).data[0].id,testTariff.model);
-  const payer=Keypair.fromSeed(new Uint8Array(32).fill(1)).publicKey.toBase58(),roles={payer,uploader:payer,feePayer:payer,rentPayer:payer,tokenOwner:payer};
+  const payer=(await fixtureSigner(new Uint8Array(32).fill(1))).address,roles={payer,uploader:payer,feePayer:payer,rentPayer:payer,tokenOwner:payer};
   await request('/admin/wallet',{action:'deposit',amount:'5000000',roles});
   // Abruptly kill only the Go supervisor while its SDK owns the journal lock
   // and the first transaction remains unknown. Pipe EOF must stop that SDK so

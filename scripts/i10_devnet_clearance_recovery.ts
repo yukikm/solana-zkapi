@@ -5,7 +5,8 @@ import assert from 'node:assert/strict';
 import {createHash} from 'node:crypto';
 import {setTimeout as delay} from 'node:timers/promises';
 import {isDeepStrictEqual} from 'node:util';
-import {VersionedTransaction, type Connection} from '@solana/web3.js';
+import {getCompiledTransactionMessageEncoder,type Rpc,type SolanaRpcApi} from '@solana/kit';
+import {decodeTransaction,transactionMessage} from '../packages/sdk/src/solana.ts';
 import {validateNoteJournal, type NoteJournal} from '../packages/sdk/src/control.ts';
 import {parseField} from '../packages/sdk/src/encoding.ts';
 import type {EncryptedJournal} from '../packages/sdk/src/journal.ts';
@@ -28,7 +29,7 @@ export interface DevnetClearanceRecoveryContext {
   /** Caller opens the existing pre-AUTH journal. Missing state must fail, not import. */
   staleJournal: EncryptedJournal<NoteJournal>;
   chain: WalletChain;
-  connection: Pick<Connection, 'getGenesisHash'>;
+  connection: Pick<Rpc<SolanaRpcApi>, 'getGenesisHash'>;
   wallets: readonly V0Wallet[];
   roles: WalletRoles;
   pinnedFetch: typeof fetch;
@@ -40,9 +41,10 @@ export interface DevnetClearanceRecoveryContext {
 
 /** Structural identity guard, independently testable without proving or RPC.
  * Native inspect supplies the nullifier after validating the private state. */
-export function verifyClearanceRecoveryIdentity(main: NoteJournal, stale: NoteJournal,
-  manifest: VerifiedManifest, nullifier: string): void {
-  validateNoteJournal(main); validateNoteJournal(stale); parseField(nullifier);
+export async function verifyClearanceRecoveryIdentity(main: NoteJournal, stale: NoteJournal,
+  manifest: VerifiedManifest, nullifier: string): Promise<void> {
+  main=structuredClone(main);stale=structuredClone(stale);
+  await validateNoteJournal(main); await validateNoteJournal(stale); parseField(nullifier);
   assert.ok(main.witness && stale.witness, 'existing full witnesses required');
   assert.ok(main.wallet?.status === 'active' && !main.wallet.operation, 'main financial operation must remain inactive');
   assert.equal(main.history.length, 0, 'settled authorization is not this recovery case');
@@ -109,7 +111,7 @@ export async function verifyCompletedMutualAttempts(completed: WalletOperation, 
       assert.ok(Number.isSafeInteger(height) && height >= 0, 'invalid finalized block height');
       return height;
     }}, false);
-    const message = VersionedTransaction.deserialize(Buffer.from(attempt.wireHex, 'hex')).message;
+    const message = decodeTransaction(Buffer.from(attempt.wireHex, 'hex')).messageBytes;
     observed.push({attempt, index, result, height, message});
   }
   const successes = observed.filter(o => o.result.state === 'finalized');
@@ -120,8 +122,8 @@ export async function verifyCompletedMutualAttempts(completed: WalletOperation, 
     const slot = o.result.slot;
     const step = plan.steps[stepIndex];
     assert.equal(o.attempt.kind, step.kind, 'finalized plan step order differs');
-    assert.ok(Buffer.from(o.message.serialize()).equals(Buffer.from(
-      compileV0(step.instruction, plan.feePayer, o.attempt.blockhash, plan.priorityFeeMicroLamports).message.serialize())),
+    assert.ok(Buffer.from(o.message).equals(Buffer.from(
+      compileV0(step.instruction, plan.feePayer, o.attempt.blockhash, plan.priorityFeeMicroLamports).messageBytes)),
     'finalized instruction or append offset differs');
     assert.equal(completed.finalized.filter(r => r.signature === o.attempt.signature && r.slot === slot).length, 1,
       'exact finalized receipt missing from journal');
@@ -142,9 +144,9 @@ export async function verifyCompletedMutualAttempts(completed: WalletOperation, 
         || next.attempt.buffer !== old.attempt.buffer || next.attempt.planDigest !== old.attempt.planDigest
         || next.attempt.blockhash === old.attempt.blockhash
         || next.attempt.lastValidBlockHeight <= old.attempt.lastValidBlockHeight) return false;
-      const normalized = VersionedTransaction.deserialize(Buffer.from(next.attempt.wireHex,'hex')).message;
-      normalized.recentBlockhash = old.attempt.blockhash;
-      return Buffer.from(normalized.serialize()).equals(Buffer.from(old.message.serialize()));
+      const normalized = transactionMessage(decodeTransaction(Buffer.from(next.attempt.wireHex,'hex')));
+      const changed={...normalized,lifetimeToken:old.attempt.blockhash};
+      return Buffer.from(getCompiledTransactionMessageEncoder().encode(changed)).equals(Buffer.from(old.message));
     });
     assert.ok(replacementIndex >= 0, 'expired upload requires a later finalized identical-step replacement');
     if (replacementIndex > 0) assert.ok(successes[replacementIndex - 1].index < old.index,
@@ -166,7 +168,7 @@ export async function runDevnetClearanceRecovery(o: DevnetClearanceRecoveryConte
   assert.equal(m.challenge_seconds, '600');
   assert.ok(o.journal !== o.staleJournal, 'separate existing journals required');
   const owner = o.roles.tokenOwner;
-  assert.ok(owner && o.wallets.some(w => w.publicKey.toBase58() === owner));
+  assert.ok(owner && o.wallets.some(w => w.publicKey === owner));
   for (const role of Object.values(o.roles)) assert.equal(role, owner, 'same-owner bounded test only');
   const waitMs = o.waitMs ?? 600_000;
   assert.ok(Number.isSafeInteger(waitMs) && waitMs > 0 && waitMs <= 600_000);
@@ -182,8 +184,8 @@ export async function runDevnetClearanceRecovery(o: DevnetClearanceRecoveryConte
     };
     try {
       const identity = await o.prover.inspect(structuredClone(stale.witness), structuredClone(stale.state));
-      verifyClearanceRecoveryIdentity(main, stale, m, identity.nullifier);
-      assert.equal(await o.connection.getGenesisHash(), DEVNET);
+      await verifyClearanceRecoveryIdentity(main, stale, m, identity.nullifier);
+      assert.equal(await o.connection.getGenesisHash().send(), DEVNET);
       const initialAttempts = structuredClone(stale.wallet!.operation?.attempts ?? stale.wallet!.history[0]?.attempts ?? []);
       let operationId = stale.wallet!.operation?.id ?? stale.wallet!.history[0]?.id;
       const rpc = o.rpcFor(o.staleJournal);
@@ -198,7 +200,7 @@ export async function runDevnetClearanceRecovery(o: DevnetClearanceRecoveryConte
       for (;;) {
         await unchanged();
         stale = (await o.staleJournal.read(NOTE))!.value;
-        verifyClearanceRecoveryIdentity(main, stale, m, identity.nullifier);
+        await verifyClearanceRecoveryIdentity(main, stale, m, identity.nullifier);
         const operation = stale.wallet!.operation ?? stale.wallet!.history[0];
         assert.ok(operation, 'saved mutual close required');
         operationId ??= operation.id; assert.equal(operation.id, operationId);

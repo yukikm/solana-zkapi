@@ -6,17 +6,18 @@ No supported public production bundle or npm release is advertised yet.
 
 ## 1. Install the SDK in your own repository
 
-Obtain an independently reviewed `zkapi-solana-sdk-0.1.0.tgz` and verify its
+Obtain an independently reviewed `zkapi-solana-sdk-0.2.0-devnet.1.tgz` and verify its
 published SHA256 through your trusted distribution channel. Then install it in
 your application with Node 24.19.0/npm 11.9.0:
 
 ```sh
-npm install --save-exact /absolute/path/zkapi-solana-sdk-0.1.0.tgz
+npm install --save-exact /absolute/path/zkapi-solana-sdk-0.2.0-devnet.1.tgz @solana/kit@8.4.0
 ```
 
 The package contains compiled ES modules and TypeScript declarations. No source
 checkout or demo UI is required. Keep the tarball in your artifact store or
 repository when using a file dependency so a clean install can retrieve it.
+For upgrades, read the [native Kit migration guide](kit-migration.md).
 See [building and checking the distribution](../../packages/sdk/DISTRIBUTION.md).
 Bundle `@zkapi/solana-sdk/prover-worker` as a browser module worker; public proof
 artifacts and the independently pinned WASM are separate deployment inputs.
@@ -28,7 +29,7 @@ operator; the browser does not need the operator's API key.
 ## 2. Configure the deployment once
 
 Your app supplies a `ClientDeployment`: raw manifest bytes, an independently
-installed trust policy, public proof/IDL artifacts, an RPC `Connection` and an
+installed trust policy, public proof/IDL artifacts, an Kit `Rpc<SolanaRpcApi>` and an
 indexer origin. The [deployment guide](deployment.md) explains every input and
 the example loader. End users do not enter these pins.
 
@@ -36,11 +37,14 @@ Select a Wallet Standard wallet and connected account in your UI, then adapt
 that exact account. Do not automatically select the first installed wallet.
 
 ```ts
+import { createSolanaRpc } from '@solana/kit';
 import { createBrowserClient, walletStandardAdapter } from '@zkapi/solana-sdk/browser';
 
+// rpcUrl is a reviewed browser-safe endpoint; no wallet/provider secrets.
+const connection = createSolanaRpc(rpcUrl);
 const wallet = walletStandardAdapter(selectedWallet, selectedAccount, 'solana:devnet');
 const { client, dispose } = await createBrowserClient({
-  deployment,                 // reviewed app configuration; see deployment guide
+  deployment: { ...deployment, connection }, // reviewed pins and assets
   wallet,
   noteId: 'primary',          // keep stable across reloads
   storageName: 'my-chat-v1',   // keep the browser origin and this name stable

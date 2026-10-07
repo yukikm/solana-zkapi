@@ -1,3 +1,10 @@
+import {decodeRpcAccount} from '../src/solana-rpc.ts';
+import {createSolanaRpcWithFetch} from '../src/solana.ts';
+import {transactionSignature} from '../src/solana.ts';
+import {fixtureSigner, signWith, decodeTransaction, kitAddress} from './kit-helpers.ts';
+/** I10 local full lifecycle. The Rust integration test supplies the real control
+ * App/PostgreSQL/signerd/dispatcherd. Only provider wire and finality are fixtures.
+ * stdout is a private JSON protocol to that test; never print note/key material. */
 /** I10 local full lifecycle. The Rust integration test supplies the real control
  * App/PostgreSQL/signerd/dispatcherd. Only provider wire and finality are fixtures.
  * stdout is a private JSON protocol to that test; never print note/key material. */
@@ -11,7 +18,7 @@ import {mkdtemp, rm, readdir, readFile} from 'node:fs/promises';
 import {tmpdir} from 'node:os';
 import {join, resolve} from 'node:path';
 import {createHash} from 'node:crypto';
-import {Connection, Keypair, PublicKey, VersionedTransaction} from '@solana/web3.js';
+
 import bs58 from 'bs58';
 import {WalletClient} from '../src/wallet.ts';
 import {SolanaWalletChain} from '../src/wallet-chain.ts';
@@ -224,17 +231,19 @@ try {
   const key=await importJournalKey(crypto.getRandomValues(new Uint8Array(32)));
   const open=async()=>new EncryptedJournal<NoteJournal>(await NativeJournalStore.open(directory),key,{deploymentId:manifest.deployment_id,pool:manifest.pool},validateNoteJournal);
   let journal=await open();
-  const connection=new Connection(origin+'/rpc');
+  const connection=createSolanaRpcWithFetch(origin+'/rpc', fetch);
+  const observedPool=await connection.getAccountInfo(kitAddress(manifest.pool),{encoding:"base64",commitment:"finalized"}).send();
+  const pool={context:{slot:Number(observedPool.context.slot)},value:decodeRpcAccount(observedPool.value)};
   const chain=new SolanaWalletChain(connection,manifest,origin,{allowLoopbackHttp:true});
-  const pool=(await connection.getAccountInfoAndContext(new (await import('@solana/web3.js')).PublicKey(manifest.pool),'finalized'));
-  const context=await verifiedClientContext(manifest,manifest.genesis_hash,{address:manifest.pool,owner:pool.value!.owner.toBase58(),executable:pool.value!.executable,lamports:BigInt(pool.value!.lamports),data:pool.value!.data,slot:BigInt(pool.context.slot),commitment:'finalized'},0n,artifacts);
-  const pair=Keypair.fromSeed(new Uint8Array(32).fill(1));
-  const wallet:V0Wallet={publicKey:pair.publicKey,supportedTransactionVersions:new Set([0]),async signTransaction(tx){tx.sign([pair]);return tx;}};
-  const address=pair.publicKey.toBase58(),roles={payer:address,uploader:address,feePayer:address,rentPayer:address,tokenOwner:address};
+
+  const context=await verifiedClientContext(manifest,manifest.genesis_hash,{address:manifest.pool,owner:pool.value!.owner,executable:pool.value!.executable,lamports:BigInt(pool.value!.lamports),data:pool.value!.data,slot:BigInt(pool.context.slot),commitment:'finalized'},0n,artifacts);
+  const pair=(await fixtureSigner(new Uint8Array(32).fill(1)));
+  const wallet:V0Wallet={publicKey:pair.address,supportedTransactionVersions:new Set([0]),async signTransaction(tx){tx = await signWith(tx, [pair]);return tx;}};
+  const address=pair.address,roles={payer:address,uploader:address,feePayer:address,rentPayer:address,tokenOwner:address};
   let loseSend=true;
   const sends:string[]=[];
   const rpc:TransportRpc={signatureStatus:async()=>null,finalizedBlockHeight:async()=>100,finalizedReceipt:async(signature)=>{const v=await call({kind:'receipt',signature});return v?{...v,message:new Uint8Array(Buffer.from(v.message,'base64'))}:null;},sendRawTransaction:async(bytes)=>{
-    const signature=bs58.encode(VersionedTransaction.deserialize(bytes).signatures[0]);
+    const signature=transactionSignature(decodeTransaction(bytes));
     const r=(await journal.read('note'))!;
     assert.ok(r.value.wallet!.operation!.attempts.some(a=>a.signature===signature&&a.wireHex===Buffer.from(bytes).toString('hex')),'persist exact signed bytes before execution');
     sends.push(signature);const result=await call({kind:'send',base64:Buffer.from(bytes).toString('base64')});
@@ -337,16 +346,16 @@ try {
   const directTariff=(configuration.tariffs as Tariff[]).find(t=>t.provider==='oa')!;
   const directQuote=await client.quote({mode:'direct_oa',provider:'oa',models:['*'],session_ttl_seconds:'60'},directTariff);
   const refusedPrepared=await prover.prepareSession(witness,raceBefore.state,raceSnapshot.root,raceSnapshot.siblings,directQuote,directTariff,await createCredentials('direct_oa'));
-  const destination=new PublicKey(new Uint8Array(32).fill(7));
+  const destination=kitAddress(new Uint8Array(32).fill(7));
   const escapeAuth=await prover.withdrawal(witness,raceBefore.state,raceSnapshot.root,raceSnapshot.siblings,destination,null);
   assert.equal(escapeAuth.public_inputs[11],racePrepared.request.public_inputs[8],'escape consumes the accepted authorization nullifier');
   const raceNote={note_id:witness.note_id,registration_commitment:raceSnapshot.note!.registration_commitment,deposit_micro_usdc:witness.deposit_micro_usdc,expiry:witness.expiry};
   const escapeTree=await prover.tree(raceNote,raceSnapshot.root,raceSnapshot.siblings,1);
-  const programId=new PublicKey(manifest.program_id),poolId=new PublicKey(manifest.pool),mint=new PublicKey(manifest.mint);
-  const escapePlan=await buildUploadPlan({programId,pool:poolId,uploader:pair.publicKey,rentPayer:pair.publicKey,feePayer:pair.publicKey,nonce:crypto.getRandomValues(new Uint8Array(32)),expires:BigInt(raceSnapshot.clock)+3600n,operation:'initiate_escape',payload:encodeLayout2Args({operation:'initiate_escape',auth:escapeAuth,tree:escapeTree}),snapshot:{slot:raceSnapshot.slot,sequence:BigInt(raceSnapshot.sequence)},financial:vaultAccounts({programId,pool:poolId,mint,payer:pair.publicKey,noteId:witness.note_id,operation:'initiate_escape',destinationOwner:destination,nullifier:parseField(escapeAuth.public_inputs[11])})});
+  const programId=kitAddress(manifest.program_id),poolId=kitAddress(manifest.pool),mint=kitAddress(manifest.mint);
+  const escapePlan=await buildUploadPlan({programId,pool:poolId,uploader:pair.address,rentPayer:pair.address,feePayer:pair.address,nonce:crypto.getRandomValues(new Uint8Array(32)),expires:BigInt(raceSnapshot.clock)+3600n,operation:'initiate_escape',payload:encodeLayout2Args({operation:'initiate_escape',auth:escapeAuth,tree:escapeTree}),snapshot:{slot:raceSnapshot.slot,sequence:BigInt(raceSnapshot.sequence)},financial:(await vaultAccounts({programId,pool:poolId,mint,payer:pair.address,noteId:witness.note_id,operation:'initiate_escape',destinationOwner:destination,nullifier:parseField(escapeAuth.public_inputs[11])}))});
   const attemptJournal=new EncryptedJournal<Attempt>(await NativeJournalStore.open(directory),key,{deploymentId:manifest.deployment_id,pool:manifest.pool},(value:unknown):asserts value is Attempt=>{assert.equal((value as Attempt)?.schema,1);assert.equal(typeof(value as Attempt)?.signature,'string');});
   const raceRpc:TransportRpc={...rpc,sendRawTransaction:async(bytes)=>{
-    const signature=bs58.encode(VersionedTransaction.deserialize(bytes).signatures[0]);
+    const signature=transactionSignature(decodeTransaction(bytes));
     const saved=await attemptJournal.read('race-'+signature);assert.equal(saved!.value.wireHex,hex(bytes),'persist exact signed race transaction before sending');
     return (await call({kind:'send',base64:Buffer.from(bytes).toString('base64')})).signature;
   }};
@@ -363,7 +372,7 @@ try {
   const escaped=await chain.snapshot(witness.note_id,'zero');
   assert.equal(escaped.note!.status,'pending_escape');assert.equal(escaped.pending!.nullifier,escapeAuth.public_inputs[11]);
   assert.equal(escaped.pending!.balance_micro_usdc,raceBefore.state.balance_micro_usdc);assert.notEqual(escaped.root,raceSnapshot.root);
-  const exitAddress=escapePlan.financial.exit,exitBeforeChallenge=await connection.getAccountInfo(exitAddress,'finalized');
+  const exitAddress=escapePlan.financial.exit,exitBeforeChallenge=decodeRpcAccount((await connection.getAccountInfo(exitAddress,{encoding:'base64',commitment:'finalized'}).send()).value);
   assert.ok(exitBeforeChallenge);assert.equal(exitBeforeChallenge.data.length,11);assert.equal(exitBeforeChallenge.data[10],1);
   const raceOperation=crypto.randomUUID(),raceBody=caseBody(caseDefinition('chat_escape_blocked','/v1/chat/completions'), 'i10-model');
   await client.prepareOperation('note',raceOperation,'/v1/chat/completions',raceBody);
@@ -377,7 +386,7 @@ try {
   const challenge=await challengePlan({programId:manifest.program_id,pool:manifest.pool,mint:manifest.mint,payer:address,noteId:witness.note_id,payloadHex:hex(challengePayload),nonceHex:hex(crypto.getRandomValues(new Uint8Array(32))),expires:(BigInt(escaped.clock)+3600n).toString(),slot:escaped.slot,sequence:escaped.sequence});
   const challengeSignatures=await sendPlan(challenge),restored=await chain.snapshot(witness.note_id,'active');
   assert.equal(restored.root,raceSnapshot.root);assert.equal(restored.pending,undefined);assert.equal(restored.note!.status,'active');
-  assert.deepEqual((await connection.getAccountInfo(exitAddress,'finalized'))!.data,exitBeforeChallenge.data,'the consumed nullifier tombstone survives a successful challenge');
+  assert.deepEqual((decodeRpcAccount((await connection.getAccountInfo(exitAddress,{encoding:'base64',commitment:'finalized'}).send()).value))!.data,exitBeforeChallenge.data,'the consumed nullifier tombstone survives a successful challenge');
   await client.close('note');
   journal=await open();client=new ControlClient(options());
   for(let i=0;(await journal.read('note'))!.value.pending&&i<100;i++){await new Promise(r=>setTimeout(r,30));await client.recover('note');}
@@ -388,7 +397,7 @@ try {
   assert.equal(raceReceipt.operation_id,raceOperation);assert.equal(raceReceipt.evidence_kind,'NOT_DISPATCHED');assert.equal(raceReceipt.reason,'not_dispatched');assert.equal(raceReceipt.charged_nano_usdc,'0');
   assert.deepEqual(counts,providerBeforeRace);
   const exitRace={request_id:racePrepared.request.authorization.request_id,operation_id:raceOperation,rejected_issuance_request_id:refusedPrepared.request.authorization.request_id,accepted_real_request_proof:true,actual_sbf_escape:true,exit_nullifier_observed:true,proxy_status:blocked.status,direct_issuance_status:refused.status,direct_issuance_error:'exit_consumed',provider_calls:0,dispatch_attempts:0,escape_signatures:escapeSignatures,challenge_signatures:challengeSignatures,historical_request_root:raceSnapshot.root,challenge_zero_root:escaped.root,restored_root:restored.root,exact_accepted_request_proof_used:true,pending_cleared:true,exit_tombstone_preserved:true,receipt_evidence_kind:raceReceipt.evidence_kind,receipt_verified:true,signed_successor_verified:true,charge_micro_usdc:'0',challenger_daemon_joined:false,scope:'actual SBF race with SDK challenger plan; challenger daemon scheduling covered separately'};
-  await walletClient.beginWithdrawal('note','mutual_close',destination.toBase58(),roles);await drive();
+  await walletClient.beginWithdrawal('note','mutual_close',destination,roles);await drive();
   assert.equal((await journal.read('note'))!.value.wallet!.status,'closed');
   const chainReport=await call({kind:'report',name:'i10'});
   assert.equal(chainReport.vault_micro_usdc,0);assert.equal(chainReport.destination_micro_usdc,4999992);assert.equal(chainReport.treasury_micro_usdc,8);assert.equal(chainReport.source_micro_usdc,95000000);

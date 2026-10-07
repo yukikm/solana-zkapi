@@ -9,6 +9,17 @@ import {request} from 'node:http';
 import {startUiHost, configuredHost, loadProviderUi, GENESIS, type HostOptions} from './host.ts';
 import {jcsBytes, sha256Hex} from '../../packages/sdk/src/trust.ts';
 import {providerAcceptanceBody} from '../provider_acceptance_client.ts';
+import {AccountRole, address, createKeyPairSignerFromPrivateKeyBytes, getCompiledTransactionMessageDecoder, getCompiledTransactionMessageEncoder, getTransactionDecoder, getTransactionEncoder, partiallySignTransaction, type CompiledTransactionMessageWithLifetime, type Instruction, type TransactionMessageBytes, type V0CompiledTransactionMessage} from '@solana/kit';
+import {addressBytes, addressFromBytes} from '../../packages/sdk/src/solana.ts';
+const fixtureAddress = (value: number) => addressFromBytes(new Uint8Array(32).fill(value));
+async function rewriteSignedWire(wire: string, pair: CryptoKeyPair, change: (message: V0CompiledTransactionMessage & CompiledTransactionMessageWithLifetime) => V0CompiledTransactionMessage & CompiledTransactionMessageWithLifetime): Promise<string> {
+  const tx = getTransactionDecoder().decode(Buffer.from(wire, 'base64'));
+  const message = getCompiledTransactionMessageDecoder().decode(tx.messageBytes); assert.equal(message.version, 0);
+  if (message.version !== 0) throw Error('fixture requires v0');
+  const changed = {...tx, messageBytes: getCompiledTransactionMessageEncoder().encode(change(message)) as TransactionMessageBytes};
+  return Buffer.from(getTransactionEncoder().encode(await partiallySignTransaction([pair], changed))).toString('base64');
+}
+
 test('presentation assets use an exact route allowlist and preserve the live document without backend calls', async t => {
   const output = await mkdtemp(join(tmpdir(), 'zkapi-ui-demo-routes-')); t.after(() => rm(output, {recursive: true, force: true}));
   const content = {'index.html': '<main>live wallet</main>', 'app.js': '/* live app */', 'style.css': '/* live style */',
@@ -75,15 +86,14 @@ test('loopback host denies foreign origins, arbitrary provider/routes/batch RPC 
 });
 
 for (const commitment of [undefined, 'confirmed'] as const) test(`financial relay uses ${commitment ?? 'default'} preparation with exact signed v0, genesis, pool and fee guards`, async t => {
-  const {Keypair, PublicKey, TransactionInstruction} = await import('@solana/web3.js');
   const {compileV0, discriminator} = await import('../../packages/sdk/src/transport.ts');
   const {GENESIS} = await import('./host.ts');
   const output = await mkdtemp(join(tmpdir(), 'zkapi-ui-send-')); t.after(() => rm(output, {recursive: true, force: true}));
   for (const file of ['index.html', 'app.js', 'style.css']) await writeFile(join(output, file), 'fixture');
-  const pair = Keypair.fromSeed(new Uint8Array(32).fill(33)), program = new PublicKey(new Uint8Array(32).fill(34)), pool = new PublicKey(new Uint8Array(32).fill(35));
+  const pair = await createKeyPairSignerFromPrivateKeyBytes(new Uint8Array(32).fill(33)), program = fixtureAddress(34), pool = fixtureAddress(35);
   let genesis = GENESIS, fee: number|null = 5000;
   const forwarded: any[] = []; let historyCalls = 0;
-  const options: HostOptions = {port: 0, output, allowTransactions: true, preparationCommitment: commitment, manifest: {program_id: program.toBase58(), pool: pool.toBase58()} as any,
+  const options: HostOptions = {port: 0, output, allowTransactions: true, preparationCommitment: commitment, manifest: {program_id: program, pool: pool} as any,
     historyRpc: async () => { historyCalls++; throw Error('financial requests must not reach history RPC'); },
     rpc: async data => { const r = JSON.parse(data.toString()); let result: unknown;
       if (r.method === 'getGenesisHash') result = genesis; else if (r.method === 'getFeeForMessage') {
@@ -93,17 +103,15 @@ for (const commitment of [undefined, 'confirmed'] as const) test(`financial rela
       return {status: 200, bytes: Buffer.from(JSON.stringify({jsonrpc: '2.0', id: r.id, result}))}; }};
   const host = await startUiHost(options); t.after(() => host.close());
   options.preparationCommitment = commitment === 'confirmed' ? 'finalized' : 'confirmed';
-  const make = async (name = 'seal_payload', owner = program, boundPool = pool, sign = true) => { const tx = compileV0(new TransactionInstruction({programId: owner, keys: [{pubkey: pair.publicKey, isWritable: false, isSigner: false}, {pubkey: boundPool, isWritable: false, isSigner: false}, {pubkey: pair.publicKey, isWritable: false, isSigner: true}], data: Buffer.from(await discriminator(name))}), pair.publicKey, new PublicKey(new Uint8Array(32).fill(36)).toBase58()); if (sign) tx.sign([pair]); return Buffer.from(tx.serialize()).toString('base64'); };
+  const make = async (name = 'seal_payload', owner = program, boundPool = pool, sign = true) => { const tx = compileV0({programAddress: owner, accounts: [{address: pair.address, role: AccountRole.READONLY}, {address: boundPool, role: AccountRole.READONLY}, {address: pair.address, role: AccountRole.READONLY_SIGNER}], data: Buffer.from(await discriminator(name))}, pair.address, fixtureAddress(36)); return Buffer.from(getTransactionEncoder().encode(sign ? await partiallySignTransaction([pair.keyPair], tx) : tx)).toString('base64'); };
   const post = (wire: string) => fetch(host.origin + '/rpc', {method: 'POST', headers: {origin: host.origin, 'content-type': 'application/json'}, body: JSON.stringify({jsonrpc: '2.0', id: 1, method: 'sendTransaction', params: [wire, {encoding: 'base64', skipPreflight: true, maxRetries: 999}]})});
   const valid = await make();
   // A configured pool key present but unused by the actual Vault account slot must fail.
-  const {VersionedTransaction} = await import('@solana/web3.js');
-  const wrongPool = VersionedTransaction.deserialize(Buffer.from(await make('seal_payload', program, pair.publicKey), 'base64'));
-  wrongPool.message.staticAccountKeys.push(pool); wrongPool.sign([pair]);
-  assert.equal((await post(Buffer.from(wrongPool.serialize()).toString('base64'))).status, 400);
+  const wrongPool = await rewriteSignedWire(await make('seal_payload', program, pair.address), pair.keyPair, message => ({...message, staticAccounts: [...message.staticAccounts, pool], header: {...message.header, numReadonlyNonSignerAccounts: message.header.numReadonlyNonSignerAccounts + 1}}));
+  assert.equal((await post(wrongPool)).status, 400);
   genesis = 'mainnet-is-refused'; assert.equal((await post(valid)).status, 400); genesis = GENESIS;
   for (fee of [null, 10001]) assert.equal((await post(valid)).status, 400); fee = 5000;
-  for (const wire of [await make('initialize_pool'), await make('seal_payload', pair.publicKey), await make('seal_payload', program, pair.publicKey), await make('seal_payload', program, pool, false)]) assert.equal((await post(wire)).status, 400);
+  for (const wire of [await make('initialize_pool'), await make('seal_payload', fixtureAddress(37)), await make('seal_payload', program, pair.address), await make('seal_payload', program, pool, false)]) assert.equal((await post(wire)).status, 400);
   assert.equal(forwarded.length, 0);
   assert.equal((await post(valid)).status, 200); assert.equal(forwarded.length, 1);
   assert.equal(forwarded[0].params[0], valid); assert.deepEqual(forwarded[0].params[1], {encoding: 'base64', skipPreflight: false, preflightCommitment: commitment ?? 'finalized', maxRetries: 0});
@@ -118,22 +126,21 @@ test('invalid preparation commitment fails before file reads, RPC or listener st
 });
 
 test('escape relay forwards SDK upload and finalization bytes while retaining financial send guards', async t => {
-  const {Keypair, PublicKey, TransactionInstruction, VersionedTransaction} = await import('@solana/web3.js');
   const {buildUploadPlan, compileV0, finalizeEscape, vaultAccounts} = await import('../../packages/sdk/src/transport.ts');
   const output = await mkdtemp(join(tmpdir(), 'zkapi-ui-escape-')); t.after(() => rm(output, {recursive: true, force: true}));
   for (const file of ['index.html', 'app.js', 'style.css']) await writeFile(join(output, file), 'fixture');
-  const payer = Keypair.fromSeed(new Uint8Array(32).fill(71));
-  const programId = new PublicKey(new Uint8Array(32).fill(72)), pool = new PublicKey(new Uint8Array(32).fill(73));
-  const mint = new PublicKey(new Uint8Array(32).fill(74)), blockhash = new PublicKey(new Uint8Array(32).fill(75)).toBase58();
-  const plan = await buildUploadPlan({programId, pool, uploader: payer.publicKey, rentPayer: payer.publicKey, feePayer: payer.publicKey,
+  const payer = await createKeyPairSignerFromPrivateKeyBytes(new Uint8Array(32).fill(71));
+  const programId = fixtureAddress(72), pool = fixtureAddress(73);
+  const mint = fixtureAddress(74), blockhash = fixtureAddress(75);
+  const plan = await buildUploadPlan({programId, pool, uploader: payer.address, rentPayer: payer.address, feePayer: payer.address,
     nonce: new Uint8Array(32).fill(76), expires: 2000n, operation: 'initiate_escape', payload: new Uint8Array(1312),
-    financial: vaultAccounts({programId, pool, mint, noteId: 7, payer: payer.publicKey, operation: 'initiate_escape',
-      destinationOwner: payer.publicKey, nullifier: new Uint8Array(32).fill(77)}), snapshot: {slot: 1, sequence: 1n}});
-  const finalize = await finalizeEscape(programId, vaultAccounts({programId, pool, mint, noteId: 7, payer: payer.publicKey,
-    operation: 'finalize_escape', destinationOwner: payer.publicKey, treasuryOwner: payer.publicKey}), 7);
+    financial: await vaultAccounts({programId, pool, mint, noteId: 7, payer: payer.address, operation: 'initiate_escape',
+      destinationOwner: payer.address, nullifier: new Uint8Array(32).fill(77)}), snapshot: {slot: 1, sequence: 1n}});
+  const finalize = await finalizeEscape(programId, await vaultAccounts({programId, pool, mint, noteId: 7, payer: payer.address,
+    operation: 'finalize_escape', destinationOwner: payer.address, treasuryOwner: payer.address}), 7);
   let genesis = GENESIS, fee: number | null = 5000;
   const forwarded: any[] = [];
-  const host = await startUiHost({port: 0, output, allowTransactions: true, manifest: {program_id: programId.toBase58(), pool: pool.toBase58()} as any,
+  const host = await startUiHost({port: 0, output, allowTransactions: true, manifest: {program_id: programId, pool: pool} as any,
     rpc: async data => {
       const r = JSON.parse(data.toString());
       const result = r.method === 'getGenesisHash' ? genesis : r.method === 'getFeeForMessage' ? {context: {slot: 1}, value: fee}
@@ -141,39 +148,37 @@ test('escape relay forwards SDK upload and finalization bytes while retaining fi
       assert.notEqual(result, undefined);
       return {status: 200, bytes: Buffer.from(JSON.stringify({jsonrpc: '2.0', id: r.id, result}))};
     }}); t.after(() => host.close());
-  const wire = (instruction: InstanceType<typeof TransactionInstruction>, sign = true) => {
-    const tx = compileV0(instruction, payer.publicKey, blockhash); if (sign) tx.sign([payer]);
-    return Buffer.from(tx.serialize()).toString('base64');
+  const wire = async (instruction: Instruction, sign = true) => {
+    const tx = compileV0(instruction, payer.address, blockhash);
+    return Buffer.from(getTransactionEncoder().encode(sign ? await partiallySignTransaction([payer.keyPair], tx) : tx)).toString('base64');
   };
   const post = (bytes: string, origin = host.origin) => fetch(host.origin + '/rpc', {method: 'POST', headers: {origin, 'content-type': 'application/json'},
     body: JSON.stringify({jsonrpc: '2.0', id: 1, method: 'sendTransaction', params: [bytes, {encoding: 'base64', skipPreflight: true, maxRetries: 10}]})});
   for (const step of [...plan.steps, finalize]) {
-    const bytes = wire(step.instruction);
+    const bytes = await wire(step.instruction);
     assert.equal((await post(bytes)).status, 200, step.kind);
     assert.equal(forwarded.at(-1).params[0], bytes);
     assert.deepEqual(forwarded.at(-1).params[1], {encoding: 'base64', skipPreflight: false, preflightCommitment: 'finalized', maxRetries: 0});
   }
-  const count = forwarded.length, finalizedWire = wire(finalize.instruction);
+  const count = forwarded.length, finalizedWire = await wire(finalize.instruction);
   for (const operation of [3, 4, 255]) {
-    const data = Buffer.from(plan.steps[0].instruction.data); data[8] = operation;
-    assert.equal((await post(wire(new TransactionInstruction({...plan.steps[0].instruction, data})))).status, 400);
+    const data = Buffer.from(plan.steps[0].instruction.data!); data[8] = operation;
+    assert.equal((await post(await wire({...plan.steps[0].instruction, data}))).status, 400);
   }
   // Presence elsewhere in the message is insufficient: finalize uses account zero.
-  const wrongPool = VersionedTransaction.deserialize(Buffer.from(finalizedWire, 'base64'));
-  const ix = wrongPool.message.compiledInstructions.at(-1)!;
-  ix.accountKeyIndexes[0] = 0; wrongPool.sign([payer]);
-  assert.equal((await post(Buffer.from(wrongPool.serialize()).toString('base64'))).status, 400);
-  for (const data of [finalize.instruction.data.subarray(0, 11), Buffer.concat([finalize.instruction.data, Buffer.of(0)])])
-    assert.equal((await post(wire(new TransactionInstruction({...finalize.instruction, data})))).status, 400);
-  assert.equal((await post(wire(finalize.instruction, false))).status, 400);
+  const wrongPool = await rewriteSignedWire(finalizedWire, payer.keyPair, message => ({...message, instructions: message.instructions.map((ix, i, all) => i === all.length - 1 ? {...ix, accountIndices: [0, ...ix.accountIndices!.slice(1)]} : ix)}));
+  assert.equal((await post(wrongPool)).status, 400);
+  for (const data of [finalize.instruction.data!.subarray(0, 11), Buffer.concat([finalize.instruction.data!, Buffer.of(0)])])
+    assert.equal((await post(await wire({...finalize.instruction, data}))).status, 400);
+  assert.equal((await post(await wire(finalize.instruction, false))).status, 400);
   assert.equal((await post(finalizedWire, 'https://foreign.invalid')).status, 400);
   genesis = 'not-devnet'; assert.equal((await post(finalizedWire)).status, 400); genesis = GENESIS;
   for (fee of [null, 10001]) assert.equal((await post(finalizedWire)).status, 400);
   assert.equal(forwarded.length, count);
   let readOnlyCalls = 0;
-  const readOnly = await startUiHost({port: 0, output, manifest: {program_id: programId.toBase58(), pool: pool.toBase58()} as any,
+  const readOnly = await startUiHost({port: 0, output, manifest: {program_id: programId, pool: pool} as any,
     rpc: async () => { readOnlyCalls++; throw Error('read-only host must not submit escape'); }}); t.after(() => readOnly.close());
-  for (const bytes of [wire(plan.steps[0].instruction), finalizedWire]) {
+  for (const bytes of [await wire(plan.steps[0].instruction), finalizedWire]) {
     const response = await fetch(readOnly.origin + '/rpc', {method: 'POST', headers: {origin: readOnly.origin, 'content-type': 'application/json'},
       body: JSON.stringify({jsonrpc: '2.0', id: 1, method: 'sendTransaction', params: [bytes, {encoding: 'base64'}]})});
     assert.equal(response.status, 400);
@@ -182,7 +187,6 @@ test('escape relay forwards SDK upload and finalization bytes while retaining fi
 });
 
 test('compact relay accepts exact SDK wire only for authenticated compact build capability', async t => {
-  const {Keypair, PublicKey, TransactionInstruction, VersionedTransaction} = await import('@solana/web3.js');
   const {buildInlineDepositPlan, compileV0, vaultAccounts} = await import('../../packages/sdk/src/transport.ts');
   const {encodeLayout2Args} = await import('../../packages/sdk/src/layout2.ts');
   const {vaultBinding} = await import('../../packages/sdk/src/encoding.ts');
@@ -192,22 +196,22 @@ test('compact relay accepts exact SDK wire only for authenticated compact build 
   const idl = await readFile('docs/contracts/zkapi_vault.json');
   const output = await mkdtemp(join(tmpdir(), 'zkapi-ui-compact-')); t.after(() => rm(output, {recursive: true, force: true}));
   for (const file of ['index.html', 'app.js', 'style.css']) await writeFile(join(output, file), 'fixture');
-  const payer = Keypair.fromSeed(new Uint8Array(32).fill(81));
-  const programId = new PublicKey(JSON.parse(idl.toString()).address), pool = new PublicKey(new Uint8Array(32).fill(82));
-  const mint = new PublicKey('4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU');
-  const token = new PublicKey('TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA');
-  const binding = await vaultBinding(new PublicKey(GENESIS).toBytes(), programId.toBytes(), pool.toBytes(), token.toBytes(), mint.toBytes());
+  const payer = await createKeyPairSignerFromPrivateKeyBytes(new Uint8Array(32).fill(81));
+  const programId = address(JSON.parse(idl.toString()).address), pool = fixtureAddress(82);
+  const mint = address('4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU');
+  const token = address('TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA');
+  const binding = await vaultBinding(addressBytes(address(GENESIS)), addressBytes(programId), addressBytes(pool), addressBytes(token), addressBytes(mint));
   const raw = {...profile, deployment_id: 'compact-relay-fixture', deployment_environment: 'devnet',
     manifest_hash: '00'.repeat(32), manifest_signature: Buffer.alloc(64).toString('base64'), genesis_hash: GENESIS,
-    program_id: programId.toBase58(), pool: pool.toBase58(), mint: mint.toBase58(), token_program: token.toBase58(), decimals: 6,
+    program_id: programId, pool: pool, mint: mint, token_program: token, decimals: 6,
     vault_binding: binding, state_key: {x: fixture.auth.escape.public_inputs[4], y: fixture.auth.escape.public_inputs[5]},
     clearance_key: {x: fixture.auth.escape.public_inputs[6], y: fixture.auth.escape.public_inputs[7]},
-    quote_public_key: payer.publicKey.toBase58(), receipt_public_key: new PublicKey(new Uint8Array(32).fill(83)).toBase58(),
+    quote_public_key: payer.address, receipt_public_key: fixtureAddress(83),
     transaction_formats: ['v0_buffer', 'v0_inline_deposit_v1'], cap_micro_usdc: '1000000', note_ttl_seconds: String(fixture.ttl),
     challenge_seconds: '86400', control_api_origin: 'https://control.example', inference_api_origin: 'https://inference.example',
     proving_keys_base_url: 'https://keys.example/keys', idl_hash: await sha256Hex(idl), api_endpoints: ['/zkapi/v1/config'],
     tariff_hashes: [], artifact_digests: {vault_idl: await sha256Hex(idl)}, db_schema_version: '2',
-    authorities: {admin: {kind: 'devnet_test_single_key', authority: payer.publicKey.toBase58()}, upgrade: {kind: 'devnet_test_single_key', authority: payer.publicKey.toBase58()}}};
+    authorities: {admin: {kind: 'devnet_test_single_key', authority: payer.address}, upgrade: {kind: 'devnet_test_single_key', authority: payer.address}}};
   raw.manifest_hash = await manifestDigest(raw);
   const policy = {anchor: {kind: 'hash' as const, sha256: raw.manifest_hash}, expected: {
     deployment_id: raw.deployment_id, deployment_environment: 'devnet' as const, genesis_hash: GENESIS, program_id: raw.program_id,
@@ -218,10 +222,10 @@ test('compact relay accepts exact SDK wire only for authenticated compact build 
   const manifest = await verifyManifest(jcsBytes(raw), policy);
   const tree = structuredClone(fixture.trees[0]); tree.public_inputs[0] = binding;
   const plan = await buildInlineDepositPlan({deploymentId: manifest.deployment_id, manifestHash: manifest.manifest_hash,
-    vaultBinding: binding, programId, pool, feePayer: payer.publicKey,
+    vaultBinding: binding, programId, pool, feePayer: payer.address,
     payload: encodeLayout2Args({operation: 'deposit', expectedId: 0, expectedRoot: tree.public_inputs[1], expiry: BigInt(fixture.expiry),
       commitment: '0x' + fixture.commitment, amount: BigInt(fixture.deposit), tree}),
-    financial: vaultAccounts({programId, pool, mint, noteId: 0, payer: payer.publicKey, tokenOwner: payer.publicKey, operation: 'deposit'}),
+    financial: await vaultAccounts({programId, pool, mint, noteId: 0, payer: payer.address, tokenOwner: payer.address, operation: 'deposit'}),
     snapshot: {slot: 1, sequence: 0n}, priorityFeeMicroLamports: 1n});
   const instruction = plan.steps[0].instruction;
   let genesis = GENESIS, fee: number | null = 5001;
@@ -233,25 +237,24 @@ test('compact relay accepts exact SDK wire only for authenticated compact build 
     assert.notEqual(result, undefined); return {status: 200, bytes: Buffer.from(JSON.stringify({jsonrpc: '2.0', id: r.id, result}))};
   };
   const host = await startUiHost({port: 0, output, allowTransactions: true, manifest, rpc}); t.after(() => host.close());
-  const wire = (ix = instruction, sign = true) => {
-    const tx = compileV0(ix, payer.publicKey, new PublicKey(new Uint8Array(32).fill(84)).toBase58(), 1n);
-    if (sign) tx.sign([payer]); return Buffer.from(tx.serialize()).toString('base64');
+  const wire = async (ix = instruction, sign = true) => {
+    const tx = compileV0(ix, payer.address, fixtureAddress(84), 1n);
+    return Buffer.from(getTransactionEncoder().encode(sign ? await partiallySignTransaction([payer.keyPair], tx) : tx)).toString('base64');
   };
   const post = (origin: string, bytes: string, caller = origin) => fetch(origin + '/rpc', {method: 'POST', headers: {origin: caller, 'content-type': 'application/json'},
     body: JSON.stringify({jsonrpc: '2.0', id: 1, method: 'sendTransaction', params: [bytes, {encoding: 'base64', skipPreflight: true, maxRetries: 10}]})});
-  const valid = wire(); assert.equal(Buffer.from(valid, 'base64').length, 1007);
+  const valid = await wire(); assert.equal(Buffer.from(valid, 'base64').length, 1007);
   assert.equal((await post(host.origin, valid)).status, 200);
   assert.equal(forwarded.length, 1); assert.equal(forwarded[0].params[0], valid);
   assert.deepEqual(forwarded[0].params[1], {encoding: 'base64', skipPreflight: false, preflightCommitment: 'finalized', maxRetries: 0});
-  const malformed = [instruction.data.subarray(0, 443), Buffer.concat([instruction.data, Buffer.of(0)])];
-  const zero = Buffer.from(instruction.data); zero.fill(0, 8 + 76, 8 + 84); malformed.push(zero);
-  for (const offset of [4, 44, 84, 116, 148]) { const bad = Buffer.from(instruction.data); bad.fill(255, 8 + offset, 8 + offset + 32); malformed.push(bad); }
-  for (const data of malformed) assert.equal((await post(host.origin, wire(new TransactionInstruction({...instruction, data})))).status, 400);
-  assert.equal((await post(host.origin, wire(new TransactionInstruction({...instruction, keys: instruction.keys.slice(0, -1)})))).status, 400);
-  const wrongPool = VersionedTransaction.deserialize(Buffer.from(valid, 'base64'));
-  wrongPool.message.compiledInstructions.at(-1)!.accountKeyIndexes[0] = 0; wrongPool.sign([payer]);
-  assert.equal((await post(host.origin, Buffer.from(wrongPool.serialize()).toString('base64'))).status, 400);
-  assert.equal((await post(host.origin, wire(instruction, false))).status, 400);
+  const malformed = [instruction.data!.subarray(0, 443), Buffer.concat([instruction.data!, Buffer.of(0)])];
+  const zero = Buffer.from(instruction.data!); zero.fill(0, 8 + 76, 8 + 84); malformed.push(zero);
+  for (const offset of [4, 44, 84, 116, 148]) { const bad = Buffer.from(instruction.data!); bad.fill(255, 8 + offset, 8 + offset + 32); malformed.push(bad); }
+  for (const data of malformed) assert.equal((await post(host.origin, await wire({...instruction, data}))).status, 400);
+  assert.equal((await post(host.origin, await wire({...instruction, accounts: instruction.accounts!.slice(0, -1)}))).status, 400);
+  const wrongPool = await rewriteSignedWire(valid, payer.keyPair, message => ({...message, instructions: message.instructions.map((ix, i, all) => i === all.length - 1 ? {...ix, accountIndices: [0, ...ix.accountIndices!.slice(1)]} : ix)}));
+  assert.equal((await post(host.origin, wrongPool)).status, 400);
+  assert.equal((await post(host.origin, await wire(instruction, false))).status, 400);
   assert.equal((await post(host.origin, valid, 'https://foreign.invalid')).status, 400);
   genesis = 'not-devnet'; assert.equal((await post(host.origin, valid)).status, 400); genesis = GENESIS;
   for (fee of [null, 10001]) assert.equal((await post(host.origin, valid)).status, 400); fee = 5001;

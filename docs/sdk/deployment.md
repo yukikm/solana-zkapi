@@ -69,10 +69,17 @@ in CSP. Control/indexer/inference endpoints need suitable CORS or a narrowly
 routed app relay. The reference app can use the bounded local devnet relay; hosted apps need their
 own reviewed CORS or relay configuration.
 
+Use `createSolanaRpc(reviewedRpcUrl)` from `@solana/kit` for the `connection`
+field. Every SDK financial read explicitly requests finalized commitment; Kit
+returns RPC integer fields as bigint. If the app requires an existing bounded
+fetch or relay, import `createSolanaRpcWithFetch` from
+`@zkapi/solana-sdk/transport` and supply that fetch. This helper uses Kit's
+lossless RPC codecs and does not retry requests.
+
 Custom `deployment.fetch` must preserve `credentials: 'omit'`, redirect refusal,
 abort signals, exact request bodies and the no-retry policy. Configure RPC
-transport separately through the supplied `Connection`; `deployment.fetch` does
-not replace `Connection`'s internal fetch. Do not attach chat-account cookies,
+transport separately through the supplied Kit RPC client; `deployment.fetch` does
+not replace the RPC client's transport. Do not attach chat-account cookies,
 private note IDs, wallet addresses or logs to control requests.
 
 Authorization downloads the pool-wide `/zkapi/v1/tree/snapshot` descriptor and

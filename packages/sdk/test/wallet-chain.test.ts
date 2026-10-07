@@ -2,27 +2,28 @@
  * no public network, transaction submission, or independent Merkle implementation. */
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
-import {Connection,PublicKey,SYSVAR_CLOCK_PUBKEY} from '@solana/web3.js';
+import {address,getAddressEncoder,getAddressDecoder,getProgramDerivedAddress,type Rpc,type SolanaRpcApi} from '@solana/kit';
+const SYSVAR_CLOCK_ADDRESS=address('SysvarC1ock11111111111111111111111111111111');
 import {SolanaWalletChain} from '../src/wallet-chain.ts';
 import {discriminator, type TransactionPreparationCommitment} from '../src/transport.ts';
 import {u32} from '../src/layout2.ts';
-import {chainFixture} from './chain-fixture.ts';
+import {chainFixture, fixtureRpc} from './chain-fixture.ts';
 
-const key=(n:number)=>new PublicKey(new Uint8Array(32).fill(n)).toBase58();
+const key=(n:number)=>getAddressDecoder().decode(new Uint8Array(32).fill(n));
 const field=(n:number)=>'0x'+BigInt(n).toString(16).padStart(64,'0');
 async function fixture(status:'active'|'pending'|'closed'|'deposit'='active',preparationCommitment?:TransactionPreparationCommitment){
   const {manifest,poolData}=await chainFixture();
-  const program=new PublicKey(manifest.program_id),pool=new PublicKey(manifest.pool);
-  const derive=(name:string,suffix?:Uint8Array)=>PublicKey.findProgramAddressSync([Buffer.from(name),pool.toBytes(),...(suffix?[suffix]:[])],program);
-  const [tree,treeBump]=derive('tree'),[note,noteBump]=derive('note',u32(0)),[pending,pendingBump]=derive('pending',u32(0));
-  const state={sourceSlot:100,targetSlot:110,minimum:0,sourceHash:key(8),targetHash:key(9),missingSource:false,missingTarget:false};
-  const root={pool:manifest.pool,root:field(1),slot:'100',blockhash:key(8),sequence:'7',next_note_id:status==='deposit'?'0':'1'};
+  const program=address(manifest.program_id),pool=address(manifest.pool);
+  const derive=(name:string,suffix?:Uint8Array)=>getProgramDerivedAddress({seeds:[Buffer.from(name),getAddressEncoder().encode(pool),...(suffix?[suffix]:[])],programAddress:program});
+  const [[tree,treeBump],[note,noteBump],[pending,pendingBump]]=await Promise.all([derive('tree'),derive('note',u32(0)),derive('pending',u32(0))]);
+  const state={sourceSlot:100,targetSlot:110,minimum:0,sourceHash:key(8) as string,targetHash:key(9) as string,missingSource:false,missingTarget:false};
+  const root={pool:manifest.pool,root:field(1),slot:'100',blockhash:key(8) as string,sequence:'7',next_note_id:status==='deposit'?'0':'1'};
   const account=(data:Buffer,owner=manifest.program_id)=>({owner,executable:false,lamports:1,rentEpoch:0,data});
   const bytes=async(name:string,length:number,bump:number)=>{const b=Buffer.alloc(length);b.set(await discriminator(name,'account'));b[8]=2;b[9]=bump;return b;};
   const poolAccount=account(poolData);
   const treeData=await bytes('TreeState',66,treeBump);treeData.set(Buffer.from(root.root.slice(2),'hex'),10);treeData.writeBigUInt64LE(BigInt(root.next_note_id),42);treeData.writeBigUInt64LE(7n,50);
   const noteData=await bytes('Note',63,noteBump);noteData.writeUInt32LE(0,10);noteData.set(Buffer.from(field(2).slice(2),'hex'),14);noteData.writeBigUInt64LE(100n,46);noteData.writeBigUInt64LE(3000000000n,54);noteData[62]=status==='pending'?2:status==='closed'?3:1;
-  const pendingData=await bytes('PendingWithdrawal',123,pendingBump);pendingData[10]=1;pendingData.set(Buffer.from(field(3).slice(2),'hex'),11);pendingData.set(Buffer.from(field(4).slice(2),'hex'),43);pendingData.writeBigUInt64LE(90n,75);pendingData.set(new PublicKey(key(11)).toBytes(),83);pendingData.writeBigUInt64LE(2500n,115);
+  const pendingData=await bytes('PendingWithdrawal',123,pendingBump);pendingData[10]=1;pendingData.set(Buffer.from(field(3).slice(2),'hex'),11);pendingData.set(Buffer.from(field(4).slice(2),'hex'),43);pendingData.writeBigUInt64LE(90n,75);pendingData.set(getAddressEncoder().encode(address(key(11))),83);pendingData.writeBigUInt64LE(2500n,115);
   const clock=Buffer.alloc(40);clock.writeBigUInt64LE(BigInt(state.targetSlot));clock.writeBigInt64LE(2600n,32);
   const accounts:(ReturnType<typeof account>|null)[]=[poolAccount,account(treeData),status==='deposit'?null:account(noteData),status==='pending'?account(pendingData):null,account(clock,'Sysvar1111111111111111111111111111111111111')];
   const calls:{method:string;params:any[]}[]=[];
@@ -35,17 +36,17 @@ async function fixture(status:'active'|'pending'|'closed'|'deposit'='active',pre
     if(method==='getLatestBlockhash')result={context:{slot:state.targetSlot},value:{blockhash:state.targetHash,lastValidBlockHeight:250}};
     else if(method==='getGenesisHash')result=manifest.genesis_hash;
     else if(method==='getBlock'){
-      assert.equal(params[1].commitment,'finalized');assert.equal(params[1].transactionDetails,'none');assert.equal(params[1].maxSupportedTransactionVersion,1,'mixed-block reader cap does not change v0 transaction transport');
+      assert.equal(params[1].commitment??'finalized','finalized');assert.equal(params[1].transactionDetails,'none');assert.equal(params[1].maxSupportedTransactionVersion,1,'mixed-block reader cap does not change v0 transaction transport');
       const source=params[0]===state.sourceSlot;
       result=(source?state.missingSource:state.missingTarget)?null:{blockhash:source?state.sourceHash:state.targetHash,previousBlockhash:key(7),parentSlot:params[0]-1,blockHeight:params[0],blockTime:2600};
     }else if(method==='getMultipleAccounts'){
-      assert.deepEqual(params[0],[pool,tree,note,pending,SYSVAR_CLOCK_PUBKEY].map(p=>p.toBase58()));
-      assert.equal(params[1].commitment,'finalized');state.minimum=params[1].minContextSlot;
+      assert.deepEqual(params[0],[pool,tree,note,pending,SYSVAR_CLOCK_ADDRESS]);
+      assert.equal(params[1].commitment??'finalized','finalized');state.minimum=params[1].minContextSlot;
       result={context:{slot:state.targetSlot},value:accounts.map(a=>a&&({...a,data:[a.data.toString('base64'),'base64']}))};
     }else throw Error('unexpected RPC '+method);
     return Response.json({jsonrpc:'2.0',id:request.id,result});
   };
-  const connection=new Connection('http://127.0.0.1:19890',{fetch:fetcher});
+  const connection=fixtureRpc(fetcher);
   const options={fetch:fetcher,allowLoopbackHttp:true,preparationCommitment};
   const chain=new SolanaWalletChain(connection,manifest,'http://127.0.0.1:19891',options);
   return {chain,state,root,accounts,calls,options};
@@ -62,13 +63,13 @@ test('confirmed blockhash preparation is opt-in and snapshotted while proof acco
     assert.equal(f.calls.filter(c=>c.method==='getMultipleAccounts').length,1);
   }
   for(const commitment of ['processed','recent',null,1]){
-    assert.throws(()=>new SolanaWalletChain({} as Connection,{} as never,'https://indexer.invalid',
+    assert.throws(()=>new SolanaWalletChain({} as Rpc<SolanaRpcApi>,{} as never,'https://indexer.invalid',
       {preparationCommitment:commitment as never}),/invalid transaction preparation commitment/);
   }
 });
 
 test('wallet snapshot promotes unchanged tree to one newer finalized account cut and propagates minimum slot',async()=>{
-  const f=await fixture();f.accounts[0]!.data[355]=1;f.accounts[0]!.data.set(new PublicKey(key(12)).toBytes(),171);
+  const f=await fixture();f.accounts[0]!.data[355]=1;f.accounts[0]!.data.set(getAddressEncoder().encode(address(key(12))),171);
   const s=await f.chain.snapshot(0,'active',105);
   assert.equal(f.state.minimum,105);assert.equal(s.slot,110);assert.equal(s.sequence,'7');assert.equal(s.root,f.root.root);
   assert.equal(s.clock,'2600');assert.equal(s.paused,true);assert.equal(s.treasuryOwner,key(12));assert.equal(s.note?.status,'active');

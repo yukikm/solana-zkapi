@@ -1,0 +1,163 @@
+{
+  "schema": 1,
+  "scope": "Exact public report copies and explicitly labeled reduced projections; raw logs and private state are excluded",
+  "copied_reports": [
+    {
+      "source": {
+        "path": "target/kit-migration/app-final/results.json",
+        "sha256": "650ec842f486daf26a4c5893da92a1b7e04b6e64fbcdaa41f924d50ff96fc189",
+        "bytes": 72237
+      },
+      "file": "app-sdk-results.json",
+      "sha256": "650ec842f486daf26a4c5893da92a1b7e04b6e64fbcdaa41f924d50ff96fc189"
+    },
+    {
+      "source": {
+        "path": "target/kit-migration/external-real-final/results.json",
+        "sha256": "6fda3fe741ffbfaa4e62532f4397664292817e8d6736f0e5a17aa0d2a1cba9ff",
+        "bytes": 9845
+      },
+      "file": "external-sdk-results.json",
+      "sha256": "6fda3fe741ffbfaa4e62532f4397664292817e8d6736f0e5a17aa0d2a1cba9ff"
+    },
+    {
+      "source": {
+        "path": "target/kit-migration/external-real/results.json",
+        "sha256": "f5884dc7b498eb6334c6d5cea1372d41401dd1a4c987c08840e15b9a9a0aa663",
+        "bytes": 5891
+      },
+      "file": "external-sdk-initial-failure.json",
+      "sha256": "f5884dc7b498eb6334c6d5cea1372d41401dd1a4c987c08840e15b9a9a0aa663"
+    },
+    {
+      "source": {
+        "path": "target/kit-migration/openclaw/results.json",
+        "sha256": "7015f0d93a5b3306ec95de7b28efab2f7ed6776074a345415ac52eea702a5e0f",
+        "bytes": 1608
+      },
+      "file": "openclaw-results.json",
+      "sha256": "7015f0d93a5b3306ec95de7b28efab2f7ed6776074a345415ac52eea702a5e0f"
+    },
+    {
+      "source": {
+        "path": "target/kit-migration/dependency-guard.json",
+        "sha256": "f4051035b1d378e7ea8e6c1e107017df529b65d8918d5f5295b9602dc016bc4a",
+        "bytes": 127
+      },
+      "file": "core-dependency-guard.json",
+      "sha256": "f4051035b1d378e7ea8e6c1e107017df529b65d8918d5f5295b9602dc016bc4a"
+    },
+    {
+      "source": {
+        "path": "target/kit-migration/client-dependency-guard.json",
+        "sha256": "ea96ea046e2af8b5aa7c7f6f567fbc5b2d28c225097199559170450d09cf1383",
+        "bytes": 125
+      },
+      "file": "client-dependency-guard.json",
+      "sha256": "ea96ea046e2af8b5aa7c7f6f567fbc5b2d28c225097199559170450d09cf1383"
+    },
+    {
+      "source": {
+        "path": "target/kit-migration/native-final/distribution-result.json",
+        "sha256": "5167b973d8f33316e5b2046608cb4765c0f0fe9d7663cfcc47ad0f33fec7aac0",
+        "bytes": 2215
+      },
+      "file": "native-openclaw-build.json",
+      "sha256": "5167b973d8f33316e5b2046608cb4765c0f0fe9d7663cfcc47ad0f33fec7aac0"
+    },
+    {
+      "source": {
+        "path": "target/kit-migration/native-release/distribution-result.json",
+        "sha256": "fdac77584454c8a359fb41ab447d61a10650f6f24e83bacb559b923f69c40293",
+        "bytes": 2221
+      },
+      "file": "native-intermediate-build.json",
+      "sha256": "fdac77584454c8a359fb41ab447d61a10650f6f24e83bacb559b923f69c40293"
+    },
+    {
+      "source": {
+        "path": "target/kit-migration/native-publish-result.json",
+        "sha256": "6b29117809d0147c2fc495090307a59ebf97e58e9fbbc49fc2447c4af144c5c8",
+        "bytes": 2182
+      },
+      "file": "native-distribution-result.json",
+      "sha256": "6b29117809d0147c2fc495090307a59ebf97e58e9fbbc49fc2447c4af144c5c8"
+    },
+    {
+      "source": {
+        "path": "target/kit-migration/native-runtime-equivalence.json",
+        "sha256": "1e94288e837369a9249b6dc5c1883852d43d909cc31c9470c209ee72faeb1218",
+        "bytes": 261
+      },
+      "file": "native-runtime-equivalence.json",
+      "sha256": "1e94288e837369a9249b6dc5c1883852d43d909cc31c9470c209ee72faeb1218"
+    },
+    {
+      "source": {
+        "path": "target/kit-migration/kit-wasm-close-sbf-results.json",
+        "sha256": "998086342de692271ace2a51cfa0b1596d972fba9776e36b3a7439201e134ae3",
+        "bytes": 11071
+      },
+      "file": "wasm-close-sbf-results.json",
+      "sha256": "998086342de692271ace2a51cfa0b1596d972fba9776e36b3a7439201e134ae3"
+    },
+    {
+      "source": {
+        "path": "target/kit-migration/kit-wasm-escape-sbf-results.json",
+        "sha256": "ff1841671154d213db2ecbbf3477c80ab91fba94bf8c77b13ad4b0bcfd46ec37",
+        "bytes": 12235
+      },
+      "file": "wasm-escape-sbf-results.json",
+      "sha256": "ff1841671154d213db2ecbbf3477c80ab91fba94bf8c77b13ad4b0bcfd46ec37"
+    },
+    {
+      "source": {
+        "path": "target/kit-migration/kit-pending-escape-integration-results.json",
+        "sha256": "009108a9e38b673f3d1e5d092b05fb37c2f4514b81d8cb20271f67f2e8d7fe69",
+        "bytes": 13079
+      },
+      "file": "pending-escape-integration-results.json",
+      "sha256": "009108a9e38b673f3d1e5d092b05fb37c2f4514b81d8cb20271f67f2e8d7fe69"
+    },
+    {
+      "source": {
+        "path": "target/kit-migration/native-sbf-publish-results.json",
+        "sha256": "f9a345af5bc039cf8a49d0210e1a3b8aa7b76bbf044b04e66dace1b30e9078a0",
+        "bytes": 11074
+      },
+      "file": "native-sbf-results.json",
+      "sha256": "f9a345af5bc039cf8a49d0210e1a3b8aa7b76bbf044b04e66dace1b30e9078a0"
+    },
+    {
+      "source": {
+        "path": "target/app-sdk-acceptance/run-8fokt0sk/results.json",
+        "sha256": "2288e1b6d46b21b33f905d1f9e85cd525df25fc24c092de0bca7f6237eba0172",
+        "bytes": 4513
+      },
+      "file": "app-sdk-initial-failure.json",
+      "sha256": "2288e1b6d46b21b33f905d1f9e85cd525df25fc24c092de0bca7f6237eba0172"
+    }
+  ],
+  "generated_reports": [
+    {
+      "file": "commands.json",
+      "sha256": "b65884c7a5feec4efffa464afd727bbbcc542c059822f20368c979c650941883"
+    },
+    {
+      "file": "compact-sbf-results.json",
+      "sha256": "5ea1870a2807604f13a918da9ce8d29a15c99ad22173e397e9230ba8f727feaa"
+    },
+    {
+      "file": "failed-observations.json",
+      "sha256": "e0f88ebb8b7b94a47ecd3e6a56090ac36acf7b06cae989f5c869d707a55e24eb"
+    },
+    {
+      "file": "focused-checks.json",
+      "sha256": "27801f3ea77463a77aec57554516ea6a5bb76c6a36048ecd5fff543b625368bf"
+    },
+    {
+      "file": "sdk-sbf-results.json",
+      "sha256": "1ef9f9598ca2db3ac26e0075875bf69462a7d5f0b4664331b2ad940dd3b6844b"
+    }
+  ]
+}

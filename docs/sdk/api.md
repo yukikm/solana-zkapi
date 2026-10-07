@@ -4,6 +4,11 @@ Import `createZkApiClient` and types from `@zkapi/solana-sdk`. Browser apps norm
 use `createBrowserClient` from `@zkapi/solana-sdk/browser`.
 The [source types](../../packages/sdk/src/client.ts) are the exact contract.
 
+`ClientDeployment.connection` is a native Kit `Rpc<SolanaRpcApi>`. `V0Wallet`
+keeps the `publicKey` property name but its value is a Kit `Address` string;
+`signTransaction` accepts and returns a Kit `Transaction`. See
+[Kit migration](kit-migration.md) for code and asynchronous lower-level APIs.
+
 ## Factories
 
 `createZkApiClient(options): Promise<ZkApiClient>` takes a deployment bundle,

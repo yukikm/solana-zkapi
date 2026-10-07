@@ -8,7 +8,9 @@ import {lstat, mkdir, open, readFile, realpath, rename, unlink} from 'node:fs/pr
 import {dirname, resolve} from 'node:path';
 import {pathToFileURL} from 'node:url';
 import {promisify} from 'node:util';
-import {Connection, PublicKey, VersionedTransaction} from '@solana/web3.js';
+import {createSolanaRpc} from '@solana/kit';
+import {parseAddress,addressBytes,getFinalizedTransaction,getFinalizedBlock,decodeTransaction} from './solana-kit.ts';
+import {encodeTransaction,transactionMessage,transactionSignature} from '../packages/sdk/src/solana.ts';
 import bs58 from 'bs58';
 import {parseField} from '../packages/sdk/src/encoding.ts';
 import {concat, u32} from '../packages/sdk/src/layout2.ts';
@@ -77,7 +79,7 @@ export function verifyChallengeEvent(logs: readonly string[], binding: Challenge
       assert.equal(data.toString('base64'), encoded, 'event base64');
       if (!data.subarray(0, 8).equals(discriminator)) continue;
       assert.equal(data.length, 251); assert.equal(data[8], 1);
-      sameBytes(data.subarray(9, 41), new PublicKey(binding.pool).toBytes());
+      sameBytes(data.subarray(9, 41), addressBytes(parseAddress(binding.pool)));
       assert.equal(data.readBigUInt64LE(41).toString(), binding.sequence);
       assert.equal(data[49], binding.operation ?? 3); assert.equal(data.readUInt32LE(50), binding.noteId); assert.equal(data[54], binding.status ?? 1);
       sameBytes(data.subarray(55, 87), parseField(binding.oldRoot));
@@ -142,8 +144,8 @@ async function durable(path: string, value: unknown): Promise<void> {
 export async function collectDevnetChallenge(p: CollectorPaths, endpoint: string): Promise<Record<string, unknown>> {
   const url = new URL(endpoint);
   assert.ok(url.protocol === 'https:' && !url.username && !url.password && !url.hash, 'explicit HTTPS RPC required');
-  const connection = new Connection(endpoint, {commitment: 'finalized', disableRetryOnRateLimit: true});
-  assert.equal(await connection.getGenesisHash(), GENESIS, 'devnet required before evidence/config access');
+  const connection = createSolanaRpc(endpoint);
+  assert.equal(await connection.getGenesisHash().send(), GENESIS, 'devnet required before evidence/config access');
   const source = await readFile(new URL(import.meta.url));
   const files = inputFiles(p);
   assert.ok(!Object.values(files).includes(resolve(p.output)), 'output cannot overwrite input evidence');
@@ -186,35 +188,32 @@ export async function collectDevnetChallenge(p: CollectorPaths, endpoint: string
   sameBytes(await readFile(files.journal), raw.journal);
   assert.equal(sha(await readFile(p.binary)), binaryHash);
   const state = obj(parsed.journal.state);
-  assert.equal(state.version, 1); sameBytes(bytes(state.pool, 32), new PublicKey(manifest.pool).toBytes());
+  assert.equal(state.version, 1); sameBytes(bytes(state.pool, 32), addressBytes(parseAddress(manifest.pool)));
   const jobs = Object.entries(obj(state.jobs)); assert.equal(jobs.length, 1, 'dedicated one-job challenge acceptance required');
   const [jobId, jobValue] = jobs[0], job = obj(jobValue), jobIdentity = obj(job.identity), evidence = obj(job.evidence);
   assert.equal(job.complete, true); assert.equal(jobIdentity.note_id, ready.note_id);
   const detectedAt = integer(job.discovered_at), firstExecuteSendAt = integer(job.first_execute_send_at);
   assert.ok(firstExecuteSendAt >= detectedAt && firstExecuteSendAt <= integer(jobIdentity.deadline));
-  sameBytes(bytes(jobIdentity.pool, 32), new PublicKey(manifest.pool).toBytes());
+  sameBytes(bytes(jobIdentity.pool, 32), addressBytes(parseAddress(manifest.pool)));
   sameBytes(bytes(jobIdentity.nullifier, 32), parseField(ready.nullifier));
   assert.equal(integer(jobIdentity.deadline).toString(), ready.deadline);
   assert.equal(jobIdentity.generation.position.signature, ready.escape_signature);
   assert.equal(jobIdentity.generation.position.slot, ready.escape_slot);
   assert.equal(integer(jobIdentity.generation.tree_sequence).toString(), ready.escaped_sequence);
-  const escape = await connection.getTransaction(ready.escape_signature,
-    {commitment: 'finalized', maxSupportedTransactionVersion: 0});
+  const escape = await getFinalizedTransaction(connection,ready.escape_signature);
   assert.ok(escape?.meta && escape.meta.err === null); assert.equal(escape.slot, ready.escape_slot);
-  const escapeWire = new VersionedTransaction(escape.transaction.message,
-    escape.transaction.signatures.map(signature => bs58.decode(signature)));
-  await verifySignatures(escapeWire); assert.equal(escapeWire.version, 0);
-  assert.equal(escape.transaction.signatures[0], ready.escape_signature);
-  assert.equal(escapeWire.message.staticAccountKeys[0].toBase58(), deployment.initializer);
-  assert.ok(escapeWire.serialize().length <= 1232 && integer(escape.meta.fee) <= 10_000);
+  const escapeWire = escape.transaction;
+  await verifySignatures(escapeWire); assert.equal(transactionMessage(escapeWire).version, 0);
+  assert.equal(transactionSignature(escape.transaction), ready.escape_signature);
+  assert.equal(transactionMessage(escapeWire).staticAccounts[0], deployment.initializer);
+  assert.ok(encodeTransaction(escapeWire).length <= 1232 && integer(escape.meta.fee) <= 10_000);
   const escapeCu = integer(escape.meta.computeUnitsConsumed); assert.ok(escapeCu > 0 && escapeCu <= 1_000_000);
   assert.ok(Array.isArray(escape.meta.logMessages));
   verifyChallengeEvent(escape.meta.logMessages, {program: manifest.program_id, pool: manifest.pool,
     noteId: ready.note_id, nullifier: ready.nullifier, sequence: ready.escaped_sequence,
     oldRoot: ready.historical_request_root, newRoot: ready.escaped_root, deadline: ready.deadline, operation: 2, status: 2});
-  const escapeBlock = await connection.getBlock(ready.escape_slot,
-    {commitment: 'finalized', transactionDetails: 'none', rewards: false, maxSupportedTransactionVersion: 1});
-  assert.ok(escapeBlock); assert.equal(escapeBlock.blockhash, new PublicKey(bytes(jobIdentity.generation.blockhash, 32)).toBase58());
+  const escapeBlock = await getFinalizedBlock(connection,ready.escape_slot);
+  assert.ok(escapeBlock); assert.equal(escapeBlock.blockhash, parseAddress(bytes(jobIdentity.generation.blockhash, 32)));
   assert.equal(evidence.request_id, ready.request_id);
   sameBytes(bytes(evidence.pool, 32), bytes(jobIdentity.pool, 32));
   sameBytes(bytes(evidence.nullifier, 32), bytes(jobIdentity.nullifier, 32));
@@ -260,7 +259,7 @@ export async function collectDevnetChallenge(p: CollectorPaths, endpoint: string
     sameBytes(Buffer.from(attempt.wireHex, 'hex'), bytes(saved.signed_bytes));
     assert.equal(attempt.planDigest, bytes(saved.payload_digest, 32).toString('hex'));
     assert.equal(attempt.planDigest, bytes(payload.digest, 32).toString('hex'));
-    assert.equal(attempt.buffer, new PublicKey(bytes(saved.buffer, 32)).toBase58());
+    assert.equal(attempt.buffer, parseAddress(bytes(saved.buffer, 32)));
     sameBytes(bytes(saved.buffer, 32), bytes(payload.buffer, 32));
     assert.equal(attempt.plan.operation, 'challenge_escape'); assert.equal(attempt.plan.programId, manifest.program_id);
     assert.equal(attempt.plan.pool, manifest.pool); assert.equal(attempt.plan.expectedNoteId, ready.note_id);
@@ -269,19 +268,19 @@ export async function collectDevnetChallenge(p: CollectorPaths, endpoint: string
     assert.equal(attempt.plan.payloadHex, payloadBytes.toString('hex'));
     assert.equal(attempt.plan.feePayer, identity.payer);
     assert.equal(attempt.plan.priorityFeeMicroLamports ?? '0', '0');
-    const wire = Buffer.from(attempt.wireHex, 'hex'), tx = VersionedTransaction.deserialize(wire);
-    assert.ok(wire.length <= 1232); assert.equal(tx.version, 0);
-    assert.equal(tx.message.staticAccountKeys[0].toBase58(), identity.payer);
-    assert.equal(tx.message.header.numRequiredSignatures, 1);
+    const wire = Buffer.from(attempt.wireHex, 'hex'), tx = decodeTransaction(wire);
+    assert.ok(wire.length <= 1232); assert.equal(transactionMessage(tx).version, 0);
+    assert.equal(transactionMessage(tx).staticAccounts[0], identity.payer);
+    assert.equal(transactionMessage(tx).header.numSignerAccounts, 1);
     const recovered = await readOnlyRecovery(attempt, rpc);
     assert.equal(recovered.state, 'finalized'); assert.ok(recovered.state === 'finalized'); assert.equal(recovered.slot, slot);
-    const transaction = await connection.getTransaction(attempt.signature, {commitment: 'finalized', maxSupportedTransactionVersion: 0});
+    const transaction = await getFinalizedTransaction(connection,attempt.signature);
     assert.ok(transaction?.meta && transaction.meta.err === null); assert.equal(transaction.slot, slot);
-    sameBytes(transaction.transaction.message.serialize(), tx.message.serialize());
+    sameBytes(new Uint8Array(transaction.transaction.messageBytes), new Uint8Array(tx.messageBytes));
     const fee = integer(transaction.meta.fee), cu = integer(transaction.meta.computeUnitsConsumed);
     assert.ok(fee <= 10_000 && cu > 0 && cu <= 1_000_000);
-    const block = await connection.getBlock(slot, {commitment: 'finalized', transactionDetails: 'none', rewards: false, maxSupportedTransactionVersion: 1});
-    assert.ok(block); assert.equal(block.blockhash, new PublicKey(bytes(finalized.blockhash, 32)).toBase58());
+    const block = await getFinalizedBlock(connection,slot);
+    assert.ok(block); assert.equal(block.blockhash, parseAddress(bytes(finalized.blockhash, 32)));
     if (saved.stage === 'Execute') {
       assert.equal(attempt.kind, 'execute'); executeSlot = slot; executeSignature = attempt.signature;
       assert.ok(Array.isArray(transaction.meta.logMessages));
@@ -307,7 +306,7 @@ export async function collectDevnetChallenge(p: CollectorPaths, endpoint: string
     exact_wire_and_signatures_verified: true, challenge_event_verified: true,
     escape_signature: ready.escape_signature, escape_slot: ready.escape_slot,
     escape_receipt: {slot: escape.slot, fee_lamports: String(escape.meta.fee), compute_units: escapeCu,
-      wire_sha256: sha(escapeWire.serialize()), wire_bytes: escapeWire.serialize().length, event_verified: true},
+      wire_sha256: sha(encodeTransaction(escapeWire)), wire_bytes: encodeTransaction(escapeWire).length, event_verified: true},
     challenge_signature: executeSignature, challenge_slot: executeSlot,
     escaped_root: ready.escaped_root, restored_root: observation.restored_root,
     escaped_sequence: ready.escaped_sequence, restored_sequence: observation.restored_sequence,

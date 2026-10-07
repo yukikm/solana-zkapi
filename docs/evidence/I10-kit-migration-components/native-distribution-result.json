@@ -1,0 +1,55 @@
+{
+  "distribution": "/Users/yukikimura/work/solana-zkapi/target/kit-migration/native-publish/release.json",
+  "distribution_sha256": "d9867fb54dd8e0578e550c634deab0c41ee459819a0501da0c04c37d87c9fe94",
+  "node": "/Users/yukikimura/work/solana-zkapi/target/kit-migration/native-publish/bin/node",
+  "node_sha256": "27db838bb204ef7c21df2931f5656e4c8fb32e6e947f363a402b49714d32b5b1",
+  "runtime": "/Users/yukikimura/work/solana-zkapi/target/kit-migration/native-publish/apps/clientd/runtime.ts",
+  "runtime_sha256": "aacc7a40a6e968b45afc0f589b1a669d685589eae3998d058a4503657e05be5c",
+  "node_version": "v24.19.0",
+  "go_version": "go version go1.25.0 darwin/arm64",
+  "production_signed": false,
+  "source_lock_sha256": "3d887c0c5a7aedbac36a0e20bcb6912eed3d3a075aca346efbde557c2753921f",
+  "installed_lock_sha256": "be49fa90e49488dc4e843e8f0905632c2a0ae9745bc21ceba8c22a602ef579f5",
+  "sdk_tarball_sha256": "e6ff141b1c13c278f1c6d80dbe1397f187290270c583a32545df5fe4fbd45019",
+  "notices": {
+    "notice_index": "share/zkapi-clientd/third-party/dependencies.json",
+    "rust_packages": 265,
+    "npm_packages": 140,
+    "declaration_only_rust": [
+      "zkapi-core@0.1.0",
+      "zkapi-proof@0.1.0",
+      "zkapi-types@0.1.0",
+      "ark-snark@0.5.1",
+      "five8@0.2.1",
+      "five8_const@0.1.4",
+      "five8_core@0.1.2",
+      "objc2-core-foundation@0.3.2",
+      "objc2-system-configuration@0.3.2",
+      "solana-atomic-u64@2.2.1",
+      "solana-bn254@2.2.2",
+      "solana-decode-error@2.3.0",
+      "solana-define-syscall@2.3.0",
+      "solana-hash@2.3.0",
+      "solana-pubkey@2.4.0",
+      "solana-sanitize@2.2.1",
+      "solana-sha256-hasher@2.3.0"
+    ],
+    "declaration_only_npm": [],
+    "platform": {
+      "os": "darwin",
+      "architecture": "arm64",
+      "binary_minimum_os_versions": {
+        "node": "13.5",
+        "clientd": "12.0",
+        "zkapi-client-prover": "11.0",
+        "zkapi-client-verify": "11.0"
+      },
+      "minimum_os_version": "13.5"
+    }
+  },
+  "build_inputs": {
+    "path": "share/zkapi-clientd/build-inputs.json",
+    "sha256": "194c73c86c5a3c0d6871713a99fa38b4d944b68d9675a15f72256f33dfef3d51",
+    "source_inputs_unchanged": true
+  }
+}

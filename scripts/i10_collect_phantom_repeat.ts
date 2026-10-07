@@ -5,7 +5,9 @@ import {readFile,writeFile} from 'node:fs/promises';
 import {createHash} from 'node:crypto';
 import {resolve} from 'node:path';
 import {pathToFileURL} from 'node:url';
-import {PublicKey,VersionedTransaction,ComputeBudgetProgram} from '@solana/web3.js';
+import {address, getCompiledTransactionMessageDecoder, getTransactionDecoder, getSignatureFromTransaction, type Transaction} from '@solana/kit';
+import {addressBytes, transactionBlockhash} from '../packages/sdk/src/solana.ts';
+const COMPUTE_BUDGET_PROGRAM = 'ComputeBudget111111111111111111111111111111';
 import bs58 from 'bs58';
 import {buildUploadPlan,compileV0,discriminator,vaultAccounts,verifySignatures,TOKEN_PROGRAM} from '../packages/sdk/src/transport.ts';
 import {parseStrictJson} from '../packages/sdk/src/trust.ts';
@@ -23,7 +25,7 @@ const MANIFEST='ee851dbfbb1c75b7ff4b5fabe3407ba9c3a38c42bcb7668d722653afcccb4555
 const HISTORICAL='docs/evidence/I10-repeat-demo-withdraw-expired.json';
 const digest=(bytes:Uint8Array)=>createHash('sha256').update(bytes).digest('hex');
 const safeInteger=(value:unknown):value is number=>Number.isSafeInteger(value)&&Number(value)>=0;
-const publicKey=(value:unknown)=>{assert.equal(typeof value,'string');const key=new PublicKey(value as string);assert.equal(key.toBase58(),value);return key;};
+const publicKey=(value:unknown)=>{assert.equal(typeof value,'string');const key=address(value as string);assert.equal(key,value);return key;};
 const readMethods=new Set(['getGenesisHash','getTransaction','getMultipleAccounts','getBlock']);
 let rpcId=0;
 const localRead:ReadRpc=async(method,params)=>{
@@ -57,31 +59,31 @@ export function checkedRepeatObservation(input:any,phase:RepeatPhase):any{
   return structuredClone(observation);
 }
 
-interface ObservedTransaction {tx:VersionedTransaction;data:Buffer;report:{signature:string;slot:number;instruction:string;fee_lamports:number;compute_units:number;wire_bytes:number;message_sha256:string}}
+interface ObservedTransaction {tx:Transaction;data:Buffer;report:{signature:string;slot:number;instruction:string;fee_lamports:number;compute_units:number;wire_bytes:number;message_sha256:string}}
 async function readTransaction(receipt:{signature:string;slot:number},read:ReadRpc):Promise<ObservedTransaction>{
   const chain=await read('getTransaction',[receipt.signature,{encoding:'base64',commitment:'finalized',maxSupportedTransactionVersion:1}]);
   assert.ok(chain&&chain.meta&&chain.meta.err===null);assert.equal(chain.slot,receipt.slot);assert.equal(chain.transaction?.[1],'base64');
   const wire=Buffer.from(chain.transaction[0],'base64');assert.equal(wire.toString('base64'),chain.transaction[0]);
-  const tx=VersionedTransaction.deserialize(wire);assert.equal(tx.version,0);await verifySignatures(tx);
-  assert.equal(bs58.encode(tx.signatures[0]),receipt.signature);assert.ok(wire.length<=1232);assert.equal(tx.message.addressTableLookups.length,0);
-  assert.equal(tx.message.staticAccountKeys[0].toBase58(),OWNER);assert.equal(tx.signatures.length,1);
+  const tx=getTransactionDecoder().decode(wire);const message=getCompiledTransactionMessageDecoder().decode(tx.messageBytes);assert.ok(message.version===0);await verifySignatures(tx);
+  assert.equal(getSignatureFromTransaction(tx),receipt.signature);assert.ok(wire.length<=1232);assert.equal((message.addressTableLookups?.length??0),0);
+  assert.equal(message.staticAccounts[0],OWNER);assert.equal(Object.keys(tx.signatures).length,1);
   assert.equal(chain.meta.fee,5001);assert.ok(safeInteger(chain.meta.computeUnitsConsumed)&&chain.meta.computeUnitsConsumed>0&&chain.meta.computeUnitsConsumed<=1000000);
-  const instructions=tx.message.compiledInstructions;assert.equal(instructions.length,3);
-  for(const [i,length,tag] of [[0,5,2],[1,9,3]]){assert.equal(tx.message.staticAccountKeys[instructions[i].programIdIndex].toBase58(),ComputeBudgetProgram.programId.toBase58());
-    assert.equal(instructions[i].data.length,length);assert.equal(instructions[i].data[0],tag);}
-  assert.equal(Buffer.from(instructions[0].data).readUInt32LE(1),1000000);assert.equal(Buffer.from(instructions[1].data).readBigUInt64LE(1),1n);
-  const vault=instructions[2];assert.equal(tx.message.staticAccountKeys[vault.programIdIndex].toBase58(),PROGRAM);const data=Buffer.from(vault.data);
+  const instructions=message.instructions;assert.equal(instructions.length,3);
+  for(const [i,length,tag] of [[0,5,2],[1,9,3]]){assert.equal(message.staticAccounts[instructions[i].programAddressIndex],COMPUTE_BUDGET_PROGRAM);
+    assert.equal(instructions[i].data!.length,length);assert.equal(instructions[i].data![0],tag);}
+  assert.equal(Buffer.from(instructions[0].data!).readUInt32LE(1),1000000);assert.equal(Buffer.from(instructions[1].data!).readBigUInt64LE(1),1n);
+  const vault=instructions[2];assert.equal(message.staticAccounts[vault.programAddressIndex],PROGRAM);const data=Buffer.from(vault.data!);
   let name:string|undefined;for(const candidate of ['create_payload','append_payload','seal_payload','execute_payload'])
     if(data.subarray(0,8).equals(Buffer.from(await discriminator(candidate))))name=candidate;
-  assert.ok(name);assert.equal(tx.message.staticAccountKeys[vault.accountKeyIndexes[name==='execute_payload'?3:1]].toBase58(),POOL);
-  return {tx,data,report:{signature:receipt.signature,slot:chain.slot,instruction:name,fee_lamports:chain.meta.fee,compute_units:chain.meta.computeUnitsConsumed,wire_bytes:wire.length,message_sha256:digest(tx.message.serialize())}};
+  assert.ok(name);assert.equal(message.staticAccounts[vault.accountIndices![name==='execute_payload'?3:1]],POOL);
+  return {tx,data,report:{signature:receipt.signature,slot:chain.slot,instruction:name,fee_lamports:chain.meta.fee,compute_units:chain.meta.computeUnitsConsumed,wire_bytes:wire.length,message_sha256:digest(new Uint8Array(tx.messageBytes))}};
 }
 
 /** Reconstruct the full uploaded payload and reproduce every signed SDK message.
  * Successful finalized execution is the on-chain verification evidence; this
  * collector does not independently prove the circuit or trust UI proof labels. */
 export async function verifyRepeatUploadGroup(group:ObservedTransaction[],operation:'deposit'|'mutual_close',amount:bigint,
-  context={program:new PublicKey(PROGRAM),pool:new PublicKey(POOL),owner:new PublicKey(OWNER),mint:new PublicKey(MINT)}){
+  context={program:address(PROGRAM),pool:address(POOL),owner:address(OWNER),mint:address(MINT)}){
   const expectedNames=operation==='deposit'?['create_payload','append_payload','seal_payload','execute_payload']
     :['create_payload','append_payload','append_payload','seal_payload','execute_payload'];
   assert.deepEqual(group.map(x=>x.report.instruction),expectedNames);
@@ -95,14 +97,14 @@ export async function verifyRepeatUploadGroup(group:ObservedTransaction[],operat
   const noteId=operation==='deposit'?payload.readUInt32LE(0):Number(field(8*32));assert.ok(safeInteger(noteId)&&noteId<=0xffffffff);
   assert.equal(operation==='deposit'?payload.readBigUInt64LE(76):field(9*32),amount);
   assert.equal(field(length-608+96),BigInt(noteId));
-  const financial=vaultAccounts({programId:context.program,pool:context.pool,mint:context.mint,payer:context.owner,tokenOwner:context.owner,
+  const financial=await vaultAccounts({programId:context.program,pool:context.pool,mint:context.mint,payer:context.owner,tokenOwner:context.owner,
     destinationOwner:context.owner,treasuryOwner:context.owner,noteId,operation,
     ...(operation==='mutual_close'?{nullifier:payload.subarray(11*32,12*32)}:{})});
   const plan=await buildUploadPlan({programId:context.program,pool:context.pool,uploader:context.owner,rentPayer:context.owner,feePayer:context.owner,
     nonce:create.subarray(45,77),expires:create.readBigUInt64LE(77),operation,payload,financial,snapshot:{slot:0,sequence:0n},priorityFeeMicroLamports:1n});
   assert.equal(plan.steps.length,group.length);
-  for(const [index,entry] of group.entries())assert.ok(Buffer.from(compileV0(plan.steps[index].instruction,context.owner,entry.tx.message.recentBlockhash,1n).message.serialize()).equals(Buffer.from(entry.tx.message.serialize())),'signed message differs from exact reconstructed SDK plan');
-  return {operation,note_id:noteId,amount_micro_usdc:amount.toString(),buffer:plan.buffer.toBase58(),payload_sha256:digest(payload),financial,
+  for(const [index,entry] of group.entries())assert.ok(Buffer.from(compileV0(plan.steps[index].instruction,context.owner,transactionBlockhash(entry.tx),1n).messageBytes).equals(Buffer.from(entry.tx.messageBytes)),'signed message differs from exact reconstructed SDK plan');
+  return {operation,note_id:noteId,amount_micro_usdc:amount.toString(),buffer:plan.buffer,payload_sha256:digest(payload),financial,
     ...(operation==='deposit'?{registration_commitment:payload.subarray(44,76).toString('hex'),expiry:payload.readBigUInt64LE(36).toString()}: {})};
 }
 
@@ -112,24 +114,24 @@ export async function collectPhantomRepeat(input:any,phase:RepeatPhase,read:Read
   const groups=phase==='withdrawal'?[await verifyRepeatUploadGroup(transactions.slice(0,4),'deposit',1000000n),await verifyRepeatUploadGroup(transactions.slice(4),'mutual_close',999996n)]
     :[await verifyRepeatUploadGroup(transactions,'deposit',2000000n)];
   if(phase==='withdrawal')assert.equal(groups[0].note_id,groups[1].note_id);else assert.equal(groups[0].note_id,1);
-  const final=groups.at(-1)!,owner=new PublicKey(OWNER),mint=new PublicKey(MINT);
-  const walletAta=vaultAccounts({programId:new PublicKey(PROGRAM),pool:new PublicKey(POOL),mint,payer:owner,tokenOwner:owner,operation:'deposit',noteId:final.note_id}).source;
-  const addresses=[walletAta,final.financial.vault,final.financial.note,new PublicKey(POOL),final.financial.tree];
+  const final=groups.at(-1)!,owner=address(OWNER),mint=address(MINT);
+  const walletAta=(await vaultAccounts({programId:address(PROGRAM),pool:address(POOL),mint,payer:owner,tokenOwner:owner,operation:'deposit',noteId:final.note_id})).source;
+  const addresses=[walletAta,final.financial.vault,final.financial.note,address(POOL),final.financial.tree];
   const lastSlot=transactions.at(-1)!.report.slot;
-  const cut=await read('getMultipleAccounts',[addresses.map(x=>x.toBase58()),{encoding:'base64',commitment:'finalized',minContextSlot:lastSlot}]);
+  const cut=await read('getMultipleAccounts',[addresses.map(x=>x),{encoding:'base64',commitment:'finalized',minContextSlot:lastSlot}]);
   assert.ok(cut&&safeInteger(cut.context?.slot)&&cut.context.slot>=lastSlot&&Array.isArray(cut.value)&&cut.value.length===addresses.length);
   const block=await read('getBlock',[cut.context.slot,{commitment:'finalized',transactionDetails:'none',rewards:false,maxSupportedTransactionVersion:1}]);
   assert.ok(block&&safeInteger(block.blockHeight));publicKey(block.blockhash);
   const bytes=(index:number,program:string,length:number)=>{const account=cut.value[index];assert.ok(account&&account.executable===false&&account.owner===program&&account.data?.[1]==='base64');
     const b=Buffer.from(account.data[0],'base64');assert.equal(b.toString('base64'),account.data[0]);assert.equal(b.length,length);return b;};
-  const tokens=[bytes(0,TOKEN_PROGRAM.toBase58(),165),bytes(1,TOKEN_PROGRAM.toBase58(),165)];
-  for(const b of tokens){assert.ok(b.subarray(0,32).equals(mint.toBuffer()));assert.equal(b[108],1);}
-  assert.ok(tokens[0].subarray(32,64).equals(owner.toBuffer()));assert.ok(tokens[1].subarray(32,64).equals(final.financial.vaultAuthority.toBuffer()));
+  const tokens=[bytes(0,TOKEN_PROGRAM,165),bytes(1,TOKEN_PROGRAM,165)];
+  for(const b of tokens){assert.ok(b.subarray(0,32).equals(addressBytes(mint)));assert.equal(b[108],1);}
+  assert.ok(tokens[0].subarray(32,64).equals(addressBytes(owner)));assert.ok(tokens[1].subarray(32,64).equals(addressBytes(final.financial.vaultAuthority)));
   const amounts=tokens.map(b=>b.readBigUInt64LE(64).toString());assert.deepEqual(amounts,phase==='withdrawal'?['38010000','0']:['36010000','2000000']);
   const note=bytes(2,PROGRAM,63),pool=bytes(3,PROGRAM,422),tree=bytes(4,PROGRAM,66);
   for(const [b,name] of [[note,'Note'],[pool,'PoolConfig'],[tree,'TreeState']] as const){assert.ok(b.subarray(0,8).equals(Buffer.from(await discriminator(name,'account'))));assert.equal(b[8],2);}
-  assert.ok(pool.subarray(10,42).equals(publicKey(GENESIS).toBuffer()));assert.ok(pool.subarray(42,74).equals(mint.toBuffer()));
-  assert.ok(pool.subarray(74,106).equals(TOKEN_PROGRAM.toBuffer()));assert.equal(pool[106],6);assert.ok(pool.subarray(171,203).equals(owner.toBuffer()));assert.equal(pool.readBigUInt64LE(347),1000000n);
+  assert.ok(pool.subarray(10,42).equals(addressBytes(publicKey(GENESIS))));assert.ok(pool.subarray(42,74).equals(addressBytes(mint)));
+  assert.ok(pool.subarray(74,106).equals(addressBytes(TOKEN_PROGRAM)));assert.equal(pool[106],6);assert.ok(pool.subarray(171,203).equals(addressBytes(owner)));assert.equal(pool.readBigUInt64LE(347),1000000n);
   assert.equal(note.readUInt32LE(10),final.note_id);assert.equal(note[62],phase==='withdrawal'?3:1);
   const deposited=groups[0];assert.equal(note.readBigUInt64LE(46).toString(),deposited.amount_micro_usdc);
   assert.equal(note.subarray(14,46).toString('hex'),deposited.registration_commitment);assert.equal(note.readBigUInt64LE(54).toString(),deposited.expiry);

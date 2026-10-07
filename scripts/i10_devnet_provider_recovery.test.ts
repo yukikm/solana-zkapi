@@ -147,7 +147,7 @@ test('saved provider withdrawal accepts copied historical budget plus a later di
     const report=await verifySettledProviderCase(h.input);assert.equal(report.case_id,'openrouter-proxy-plain');assert.equal(h.calls(),1);
     assert.equal(report.provider_acceptance_passed,false);assert.deepEqual(budget.reservations.slice(0,10),historical.reservations);
     const unstarted=unstartedFixture();unstarted.budget=budget;
-    assert.equal(verifyUnstartedProviderCase(unstarted).case_id,'openrouter-proxy-sse');
+    assert.equal((await verifyUnstartedProviderCase(unstarted)).case_id,'openrouter-proxy-sse');
     for(const [field,value] of [['max_cost_micro_usdc','1'],['template_case_id','openai-chat-plain'],['request_id','invalid'],
       ['authorization_sha256','AB'.repeat(32)],['operation_id',request],['case_id','demo-auth-'+request+'x'],['state','completed']] as const){
       const bad=structuredClone(budget);bad.reservations.at(-1)[field]=value;h.input.budget=bad;
@@ -182,8 +182,8 @@ function unstartedFixture(){
   return {...input,note:input.note as NoteJournal,failure,depositMicroUsdc:'10000000'} satisfies UnstartedProviderRecoveryInput;
 }
 
-test('unstarted quote failure is read-only across active, mutual-close intent and closed journal',()=>{
-  const input=unstartedFixture(),before=structuredClone(input),report=verifyUnstartedProviderCase(input);
+test('unstarted quote failure is read-only across active, mutual-close intent and closed journal',async()=>{
+  const input=unstartedFixture(),before=structuredClone(input),report=await verifyUnstartedProviderCase(input);
   assert.deepEqual(input,before);assert.equal(report.failure_stage,'quote');assert.equal(report.control_http_status,503);
   assert.equal(report.case_id,'openrouter-proxy-sse');assert.equal(report.case_max_micro_usdc,'19277');
   assert.equal(report.saved_authorization_present,false);assert.equal(report.settled_sessions,0);
@@ -195,10 +195,10 @@ test('unstarted quote failure is read-only across active, mutual-close intent an
   const close={id:operationId,kind:'mutual_close' as const,phase:'proving' as const,
     roles:{uploader:publicKey,rentPayer:publicKey,feePayer:publicKey,payer:publicKey},destinationOwner:publicKey,step:0,attempts:[],finalized:[]};
   input.note.wallet!.operation=close;input.note.wallet!.clearance={nullifier:field(21),phase:'requested'};
-  assert.deepEqual(verifyUnstartedProviderCase(input),report);
+  assert.deepEqual(await verifyUnstartedProviderCase(input),report);
   delete input.note.wallet!.operation;input.note.wallet!.history.push(close);input.note.wallet!.status='closed';
   input.note.wallet!.clearance={nullifier:field(21),phase:'verified',signature:{r_x:field(2),r_y:field(3),s:field(4)}};
-  assert.deepEqual(verifyUnstartedProviderCase(input),report);
+  assert.deepEqual(await verifyUnstartedProviderCase(input),report);
 });
 
 test('unstarted recovery rejects changed checkpoint, saved AUTH/history, state, selection and budget',async t=>{
@@ -248,15 +248,15 @@ test('unstarted recovery rejects changed checkpoint, saved AUTH/history, state, 
     ['budget arithmetic',o=>{(o.budget as ReturnType<typeof fixture>['budget']).remaining_micro_usdc='10000000';}],
     ['refund flag',o=>{(o.budget as ReturnType<typeof fixture>['budget']).refunds_supported=true;}],
   ];
-  for(const [name,change] of mutations)await t.test(name,()=>{
+  for(const [name,change] of mutations)await t.test(name,async()=>{
     const input=unstartedFixture();change(input);
-    assert.throws(()=>verifyUnstartedProviderCase(input),e=>e instanceof Error&&e.message.includes('preserve journal and budget')&&!e.message.includes('private-secret-canary'));
+    await assert.rejects(()=>verifyUnstartedProviderCase(input),e=>e instanceof Error&&e.message.includes('preserve journal and budget')&&!e.message.includes('private-secret-canary'));
   });
 });
 
-test('unstarted guard preserves other consumed cases and also permits a never-used global campaign',()=>{
+test('unstarted guard preserves other consumed cases and also permits a never-used global campaign',async()=>{
   const input=unstartedFixture(),budget=input.budget as ReturnType<typeof fixture>['budget'];
-  const before=structuredClone(input);assert.equal(verifyUnstartedProviderCase(input).budget_reservation_present,false);assert.deepEqual(input,before);
+  const before=structuredClone(input);assert.equal((await verifyUnstartedProviderCase(input)).budget_reservation_present,false);assert.deepEqual(input,before);
   budget.reservations=[];budget.reserved_micro_usdc='0';budget.remaining_micro_usdc=input.plan.budget_micro_usdc;
-  const emptyBefore=structuredClone(input);assert.equal(verifyUnstartedProviderCase(input).budget_reservation_created,false);assert.deepEqual(input,emptyBefore);
+  const emptyBefore=structuredClone(input);assert.equal((await verifyUnstartedProviderCase(input)).budget_reservation_created,false);assert.deepEqual(input,emptyBefore);
 });

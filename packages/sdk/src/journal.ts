@@ -2,6 +2,7 @@
 export interface EncryptedRecord { schema: 1; revision: number; ivHex: string; ciphertextHex: string }
 export interface JournalHead { revision: number; digest: string }
 export interface JournalRecord<T> { revision: number; value: T; head: JournalHead }
+export type JournalValidator<T> = ((value: unknown) => asserts value is T) | ((value: unknown) => Promise<void>);
 export interface AtomicJournalStore {
   read(key: string): Promise<EncryptedRecord | null>;
   /** Must atomically check the old revision and durably commit before resolving. No upsert on conflict. */
@@ -47,9 +48,9 @@ export class EncryptedJournal<T extends object> {
   private readonly context: Readonly<{ deploymentId: string; pool: string }>;
   private readonly store: AtomicJournalStore;
   private readonly key: CryptoKey;
-  private readonly validate: (value: unknown) => asserts value is T;
+  private readonly validate: JournalValidator<T>;
   constructor(store: AtomicJournalStore, key: CryptoKey,
-    context: { deploymentId: string; pool: string }, validate: (value: unknown) => asserts value is T) {
+    context: { deploymentId: string; pool: string }, validate: JournalValidator<T>) {
     identifier(context.deploymentId); identifier(context.pool);
     if (key.type !== 'secret' || key.algorithm.name !== 'AES-GCM' || (key.algorithm as AesKeyAlgorithm).length !== 256 || !key.usages.includes('encrypt') || !key.usages.includes('decrypt')) throw new Error('expected AES-256-GCM journal key');
     this.context = Object.freeze({ ...context });
@@ -72,8 +73,8 @@ export class EncryptedJournal<T extends object> {
     try {
       const plaintext = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: new Uint8Array(bytes(record.ivHex)), additionalData: this.aad(noteId, record.revision), tagLength: 128 }, this.key, new Uint8Array(bytes(record.ciphertextHex)));
       const value: unknown = JSON.parse(new TextDecoder('utf-8', { fatal: true }).decode(plaintext));
-      this.validate(value);
-      return { revision: record.revision, value, head: await head(record) };
+      await this.validate(value);
+      return { revision: record.revision, value: value as T, head: await head(record) };
     } catch { throw new JournalIntegrityError(); }
   }
   async read(noteId: string, minimumHead?: JournalHead): Promise<JournalRecord<T> | null> {
@@ -100,7 +101,7 @@ export class EncryptedJournal<T extends object> {
   private async commit(noteId: string, previous: number | null, value: T): Promise<JournalRecord<T>> {
     // Snapshot before awaits: a UI retaining the input object cannot replace saved bytes mid-commit.
     const plaintext = JSON.stringify(value), snapshot: unknown = JSON.parse(plaintext);
-    this.validate(snapshot);
+    await this.validate(snapshot);
     const revision = (previous ?? 0) + 1;
     if (!Number.isSafeInteger(revision)) throw new JournalConflictError();
     const key = await this.storageKey(noteId);
@@ -115,7 +116,7 @@ export class EncryptedJournal<T extends object> {
     await this.store.compareAndSwap(key, previous, record);
     const current = await head(record);
     this.remember(key, current);
-    return { revision, value: snapshot, head: current };
+    return { revision, value: snapshot as T, head: current };
   }
   async withNoteLock<R>(noteId: string, action: () => Promise<R>): Promise<R> { return this.store.withLock(await this.storageKey(noteId), action); }
   async exportBackup(noteId: string): Promise<{ backup: string; head: JournalHead }> {

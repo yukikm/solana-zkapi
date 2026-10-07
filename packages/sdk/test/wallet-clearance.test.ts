@@ -1,3 +1,8 @@
+import {v0Message as transactionMessage} from './kit-helpers.ts';
+import {transactionSignature} from '../src/solana.ts';
+import {kitAddress, fixtureSigner, signWith, decodeTransaction} from './kit-helpers.ts';
+/** Same-journal clearance recovery with real encryption, ControlClient and v0
+ * signing. HTTP, proofs and finalized chain receipts are explicit fixtures. */
 /** Same-journal clearance recovery with real encryption, ControlClient and v0
  * signing. HTTP, proofs and finalized chain receipts are explicit fixtures. */
 import assert from 'node:assert/strict';
@@ -6,7 +11,7 @@ import {mkdtemp, rm} from 'node:fs/promises';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 import test, {type TestContext} from 'node:test';
-import {Keypair, PublicKey, VersionedTransaction} from '@solana/web3.js';
+
 import bs58 from 'bs58';
 import {ControlClient, validateNoteJournal, type NoteJournal, type PreparedSession, type PrivateState,
   type SessionVerifier, type VerificationContext} from '../src/control.ts';
@@ -20,12 +25,12 @@ import type {WalletSnapshot} from '../src/wallet-chain.ts';
 
 const fixture=JSON.parse(readFileSync(new URL('../../../tests/fixtures/vault/genesis-a.json',import.meta.url),'utf8'));
 const field=(n:number)=>'0x'+n.toString(16).padStart(64,'0');
-const key=(hex:string)=>new PublicKey(Buffer.from(hex,'hex')).toBase58();
+const key=(hex:string)=>kitAddress(Buffer.from(hex,'hex'));
 const nullifier:string=fixture.auth.withdrawal.public_inputs[11];
 const signature={r_x:field(9),r_y:field(10),s:field(11)};
 const manifest={deployment_id:'wallet-clearance-fixture',program_id:key(fixture.program_id),pool:key(fixture.pool),
   mint:key(fixture.mint),note_ttl_seconds:String(fixture.ttl),control_api_origin:'https://control.invalid',
-  inference_api_origin:'https://inference.invalid'} as VerifiedManifest;
+  inference_api_origin:'https://inference.invalid'} as unknown as VerifiedManifest;
 const context={deployment_id:manifest.deployment_id,pool:manifest.pool,vault_binding:field(1),state_key:[field(2),field(3)],
   cap_micro_usdc:'100',control_api_origin:manifest.control_api_origin,inference_api_origin:manifest.inference_api_origin,
   quote_public_key:'00'.repeat(32),receipt_public_key:'00'.repeat(32),request_vk_sha256:'00'.repeat(32),tariff_hashes:['33'.repeat(32)]} as VerificationContext;
@@ -51,7 +56,7 @@ async function setup(t:TestContext){
     if(writesBeforeFailure--===0)throw Error('fixture storage unavailable');await store.compareAndSwap(k,rev,next);
   }};
   const open=()=>new EncryptedJournal<NoteJournal>(guarded,aes,{deploymentId:manifest.deployment_id,pool:manifest.pool},validateNoteJournal);
-  const journal=open(),pair=Keypair.fromSeed(new Uint8Array(32).fill(1)),owner=pair.publicKey.toBase58();
+  const journal=open(),pair=(await fixtureSigner(new Uint8Array(32).fill(1))),owner=pair.address;
   const state:PrivateState={balance_micro_usdc:String(fixture.deposit),balance_blinding:field(3),note_leaf:field(4),
     commitment:{x:field(5),y:field(6)},anchor:field(1),state_signature:null};
   await journal.create('note',{schema:1,state,witness:{secret:field(2),note_id:0,deposit_micro_usdc:String(fixture.deposit),
@@ -63,18 +68,18 @@ async function setup(t:TestContext){
   await control.prepare('note',prepared(),field(1));await assert.rejects(control.submit('note'),/ACK lost/);
   const original=(await journal.read('note'))!.value;
   let clearanceReply:(body:string)=>Promise<Response>=async()=>Response.json({nullifier,signature});
-  const wallet:V0Wallet={publicKey:pair.publicKey,supportedTransactionVersions:new Set([0]),async signTransaction(tx){signs++;tx.sign([pair]);return tx;}};
+  const wallet:V0Wallet={publicKey:pair.address,supportedTransactionVersions:new Set([0]),async signTransaction(tx){signs++;tx = await signWith(tx, [pair]);return tx;}};
   let successorN=false;
   const prover={async inspect(_w:unknown,s:PrivateState){successorN=s.anchor===field(21);return {nullifier:successorN?field(22):nullifier,registration_commitment:'0x'+fixture.commitment};},
     async verifyClearance(n:string,s:typeof signature){assert.equal(n,successorN?field(22):nullifier);assert.deepEqual({...s},signature);if(verifyFailure)throw Error('invalid clearance signature');},
     async tree(){return structuredClone(fixture.trees[1]);},async withdrawal(){const proof=structuredClone(fixture.auth.withdrawal);if(successorN)proof.public_inputs[11]=field(22);return proof;}} as unknown as NoteProver;
   const rpc:TransportRpc={async signatureStatus(){return null;},async finalizedReceipt(sig){return receipts.get(sig)??null;},
     async finalizedBlockHeight(){return 50;},async sendRawTransaction(bytes){
-      sends++;const tx=VersionedTransaction.deserialize(bytes),sig=bs58.encode(tx.signatures[0]);
+      sends++;const tx=decodeTransaction(bytes),sig=transactionSignature(tx);
       const op=(await journal.read('note'))!.value.wallet!.operation!,attempt=op.attempts.find(a=>a.signature===sig)!;
-      assert.ok(attempt);assert.equal(attempt.wireHex,Buffer.from(bytes).toString('hex'));assert.equal(tx.version,0);
+      assert.ok(attempt);assert.equal(attempt.wireHex,Buffer.from(bytes).toString('hex'));assert.equal(transactionMessage(tx).version,0);
       assert.ok(!receipts.has(sig));if(attempt.kind==='execute')closed=true;
-      receipts.set(sig,{signature:sig,message:tx.message.serialize(),slot:101+receipts.size,err:null});return sig;
+      receipts.set(sig,{signature:sig,message:new Uint8Array(tx.messageBytes),slot:101+receipts.size,err:null});return sig;
     }};
   const options:WalletOptions={manifest,journal,prover,rpc,wallets:[wallet],fetch:async(url,init)=>{
     calls.push(String(url));assert.equal(String(url),manifest.control_api_origin+'/zkapi/v1/withdraw/clearance');
@@ -85,7 +90,7 @@ async function setup(t:TestContext){
     siblings:Array(32).fill(field(0)),slot:110,sequence:closed?'3':'2',nextNoteId:1,clock:String(fixture.now),paused:false,
     treasuryOwner:owner,note:{note_id:0,registration_commitment:'0x'+fixture.commitment,deposit_micro_usdc:String(fixture.deposit),
       expiry:String(fixture.expiry),status:closed?'closed':'active'}};},async buffer(){throw Error('buffer not used');},
-    async blockhash(){return {blockhash:new PublicKey(new Uint8Array(32).fill(7)).toBase58(),lastValidBlockHeight:200};}}};
+    async blockhash(){return {blockhash:kitAddress(new Uint8Array(32).fill(7)),lastValidBlockHeight:200};}}};
   return {journal,open,original,control,options,client:new WalletClient(options),restart:()=>new WalletClient({...options,journal:open()}),
     roles:{uploader:owner,rentPayer:owner,feePayer:owner,payer:owner,tokenOwner:owner},owner,calls,receipts,
     counts:()=>({signs,sends}),reply:(f:typeof clearanceReply)=>{clearanceReply=f;},badSignature:()=>{verifyFailure=true;},

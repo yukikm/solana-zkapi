@@ -7,7 +7,8 @@ import { resolve, join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { createHash, randomUUID } from 'node:crypto';
 import { setTimeout as delay } from 'node:timers/promises';
-import { Connection, Keypair, VersionedTransaction } from '@solana/web3.js';
+import {createKeyPairSignerFromBytes,partiallySignTransaction,signature as checkedSignature} from '@solana/kit';
+import {createSolanaRpcWithFetch,decodeTransaction,encodeTransaction,transactionMessage,transactionSignature} from '@zkapi/solana-sdk/solana';
 import bs58 from 'bs58';
 import { createZkApiClient } from '@zkapi/solana-sdk';
 import { readChatText, readChatDeltas, ChatResponseError } from '@zkapi/solana-sdk/chat';
@@ -128,13 +129,14 @@ export async function runExternalLive(configPath, command) {
   assert.equal(hash(jcsBytes(profile.trust)), hash(jcsBytes(assets.trust)));
   assert.equal(assets.verifiedManifest.deployment_environment, 'devnet');
   assert.equal(hash(await readFile(cfg.nativeProver)), cfg.nativeProverSha256);
-  const secret = await privateBytes(cfg.walletFile), keypair = Keypair.fromSecretKey(Uint8Array.from(JSON.parse(new TextDecoder().decode(secret)))); secret.fill(0);
-  const wallet = { publicKey: keypair.publicKey, supportedTransactionVersions: new Set([0]),
+  const secret=await privateBytes(cfg.walletFile);let keypair;const secretBytes=Uint8Array.from(JSON.parse(new TextDecoder().decode(secret)));
+  try {keypair=await createKeyPairSignerFromBytes(secretBytes);} finally {secret.fill(0);secretBytes.fill(0);}
+  const wallet = { publicKey: keypair.address, supportedTransactionVersions: new Set([0]),
     async signTransaction(tx) {
-      const copy = VersionedTransaction.deserialize(tx.serialize());
-      assert.equal(copy.version, 0); assert.equal(copy.message.header.numRequiredSignatures, 1);
-      assert.ok(copy.message.staticAccountKeys[0].equals(keypair.publicKey));
-      copy.sign([keypair]); return copy;
+      const copy = decodeTransaction(encodeTransaction(tx)),message=transactionMessage(copy);
+      assert.equal(message.version, 0); assert.equal(message.header.numSignerAccounts, 1);
+      assert.ok(message.staticAccounts[0]===keypair.address);
+      return partiallySignTransaction([keypair.keyPair],copy);
     } };
   await mkdir(cfg.journalDirectory, { recursive: true, mode: 0o700 });
   const store = await NativeJournalStore.open(cfg.journalDirectory), statePath = join(cfg.journalDirectory, 'external-acceptance.json');
@@ -161,7 +163,7 @@ export async function runExternalLive(configPath, command) {
     let result = {}, stage = 'initialize';
     const relay = externalRelay(profile, cfg.hostOrigin, async ({ kind, rpc, body }) => {
       if (kind === 'rpc' && rpc.method === 'sendTransaction') {
-        const wire = Buffer.from(rpc.params[0], 'base64'), tx = VersionedTransaction.deserialize(wire), signature = bs58.encode(tx.signatures[0]);
+        const wire = Buffer.from(rpc.params[0], 'base64'), tx = decodeTransaction(wire), signature = transactionSignature(tx);
         assert.ok(!saved.transactions.some(t => t.signature === signature), 'automatic exact-signature resend refused');
         saved.transactions.push({ signature, wireSha256: hash(wire), bytes: wire.length, sendRecordedAt: new Date().toISOString() });
         await save();
@@ -178,7 +180,7 @@ export async function runExternalLive(configPath, command) {
       result.providerCapture = { bytes: 0, contentType: response.headers.get('content-type')?.split(';')[0] === 'text/event-stream' ? 'text/event-stream' : 'other', status: response.status };
       return captureResponse(response, join(cfg.journalDirectory, command + '-response.bin'), result.providerCapture);
     });
-    const connection = new Connection(profile.rpcUrl, { commitment: 'confirmed', fetch: relay, disableRetryOnRateLimit: true });
+    const connection = createSolanaRpcWithFetch(profile.rpcUrl,relay);
     const client = await createZkApiClient({ deployment: { manifest: assets.manifest, trust: assets.trust, artifacts: assets.artifacts,
       connection, indexerOrigin: profile.indexerOrigin, fetch: relay, preparationCommitment: 'confirmed' }, storage: { store, key },
       prover: new NativeProver(cfg.nativeProver, cfg.nativeProverSha256), wallet, noteId: cfg.noteId, mode: profile.mode,
@@ -190,7 +192,7 @@ export async function runExternalLive(configPath, command) {
         const status = await client.status(); if (!status.walletOperation) return;
         const signature = status.walletOperation.signature;
         if (signature && saved.transactions.some(t => t.signature === signature)) {
-          const observed = (await connection.getSignatureStatuses([signature], { searchTransactionHistory: true })).value[0];
+          const observed = (await connection.getSignatureStatuses([checkedSignature(signature)], { searchTransactionHistory: true }).send()).value[0];
           if (observed?.confirmationStatus !== 'finalized') { await delay(1500); continue; }
         }
         const outcome = await client.advanceWallet();
@@ -212,7 +214,7 @@ export async function runExternalLive(configPath, command) {
         saved.actions[command] = { startedAt: new Date().toISOString(), operationId: randomUUID() }; await save();
       }
       if (command === 'deposit') { assert.equal((await client.status()).wallet, 'empty'); await client.prepareDeposit(cfg.depositMicroUsdc); await driveWallet(); }
-      else if (command === 'withdraw') { await client.prepareWithdrawal(wallet.publicKey.toBase58()); await driveWallet(); }
+      else if (command === 'withdraw') { await client.prepareWithdrawal(wallet.publicKey); await driveWallet(); }
       else if (command === 'advance') await driveWallet();
       else if (command === 'recover') await client.recover();
       else if (command === 'settle') await client.settle();

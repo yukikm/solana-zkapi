@@ -2,18 +2,19 @@
  * Original Poseidon reconstruction is tested separately in the native/WASM prover. */
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { Connection, PublicKey, SYSVAR_CLOCK_PUBKEY } from '@solana/web3.js';
+import { address, getAddressEncoder, getProgramDerivedAddress } from '@solana/kit';
+const SYSVAR_CLOCK_ADDRESS=address('SysvarC1ock11111111111111111111111111111111');
 import { SolanaWalletChain } from '../src/wallet-chain.ts';
 import { authorizationSnapshot, MAX_SESSION_SNAPSHOT_BYTES, type SnapshotPathProver } from '../src/session-snapshot.ts';
 import { discriminator } from '../src/transport.ts';
 import { jcsBytes, sha256Hex } from '../src/trust.ts';
-import { chainFixture, key } from './chain-fixture.ts';
+import { chainFixture, key, fixtureRpc } from './chain-fixture.ts';
 
 const field=(n:number)=>'0x'+BigInt(n).toString(16).padStart(64,'0');
 async function fixture() {
   const {manifest,poolData}=await chainFixture();
-  const program=new PublicKey(manifest.program_id),pool=new PublicKey(manifest.pool);
-  const [tree,bump]=PublicKey.findProgramAddressSync([Buffer.from('tree'),pool.toBytes()],program);
+  const program=address(manifest.program_id),pool=address(manifest.pool);
+  const [tree,bump]=await getProgramDerivedAddress({seeds:[Buffer.from('tree'),getAddressEncoder().encode(pool)],programAddress:program});
   const root={pool:manifest.pool,root:field(1),slot:'100',blockhash:key(8),sequence:'7',next_note_id:'3'};
   const note=(id:number)=>({note_id:String(id),commitment:field(42+id),deposit_micro_usdc:'100',expiry:'3000000000'});
   const file={schema_version:'1',snapshot:root,active_notes:[note(0),note(2)],pending_withdrawals:[] as any[]};
@@ -22,7 +23,7 @@ async function fixture() {
   const clock=Buffer.alloc(40);clock.writeBigInt64LE(2600n,32);
   const account=(data:Buffer,owner=manifest.program_id)=>({owner,executable:false,lamports:1,rentEpoch:0,data});
   const accounts:(ReturnType<typeof account>|null)[]=[account(poolData),account(treeData),account(clock,'Sysvar1111111111111111111111111111111111111')];
-  const state={slot:110,sourceHash:key(8),targetHash:key(9),genesis:manifest.genesis_hash,missingBlock:false,
+  const state={slot:110,sourceHash:key(8) as string,targetHash:key(9) as string,genesis:manifest.genesis_hash,missingBlock:false,
     descriptor:(d:any)=>d, bytes:(b:Uint8Array)=>b, corruptDigest:false, proverFault:''};
   const urls:string[]=[],rpc:{method:string;params:any[]}[]=[],local:number[]=[];
   const fetcher:typeof fetch=async(url,init)=>{
@@ -39,8 +40,8 @@ async function fixture() {
     else if(method==='getBlock')result=state.missingBlock?null:{blockhash:params[0]===100?state.sourceHash:state.targetHash,
       previousBlockhash:key(7),parentSlot:params[0]-1,blockHeight:params[0],blockTime:2600};
     else if(method==='getMultipleAccounts') {
-      assert.deepEqual(params[0],[pool,tree,SYSVAR_CLOCK_PUBKEY].map(p=>p.toBase58()),'authorization reads only shared accounts');
-      assert.equal(params[1].commitment,'finalized');
+      assert.deepEqual(params[0],[pool,tree,SYSVAR_CLOCK_ADDRESS],'authorization reads only shared accounts');
+      assert.equal(params[1].commitment??'finalized','finalized');
       result={context:{slot:state.slot},value:accounts.map(a=>a&&({...a,data:[a.data.toString('base64'),'base64']}))};
     } else throw Error('unexpected RPC '+method);
     return Response.json({jsonrpc:'2.0',id,result});
@@ -51,7 +52,7 @@ async function fixture() {
     return {root:state.proverFault==='root'?field(8):root,note_id:state.proverFault==='id'?99:id,
       siblings:Array(state.proverFault==='length'?31:32).fill(state.proverFault==='field'?'invalid':field(0))};
   }};
-  const chain=new SolanaWalletChain(new Connection('http://127.0.0.1:19890',{fetch:fetcher}),manifest,'http://127.0.0.1:19891',{fetch:fetcher,allowLoopbackHttp:true});
+  const chain=new SolanaWalletChain(fixtureRpc(fetcher),manifest,'http://127.0.0.1:19891',{fetch:fetcher,allowLoopbackHttp:true});
   return {chain,prover,state,file,accounts,treeData,clock,urls,rpc,local};
 }
 

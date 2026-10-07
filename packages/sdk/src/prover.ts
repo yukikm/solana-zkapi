@@ -1,6 +1,6 @@
 /** Wallet proving facade. This code creates witnesses/proofs, never sends requests or commits state. */
 import { Buffer } from 'buffer';
-import { PublicKey } from '@solana/web3.js';
+import { getAddressEncoder, type Address } from '@solana/kit';
 import { parseField, parseMicroUsdc } from './encoding.ts';
 import { verifyArtifactBundle, type ArtifactBundle, type VerifiedManifest } from './trust.ts';
 import type { PrivateState, Quote, Tariff, PreparedSession, StateSignature, createCredentials } from './control.ts';
@@ -70,8 +70,8 @@ export class NoteProver {
     const result = await this.run({kind:'clearance',context:this.context,nullifier,signature}) as {verified?:boolean};
     if (result.verified !== true) throw new Error('invalid clearance');
   }
-  async withdrawal(witness: NoteWitness, state: PrivateState, root: string, siblings: string[], destination: PublicKey, clearance: StateSignature | null): Promise<PublicProof> {
-    return proof(await this.run({kind:'withdrawal',context:this.context,witness,state,root,siblings,destination_owner_hex:Buffer.from(destination.toBytes()).toString('hex'),clearance,mutual:clearance !== null,key:this.keys.withdrawal}),14);
+  async withdrawal(witness: NoteWitness, state: PrivateState, root: string, siblings: string[], destination: Address, clearance: StateSignature | null): Promise<PublicProof> {
+    return proof(await this.run({kind:'withdrawal',context:this.context,witness,state,root,siblings,destination_owner_hex:Buffer.from(getAddressEncoder().encode(destination)).toString('hex'),clearance,mutual:clearance !== null,key:this.keys.withdrawal}),14);
   }
   async tree(note: PublicNote, root: string, siblings: string[], op: 0|1|2): Promise<PublicProof> {
     return proof(await this.run({kind:'tree',context:this.context,note,root,siblings,op,key:this.keys.tree}),11);

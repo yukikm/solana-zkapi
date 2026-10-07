@@ -5,15 +5,20 @@ proof generation, encrypted storage, authorization and verified settlement.
 Applications keep control of their UI, conversation history and provider mode.
 
 **Start here:** [Quickstart](../../docs/sdk/quickstart.md) ·
-[API reference](../../docs/sdk/api.md) ·
+[API reference](../../docs/sdk/api.md) · [Kit migration](../../docs/sdk/kit-migration.md) ·
 [separate reference client](https://github.com/yukikm/solana-zkapi-client).
 
 Install the reviewed npm tarball with compiled ES modules and TypeScript
 declarations from an independent application. See [distribution and artifact
-setup](DISTRIBUTION.md). The package is version `0.1.0-devnet.1`, with `private: true` to
+setup](DISTRIBUTION.md). The package is version `0.2.0-devnet.1`, with `private: true` to
 prevent accidental npm publication. Node integrations use Node 24.19.0; browser
 integrations bundle the browser entry points. Do not install an unrelated
 registry package just because it has this name.
+
+This version uses `@solana/kit` 8.4.0: addresses are validated branded strings,
+RPC uses `Rpc<SolanaRpcApi>`, and signing uses native Kit transactions. Install
+Kit explicitly if your app imports it. Lower-level PDA derivation and journal
+validation are asynchronous; see the migration guide before upgrading.
 
 The SDK is [MIT licensed](LICENSE). Its dependencies retain their own licenses.
 

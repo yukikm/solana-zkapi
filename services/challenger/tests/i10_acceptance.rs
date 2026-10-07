@@ -132,7 +132,7 @@ async fn repeated_status_outages_and_process_restarts_preserve_unknown_execute()
     config.database_dsn_file = directory.path().join("unused-dsn");
     config.fee_key_file = directory.path().join("fee.json");
     let keypair = tokio::process::Command::new(&config.node)
-        .args(["--input-type=module", "-e", "import {Keypair} from '@solana/web3.js';process.stdout.write(JSON.stringify([...Keypair.fromSeed(new Uint8Array(32).fill(10)).secretKey]))"])
+        .args(["--input-type=module", "-e", "import {createKeyPairSignerFromPrivateKeyBytes,getAddressEncoder} from '@solana/kit';const seed=new Uint8Array(32).fill(10),key=await createKeyPairSignerFromPrivateKeyBytes(seed);process.stdout.write(JSON.stringify([...seed,...getAddressEncoder().encode(key.address)]))"])
         .current_dir(&root)
         .env_clear()
         .output()

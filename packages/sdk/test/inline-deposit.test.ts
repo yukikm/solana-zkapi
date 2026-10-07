@@ -1,3 +1,9 @@
+import {getCompiledTransactionMessageEncoder,type TransactionMessageBytes} from '@solana/kit';
+import {v0Message as transactionMessage} from './kit-helpers.ts';
+import {transactionSignature} from '../src/solana.ts';
+import {kitAddress, fixtureSigner, signWith, decodeTransaction, encodeTransaction} from './kit-helpers.ts';
+/** Offline state-machine/serialization tests. Real Ed25519 and durable storage;
+ * synthetic proof/chain fixtures do not establish SBF or Phantom acceptance. */
 /** Offline state-machine/serialization tests. Real Ed25519 and durable storage;
  * synthetic proof/chain fixtures do not establish SBF or Phantom acceptance. */
 import assert from 'node:assert/strict';
@@ -6,7 +12,7 @@ import {readFileSync} from 'node:fs';
 import {mkdtemp,rm} from 'node:fs/promises';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
-import {Keypair,PublicKey,VersionedTransaction} from '@solana/web3.js';
+
 import bs58 from 'bs58';
 import {WalletClient,type WalletOptions} from '../src/wallet.ts';
 import {ZkApiClient} from '../src/client.ts';
@@ -22,16 +28,16 @@ import type {WalletSnapshot} from '../src/wallet-chain.ts';
 const read=(path:string)=>readFileSync(new URL('../../../'+path,import.meta.url));
 const fixture=JSON.parse(read('tests/fixtures/vault/genesis-a.json').toString());
 const profile=JSON.parse(read('tests/fixtures/layout2/profile.json').toString());
-const key=(value:string)=>new PublicKey(Buffer.from(value,'hex'));
-const pk=(n:number)=>new PublicKey(new Uint8Array(32).fill(n)).toBase58();
+const key=(value:string)=>kitAddress(Buffer.from(value,'hex'));
+const pk=(n:number)=>kitAddress(new Uint8Array(32).fill(n));
 const field=(n:number|bigint)=>'0x'+n.toString(16).padStart(64,'0');
-const pair=Keypair.fromSeed(new Uint8Array(32).fill(1)),owner=pair.publicKey.toBase58();
+const pair=(await fixtureSigner(new Uint8Array(32).fill(1))),owner=pair.address;
 const blockhash={blockhash:pk(7),lastValidBlockHeight:100};
 const payload=()=>encodeLayout2Args({operation:'deposit',expectedId:0,expectedRoot:fixture.trees[0].public_inputs[1],expiry:BigInt(fixture.expiry),commitment:'0x'+fixture.commitment,amount:BigInt(fixture.deposit),tree:fixture.trees[0]});
 async function manifest(inline=true,variant=false):Promise<VerifiedManifest>{
   const idl=read('docs/contracts/zkapi_vault.json'),authority={authority:pk(20),program_id:pk(21),config_hash:'77'.repeat(32),threshold:2 as const,members:[pk(22),pk(23),pk(24)]};
   const m:Manifest={...profile,deployment_id:'compact-test',deployment_environment:'local',manifest_hash:'00'.repeat(32),manifest_signature:Buffer.alloc(64).toString('base64'),
-    genesis_hash:key(fixture.genesis).toBase58(),program_id:key(fixture.program_id).toBase58(),pool:key(fixture.pool).toBase58(),mint:key(fixture.mint).toBase58(),token_program:'TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA',decimals:6,
+    genesis_hash:key(fixture.genesis),program_id:key(fixture.program_id),pool:key(fixture.pool),mint:key(fixture.mint),token_program:'TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA',decimals:6,
     vault_binding:fixture.trees[0].public_inputs[0],state_key:{x:fixture.auth.escape.public_inputs[4],y:fixture.auth.escape.public_inputs[5]},clearance_key:{x:fixture.auth.escape.public_inputs[6],y:fixture.auth.escape.public_inputs[7]},quote_public_key:pk(30),receipt_public_key:pk(31),transaction_formats:inline?['v0_buffer','v0_inline_deposit_v1']:['v0_buffer'],cap_micro_usdc:variant?'2000000':'1000000',note_ttl_seconds:String(fixture.ttl),challenge_seconds:'86400',control_api_origin:'http://127.0.0.1:8788',inference_api_origin:'http://127.0.0.1:8789',proving_keys_base_url:'http://127.0.0.1:8788/keys',idl_hash:await sha256Hex(idl),api_endpoints:['/zkapi/v1/config'],tariff_hashes:[],artifact_digests:{vault_idl:await sha256Hex(idl)},db_schema_version:'2',authorities:{admin:authority,upgrade:{...authority,authority:pk(25)}}};
   const raw={...m,manifest_hash:await manifestDigest(m)};
   return verifyManifest(new TextEncoder().encode(JSON.stringify(raw)),{anchor:{kind:'hash',sha256:raw.manifest_hash},expected:{deployment_id:m.deployment_id,deployment_environment:m.deployment_environment,genesis_hash:m.genesis_hash,program_id:m.program_id,pool:m.pool,mint:m.mint,token_program:m.token_program,control_api_origin:m.control_api_origin,inference_api_origin:m.inference_api_origin},build:{stateKey:m.state_key,clearanceKey:m.clearance_key,circuitProfileHash:m.circuit_profile_hash,idlHash:m.idl_hash,setupProfile:m.setup_profile,transactionFormats:['v0_buffer','v0_inline_deposit_v1']}});
@@ -48,13 +54,13 @@ async function setup(t:TestContext,inline=true,begin=true){
   const prover={deposit:async(note_id:number,amount:string,expiry:string)=>({state:structuredClone(state),witness:{secret:field(2),note_id,deposit_micro_usdc:amount,expiry}}),inspect:async()=>({registration_commitment:'0x'+fixture.commitment}),
     rebaseDeposit:async(w:NoteJournal['witness'],note_id:number,expiry:string)=>{counts.rebase++;return {state:structuredClone(state),witness:{...w!,note_id,expiry}};},
     tree:async(note:{note_id:number;expiry:string},root:string)=>{counts.proof++;const persisted=await open().read('note');assert.ok(persisted?.value.witness,'secret is durable before tree proof');if(behavior.failProof)throw Error('proof interrupted');const p=structuredClone(fixture.trees[0]);p.public_inputs[1]=root;p.public_inputs[3]=field(note.note_id);p.public_inputs[8]=field(BigInt(note.expiry));return p;}} as unknown as NoteProver;
-  const wallet:V0Wallet={publicKey:pair.publicKey,supportedTransactionVersions:new Set([0]),async signTransaction(tx){counts.sign++;tx.sign([pair]);return tx;}};
-  const options:WalletOptions={manifest:m,prover,journal,wallets:[wallet],priorityFeeMicroLamports:1n,chain:{snapshot:async()=>structuredClone(snapshot),buffer:async()=>{throw Error('inline must not consult a buffer');},bufferObservation:async()=>{throw Error('inline must not consult buffer absence');},blockhash:async()=>{counts.blockhash++;return {...behavior.blockhash};}},rpc:{signatureStatus:async()=>behavior.status,finalizedReceipt:async()=>behavior.receipt,finalizedBlockHeight:async()=>behavior.height,sendRawTransaction:async bytes=>{counts.send++;const saved=(await open().read('note'))!.value.wallet!.operation!;assert.equal(saved.current,bs58.encode(VersionedTransaction.deserialize(bytes).signatures[0]));assert.equal(saved.attempts.at(-1)!.wireHex,Buffer.from(bytes).toString('hex'));if(behavior.loseSendAck)throw Error('send ACK lost');return saved.current!;}}};
+  const wallet:V0Wallet={publicKey:pair.address,supportedTransactionVersions:new Set([0]),async signTransaction(tx){counts.sign++;tx = await signWith(tx, [pair]);return tx;}};
+  const options:WalletOptions={manifest:m,prover,journal,wallets:[wallet],priorityFeeMicroLamports:1n,chain:{snapshot:async()=>structuredClone(snapshot),buffer:async()=>{throw Error('inline must not consult a buffer');},bufferObservation:async()=>{throw Error('inline must not consult buffer absence');},blockhash:async()=>{counts.blockhash++;return {...behavior.blockhash};}},rpc:{signatureStatus:async()=>behavior.status,finalizedReceipt:async()=>behavior.receipt,finalizedBlockHeight:async()=>behavior.height,sendRawTransaction:async bytes=>{counts.send++;const saved=(await open().read('note'))!.value.wallet!.operation!;assert.equal(saved.current,transactionSignature(decodeTransaction(bytes)));assert.equal(saved.attempts.at(-1)!.wireHex,Buffer.from(bytes).toString('hex'));if(behavior.loseSendAck)throw Error('send ACK lost');return saved.current!;}}};
   const client=new WalletClient(options),restart=()=>new WalletClient({...options,journal:open()});
   const roles={tokenOwner:owner,payer:owner,feePayer:owner,...(!inline?{uploader:owner,rentPayer:owner}:{})};
   if(begin)await client.beginDeposit('note',String(fixture.deposit),roles);
   const signed=async()=>{const a=(await open().read('note'))!.value.wallet!.operation!.attempts.at(-1)!;assert.equal(a.kind,'deposit_inline');return a as InlineDepositAttempt;};
-  const receipt=async(err:unknown=null)=>{const a=await signed();return {signature:a.signature,message:VersionedTransaction.deserialize(Buffer.from(a.wireHex,'hex')).message.serialize(),slot:30,err};};
+  const receipt=async(err:unknown=null)=>{const a=await signed();return {signature:a.signature,message:new Uint8Array(decodeTransaction(Buffer.from(a.wireHex,'hex')).messageBytes),slot:30,err};};
   const fund=async()=>{const r=(await open().read('note'))!;snapshot.slot=30;snapshot.note={note_id:r.value.witness!.note_id,registration_commitment:'0x'+fixture.commitment,deposit_micro_usdc:String(fixture.deposit),expiry:r.value.witness!.expiry,status:'active'};behavior.receipt=await receipt();};
   return {client,restart,options,journal,store,open,behavior,counts,snapshot,roles,signed,receipt,fund};
 }
@@ -82,10 +88,10 @@ test('compact encoding exactly expands original canonical proof and refuses mism
 
 test('compact self-pay and independent payer plans use one financial instruction and 1007/1103/1199 bytes',async()=>{
   for(const [rent,fee,bytes,count] of [[1,1,1007,1],[2,2,1103,2],[2,3,1199,3]]){
-    const wallets=[1,2,3].map(n=>Keypair.fromSeed(new Uint8Array(32).fill(n)));
-    const plan=await buildInlineDepositPlan({deploymentId:'fixture',manifestHash:'12'.repeat(32),vaultBinding:fixture.trees[0].public_inputs[0],programId:key(fixture.program_id),pool:key(fixture.pool),feePayer:wallets[fee-1].publicKey,payload:payload(),financial:vaultAccounts({programId:key(fixture.program_id),pool:key(fixture.pool),mint:key(fixture.mint),operation:'deposit',noteId:0,tokenOwner:wallets[0].publicKey,payer:wallets[rent-1].publicKey}),snapshot:{slot:20,sequence:1n},priorityFeeMicroLamports:1n});
+    const wallets=await Promise.all([1,2,3].map(n=>fixtureSigner(new Uint8Array(32).fill(n))));
+    const plan=await buildInlineDepositPlan({deploymentId:'fixture',manifestHash:'12'.repeat(32),vaultBinding:fixture.trees[0].public_inputs[0],programId:key(fixture.program_id),pool:key(fixture.pool),feePayer:wallets[fee-1].address,payload:payload(),financial:(await vaultAccounts({programId:key(fixture.program_id),pool:key(fixture.pool),mint:key(fixture.mint),operation:'deposit',noteId:0,tokenOwner:wallets[0].address,payer:wallets[rent-1].address})),snapshot:{slot:20,sequence:1n},priorityFeeMicroLamports:1n});
     assert.equal(plan.steps.length,1);assert.equal(plan.steps[0].kind,'deposit_inline');assert.equal(plan.steps[0].instruction.data.length,444);
-    const tx=compileV0(plan.steps[0].instruction,plan.feePayer,blockhash.blockhash,1n);assert.equal(tx.serialize().length,bytes);assert.equal(tx.signatures.length,count);
+    const tx=compileV0(plan.steps[0].instruction,plan.feePayer,blockhash.blockhash,1n);assert.equal(encodeTransaction(tx).length,bytes);assert.equal(Object.keys(tx.signatures).length,count);
     const record=snapshotInlineDepositPlan(plan);assert.equal('buffer' in record,false);assert.equal('nonceHex' in record,false);assert.equal('uploader' in record,false);
     assert.deepEqual(snapshotInlineDepositPlan(await restoreInlineDepositPlan(record)),record);
   }
@@ -194,13 +200,13 @@ test('inline fee journal rejects noncanonical values and disagreement with saved
   const before=(await h.open().read('note'))!.value;
   for(const fee of ['00','-1','1.5','18446744073709551616','2']){
     const changed=structuredClone(before);(changed.wallet!.operation as {priorityFeeMicroLamports?:string}).priorityFeeMicroLamports=fee;
-    assert.throws(()=>validateNoteJournal(changed));
+    await assert.rejects(()=>validateNoteJournal(changed));
   }
   const changed=structuredClone(before),op=changed.wallet!.operation!;
   assert.equal(op.transport,'v0_inline_deposit_v1');
   if(op.transport!=='v0_inline_deposit_v1')throw Error('inline operation required');
   op.priorityFeeMicroLamports='2';op.inlinePlan!.priorityFeeMicroLamports='2';
-  assert.throws(()=>validateNoteJournal(changed),/attempt priority fee changed/);
+  await assert.rejects(()=>validateNoteJournal(changed),/attempt priority fee changed/);
 });
 
 test('receipt before final CAS crash recovers without sending; absent/other/stale Note never activates',async t=>{
@@ -214,7 +220,7 @@ test('receipt before final CAS crash recovers without sending; absent/other/stal
 test('schema 2 refuses buffer fields, downgrade, mixed attempts and wire substitution before persistence',async t=>{
   const h=await setup(t);await h.client.advance('note');const value=(await h.open().read('note'))!.value;
   const cases=[(v:any)=>v.schema=1,(v:any)=>v.wallet.operation.plan={},(v:any)=>v.wallet.operation.roles.uploader=owner,(v:any)=>v.wallet.operation.inlinePlan.nonceHex='00'.repeat(32),(v:any)=>v.wallet.operation.attempts[0].buffer=owner,(v:any)=>v.wallet.operation.attempts[0].kind='execute',(v:any)=>v.wallet.operation.attempts[0].wireHex='00',(v:any)=>{delete v.wallet.operation.current;},(v:any)=>v.wallet.operation.inlineContext.manifestHash='33'.repeat(32),(v:any)=>v.unknown=true,(v:any)=>v.wallet.unknown=true,(v:any)=>{delete v.wallet.operation.current;v.wallet.operation.finalized=[{signature:v.wallet.operation.attempts[0].signature,slot:30}];}];
-  for(const mutate of cases){const changed=structuredClone(value);mutate(changed);assert.throws(()=>validateNoteJournal(changed));}
+  for(const mutate of cases){const changed=structuredClone(value);mutate(changed);await assert.rejects(()=>validateNoteJournal(changed));}
 });
 
 test('two wallet clients share one lock and persisted attempt; only one prompts and dispatches',async t=>{
@@ -222,14 +228,14 @@ test('two wallet clients share one lock and persisted attempt; only one prompts 
 });
 
 test('wallet rejection and message mutation cannot persist or dispatch a financial attempt',async t=>{
-  for(const mutate of [false,true]){const h=await setup(t),before=await h.open().read('note');const bad:V0Wallet={publicKey:pair.publicKey,supportedTransactionVersions:new Set([0]),async signTransaction(tx){if(!mutate)throw Error('user rejected');tx.message.recentBlockhash=pk(8);tx.sign([pair]);return tx;}};
+  for(const mutate of [false,true]){const h=await setup(t),before=await h.open().read('note');const bad:V0Wallet={publicKey:pair.address,supportedTransactionVersions:new Set([0]),async signTransaction(tx){if(!mutate)throw Error('user rejected');tx={...tx,messageBytes:getCompiledTransactionMessageEncoder().encode({...transactionMessage(tx),lifetimeToken:pk(8)}) as TransactionMessageBytes};tx = await signWith(tx, [pair]);return tx;}};
     await assert.rejects(new WalletClient({...h.options,wallets:[bad]}).advance('note'),mutate?/changed transaction/:/user rejected/);assert.equal(h.counts.send,0);assert.deepEqual(await h.open().read('note'),before);}
 });
 
 test('ambiguous legacy roles and unverified capability are rejected before witness persistence',async t=>{
   const h=await setup(t,true,false);
   await assert.rejects(h.client.beginDeposit('note',String(fixture.deposit),{...h.roles,uploader:pk(9),rentPayer:owner}),/ambiguous/);
-  const forged={...h.options.manifest} as VerifiedManifest;await assert.rejects(new WalletClient({...h.options,manifest:forged}).beginDeposit('note',String(fixture.deposit),h.roles),/not verified/);
+  const forged={...h.options.manifest} as unknown as VerifiedManifest;await assert.rejects(new WalletClient({...h.options,manifest:forged}).beginDeposit('note',String(fixture.deposit),h.roles),/not verified/);
   assert.equal(await h.open().read('note'),null);assert.equal(h.counts.proof,0);
 });
 
@@ -252,28 +258,28 @@ test('proof crash retains witness and chosen inline transport; only explicit res
 test('post-deposit withdrawal still uses buffer with schema 2 and preserves inline history',async t=>{
   const h=await setup(t);await h.client.advance('note');await h.fund();await h.client.advance('note');const before=(await h.open().read('note'))!;
   const prover={...h.options.prover,inspect:async()=>({registration_commitment:'0x'+fixture.commitment,nullifier:fixture.auth.escape.public_inputs[11]}),tree:async()=>structuredClone(fixture.trees[1]),withdrawal:async()=>structuredClone(fixture.auth.escape)} as unknown as NoteProver;
-  await new WalletClient({...h.options,prover}).beginWithdrawal('note','initiate_escape',key(fixture.destination_owner).toBase58(),{payer:owner,feePayer:owner,uploader:owner,rentPayer:owner});
+  await new WalletClient({...h.options,prover}).beginWithdrawal('note','initiate_escape',key(fixture.destination_owner),{payer:owner,feePayer:owner,uploader:owner,rentPayer:owner});
   const after=(await h.open().read('note'))!;assert.equal(after.value.schema,2);assert.deepEqual(after.value.wallet!.history,before.value.wallet!.history);assert.equal(after.value.wallet!.operation!.kind,'initiate_escape');assert.ok(after.value.wallet!.operation!.plan);assert.equal(after.value.wallet!.operation!.inlinePlan,undefined);
   const changed=structuredClone(after.value);(changed.wallet!.operation as {priorityFeeMicroLamports?:string}).priorityFeeMicroLamports='1';
-  assert.throws(()=>validateNoteJournal(changed),/unknown journal field/);
+  await assert.rejects(()=>validateNoteJournal(changed),/unknown journal field/);
 });
 
 
 test('journal cannot hide an older unknown signed attempt behind a new current or finalized attempt',async t=>{
   const h=await setup(t);await h.client.advance('note');const original=(await h.open().read('note'))!.value,old=await h.signed();
-  const plan=await restoreInlineDepositPlan(old.plan),wallet:V0Wallet={publicKey:pair.publicKey,supportedTransactionVersions:new Set([0]),async signTransaction(tx){tx.sign([pair]);return tx;}};
+  const plan=await restoreInlineDepositPlan(old.plan),wallet:V0Wallet={publicKey:pair.address,supportedTransactionVersions:new Set([0]),async signTransaction(tx){tx = await signWith(tx, [pair]);return tx;}};
   const second=await prepareInlineDepositAttempt(plan,{blockhash:pk(8),lastValidBlockHeight:200},[wallet],{save:async()=>{}});
   const changed=structuredClone(original),op=changed.wallet!.operation!;op.attempts.push(second);op.current=second.signature;
-  assert.throws(()=>validateNoteJournal(changed),/unresolved inline/);
+  await assert.rejects(()=>validateNoteJournal(changed),/unresolved inline/);
   delete op.current;op.finalized=[{signature:second.signature,slot:30}];changed.wallet!.history.push(op);delete changed.wallet!.operation;changed.wallet!.status='active';
-  assert.throws(()=>validateNoteJournal(changed),/unresolved inline/);
+  await assert.rejects(()=>validateNoteJournal(changed),/unresolved inline/);
 });
 
 
 for (const scenario of ['mutual_close','initiate_escape','fallback'] as const) test('schema 2 full lifecycle and encrypted reopen '+scenario,async t=>{
   const h=await setup(t);await h.client.advance('note');await h.fund();await h.client.advance('note');
   const deposited=(await h.open().read('note'))!.value;
-  const nullifier=fixture.auth.escape.public_inputs[11],destination=key(fixture.destination_owner).toBase58();
+  const nullifier=fixture.auth.escape.public_inputs[11],destination=key(fixture.destination_owner);
   const roles={payer:owner,feePayer:owner,uploader:owner,rentPayer:owner};
   const failClearance=scenario==='fallback';
   const prover={...h.options.prover,inspect:async()=>({registration_commitment:'0x'+fixture.commitment,nullifier}),
@@ -294,7 +300,7 @@ for (const scenario of ['mutual_close','initiate_escape','fallback'] as const) t
       const current=(await h.open().read('note'))!.value.wallet!.operation!.attempts.at(-1)!;
       assert.equal(current.schema,1);
       h.snapshot.slot++;
-      h.behavior.receipt={signature:current.signature,message:VersionedTransaction.deserialize(Buffer.from(current.wireHex,'hex')).message.serialize(),slot:h.snapshot.slot,err:null};
+      h.behavior.receipt={signature:current.signature,message:new Uint8Array(decodeTransaction(Buffer.from(current.wireHex,'hex')).messageBytes),slot:h.snapshot.slot,err:null};
       if(current.kind==='execute'||current.kind==='finalize'){
         h.snapshot.note!.status=terminal;
         if(terminal==='pending_escape')h.snapshot.pending={nullifier,balance_micro_usdc:deposited.state.balance_micro_usdc,destinationOwner:destination,deadline:h.snapshot.clock};

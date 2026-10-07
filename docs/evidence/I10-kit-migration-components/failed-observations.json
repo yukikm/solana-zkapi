@@ -1,0 +1,163 @@
+{
+  "schema": 1,
+  "scope": "Earlier failed local observations retained; ignored raw logs are referenced by path and SHA-256, not republished",
+  "observations": [
+    {
+      "observation": "SDK suite: 351/353 passed. Native Kit nested RPC error integers became bigint, preventing the stale-proof code match; error-only checked normalization fixed it. One blockhash test still expected Kit omission of finalized commitment; its expectation was corrected to the explicit relay contract.",
+      "raw_log": {
+        "path": "target/kit-migration/sdk-tests-all-initial.log",
+        "sha256": "de5a99ff06cf602abdd9577032b140f4914d5556c538bf201018333981ed8428",
+        "bytes": 83399
+      },
+      "tests": {
+        "tests": 353,
+        "pass": 351,
+        "fail": 2,
+        "cancelled": 0,
+        "skipped": 0,
+        "todo": 0
+      }
+    },
+    {
+      "observation": "Intermediate test migration failed before the explicit finalized-commitment relay behavior and consumers were fully updated. This is not a final suite result.",
+      "raw_log": {
+        "path": "target/kit-migration/root-tests-first.log",
+        "sha256": "3026ac975054f511485cd8db82ea8f076c6d6644500ba05098779a8373b8bd61",
+        "bytes": 15740
+      },
+      "tests": {
+        "tests": 133,
+        "pass": 131,
+        "fail": 2,
+        "cancelled": 0,
+        "skipped": 0,
+        "todo": 0
+      }
+    },
+    {
+      "observation": "Intermediate clearance recovery used the old publicKey.toBase58 API; Kit Address consumers were corrected.",
+      "raw_log": {
+        "path": "target/kit-migration/recovery-tests.log",
+        "sha256": "bd593540d92fe0a5d34e3427f88b141447cc35f5a494a1efa405d7ab9e9db015",
+        "bytes": 9543
+      },
+      "tests": {
+        "tests": 81,
+        "pass": 76,
+        "fail": 5,
+        "cancelled": 0,
+        "skipped": 0,
+        "todo": 0
+      }
+    },
+    {
+      "observation": "80/81 passed; the remaining test inspected legacy message.recentBlockhash. The assertion was migrated to the native compiled-message lifetimeToken without weakening exact message equality.",
+      "raw_log": {
+        "path": "target/kit-migration/recovery-tests2.log",
+        "sha256": "73278bea6a9c5518ae021c08eada825629b174d3d71e0955aeea1aa953c14a3d",
+        "bytes": 13198
+      },
+      "tests": {
+        "tests": 81,
+        "pass": 80,
+        "fail": 1,
+        "cancelled": 0,
+        "skipped": 0,
+        "todo": 0
+      }
+    },
+    {
+      "observation": "The first isolated SDK attempt rejected a TypeScript import in a generated declaration. Two overlapping npm prepack/build invocations shared packages/sdk/dist and captured pre-rewrite declaration imports. A fresh serial pack passed with the same guarded source inputs; no runtime/build-source fix was needed. The initial e7d5a40bd59873ee9ecbadbd3d55b3fb51952e411a5559c18a89608b327a5d60 artifact was never published.",
+      "raw_log": {
+        "path": "target/kit-migration/external-real.log",
+        "sha256": "ca7731cea37366bc82bb88fc78edb9712e6c9cab7ca4d5ada22f31fa8c2a2c58",
+        "bytes": 549
+      },
+      "tests": {}
+    },
+    {
+      "observation": "The first six-stage aggregate reached diff-check and failed on trailing whitespace. Runtime/package stages passed, but that aggregate remains failed.",
+      "raw_log": {
+        "path": "target/kit-migration/app-acceptance.log",
+        "sha256": "b067991600e1f991de518efd5ced7d8095998fa3f90c58a5aaf8e89717a0c077",
+        "bytes": 175
+      },
+      "tests": {}
+    },
+    {
+      "observation": "Initial installed native SBF fixture did not finish the wallet. Its synthetic getTransaction response was still JSON-shaped; it was corrected to the requested base64 signed wire.",
+      "raw_log": {
+        "path": "target/kit-migration/native-sbf.log",
+        "sha256": "1e3e9a5df8a0870fb2f2bfa5b6f62132348c73d7bbbf6b95cf69881dce6c263d",
+        "bytes": 1006
+      },
+      "tests": {
+        "tests": 1,
+        "pass": 0,
+        "fail": 1,
+        "cancelled": 0,
+        "skipped": 0,
+        "todo": 0
+      }
+    },
+    {
+      "observation": "The pre-existing wallet fixture binary did not accept the pending-escape result name. It was rebuilt from the current locked source before the passing run.",
+      "raw_log": {
+        "path": "target/kit-migration/pending-escape-sbf.log",
+        "sha256": "72866c031f92ac397434fbd17bf7d4a60d04155fe0d4c4ecfae8c615255725df",
+        "bytes": 931
+      },
+      "tests": {
+        "tests": 1,
+        "pass": 0,
+        "fail": 1,
+        "cancelled": 0,
+        "skipped": 0,
+        "todo": 0
+      }
+    },
+    {
+      "observation": "Initial compact SBF invocation did not resolve the Vault ELF path.",
+      "raw_log": {
+        "path": "target/kit-migration/compact-sbf/run.log",
+        "sha256": "7719ef507d0584a81cf8699d5c60c30ef8052084320e2e967abba1dc05d18a34",
+        "bytes": 248
+      },
+      "tests": {}
+    },
+    {
+      "observation": "The next invocation used a stale binary with an embedded former CARGO_MANIFEST_DIR and could not find a fixture. Rebuilding from current locked source produced the passing report.",
+      "raw_log": {
+        "path": "target/kit-migration/compact-sbf/absolute-path-run.log",
+        "sha256": "2f03ef20f19648657504b036d734012590aed04241e9b48c6aff00437dc60757",
+        "bytes": 254
+      },
+      "tests": {}
+    },
+    {
+      "observation": "Documentation links were checked while kit-migration.md was not yet created; the subsequent completed-document check passed.",
+      "raw_log": {
+        "path": "target/kit-migration/design-initial.log",
+        "sha256": "ff7bbc5276d7feb5f58e6925ef6926d8acd838b2fe98995a61818bc07c4b352f",
+        "bytes": 395
+      },
+      "tests": {}
+    },
+    {
+      "observation": "A final-package invocation used an incorrect distribution-result path and failed with ENOENT before wallet driving; the corrected invocation is a separate result.",
+      "raw_log": {
+        "path": "target/kit-migration/native-sbf-publish.log",
+        "sha256": "18afa7ffe5f95e79a02a5d64c50ca64bf197390326ea300653f9848a66c90a14",
+        "bytes": 1042
+      },
+      "tests": {
+        "tests": 1,
+        "pass": 0,
+        "fail": 1,
+        "cancelled": 0,
+        "skipped": 0,
+        "todo": 0
+      }
+    }
+  ]
+}

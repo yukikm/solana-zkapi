@@ -20,7 +20,7 @@ export interface CreateBrowserClientOptions extends Omit<CreateClientOptions, 'p
 export async function createBrowserClient(options: CreateBrowserClientOptions) {
   // Scope custody by account and independently installed deployment identity.
   const expected = structuredClone(options.deployment.trust.expected);
-  const name = JSON.stringify([options.storageName, expected.deployment_id, expected.pool, options.wallet.publicKey.toBase58()]);
+  const name = JSON.stringify([options.storageName, expected.deployment_id, expected.pool, options.wallet.publicKey]);
   const wasm = new Uint8Array(options.wasm), sha256 = options.wasmSha256, createWorker = options.createWorker;
   // Snapshot mutable inputs before opening asynchronous custody.
   const input = { ...options, models: structuredClone(options.models),

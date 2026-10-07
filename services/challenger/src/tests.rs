@@ -1111,7 +1111,7 @@ async fn native_daemon_prove_sign_persist_send_restart_and_stale_root_recovery()
         let manifest_file = directory.path().join("manifest.json");
         std::fs::write(&manifest_file, serde_json::to_vec(&manifest).unwrap()).unwrap();
         // Known-public-entropy fixture fee key. Never production custody.
-        let keypair=std::process::Command::new(&node).args(["--input-type=module","-e","import {Keypair} from '@solana/web3.js'; const k=Keypair.fromSeed(new Uint8Array(32).fill(10));process.stdout.write(JSON.stringify({secret:[...k.secretKey],payer:k.publicKey.toBase58()}))"]).current_dir(&root).output().unwrap();
+        let keypair=std::process::Command::new(&node).args(["--input-type=module","-e","import {createKeyPairSignerFromPrivateKeyBytes,getAddressEncoder} from '@solana/kit'; const seed=new Uint8Array(32).fill(10),k=await createKeyPairSignerFromPrivateKeyBytes(seed);process.stdout.write(JSON.stringify({secret:[...seed,...getAddressEncoder().encode(k.address)],payer:k.address}))"]).current_dir(&root).output().unwrap();
         assert!(keypair.status.success());
         let keypair: Value = serde_json::from_slice(&keypair.stdout).unwrap();
         let key_file = directory.path().join("fee.json");

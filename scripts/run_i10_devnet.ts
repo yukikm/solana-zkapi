@@ -7,7 +7,8 @@ import {readFile, writeFile, mkdir, open, rename} from 'node:fs/promises';
 import {homedir} from 'node:os';
 import {resolve, join} from 'node:path';
 import {createHash, randomUUID} from 'node:crypto';
-import {Keypair, PublicKey, SystemProgram, VersionedTransaction} from '@solana/web3.js';
+import {parseAddress,signerFromSecret,signerWallet,zeroSelfTransfer} from './solana-kit.ts';
+import {decodeTransaction,encodeTransaction,transactionMessage,transactionSignature,transactionBlockhash} from '../packages/sdk/src/solana.ts';
 import bs58 from 'bs58';
 import {compileV0, signV0, verifySignatures} from '../packages/sdk/src/transport.ts';
 
@@ -44,15 +45,15 @@ async function main(){
   assert.equal(record.genesis,GENESIS);
   const wire=Buffer.from(record.wire_base64,'base64');
   assert.equal(sha(wire),record.wire_sha256);
-  const transaction=VersionedTransaction.deserialize(wire);
-  const payer=new PublicKey(record.wallet_public_key);
+  const transaction=decodeTransaction(wire);
+  const payer=parseAddress(record.wallet_public_key);
   assert.ok(wire.length<=1232);
   assert.equal(record.max_fee_lamports,MAX_FEE_LAMPORTS);
-  assert.equal(transaction.message.staticAccountKeys[0].toBase58(),payer.toBase58());
-  const expected=compileV0(SystemProgram.transfer({fromPubkey:payer,toPubkey:payer,lamports:0}),payer,transaction.message.recentBlockhash);
-  assert.deepEqual(transaction.message.serialize(),expected.message.serialize(),'only the declared zero self-transfer is accepted');
+  assert.equal(transactionMessage(transaction).staticAccounts[0],payer);
+  const expected=compileV0(zeroSelfTransfer(payer),payer,transactionBlockhash(transaction));
+  assert.deepEqual(transaction.messageBytes,expected.messageBytes,'only the declared zero self-transfer is accepted');
   await verifySignatures(transaction);
-  assert.equal(bs58.encode(transaction.signatures[0]),record.signature);
+  assert.equal(transactionSignature(transaction),record.signature);
   const deadline=Date.now()+120000;let receipt:any=null;
   while(Date.now()<deadline){
    receipt=await rpc('getTransaction',[record.signature,{encoding:'base64',commitment:'finalized',maxSupportedTransactionVersion:0}]);
@@ -75,18 +76,18 @@ async function main(){
  const raw=(await readFile(source.replace(/^~(?=\/)/,homedir()),'utf8')).trim();
  let value:any;try{value=JSON.parse(raw);}catch{value=raw;}
  const secret=typeof value==='string'?bs58.decode(value):Uint8Array.from(value.secretKey??value);
- const key=secret.length===32?Keypair.fromSeed(secret):Keypair.fromSecretKey(secret);
- const wallet=key.publicKey.toBase58();
+ const key=await signerFromSecret(secret);
+ const wallet=key.address;
  const balance=await rpc('getBalance',[wallet,{commitment:'finalized'}]);assert.ok(balance.value>=10000);
  const mint=await rpc('getAccountInfo',[MINT,{encoding:'jsonParsed',commitment:'finalized'}]);
  assert.equal(mint.value.owner,'TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA');assert.equal(mint.value.data.parsed.info.decimals,6);
  const program=JSON.parse(await readFile('target/i05/public-manifest.json','utf8')).program_id;
  const programAccount=await rpc('getAccountInfo',[program,{encoding:'base64',commitment:'finalized'}]);
  const latest=await rpc('getLatestBlockhash',[{commitment:'finalized'}]);
- const tx=await signV0(compileV0(SystemProgram.transfer({fromPubkey:key.publicKey,toPubkey:key.publicKey,lamports:0}),key.publicKey,latest.value.blockhash),[{publicKey:key.publicKey,supportedTransactionVersions:new Set([0]),async signTransaction(t){t.sign([key]);return t;}}]);
+ const tx=await signV0(compileV0(zeroSelfTransfer(key.address),key.address,latest.value.blockhash),[signerWallet(key)]);
  secret.fill(0);
- const wire=tx.serialize(),signature=bs58.encode(tx.signatures[0]);
- const fee=await rpc('getFeeForMessage',[Buffer.from(tx.message.serialize()).toString('base64'),{commitment:'finalized'}]);
+ const wire=encodeTransaction(tx),signature=transactionSignature(tx);
+ const fee=await rpc('getFeeForMessage',[Buffer.from(tx.messageBytes).toString('base64'),{commitment:'finalized'}]);
  assert.ok(Number.isSafeInteger(fee.value)&&fee.value>0&&fee.value<=10000);
  const simulation=await rpc('simulateTransaction',[Buffer.from(wire).toString('base64'),{encoding:'base64',sigVerify:true,commitment:'confirmed'}]);
  assert.equal(simulation.value.err,null,'devnet simulation must succeed before send');

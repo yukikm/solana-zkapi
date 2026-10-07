@@ -1,7 +1,7 @@
 /** Challenger uses the I04 transport; this module has no financial state machine.
  * The native owner must durably commit each returned attempt before recover/send.
  */
-import { Connection, Keypair, PublicKey, VersionedTransaction } from '@solana/web3.js';
+import { address, createKeyPairFromBytes, getAddressFromPublicKey, getTransactionDecoder, partiallySignTransaction, type Rpc, type SolanaRpcApi } from '@solana/kit';
 import { buildUploadPlan, connectionTransport, prepareAttempt, recoverAttempt, restorePlan, type Attempt, type TransportRpc, type V0Wallet, type UploadPlan, type BufferState, refreshExpiredUpload, compileV0 } from './transport.ts';
 import { fromHex, hex } from './layout2.ts';
 
@@ -11,15 +11,15 @@ export interface ChallengePlan {
 }
 export async function challengePlan(input: ChallengePlan): Promise<UploadPlan> {
   const { vaultAccounts } = await import('./transport.ts');
-  const programId = new PublicKey(input.programId), pool = new PublicKey(input.pool), payer = new PublicKey(input.payer);
+  const programId = address(input.programId), pool = address(input.pool), payer = address(input.payer);
   return buildUploadPlan({ programId, pool, uploader: payer, rentPayer: payer, feePayer: payer,
     operation: 'challenge_escape', payload: fromHex(input.payloadHex, 1252), nonce: fromHex(input.nonceHex, 32), expires: BigInt(input.expires),
-    snapshot: { slot: input.slot, sequence: BigInt(input.sequence) }, priorityFeeMicroLamports: BigInt(input.priorityFeeMicroLamports ?? '0'), financial: vaultAccounts({ programId, pool, payer,
-      mint: new PublicKey(input.mint), noteId: input.noteId, operation: 'challenge_escape' }) });
+    snapshot: { slot: input.slot, sequence: BigInt(input.sequence) }, priorityFeeMicroLamports: BigInt(input.priorityFeeMicroLamports ?? '0'), financial: await vaultAccounts({ programId, pool, payer,
+      mint: address(input.mint), noteId: input.noteId, operation: 'challenge_escape' }) });
 }
 export async function signChallengeStep(input: ChallengePlan, stepIndex: number, blockhash: { blockhash: string; lastValidBlockHeight: number }, wallet: V0Wallet): Promise<Attempt> {
   const plan = await challengePlan(input);
-  if (!Number.isInteger(stepIndex) || stepIndex < 0 || stepIndex >= plan.steps.length || !wallet.publicKey.equals(plan.feePayer)) throw new Error('challenger step/payer');
+  if (!Number.isInteger(stepIndex) || stepIndex < 0 || stepIndex >= plan.steps.length || wallet.publicKey!==plan.feePayer) throw new Error('challenger step/payer');
   // Returning a record does not send it. Rust atomically fsyncs this exact record
   // with its immutable payload/job before the separate recovery command can run.
   let saved: Attempt | undefined;
@@ -34,7 +34,7 @@ export async function recoverChallenge(attempt: Attempt, rpc: TransportRpc, rese
 /** RPC result, including a rejected receipt, is authenticated against exact v0
  * message/signature by I04. Only the block fetched at that finalized receipt's
  * slot is used as the outcome anchor. */
-export async function recoverChallengeOnConnection(attempt: Attempt, connection: Connection) {
+export async function recoverChallengeOnConnection(attempt: Attempt, connection: Rpc<SolanaRpcApi>) {
   let receiptSlot: number | undefined;
   const underlying = connectionTransport(connection);
   const rpc: TransportRpc = { ...underlying, finalizedReceipt: async signature => {
@@ -43,15 +43,14 @@ export async function recoverChallengeOnConnection(attempt: Attempt, connection:
   const result = await recoverChallenge(attempt, rpc);
   if (result.state !== 'finalized' && result.state !== 'rejected') return { result };
   if (receiptSlot === undefined) throw new Error('finalized receipt missing');
-  const block = await connection.getBlock(receiptSlot, { commitment: 'finalized', transactionDetails: 'none', maxSupportedTransactionVersion: 1, rewards: false });
+  const block = await connection.getBlock(BigInt(receiptSlot), { commitment: 'finalized', transactionDetails: 'none', maxSupportedTransactionVersion: 1, rewards: false }).send();
   if (!block) throw new Error('finalized block missing');
   return { result, slot: receiptSlot, blockhash: block.blockhash };
 }
-export function challengerWallet(secret: Uint8Array): V0Wallet {
-  const keypair = Keypair.fromSecretKey(secret);
-  return { publicKey: keypair.publicKey, supportedTransactionVersions: new Set([0]), signTransaction: async tx => {
-    const signed = VersionedTransaction.deserialize(tx.serialize()); signed.sign([keypair]); return signed;
-  } };
+export async function challengerWallet(secret: Uint8Array): Promise<V0Wallet> {
+  const keypair = await createKeyPairFromBytes(new Uint8Array(secret));
+  return { publicKey: await getAddressFromPublicKey(keypair.publicKey), supportedTransactionVersions: new Set([0]),
+    signTransaction: tx => partiallySignTransaction([keypair], tx) };
 }
 export async function validateChallengeAttempt(attempt: Attempt): Promise<void> {
   const noSend: TransportRpc = { signatureStatus: async () => null, finalizedReceipt: async () => null, finalizedBlockHeight: async () => 0, sendRawTransaction: async () => { throw new Error('send prohibited'); } };
@@ -68,8 +67,8 @@ export async function refreshChallengeUpload(attempt: Attempt, rpc: TransportRpc
   const plan = await restorePlan(attempt.plan);
   const refreshed = await refreshExpiredUpload(attempt, rpc, account, blockhash, [wallet], { save: async () => {} });
   const target = 'next' in refreshed ? refreshed.next.instruction : undefined;
-  const message = 'next' in refreshed ? undefined : VersionedTransaction.deserialize(fromHex(refreshed.wireHex, refreshed.wireHex.length / 2)).message.serialize();
-  const nextStepIndex = plan.steps.findIndex(step => target ? step.instruction.data.equals(target.data) && step.instruction.programId.equals(target.programId) : Buffer.from(compileV0(step.instruction, plan.feePayer, blockhash.blockhash, plan.priorityFeeMicroLamports).message.serialize()).equals(Buffer.from(message!)));
+  const message = 'next' in refreshed ? undefined : getTransactionDecoder().decode(fromHex(refreshed.wireHex, refreshed.wireHex.length / 2)).messageBytes;
+  const nextStepIndex = plan.steps.findIndex(step => target ? hex(new Uint8Array(step.instruction.data??[]))===hex(new Uint8Array(target.data??[])) && step.instruction.programAddress===target.programAddress : Buffer.from(compileV0(step.instruction, plan.feePayer, blockhash.blockhash, plan.priorityFeeMicroLamports).messageBytes).equals(Buffer.from(message!)));
   if (nextStepIndex < 0 || !account) throw new Error('upload reconciliation step');
   const finalizedHeight = await rpc.finalizedBlockHeight();
   if (finalizedHeight <= attempt.lastValidBlockHeight) throw new Error('upload blockheight rollback');

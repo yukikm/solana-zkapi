@@ -1,3 +1,8 @@
+import {createSolanaRpcWithFetch} from '../src/solana.ts';
+import {transactionSignature} from '../src/solana.ts';
+import {kitAddress, fixtureSigner, signWith, decodeTransaction} from './kit-helpers.ts';
+/** Offline expired-create reconciliation. Synthetic proof/RPC responses and
+ * local signatures do not establish public chain or Phantom acceptance. */
 /** Offline expired-create reconciliation. Synthetic proof/RPC responses and
  * local signatures do not establish public chain or Phantom acceptance. */
 import assert from 'node:assert/strict';
@@ -6,7 +11,7 @@ import {readFileSync} from 'node:fs';
 import {mkdtemp,rm} from 'node:fs/promises';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
-import {Connection,Keypair,PublicKey,VersionedTransaction} from '@solana/web3.js';
+
 import bs58 from 'bs58';
 import {WalletClient,type WalletOptions} from '../src/wallet.ts';
 import {EncryptedJournal,importJournalKey} from '../src/journal.ts';
@@ -18,19 +23,19 @@ import type {VerifiedManifest} from '../src/trust.ts';
 import type {WalletSnapshot} from '../src/wallet-chain.ts';
 
 const fixture=JSON.parse(readFileSync(new URL('../../../tests/fixtures/vault/genesis-a.json',import.meta.url),'utf8'));
-const key=(value:string)=>new PublicKey(Buffer.from(value,'hex'));
+const key=(value:string)=>kitAddress(Buffer.from(value,'hex'));
 const field=(value:number)=>'0x'+value.toString(16).padStart(64,'0');
-const hash=(value:number)=>new PublicKey(new Uint8Array(32).fill(value)).toBase58();
+const hash=(value:number)=>kitAddress(new Uint8Array(32).fill(value));
 
 async function setup(t:TestContext,kind:'deposit'|'mutual_close'|'initiate_escape'|'emergency_escape'='deposit'){
   const directory=await mkdtemp(join(tmpdir(),'zkapi-create-expiry-'));t.after(()=>rm(directory,{recursive:true,force:true}));
   const store=await NativeJournalStore.open(directory),aes=await importJournalKey(new Uint8Array(32).fill(15));
-  const open=()=>new EncryptedJournal<NoteJournal>(store,aes,{deploymentId:'fixture',pool:key(fixture.pool).toBase58()},validateNoteJournal);
-  const journal=open(),pair=Keypair.fromSeed(new Uint8Array(32).fill(1)),owner=pair.publicKey.toBase58();
+  const open=()=>new EncryptedJournal<NoteJournal>(store,aes,{deploymentId:'fixture',pool:key(fixture.pool)},validateNoteJournal);
+  const journal=open(),pair=(await fixtureSigner(new Uint8Array(32).fill(1))),owner=pair.address;
   const state:PrivateState={balance_micro_usdc:String(kind==='deposit'?fixture.deposit:fixture.balance),balance_blinding:field(3),note_leaf:field(4),commitment:{x:field(5),y:field(6)},anchor:field(1),state_signature:null};
   const witness={secret:field(2),note_id:0,deposit_micro_usdc:String(fixture.deposit),expiry:String(fixture.expiry)};
   const nullifier=fixture.auth.withdrawal.public_inputs[11],clearance={nullifier,phase:'verified' as const,signature:{r_x:field(9),r_y:field(10),s:field(11)}};
-  const manifest={deployment_id:'fixture',control_api_origin:'https://control.invalid',inference_api_origin:'https://inference.invalid',program_id:key(fixture.program_id).toBase58(),pool:key(fixture.pool).toBase58(),mint:key(fixture.mint).toBase58(),note_ttl_seconds:String(fixture.ttl)} as VerifiedManifest;
+  const manifest={deployment_id:'fixture',control_api_origin:'https://control.invalid',inference_api_origin:'https://inference.invalid',program_id:key(fixture.program_id),pool:key(fixture.pool),mint:key(fixture.mint),note_ttl_seconds:String(fixture.ttl)} as unknown as VerifiedManifest;
   const snapshot:WalletSnapshot={root:fixture.trees[0].public_inputs[1],siblings:Array(32).fill(field(0)),slot:20,sequence:'1',nextNoteId:kind==='deposit'?0:1,clock:String(fixture.now),paused:false,treasuryOwner:owner,
     ...(kind!=='deposit'?{note:{note_id:0,registration_commitment:'0x'+fixture.commitment,deposit_micro_usdc:witness.deposit_micro_usdc,expiry:witness.expiry,status:'active' as const}}:{})};
   const behavior={height:101,status:null as SignatureStatus|null,receipt:null as FinalizedReceipt|null,failHistory:false,failProof:false,failClearance:false,hash:hash(7),lastValid:100,observationSlot:120,observationHeight:110};
@@ -43,13 +48,13 @@ async function setup(t:TestContext,kind:'deposit'|'mutual_close'|'initiate_escap
     verifyClearance:async(value:string)=>{counts.clearanceChecks++;assert.equal(value,nullifier);if(behavior.failClearance)throw Error('synthetic invalid clearance');},
     withdrawal:async()=>structuredClone(fixture.auth[kind==='mutual_close'?'withdrawal':'escape']),
     tree:async(note:{note_id:number})=>{counts.proofs++;if(counts.proofs>1){const op=(await open().read('note'))!.value.wallet!.operation!;assert.equal(op.phase,'proving');assert.equal(op.current,undefined);assert.equal(op.plan,undefined);assert.ok(op.expiredCreations!.length>0,'anchored absence is durable before proving');assert.ok(op.attempts.length>0,'old signed bytes remain durable before proving');}if(behavior.failProof)throw Error('synthetic proof interrupted');const proof=structuredClone(fixture.trees[kind==='deposit'?0:1]);proof.public_inputs[3]=field(note.note_id);return proof;}} as unknown as NoteProver;
-  const wallet:V0Wallet={publicKey:pair.publicKey,supportedTransactionVersions:new Set([0]),async signTransaction(tx){counts.signatures++;tx.sign([pair]);return tx;}};
+  const wallet:V0Wallet={publicKey:pair.address,supportedTransactionVersions:new Set([0]),async signTransaction(tx){counts.signatures++;tx = await signWith(tx, [pair]);return tx;}};
   const options:WalletOptions={manifest,prover,journal,wallets:[wallet],priorityFeeMicroLamports:1n,
     chain:{snapshot:async(id,path,minimum=0)=>{if(kind!=='deposit'){assert.equal(id,witness.note_id);assert.equal(path,'active');}minimums.push(minimum);return structuredClone(snapshot);},buffer:async()=>null,
       blockhash:async()=>({blockhash:behavior.hash,lastValidBlockHeight:behavior.lastValid}),
-      bufferObservation:async(plan,minimum)=>{assert.ok((minimum??0)>=plan.snapshot.slot);observed.push(plan.buffer.toBase58());return inspect({address:plan.buffer.toBase58(),account:null,slot:behavior.observationSlot,blockHeight:behavior.observationHeight,blockhash:hash(9),commitment:'finalized'});}},
+      bufferObservation:async(plan,minimum)=>{assert.ok((minimum??0)>=plan.snapshot.slot);observed.push(plan.buffer);return inspect({address:plan.buffer,account:null,slot:behavior.observationSlot,blockHeight:behavior.observationHeight,blockhash:hash(9),commitment:'finalized'});}},
     rpc:{signatureStatus:async()=>{counts.history++;if(behavior.failHistory)throw Error('unavailable');return behavior.status;},finalizedReceipt:async()=>behavior.receipt,finalizedBlockHeight:async()=>behavior.height,
-      sendRawTransaction:async bytes=>{counts.sends++;const op=(await open().read('note'))!.value.wallet!.operation!;assert.equal(op.attempts.at(-1)!.wireHex,Buffer.from(bytes).toString('hex'),'persist signed replacement before sending');return bs58.encode(VersionedTransaction.deserialize(bytes).signatures[0]);}}};
+      sendRawTransaction:async bytes=>{counts.sends++;const op=(await open().read('note'))!.value.wallet!.operation!;assert.equal(op.attempts.at(-1)!.wireHex,Buffer.from(bytes).toString('hex'),'persist signed replacement before sending');return transactionSignature(decodeTransaction(bytes));}}};
   const client=new WalletClient(options),restart=()=>new WalletClient({...options,journal:open()});
   const roles={uploader:owner,rentPayer:owner,feePayer:owner,payer:owner,tokenOwner:owner};
   if(kind==='deposit')await client.beginDeposit('note',String(fixture.deposit),roles);
@@ -60,8 +65,8 @@ async function setup(t:TestContext,kind:'deposit'|'mutual_close'|'initiate_escap
     const pending=kind==='emergency_escape'?{phase:'closing',prepared:{request,control_token:'zkc1.fixture',proxy_token:'zkp1.fixture'},
       exactRequest:JSON.stringify(request),operations:[{id:crypto.randomUUID(),path:'/v1/responses',anthropicVersion:'',bodyBase64:'e30=',phase:'send_unknown'}]} as unknown as NoteJournal['pending']:null;
     await journal.create('note',{schema:1,state,witness,pending,history:[],wallet:{status:'active',history:[],...(kind==='mutual_close'?{clearance}:{})}});
-    if(kind==='emergency_escape')await client.beginEmergencyEscape('note',key(fixture.destination_owner).toBase58(),roles);
-    else await client.beginWithdrawal('note',kind,key(fixture.destination_owner).toBase58(),roles);
+    if(kind==='emergency_escape')await client.beginEmergencyEscape('note',key(fixture.destination_owner),roles);
+    else await client.beginWithdrawal('note',kind,key(fixture.destination_owner),roles);
   }
   await assert.rejects(client.advance('note'),/missing buffer: finalized history reconciliation required/);
   snapshot.slot=120;snapshot.clock=String(fixture.now+4000);
@@ -172,7 +177,7 @@ test('pending, unknown, non-expired and finalized receipts cannot authorize a re
     if(outcome==='pending')h.behavior.status={slot:90,confirmationStatus:'confirmed',err:null};
     if(outcome==='unknown')h.behavior.failHistory=true;
     if(outcome==='height')h.behavior.height=100;
-    if(outcome==='success'||outcome==='rejected')h.behavior.receipt={signature:attempt.signature,message:VersionedTransaction.deserialize(Buffer.from(attempt.wireHex,'hex')).message.serialize(),slot:90,err:outcome==='success'?null:{InstructionError:[0,{Custom:1}]}};
+    if(outcome==='success'||outcome==='rejected')h.behavior.receipt={signature:attempt.signature,message:new Uint8Array(decodeTransaction(Buffer.from(attempt.wireHex,'hex')).messageBytes),slot:90,err:outcome==='success'?null:{InstructionError:[0,{Custom:1}]}};
     if(outcome==='changed-after-observation')h.setObservation(value=>{h.behavior.status={slot:90,confirmationStatus:'confirmed',err:null};return value;});
     await assert.rejects(h.client.reconcileExpiredCreation('note'),/creation expiry or history unresolved/,outcome);
     assert.deepEqual(await h.journal.read('note'),before,outcome);assert.equal(h.counts.signatures,1);assert.equal(h.counts.sends,0);
@@ -224,13 +229,13 @@ test('repeated expiry rechecks every saved create and distinct buffer, preservin
 test('RPC absence observation anchors the returned account slot to its own finalized block, never a slot/height comparison',async t=>{
   const h=await setup(t),plan=await restorePlan((await h.journal.read('note'))!.value.wallet!.operation!.plan!);
   const behavior={slot:120,height:110 as number|null,missing:false,hash:hash(9)};const calls:string[]=[];
-  const connection=new Connection('https://rpc.invalid',{fetch:(async(_url,init)=>{const request=JSON.parse(String(init!.body));calls.push(request.method);let result:unknown;
-    if(request.method==='getAccountInfo'){assert.equal(request.params[0],plan.buffer.toBase58());assert.equal(request.params[1].commitment,'finalized');assert.equal(request.params[1].minContextSlot,100);result={context:{slot:behavior.slot},value:null};}
+  const connection=createSolanaRpcWithFetch('https://rpc.invalid', (async(_url,init)=>{const request=JSON.parse(String(init!.body));calls.push(request.method);let result:unknown;
+    if(request.method==='getAccountInfo'){assert.equal(request.params[0],plan.buffer);assert.equal(request.params[1].commitment,'finalized');assert.equal(request.params[1].minContextSlot,100);result={context:{slot:behavior.slot},value:null};}
     else{assert.equal(request.method,'getBlock');assert.equal(request.params[0],behavior.slot);assert.equal(request.params[1].commitment,'finalized');assert.equal(request.params[1].transactionDetails,'none');assert.equal(request.params[1].maxSupportedTransactionVersion,1);result=behavior.missing?null:{blockhash:behavior.hash,previousBlockhash:hash(8),parentSlot:behavior.slot-1,blockTime:fixture.now,blockHeight:behavior.height};}
-    return Response.json({jsonrpc:'2.0',id:request.id,result});}) as typeof fetch});
-  assert.deepEqual(await fetchFinalizedBufferObservation(connection,plan,100),{address:plan.buffer.toBase58(),account:null,slot:120,blockHeight:110,blockhash:hash(9),commitment:'finalized'});
+    return Response.json({jsonrpc:'2.0',id:request.id,result});}) as typeof fetch);
+  assert.deepEqual(await fetchFinalizedBufferObservation(connection,plan,100),{address:plan.buffer,account:null,slot:120,blockHeight:110,blockhash:hash(9),commitment:'finalized'});
   assert.deepEqual(calls,['getAccountInfo','getBlock']);
-  for(const fault of ['stale-slot','missing-block','null-height','invalid-hash']){behavior.slot=fault==='stale-slot'?99:120;behavior.missing=fault==='missing-block';behavior.height=fault==='null-height'?null:110;behavior.hash=fault==='invalid-hash'?'invalid':hash(9);await assert.rejects(fetchFinalizedBufferObservation(connection,plan,100));}
+  for(const fault of ['stale-slot','missing-block','null-height','invalid-hash']){behavior.slot=fault==='stale-slot'?99:120;behavior.missing=fault==='missing-block';behavior.height=fault==='null-height'?null:110;behavior.hash=(fault==='invalid-hash'?'invalid':hash(9)) as typeof behavior.hash;await assert.rejects(fetchFinalizedBufferObservation(connection,plan,100));}
 });
 
  test('ordinary and emergency escape expired-create recovery retain state, roles, destination and exact evidence without sending',async t=>{

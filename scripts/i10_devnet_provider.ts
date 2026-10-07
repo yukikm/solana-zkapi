@@ -6,7 +6,8 @@ import {lstat, mkdir, open, readFile, rename} from 'node:fs/promises';
 import {basename, dirname, isAbsolute, join, resolve} from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {promisify} from 'node:util';
-import {Connection, PublicKey} from '@solana/web3.js';
+import {address,type Rpc,type SolanaRpcApi} from '@solana/kit';
+import {decodeRpcAccount,safeRpcNumber} from '../packages/sdk/src/solana-rpc.ts';
 import {ControlClient, verifiedClientContext, type ClientOptions, type NoteJournal, type Tariff, type VerificationContext, type SessionVerifier} from '../packages/sdk/src/control.ts';
 import {NativeSessionVerifier} from '../packages/sdk/src/control-node.ts';
 import type {EncryptedJournal} from '../packages/sdk/src/journal.ts';
@@ -115,7 +116,7 @@ export interface DevnetProviderContext {
   prover: NoteProver;
   journal: EncryptedJournal<NoteJournal>;
   chain: WalletChain;
-  connection: Connection;
+  connection: Rpc<SolanaRpcApi>;
   pinnedFetch: typeof fetch;
   verifier: {path: string; sha256: string};
   planPath: string;
@@ -304,9 +305,10 @@ export async function runDevnetProviderAcceptance(options: DevnetProviderContext
     const tariffs = await readJson(join(configurationDir, 'tariffs.json')) as Tariff[];
     requireTrue(same(tariffs, execution.models.map(x => x.tariff)));
     const providerOptions = validatePreparedProviderConfig(execution, providers);
-    const genesis = await o.connection.getGenesisHash(); requireTrue(genesis === DEVNET);
-    const pool = await o.connection.getAccountInfoAndContext(new PublicKey(o.manifest.pool), 'finalized'); requireTrue(pool.value);
-    const context = await verifiedClientContext(o.manifest, genesis, {address: o.manifest.pool, owner: pool.value.owner.toBase58(),
+    const genesis = await o.connection.getGenesisHash().send(); requireTrue(genesis === DEVNET);
+    const observedPool=await o.connection.getAccountInfo(address(o.manifest.pool),{encoding:'base64',commitment:'finalized'}).send();
+    const pool={context:{slot:safeRpcNumber(observedPool.context.slot)},value:decodeRpcAccount(observedPool.value)};requireTrue(pool.value);
+    const context = await verifiedClientContext(o.manifest, genesis, {address: o.manifest.pool, owner: pool.value.owner,
       executable: pool.value.executable, lamports: BigInt(pool.value.lamports), data: pool.value.data,
       slot: BigInt(pool.context.slot), commitment: 'finalized'}, 0n, o.artifacts);
     const verifier = new NativeSessionVerifier(o.verifier.path, o.verifier.sha256);

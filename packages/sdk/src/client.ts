@@ -1,6 +1,7 @@
 /** Application API over the existing wallet, control client and clientd lifecycle.
  * Only the encrypted NoteJournal owns financial state. No inference retries. */
-import { Connection, PublicKey } from '@solana/web3.js';
+import { address, type Rpc, type SolanaRpcApi } from '@solana/kit';
+import { decodeRpcAccount, safeRpcNumber } from './solana-rpc.ts';
 import { ClientDaemon } from './clientd-bridge.ts';
 import { ControlClient, validateNoteJournal, verifiedClientBundle, expiryNotice,
   PROXY_PRIVACY_NOTICE, type ClientOptions, type Mode, type NoteJournal, type Quote, type Tariff } from './control.ts';
@@ -32,7 +33,7 @@ export interface ClientDeployment {
   /** Install independently of the fetched manifest. */
   trust: ManifestTrustPolicy;
   artifacts: ArtifactBundle;
-  connection: Connection;
+  connection: Rpc<SolanaRpcApi>;
   indexerOrigin: string;
   fetch?: typeof globalThis.fetch;
   preparationCommitment?: TransactionPreparationCommitment;
@@ -229,7 +230,7 @@ export class ZkApiClient {
   fallbackToEscape(): Promise<void> { return this.action(() => this.walletClient.fallbackToEscape(this.options.noteId)); }
   prepareFinalizeEscape(): Promise<void> { return this.action(() => this.walletClient.beginFinalize(this.options.noteId, this.roles())); }
   private roles() {
-    const owner = this.options.wallet.wallets[0].publicKey.toBase58();
+    const owner = this.options.wallet.wallets[0].publicKey;
     return { uploader: owner, rentPayer: owner, feePayer: owner, payer: owner, tokenOwner: owner };
   }
 
@@ -343,11 +344,12 @@ export async function createZkApiClient(options: CreateClientOptions): Promise<Z
     const { tariff_hash, ...body } = model.tariff;
     if (!manifest.tariff_hashes.includes(tariff_hash) || await sha256Hex(jcsBytes(body)) !== tariff_hash) throw new Error('model tariff is not pinned by this deployment');
   }
-  const genesis = await connection.getGenesisHash();
-  const observed = await connection.getAccountInfoAndContext(new PublicKey(manifest.pool), 'finalized');
+  const genesis = await connection.getGenesisHash().send();
+  const observed = await connection.getAccountInfo(address(manifest.pool), { commitment: 'finalized', encoding: 'base64' }).send();
   if (!observed.value) throw new Error('finalized PoolConfig unavailable');
-  const a = observed.value;
-  const bundle = await verifiedClientBundle(manifest, genesis, { address: manifest.pool, owner: a.owner.toBase58(), executable: a.executable,
+  const a = decodeRpcAccount(observed.value)!;
+  safeRpcNumber(observed.context.slot, 'finalized PoolConfig slot');
+  const bundle = await verifiedClientBundle(manifest, genesis, { address: manifest.pool, owner: a.owner, executable: a.executable,
     lamports: BigInt(a.lamports), data: a.data, slot: BigInt(observed.context.slot), commitment: 'finalized' }, BigInt(observed.context.slot), artifacts);
   const journal = new EncryptedJournal<NoteJournal>(storage.store, storage.key, { deploymentId: manifest.deployment_id, pool: manifest.pool }, validateNoteJournal);
   const prover = await NoteProver.create(manifest, bundle.artifacts, engine);

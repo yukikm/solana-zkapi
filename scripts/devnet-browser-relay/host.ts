@@ -8,7 +8,7 @@ import {dirname, join, resolve} from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {execFile} from 'node:child_process';
 import {promisify} from 'node:util';
-import {ComputeBudgetProgram, VersionedTransaction} from '@solana/web3.js';
+import {getCompiledTransactionMessageDecoder, getTransactionDecoder} from '@solana/kit';
 import {jcsBytes, parseStrictJson, sha256Hex, verifyManifest, supportsInlineDeposit, type ManifestTrustPolicy, type VerifiedManifest} from '../../packages/sdk/src/trust.ts';
 import {expandCompactDepositPayload} from '../../packages/sdk/src/layout2.ts';
 import {discriminator, verifySignatures, resolvePreparationCommitment, type TransactionPreparationCommitment} from '../../packages/sdk/src/transport.ts';
@@ -337,24 +337,26 @@ export async function startUiHost(options: HostOptions) {
           assert.equal(await callRpc('getGenesisHash', []), GENESIS);
           assert.ok(typeof json.params[0] === 'string' && json.params[1]?.encoding === 'base64');
           const bytes = Buffer.from(json.params[0], 'base64'); assert.equal(bytes.toString('base64'), json.params[0]); assert.ok(bytes.length <= 1232);
-          const tx = VersionedTransaction.deserialize(bytes); assert.equal(tx.version, 0); await verifySignatures(tx);
-          assert.equal(tx.message.addressTableLookups.length, 0);
-          assert.ok(tx.message.staticAccountKeys.some(key => key.toBase58() === options.manifest!.pool));
+          const tx = getTransactionDecoder().decode(bytes), message = getCompiledTransactionMessageDecoder().decode(tx.messageBytes);
+          assert.ok(message.version === 0); await verifySignatures(tx);
+          assert.equal((message.addressTableLookups?.length ?? 0), 0);
+          assert.ok(message.staticAccounts.includes(options.manifest!.pool as typeof message.staticAccounts[number]));
           let vaultCalls = 0;
-          for (const ix of tx.message.compiledInstructions) {
-            const program = tx.message.staticAccountKeys[ix.programIdIndex].toBase58();
-            assert.ok([options.manifest.program_id, ComputeBudgetProgram.programId.toBase58()].includes(program));
+          for (const ix of message.instructions) {
+            assert.ok(ix.data);
+            const program = message.staticAccounts[ix.programAddressIndex];
+            assert.ok([options.manifest.program_id, 'ComputeBudget111111111111111111111111111111'].includes(program));
             if (program === options.manifest.program_id) {
               const name = allowedVault.get(Buffer.from(ix.data.slice(0, 8)).toString('hex')); assert.ok(name);
               const poolPosition = name === 'execute_payload' ? 3 : name === 'finalize_escape' || name === 'deposit_compact_v1' ? 0 : 1;
-              assert.equal(tx.message.staticAccountKeys[ix.accountKeyIndexes[poolPosition]]?.toBase58(), options.manifest.pool);
+              assert.equal(message.staticAccounts[ix.accountIndices![poolPosition]], options.manifest.pool);
               if (name === 'create_payload') assert.ok(ix.data.length === 85 && [0, 1, 2].includes(ix.data[8]), 'only deposit/mutual-close/escape payload creation');
               if (name === 'finalize_escape') assert.equal(ix.data.length, 12, 'canonical escape finalization required');
               if (name === 'deposit_compact_v1') {
                 // This requires the SDK's authenticated manifest identity and
                 // independent build capability pin, not a caller-supplied flag.
                 assert.ok(supportsInlineDeposit(options.manifest), 'compact deposit capability required');
-                assert.equal(ix.accountKeyIndexes.length, 19, 'canonical compact account shape required');
+                assert.equal((ix.accountIndices?.length ?? 0), 19, 'canonical compact account shape required');
                 // The shared strict codec checks the exact 436-byte arguments,
                 // field encodings and positive amount, and reconstructs implicit
                 // public inputs using the pinned binding.
@@ -367,7 +369,7 @@ export async function startUiHost(options: HostOptions) {
             }
           }
           assert.equal(vaultCalls, 1);
-          const fee = await callRpc('getFeeForMessage', [Buffer.from(tx.message.serialize()).toString('base64'), {commitment: preparationCommitment}]);
+          const fee = await callRpc('getFeeForMessage', [Buffer.from(tx.messageBytes).toString('base64'), {commitment: preparationCommitment}]);
           assert.ok(Number.isSafeInteger(fee?.value) && fee.value >= 0 && fee.value <= 10_000);
           json.params[1] = {encoding: 'base64', skipPreflight: false, preflightCommitment: preparationCommitment, maxRetries: 0};
         }

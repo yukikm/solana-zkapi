@@ -1,9 +1,11 @@
+import {createSolanaRpcWithFetch} from '../src/solana.ts';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { createHash } from 'node:crypto';
-import { Keypair, PublicKey, VersionedTransaction, Connection, SystemProgram } from '@solana/web3.js';
-import bs58 from 'bs58';
+import { address, AccountRole, getCompiledTransactionMessageEncoder, type Transaction, type TransactionMessageBytes, isSignerRole, isWritableRole } from '@solana/kit';
+import { fixtureSigner, signWith, kitAddress, v0Message, type FixtureSigner, addressBytes, encodeTransaction, decodeTransaction } from './kit-helpers.ts';
+import { SYSTEM_PROGRAM, transactionMessage, transactionSignature } from '../src/solana.ts';
 import { encodeLayout2Args, fromHex, concat, hex, u32, u64, OPERATIONS } from '../src/layout2.ts';
 import type { Operation } from '../src/layout2.ts';
 import { buildUploadPlan, compileV0, closePayload, finalizeEscape, vaultAccounts, signV0, verifySignatures, discriminator,
@@ -11,15 +13,15 @@ import { buildUploadPlan, compileV0, closePayload, finalizeEscape, vaultAccounts
   FINANCIAL_ACCOUNT_ORDER, TOKEN_PROGRAM, ASSOCIATED_TOKEN_PROGRAM } from '../src/transport.ts';
 import type { UploadPlan, Step, V0Wallet, Attempt, BufferState, TransportRpc, FinalizedReceipt, SignatureStatus, FinalizationAttempt, SignedAttempt } from '../src/transport.ts';
 const fixture = JSON.parse(readFileSync(new URL('../../../tests/fixtures/vault/a.json', import.meta.url), 'utf8'));
-const keys = [1, 10, 11, 12, 13].map(seed => Keypair.fromSeed(new Uint8Array(32).fill(seed)));
+const keys = await Promise.all([1,10,11,12,13].map(seed=>fixtureSigner(new Uint8Array(32).fill(seed))));
 const [payer, uploader, owner, rentPayer, feePayer] = keys;
-const key = (hex: string) => new PublicKey(fromHex(hex, 32));
-const blockhash = { blockhash: new PublicKey(new Uint8Array(32).fill(9)).toBase58(), lastValidBlockHeight: 100 };
-const freshHash = { blockhash: new PublicKey(new Uint8Array(32).fill(19)).toBase58(), lastValidBlockHeight: 200 };
-const wallet = (keypair: Keypair): V0Wallet => ({ publicKey: keypair.publicKey, supportedTransactionVersions: new Set([0]), signTransaction: async tx => { tx.sign([keypair]); return tx; } });
-const requiredWallets = (step: Step, fee = feePayer.publicKey) => {
+const key = (hex: string) => kitAddress(fromHex(hex, 32));
+const blockhash = { blockhash: kitAddress(new Uint8Array(32).fill(9)), lastValidBlockHeight: 100 };
+const freshHash = { blockhash: kitAddress(new Uint8Array(32).fill(19)), lastValidBlockHeight: 200 };
+const wallet = (keypair: FixtureSigner): V0Wallet => ({ publicKey:keypair.address,supportedTransactionVersions:new Set([0]),signTransaction:tx=>signWith(tx,[keypair]) });
+const requiredWallets = (step: Step, fee = feePayer.address) => {
   const tx = compileV0(step.instruction, fee, blockhash.blockhash);
-  return keys.filter(k => tx.message.staticAccountKeys.slice(0, tx.message.header.numRequiredSignatures).some(p => p.equals(k.publicKey))).map(wallet);
+  return keys.filter(k => Object.hasOwn(tx.signatures,k.address)).map(wallet);
 };
 function payload(operation: Operation): Uint8Array {
   if (operation === 'deposit') return encodeLayout2Args({ operation, expectedId: 0, expectedRoot: fixture.trees[0].public_inputs[1], expiry: BigInt(fixture.expiry), commitment: '0x' + fixture.commitment, amount: BigInt(fixture.deposit), tree: fixture.trees[0] });
@@ -29,14 +31,14 @@ function payload(operation: Operation): Uint8Array {
 }
 async function planFor(operation: Operation = 'deposit', nonce = 1): Promise<UploadPlan> {
   const programId = key(fixture.program_id), pool = key(fixture.pool), mint = key(fixture.mint);
-  return buildUploadPlan({ programId, pool, uploader: uploader.publicKey, rentPayer: rentPayer.publicKey, feePayer: feePayer.publicKey,
+  return buildUploadPlan({ programId, pool, uploader: uploader.address, rentPayer: rentPayer.address, feePayer: feePayer.address,
     nonce: new Uint8Array(32).fill(nonce), expires: 3000003600n, operation, payload: payload(operation), snapshot: { slot: 27, sequence: 3n },
-    financial: vaultAccounts({ programId, pool, mint, noteId: 0, payer: payer.publicKey, operation, tokenOwner: owner.publicKey,
-      destinationOwner: key(fixture.destination_owner), treasuryOwner: new PublicKey(new Uint8Array(32).fill(8)), nullifier: fromHex(fixture.auth.escape.public_inputs[11].slice(2), 32) }) });
+    financial: await vaultAccounts({ programId, pool, mint, noteId: 0, payer: payer.address, operation, tokenOwner: owner.address,
+      destinationOwner: key(fixture.destination_owner), treasuryOwner: kitAddress(new Uint8Array(32).fill(8)), nullifier: fromHex(fixture.auth.escape.public_inputs[11].slice(2), 32) }) });
 }
 async function state(plan: UploadPlan, offset: number, sealed = false): Promise<BufferState> {
-  return { address: plan.buffer, commitment: 'finalized', owner: plan.programId, slot: 50, data: concat(await discriminator('PayloadBuffer', 'account'), Uint8Array.of(2, plan.bump), plan.uploader.toBytes(),
-    Uint8Array.of(OPERATIONS[plan.operation].op), u32(plan.payload.length), plan.digest, u32(offset), Uint8Array.of(sealed ? 1 : 0), u64(plan.expires), plan.rentPayer.toBytes(),
+  return { address: plan.buffer, commitment: 'finalized', owner: plan.programId, slot: 50, data: concat(await discriminator('PayloadBuffer', 'account'), Uint8Array.of(2, plan.bump), addressBytes(plan.uploader),
+    Uint8Array.of(OPERATIONS[plan.operation].op), u32(plan.payload.length), plan.digest, u32(offset), Uint8Array.of(sealed ? 1 : 0), u64(plan.expires), addressBytes(plan.rentPayer),
     u32(plan.payload.length), plan.payload.slice(0, offset), new Uint8Array(plan.payload.length - offset), plan.nonce) };
 }
 class Rpc implements TransportRpc {
@@ -44,7 +46,7 @@ class Rpc implements TransportRpc {
   async signatureStatus() { if (this.fail) throw new Error('rpc unavailable'); return this.status; }
   async finalizedReceipt() { return this.receipt; }
   async finalizedBlockHeight() { return this.height; }
-  async sendRawTransaction(bytes: Uint8Array) { this.sent.push(bytes.slice()); if (this.sendFail) throw new Error('response lost'); return bs58.encode(VersionedTransaction.deserialize(bytes).signatures[0]); }
+  async sendRawTransaction(bytes: Uint8Array) { this.sent.push(bytes.slice()); if (this.sendFail) throw new Error('response lost'); return transactionSignature(decodeTransaction(bytes)); }
 }
 async function attemptFor(plan: UploadPlan, kind: Step['kind']) {
   const step = plan.steps.find(s => s.kind === kind)!;
@@ -54,7 +56,7 @@ async function attemptFor(plan: UploadPlan, kind: Step['kind']) {
   return attempt;
 }
 function receipt(attempt: SignedAttempt, err: unknown | null = null): FinalizedReceipt {
-  return { message: VersionedTransaction.deserialize(fromHex(attempt.wireHex, attempt.wireHex.length / 2)).message.serialize(), signature: attempt.signature, err, slot: 80 };
+  return { message: new Uint8Array(decodeTransaction(fromHex(attempt.wireHex, attempt.wireHex.length / 2)).messageBytes), signature: attempt.signature, err, slot: 80 };
 }
 
 test('layout-2 encoding reuses canonical fields and matches independent fixture concatenation', () => {
@@ -76,24 +78,24 @@ test('all operation steps use real signed v0 <=1232 bytes with independent fee/p
     const steps = [...plan.steps, await closePayload(plan)];
     for (const step of steps) {
       const tx = await signV0(compileV0(step.instruction, plan.feePayer, blockhash.blockhash), requiredWallets(step));
-      const bytes = tx.serialize(); maximum = Math.max(maximum, bytes.length);
-      assert.ok(bytes.length <= 1232); assert.equal(tx.version, 0); assert.equal(tx.message.addressTableLookups.length, 0);
-      await verifySignatures(VersionedTransaction.deserialize(bytes));
+      const bytes = encodeTransaction(tx); maximum = Math.max(maximum, bytes.length);
+      assert.ok(bytes.length <= 1232); assert.equal(transactionMessage(tx).version, 0); assert.equal((transactionMessage(tx).version === 0 ? (transactionMessage(tx) as {addressTableLookups?: unknown[]}).addressTableLookups?.length ?? 0 : -1), 0);
+      await verifySignatures(decodeTransaction(bytes));
     }
     const create = plan.steps[0].instruction;
-    assert.deepEqual(create.keys.map(k => [k.isWritable, k.isSigner]), [[true, false], [false, false], [false, true], [true, true], [false, false]]);
-    assert.equal(create.keys[3].pubkey.toBase58(), rentPayer.publicKey.toBase58());
+    assert.deepEqual(create.accounts!.map(k => [isWritableRole(k.role), isSignerRole(k.role)]), [[true, false], [false, false], [false, true], [true, true], [false, false]]);
+    assert.equal(create.accounts![3].address, rentPayer.address);
     const execute = plan.steps.at(-1)!.instruction;
-    assert.equal(execute.keys.length, 21);
-    assert.equal(execute.keys[0].pubkey.toBase58(), plan.buffer.toBase58());
-    assert.equal(execute.keys[1].pubkey.toBase58(), uploader.publicKey.toBase58());
-    assert.equal(execute.keys[2].pubkey.toBase58(), rentPayer.publicKey.toBase58());
-    for (let i = 0; i < FINANCIAL_ACCOUNT_ORDER.length; i++) assert.ok(execute.keys[3 + i].pubkey.equals(plan.financial[FINANCIAL_ACCOUNT_ORDER[i]]));
-    assert.equal(execute.keys[16].isSigner, operation === 'deposit');
-    assert.deepEqual(execute.data.subarray(8), Buffer.from(plan.digest));
-    assert.ok(execute.keys[18].pubkey.equals(TOKEN_PROGRAM));
-    assert.ok(execute.keys[19].pubkey.equals(ASSOCIATED_TOKEN_PROGRAM));
-    assert.ok(execute.keys[20].pubkey.equals(SystemProgram.programId));
+    assert.equal(execute.accounts!.length, 21);
+    assert.equal(execute.accounts![0].address, plan.buffer);
+    assert.equal(execute.accounts![1].address, uploader.address);
+    assert.equal(execute.accounts![2].address, rentPayer.address);
+    for (let i = 0; i < FINANCIAL_ACCOUNT_ORDER.length; i++) assert.ok((execute.accounts![3 + i].address === plan.financial[FINANCIAL_ACCOUNT_ORDER[i]]));
+    assert.equal(isSignerRole(execute.accounts![16].role), operation === 'deposit');
+    assert.deepEqual(execute.data.subarray(8), plan.digest);
+    assert.ok((execute.accounts![18].address === TOKEN_PROGRAM));
+    assert.ok((execute.accounts![19].address === ASSOCIATED_TOKEN_PROGRAM));
+    assert.ok((execute.accounts![20].address === SYSTEM_PROGRAM));
     const appended = plan.steps.filter(s => s.kind === 'append');
     assert.deepEqual(Buffer.concat(appended.map(s => s.instruction.data.subarray(16))), Buffer.from(plan.payload));
   }
@@ -109,8 +111,8 @@ test('generated instruction discriminators/account flags match compiler-backed I
     const item = idl.instructions.find((i: { name: string }) => i.name === name);
     assert.ok(item, `${name} absent from IDL`);
     assert.deepEqual([...step.instruction.data.subarray(0, 8)], item.discriminator);
-    const keys = step.kind === 'execute' ? step.instruction.keys.slice(0, 3) : step.instruction.keys;
-    assert.deepEqual(keys.map(k => [k.isWritable, k.isSigner]), item.accounts.map((a: { writable?: boolean; signer?: boolean }) => [a.writable ?? false, a.signer ?? false]));
+    const keys = step.kind === 'execute' ? step.instruction.accounts!.slice(0, 3) : step.instruction.accounts!;
+    assert.deepEqual(keys.map(k => [isWritableRole(k.role), isSignerRole(k.role)]), item.accounts.map((a: { writable?: boolean; signer?: boolean }) => [a.writable ?? false, a.signer ?? false]));
   }
 });
 
@@ -120,31 +122,30 @@ test('expected_digest binds signed execute even when same PDA is recreated', asy
   const signed = await signV0(compileV0(execute.instruction, plan.feePayer, blockhash.blockhash), requiredWallets(execute));
   const mutatedPayload = plan.payload.slice(); mutatedPayload[100] ^= 1;
   const replacement = await buildUploadPlan({ ...plan, payload: mutatedPayload });
-  assert.ok(plan.buffer.equals(replacement.buffer)); assert.notDeepEqual(plan.digest, replacement.digest);
+  assert.ok((plan.buffer === replacement.buffer)); assert.notDeepEqual(plan.digest, replacement.digest);
   const changed = compileV0(replacement.steps.at(-1)!.instruction, plan.feePayer, blockhash.blockhash);
-  changed.signatures = signed.signatures.map(s => s.slice());
-  await assert.rejects(verifySignatures(changed), /signature/);
+  await assert.rejects(verifySignatures({...changed,signatures:structuredClone(signed.signatures)}), /signature/);
 });
 
 test('wallet rejection, unsupported version, message mutation and dropped signature stop sending', async () => {
   const plan = await planFor(), step = plan.steps[0], tx = compileV0(step.instruction, plan.feePayer, blockhash.blockhash), wallets = requiredWallets(step);
   await assert.rejects(signV0(tx, [{ ...wallets[0], supportedTransactionVersions: new Set(['legacy']) }]), /advertise/);
   await assert.rejects(signV0(tx, [{ ...wallets[0], signTransaction: async () => { throw new Error('wallet rejected'); } }]), /rejected/);
-  await assert.rejects(signV0(tx, [{ ...wallets[0], signTransaction: async tx => { tx.message.recentBlockhash = freshHash.blockhash; return tx; } }]), /changed transaction/);
+  await assert.rejects(signV0(tx, [{ ...wallets[0], signTransaction: async tx => { return {...tx,messageBytes:getCompiledTransactionMessageEncoder().encode({...transactionMessage(tx),lifetimeToken:address(freshHash.blockhash)}) as TransactionMessageBytes}; } }]), /changed transaction/);
   await assert.rejects(signV0(tx, wallets.slice(0, 1)), /signature/);
-  await assert.rejects(signV0(tx, [wallets[0], { ...wallets[1], signTransaction: async tx => { tx.signatures.forEach(signature => signature.fill(0)); return tx; } }]), /existing signature/);
+  await assert.rejects(signV0(tx, [wallets[0], { ...wallets[1], signTransaction: async tx => { Object.values(tx.signatures).forEach(signature => (signature as Uint8Array|null)?.fill(0)); return tx; } }]), /existing signature/);
 });
 
 test('verified transactions are detached from references retained by wallets', async () => {
   const plan = await planFor(), step = plan.steps[0], wallets = requiredWallets(step);
-  let retained: VersionedTransaction | undefined;
+  let retained: Transaction | undefined;
   const last = wallets.at(-1)!;
   wallets[wallets.length - 1] = { ...last, signTransaction: async tx => { retained = await last.signTransaction(tx); return retained; } };
   const signed = await signV0(compileV0(step.instruction, plan.feePayer, blockhash.blockhash), wallets);
-  const reviewed = signed.serialize();
-  retained!.message.recentBlockhash = freshHash.blockhash;
-  retained!.signatures[0].fill(0);
-  assert.deepEqual(signed.serialize(), reviewed);
+  const reviewed = encodeTransaction(signed);
+  (retained!.messageBytes as unknown as Uint8Array)[5] ^= 1;
+  (Object.values(retained!.signatures)[0] as Uint8Array).fill(0);
+  assert.deepEqual(encodeTransaction(signed), reviewed);
   await verifySignatures(signed);
 });
 
@@ -153,18 +154,18 @@ test('durable journal contains exact payload, snapshot, signature and expiry bef
   assert.equal(attempt.plan.payloadHex, hex(plan.payload)); assert.equal(attempt.plan.snapshotSlot, 27); assert.equal(attempt.plan.snapshotSequence, '3');
   assert.equal(attempt.plan.expectedRoot, fixture.trees[0].public_inputs[1].slice(2)); assert.equal(attempt.plan.expectedNoteId, 0);
   const restored = await restorePlan(JSON.parse(JSON.stringify(attempt.plan)));
-  assert.deepEqual(restored.payload, plan.payload); assert.ok(restored.buffer.equals(plan.buffer));
+  assert.deepEqual(restored.payload, plan.payload); assert.ok((restored.buffer === plan.buffer));
   await assert.rejects(prepareAttempt(plan, plan.steps[0], blockhash, requiredWallets(plan.steps[0]), { save: async () => { throw new Error('disk unavailable'); } }), /disk unavailable/);
 });
 
 test('wallet prompt edits cannot change the upload transaction or its persisted recovery context', async () => {
   const plan = await planFor(), step = plan.steps.at(-1)!, wallets = requiredWallets(step), hash = { ...blockhash };
   const expectedPayload = hex(plan.payload), expectedDigest = hex(plan.digest), expectedNonce = hex(plan.nonce);
-  const expectedMessage = compileV0(step.instruction, plan.feePayer, hash.blockhash).message.serialize();
+  const expectedMessage = compileV0(step.instruction, plan.feePayer, hash.blockhash).messageBytes;
   const first = wallets[0];
   wallets[0] = { ...first, signTransaction: async tx => {
     plan.payload[0] ^= 1; plan.digest[0] ^= 1; plan.nonce[0] ^= 1;
-    plan.financial.destinationOwner = payer.publicKey; plan.feePayer = owner.publicKey;
+    plan.financial.destinationOwner = payer.address; plan.feePayer = owner.address;
     plan.snapshot.slot = 999; plan.snapshot.sequence = 999n;
     step.kind = 'close'; step.instruction.data[8] ^= 1;
     Object.assign(hash, freshHash);
@@ -259,8 +260,8 @@ test('finalized buffer decoder rejects every header identity and inconsistent pr
     const bad = { ...good, data: good.data.slice() }; bad.data[offset] ^= 0x80;
     await assert.rejects(readBuffer(plan, bad), /buffer|digest/);
   }
-  await assert.rejects(readBuffer(plan, { ...good, owner: SystemProgram.programId }), /invalid/);
-  await assert.rejects(readBuffer(plan, { ...good, address: SystemProgram.programId }), /invalid/);
+  await assert.rejects(readBuffer(plan, { ...good, owner: SYSTEM_PROGRAM }), /invalid/);
+  await assert.rejects(readBuffer(plan, { ...good, address: SYSTEM_PROGRAM }), /invalid/);
   await assert.rejects(readBuffer(plan, { ...good, slot: plan.snapshot.slot - 1 }), /invalid/);
 });
 
@@ -268,7 +269,7 @@ for (const commitment of [undefined, 'confirmed'] as const) test(`Connection ada
   const plan = await planFor(), attempt = await attemptFor(plan, 'create');
   const requests: { method: string; params: unknown[] }[] = [];
   let loseSend = true;
-  const connection = new Connection('http://localhost:8899', { fetch: async (_url, init) => {
+  const connection = createSolanaRpcWithFetch('http://localhost:8899', async (_url, init) => {
     const body = JSON.parse(init!.body as string); requests.push(body);
     let result: unknown;
     if (body.method === 'getSignatureStatuses') result = { context: { slot: 12 }, value: [null] };
@@ -277,19 +278,19 @@ for (const commitment of [undefined, 'confirmed'] as const) test(`Connection ada
     else if (body.method === 'sendTransaction') { if (loseSend) throw new Error('socket closed after upstream accepted bytes'); result = attempt.signature; }
     else throw new Error(`unexpected ${body.method}`);
     return new Response(JSON.stringify({ jsonrpc: '2.0', id: body.id, result }), { headers: { 'content-type': 'application/json' } });
-  } });
+  });
   const options: {preparationCommitment?: 'confirmed'|'finalized'} = {preparationCommitment: commitment};
   const rpc = connectionTransport(connection, options);
   options.preparationCommitment = commitment === 'confirmed' ? 'finalized' : 'confirmed';
   assert.deepEqual(await recoverAttempt(attempt, rpc, true), { state: 'unknown' }); loseSend = false;
   assert.deepEqual(await recoverAttempt(attempt, rpc, true), { state: 'pending' });
   const reads = requests.filter(r => r.method === 'getTransaction');
-  assert.ok(reads.every(r => JSON.stringify(r.params[1]) === JSON.stringify({ commitment: 'finalized', maxSupportedTransactionVersion: 0 })));
+  for(const read of reads) assert.deepEqual(read.params[1], { encoding:'base64', commitment: 'finalized', maxSupportedTransactionVersion: 0 });
   const statuses = requests.filter(r => r.method === 'getSignatureStatuses');
   assert.ok(statuses.every(r => (r.params[1] as { searchTransactionHistory: boolean }).searchTransactionHistory));
   const sends = requests.filter(r => r.method === 'sendTransaction');
   assert.equal(sends.length, 2); assert.equal(sends[0].params[0], sends[1].params[0]);
-  assert.deepEqual(sends[0].params[1], { encoding: 'base64', maxRetries: 0, preflightCommitment: commitment ?? 'finalized' });
+  assert.deepEqual(sends[0].params[1], { encoding: 'base64', skipPreflight:false, maxRetries: 0, preflightCommitment: commitment ?? 'finalized' });
   assert.ok(requests.filter(r => r.method === 'getBlockHeight').every(r => (r.params[0] as {commitment: string}).commitment === 'finalized'));
   for (const invalid of ['processed', 'recent', null, 1]) {
     assert.throws(() => connectionTransport(connection, {preparationCommitment: invalid as never}), /invalid transaction preparation commitment/);
@@ -299,14 +300,14 @@ for (const commitment of [undefined, 'confirmed'] as const) test(`Connection ada
 
 test('standalone finalize has durable signed recovery, note/account binding and no new proof', async () => {
   const upload = await planFor('initiate_escape');
-  const financial = vaultAccounts({ programId: upload.programId, pool: upload.pool, mint: upload.financial.mint, noteId: 0, payer: payer.publicKey, operation: 'finalize_escape',
-    destinationOwner: key(fixture.destination_owner), treasuryOwner: new PublicKey(new Uint8Array(32).fill(8)) });
-  const plan = { programId: upload.programId, pool: upload.pool, noteId: 0, feePayer: feePayer.publicKey, financial, snapshot: upload.snapshot };
+  const financial = await vaultAccounts({ programId: upload.programId, pool: upload.pool, mint: upload.financial.mint, noteId: 0, payer: payer.address, operation: 'finalize_escape',
+    destinationOwner: key(fixture.destination_owner), treasuryOwner: kitAddress(new Uint8Array(32).fill(8)) });
+  const plan = { programId: upload.programId, pool: upload.pool, noteId: 0, feePayer: feePayer.address, financial, snapshot: upload.snapshot };
   const step = await finalizeEscape(plan.programId, financial, 0);
   let persisted: FinalizationAttempt | undefined;
   const attempt = await prepareFinalizationAttempt(plan, blockhash, requiredWallets(step), { save: async record => { persisted = JSON.parse(JSON.stringify(record)); } });
   assert.deepEqual(persisted, attempt); assert.equal(attempt.kind, 'finalize');
-  assert.equal(VersionedTransaction.deserialize(fromHex(attempt.wireHex, attempt.wireHex.length / 2)).message.compiledInstructions[1].data.length, 12);
+  assert.equal(v0Message(decodeTransaction(fromHex(attempt.wireHex, attempt.wireHex.length / 2))).instructions[1].data!.length, 12);
   const rpc = new Rpc(); rpc.sendFail = true;
   assert.deepEqual(await recoverFinalizationAttempt(attempt, rpc, true), { state: 'unknown' });
   rpc.sendFail = false;
@@ -320,27 +321,27 @@ test('standalone finalize has durable signed recovery, note/account binding and 
   assert.deepEqual(await recoverFinalizationAttempt(attempt, rpc, true), { state: 'finalized', slot: 80 });
   const changed = structuredClone(attempt); changed.finalization.noteId = 1;
   await assert.rejects(recoverFinalizationAttempt(changed, rpc), /context|journal/);
-  const changedDestination = structuredClone(attempt); changedDestination.finalization.financial.destinationOwner = payer.publicKey.toBase58();
+  const changedDestination = structuredClone(attempt); changedDestination.finalization.financial.destinationOwner = payer.address;
   await assert.rejects(recoverFinalizationAttempt(changedDestination, rpc), /journal/);
   await assert.rejects(prepareFinalizationAttempt(plan, blockhash, requiredWallets(step), { save: async () => { throw new Error('fsync failed'); } }), /fsync/);
 });
 
 test('wallet prompt edits cannot change a finalization journal after the message is signed', async () => {
   const upload = await planFor('initiate_escape');
-  const financial = vaultAccounts({ programId: upload.programId, pool: upload.pool, mint: upload.financial.mint, noteId: 0, payer: payer.publicKey, operation: 'finalize_escape',
-    destinationOwner: key(fixture.destination_owner), treasuryOwner: new PublicKey(new Uint8Array(32).fill(8)) });
-  const plan = { programId: upload.programId, pool: upload.pool, noteId: 0, feePayer: feePayer.publicKey, financial, snapshot: { ...upload.snapshot } };
+  const financial = await vaultAccounts({ programId: upload.programId, pool: upload.pool, mint: upload.financial.mint, noteId: 0, payer: payer.address, operation: 'finalize_escape',
+    destinationOwner: key(fixture.destination_owner), treasuryOwner: kitAddress(new Uint8Array(32).fill(8)) });
+  const plan = { programId: upload.programId, pool: upload.pool, noteId: 0, feePayer: feePayer.address, financial, snapshot: { ...upload.snapshot } };
   const hash = { ...blockhash }, step = await finalizeEscape(plan.programId, financial, plan.noteId), wallets = requiredWallets(step);
   const first = wallets[0];
   wallets[0] = { ...first, signTransaction: async tx => {
-    plan.noteId = 1; plan.feePayer = owner.publicKey; plan.financial.destinationOwner = owner.publicKey;
+    plan.noteId = 1; plan.feePayer = owner.address; plan.financial.destinationOwner = owner.address;
     plan.snapshot.slot = 999; plan.snapshot.sequence = 999n; Object.assign(hash, freshHash);
     return first.signTransaction(tx);
   } };
   let saved: FinalizationAttempt | undefined;
   const attempt = await prepareFinalizationAttempt(plan, hash, wallets, { save: async record => { saved = structuredClone(record); } });
   assert.deepEqual(saved, attempt); assert.equal(attempt.finalization.noteId, 0);
-  assert.equal(attempt.finalization.financial.destinationOwner, key(fixture.destination_owner).toBase58());
+  assert.equal(attempt.finalization.financial.destinationOwner, key(fixture.destination_owner));
   assert.equal(attempt.finalization.snapshotSlot, 27); assert.equal(attempt.finalization.snapshotSequence, '3');
   assert.equal(attempt.blockhash, blockhash.blockhash); assert.equal(attempt.lastValidBlockHeight, blockhash.lastValidBlockHeight);
   const rpc = new Rpc(); rpc.receipt = receipt(attempt);
@@ -349,9 +350,9 @@ test('wallet prompt edits cannot change a finalization journal after the message
 
 test('RPC waits cannot change a finalization attempt after journal validation', async () => {
   const upload = await planFor('initiate_escape');
-  const financial = vaultAccounts({ programId: upload.programId, pool: upload.pool, mint: upload.financial.mint, noteId: 0, payer: payer.publicKey, operation: 'finalize_escape',
-    destinationOwner: key(fixture.destination_owner), treasuryOwner: new PublicKey(new Uint8Array(32).fill(8)) });
-  const plan = { programId: upload.programId, pool: upload.pool, noteId: 0, feePayer: feePayer.publicKey, financial, snapshot: upload.snapshot };
+  const financial = await vaultAccounts({ programId: upload.programId, pool: upload.pool, mint: upload.financial.mint, noteId: 0, payer: payer.address, operation: 'finalize_escape',
+    destinationOwner: key(fixture.destination_owner), treasuryOwner: kitAddress(new Uint8Array(32).fill(8)) });
+  const plan = { programId: upload.programId, pool: upload.pool, noteId: 0, feePayer: feePayer.address, financial, snapshot: upload.snapshot };
   const step = await finalizeEscape(plan.programId, financial, plan.noteId);
   const attempt = await prepareFinalizationAttempt(plan, blockhash, requiredWallets(step), { save: async () => {} });
   const replacement = await prepareFinalizationAttempt(plan, freshHash, requiredWallets(step), { save: async () => {} });
@@ -362,13 +363,13 @@ test('RPC waits cannot change a finalization attempt after journal validation', 
 });
 
 test('permissionless expired close records actual closer and never treats absence as success', async () => {
-  const plan = await planFor(), closer = owner.publicKey, step = await closePayload(plan, closer);
+  const plan = await planFor(), closer = owner.address, step = await closePayload(plan, closer);
   const attempt = await prepareAttempt(plan, step, blockhash, requiredWallets(step), { save: async () => {} });
-  assert.equal(attempt.closer, closer.toBase58());
+  assert.equal(attempt.closer, closer);
   const rpc = new Rpc(); rpc.height = 101;
   assert.deepEqual(await recoverAttempt(attempt, rpc, true), { state: 'expired_reconcile_required' }); assert.equal(rpc.sent.length, 0);
   rpc.receipt = receipt(attempt);
   assert.deepEqual(await recoverAttempt(attempt, rpc), { state: 'finalized', slot: 80 });
-  const tampered = { ...attempt, closer: uploader.publicKey.toBase58() };
+  const tampered = { ...attempt, closer: uploader.address };
   await assert.rejects(recoverAttempt(tampered, rpc), /journal plan/);
 });

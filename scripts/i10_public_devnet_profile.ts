@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
 import {join,resolve} from 'node:path';
 import {createHash} from 'node:crypto';
-import {Keypair} from '@solana/web3.js';
+import {createKeyPairSignerFromPrivateKeyBytes} from '@solana/kit';
 import {parseField} from '../packages/sdk/src/encoding.ts';
 import {base58PublicKey,jcsBytes,parseStrictJson} from '../packages/sdk/src/trust.ts';
 
@@ -43,7 +43,7 @@ export async function loadPublicDevnetProfile(directory:string,expectedHash:stri
  const points=[p.state_key,p.clearance_key];
  for(const point of points){assert.deepEqual(Object.keys(point).sort(),['x','y']);parseField(point.x);parseField(point.y);assert.ok(point.x!=='0x'+'00'.repeat(32)||BigInt(point.y)!==1n,'identity signing key');assert.notDeepEqual(point,FIXTURE_STATE,'public fixture state key');assert.notDeepEqual(point,FIXTURE_CLEARANCE,'public fixture clearance key');}
  assert.notDeepEqual(points[0],points[1],'separate role keys required');
- const fixtureEd=[11,12].map(n=>Keypair.fromSeed(new Uint8Array(32).fill(n)).publicKey.toBase58());
+ const fixtureEd=await Promise.all([11,12].map(async n=>(await createKeyPairSignerFromPrivateKeyBytes(new Uint8Array(32).fill(n))).address));
  for(const key of [p.quote_public_key,p.receipt_public_key]){assert.ok(base58PublicKey(key).some(v=>v!==0),'nonzero Ed25519 key');assert.ok(!fixtureEd.includes(key),'public fixture Ed25519 key');}
  assert.notEqual(p.quote_public_key,p.receipt_public_key,'separate Ed25519 roles');
  const expected:Record<string,string>={'request.pk':p.request_pk_hash,'request.vk':p.request_vk_hash,'withdrawal.pk':p.withdrawal_pk_hash,'withdrawal.vk':p.withdrawal_vk_hash,'tree.pk':tree.pk_hash,'tree.vk':tree.vk_hash,'tree-vk-wire.bin':tree.verifier_constants_hash,'circuit-source.tar':tree.source_bundle_hash,'profile.json':p.artifact_hashes?.['profile.json']};

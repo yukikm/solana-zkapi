@@ -1,0 +1,1154 @@
+{
+  "schema": 1,
+  "generated_at": "2026-10-07T04:55:40.439Z",
+  "status": "offline_serialization_analysis_only",
+  "command": "target/i08-toolchain/bin/node scripts/analyze_single_deposit_transaction.ts",
+  "node_version": "v24.19.0",
+  "kit_version": "8.4.0",
+  "sources_sha256": {
+    "scripts/analyze_single_deposit_transaction.ts": "ba9ec1a57a8917d0fbcf12cff70e7ef0e5fddf1c84ff4bccfc47304d3654c90a",
+    "tests/fixtures/vault/a.json": "fa84086effd14b23e346208c06857a5b61229cac49c23d64a21387af946cf5af",
+    "packages/sdk/src/transport.ts": "275ff658a89ad30528aacad669d429f1e044cb410f226a05de5aad2d73fe18cf",
+    "packages/sdk/src/layout2.ts": "98c4cee2117fa83248cb70efbb27833bc1589393d332855b194aeb5c77dd95fc",
+    "packages/sdk/src/encoding.ts": "7301ea7c7f93dcd4ae02f760d07829d342bc2c0d042ace67bc5a41a8d68aeee4",
+    "programs/zkapi-vault/src/lib.rs": "60bc0b7ea51b797f47ea433ec05577ec30d464a1fed9e7456394b855cdfaf85c",
+    "programs/zkapi-vault/src/accounts.rs": "f07919f9b23a5a0ca6719911a79dbcc067038763b256f5267fe67772388cf547",
+    "programs/zkapi-vault/src/handlers.rs": "06029eb119cc80d2c48a925bc99e0bbd223c657147f8e75ea1a15c9f61612c65",
+    "crates/zkapi-layout2/src/lib.rs": "8bf8afc18bd044f0be2ccedfc64f3d9a79ac86d6086f62a612a05b7796f9e7d7",
+    "docs/specs/tree-transition.md": "eafe562109ff41dd977c07d2b4c605647b420d8e2e74b170c208746a5291803d",
+    "docs/adr/0001-proof-bound-tree-transition.md": "29375ff1d6886df0f6b34d3e61e96886b6c72a5aed8a1b6ff979d36310c1f8ab"
+  },
+  "compute_budget": {
+    "unit_limit": 1000000,
+    "micro_lamports_per_unit": "1000",
+    "both_instructions_included": true,
+    "measured_compute_units": null
+  },
+  "compact_wire": {
+    "instruction_name": "deposit_compact_v1",
+    "argument_bytes": 436,
+    "discriminator_bytes": 8,
+    "fields": [
+      "expected_id:u32le",
+      "expected_root:Fr32be",
+      "expiry:u64le",
+      "commitment:Fr32be",
+      "amount:u64le",
+      "new_root:Fr32be",
+      "new_leaf:Fr32be",
+      "transition_tag:Fr32be",
+      "proof:256bytes"
+    ],
+    "reconstructed_public_inputs": [
+      "validated_pool.vault_binding",
+      "expected_root",
+      "new_root",
+      "Fr(expected_id)",
+      "Fr(0)",
+      "new_leaf",
+      "commitment",
+      "Fr(amount)",
+      "Fr(expiry)",
+      "Fr(0)",
+      "transition_tag"
+    ],
+    "canonical_expansion_bytes": 692,
+    "canonical_expansion_matches_fixture": true,
+    "all_11_public_inputs_match_fixture": true,
+    "original_256_byte_proof_unchanged": true,
+    "malformed_length_and_noncanonical_field_rejected_by_analysis_model": true,
+    "canonical_payload_sha256": "dea4602b97eda16f894ebf0f7cf0c2ebb244e6a80a7121db7d83dcb86beae0d1",
+    "compact_payload_sha256": "b986d92b97eef031efa1dda4866373cfa59f32cf6a54b17230c180a5e4d475cb",
+    "cryptographic_verification_performed": false
+  },
+  "stable_alt_model": {
+    "addresses": [
+      "pool",
+      "tree",
+      "vault_authority",
+      "mint",
+      "vault_ata",
+      "token_program",
+      "associated_token_program",
+      "system_program"
+    ],
+    "already_created_and_frozen_assumption": true,
+    "actual_table_exists": "unverified",
+    "creation_or_extension_in_deposit": false,
+    "excludes_dynamic_note_and_source_and_buffer_addresses": true,
+    "limitations": [
+      "This is an in-memory table model, not a fetched or deployed ALT.",
+      "Production must pin and validate table owner, address, exact contents, activation slot and authority/deactivation state.",
+      "Table provisioning is separate operator work; creating it during deposit would add transactions.",
+      "Signer addresses remain static; wallet ALT support and recovery are unverified."
+    ]
+  },
+  "cases": [
+    {
+      "role_profile": "same_user_all_roles",
+      "candidate": "existing_deposit",
+      "lookup_model": "none",
+      "entry_point_exists_in_source": true,
+      "argument_bytes": 692,
+      "transaction_bytes": 1263,
+      "message_bytes": 1198,
+      "limit_bytes": 1232,
+      "margin_bytes": -31,
+      "fits_1232_bytes": false,
+      "signature_slots": 1,
+      "signatures_are_zero_placeholders": true,
+      "static_account_keys": 13,
+      "lookup_account_keys": 0,
+      "address_lookup_tables": 0,
+      "instruction_account_indices": [
+        0,
+        0,
+        19
+      ],
+      "instruction_data_bytes": [
+        5,
+        9,
+        700
+      ],
+      "native_serialized_bytes": 1263,
+      "native_serialization_error": null,
+      "unsigned_transaction_sha256": "93c7754d1f93e5e3ecd551ac89b80756d7f34892c4b551a700cdb16a3d712f3c"
+    },
+    {
+      "role_profile": "same_user_all_roles",
+      "candidate": "existing_deposit",
+      "lookup_model": "preexisting_stable_pool_alt",
+      "entry_point_exists_in_source": true,
+      "argument_bytes": 692,
+      "transaction_bytes": 1049,
+      "message_bytes": 984,
+      "limit_bytes": 1232,
+      "margin_bytes": 183,
+      "fits_1232_bytes": true,
+      "signature_slots": 1,
+      "signatures_are_zero_placeholders": true,
+      "static_account_keys": 5,
+      "lookup_account_keys": 8,
+      "address_lookup_tables": 1,
+      "instruction_account_indices": [
+        0,
+        0,
+        19
+      ],
+      "instruction_data_bytes": [
+        5,
+        9,
+        700
+      ],
+      "native_serialized_bytes": 1049,
+      "native_serialization_error": null,
+      "unsigned_transaction_sha256": "c55c343d09c26bbd24bca0c50026c9a3860ed7091483251ea82af8123bd350e4"
+    },
+    {
+      "role_profile": "same_user_all_roles",
+      "candidate": "compact_same_accounts",
+      "lookup_model": "none",
+      "entry_point_exists_in_source": true,
+      "argument_bytes": 436,
+      "transaction_bytes": 1007,
+      "message_bytes": 942,
+      "limit_bytes": 1232,
+      "margin_bytes": 225,
+      "fits_1232_bytes": true,
+      "signature_slots": 1,
+      "signatures_are_zero_placeholders": true,
+      "static_account_keys": 13,
+      "lookup_account_keys": 0,
+      "address_lookup_tables": 0,
+      "instruction_account_indices": [
+        0,
+        0,
+        19
+      ],
+      "instruction_data_bytes": [
+        5,
+        9,
+        444
+      ],
+      "native_serialized_bytes": 1007,
+      "native_serialization_error": null,
+      "unsigned_transaction_sha256": "50ee69ebc0040b687045a21e1bc5c64905f92665eb680a48eed8d4701e19913b"
+    },
+    {
+      "role_profile": "same_user_all_roles",
+      "candidate": "compact_same_accounts",
+      "lookup_model": "preexisting_stable_pool_alt",
+      "entry_point_exists_in_source": true,
+      "argument_bytes": 436,
+      "transaction_bytes": 793,
+      "message_bytes": 728,
+      "limit_bytes": 1232,
+      "margin_bytes": 439,
+      "fits_1232_bytes": true,
+      "signature_slots": 1,
+      "signatures_are_zero_placeholders": true,
+      "static_account_keys": 5,
+      "lookup_account_keys": 8,
+      "address_lookup_tables": 1,
+      "instruction_account_indices": [
+        0,
+        0,
+        19
+      ],
+      "instruction_data_bytes": [
+        5,
+        9,
+        444
+      ],
+      "native_serialized_bytes": 793,
+      "native_serialization_error": null,
+      "unsigned_transaction_sha256": "8856db238682b61315aa2563fda8770d6c35f0703d71b5901f99a6665cfac00e"
+    },
+    {
+      "role_profile": "same_user_all_roles",
+      "candidate": "raw_reduced_accounts_comparison",
+      "lookup_model": "none",
+      "entry_point_exists_in_source": false,
+      "argument_bytes": 692,
+      "transaction_bytes": 1256,
+      "message_bytes": 1191,
+      "limit_bytes": 1232,
+      "margin_bytes": -24,
+      "fits_1232_bytes": false,
+      "signature_slots": 1,
+      "signatures_are_zero_placeholders": true,
+      "static_account_keys": 13,
+      "lookup_account_keys": 0,
+      "address_lookup_tables": 0,
+      "instruction_account_indices": [
+        0,
+        0,
+        12
+      ],
+      "instruction_data_bytes": [
+        5,
+        9,
+        700
+      ],
+      "native_serialized_bytes": 1256,
+      "native_serialization_error": null,
+      "unsigned_transaction_sha256": "478b582cba591925368783bfe0ea95146fff10be1aa4ea70029b2cef67ee0c70"
+    },
+    {
+      "role_profile": "same_user_all_roles",
+      "candidate": "raw_reduced_accounts_comparison",
+      "lookup_model": "preexisting_stable_pool_alt",
+      "entry_point_exists_in_source": false,
+      "argument_bytes": 692,
+      "transaction_bytes": 1042,
+      "message_bytes": 977,
+      "limit_bytes": 1232,
+      "margin_bytes": 190,
+      "fits_1232_bytes": true,
+      "signature_slots": 1,
+      "signatures_are_zero_placeholders": true,
+      "static_account_keys": 5,
+      "lookup_account_keys": 8,
+      "address_lookup_tables": 1,
+      "instruction_account_indices": [
+        0,
+        0,
+        12
+      ],
+      "instruction_data_bytes": [
+        5,
+        9,
+        700
+      ],
+      "native_serialized_bytes": 1042,
+      "native_serialization_error": null,
+      "unsigned_transaction_sha256": "a3767b6fc169843e44413ebba0416245340191e856b18c68f6cf0000caf28517"
+    },
+    {
+      "role_profile": "same_user_all_roles",
+      "candidate": "compact_reduced_accounts_comparison",
+      "lookup_model": "none",
+      "entry_point_exists_in_source": false,
+      "argument_bytes": 436,
+      "transaction_bytes": 1000,
+      "message_bytes": 935,
+      "limit_bytes": 1232,
+      "margin_bytes": 232,
+      "fits_1232_bytes": true,
+      "signature_slots": 1,
+      "signatures_are_zero_placeholders": true,
+      "static_account_keys": 13,
+      "lookup_account_keys": 0,
+      "address_lookup_tables": 0,
+      "instruction_account_indices": [
+        0,
+        0,
+        12
+      ],
+      "instruction_data_bytes": [
+        5,
+        9,
+        444
+      ],
+      "native_serialized_bytes": 1000,
+      "native_serialization_error": null,
+      "unsigned_transaction_sha256": "d2370f181795a3f598b33c9742393023ffb7c927f1996222e8d46fa913c5363a"
+    },
+    {
+      "role_profile": "same_user_all_roles",
+      "candidate": "compact_reduced_accounts_comparison",
+      "lookup_model": "preexisting_stable_pool_alt",
+      "entry_point_exists_in_source": false,
+      "argument_bytes": 436,
+      "transaction_bytes": 786,
+      "message_bytes": 721,
+      "limit_bytes": 1232,
+      "margin_bytes": 446,
+      "fits_1232_bytes": true,
+      "signature_slots": 1,
+      "signatures_are_zero_placeholders": true,
+      "static_account_keys": 5,
+      "lookup_account_keys": 8,
+      "address_lookup_tables": 1,
+      "instruction_account_indices": [
+        0,
+        0,
+        12
+      ],
+      "instruction_data_bytes": [
+        5,
+        9,
+        444
+      ],
+      "native_serialized_bytes": 786,
+      "native_serialization_error": null,
+      "unsigned_transaction_sha256": "c2091f77e1bfc78b703ce4eaa52af4054b695305b90f9965050a9b34cb557410"
+    },
+    {
+      "role_profile": "user_and_sponsor",
+      "candidate": "existing_deposit",
+      "lookup_model": "none",
+      "entry_point_exists_in_source": true,
+      "argument_bytes": 692,
+      "transaction_bytes": 1359,
+      "message_bytes": 1230,
+      "limit_bytes": 1232,
+      "margin_bytes": -127,
+      "fits_1232_bytes": false,
+      "signature_slots": 2,
+      "signatures_are_zero_placeholders": true,
+      "static_account_keys": 14,
+      "lookup_account_keys": 0,
+      "address_lookup_tables": 0,
+      "instruction_account_indices": [
+        0,
+        0,
+        19
+      ],
+      "instruction_data_bytes": [
+        5,
+        9,
+        700
+      ],
+      "native_serialized_bytes": 1359,
+      "native_serialization_error": null,
+      "unsigned_transaction_sha256": "dd50d45f020fcbd8dc02b2d9f683903adeeba700d7a965900111d3ed4d892d78"
+    },
+    {
+      "role_profile": "user_and_sponsor",
+      "candidate": "existing_deposit",
+      "lookup_model": "preexisting_stable_pool_alt",
+      "entry_point_exists_in_source": true,
+      "argument_bytes": 692,
+      "transaction_bytes": 1145,
+      "message_bytes": 1016,
+      "limit_bytes": 1232,
+      "margin_bytes": 87,
+      "fits_1232_bytes": true,
+      "signature_slots": 2,
+      "signatures_are_zero_placeholders": true,
+      "static_account_keys": 6,
+      "lookup_account_keys": 8,
+      "address_lookup_tables": 1,
+      "instruction_account_indices": [
+        0,
+        0,
+        19
+      ],
+      "instruction_data_bytes": [
+        5,
+        9,
+        700
+      ],
+      "native_serialized_bytes": 1145,
+      "native_serialization_error": null,
+      "unsigned_transaction_sha256": "fd4a9c77b3fdd00c91bb321ed7bd5be84de9826136716b1ee77ba00fa1c03c69"
+    },
+    {
+      "role_profile": "user_and_sponsor",
+      "candidate": "compact_same_accounts",
+      "lookup_model": "none",
+      "entry_point_exists_in_source": true,
+      "argument_bytes": 436,
+      "transaction_bytes": 1103,
+      "message_bytes": 974,
+      "limit_bytes": 1232,
+      "margin_bytes": 129,
+      "fits_1232_bytes": true,
+      "signature_slots": 2,
+      "signatures_are_zero_placeholders": true,
+      "static_account_keys": 14,
+      "lookup_account_keys": 0,
+      "address_lookup_tables": 0,
+      "instruction_account_indices": [
+        0,
+        0,
+        19
+      ],
+      "instruction_data_bytes": [
+        5,
+        9,
+        444
+      ],
+      "native_serialized_bytes": 1103,
+      "native_serialization_error": null,
+      "unsigned_transaction_sha256": "4f06b5ec7a624d5cbcea1ae932e54849dd2e4f74a11cf26810c6bd3d0685e323"
+    },
+    {
+      "role_profile": "user_and_sponsor",
+      "candidate": "compact_same_accounts",
+      "lookup_model": "preexisting_stable_pool_alt",
+      "entry_point_exists_in_source": true,
+      "argument_bytes": 436,
+      "transaction_bytes": 889,
+      "message_bytes": 760,
+      "limit_bytes": 1232,
+      "margin_bytes": 343,
+      "fits_1232_bytes": true,
+      "signature_slots": 2,
+      "signatures_are_zero_placeholders": true,
+      "static_account_keys": 6,
+      "lookup_account_keys": 8,
+      "address_lookup_tables": 1,
+      "instruction_account_indices": [
+        0,
+        0,
+        19
+      ],
+      "instruction_data_bytes": [
+        5,
+        9,
+        444
+      ],
+      "native_serialized_bytes": 889,
+      "native_serialization_error": null,
+      "unsigned_transaction_sha256": "c303dac2071062283ad2666c7a284e374dfe7fe99363fd6302fa0a18728a1620"
+    },
+    {
+      "role_profile": "user_and_sponsor",
+      "candidate": "raw_reduced_accounts_comparison",
+      "lookup_model": "none",
+      "entry_point_exists_in_source": false,
+      "argument_bytes": 692,
+      "transaction_bytes": 1352,
+      "message_bytes": 1223,
+      "limit_bytes": 1232,
+      "margin_bytes": -120,
+      "fits_1232_bytes": false,
+      "signature_slots": 2,
+      "signatures_are_zero_placeholders": true,
+      "static_account_keys": 14,
+      "lookup_account_keys": 0,
+      "address_lookup_tables": 0,
+      "instruction_account_indices": [
+        0,
+        0,
+        12
+      ],
+      "instruction_data_bytes": [
+        5,
+        9,
+        700
+      ],
+      "native_serialized_bytes": 1352,
+      "native_serialization_error": null,
+      "unsigned_transaction_sha256": "d9dbdc984cac951005c3928b179a7bc31dbb15af23e3a7970a5a7a9a50a77b1e"
+    },
+    {
+      "role_profile": "user_and_sponsor",
+      "candidate": "raw_reduced_accounts_comparison",
+      "lookup_model": "preexisting_stable_pool_alt",
+      "entry_point_exists_in_source": false,
+      "argument_bytes": 692,
+      "transaction_bytes": 1138,
+      "message_bytes": 1009,
+      "limit_bytes": 1232,
+      "margin_bytes": 94,
+      "fits_1232_bytes": true,
+      "signature_slots": 2,
+      "signatures_are_zero_placeholders": true,
+      "static_account_keys": 6,
+      "lookup_account_keys": 8,
+      "address_lookup_tables": 1,
+      "instruction_account_indices": [
+        0,
+        0,
+        12
+      ],
+      "instruction_data_bytes": [
+        5,
+        9,
+        700
+      ],
+      "native_serialized_bytes": 1138,
+      "native_serialization_error": null,
+      "unsigned_transaction_sha256": "9152401ea03f714671e06076e308e8a8047a592f2b4e3ca8e750ca0b0447299f"
+    },
+    {
+      "role_profile": "user_and_sponsor",
+      "candidate": "compact_reduced_accounts_comparison",
+      "lookup_model": "none",
+      "entry_point_exists_in_source": false,
+      "argument_bytes": 436,
+      "transaction_bytes": 1096,
+      "message_bytes": 967,
+      "limit_bytes": 1232,
+      "margin_bytes": 136,
+      "fits_1232_bytes": true,
+      "signature_slots": 2,
+      "signatures_are_zero_placeholders": true,
+      "static_account_keys": 14,
+      "lookup_account_keys": 0,
+      "address_lookup_tables": 0,
+      "instruction_account_indices": [
+        0,
+        0,
+        12
+      ],
+      "instruction_data_bytes": [
+        5,
+        9,
+        444
+      ],
+      "native_serialized_bytes": 1096,
+      "native_serialization_error": null,
+      "unsigned_transaction_sha256": "0877d1519c490220d4875cac102cf7c070723bdcf8d9bdcc77d27397c6bf9f72"
+    },
+    {
+      "role_profile": "user_and_sponsor",
+      "candidate": "compact_reduced_accounts_comparison",
+      "lookup_model": "preexisting_stable_pool_alt",
+      "entry_point_exists_in_source": false,
+      "argument_bytes": 436,
+      "transaction_bytes": 882,
+      "message_bytes": 753,
+      "limit_bytes": 1232,
+      "margin_bytes": 350,
+      "fits_1232_bytes": true,
+      "signature_slots": 2,
+      "signatures_are_zero_placeholders": true,
+      "static_account_keys": 6,
+      "lookup_account_keys": 8,
+      "address_lookup_tables": 1,
+      "instruction_account_indices": [
+        0,
+        0,
+        12
+      ],
+      "instruction_data_bytes": [
+        5,
+        9,
+        444
+      ],
+      "native_serialized_bytes": 882,
+      "native_serialization_error": null,
+      "unsigned_transaction_sha256": "30cfc0ebf0dcc5184fd608172b94f6bb0a96741d07230ad9365336de6f736035"
+    },
+    {
+      "role_profile": "user_rent_sponsor_fee_sponsor",
+      "candidate": "existing_deposit",
+      "lookup_model": "none",
+      "entry_point_exists_in_source": true,
+      "argument_bytes": 692,
+      "transaction_bytes": 1455,
+      "message_bytes": 1262,
+      "limit_bytes": 1232,
+      "margin_bytes": -223,
+      "fits_1232_bytes": false,
+      "signature_slots": 3,
+      "signatures_are_zero_placeholders": true,
+      "static_account_keys": 15,
+      "lookup_account_keys": 0,
+      "address_lookup_tables": 0,
+      "instruction_account_indices": [
+        0,
+        0,
+        19
+      ],
+      "instruction_data_bytes": [
+        5,
+        9,
+        700
+      ],
+      "native_serialized_bytes": 1455,
+      "native_serialization_error": null,
+      "unsigned_transaction_sha256": "fa489e9e7cc778c81d1cc20dc1b3da961e2d35a584df5245edf72b40c32de725"
+    },
+    {
+      "role_profile": "user_rent_sponsor_fee_sponsor",
+      "candidate": "existing_deposit",
+      "lookup_model": "preexisting_stable_pool_alt",
+      "entry_point_exists_in_source": true,
+      "argument_bytes": 692,
+      "transaction_bytes": 1241,
+      "message_bytes": 1048,
+      "limit_bytes": 1232,
+      "margin_bytes": -9,
+      "fits_1232_bytes": false,
+      "signature_slots": 3,
+      "signatures_are_zero_placeholders": true,
+      "static_account_keys": 7,
+      "lookup_account_keys": 8,
+      "address_lookup_tables": 1,
+      "instruction_account_indices": [
+        0,
+        0,
+        19
+      ],
+      "instruction_data_bytes": [
+        5,
+        9,
+        700
+      ],
+      "native_serialized_bytes": 1241,
+      "native_serialization_error": null,
+      "unsigned_transaction_sha256": "c641a880ea91af87219d78ba5f924dd2b1cb1ebc4090d139f89212187728f4ca"
+    },
+    {
+      "role_profile": "user_rent_sponsor_fee_sponsor",
+      "candidate": "compact_same_accounts",
+      "lookup_model": "none",
+      "entry_point_exists_in_source": true,
+      "argument_bytes": 436,
+      "transaction_bytes": 1199,
+      "message_bytes": 1006,
+      "limit_bytes": 1232,
+      "margin_bytes": 33,
+      "fits_1232_bytes": true,
+      "signature_slots": 3,
+      "signatures_are_zero_placeholders": true,
+      "static_account_keys": 15,
+      "lookup_account_keys": 0,
+      "address_lookup_tables": 0,
+      "instruction_account_indices": [
+        0,
+        0,
+        19
+      ],
+      "instruction_data_bytes": [
+        5,
+        9,
+        444
+      ],
+      "native_serialized_bytes": 1199,
+      "native_serialization_error": null,
+      "unsigned_transaction_sha256": "4a08d8eb1350ea54f459960825a1d9c828abddbb4e4f0200e977f9b7a37a1c2a"
+    },
+    {
+      "role_profile": "user_rent_sponsor_fee_sponsor",
+      "candidate": "compact_same_accounts",
+      "lookup_model": "preexisting_stable_pool_alt",
+      "entry_point_exists_in_source": true,
+      "argument_bytes": 436,
+      "transaction_bytes": 985,
+      "message_bytes": 792,
+      "limit_bytes": 1232,
+      "margin_bytes": 247,
+      "fits_1232_bytes": true,
+      "signature_slots": 3,
+      "signatures_are_zero_placeholders": true,
+      "static_account_keys": 7,
+      "lookup_account_keys": 8,
+      "address_lookup_tables": 1,
+      "instruction_account_indices": [
+        0,
+        0,
+        19
+      ],
+      "instruction_data_bytes": [
+        5,
+        9,
+        444
+      ],
+      "native_serialized_bytes": 985,
+      "native_serialization_error": null,
+      "unsigned_transaction_sha256": "7b2dc67226300ff7cc1bab783e9e2f38582a06e036e09ee6f2c29e678cee73cf"
+    },
+    {
+      "role_profile": "user_rent_sponsor_fee_sponsor",
+      "candidate": "raw_reduced_accounts_comparison",
+      "lookup_model": "none",
+      "entry_point_exists_in_source": false,
+      "argument_bytes": 692,
+      "transaction_bytes": 1448,
+      "message_bytes": 1255,
+      "limit_bytes": 1232,
+      "margin_bytes": -216,
+      "fits_1232_bytes": false,
+      "signature_slots": 3,
+      "signatures_are_zero_placeholders": true,
+      "static_account_keys": 15,
+      "lookup_account_keys": 0,
+      "address_lookup_tables": 0,
+      "instruction_account_indices": [
+        0,
+        0,
+        12
+      ],
+      "instruction_data_bytes": [
+        5,
+        9,
+        700
+      ],
+      "native_serialized_bytes": 1448,
+      "native_serialization_error": null,
+      "unsigned_transaction_sha256": "91112089f75865a6ddd70ce3e4a3558921aa61742ee7c8aff046cad5bdd8c712"
+    },
+    {
+      "role_profile": "user_rent_sponsor_fee_sponsor",
+      "candidate": "raw_reduced_accounts_comparison",
+      "lookup_model": "preexisting_stable_pool_alt",
+      "entry_point_exists_in_source": false,
+      "argument_bytes": 692,
+      "transaction_bytes": 1234,
+      "message_bytes": 1041,
+      "limit_bytes": 1232,
+      "margin_bytes": -2,
+      "fits_1232_bytes": false,
+      "signature_slots": 3,
+      "signatures_are_zero_placeholders": true,
+      "static_account_keys": 7,
+      "lookup_account_keys": 8,
+      "address_lookup_tables": 1,
+      "instruction_account_indices": [
+        0,
+        0,
+        12
+      ],
+      "instruction_data_bytes": [
+        5,
+        9,
+        700
+      ],
+      "native_serialized_bytes": 1234,
+      "native_serialization_error": null,
+      "unsigned_transaction_sha256": "a36045a878bffebaf2534514c5e099ed0aa7312b4f3b5328c06cc829eb55da09"
+    },
+    {
+      "role_profile": "user_rent_sponsor_fee_sponsor",
+      "candidate": "compact_reduced_accounts_comparison",
+      "lookup_model": "none",
+      "entry_point_exists_in_source": false,
+      "argument_bytes": 436,
+      "transaction_bytes": 1192,
+      "message_bytes": 999,
+      "limit_bytes": 1232,
+      "margin_bytes": 40,
+      "fits_1232_bytes": true,
+      "signature_slots": 3,
+      "signatures_are_zero_placeholders": true,
+      "static_account_keys": 15,
+      "lookup_account_keys": 0,
+      "address_lookup_tables": 0,
+      "instruction_account_indices": [
+        0,
+        0,
+        12
+      ],
+      "instruction_data_bytes": [
+        5,
+        9,
+        444
+      ],
+      "native_serialized_bytes": 1192,
+      "native_serialization_error": null,
+      "unsigned_transaction_sha256": "abcfa6f0c91727665d127344f640e9da5efe05903f199b3650f3f1afbb1948dc"
+    },
+    {
+      "role_profile": "user_rent_sponsor_fee_sponsor",
+      "candidate": "compact_reduced_accounts_comparison",
+      "lookup_model": "preexisting_stable_pool_alt",
+      "entry_point_exists_in_source": false,
+      "argument_bytes": 436,
+      "transaction_bytes": 978,
+      "message_bytes": 785,
+      "limit_bytes": 1232,
+      "margin_bytes": 254,
+      "fits_1232_bytes": true,
+      "signature_slots": 3,
+      "signatures_are_zero_placeholders": true,
+      "static_account_keys": 7,
+      "lookup_account_keys": 8,
+      "address_lookup_tables": 1,
+      "instruction_account_indices": [
+        0,
+        0,
+        12
+      ],
+      "instruction_data_bytes": [
+        5,
+        9,
+        444
+      ],
+      "native_serialized_bytes": 978,
+      "native_serialization_error": null,
+      "unsigned_transaction_sha256": "ab967480ec48937a6a6e6a125d0d5371b41efa103370ab3d89029093aef97c3b"
+    }
+  ],
+  "current_buffer_baselines": [
+    {
+      "role_profile": "same_user_all_roles",
+      "steps": [
+        {
+          "kind": "create",
+          "transaction_bytes": 409,
+          "message_bytes": 344,
+          "limit_bytes": 1232,
+          "margin_bytes": 823,
+          "fits_1232_bytes": true,
+          "signature_slots": 1,
+          "signatures_are_zero_placeholders": true,
+          "static_account_keys": 6,
+          "lookup_account_keys": 0,
+          "address_lookup_tables": 0,
+          "instruction_account_indices": [
+            0,
+            0,
+            5
+          ],
+          "instruction_data_bytes": [
+            5,
+            9,
+            85
+          ],
+          "native_serialized_bytes": 409,
+          "native_serialization_error": null,
+          "unsigned_transaction_sha256": "255a5133f36b2ff804344122aafaed0d75cad99e4bceb950c07631bb79437381"
+        },
+        {
+          "kind": "append",
+          "transaction_bytes": 999,
+          "message_bytes": 934,
+          "limit_bytes": 1232,
+          "margin_bytes": 233,
+          "fits_1232_bytes": true,
+          "signature_slots": 1,
+          "signatures_are_zero_placeholders": true,
+          "static_account_keys": 5,
+          "lookup_account_keys": 0,
+          "address_lookup_tables": 0,
+          "instruction_account_indices": [
+            0,
+            0,
+            3
+          ],
+          "instruction_data_bytes": [
+            5,
+            9,
+            708
+          ],
+          "native_serialized_bytes": 999,
+          "native_serialization_error": null,
+          "unsigned_transaction_sha256": "6a1d66134ec1b271d1fc92164fa80435c45dc81cd116f9ae88748999c40a1447"
+        },
+        {
+          "kind": "seal",
+          "transaction_bytes": 298,
+          "message_bytes": 233,
+          "limit_bytes": 1232,
+          "margin_bytes": 934,
+          "fits_1232_bytes": true,
+          "signature_slots": 1,
+          "signatures_are_zero_placeholders": true,
+          "static_account_keys": 5,
+          "lookup_account_keys": 0,
+          "address_lookup_tables": 0,
+          "instruction_account_indices": [
+            0,
+            0,
+            3
+          ],
+          "instruction_data_bytes": [
+            5,
+            9,
+            8
+          ],
+          "native_serialized_bytes": 298,
+          "native_serialization_error": null,
+          "unsigned_transaction_sha256": "16f5e1e685c212c6c6b416eed8bd7f2d5ab962cb557bf7bf73fd51053cd937bb"
+        },
+        {
+          "kind": "execute",
+          "transaction_bytes": 636,
+          "message_bytes": 571,
+          "limit_bytes": 1232,
+          "margin_bytes": 596,
+          "fits_1232_bytes": true,
+          "signature_slots": 1,
+          "signatures_are_zero_placeholders": true,
+          "static_account_keys": 14,
+          "lookup_account_keys": 0,
+          "address_lookup_tables": 0,
+          "instruction_account_indices": [
+            0,
+            0,
+            21
+          ],
+          "instruction_data_bytes": [
+            5,
+            9,
+            40
+          ],
+          "native_serialized_bytes": 636,
+          "native_serialization_error": null,
+          "unsigned_transaction_sha256": "f3215c7e854c5ebf3a393e4124e64a0dbe4a58eb504bf5245b5359b883992f04"
+        }
+      ]
+    },
+    {
+      "role_profile": "user_and_sponsor",
+      "steps": [
+        {
+          "kind": "create",
+          "transaction_bytes": 505,
+          "message_bytes": 376,
+          "limit_bytes": 1232,
+          "margin_bytes": 727,
+          "fits_1232_bytes": true,
+          "signature_slots": 2,
+          "signatures_are_zero_placeholders": true,
+          "static_account_keys": 7,
+          "lookup_account_keys": 0,
+          "address_lookup_tables": 0,
+          "instruction_account_indices": [
+            0,
+            0,
+            5
+          ],
+          "instruction_data_bytes": [
+            5,
+            9,
+            85
+          ],
+          "native_serialized_bytes": 505,
+          "native_serialization_error": null,
+          "unsigned_transaction_sha256": "2a2071d978ecb370e4ede04746c821b63f4922b277094aa599c1a1e09f6100de"
+        },
+        {
+          "kind": "append",
+          "transaction_bytes": 1095,
+          "message_bytes": 966,
+          "limit_bytes": 1232,
+          "margin_bytes": 137,
+          "fits_1232_bytes": true,
+          "signature_slots": 2,
+          "signatures_are_zero_placeholders": true,
+          "static_account_keys": 6,
+          "lookup_account_keys": 0,
+          "address_lookup_tables": 0,
+          "instruction_account_indices": [
+            0,
+            0,
+            3
+          ],
+          "instruction_data_bytes": [
+            5,
+            9,
+            708
+          ],
+          "native_serialized_bytes": 1095,
+          "native_serialization_error": null,
+          "unsigned_transaction_sha256": "4307e9d5fef9d0fcaa2a4537f265c4a63a6b1ab3cf2fefc523efa17f2462965c"
+        },
+        {
+          "kind": "seal",
+          "transaction_bytes": 394,
+          "message_bytes": 265,
+          "limit_bytes": 1232,
+          "margin_bytes": 838,
+          "fits_1232_bytes": true,
+          "signature_slots": 2,
+          "signatures_are_zero_placeholders": true,
+          "static_account_keys": 6,
+          "lookup_account_keys": 0,
+          "address_lookup_tables": 0,
+          "instruction_account_indices": [
+            0,
+            0,
+            3
+          ],
+          "instruction_data_bytes": [
+            5,
+            9,
+            8
+          ],
+          "native_serialized_bytes": 394,
+          "native_serialization_error": null,
+          "unsigned_transaction_sha256": "ee197003c88cc8512f4e3e9e4e84b402d31cc77103304ab2746cdcd509215069"
+        },
+        {
+          "kind": "execute",
+          "transaction_bytes": 732,
+          "message_bytes": 603,
+          "limit_bytes": 1232,
+          "margin_bytes": 500,
+          "fits_1232_bytes": true,
+          "signature_slots": 2,
+          "signatures_are_zero_placeholders": true,
+          "static_account_keys": 15,
+          "lookup_account_keys": 0,
+          "address_lookup_tables": 0,
+          "instruction_account_indices": [
+            0,
+            0,
+            21
+          ],
+          "instruction_data_bytes": [
+            5,
+            9,
+            40
+          ],
+          "native_serialized_bytes": 732,
+          "native_serialization_error": null,
+          "unsigned_transaction_sha256": "db24ff7d78dd12edea65645280e2ded4933e4879fd2c9e8ec99a3fd15968f0ba"
+        }
+      ]
+    },
+    {
+      "role_profile": "user_rent_sponsor_fee_sponsor",
+      "steps": [
+        {
+          "kind": "create",
+          "transaction_bytes": 601,
+          "message_bytes": 408,
+          "limit_bytes": 1232,
+          "margin_bytes": 631,
+          "fits_1232_bytes": true,
+          "signature_slots": 3,
+          "signatures_are_zero_placeholders": true,
+          "static_account_keys": 8,
+          "lookup_account_keys": 0,
+          "address_lookup_tables": 0,
+          "instruction_account_indices": [
+            0,
+            0,
+            5
+          ],
+          "instruction_data_bytes": [
+            5,
+            9,
+            85
+          ],
+          "native_serialized_bytes": 601,
+          "native_serialization_error": null,
+          "unsigned_transaction_sha256": "b04cba2c7ccc31916bfdd3b361958738263dbc79c2672f2194a36e4df18389d3"
+        },
+        {
+          "kind": "append",
+          "transaction_bytes": 1095,
+          "message_bytes": 966,
+          "limit_bytes": 1232,
+          "margin_bytes": 137,
+          "fits_1232_bytes": true,
+          "signature_slots": 2,
+          "signatures_are_zero_placeholders": true,
+          "static_account_keys": 6,
+          "lookup_account_keys": 0,
+          "address_lookup_tables": 0,
+          "instruction_account_indices": [
+            0,
+            0,
+            3
+          ],
+          "instruction_data_bytes": [
+            5,
+            9,
+            708
+          ],
+          "native_serialized_bytes": 1095,
+          "native_serialization_error": null,
+          "unsigned_transaction_sha256": "64198625d7bde32c1cb789239ae79a9a82f1b5fad8a68fcc283f3a76c9bdd768"
+        },
+        {
+          "kind": "seal",
+          "transaction_bytes": 394,
+          "message_bytes": 265,
+          "limit_bytes": 1232,
+          "margin_bytes": 838,
+          "fits_1232_bytes": true,
+          "signature_slots": 2,
+          "signatures_are_zero_placeholders": true,
+          "static_account_keys": 6,
+          "lookup_account_keys": 0,
+          "address_lookup_tables": 0,
+          "instruction_account_indices": [
+            0,
+            0,
+            3
+          ],
+          "instruction_data_bytes": [
+            5,
+            9,
+            8
+          ],
+          "native_serialized_bytes": 394,
+          "native_serialization_error": null,
+          "unsigned_transaction_sha256": "184452b6a9658a127e89abb22a9344f3f7c79dda31a617e84ffaf5fc7c2aa451"
+        },
+        {
+          "kind": "execute",
+          "transaction_bytes": 828,
+          "message_bytes": 635,
+          "limit_bytes": 1232,
+          "margin_bytes": 404,
+          "fits_1232_bytes": true,
+          "signature_slots": 3,
+          "signatures_are_zero_placeholders": true,
+          "static_account_keys": 16,
+          "lookup_account_keys": 0,
+          "address_lookup_tables": 0,
+          "instruction_account_indices": [
+            0,
+            0,
+            21
+          ],
+          "instruction_data_bytes": [
+            5,
+            9,
+            40
+          ],
+          "native_serialized_bytes": 828,
+          "native_serialization_error": null,
+          "unsigned_transaction_sha256": "8646ff80dd57708aafb3fb9c60c7844fdcdc5950b0b50e89371365abc6842195"
+        }
+      ]
+    }
+  ],
+  "interpretation": {
+    "recommended_new_entry": "deposit_compact_v1 with existing DepositAccounts; restore canonical payload and call shared handler",
+    "lower_program_change_alternative": "existing deposit plus a provisioned stable-pool ALT fits one or two signers; the three-signer case is 1241 bytes and fails the 1232-byte limit",
+    "same_account_contract_recommended": true,
+    "proof_or_hash_change_required": false,
+    "program_runtime_sdk_wallet_implementation_complete": false,
+    "single_user_signature_meaning": "One user token-owner signature; distinct rent/fee sponsors add their own co-signatures to the same transaction."
+  },
+  "limitations": [
+    "Serialization and fixture roundtrip only. No SBF execution, compute measurement, on-chain state checks, wallet approval or proof verification was performed.",
+    "Fixture public proof bytes are reused solely for byte-layout equivalence; this report is not a fresh proof-validity result.",
+    "Unsigned transactions contain zero-filled signature slots; signature lengths are exact but no transaction is cryptographically signed.",
+    "Compact deposit and the original account contract exist in current source; reduced account contracts remain comparison-only models.",
+    "Capabilities of any deployed manifest remain independently authenticated. This sizing exercise does not change deployment or journal pins.",
+    "Stale roots, note IDs, expiry boundaries or unknown financial sends still require existing finalized reconciliation; one transaction is the normal successful path, not a retry guarantee.",
+    "All values, program IDs and table contents used here are public test fixtures or deterministic sizing identifiers; no credentials, real wallet keys, RPCs, services or provider calls were accessed."
+  ]
+}

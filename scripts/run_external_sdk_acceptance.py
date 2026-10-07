@@ -50,7 +50,7 @@ def main() -> None:
     started = time.monotonic()
     source_paths = [*sorted((ROOT / 'packages/sdk/src').glob('*.ts')),
                     *[ROOT / 'packages/sdk' / name for name in ['package.json', 'build.mjs', 'tsconfig.json', 'tsconfig.build.json', 'README.md', 'DISTRIBUTION.md', 'INTERNALS.md', 'LICENSE']],
-                    *[ROOT / 'packages/sdk/test' / name for name in ['client.test.ts', 'chat.test.ts', 'clientd-models.test.ts', 'trust.test.ts', 'deployment.test.ts', 'session-snapshot-runtime.ts']],
+                    *[ROOT / 'packages/sdk/test' / name for name in ['client.test.ts', 'chat.test.ts', 'clientd-models.test.ts', 'trust.test.ts', 'deployment.test.ts', 'session-snapshot-runtime.ts', 'kit-helpers.ts']],
                     Path(__file__).resolve()]
     source_inputs = {str(path.relative_to(ROOT)): sha(path) for path in source_paths}
     report = {'schema': 1, 'scope': 'Actual npm tarball in an independent temporary application; local fixtures, no live provider or chain actions',
@@ -110,13 +110,20 @@ def main() -> None:
                 f"assert.ok(Object.keys(await import({json.dumps(path)})).length > 0);" for key, path in imports if key != './prover-worker') +
                 "\nawait assert.rejects(import('@zkapi/solana-sdk/src/client.ts'), { code: 'ERR_PACKAGE_PATH_NOT_EXPORTED' });\n" +
                 "await assert.rejects(import('@zkapi/solana-sdk/dist/client.js'), { code: 'ERR_PACKAGE_PATH_NOT_EXPORTED' });\nconsole.log('compiled exports and private-path boundary passed');\n")
+            installed_lock = json.loads((consumer / 'package-lock.json').read_text())
+            forbidden = ('@solana/web3.js', '@solana/web3-compat')
+            assert not any(location.endswith('node_modules/' + name)
+                           for location in installed_lock['packages'] for name in forbidden)
+            report['solana_client'] = json.loads((consumer / 'node_modules/@solana/kit/package.json').read_text())['version']
+            assert report['solana_client'] == '8.4.0'
+            report['legacy_solana_dependencies'] = []
             run('node-exports', ['node', 'imports.mjs'], consumer)
             (consumer / 'types.ts').write_text('\n'.join(f"import * as api{index} from {json.dumps(path)};\nvoid api{index};" for index, (_key, path) in enumerate(imports)))
             (consumer / 'tsconfig.json').write_text(json.dumps({'compilerOptions': {'target': 'ES2023', 'module': 'NodeNext', 'moduleResolution': 'NodeNext', 'strict': True, 'noEmit': True, 'lib': ['ES2023', 'DOM'], 'types': ['node']}, 'files': ['types.ts']}))
             run('declarations', ['node', 'node_modules/typescript/bin/tsc', '-p', 'tsconfig.json'], consumer)
             # Reuse source tests but redirect every runtime library import to the
             # installed package. Fixtures are explicit local copies, not imports.
-            test_names = ['client.test.ts', 'chat.test.ts', 'clientd-models.test.ts', 'trust.test.ts', 'deployment.test.ts']
+            test_names = ['client.test.ts', 'chat.test.ts', 'clientd-models.test.ts', 'trust.test.ts', 'deployment.test.ts', 'kit-helpers.ts']
             if args.real_provers:
                 test_names.append('session-snapshot-runtime.ts')
             for name in test_names:

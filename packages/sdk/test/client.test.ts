@@ -1,3 +1,6 @@
+import {fixtureSigner} from './kit-helpers.ts';
+/** Application integration fixtures: real journal/locks, quote signatures and
+ * ControlClient/ClientDaemon; synthetic prover/provider/chain, no live acceptance. */
 /** Application integration fixtures: real journal/locks, quote signatures and
  * ControlClient/ClientDaemon; synthetic prover/provider/chain, no live acceptance. */
 import { test, type TestContext } from 'node:test';
@@ -6,7 +9,7 @@ import { generateKeyPairSync, sign } from 'node:crypto';
 import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { Keypair } from '@solana/web3.js';
+
 import bs58 from 'bs58';
 import { ZkApiClient, type ClientComponents, type ModelConfiguration, type ClientStatus } from '../src/client.ts';
 import { readChatText, readChatDeltas } from '../src/chat.ts';
@@ -100,16 +103,17 @@ async function setup(t: TestContext, mode: Mode = 'proxy') {
       control_secret_hash: c.controlHash, proxy_secret_hash: c.proxyHash }, quote, public_inputs: Array(12).fill(field(1)), proof: { backend: 'groth16_bn254', proof: 'synthetic' } },
       control_token: c.controlToken, proxy_token: c.proxyToken, tariff, rerandomization: field(2) };
   } } as unknown as NoteProver;
+  const walletAddress = (await fixtureSigner(new Uint8Array(32).fill(1))).address;
   const make = () => {
     const journal = makeJournal();
     const components: ClientComponents = { store, noteId: 'note', mode, models,
       control: new ControlClient({ context, journal, verifier, fetch: http, directProviderBases: { direct_openrouter: 'https://direct.invalid/v1' } }),
       wallet: { manifest: { deployment_id: context.deployment_id, pool: context.pool, cap_micro_usdc: '100',
-        control_api_origin: context.control_api_origin, inference_api_origin: context.inference_api_origin } as VerifiedManifest, journal, prover, fetch: http,
+        control_api_origin: context.control_api_origin, inference_api_origin: context.inference_api_origin } as unknown as VerifiedManifest, journal, prover, fetch: http,
         chain: { async snapshot() { throw Error('authorization must not select note accounts'); },
           async sessionSnapshot() { return { root: field(1), siblings: Array(32).fill(field(0)), slot: 1, sequence: '1', nextNoteId: 2, clock: '100', paused: false }; },
           async blockhash() { throw Error('unexpected wallet work'); }, async buffer() { return null; } },
-        rpc: {} as any, wallets: [{ publicKey: Keypair.fromSeed(new Uint8Array(32).fill(1)).publicKey, supportedTransactionVersions: new Set([0]), async signTransaction() { counts.wallet++; throw Error('unexpected wallet signature'); } }] } };
+        rpc: {} as any, wallets: [{ publicKey: walletAddress, supportedTransactionVersions: new Set([0]), async signTransaction() { counts.wallet++; throw Error('unexpected wallet signature'); } }] } };
     return new ZkApiClient(components);
   };
   return { client: make(), restart: make, counts, behavior, journal, order, bodies, models };
@@ -183,7 +187,7 @@ test('unavailable or invalid clearance preserves the exact AUTH and state for ex
     assert.deepEqual(saved.pending, before.pending); assert.deepEqual(saved.state, before.state);
     assert.equal(saved.wallet!.clearance!.phase, 'requested'); assert.equal(saved.wallet!.clearedAuthorization, undefined);
     assert.equal((await f.client.status()).canReconcileUnacceptedAuthorization, true);
-    await assert.rejects(f.client.prepareWithdrawal(Keypair.generate().publicKey.toBase58()), /unavailable/);
+    await assert.rejects(f.client.prepareWithdrawal((await fixtureSigner(crypto.getRandomValues(new Uint8Array(32)))).address), /unavailable/);
     f.behavior[failure] = false;
   }
   await f.restart().reconcileUnacceptedAuthorization();
@@ -204,7 +208,7 @@ test('clearance holds the shared action lock and another facade re-verifies the 
     assert.equal((await f.client.status()).canReconcileUnacceptedAuthorization, false);
     await assert.rejects(f.client.chat(chat()), /Consume or cancel/);
     await assert.rejects(f.client.recover(), /Consume or cancel/);
-    await assert.rejects(f.client.prepareWithdrawal(Keypair.generate().publicKey.toBase58()), /Consume or cancel/);
+    await assert.rejects(f.client.prepareWithdrawal((await fixtureSigner(crypto.getRandomValues(new Uint8Array(32)))).address), /Consume or cancel/);
     await assert.rejects(f.client.reconcileUnacceptedAuthorization(), /Consume or cancel/);
     await new Promise(resolve => setTimeout(resolve, 30));
     assert.equal(finished, false); assert.equal(f.counts.clearance, 1);
@@ -237,7 +241,7 @@ test('explicit emergency escape preserves uncertain inference before proof work 
   assert.equal(before.pending!.operations[0].phase, 'send_unknown');
   assert.equal((await f.client.status()).canPrepareEmergencyEscape, true);
   assert.equal((await f.client.status()).canReconcileUnacceptedAuthorization, false);
-  const destination = Keypair.generate().publicKey.toBase58();
+  const destination = (await fixtureSigner(crypto.getRandomValues(new Uint8Array(32)))).address;
   // This fixture deliberately refuses financial chain reads. The existing wallet
   // must persist the complete recovery intent before proof/chain work can fail.
   await assert.rejects(f.client.prepareEmergencyEscape(destination), /must not select note accounts/);
@@ -259,7 +263,7 @@ test('explicit emergency escape preserves uncertain inference before proof work 
   assert.deepEqual((await f.journal.read('note'))!.value, saved);
 });
 test('emergency escape stays explicit and refuses a never-sent authorization or an unrelated note', async t => {
-  const f = await setup(t), destination = Keypair.generate().publicKey.toBase58();
+  const f = await setup(t), destination = (await fixtureSigner(crypto.getRandomValues(new Uint8Array(32)))).address;
   assert.equal((await f.client.status()).canPrepareEmergencyEscape, false);
   assert.equal((await f.client.status()).canReconcileChallengedEscape, false);
   await assert.rejects(f.client.prepareEmergencyEscape(destination));
@@ -275,7 +279,7 @@ test('emergency escape stays explicit and refuses a never-sent authorization or 
 test('challenge recovery remains visible after finalization preparation without treating its status hint as chain evidence', async t => {
   const f = await setup(t); f.behavior.lose = true; f.behavior.closeUnavailable = true;
   await assert.rejects(f.client.chat(chat()));
-  await assert.rejects(f.client.prepareEmergencyEscape(Keypair.generate().publicKey.toBase58()));
+  await assert.rejects(f.client.prepareEmergencyEscape((await fixtureSigner(crypto.getRandomValues(new Uint8Array(32)))).address));
   const r = (await f.journal.read('note'))!, w = r.value.wallet!, archive = w.emergencyEscapes![0], escape = w.operation!;
   // Synthetic transport records model an already finalized escape and a later
   // prepared finalization. This test exercises only local redacted readiness;
@@ -323,9 +327,9 @@ test('stream holds action lock; cancellation closes shared lifecycle and release
   const f = await setup(t); f.behavior.stream = true;
   const response = await f.client.chat({ ...chat(), stream: true });
   await assert.rejects(f.client.chat(chat()), /Consume or cancel/);
-  await assert.rejects(f.client.prepareWithdrawal(Keypair.generate().publicKey.toBase58()), /Consume or cancel/);
+  await assert.rejects(f.client.prepareWithdrawal((await fixtureSigner(crypto.getRandomValues(new Uint8Array(32)))).address), /Consume or cancel/);
   await assert.rejects(f.client.reconcileUnacceptedAuthorization(), /Consume or cancel/);
-  await assert.rejects(f.client.prepareEmergencyEscape(Keypair.generate().publicKey.toBase58()), /Consume or cancel/);
+  await assert.rejects(f.client.prepareEmergencyEscape((await fixtureSigner(crypto.getRandomValues(new Uint8Array(32)))).address), /Consume or cancel/);
   await assert.rejects(f.client.reconcileChallengedEscape(), /Consume or cancel/);
   const reader = response.body!.getReader(); await reader.read(); await reader.cancel();
   assert.equal(f.counts.closes, 1); assert.equal((await f.client.status()).canRequest, true);

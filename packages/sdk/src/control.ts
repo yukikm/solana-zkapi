@@ -141,7 +141,9 @@ function pendingSession(p: PendingSession): void {
     requireTrue(raw.toString('base64') === o.bodyBase64 && raw.length <= 1024 * 1024, 'invalid operation bytes');
   }
 }
-export function validateNoteJournal(value: unknown): asserts value is NoteJournal {
+export async function validateNoteJournal(input: unknown): Promise<void> {
+  // PDA derivation is asynchronous. Validate a detached value across every await.
+  const value: unknown = structuredClone(input);
   object(value); requireTrue((value.schema === 1 || value.schema === 2) && Array.isArray(value.history), 'invalid note journal');
   if(value.schema===2)allowedFields(value,['schema','state','pending','witness','wallet','history']);
   privateState(value.state as PrivateState);
@@ -182,12 +184,12 @@ export function validateNoteJournal(value: unknown): asserts value is NoteJourna
         requireTrue((inline ? attempt.schema === 2 && attempt.kind === 'deposit_inline' : attempt.schema === 1)
           && typeof attempt.signature === 'string' && !signatures.has(attempt.signature)
           && typeof attempt.wireHex === 'string' && /^(?:[0-9a-f]{2})+$/.test(attempt.wireHex), 'invalid financial attempt'); signatures.add(attempt.signature);
-        if (attempt.kind === 'deposit_inline') validateInlineDepositAttemptRecord(attempt);
+        if (attempt.kind === 'deposit_inline') await validateInlineDepositAttemptRecord(attempt);
       }
       requireTrue(operation.current === undefined || signatures.has(operation.current), 'missing current financial attempt');
       if (inline) {
         if(operation===w.operation)requireTrue(w.status==='unfunded'&&value.pending===null&&w.clearance===undefined,'inline deposit requires unfunded note');
-        validateInlineWalletOperation(operation,operation===w.operation);
+        await validateInlineWalletOperation(operation,operation===w.operation);
       }
       else {
         requireTrue(operation.inlinePlan === undefined, 'buffer operation contains inline plan');
@@ -267,7 +269,7 @@ function validateEmergencyEscapes(note:NoteJournal):void {
   }
 }
 
-function validateInlineWalletOperation(op: WalletOperation, active: boolean): void {
+async function validateInlineWalletOperation(op: WalletOperation, active: boolean): Promise<void> {
   requireTrue(op.transport === 'v0_inline_deposit_v1' && op.kind === 'deposit' && op.step === 0, 'invalid inline operation');
   const allowed = ['id','kind','phase','roles','transport','inlineContext','inlinePlan','priorityFeeMicroLamports','step','attempts','current','finalized','rejectedInline'];
   requireTrue(Object.keys(op).every(k => allowed.includes(k)) && !['closing_stale','cancelled'].includes(op.phase), 'invalid inline operation fields');
@@ -281,7 +283,7 @@ function validateInlineWalletOperation(op: WalletOperation, active: boolean): vo
       && BigInt(op.priorityFeeMicroLamports) <= 0xffffffffffffffffn, 'invalid inline priority fee');
   }
   if (op.inlinePlan) {
-    validateInlineDepositPlanRecord(op.inlinePlan);
+    await validateInlineDepositPlanRecord(op.inlinePlan);
     requireTrue(op.priorityFeeMicroLamports === undefined || op.priorityFeeMicroLamports === (op.inlinePlan.priorityFeeMicroLamports ?? '0'), 'inline priority fee changed');
     requireTrue(Object.entries(op.inlineContext).every(([k,v])=>op.inlinePlan![k as keyof typeof op.inlineContext]===v),'inline plan deployment changed');
     requireTrue(op.inlinePlan.financial.tokenOwner === op.roles.tokenOwner && op.inlinePlan.financial.payer === op.roles.payer && op.inlinePlan.feePayer === op.roles.feePayer, 'inline roles changed');

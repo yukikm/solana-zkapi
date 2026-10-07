@@ -1,22 +1,23 @@
 /** Synthetic account/manifest fixtures for RPC adapter tests. No generated proof
  * artifacts, target/ files, real provider or public deployment are used here. */
 import { readFile } from 'node:fs/promises';
-import { PublicKey } from '@solana/web3.js';
+import { address, getAddressDecoder, getProgramDerivedAddress } from '@solana/kit';
 import bs58 from 'bs58';
+import { createSolanaRpcWithFetch } from '../src/solana.ts';
 import { vaultBinding, parseField } from '../src/encoding.ts';
 import { discriminator } from '../src/transport.ts';
 import { circuitProfileDigest, jcsBytes, manifestDigest, sha256Hex, verifyManifest, type Manifest } from '../src/trust.ts';
 
-export const key=(n:number)=>new PublicKey(new Uint8Array(32).fill(n)).toBase58();
+export const key=(n:number)=>getAddressDecoder().decode(new Uint8Array(32).fill(n));
 export async function chainFixture() {
   const read=async(p:string)=>new Uint8Array(await readFile(new URL('../../../'+p,import.meta.url)));
   const profile=JSON.parse(new TextDecoder().decode(await read('tests/fixtures/layout2/profile.json')));
   const original=JSON.parse(new TextDecoder().decode(await read('tests/fixtures/layout2/a.json')));
   const idl=await read('docs/contracts/zkapi_vault.json'),program=JSON.parse(new TextDecoder().decode(idl)).address;
-  const seed=new Uint8Array(32).fill(17),[pool,bump]=PublicKey.findProgramAddressSync([Buffer.from('pool'),seed],new PublicKey(program));
+  const seed=new Uint8Array(32).fill(17),[pool,bump]=await getProgramDerivedAddress({seeds:[Buffer.from('pool'),seed],programAddress:address(program)});
   const authority={authority:key(20),program_id:key(21),config_hash:'77'.repeat(32),threshold:2 as const,members:[key(22),key(23),key(24)]};
   const m:{-readonly [K in keyof Manifest]:Manifest[K]}={...profile,deployment_id:'synthetic-chain-adapter',deployment_environment:'local',
-    manifest_hash:'00'.repeat(32),manifest_signature:Buffer.alloc(64).toString('base64'),genesis_hash:key(0),program_id:program,pool:pool.toBase58(),
+    manifest_hash:'00'.repeat(32),manifest_signature:Buffer.alloc(64).toString('base64'),genesis_hash:key(0),program_id:program,pool:pool,
     mint:key(4),token_program:'TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA',decimals:6,vault_binding:'',
     state_key:{x:original.auth.escape.public_inputs[4],y:original.auth.escape.public_inputs[5]},
     clearance_key:{x:original.auth.escape.public_inputs[6],y:original.auth.escape.public_inputs[7]},
@@ -36,4 +37,9 @@ export async function chainFixture() {
   data.writeBigUInt64LE(BigInt(m.note_ttl_seconds),331);data.writeBigUInt64LE(BigInt(m.challenge_seconds),339);data.writeBigUInt64LE(BigInt(m.cap_micro_usdc),347);
   data[356]=1;data[357]=1;data.set(Buffer.from(m.circuit_profile_hash,'hex'),358);data.set(seed,390);
   return {manifest,poolData:data};
+}
+
+/** Inject synthetic HTTP responses into native Kit request/response transforms. */
+export function fixtureRpc(fetcher: typeof fetch, url = 'http://127.0.0.1:19890') {
+  return createSolanaRpcWithFetch(url,fetcher);
 }

@@ -1,3 +1,9 @@
+import {createSolanaRpcWithFetch} from '../src/solana.ts';
+import {transactionSignature} from '../src/solana.ts';
+import {kitAddress, fixtureSigner, signWith, decodeTransaction} from './kit-helpers.ts';
+/** Fresh native proofs + production SDK journal/wallet + actual Vault SBF.
+ * AUTH admission, inference failure, RPC finality and clock are local fixtures;
+ * no provider or public chain is contacted. All signing keys here are test keys. */
 /** Fresh native proofs + production SDK journal/wallet + actual Vault SBF.
  * AUTH admission, inference failure, RPC finality and clock are local fixtures;
  * no provider or public chain is contacted. All signing keys here are test keys. */
@@ -9,7 +15,7 @@ import {createInterface} from 'node:readline';
 import {mkdtemp,readFile,rm,writeFile} from 'node:fs/promises';
 import {tmpdir} from 'node:os';
 import {join,resolve} from 'node:path';
-import {Connection,Keypair,PublicKey,VersionedTransaction} from '@solana/web3.js';
+
 import bs58 from 'bs58';
 import {NoteProver} from '../src/prover.ts';
 import {NativeProver} from '../src/prover-node.ts';
@@ -24,7 +30,7 @@ import type {TransportRpc,V0Wallet} from '../src/transport.ts';
 
 const read=async(path:string)=>new Uint8Array(await readFile(resolve(path)));
 const json=async(path:string)=>JSON.parse(await readFile(resolve(path),'utf8'));
-const key=(n:number)=>new PublicKey(new Uint8Array(32).fill(n)).toBase58();
+const key=(n:number)=>kitAddress(new Uint8Array(32).fill(n));
 
 test('pending accepted AUTH and lost inference ACK escape through real proofs/SBF without replay',{timeout:300_000},async t=>{
   const elf=resolve(process.env.ZKAPI_TEST_VAULT_ELF??'target/i04-sbf/zkapi_vault.so');
@@ -39,7 +45,7 @@ test('pending accepted AUTH and lost inference ACK escape through real proofs/SB
   const tariffBody:Omit<Tariff,'tariff_hash'>={version:'1',provider:'openai',model:'local-no-provider',pricing_basis:'fixed_usage_rates',
     valid_from:'2999999999',valid_until:'3000001000',rates:[{unit:'input_tokens',nano_usdc_numerator:'1',unit_denominator:'1'},{unit:'output_tokens',nano_usdc_numerator:'1',unit_denominator:'1'}],operator_fee_micro_usdc:'0'};
   const tariff:Tariff={...tariffBody,tariff_hash:await sha256Hex(jcsBytes(tariffBody))};
-  const pair=Keypair.fromSeed(new Uint8Array(32).fill(1)),owner=pair.publicKey.toBase58();
+  const pair=(await fixtureSigner(new Uint8Array(32).fill(1))),owner=pair.address;
   const authority={authority:owner,program_id:key(20),config_hash:'11'.repeat(32),threshold:2 as const,members:[key(21),key(22),key(23)]};
   const inputs=fixture.auth.escape.public_inputs as string[];
   const m:Manifest={...profile,deployment_id:'pending-escape-local-sbf',manifest_hash:'00'.repeat(32),manifest_signature:Buffer.alloc(64).toString('base64'),
@@ -85,12 +91,12 @@ test('pending accepted AUTH and lost inference ACK escape through real proofs/SB
     }
     return Response.json({jsonrpc:'2.0',id:body.id,result});
   };
-  const chain=new SolanaWalletChain(new Connection('http://127.0.0.1:18888',{fetch:fixtureFetch}),manifest,'http://127.0.0.1:18889',{fetch:fixtureFetch,allowLoopbackHttp:true});
-  const wallet:V0Wallet={publicKey:pair.publicKey,supportedTransactionVersions:new Set([0]),async signTransaction(tx){tx.sign([pair]);return tx;}};
+  const chain=new SolanaWalletChain(createSolanaRpcWithFetch('http://127.0.0.1:18888', fixtureFetch),manifest,'http://127.0.0.1:18889',{fetch:fixtureFetch,allowLoopbackHttp:true});
+  const wallet:V0Wallet={publicKey:pair.address,supportedTransactionVersions:new Set([0]),async signTransaction(tx){tx = await signWith(tx, [pair]);return tx;}};
   const sent:string[]=[];let loseEscapeAck=false;
   const rpc:TransportRpc={signatureStatus:async()=>null,finalizedBlockHeight:async()=>100,finalizedReceipt:async(signature)=>{const r=await call({kind:'receipt',signature});return r?{...r,message:new Uint8Array(Buffer.from(r.message,'base64'))}:null;},
     async sendRawTransaction(bytes){
-      const signature=bs58.encode(VersionedTransaction.deserialize(bytes).signatures[0]),saved=(await journal.read('note'))!.value,op=saved.wallet!.operation!;
+      const signature=transactionSignature(decodeTransaction(bytes)),saved=(await journal.read('note'))!.value,op=saved.wallet!.operation!;
       assert.ok(op.attempts.some(a=>a.signature===signature&&a.wireHex===Buffer.from(bytes).toString('hex')),'exact transaction durable before SBF');
       if(op.kind==='initiate_escape'){assert.equal(saved.pending,null);assert.equal(saved.wallet!.emergencyEscapes!.length,1);}
       sent.push(signature);const r=await call({kind:'send',base64:Buffer.from(bytes).toString('base64')});

@@ -5,15 +5,19 @@ TypeScript declarations, so your application does not need TypeScript source
 loading or access to the zkAPI repository. Registry publication is disabled with
 `private: true`; no package under this name on npm is endorsed by this project.
 
-Obtain `zkapi-solana-sdk-0.1.0-devnet.1.tgz` and its SHA-256 through a trusted release
-channel, check the checksum, then install the exact tarball:
+Obtain `zkapi-solana-sdk-0.2.0-devnet.1.tgz` and its SHA-256 through a trusted release
+channel, check the checksum, then install the exact tarball. The release target is
+[`v0.2.0-devnet.1`](https://github.com/yukikm/solana-zkapi/releases/tag/v0.2.0-devnet.1).
+Check that the assets and manifest have actually been published; a source version
+or a locally built archive alone does not establish publication:
 
 ```sh
-shasum -a 256 zkapi-solana-sdk-0.1.0-devnet.1.tgz
-npm install ./zkapi-solana-sdk-0.1.0-devnet.1.tgz
+shasum -a 256 zkapi-solana-sdk-0.2.0-devnet.1.tgz
+npm install --save-exact ./zkapi-solana-sdk-0.2.0-devnet.1.tgz @solana/kit@8.4.0
 ```
 
-Keep the tarball and your application's lockfile. Node integrations use Node
+Read the [Kit API migration guide](../../docs/sdk/kit-migration.md) when upgrading
+from the first preview. Keep the tarball and your application's lockfile. Node integrations use Node
 24.19.0 (the validated Node 24 release); browser applications bundle the browser
 entry points for a modern browser with Web Crypto, Workers, IndexedDB and Web
 Locks. Node's native SQLite journal is available through the separate
@@ -80,7 +84,7 @@ From the repository root, install the pinned build dependencies and run:
 npm ci
 mkdir -p target/sdk-distribution
 npm pack --workspace @zkapi/solana-sdk --pack-destination target/sdk-distribution
-shasum -a 256 target/sdk-distribution/zkapi-solana-sdk-0.1.0-devnet.1.tgz
+shasum -a 256 target/sdk-distribution/zkapi-solana-sdk-0.2.0-devnet.1.tgz
 python3 scripts/run_external_sdk_acceptance.py
 ```
 
@@ -129,7 +133,7 @@ const assets = await loadDeploymentAssets('https://your-app.example/zkapi/bundle
 });
 // Supply assets.manifest, assets.trust and assets.artifacts in ClientDeployment.
 // For createBrowserClient also supply assets.wasm and assets.wasmSha256.
-// The app still owns its Connection, indexer origin, models, wallet and storage.
+// The app still owns its Kit RPC client, indexer origin, models, wallet and storage.
 ```
 
 The loader uses only flat files in the descriptor's directory. It authenticates

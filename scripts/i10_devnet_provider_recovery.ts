@@ -74,10 +74,10 @@ export interface UnstartedProviderRecoveryInput extends RecoveryCampaignInput {
 /** A quote failure is local absence evidence only. This function grants no
  * financial authority: WalletClient must still obtain permanent clearance and
  * verify the finalized Note/proof. No HTTP, journal or budget mutation occurs. */
-export function verifyUnstartedProviderCase(input:UnstartedProviderRecoveryInput){
+export async function verifyUnstartedProviderCase(input:UnstartedProviderRecoveryInput){
   try{
     const o=structuredClone(input),n=o.note;
-    validateNoteJournal(n);
+    await validateNoteJournal(n);
     requireTrue(n.witness&&n.pending===null&&n.history.length===0&&n.wallet
       &&['active','closed'].includes(n.wallet.status)&&n.wallet.clearedAuthorization===undefined
       &&(!n.wallet.operation||n.wallet.status==='active'&&n.wallet.operation.kind==='mutual_close'));
@@ -116,7 +116,7 @@ export async function verifySettledProviderCase(input:SettledProviderRecoveryInp
     // The verifier is supplied by the caller's verified native installation.
     // Everything it verifies is detached before the first asynchronous call.
     const {verifier,...values}=input,o=structuredClone(values),n=o.note;
-    validateNoteJournal(n);
+    await validateNoteJournal(n);
     requireTrue(n.witness&&n.pending===null&&n.history.length===1&&n.wallet
       &&['active','closed'].includes(n.wallet.status)&&!n.wallet.clearedAuthorization
       &&(!n.wallet.operation||n.wallet.operation.kind==='mutual_close'));

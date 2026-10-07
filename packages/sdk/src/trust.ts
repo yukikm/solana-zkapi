@@ -1,6 +1,6 @@
 /** I08 trust boundary. All pins come from the installed distribution, never /config itself. */
 import bs58 from 'bs58';
-import { PublicKey } from '@solana/web3.js';
+import { address, getProgramDerivedAddress } from '@solana/kit';
 import { parseField, parseMicroUsdc, vaultBinding } from './encoding.ts';
 
 export type Json = null | boolean | number | string | Json[] | { [key: string]: Json };
@@ -347,8 +347,8 @@ export async function verifyPoolConfig(manifest: VerifiedManifest, observedGenes
   requireTrue(raw.length === 422 && raw[8] === 2, 'PoolConfig layout');
   const discriminator = (await sha256Hex(new TextEncoder().encode('account:PoolConfig'))).slice(0, 16);
   requireTrue(Array.from(raw.subarray(0, 8), b => b.toString(16).padStart(2, '0')).join('') === discriminator, 'PoolConfig discriminator');
-  const [pool, bump] = PublicKey.findProgramAddressSync([new TextEncoder().encode('pool'), raw.subarray(390, 422)], new PublicKey(manifest.program_id));
-  requireTrue(pool.toBase58() === manifest.pool && raw[9] === bump, 'PoolConfig PDA');
+  const [pool, bump] = await getProgramDerivedAddress({ seeds: [new TextEncoder().encode('pool'), raw.subarray(390, 422)], programAddress: address(manifest.program_id) });
+  requireTrue(pool === manifest.pool && raw[9] === bump, 'PoolConfig PDA');
   const same = (start: number, expected: Uint8Array) => requireTrue(expected.every((v, i) => raw[start + i] === v), 'PoolConfig manifest mismatch');
   same(10, base58PublicKey(manifest.genesis_hash)); same(42, base58PublicKey(manifest.mint)); same(74, base58PublicKey(manifest.token_program));
   requireTrue(raw[106] === 6, 'PoolConfig decimals'); same(107, parseField(manifest.vault_binding));

@@ -6,6 +6,7 @@ tested at the time; adding a wrapper does not reverify an older deployment.
 
 | Capability | Current evidence / limit |
 |---|---|
+| Kit migration | Current source uses Kit 8.4.0 directly; breaking native types and async validation are documented in [the migration guide](kit-migration.md). Historical live/provider reports below predate this client migration and do not establish a new live acceptance pass. |
 | Application SDK and response helpers | 315 local SDK tests with zero skips and actual Chrome custody; independent SDK Chat text/tools/SSE consumption, settlement and devnet withdrawal verified in selected cases. OpenRouter terminal-usage parsing corrected; [integration evidence](../evidence/I10-external-integration.md), [parser correction](../evidence/I10-sdk-sse-parser.md) |
 | Standalone browser chat | Arbitrary text/history, configured model/API selection, SSE/cancel and recovery UI; actual Chrome with synthetic services plus a pinned local build wired to the fresh public devnet profile; existing user Chrome blocks localhost, so actual standalone Phantom remains unverified; [evidence](../evidence/I10-parity-review-browser.md) |
 | Private authorization reads | Common snapshot and shared-account reads with local native/WASM path reconstruction; selected-note financial recovery remains separate |

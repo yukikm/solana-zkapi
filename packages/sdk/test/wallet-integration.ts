@@ -1,3 +1,8 @@
+import {createSolanaRpcWithFetch} from '../src/solana.ts';
+import {transactionSignature} from '../src/solana.ts';
+import {fixtureSigner, signWith, decodeTransaction, kitAddress} from './kit-helpers.ts';
+/** The production WalletClient against actual Vault SBF. Only RPC/finality envelopes
+ * and clearance HTTP are local adapters; proofs, signatures, bytes and Vault execute are real. */
 /** The production WalletClient against actual Vault SBF. Only RPC/finality envelopes
  * and clearance HTTP are local adapters; proofs, signatures, bytes and Vault execute are real. */
 import { test } from 'node:test';
@@ -8,7 +13,7 @@ import { once } from 'node:events';
 import { mkdtemp,rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join,resolve } from 'node:path';
-import { Connection,Keypair,PublicKey,VersionedTransaction } from '@solana/web3.js';
+
 import bs58 from 'bs58';
 import { WalletClient } from '../src/wallet.ts';
 import { NoteProver } from '../src/prover.ts';
@@ -34,8 +39,8 @@ test('wallet actual SBF: durable witness/finality, rejection, lost sends, stale 
   const key=await importJournalKey(crypto.getRandomValues(new Uint8Array(32))),store=await NativeJournalStore.open(directory);
   const open=()=>new EncryptedJournal<NoteJournal>(store,key,{deploymentId:manifest.deployment_id,pool:manifest.pool},validateNoteJournal);let journal=open();
   let rejectWallet=false,loseSend=false,hideReceipt=false;const sent:string[]=[];const ids=['note','interference','escape'];
-  const wallet=(seed:number):V0Wallet=>{const pair=Keypair.fromSeed(new Uint8Array(32).fill(seed));return {publicKey:pair.publicKey,supportedTransactionVersions:new Set([0]),async signTransaction(tx){if(rejectWallet)throw Error('test wallet rejected');tx.sign([pair]);return tx;}};};
-  const payer=wallet(1),uploader=wallet(10);const roles={uploader:uploader.publicKey.toBase58(),rentPayer:payer.publicKey.toBase58(),feePayer:payer.publicKey.toBase58(),payer:payer.publicKey.toBase58(),tokenOwner:payer.publicKey.toBase58()};
+  const wallet=async(seed:number):Promise<V0Wallet>=>{const pair=(await fixtureSigner(new Uint8Array(32).fill(seed)));return {publicKey:pair.address,supportedTransactionVersions:new Set([0]),async signTransaction(tx){if(rejectWallet)throw Error('test wallet rejected');tx = await signWith(tx, [pair]);return tx;}};};
+  const payer=await wallet(1),uploader=await wallet(10);const roles={uploader:uploader.publicKey,rentPayer:payer.publicKey,feePayer:payer.publicKey,payer:payer.publicKey,tokenOwner:payer.publicKey};
   let badGenesis=false,badOwner=false,badRoot=false,badFork=false;
   const fixtureFetch:typeof fetch=async(url,init)=>{
     if(String(url).startsWith('http://127.0.0.1:18889')){
@@ -55,7 +60,7 @@ test('wallet actual SBF: durable witness/finality, rejection, lost sends, stale 
     }
     return new Response(JSON.stringify({jsonrpc:'2.0',id:body.id,result}),{headers:{'Content-Type':'application/json'}});
   };
-  const connection=new Connection('http://127.0.0.1:18888',{fetch:fixtureFetch});
+  const connection=createSolanaRpcWithFetch('http://127.0.0.1:18888', fixtureFetch);
   const chain=new SolanaWalletChain(connection,manifest,'http://127.0.0.1:18889',{fetch:fixtureFetch,allowLoopbackHttp:true});
   badGenesis=true;await assert.rejects(chain.snapshot(),/genesis/);badGenesis=false;
   badOwner=true;await assert.rejects(chain.snapshot(),/finalized account/);badOwner=false;
@@ -63,7 +68,7 @@ test('wallet actual SBF: durable witness/finality, rejection, lost sends, stale 
   badFork=true;await assert.rejects(chain.snapshot(),/finalized cut/);badFork=false;
 
   const rpc:TransportRpc={signatureStatus:async()=>null,finalizedBlockHeight:async()=>100,finalizedReceipt:async(signature)=>{if(hideReceipt)return null;const v=await call({kind:'receipt',signature});return v?{...v,message:new Uint8Array(Buffer.from(v.message,'base64'))}:null;},sendRawTransaction:async(bytes)=>{
-    const signature=bs58.encode(VersionedTransaction.deserialize(bytes).signatures[0]);let durable=false;
+    const signature=transactionSignature(decodeTransaction(bytes));let durable=false;
     for(const id of ids){const r=await journal.read(id);durable ||= !!r?.value.wallet?.operation?.attempts.some(a=>a.signature===signature&&a.wireHex===Buffer.from(bytes).toString('hex'));}
     assert.equal(durable,true,'signed bytes must be encrypted/durable before SBF execution');sent.push(signature);
     const result=await call({kind:'send',base64:Buffer.from(bytes).toString('base64')});if(loseSend){loseSend=false;throw Error('test response lost');}return result.signature;
@@ -85,7 +90,7 @@ test('wallet actual SBF: durable witness/finality, rejection, lost sends, stale 
   while(true){const r=(await journal.read('note'))!,op=r.value.wallet!.operation!,plan=await restorePlan(op.plan!);if(plan.steps[op.step].kind==='execute'&&!op.current)break;await client.advance('note');}
   await call({kind:'clock',time:3000067201});await client.advance('note');const stale=await client.advance('note');assert.equal(stale.state,'rejected');if(stale.state==='rejected')assert.equal(stale.needsNewProof,true);
   assert.equal((await journal.read('note'))!.value.wallet!.status,'unfunded');await drive('note');const deposited=(await journal.read('note'))!;assert.equal(deposited.value.witness!.secret,secret);assert.notEqual(deposited.value.witness!.expiry,initial.value.witness!.expiry);assert.equal(deposited.value.wallet!.status,'active');
-  const destination=new PublicKey(new Uint8Array(32).fill(7)).toBase58();
+  const destination=kitAddress(new Uint8Array(32).fill(7));
   await assert.rejects(client.beginWithdrawal('note','mutual_close',destination,roles),/clearance response lost/);assert.equal((await journal.read('note'))!.value.wallet!.clearance!.phase,'requested');
   await client.resumeProof('note');assert.equal(clearanceRequests.length,2);assert.equal(clearanceRequests[0],clearanceRequests[1]);
   const closeBefore=(await journal.read('note'))!.value.wallet!.operation!.plan!;

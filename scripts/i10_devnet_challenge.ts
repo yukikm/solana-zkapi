@@ -7,7 +7,8 @@ import {randomBytes} from 'node:crypto';
 import {mkdir, open, readFile, rename} from 'node:fs/promises';
 import {dirname, isAbsolute, join} from 'node:path';
 import {setTimeout as delay} from 'node:timers/promises';
-import {Connection, PublicKey, VersionedTransaction} from '@solana/web3.js';
+import {address, getProgramDerivedAddress, type Rpc, type SolanaRpcApi} from '@solana/kit';
+import {getAccountAtContext,getFinalizedTransaction,decodeTransaction,addressBytes} from './solana-kit.ts';
 import {ControlClient, ControlHttpError, createCredentials, validateNoteJournal, verifiedClientContext,
   type NoteJournal, type Tariff} from '../packages/sdk/src/control.ts';
 import {NativeSessionVerifier} from '../packages/sdk/src/control-node.ts';
@@ -30,7 +31,7 @@ export interface DevnetChallengeContext {
   prover: NoteProver;
   journal: EncryptedJournal<NoteJournal>;
   chain: WalletChain;
-  connection: Connection;
+  connection: Rpc<SolanaRpcApi>;
   wallets: readonly V0Wallet[];
   roles: WalletRoles;
   pinnedFetch: typeof fetch;
@@ -179,7 +180,7 @@ export async function runDevnetChallenge(o: DevnetChallengeContext): Promise<Dev
   assert.equal(o.tariff.provider, 'openai'); assert.equal(o.tariff.model, 'i05-local-only');
   assert.ok(m.tariff_hashes.includes(o.tariff.tariff_hash), 'local tariff must be manifest-pinned');
   const destination = o.roles.tokenOwner;
-  assert.ok(destination && o.wallets.some(w => w.publicKey.toBase58() === destination));
+  assert.ok(destination && o.wallets.some(w => w.publicKey === destination));
   for (const role of Object.values(o.roles)) assert.equal(role, destination, 'dedicated same-owner test only');
   assert.equal(await o.connection.getGenesisHash(), DEVNET);
   const {store, key} = await staleStore(o.runDirectory);
@@ -200,10 +201,10 @@ export async function runDevnetChallenge(o: DevnetChallengeContext): Promise<Dev
     assert.ok(old.witness && old.wallet && old.pending === null && old.history.length === 0);
     assert.ok(JSON.stringify(old.witness) === JSON.stringify(main.witness), 'stale witness identity mismatch');
     const identity = await o.prover.inspect(old.witness, old.state);
-    const pool = await o.connection.getAccountInfoAndContext(new PublicKey(m.pool), {commitment: 'finalized'});
+    const pool = await getAccountAtContext(o.connection,address(m.pool));
     assert.ok(pool.value);
     const context = await verifiedClientContext(m, DEVNET, {address: m.pool,
-      owner: pool.value.owner.toBase58(), executable: pool.value.executable,
+      owner: pool.value.owner, executable: pool.value.executable,
       lamports: BigInt(pool.value.lamports), data: pool.value.data,
       slot: BigInt(pool.context.slot), commitment: 'finalized'}, BigInt(pool.context.slot), o.artifacts);
     const verifier = new NativeSessionVerifier(o.verifier.path, o.verifier.sha256);
@@ -295,18 +296,16 @@ export async function runDevnetChallenge(o: DevnetChallengeContext): Promise<Dev
     assert.equal(receipt.state, 'finalized');
     assert.ok(receipt.state === 'finalized');
     assert.ok(escapedOperation.finalized.some(row => row.signature === attempt.signature && row.slot === receipt.slot));
-    const transaction = await o.connection.getTransaction(attempt.signature, {commitment: 'finalized', maxSupportedTransactionVersion: 0});
+    const transaction = await getFinalizedTransaction(o.connection,attempt.signature);
     assert.ok(transaction?.meta && transaction.meta.err === null);
     assert.equal(transaction.slot, receipt.slot);
-    assert.ok(Buffer.from(transaction.transaction.message.serialize()).equals(Buffer.from(VersionedTransaction.deserialize(Buffer.from(attempt.wireHex, 'hex')).message.serialize())));
-    const [exit, bump] = PublicKey.findProgramAddressSync([
-      Buffer.from('exit'), new PublicKey(m.pool).toBuffer(), parseField(identity.nullifier),
-    ], new PublicKey(m.program_id));
-    assert.equal(attempt.plan.financial.exit, exit.toBase58());
+    assert.ok(Buffer.from(transaction.transaction.messageBytes).equals(Buffer.from(decodeTransaction(Buffer.from(attempt.wireHex, 'hex')).messageBytes)));
+    const [exit, bump] = await getProgramDerivedAddress({seeds:[Buffer.from('exit'),addressBytes(address(m.pool)),parseField(identity.nullifier)],programAddress:address(m.program_id)});
+    assert.equal(attempt.plan.financial.exit, exit);
     const exitDiscriminator = Buffer.from(await discriminator('ExitNullifier', 'account'));
-    const checkTombstone = (account: Awaited<ReturnType<Connection['getAccountInfo']>>) => {
+    const checkTombstone = (account: Awaited<ReturnType<typeof getAccountAtContext>>['value']) => {
       assert.ok(account);
-      assert.equal(account.owner.toBase58(), m.program_id); assert.equal(account.executable, false);
+      assert.equal(account.owner, m.program_id); assert.equal(account.executable, false);
       assert.equal(account.data.length, 11); assert.equal(account.data[8], 2);
       assert.equal(account.data[9], bump); assert.equal(account.data[10], 1);
       assert.ok(account.data.subarray(0, 8).equals(exitDiscriminator));
@@ -327,8 +326,7 @@ export async function runDevnetChallenge(o: DevnetChallengeContext): Promise<Dev
       assert.notEqual(escaped.root, historicalRoot); assert.equal(escaped.root, expectedEscapedRoot);
       assert.equal(escaped.sequence, expectedEscapedSequence);
       assert.ok(BigInt(escaped.clock) < BigInt(escaped.pending.deadline));
-      checkTombstone((await o.connection.getAccountInfoAndContext(exit,
-        {commitment: 'finalized', minContextSlot: escaped.slot})).value);
+      checkTombstone((await getAccountAtContext(o.connection,exit,escaped.slot)).value);
       ready = {schema: 1, pool: m.pool, note_id: old.witness!.note_id,
         request_id: settled.prepared.request.authorization.request_id, nullifier: identity.nullifier,
         escape_signature: attempt.signature, escape_slot: receipt.slot, deadline: escaped.pending.deadline,
@@ -359,8 +357,7 @@ export async function runDevnetChallenge(o: DevnetChallengeContext): Promise<Dev
     assert.equal(restored.note!.registration_commitment, identity.registration_commitment);
     assert.equal(restored.note!.deposit_micro_usdc, old.witness!.deposit_micro_usdc);
     assert.equal(restored.note!.expiry, old.witness!.expiry);
-    const tombstone = await boundedRead(o.connection.getAccountInfoAndContext(exit,
-      {commitment: 'finalized', minContextSlot: restored.slot}), waitDeadline);
+    const tombstone = await boundedRead(getAccountAtContext(o.connection,exit,restored.slot), waitDeadline);
     checkTombstone(tombstone.value);
     const report: DevnetChallengeReport = {passed: true,
       scope: 'Public devnet stale SDK escape and externally gated native challenger restoration; exact daemon receipt provenance is joined separately by the caller',

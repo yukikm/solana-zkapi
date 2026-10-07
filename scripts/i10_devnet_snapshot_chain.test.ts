@@ -2,18 +2,19 @@
  * accounts and local path prover, never provider or public acceptance. */
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {Connection, PublicKey, SYSVAR_CLOCK_PUBKEY} from '@solana/web3.js';
+import {address, getAddressEncoder, getProgramDerivedAddress} from '@solana/kit';
+const SYSVAR_CLOCK_ADDRESS=address('SysvarC1ock11111111111111111111111111111111');
 import {SolanaWalletChain} from '../packages/sdk/src/wallet-chain.ts';
 import {authorizationSnapshot, type SnapshotPathProver} from '../packages/sdk/src/session-snapshot.ts';
 import {discriminator, type UploadPlan} from '../packages/sdk/src/transport.ts';
 import {jcsBytes, sha256Hex} from '../packages/sdk/src/trust.ts';
-import {chainFixture, key} from '../packages/sdk/test/chain-fixture.ts';
+import {chainFixture, key, fixtureRpc} from '../packages/sdk/test/chain-fixture.ts';
 import {boundedDevnetSnapshotChain, snapshotWaitStats} from './i10_devnet_snapshot_chain.ts';
 
 const field = (n: number) => '0x' + BigInt(n).toString(16).padStart(64, '0');
 async function fixture() {
-  const {manifest, poolData} = await chainFixture(), program = new PublicKey(manifest.program_id), pool = new PublicKey(manifest.pool);
-  const [tree, bump] = PublicKey.findProgramAddressSync([Buffer.from('tree'), pool.toBytes()], program);
+  const {manifest, poolData} = await chainFixture(), program = address(manifest.program_id), pool = address(manifest.pool);
+  const [tree, bump] = await getProgramDerivedAddress({seeds:[Buffer.from('tree'),getAddressEncoder().encode(pool)],programAddress:program});
   const root = {pool: manifest.pool, root: field(1), slot: '100', blockhash: key(8), sequence: '7', next_note_id: '3'};
   const file = {schema_version: '1', snapshot: root, active_notes: [0, 2].map(id => ({note_id: String(id), commitment: field(42 + id), deposit_micro_usdc: '100', expiry: '3000000000'})), pending_withdrawals: []};
   const bytes = jcsBytes(file), digest = await sha256Hex(bytes), urls: string[] = [], rpc: string[][] = [], local: number[] = [];
@@ -39,7 +40,7 @@ async function fixture() {
     if (method === 'getGenesisHash') result = manifest.genesis_hash;
     else if (method === 'getBlock') result = {blockhash: params[0] === 100 ? state.sourceHash : key(9), previousBlockhash: key(7), parentSlot: params[0] - 1, blockHeight: params[0], blockTime: 2600};
     else if (method === 'getMultipleAccounts') {
-      rpc.push(params[0]); assert.deepEqual(params[0], [pool, tree, SYSVAR_CLOCK_PUBKEY].map(p => p.toBase58()));
+      rpc.push(params[0]); assert.deepEqual(params[0], [pool, tree, SYSVAR_CLOCK_ADDRESS]);
       assert.equal(params[1].minContextSlot, 105);
       result = {context: {slot: 110}, value: [account(poolData), account(treeData), account(clock, 'Sysvar1111111111111111111111111111111111111')]};
     } else throw Error('unexpected RPC');
@@ -47,7 +48,7 @@ async function fixture() {
   };
   const make = (signal?: AbortSignal) => {
     const bounded: typeof fetch = (url, init) => fetcher(url, {...init, signal: signal ? AbortSignal.any([signal, ...(init?.signal ? [init.signal] : [])]) : init?.signal});
-    return new SolanaWalletChain(new Connection('http://127.0.0.1:19890', {fetch: bounded}), manifest, 'http://127.0.0.1:19891', {fetch: bounded, allowLoopbackHttp: true});
+    return new SolanaWalletChain(fixtureRpc(bounded), manifest, 'http://127.0.0.1:19891', {fetch: bounded, allowLoopbackHttp: true});
   };
   const prover: SnapshotPathProver = {async snapshotPath(gotRoot, next, notes, noteId) {
     local.push(noteId); assert.equal(gotRoot, root.root); assert.equal(next, '3'); assert.deepEqual(jcsBytes(notes), jcsBytes(file.active_notes));

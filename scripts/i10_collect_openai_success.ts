@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import {readFileSync,writeFileSync} from 'node:fs';
 import {execFileSync} from 'node:child_process';
 import {createHash,createPublicKey,verify} from 'node:crypto';
-import {PublicKey} from '@solana/web3.js';
+import {address,getAddressEncoder} from '@solana/kit';
 import {jcsBytes,parseStrictJson} from '../packages/sdk/src/trust.ts';
 
 const request='4f8434a4-9766-4903-9128-f0f33c3acdae',operation='3158cfca-c7b3-4891-aef0-54b9975b243e';
@@ -32,7 +32,7 @@ assert.equal(observed.session.state,'SETTLED');assert.equal(observed.operation.s
 assert.equal(observed.dispatch_attempts,1);assert.equal(observed.finished_dispatch_attempts,1);assert.equal(observed.receipt_count,1);
 const bytes=Buffer.from(observed.receipt.body,'base64'),body=parseStrictJson(bytes) as any;
 assert.deepEqual(Buffer.from(jcsBytes(body)),bytes);assert.equal(sha(bytes),observed.receipt.hash);
-const receiptKey=Buffer.from(new PublicKey(control.manifest.receipt_public_key).toBytes());
+const receiptKey=Buffer.from(new Uint8Array(getAddressEncoder().encode(address(control.manifest.receipt_public_key))));
 const key=createPublicKey({key:Buffer.concat([Buffer.from('302a300506032b6570032100','hex'),receiptKey]),format:'der',type:'spki'});
 assert.ok(verify(null,Buffer.from(observed.receipt.hash,'hex'),key,Buffer.from(observed.receipt.signature,'base64')));
 assert.equal(body.request_id,request);assert.equal(body.operation_id,operation);assert.equal(body.pool,control.manifest.pool);assert.equal(body.deployment_id,control.manifest.deployment_id);

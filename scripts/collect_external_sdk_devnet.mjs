@@ -5,7 +5,9 @@ import {readFile, readdir, writeFile, lstat} from 'node:fs/promises';
 import {createHash} from 'node:crypto';
 import {join, resolve} from 'node:path';
 import {pathToFileURL} from 'node:url';
-import {PublicKey, VersionedTransaction, ComputeBudgetProgram} from '@solana/web3.js';
+import {address, getAddressDecoder, getAddressEncoder, getCompiledTransactionMessageDecoder, getTransactionDecoder, getTransactionEncoder, getSignatureFromTransaction} from '@solana/kit';
+const COMPUTE_BUDGET_PROGRAM = 'ComputeBudget111111111111111111111111111111';
+const keyBytes = value => Buffer.from(getAddressEncoder().encode(value));
 import bs58 from 'bs58';
 import {verifySignatures, discriminator, vaultAccounts, TOKEN_PROGRAM} from '@zkapi/solana-sdk/transport';
 import {parseStrictJson, manifestDigest} from '@zkapi/solana-sdk/trust';
@@ -14,7 +16,7 @@ const GENESIS = 'EtWTRABZaYq6iMfeYKouRu166VU2xqa1wcaWoxPkrZBG';
 const hash = bytes => createHash('sha256').update(bytes).digest('hex');
 const integer = value => Number.isSafeInteger(value) && value >= 0;
 const uint = value => typeof value === 'string' && /^(0|[1-9][0-9]{0,19})$/.test(value) && BigInt(value) <= 0xffffffffffffffffn;
-const key = value => { assert.equal(typeof value, 'string'); const k = new PublicKey(value); assert.equal(k.toBase58(), value); return k; };
+const key = value => { assert.equal(typeof value, 'string'); const k = address(value); assert.equal(k, value); return k; };
 const signature = value => { assert.equal(typeof value, 'string'); const bytes = bs58.decode(value); assert.equal(bytes.length, 64); assert.equal(bs58.encode(bytes), value); };
 const signatureNames = ['deposit_compact_v1', 'create_payload', 'append_payload', 'seal_payload', 'execute_payload', 'close_payload', 'finalize_escape'];
 
@@ -101,37 +103,37 @@ export async function verifyTransactionRecord(chain, observed, receipt, manifest
   assert.equal(chain.transaction?.[1], 'base64'); const encoded = chain.transaction[0]; assert.equal(typeof encoded, 'string');
   const wire = Buffer.from(encoded, 'base64'); assert.equal(wire.toString('base64'), encoded); assert.ok(wire.length <= 1232 && wire.length > 0);
   assert.equal(wire.length, observed.bytes); assert.equal(hash(wire), observed.wireSha256, 'recorded exact signed bytes differ from chain');
-  const tx = VersionedTransaction.deserialize(wire); assert.equal(tx.version, 0); assert.equal(tx.message.addressTableLookups.length, 0);
-  assert.deepEqual(Buffer.from(tx.serialize()), wire); await verifySignatures(tx);
-  assert.equal(tx.signatures.length, 1); assert.equal(bs58.encode(tx.signatures[0]), observed.signature); assert.equal(receipt.signature, observed.signature);
-  const names = tx.message.staticAccountKeys.map(k => k.toBase58()); if (expectedOwner) assert.equal(names[0], expectedOwner);
+  const tx = getTransactionDecoder().decode(wire); const message = getCompiledTransactionMessageDecoder().decode(tx.messageBytes); assert.equal(message.version, 0); assert.equal((message.addressTableLookups?.length ?? 0), 0);
+  assert.deepEqual(Buffer.from(getTransactionEncoder().encode(tx)), wire); await verifySignatures(tx);
+  assert.equal(Object.keys(tx.signatures).length, 1); assert.equal(getSignatureFromTransaction(tx), observed.signature); assert.equal(receipt.signature, observed.signature);
+  const names = message.staticAccounts; if (expectedOwner) assert.equal(names[0], expectedOwner);
   assert.ok(integer(chain.meta.fee) && chain.meta.fee > 0); assert.ok(integer(chain.meta.computeUnitsConsumed) && chain.meta.computeUnitsConsumed > 0 && chain.meta.computeUnitsConsumed <= 1_000_000);
   if (chain.meta.loadedAddresses) { assert.deepEqual(Object.keys(chain.meta.loadedAddresses).sort(), ['readonly','writable']); assert.deepEqual(chain.meta.loadedAddresses.readonly, []); assert.deepEqual(chain.meta.loadedAddresses.writable, []); }
-  const instructions = tx.message.compiledInstructions; assert.ok(instructions.length >= 2 && instructions.length <= 3);
+  const instructions = message.instructions; assert.ok(instructions.length >= 2 && instructions.length <= 3);
   let computeLimit = null, computePrice = '0';
   for (const instruction of instructions.slice(0,-1)) {
-    assert.equal(names[instruction.programIdIndex], ComputeBudgetProgram.programId.toBase58()); assert.equal(instruction.accountKeyIndexes.length, 0);
+    assert.equal(names[instruction.programAddressIndex], COMPUTE_BUDGET_PROGRAM); assert.equal((instruction.accountIndices?.length ?? 0), 0);
     const data = Buffer.from(instruction.data);
     if (data[0] === 2) { assert.equal(data.length, 5); assert.equal(computeLimit, null); computeLimit = data.readUInt32LE(1); assert.ok(computeLimit > 0 && computeLimit <= 1_000_000); }
     else { assert.equal(data[0], 3); assert.equal(data.length, 9); assert.equal(computePrice, '0'); computePrice = data.readBigUInt64LE(1).toString(); }
   }
   assert.ok(computeLimit !== null && chain.meta.computeUnitsConsumed <= computeLimit);
-  const financial = instructions.at(-1); assert.equal(names[financial.programIdIndex], manifest.program_id);
+  const financial = instructions.at(-1); assert.equal(names[financial.programAddressIndex], manifest.program_id);
   const bytes = Buffer.from(financial.data); let instruction;
   for (const candidate of signatureNames) if (bytes.subarray(0,8).equals(Buffer.from(await discriminator(candidate)))) instruction = candidate;
   assert.ok(instruction, 'unknown Vault instruction');
   const poolIndex = instruction === 'deposit_compact_v1' || instruction === 'finalize_escape' ? 0 : instruction === 'execute_payload' ? 3 : 1;
-  assert.equal(names[financial.accountKeyIndexes[poolIndex]], manifest.pool);
+  assert.equal(names[financial.accountIndices[poolIndex]], manifest.pool);
   if (receipt.kind === 'deposit') assert.equal(instruction, 'deposit_compact_v1');
   else assert.ok(['create_payload','append_payload','seal_payload','execute_payload'].includes(instruction));
   assert.ok(Array.isArray(chain.meta.preBalances) && Array.isArray(chain.meta.postBalances) && chain.meta.preBalances.length === names.length && chain.meta.postBalances.length === names.length);
   for (const amount of [...chain.meta.preBalances, ...chain.meta.postBalances]) assert.ok(integer(amount));
   const report = {signature: observed.signature, slot: chain.slot, kind: receipt.kind, instruction, fee_payer: names[0],
-    block_time: chain.blockTime, wire_sha256: hash(wire), message_sha256: hash(tx.message.serialize()), wire_bytes: wire.length,
+    block_time: chain.blockTime, wire_sha256: hash(wire), message_sha256: hash(tx.messageBytes), wire_bytes: wire.length,
     fee_lamports: chain.meta.fee, compute_units: chain.meta.computeUnitsConsumed, requested_compute_units: computeLimit,
     priority_fee_micro_lamports: computePrice, fee_payer_lamport_delta: String(chain.meta.postBalances[0] - chain.meta.preBalances[0]),
     token_balances: tokenRows(chain.meta,names,manifest.mint), exact_recorded_wire_matches: true, signatures_verified: true};
-  Object.defineProperty(report, 'instructionDetail', {value: {data: bytes, accounts: financial.accountKeyIndexes.map(index=>names[index])}});
+  Object.defineProperty(report, 'instructionDetail', {value: {data: bytes, accounts: financial.accountIndices.map(index=>names[index])}});
   return report;
 }
 
@@ -168,9 +170,9 @@ export function verifyLifecycleInstructions(transactions) {
 }
 
 export function decodeTokenAccount(account, mint, owner) {
-  assert.ok(account && account.executable === false && account.owner === TOKEN_PROGRAM.toBase58() && account.data?.[1] === 'base64');
+  assert.ok(account && account.executable === false && account.owner === TOKEN_PROGRAM && account.data?.[1] === 'base64');
   const raw = Buffer.from(account.data[0], 'base64'); assert.equal(raw.toString('base64'), account.data[0]); assert.equal(raw.length, 165);
-  assert.deepEqual(raw.subarray(0,32), key(mint).toBuffer()); assert.deepEqual(raw.subarray(32,64), key(owner).toBuffer()); assert.equal(raw[108], 1);
+  assert.deepEqual(raw.subarray(0,32), keyBytes(key(mint))); assert.deepEqual(raw.subarray(32,64), keyBytes(key(owner))); assert.equal(raw[108], 1);
   return raw.readBigUInt64LE(64).toString();
 }
 /** Match RPC token deltas to the decoded financial instruction amounts. When
@@ -195,7 +197,7 @@ export function verifyTokenMovements(transactions,lifecycle) {
 export async function collectExternalSdkDevnet({reports, manifestBytes, expectedManifestHash, read}) {
   assert.match(expectedManifestHash, /^[0-9a-f]{64}$/);
   const manifest = parseStrictJson(manifestBytes); assert.equal(await manifestDigest(manifest), expectedManifestHash); assert.equal(manifest.manifest_hash, expectedManifestHash);
-  assert.equal(manifest.deployment_environment, 'devnet'); assert.equal(manifest.genesis_hash, GENESIS); assert.equal(manifest.token_program, TOKEN_PROGRAM.toBase58()); assert.equal(manifest.decimals, 6);
+  assert.equal(manifest.deployment_environment, 'devnet'); assert.equal(manifest.genesis_hash, GENESIS); assert.equal(manifest.token_program, TOKEN_PROGRAM); assert.equal(manifest.decimals, 6);
   for (const name of ['program_id','pool','mint']) key(manifest[name]);
   const {reports: checked, latest, dispatch} = validatePublicReports(reports);
   assert.equal(await read('getGenesisHash',[]), GENESIS);
@@ -210,18 +212,18 @@ export async function collectExternalSdkDevnet({reports, manifestBytes, expected
   }
   const lifecycle=verifyLifecycleInstructions(transactions);
   const tokenMovement=verifyTokenMovements(transactions,lifecycle);
-  const addresses = vaultAccounts({programId:key(manifest.program_id),pool:key(manifest.pool),mint:key(manifest.mint),noteId:lifecycle.note_id,payer:key(owner),tokenOwner:key(owner),operation:'deposit'});
-  assert.equal(lifecycle.note_account,addresses.note.toBase58());assert.equal(lifecycle.source_token_account,addresses.source.toBase58());assert.equal(lifecycle.destination_token_account,addresses.source.toBase58());assert.equal(lifecycle.vault_token_account,addresses.vault.toBase58());
+  const addresses = await vaultAccounts({programId:key(manifest.program_id),pool:key(manifest.pool),mint:key(manifest.mint),noteId:lifecycle.note_id,payer:key(owner),tokenOwner:key(owner),operation:'deposit'});
+  assert.equal(lifecycle.note_account,addresses.note);assert.equal(lifecycle.source_token_account,addresses.source);assert.equal(lifecycle.destination_token_account,addresses.source);assert.equal(lifecycle.vault_token_account,addresses.vault);
   const lastSlot = Math.max(...transactions.map(tx=>tx.slot));
-  const cut = await read('getMultipleAccounts',[[addresses.source.toBase58(),addresses.vault.toBase58(),manifest.pool,addresses.note.toBase58()],{encoding:'base64',commitment:'finalized',minContextSlot:lastSlot}]);
+  const cut = await read('getMultipleAccounts',[[addresses.source,addresses.vault,manifest.pool,addresses.note],{encoding:'base64',commitment:'finalized',minContextSlot:lastSlot}]);
   assert.ok(integer(cut.context?.slot) && cut.context.slot >= lastSlot && Array.isArray(cut.value) && cut.value.length === 4);
-  const wallet = decodeTokenAccount(cut.value[0],manifest.mint,owner), vault = decodeTokenAccount(cut.value[1],manifest.mint,addresses.vaultAuthority.toBase58());
+  const wallet = decodeTokenAccount(cut.value[0],manifest.mint,owner), vault = decodeTokenAccount(cut.value[1],manifest.mint,addresses.vaultAuthority);
   assert.equal(vault,'0','closed lifecycle must leave this dedicated Vault empty');
   const pool = cut.value[2]; assert.ok(pool && !pool.executable && pool.owner===manifest.program_id && pool.data?.[1]==='base64');
   const poolBytes=Buffer.from(pool.data[0],'base64'); assert.equal(poolBytes.toString('base64'),pool.data[0]); assert.equal(poolBytes.length,422); assert.equal(poolBytes[8],2);
   assert.deepEqual(poolBytes.subarray(0,8),Buffer.from(await discriminator('PoolConfig','account')));
-  assert.deepEqual(poolBytes.subarray(10,42),key(GENESIS).toBuffer()); assert.deepEqual(poolBytes.subarray(42,74),key(manifest.mint).toBuffer()); assert.deepEqual(poolBytes.subarray(74,106),TOKEN_PROGRAM.toBuffer()); assert.equal(poolBytes[106],6);
-  const treasuryOwner=new PublicKey(poolBytes.subarray(171,203)).toBase58();assert.equal(lifecycle.treasury_owner,treasuryOwner);
+  assert.deepEqual(poolBytes.subarray(10,42),keyBytes(key(GENESIS))); assert.deepEqual(poolBytes.subarray(42,74),keyBytes(key(manifest.mint))); assert.deepEqual(poolBytes.subarray(74,106),keyBytes(TOKEN_PROGRAM)); assert.equal(poolBytes[106],6);
+  const treasuryOwner=getAddressDecoder().decode(poolBytes.subarray(171,203));assert.equal(lifecycle.treasury_owner,treasuryOwner);
   const note=cut.value[3];assert.ok(note&&!note.executable&&note.owner===manifest.program_id&&note.data?.[1]==='base64');
   const noteBytes=Buffer.from(note.data[0],'base64');assert.equal(noteBytes.toString('base64'),note.data[0]);assert.equal(noteBytes.length,63);assert.equal(noteBytes[8],2);
   assert.deepEqual(noteBytes.subarray(0,8),Buffer.from(await discriminator('Note','account')));assert.equal(noteBytes.readUInt32LE(10),lifecycle.note_id);assert.equal(noteBytes[62],3);
@@ -235,8 +237,8 @@ export async function collectExternalSdkDevnet({reports, manifestBytes, expected
     finalized_fee_lamports:transactions.reduce((sum,tx)=>sum+tx.fee_lamports,0),recorded_unique_transaction_dispatches:dispatch.size,
     sdk_reported_auth_sends:latest.authSends,sdk_reported_inference_sends:latest.inferenceSends,sdk_reported_inference_replays:latest.inferenceReplays??null,
     sdk_reported_automatic_transaction_resends:latest.automaticTransactionResends??null,network_send_counts_independently_observable:false,
-    finalized_balance_cut:{slot:cut.context.slot,blockhash:block.blockhash,block_height:block.blockHeight,wallet_owner:owner,wallet_token_account:addresses.source.toBase58(),
-      vault_token_account:addresses.vault.toBase58(),vault_authority:addresses.vaultAuthority.toBase58(),treasury_owner:treasuryOwner,note_account:addresses.note.toBase58(),note_status:'closed',wallet_micro_usdc:wallet,vault_micro_usdc:vault,wallet_owner_is_treasury_owner:owner===treasuryOwner},
+    finalized_balance_cut:{slot:cut.context.slot,blockhash:block.blockhash,block_height:block.blockHeight,wallet_owner:owner,wallet_token_account:addresses.source,
+      vault_token_account:addresses.vault,vault_authority:addresses.vaultAuthority,treasury_owner:treasuryOwner,note_account:addresses.note,note_status:'closed',wallet_micro_usdc:wallet,vault_micro_usdc:vault,wallet_owner_is_treasury_owner:owner===treasuryOwner},
     balance_note:'When wallet owner also owns treasury, its token balance includes returned principal and treasury transfers. This does not erase the separately SDK-verified provider charge.',
     provider_packets_verified:false,provider_charge_signature_reverified:false,proof_reverified_off_chain:false,phantom_verified:false,full_i10:false,release_gates_passed:[]};
 }

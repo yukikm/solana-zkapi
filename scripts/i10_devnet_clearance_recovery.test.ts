@@ -1,3 +1,6 @@
+import {getCompiledTransactionMessageEncoder} from '@solana/kit';
+import {transactionSignature,transactionMessage} from '../packages/sdk/src/solana.ts';
+import {kitAddress, addressBytes, fixtureSigner, signWith, decodeTransaction, encodeTransaction} from '../packages/sdk/test/kit-helpers.ts';
 /** Offline helper acceptance over the actual encrypted journal, WalletClient,
  * v0 signing and exact-message recovery. Prover, HTTP, finalized accounts and
  * receipts are synthetic; this does not prove public-chain/clearance validity. */
@@ -7,7 +10,7 @@ import {mkdtemp, rm} from 'node:fs/promises';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 import test, {type TestContext} from 'node:test';
-import {Keypair, PublicKey, VersionedTransaction} from '@solana/web3.js';
+
 import bs58 from 'bs58';
 import {validateNoteJournal, type NoteJournal, type PreparedSession, type PrivateState} from '../packages/sdk/src/control.ts';
 import {EncryptedJournal, importJournalKey} from '../packages/sdk/src/journal.ts';
@@ -23,7 +26,7 @@ import {runDevnetClearanceRecovery, verifyClearanceRecoveryIdentity, verifyCompl
 
 const fixture = JSON.parse(readFileSync(new URL('../tests/fixtures/vault/genesis-a.json', import.meta.url), 'utf8'));
 const field = (n: number) => '0x' + n.toString(16).padStart(64, '0');
-const publicKey = (hex: string) => new PublicKey(Buffer.from(hex, 'hex')).toBase58();
+const publicKey = (hex: string) => kitAddress(Buffer.from(hex, 'hex'));
 const nullifier: string = fixture.auth.withdrawal.public_inputs[11];
 const registrationCommitment = '0x' + fixture.commitment;
 const genesis = 'EtWTRABZaYq6iMfeYKouRu166VU2xqa1wcaWoxPkrZBG';
@@ -63,9 +66,9 @@ function records(): {main: NoteJournal; stale: NoteJournal} {
 
 async function uploadPrefix(plan: UploadPlan, offset: number) {
   return {address: plan.buffer, commitment: 'finalized' as const, owner: plan.programId, slot: 110,
-    data: concat(await discriminator('PayloadBuffer', 'account'), Uint8Array.of(2, plan.bump), plan.uploader.toBytes(),
+    data: concat(await discriminator('PayloadBuffer', 'account'), Uint8Array.of(2, plan.bump), addressBytes(plan.uploader),
       Uint8Array.of(OPERATIONS[plan.operation].op), u32(plan.payload.length), plan.digest, u32(offset), Uint8Array.of(0),
-      u64(plan.expires), plan.rentPayer.toBytes(), u32(plan.payload.length), plan.payload.slice(0, offset),
+      u64(plan.expires), addressBytes(plan.rentPayer), u32(plan.payload.length), plan.payload.slice(0, offset),
       new Uint8Array(plan.payload.length - offset), plan.nonce)};
 }
 
@@ -77,14 +80,14 @@ async function setup(t: TestContext, clearanceStatus = 200, expireSecondAppend =
     aes, {deploymentId: manifest.deployment_id, pool: manifest.pool}, validateNoteJournal);
   const journal = await open('main'), staleJournal = await open('stale');
   const initial = records(); await journal.create('note', initial.main); await staleJournal.create('note', initial.stale);
-  const pair = Keypair.fromSeed(new Uint8Array(32).fill(1)), owner = pair.publicKey.toBase58();
+  const pair = (await fixtureSigner(new Uint8Array(32).fill(1))), owner = pair.address;
   const roles = {uploader: owner, rentPayer: owner, feePayer: owner, payer: owner, tokenOwner: owner};
   const counts = {genesis: 0, inspect: 0, clearanceVerify: 0, tree: 0, withdrawal: 0, sign: 0, send: 0, snapshot: 0, blockhash: 0, buffer: 0};
   const requests: {url: string; body: unknown}[] = [];
   const receipts = new Map<string, FinalizedReceipt>();
   let closed = false, expiredAttempt: Attempt | undefined;
-  const wallet: V0Wallet = {publicKey: pair.publicKey, supportedTransactionVersions: new Set([0]),
-    async signTransaction(tx) {counts.sign++; tx.sign([pair]); return tx;}};
+  const wallet: V0Wallet = {publicKey: pair.address, supportedTransactionVersions: new Set([0]),
+    async signTransaction(tx) {counts.sign++; tx = await signWith(tx, [pair]); return tx;}};
   const prover = {async inspect() {counts.inspect++; return {nullifier, registration_commitment: registrationCommitment};},
     async verifyClearance(n: string, s: typeof signature) {counts.clearanceVerify++; assert.equal(n, nullifier); assert.deepEqual({...s}, signature);},
     async tree() {counts.tree++; return structuredClone(fixture.trees[1]);},
@@ -94,8 +97,8 @@ async function setup(t: TestContext, clearanceStatus = 200, expireSecondAppend =
     async finalizedReceipt(sig) {return receipts.get(sig) ?? null;}, async finalizedBlockHeight() {return expiredAttempt ? 201 : 50;},
     async sendRawTransaction(bytes) {
       counts.send++;
-      const tx = VersionedTransaction.deserialize(bytes), sig = bs58.encode(tx.signatures[0]);
-      assert.equal(tx.version, 0); assert.ok(bytes.length <= 1232);
+      const tx = decodeTransaction(bytes), sig = transactionSignature(tx);
+      assert.equal(transactionMessage(tx).version, 0); assert.ok(bytes.length <= 1232);
       assert.ok(!receipts.has(sig), 'no automatic repeat of a locally acknowledged transaction');
       const saved = (await staleJournal.read('note'))!.value.wallet!.operation!;
       const attempt = saved.attempts.find(a => a.signature === sig);
@@ -107,11 +110,11 @@ async function setup(t: TestContext, clearanceStatus = 200, expireSecondAppend =
         return sig; // Simulated acknowledged submission, then finalized expiry without a receipt.
       }
       if (attempt.kind === 'execute') closed = true;
-      receipts.set(sig, {signature: sig, message: tx.message.serialize(), slot: 101 + receipts.size, err: null});
+      receipts.set(sig, {signature: sig, message: new Uint8Array(tx.messageBytes), slot: 101 + receipts.size, err: null});
       return sig;
     }};
   const context: DevnetClearanceRecoveryContext = {manifest, journal, staleJournal, prover, wallets: [wallet], roles,
-    connection: {async getGenesisHash() {counts.genesis++; return genesis;}},
+    connection: {getGenesisHash() {return {async send() {counts.genesis++; return genesis;}} as ReturnType<DevnetClearanceRecoveryContext['connection']['getGenesisHash']>;}},
     pinnedFetch: async (url, init) => {
       requests.push({url: String(url), body: init?.body});
       assert.equal(String(url), manifest.control_api_origin + '/zkapi/v1/withdraw/clearance');
@@ -128,16 +131,16 @@ async function setup(t: TestContext, clearanceStatus = 200, expireSecondAppend =
           expiry: String(fixture.expiry), status: closed ? 'closed' : 'active'}};
     }, async buffer(plan) {
       counts.buffer++; assert.ok(expiredAttempt, 'only the injected upload expiry permits buffer reconciliation');
-      assert.equal(plan.buffer.toBase58(), expiredAttempt.buffer);
+      assert.equal(plan.buffer, expiredAttempt.buffer);
       return uploadPrefix(plan, plan.steps.filter(step => step.kind === 'append')[1].offset!);
-    }, async blockhash() {counts.blockhash++; return {blockhash: new PublicKey(new Uint8Array(32).fill(expiredAttempt ? 8 : 7)).toBase58(),
+    }, async blockhash() {counts.blockhash++; return {blockhash: kitAddress(new Uint8Array(32).fill(expiredAttempt ? 8 : 7)),
       lastValidBlockHeight: expiredAttempt ? 400 : 200};}},
     rpcFor(j) {assert.ok(j === context.staleJournal); return rpc;}, waitMs: 15_000};
   return {context, initial, counts, requests, receipts, open, rpc, wallet, expired: () => expiredAttempt};
 }
 
-test('identity requires the same witness/state/N and one uncertain zero-inference AUTH', () => {
-  const ok = records(); verifyClearanceRecoveryIdentity(ok.main, ok.stale, manifest, nullifier);
+test('identity requires the same witness/state/N and one uncertain zero-inference AUTH', async () => {
+  const ok = records(); await verifyClearanceRecoveryIdentity(ok.main, ok.stale, manifest, nullifier);
   const cases: [string, (main: NoteJournal, stale: NoteJournal) => void, RegExp][] = [
     ['witness', (_m, s) => {s.witness!.secret = field(17);}, /witness identity/],
     ['state', (_m, s) => {s.state.anchor = field(17);}, /private state/],
@@ -151,7 +154,7 @@ test('identity requires the same witness/state/N and one uncertain zero-inferenc
   ];
   for (const [name, mutate, error] of cases) {
     const {main, stale} = records(); mutate(main, stale);
-    assert.throws(() => verifyClearanceRecoveryIdentity(main, stale, manifest, nullifier), error, name);
+    await assert.rejects(() => verifyClearanceRecoveryIdentity(main, stale, manifest, nullifier), error, name);
   }
 });
 
@@ -234,10 +237,10 @@ test('expired second append is renewed from the verified prefix and retained thr
   assert.equal(replacement.planDigest, old.planDigest); assert.equal(replacement.kind, old.kind);
   assert.notEqual(replacement.signature, old.signature); assert.notEqual(replacement.blockhash, old.blockhash);
   assert.ok(replacement.lastValidBlockHeight > old.lastValidBlockHeight);
-  const originalMessage = VersionedTransaction.deserialize(Buffer.from(old.wireHex, 'hex')).message;
-  const replacementMessage = VersionedTransaction.deserialize(Buffer.from(replacement.wireHex, 'hex')).message;
-  replacementMessage.recentBlockhash = originalMessage.recentBlockhash;
-  assert.deepEqual(replacementMessage.serialize(), originalMessage.serialize(), 'only the blockhash/signature changes');
+  const originalMessage = transactionMessage(decodeTransaction(Buffer.from(old.wireHex, 'hex')));
+  const replacementMessage = transactionMessage(decodeTransaction(Buffer.from(replacement.wireHex, 'hex')));
+  const normalizedReplacement={...replacementMessage,lifetimeToken:originalMessage.lifetimeToken};
+  assert.deepEqual(new Uint8Array(getCompiledTransactionMessageEncoder().encode(normalizedReplacement)), new Uint8Array(getCompiledTransactionMessageEncoder().encode(originalMessage)), 'only the blockhash/signature changes');
   assert.equal(h.counts.buffer, 1); assert.equal(h.counts.sign, 6); assert.equal(h.counts.send, 6);
   assert.equal(h.receipts.size, 5); assert.equal(result.finalized_attempts.length, 5);
   assert.equal(result.superseded_upload_attempts.length, 1);
@@ -270,7 +273,7 @@ test('supersession refuses unresolved financial sends, unknown uploads and unrel
     finalizedReceipt: async sig => sig === execute.signature ? null : h.receipts.get(sig) ?? null,
     finalizedBlockHeight: async () => 401}));
   const close = await prepareAttempt(plan, await closePayload(plan),
-    {blockhash: new PublicKey(new Uint8Array(32).fill(9)).toBase58(), lastValidBlockHeight: 200}, [h.wallet], {save: async () => {}});
+    {blockhash: kitAddress(new Uint8Array(32).fill(9)), lastValidBlockHeight: 200}, [h.wallet], {save: async () => {}});
   const withClose = structuredClone(completed); withClose.attempts.splice(-1, 0, close);
   await assert.rejects(verifyCompletedMutualAttempts(withClose, noSend));
   await assert.rejects(verifyCompletedMutualAttempts(completed, {...noSend,
@@ -279,14 +282,14 @@ test('supersession refuses unresolved financial sends, unknown uploads and unrel
     signatureStatus: async sig => {if (sig === old.signature) throw Error('offline unavailable'); return null;}}));
   await assert.rejects(verifyCompletedMutualAttempts(completed, {...noSend, finalizedBlockHeight: async () => 200}));
   const makeReceipt = (attempt: Attempt): FinalizedReceipt => ({signature: attempt.signature,
-    message: VersionedTransaction.deserialize(Buffer.from(attempt.wireHex, 'hex')).message.serialize(), slot: 103, err: null});
+    message: new Uint8Array(decodeTransaction(Buffer.from(attempt.wireHex, 'hex')).messageBytes), slot: 103, err: null});
   const substitute = async (candidate: Attempt) => {
     const altered = structuredClone(completed); altered.attempts[3] = candidate;
     altered.finalized = altered.finalized.map(r => r.signature === replacement.signature ? {signature: candidate.signature, slot: 103} : r);
     await assert.rejects(verifyCompletedMutualAttempts(altered, {...noSend,
       finalizedReceipt: async sig => sig === candidate.signature ? makeReceipt(candidate) : h.receipts.get(sig) ?? null}));
   };
-  const fresh = {blockhash: new PublicKey(new Uint8Array(32).fill(10)).toBase58(), lastValidBlockHeight: 500};
+  const fresh = {blockhash: kitAddress(new Uint8Array(32).fill(10)), lastValidBlockHeight: 500};
   // Genuine signed messages are valid for their own plan/step, but cannot replace this saved append.
   await substitute(await prepareAttempt(plan, plan.steps.filter(s => s.kind === 'append')[0], fresh,
     [h.wallet], {save: async () => {}}));

@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import {readFileSync, writeFileSync} from 'node:fs';
 import {execFileSync} from 'node:child_process';
 import {createHash, createPublicKey, verify} from 'node:crypto';
-import {PublicKey} from '@solana/web3.js';
+import {address,getAddressEncoder} from '@solana/kit';
 import {jcsBytes, parseStrictJson} from '../packages/sdk/src/trust.ts';
 
 const observationPath = 'docs/evidence/I10-repeat-demo-api-observation.json';
@@ -79,7 +79,7 @@ try {
       PGOPTIONS: '-c default_transaction_read_only=on -c statement_timeout=5000'}, encoding: 'utf8', timeout: 10_000, stdio: ['ignore', 'pipe', 'pipe']});
   const observed = JSON.parse(output); assert.equal(observed.read_only, 'on');
   assert.equal(observed.cases.length, added.length);
-  const receiptKey = new PublicKey(control.manifest.receipt_public_key).toBytes();
+  const receiptKey = new Uint8Array(getAddressEncoder().encode(address(control.manifest.receipt_public_key)));
   const key = createPublicKey({key: Buffer.concat([Buffer.from('302a300506032b6570032100', 'hex'), Buffer.from(receiptKey)]), format: 'der', type: 'spki'});
   let balance = 2_000_000n, totalCharge = 0n;
   const cases = [];

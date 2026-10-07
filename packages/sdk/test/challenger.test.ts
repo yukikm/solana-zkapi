@@ -1,3 +1,6 @@
+import {v0Message as transactionMessage} from './kit-helpers.ts';
+import {transactionSignature} from '../src/solana.ts';
+import {fixtureSigner, kitAddress, decodeTransaction, addressBytes} from './kit-helpers.ts';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync, mkdtempSync, writeFileSync, rmSync } from 'node:fs';
@@ -6,50 +9,50 @@ import { join } from 'node:path';
 import { spawnSync, spawn } from 'node:child_process';
 import { createServer } from 'node:http';
 import { once } from 'node:events';
-import { Keypair, PublicKey, VersionedTransaction } from '@solana/web3.js';
+
 import bs58 from 'bs58';
 import { challengePlan, challengerWallet, recoverChallenge, signChallengeStep, refreshChallengeUpload, validateChallengeAttempt, type ChallengePlan } from '../src/challenger.ts';
 import { encodeLayout2Args, fromHex, hex, concat, u32, u64, OPERATIONS } from '../src/layout2.ts';
 import { discriminator, type BufferState, type FinalizedReceipt, type SignatureStatus, type TransportRpc } from '../src/transport.ts';
 const a = JSON.parse(readFileSync(new URL('../../../tests/fixtures/vault/a-with-b.json', import.meta.url), 'utf8'));
-const signer = Keypair.fromSeed(new Uint8Array(32).fill(10));
-const input: ChallengePlan = { programId: new PublicKey(fromHex(a.program_id, 32)).toBase58(), pool: new PublicKey(fromHex(a.pool, 32)).toBase58(), mint: new PublicKey(fromHex(a.mint, 32)).toBase58(), payer: signer.publicKey.toBase58(), noteId: 0,
+const signer = (await fixtureSigner(new Uint8Array(32).fill(10)));
+const input: ChallengePlan = { programId: kitAddress(fromHex(a.program_id, 32)), pool: kitAddress(fromHex(a.pool, 32)), mint: kitAddress(fromHex(a.mint, 32)), payer: signer.address, noteId: 0,
   payloadHex: hex(encodeLayout2Args({ operation: 'challenge_escape', noteId: 0, auth: a.auth.request, tree: a.trees[2] })), nonceHex: '87'.repeat(32), expires: '3000003600', slot: 3, sequence: '3' };
-const blockhash = { blockhash: new PublicKey(new Uint8Array(32).fill(9)).toBase58(), lastValidBlockHeight: 100 };
+const blockhash = { blockhash: kitAddress(new Uint8Array(32).fill(9)), lastValidBlockHeight: 100 };
 class Rpc implements TransportRpc {
   sent: Uint8Array[] = []; status: SignatureStatus | null = null; receipt: FinalizedReceipt | null = null; height = 10; fail = false;
   async signatureStatus() { return this.status; } async finalizedReceipt() { return this.receipt; } async finalizedBlockHeight() { return this.height; }
-  async sendRawTransaction(bytes: Uint8Array) { this.sent.push(bytes.slice()); if (this.fail) throw new Error('lost response'); return bs58.encode(VersionedTransaction.deserialize(bytes).signatures[0]); }
+  async sendRawTransaction(bytes: Uint8Array) { this.sent.push(bytes.slice()); if (this.fail) throw new Error('lost response'); return transactionSignature(decodeTransaction(bytes)); }
 }
 test('challenger signs every real v0 step with the existing I04 plan and verifies restored bytes', async () => {
   const plan = await challengePlan(input);
   for (let i = 0; i < plan.steps.length; i++) {
-    const attempt = await signChallengeStep(input, i, blockhash, challengerWallet(signer.secretKey));
+    const attempt = await signChallengeStep(input, i, blockhash, (await challengerWallet(signer.secretKey)));
     assert.equal(attempt.kind, plan.steps[i].kind); assert.ok(attempt.wireHex.length / 2 <= 1232);
-    assert.equal(VersionedTransaction.deserialize(Buffer.from(attempt.wireHex, 'hex')).version, 0);
+    assert.equal(transactionMessage(decodeTransaction(Buffer.from(attempt.wireHex, 'hex'))).version, 0);
     await validateChallengeAttempt(JSON.parse(JSON.stringify(attempt)));
   }
-  await assert.rejects(signChallengeStep(input, 999, blockhash, challengerWallet(signer.secretKey)), /step/);
+  await assert.rejects(signChallengeStep(input, 999, blockhash, (await challengerWallet(signer.secretKey))), /step/);
 });
 test('lost challenger execute response and restart rebroadcast exactly the same signature bytes', async () => {
   const plan = await challengePlan(input), rpc = new Rpc(); rpc.fail = true;
-  const attempt = await signChallengeStep(input, plan.steps.length - 1, blockhash, challengerWallet(signer.secretKey));
+  const attempt = await signChallengeStep(input, plan.steps.length - 1, blockhash, (await challengerWallet(signer.secretKey)));
   assert.deepEqual(await recoverChallenge(attempt, rpc), { state: 'unknown' });
   const reopened = JSON.parse(JSON.stringify(attempt)); rpc.fail = false;
   assert.deepEqual(await recoverChallenge(reopened, rpc), { state: 'pending' });
   assert.deepEqual(rpc.sent[0], rpc.sent[1]); assert.equal(rpc.sent.length, 2);
   rpc.status = { slot: 20, confirmationStatus: 'confirmed', err: { InstructionError: [1, { Custom: 6006 }] } };
   assert.deepEqual(await recoverChallenge(reopened, rpc), { state: 'pending' }); assert.equal(rpc.sent.length, 2);
-  rpc.receipt = { signature: attempt.signature, message: VersionedTransaction.deserialize(rpc.sent[0]).message.serialize(), slot: 20, err: null };
+  rpc.receipt = { signature: attempt.signature, message: new Uint8Array(decodeTransaction(rpc.sent[0]).messageBytes), slot: 20, err: null };
   assert.deepEqual(await recoverChallenge(reopened, rpc), { state: 'finalized', slot: 20 });
 });
 test('expired or forged challenger receipts never authorize replacement; finalized stale-root preserves historical proof', async () => {
   const plan = await challengePlan(input), rpc = new Rpc(); rpc.height = 101;
-  const attempt = await signChallengeStep(input, plan.steps.length - 1, blockhash, challengerWallet(signer.secretKey));
+  const attempt = await signChallengeStep(input, plan.steps.length - 1, blockhash, (await challengerWallet(signer.secretKey)));
   assert.deepEqual(await recoverChallenge(attempt, rpc), { state: 'expired_reconcile_required' }); assert.equal(rpc.sent.length, 0);
   rpc.receipt = { signature: attempt.signature, message: new Uint8Array([1]), slot: 20, err: null };
   assert.deepEqual(await recoverChallenge(attempt, rpc), { state: 'unknown' });
-  rpc.receipt.message = VersionedTransaction.deserialize(Buffer.from(attempt.wireHex, 'hex')).message.serialize();
+  rpc.receipt.message = new Uint8Array(decodeTransaction(Buffer.from(attempt.wireHex, 'hex')).messageBytes);
   rpc.receipt.err = { InstructionError: [1, { Custom: 6006 }] };
   const recovery = await recoverChallenge(attempt, rpc); assert.equal(recovery.state, 'rejected');
   assert.equal(recovery.state === 'rejected' && recovery.needsNewProof, true);
@@ -70,9 +73,9 @@ test('native challenger bridge signs without RPC and rejects public fee keys wit
 
 test('expired challenger append/seal uses finalized exact buffer prefix and a fresh hash; financial/missing buffer stays unresolved', async () => {
   const plan = await challengePlan(input), rpc = new Rpc(); rpc.height = 101;
-  const wallet = challengerWallet(signer.secretKey);
-  const fresh = { blockhash: new PublicKey(new Uint8Array(32).fill(19)).toBase58(), lastValidBlockHeight: 200 };
-  const account = async (offset: number, sealed = false): Promise<BufferState> => ({ address: plan.buffer, owner: plan.programId, slot: 50, commitment: 'finalized', data: concat(await discriminator('PayloadBuffer','account'), Uint8Array.of(2,plan.bump), plan.uploader.toBytes(),Uint8Array.of(OPERATIONS[plan.operation].op),u32(plan.payload.length),plan.digest,u32(offset),Uint8Array.of(sealed?1:0),u64(plan.expires),plan.rentPayer.toBytes(),u32(plan.payload.length),plan.payload.slice(0,offset),new Uint8Array(plan.payload.length-offset),plan.nonce) });
+  const wallet = (await challengerWallet(signer.secretKey));
+  const fresh = { blockhash: kitAddress(new Uint8Array(32).fill(19)), lastValidBlockHeight: 200 };
+  const account = async (offset: number, sealed = false): Promise<BufferState> => ({ address: plan.buffer, owner: plan.programId, slot: 50, commitment: 'finalized', data: concat(await discriminator('PayloadBuffer','account'), Uint8Array.of(2,plan.bump), addressBytes(plan.uploader),Uint8Array.of(OPERATIONS[plan.operation].op),u32(plan.payload.length),plan.digest,u32(offset),Uint8Array.of(sealed?1:0),u64(plan.expires),addressBytes(plan.rentPayer),u32(plan.payload.length),plan.payload.slice(0,offset),new Uint8Array(plan.payload.length-offset),plan.nonce) });
   const append = await signChallengeStep(input,1,blockhash,wallet);
   const retry = await refreshChallengeUpload(append,rpc,await account(0),fresh,wallet);
   assert.ok(retry.replacement); assert.equal(retry.nextStepIndex,1); assert.notEqual(retry.replacement.signature,append.signature);
@@ -95,7 +98,7 @@ test('priority fee is signed and immutable in each upload plan; chunk sizing sti
   const plain = await challengePlan(input);
   assert.ok(plan.steps[1].endOffset! < plain.steps[1].endOffset!);
   for(let i=0;i<plan.steps.length;i++){
-    const attempt = await signChallengeStep(priced,i,blockhash,challengerWallet(signer.secretKey));
+    const attempt = await signChallengeStep(priced,i,blockhash,(await challengerWallet(signer.secretKey)));
     assert.equal(attempt.plan.priorityFeeMicroLamports,'100000');assert.ok(attempt.wireHex.length/2<=1232);
     await validateChallengeAttempt(attempt);
     const changed=structuredClone(attempt);changed.plan.priorityFeeMicroLamports='200000';
@@ -104,7 +107,7 @@ test('priority fee is signed and immutable in each upload plan; chunk sizing sti
 });
 
 test('challenger buffer absence inspection requires a finalized cut at the failure slot or later', async t => {
-  const attempt=await signChallengeStep(input,0,blockhash,challengerWallet(signer.secretKey));
+  const attempt=await signChallengeStep(input,0,blockhash,(await challengerWallet(signer.secretKey)));
   let slot=79;const minimums:number[]=[];
   const server=createServer(async(req,res)=>{
     const chunks:Buffer[]=[];for await(const chunk of req)chunks.push(Buffer.from(chunk));

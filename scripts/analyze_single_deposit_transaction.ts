@@ -1,16 +1,13 @@
 /** Offline design analysis only. No RPC, wallet, secret files, proof verification, or sends.
  * Run: target/i08-toolchain/bin/node scripts/analyze_single_deposit_transaction.ts
- * The proposed compact instruction does not exist in the deployed Vault.
+ * Compares the historical compact-deposit design candidates using current Kit codecs.
  */
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { readFileSync, writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
-import {
-  AddressLookupTableAccount, ComputeBudgetProgram, PublicKey, SystemProgram,
-  TransactionInstruction, TransactionMessage, VersionedTransaction,
-} from '@solana/web3.js';
-import type { AccountMeta, MessageV0 } from '@solana/web3.js';
+import {AccountRole, address, appendTransactionMessageInstructions, blockhash as asBlockhash, compileTransactionMessage, compressTransactionMessageUsingAddressLookupTables, createTransactionMessage, decompileTransactionMessage, getCompiledTransactionMessageEncoder, getTransactionDecoder, getTransactionEncoder, pipe, setTransactionMessageFeePayer, setTransactionMessageLifetimeUsingBlockhash, type AccountMeta, type Address, type AddressesByLookupTableAddress, type CompiledTransactionMessageWithLifetime, type Instruction, type V0CompiledTransactionMessage} from '@solana/kit';
+import {addressBytes, addressFromBytes, SYSTEM_PROGRAM} from '../packages/sdk/src/solana.ts';
 import {
   ASSOCIATED_TOKEN_PROGRAM, TOKEN_PROGRAM, MAX_TRANSACTION_BYTES, MAX_COMPUTE_UNITS,
   buildUploadPlan, discriminator, financialMetas, vaultAccounts,
@@ -31,12 +28,12 @@ const sourceFiles = [
 ];
 const sha = (bytes: Uint8Array) => createHash('sha256').update(bytes).digest('hex');
 // Public sizing identifiers only. No private key is created, loaded, or used.
-const publicId = (name: string): PublicKey => new PublicKey(createHash('sha256').update(`single-deposit-analysis:${name}`).digest());
-const publicKey = (value: string): PublicKey => new PublicKey(fromHex(value, 32));
+const publicId = (name: string): Address => addressFromBytes(createHash('sha256').update(`single-deposit-analysis:${name}`).digest());
+const publicKey = (value: string): Address => addressFromBytes(fromHex(value, 32));
 const field = (value: bigint): Uint8Array => parseField(`0x${value.toString(16).padStart(64, '0')}`);
 const programId = publicKey(fixture.program_id), pool = publicKey(fixture.pool), mint = publicKey(fixture.mint);
 const tokenOwner = publicId('user'), sponsor = publicId('sponsor'), feeSponsor = publicId('fee-sponsor');
-const blockhash = publicId('blockhash').toBase58();
+const blockhash = publicId('blockhash');
 const tree = fixture.trees[0];
 const canonical = encodeLayout2Args({
   operation: 'deposit', expectedId: fixture.id, expectedRoot: tree.public_inputs[1],
@@ -78,55 +75,53 @@ function shortvec(number: number): Uint8Array {
   do { const byte = number & 127; number = Math.floor(number / 128); bytes.push(byte | (number ? 128 : 0)); } while (number);
   return Uint8Array.from(bytes);
 }
-// Independent exact wire serialization permits measuring oversized candidates that
-// web3.js rejects inside its fixed 1,232-byte message buffer. Passing cases are also
-// byte-compared with web3.js serialization and deserialize/serialize round trips.
-function serializeMessage(message: MessageV0): Uint8Array {
-  const h = message.header;
-  return concat(Uint8Array.of(128, h.numRequiredSignatures, h.numReadonlySignedAccounts, h.numReadonlyUnsignedAccounts),
-    shortvec(message.staticAccountKeys.length), ...message.staticAccountKeys.map(k => k.toBytes()),
-    new PublicKey(message.recentBlockhash).toBytes(), shortvec(message.compiledInstructions.length),
-    ...message.compiledInstructions.map(ix => concat(Uint8Array.of(ix.programIdIndex),
-      shortvec(ix.accountKeyIndexes.length), Uint8Array.from(ix.accountKeyIndexes), shortvec(ix.data.length), ix.data)),
-    shortvec(message.addressTableLookups.length), ...message.addressTableLookups.map(table => concat(table.accountKey.toBytes(),
+// Independent exact v0 serialization is compared against Kit codecs for every
+// candidate, including oversized candidates. This does not submit transactions.
+function serializeMessage(message: V0CompiledTransactionMessage & CompiledTransactionMessageWithLifetime): Uint8Array {
+  const h = message.header, tables = message.addressTableLookups ?? [];
+  return concat(Uint8Array.of(128, h.numSignerAccounts, h.numReadonlySignerAccounts, h.numReadonlyNonSignerAccounts),
+    shortvec(message.staticAccounts.length), ...message.staticAccounts.map(addressBytes),
+    addressBytes(message.lifetimeToken as Address), shortvec(message.instructions.length),
+    ...message.instructions.map(ix => concat(Uint8Array.of(ix.programAddressIndex),
+      shortvec(ix.accountIndices?.length ?? 0), Uint8Array.from(ix.accountIndices ?? []), shortvec(ix.data?.length ?? 0), new Uint8Array(ix.data ?? []))),
+    shortvec(tables.length), ...tables.map(table => concat(addressBytes(table.lookupTableAddress),
       shortvec(table.writableIndexes.length), Uint8Array.from(table.writableIndexes),
       shortvec(table.readonlyIndexes.length), Uint8Array.from(table.readonlyIndexes))));
 }
-function measure(instructions: TransactionInstruction[], feePayer: PublicKey, tables: AddressLookupTableAccount[]) {
-  const message = new TransactionMessage({ payerKey: feePayer, recentBlockhash: blockhash, instructions }).compileToV0Message(tables);
+function measure(instructions: Instruction[], feePayer: Address, tables: AddressesByLookupTableAddress) {
+  const source = pipe(createTransactionMessage({version: 0}), m => setTransactionMessageFeePayer(feePayer, m),
+    m => setTransactionMessageLifetimeUsingBlockhash({blockhash: asBlockhash(blockhash), lastValidBlockHeight: 0n}, m),
+    m => appendTransactionMessageInstructions(instructions, m));
+  const message = compileTransactionMessage(compressTransactionMessageUsingAddressLookupTables(source, tables));
   const wireMessage = serializeMessage(message);
-  const wire = concat(shortvec(message.header.numRequiredSignatures), new Uint8Array(64 * message.header.numRequiredSignatures), wireMessage);
-  let nativeSerializedBytes: number | null = null, nativeSerializationError: string | null = null;
-  try {
-    const actual = new VersionedTransaction(message).serialize();
-    assert.deepEqual(actual, wire);
-    assert.deepEqual(VersionedTransaction.deserialize(actual).serialize(), actual);
-    nativeSerializedBytes = actual.length;
-  } catch (error) {
-    if (error instanceof assert.AssertionError) throw error;
-    nativeSerializationError = String(error);
-    assert.ok(wire.length > MAX_TRANSACTION_BYTES, 'Every fitting candidate must pass native serialization');
-  }
-  const resolved = message.getAccountKeys({ addressLookupTableAccounts: tables });
-  assert.equal(resolved.length, message.staticAccountKeys.length + message.numAccountKeysFromLookups);
+  const wire = concat(shortvec(message.header.numSignerAccounts), new Uint8Array(64 * message.header.numSignerAccounts), wireMessage);
+  assert.deepEqual(new Uint8Array(getCompiledTransactionMessageEncoder().encode(message)), wireMessage);
+  const actual = new Uint8Array(getTransactionEncoder().encode(getTransactionDecoder().decode(wire)));
+  assert.deepEqual(actual, wire);
+  const resolved = decompileTransactionMessage(message, {addressesByLookupTableAddress: tables, lastValidBlockHeight: 0n});
+  assert.equal(resolved.instructions.length, instructions.length);
+  const lookups = message.addressTableLookups ?? [];
+  const lookupCount = lookups.reduce((n, table) => n + table.writableIndexes.length + table.readonlyIndexes.length, 0);
   return {
     transaction_bytes: wire.length, message_bytes: wireMessage.length,
     limit_bytes: MAX_TRANSACTION_BYTES, margin_bytes: MAX_TRANSACTION_BYTES - wire.length,
     fits_1232_bytes: wire.length <= MAX_TRANSACTION_BYTES,
-    signature_slots: message.header.numRequiredSignatures,
+    signature_slots: message.header.numSignerAccounts,
     signatures_are_zero_placeholders: true,
-    static_account_keys: message.staticAccountKeys.length,
-    lookup_account_keys: message.numAccountKeysFromLookups,
-    address_lookup_tables: message.addressTableLookups.length,
-    instruction_account_indices: instructions.map(ix => ix.keys.length),
-    instruction_data_bytes: instructions.map(ix => ix.data.length),
-    native_serialized_bytes: nativeSerializedBytes, native_serialization_error: nativeSerializationError,
+    static_account_keys: message.staticAccounts.length,
+    lookup_account_keys: lookupCount,
+    address_lookup_tables: lookups.length,
+    instruction_account_indices: instructions.map(ix => ix.accounts?.length ?? 0),
+    instruction_data_bytes: instructions.map(ix => ix.data?.length ?? 0),
+    native_serialized_bytes: actual.length, native_serialization_error: null,
     unsigned_transaction_sha256: sha(wire),
   };
 }
-const computeBudget = [ComputeBudgetProgram.setComputeUnitLimit({ units: MAX_COMPUTE_UNITS }),
-  ComputeBudgetProgram.setComputeUnitPrice({ microLamports: 1000n })];
-const meta = (pubkey: PublicKey, isWritable = false, isSigner = false): AccountMeta => ({ pubkey, isWritable, isSigner });
+const computeBudget: Instruction[] = [
+  {programAddress: address('ComputeBudget111111111111111111111111111111'), data: concat(Uint8Array.of(2), u32(MAX_COMPUTE_UNITS))},
+  {programAddress: address('ComputeBudget111111111111111111111111111111'), data: concat(Uint8Array.of(3), u64(1000n))},
+];
+const meta = (address: Address, isWritable = false, isSigner = false): AccountMeta => ({address, role: (isWritable ? AccountRole.WRITABLE : AccountRole.READONLY) | (isSigner ? AccountRole.READONLY_SIGNER : AccountRole.READONLY)});
 function existingAccounts(financial: FinancialAccounts): AccountMeta[] {
   return [...financialMetas(financial, true), meta(financial.tokenOwner, false, true)];
 }
@@ -137,7 +132,7 @@ function reducedAccounts(financial: FinancialAccounts): AccountMeta[] {
   return [meta(financial.pool), meta(financial.tree, true), meta(financial.note, true),
     meta(financial.vaultAuthority), meta(financial.mint), meta(financial.source, true), meta(financial.vault, true),
     meta(financial.tokenOwner, false, true), meta(financial.payer, true, true),
-    meta(TOKEN_PROGRAM), meta(ASSOCIATED_TOKEN_PROGRAM), meta(SystemProgram.programId)];
+    meta(TOKEN_PROGRAM), meta(ASSOCIATED_TOKEN_PROGRAM), meta(SYSTEM_PROGRAM)];
 }
 const profiles = [
   { name: 'same_user_all_roles', payer: tokenOwner, feePayer: tokenOwner, expectedSigners: 1 },
@@ -146,25 +141,22 @@ const profiles = [
 ];
 const cases: object[] = [], bufferBaselines: object[] = [];
 for (const profile of profiles) {
-  const financial = vaultAccounts({ programId, pool, mint, noteId: fixture.id, payer: profile.payer, tokenOwner, operation: 'deposit' });
+  const financial = await vaultAccounts({ programId, pool, mint, noteId: fixture.id, payer: profile.payer, tokenOwner, operation: 'deposit' });
   // All eight addresses are stable for this pool and deployment; no user source
   // ATA, note PDA, wallet, or buffer address is inserted into this model table.
   const stableAddresses = [pool, financial.tree, financial.vaultAuthority, mint, financial.vault,
-    TOKEN_PROGRAM, ASSOCIATED_TOKEN_PROGRAM, SystemProgram.programId];
-  const table = new AddressLookupTableAccount({ key: publicId('stable-pool-table'), state: {
-    deactivationSlot: 0xffffffffffffffffn, lastExtendedSlot: 0, lastExtendedSlotStartIndex: 0,
-    authority: undefined, addresses: stableAddresses,
-  } });
+    TOKEN_PROGRAM, ASSOCIATED_TOKEN_PROGRAM, SYSTEM_PROGRAM];
+  const tables = {[publicId('stable-pool-table')]: stableAddresses};
   for (const candidate of [
     { name: 'existing_deposit', instructionName: 'deposit', args: canonical, keys: existingAccounts(financial), deployedEntry: true },
-    { name: 'compact_same_accounts', instructionName: 'deposit_compact_v1', args: compact, keys: existingAccounts(financial), deployedEntry: false },
+    { name: 'compact_same_accounts', instructionName: 'deposit_compact_v1', args: compact, keys: existingAccounts(financial), deployedEntry: true },
     { name: 'raw_reduced_accounts_comparison', instructionName: 'deposit_reduced_analysis', args: canonical, keys: reducedAccounts(financial), deployedEntry: false },
     { name: 'compact_reduced_accounts_comparison', instructionName: 'deposit_compact_reduced_analysis', args: compact, keys: reducedAccounts(financial), deployedEntry: false },
   ]) {
-    const instruction = new TransactionInstruction({ programId, keys: candidate.keys,
-      data: Buffer.from(concat(await discriminator(candidate.instructionName), candidate.args)) });
+    const instruction: Instruction = {programAddress: programId, accounts: candidate.keys,
+      data: concat(await discriminator(candidate.instructionName), candidate.args)};
     for (const lookup of ['none', 'preexisting_stable_pool_alt'] as const) {
-      const measured = measure([...computeBudget, instruction], profile.feePayer, lookup === 'none' ? [] : [table]);
+      const measured = measure([...computeBudget, instruction], profile.feePayer, lookup === 'none' ? {} : tables);
       assert.equal(measured.signature_slots, profile.expectedSigners);
       cases.push({ role_profile: profile.name, candidate: candidate.name, lookup_model: lookup,
         entry_point_exists_in_source: candidate.deployedEntry,
@@ -172,16 +164,16 @@ for (const profile of profiles) {
     }
   }
   const plan = await buildUploadPlan({ programId, pool, uploader: tokenOwner, rentPayer: profile.payer,
-    feePayer: profile.feePayer, nonce: publicId('buffer-nonce').toBytes(), expires: 3000003600n,
+    feePayer: profile.feePayer, nonce: addressBytes(publicId('buffer-nonce')), expires: 3000003600n,
     operation: 'deposit', payload: canonical, financial, priorityFeeMicroLamports: 1000n,
     snapshot: { slot: 1, sequence: 0n } });
   bufferBaselines.push({ role_profile: profile.name, steps: plan.steps.map(step => ({ kind: step.kind,
-    ...measure([...computeBudget, step.instruction], profile.feePayer, []) })) });
+    ...measure([...computeBudget, step.instruction], profile.feePayer, {}) })) });
 }
 const report = {
   schema: 1, generated_at: new Date().toISOString(), status: 'offline_serialization_analysis_only',
   command: 'target/i08-toolchain/bin/node scripts/analyze_single_deposit_transaction.ts',
-  node_version: process.version, web3_version: JSON.parse(readFileSync(new URL('node_modules/@solana/web3.js/package.json', root), 'utf8')).version,
+  node_version: process.version, kit_version: JSON.parse(readFileSync(new URL('node_modules/@solana/kit/package.json', root), 'utf8')).version,
   sources_sha256: Object.fromEntries(sourceFiles.map(path => [path, sha(readFileSync(new URL(path, root)))])),
   compute_budget: { unit_limit: MAX_COMPUTE_UNITS, micro_lamports_per_unit: '1000', both_instructions_included: true, measured_compute_units: null },
   compact_wire: {
@@ -219,13 +211,13 @@ const report = {
     'Serialization and fixture roundtrip only. No SBF execution, compute measurement, on-chain state checks, wallet approval or proof verification was performed.',
     'Fixture public proof bytes are reused solely for byte-layout equivalence; this report is not a fresh proof-validity result.',
     'Unsigned transactions contain zero-filled signature slots; signature lengths are exact but no transaction is cryptographically signed.',
-    'Compact instructions and reduced account contracts are proposed models; only the original deposit entry exists in source.',
-    'Current manifests and SDK advertise v0_buffer only. New transport advertisement and journal/recovery integration require implementation and acceptance.',
+    'Compact deposit and the original account contract exist in current source; reduced account contracts remain comparison-only models.',
+    'Capabilities of any deployed manifest remain independently authenticated. This sizing exercise does not change deployment or journal pins.',
     'Stale roots, note IDs, expiry boundaries or unknown financial sends still require existing finalized reconciliation; one transaction is the normal successful path, not a retry guarantee.',
     'All values, program IDs and table contents used here are public test fixtures or deterministic sizing identifiers; no credentials, real wallet keys, RPCs, services or provider calls were accessed.',
   ],
 };
-const output = new URL('docs/evidence/I10-single-deposit-transport-analysis.json', root);
+const output = new URL('docs/evidence/I10-kit-single-deposit-transport-analysis.json', root);
 writeFileSync(output, `${JSON.stringify(report, null, 2)}\n`);
 console.log(JSON.stringify({ output: fileURLToPath(output), status: report.status, cases: cases.length,
   compact_args_bytes: compact.length, canonical_roundtrip: true }));

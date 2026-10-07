@@ -4,7 +4,7 @@ import { readFile, chmod, lstat } from 'node:fs/promises';
 import { createServer } from 'node:http';
 import { createInterface } from 'node:readline';
 import { once } from 'node:events';
-import { Connection, Keypair, VersionedTransaction } from '@solana/web3.js';
+import { address, createKeyPairFromPrivateKeyBytes, getAddressFromPublicKey, getBase64Encoder, partiallySignTransaction } from '@solana/kit';
 import { verifyManifest, parseStrictJson, sha256Hex, type ArtifactBundle, type ManifestTrustPolicy } from '@zkapi/solana-sdk/trust';
 import { ControlClient, verifiedClientBundle, validateNoteJournal, type NoteJournal, type Mode, type Tariff } from '@zkapi/solana-sdk/control';
 import { NativeSessionVerifier } from '@zkapi/solana-sdk/control-node';
@@ -18,7 +18,7 @@ import { NativeProver } from '@zkapi/solana-sdk/prover-node';
 import { NoteProver } from '@zkapi/solana-sdk/prover';
 import { SolanaWalletChain } from '@zkapi/solana-sdk/wallet-chain';
 import { WalletClient, type WalletRoles } from '@zkapi/solana-sdk/wallet';
-import { connectionTransport, type V0Wallet, type TransactionPreparationCommitment } from '@zkapi/solana-sdk/transport';
+import { connectionTransport, createSolanaRpcWithFetch, type V0Wallet, type TransactionPreparationCommitment } from '@zkapi/solana-sdk/transport';
 
 interface RuntimeConfig {
   manifest: string; policy: ManifestTrustPolicy; artifacts: Record<Exclude<keyof ArtifactBundle,'additional'>,string> & {additional:Record<string,string>};
@@ -48,10 +48,10 @@ async function main(): Promise<void> {
   const artifacts:any = {additional:{}};
   for (const [name,path] of Object.entries(c.artifacts)) if (name!=='additional') artifacts[name]=new Uint8Array(await readFile(path as string));
   for (const [name,path] of Object.entries(c.artifacts.additional)) artifacts.additional[name]=new Uint8Array(await readFile(path));
-  const fetcher=relayFetch(relaySocket), connection=new Connection(c.rpc,{commitment:'finalized',fetch:fetcher,disableRetryOnRateLimit:true});
-  const observed=await connection.getAccountInfoAndContext(new (await import('@solana/web3.js')).PublicKey(m.pool),'finalized');
+  const fetcher=relayFetch(relaySocket), connection=createSolanaRpcWithFetch(c.rpc,fetcher);
+  const observed=await connection.getAccountInfo(address(m.pool),{commitment:'finalized',encoding:'base64'}).send();
   if (!observed.value) throw Error('missing finalized pool');
-  const a=observed.value,bundle=await verifiedClientBundle(m,await connection.getGenesisHash(),{address:m.pool,owner:a.owner.toBase58(),executable:a.executable,lamports:BigInt(a.lamports),data:a.data,slot:BigInt(observed.context.slot),commitment:'finalized'},BigInt(observed.context.slot),artifacts);
+  const a=observed.value,bundle=await verifiedClientBundle(m,await connection.getGenesisHash().send(),{address:m.pool,owner:a.owner,executable:a.executable,lamports:BigInt(a.lamports),data:new Uint8Array(getBase64Encoder().encode(a.data[0])),slot:BigInt(observed.context.slot),commitment:'finalized'},BigInt(observed.context.slot),artifacts);
   const prover=await NoteProver.create(m,bundle.artifacts,new NativeProver(c.prover.path,c.prover.sha256));
   // The verifier also checks its executable before every call. Validate the
   // installation here so a broken pin is fatal before management-only recovery.
@@ -61,7 +61,15 @@ async function main(): Promise<void> {
   const client=new ControlClient({context:bundle.context,journal,verifier:new NativeSessionVerifier(c.verifier.path,c.verifier.sha256),fetch:fetcher,allowLoopbackHttp:m.deployment_environment==='local',directProviderBases:c.direct_provider_bases,oaVerifier:c.oa_verifier});
   const chain=new SolanaWalletChain(connection,m,c.indexer,{fetch:fetcher,allowLoopbackHttp:m.deployment_environment==='local',preparationCommitment:c.preparation_commitment});
   const wallets:V0Wallet[]=[];
-  if(secret.wallet_seed_base64){const seed=Buffer.from(secret.wallet_seed_base64,'base64');if(seed.length!==32||seed.toString('base64')!==secret.wallet_seed_base64)throw Error('invalid wallet seed');const pair=Keypair.fromSeed(seed);seed.fill(0);secret.wallet_seed_base64='';wallets.push({publicKey:pair.publicKey,supportedTransactionVersions:new Set([0]),signTransaction:async(tx:VersionedTransaction)=>{tx.sign([pair]);return tx;}});}
+  if(secret.wallet_seed_base64){
+    const seed=Buffer.from(secret.wallet_seed_base64,'base64');
+    try {
+      if(seed.length!==32||seed.toString('base64')!==secret.wallet_seed_base64)throw Error('invalid wallet seed');
+      secret.wallet_seed_base64='';
+      const pair=await createKeyPairFromPrivateKeyBytes(seed);
+      wallets.push({publicKey:await getAddressFromPublicKey(pair.publicKey),supportedTransactionVersions:new Set([0]),signTransaction:tx=>partiallySignTransaction([pair],tx)});
+    } finally { seed.fill(0);secret.wallet_seed_base64=''; }
+  }
   const rpc=connectionTransport(connection,{preparationCommitment:c.preparation_commitment});
   const wallet=new WalletClient({manifest:m,prover,journal,chain,rpc,wallets,fetch:fetcher});
   const service=new ClientDaemon({client,journal,noteId:c.note_id,mode:c.mode,models,keyReuseSeconds:c.key_reuse_seconds,

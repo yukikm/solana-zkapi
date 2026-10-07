@@ -14,7 +14,7 @@ from clientd_release_provenance import BUILD_INPUTS_PATH, NOTICE_INDEX_PATH, sou
 from collect_clientd_release_notices import native_platform
 
 ROOT = Path(__file__).resolve().parents[1]
-VERSION = '0.1.0-devnet.1'
+VERSION = '0.2.0-devnet.1'
 NATIVE_NAME = f'zkapi-clientd-{VERSION}-darwin-arm64'
 SDK_NAME = f'zkapi-solana-sdk-{VERSION}.tgz'
 
@@ -136,7 +136,7 @@ def main():
         'deployment_bundle_included': False, 'default_public_operator': None,
         'npm_registry_published': False, 'mainnet_ready': False,
         'full_I10_or_G1_G4_passed': False,
-        'validation': 'See docs/evidence/I10-devnet-preview.md at source_revision; local fixture and installed runtime scopes are separate from historical live devnet evidence.',
+        'validation': 'See docs/evidence/I10-kit-migration.md at source_revision; local fixture and installed runtime scopes are separate from historical live devnet evidence.',
         'release_attestation': 'Verify the GitHub immutable release after publication; this local manifest is not itself a signature.'
     }
     (args.output / 'release-manifest.json').write_text(json.dumps(release, indent=2) + '\n')

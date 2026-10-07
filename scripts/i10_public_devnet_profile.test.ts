@@ -4,7 +4,7 @@ import {test} from 'node:test';
 import {mkdtemp,readFile,writeFile,rm,copyFile} from 'node:fs/promises';
 import {join,resolve} from 'node:path';
 import {tmpdir} from 'node:os';
-import {Keypair} from '@solana/web3.js';
+import {createKeyPairSignerFromPrivateKeyBytes} from '@solana/kit';
 import {execFile} from 'node:child_process';
 import {promisify} from 'node:util';
 import {jcsBytes,manifestDigest,verifyManifest} from '../packages/sdk/src/trust.ts';
@@ -21,7 +21,7 @@ async function fixture(t:any){
  for(const file of ['request.pk','request.vk','withdrawal.pk','withdrawal.vk']){await copyFile('vendor/ethereum-zkapi/protocol/setup/v2/'+file,join(dir,file));artifacts[file]=profileSha(await readFile(join(dir,file)));}
  const body=Object.fromEntries(PROFILE_FIELDS.map(k=>[k,p[k]]));p.circuit_profile_hash=profileSha(jcsBytes(body));
  const circuit=encode({...body,circuit_profile_hash:p.circuit_profile_hash});await writeFile(join(dir,'profile.json'),circuit);artifacts['profile.json']=profileSha(circuit);
- Object.assign(p,{schema:1,kind:'public_devnet',tree_setup:'single_party_os_random',production_eligible:false,limitations:['Synthetic metadata only; not a sound or deployable setup'],state_key:{x:field(2),y:field(3)},clearance_key:{x:field(4),y:field(5)},quote_public_key:Keypair.fromSeed(new Uint8Array(32).fill(21)).publicKey.toBase58(),receipt_public_key:Keypair.fromSeed(new Uint8Array(32).fill(22)).publicKey.toBase58(),artifact_hashes:artifacts});
+ Object.assign(p,{schema:1,kind:'public_devnet',tree_setup:'single_party_os_random',production_eligible:false,limitations:['Synthetic metadata only; not a sound or deployable setup'],state_key:{x:field(2),y:field(3)},clearance_key:{x:field(4),y:field(5)},quote_public_key:(await createKeyPairSignerFromPrivateKeyBytes(new Uint8Array(32).fill(21))).address,receipt_public_key:(await createKeyPairSignerFromPrivateKeyBytes(new Uint8Array(32).fill(22))).address,artifact_hashes:artifacts});
  const save=async(v:any)=>{const b=encode(v);await writeFile(join(dir,'public-profile.json'),b);return profileSha(b);};
  return {dir,p,save,sha:await save(p)};
 }
@@ -43,8 +43,8 @@ test('operator repinning cannot relabel fixture keys, ceremony or mismatched art
   const p=structuredClone(f.p);
   if(mutation==='state')p.state_key={x:oldInputs[4],y:oldInputs[5]};
   if(mutation==='clearance')p.clearance_key={x:oldInputs[6],y:oldInputs[7]};
-  if(mutation==='quote')p.quote_public_key=Keypair.fromSeed(new Uint8Array(32).fill(11)).publicKey.toBase58();
-  if(mutation==='receipt')p.receipt_public_key=Keypair.fromSeed(new Uint8Array(32).fill(12)).publicKey.toBase58();
+  if(mutation==='quote')p.quote_public_key=(await createKeyPairSignerFromPrivateKeyBytes(new Uint8Array(32).fill(11))).address;
+  if(mutation==='receipt')p.receipt_public_key=(await createKeyPairSignerFromPrivateKeyBytes(new Uint8Array(32).fill(12))).address;
   if(mutation==='tree')p.tree_proof_artifacts.pk_hash=old.tree_proof_artifacts.pk_hash;
   if(mutation==='ceremony')p.setup_profile='ceremony_verified';
   if(mutation==='shared')p.state_key=p.clearance_key;
@@ -62,7 +62,8 @@ test('launcher offline validation completes without RPC or wallet configuration'
 
 test('fresh public base produces an independently pinned SDK manifest without I05 state',async t=>{
  const f=await fixture(t),loaded=await loadPublicDevnetProfile(f.dir,f.sha);
- const key=(n:number)=>Keypair.fromSeed(new Uint8Array(32).fill(n)).publicKey.toBase58();
+ const keys=await Promise.all([61,62,63].map(async n=>[n,(await createKeyPairSignerFromPrivateKeyBytes(new Uint8Array(32).fill(n))).address] as const));
+ const key=(n:number)=>keys.find(([index])=>index===n)![1];
  const base=publicDevnetManifestBase(loaded),genesis='EtWTRABZaYq6iMfeYKouRu166VU2xqa1wcaWoxPkrZBG',program=key(61),pool=key(62),mint='4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU',token='TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA';
  const authority={kind:'devnet_test_single_key',authority:key(63)};
  const manifest:any={...base,deployment_id:'offline-public-profile',deployment_environment:'devnet',genesis_hash:genesis,program_id:program,pool,mint,token_program:token,control_api_origin:'https://control.invalid',inference_api_origin:'https://inference.invalid',proving_keys_base_url:'https://control.invalid/keys',note_ttl_seconds:'3600',challenge_seconds:'60',cap_micro_usdc:'1000000',idl_hash:'1a'.repeat(32),vault_binding:await vaultBinding(...[genesis,program,pool,token,mint].map(bs58.decode) as [Uint8Array,Uint8Array,Uint8Array,Uint8Array,Uint8Array]),authorities:{admin:authority,upgrade:authority},artifact_digests:{public_devnet_profile:f.sha},manifest_signature:Buffer.alloc(64).toString('base64')};

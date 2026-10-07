@@ -13,7 +13,7 @@ NOTICE_INDEX_PATH = 'share/zkapi-clientd/third-party/dependencies.json'
 COPIED_FILES = (
     'THIRD_PARTY_NOTICES.md', 'apps/clientd/runtime.ts', 'scripts/clientd_secrets.py',
     'apps/clientd/README.md', 'docs/sdk/clientd-quickstart.md', 'docs/sdk/recovery.md',
-    'docs/integrations/openclaw.md', 'docs/releases/devnet-preview.md',
+    'docs/integrations/openclaw.md', 'docs/releases/kit-preview.md', 'docs/sdk/kit-migration.md',
     'apps/clientd/go.mod', 'apps/clientd/companion/Cargo.lock',
     'apps/clientd/prover/Cargo.lock', 'vendor/ethereum-zkapi/zkapi-clientd/LICENSE',
 )

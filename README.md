@@ -16,7 +16,14 @@ tarball and a macOS ARM64 clientd distribution.
 There is no published npm release or ready-to-use production deployment bundle.
 See [supported features and evidence](docs/sdk/status.md).
 
-[SDK quickstart](docs/sdk/quickstart.md) · [SDK tarball](docs/sdk/distribution.md) · [Local clientd](docs/sdk/clientd-quickstart.md)
+[Kit migration](docs/sdk/kit-migration.md) · [SDK quickstart](docs/sdk/quickstart.md) · [SDK tarball](docs/sdk/distribution.md) · [Local clientd](docs/sdk/clientd-quickstart.md)
+
+The current `0.2.0-devnet.1` source uses `@solana/kit` 8.4.0 throughout the
+SDK and native client. Its native Kit API is a breaking change from the first
+preview; follow the [migration guide](docs/sdk/kit-migration.md). The existing
+immutable `v0.1.0-devnet.1` release remains historical. The new release target is
+[`v0.2.0-devnet.1`](https://github.com/yukikm/solana-zkapi/releases/tag/v0.2.0-devnet.1);
+source preparation alone does not establish that its assets are published.
 
 ## Build an application
 

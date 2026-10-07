@@ -19,6 +19,7 @@ on:
       - vendor/ethereum-zkapi
       - .gitmodules
       - scripts/run_external_sdk_acceptance.py
+      - scripts/check_solana_kit.mjs
       - scripts/clientd_secrets.py
       - scripts/test_clientd_secrets.py
       - scripts/build_clientd_distribution.py
@@ -68,6 +69,7 @@ jobs:
         run: |
           npm run build:sdk 2>&1 | tee target/client-preview/sdk-build.log
           npm run typecheck 2>&1 | tee target/client-preview/sdk-typecheck.log
+          node scripts/check_solana_kit.mjs | tee target/client-preview/kit-dependencies.log
       - name: Run every SDK fixture and browser custody test without skips
         timeout-minutes: 5
         run: |

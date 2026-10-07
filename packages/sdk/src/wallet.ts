@@ -1,6 +1,6 @@
 /** Product wallet workflow over the single encrypted NoteJournal and I04 transport.
  * A financial attempt stays unresolved until its exact signed receipt is finalized. */
-import { PublicKey, VersionedTransaction, type TransactionInstruction } from '@solana/web3.js';
+import { address, getAddressEncoder, getTransactionDecoder, isSignerRole, type Address, type Instruction } from '@solana/kit';
 import { EncryptedJournal, type JournalRecord } from './journal.ts';
 import type { NoteJournal, PendingSession, PrivateState, StateSignature } from './control.ts';
 import { NoteProver, type NoteWitness, type PublicNote } from './prover.ts';
@@ -58,8 +58,8 @@ export class WalletClient {
   private inlineContext():InlineContext{const m=this.o.manifest;return {deploymentId:m.deployment_id,manifestHash:m.manifest_hash,programId:m.program_id,pool:m.pool,mint:m.mint,vaultBinding:m.vault_binding};}
   private inlinePins(p:InlineContext):void{requireTrue(supportsInlineDeposit(this.o.manifest)&&Object.entries(this.inlineContext()).every(([k,v])=>p[k as keyof InlineContext]===v),'inline deployment pins changed');}
   private save(id:string,r:JournalRecord<NoteJournal>):Promise<JournalRecord<NoteJournal>>{return this.o.journal.compareAndSwap(id,r.revision,r.value);}
-  private roles(roles:WalletRoles):WalletRoles{const copy=structuredClone(roles);for(const v of Object.values(copy))if(v!==undefined)new PublicKey(v);return copy;}
-  private signers(instruction:TransactionInstruction,feePayer:PublicKey):V0Wallet[]{const required=new Set([feePayer.toBase58(),...instruction.keys.filter(k=>k.isSigner).map(k=>k.pubkey.toBase58())]);return this.o.wallets.filter(w=>required.has(w.publicKey.toBase58()));}
+  private roles(roles:WalletRoles):WalletRoles{const copy=structuredClone(roles);for(const v of Object.values(copy))if(v!==undefined)address(v);return copy;}
+  private signers(instruction:Instruction,feePayer:Address):V0Wallet[]{const required=new Set([feePayer,...(instruction.accounts??[]).filter(k=>isSignerRole(k.role)).map(k=>k.address)]);return this.o.wallets.filter(w=>required.has(w.publicKey));}
   private async note(r:JournalRecord<NoteJournal>,s:WalletSnapshot):Promise<PublicNote>{
     const w=r.value.witness!,identity=await this.o.prover.inspect(w,r.value.state);
     requireTrue(s.note&&s.note.note_id===w.note_id&&s.note.registration_commitment===identity.registration_commitment&&s.note.deposit_micro_usdc===w.deposit_micro_usdc&&s.note.expiry===w.expiry,'finalized note does not match secret witness');
@@ -115,7 +115,7 @@ export class WalletClient {
     });
   }
   async beginWithdrawal(id:string,mode:'mutual_close'|'initiate_escape',destinationOwner:string,roles:WalletRoles):Promise<void>{
-    requireTrue(mode==='mutual_close'||mode==='initiate_escape','explicit withdrawal mode');new PublicKey(destinationOwner);roles=this.roles(roles);
+    requireTrue(mode==='mutual_close'||mode==='initiate_escape','explicit withdrawal mode');address(destinationOwner);roles=this.roles(roles);
     await this.o.journal.withNoteLock(id,async()=>{
       let r=await this.record(id);requireTrue(!r.value.pending&&!r.value.wallet!.operation&&r.value.wallet!.status==='active'&&!r.value.wallet!.emergencyEscapes?.some(e=>e.phase!=='settled'),'note unavailable for withdrawal');
       r.value.wallet!.operation={id:crypto.randomUUID(),kind:mode,phase:'proving',roles,destinationOwner,step:0,attempts:[],finalized:[]};
@@ -131,7 +131,7 @@ export class WalletClient {
    * unresolved session. Archive every AUTH/inference byte before proving; this
    * is not clearance, settlement, cancellation, or permission to replay a send. */
   async beginEmergencyEscape(id:string,destinationOwner:string,roles:WalletRoles):Promise<void>{
-    new PublicKey(destinationOwner);roles=this.roles(roles);
+    address(destinationOwner);roles=this.roles(roles);
     await this.o.journal.withNoteLock(id,async()=>{
       let r=await this.record(id);const w=r.value.wallet!,p=r.value.pending;
       requireTrue(w.status==='active'&&!w.operation&&p&&p.phase!=='prepared'
@@ -322,18 +322,18 @@ export class WalletClient {
     if(op.kind==='deposit')payload=encodeLayout2Args({operation:'deposit',expectedId:note.note_id,expectedRoot:s.root,expiry:BigInt(note.expiry),commitment:note.registration_commitment,amount:BigInt(note.deposit_micro_usdc),tree});
     else{
       requireTrue(op.kind==='mutual_close'||op.kind==='initiate_escape','invalid proof operation');
-      const auth=await this.o.prover.withdrawal(r.value.witness!,r.value.state,s.root,s.siblings,new PublicKey(op.destinationOwner!),op.kind==='mutual_close'?r.value.wallet!.clearance!.signature!:null);
+      const auth=await this.o.prover.withdrawal(r.value.witness!,r.value.state,s.root,s.siblings,address(op.destinationOwner!),op.kind==='mutual_close'?r.value.wallet!.clearance!.signature!:null);
       nullifier=auth.public_inputs[11];payload=encodeLayout2Args({operation:op.kind,auth,tree});
     }
     const m=this.o.manifest,roles=op.roles,operation=op.kind;
-    const financial=vaultAccounts({programId:new PublicKey(m.program_id),pool:new PublicKey(m.pool),mint:new PublicKey(m.mint),payer:new PublicKey(roles.payer),noteId:note.note_id,operation,tokenOwner:roles.tokenOwner?new PublicKey(roles.tokenOwner):undefined,destinationOwner:op.destinationOwner?new PublicKey(op.destinationOwner):undefined,treasuryOwner:new PublicKey(s.treasuryOwner),nullifier:nullifier?parseField(nullifier):undefined});
+    const financial=await vaultAccounts({programId:address(m.program_id),pool:address(m.pool),mint:address(m.mint),payer:address(roles.payer),noteId:note.note_id,operation,tokenOwner:roles.tokenOwner?address(roles.tokenOwner):undefined,destinationOwner:op.destinationOwner?address(op.destinationOwner):undefined,treasuryOwner:address(s.treasuryOwner),nullifier:nullifier?parseField(nullifier):undefined});
     if(op.transport==='v0_inline_deposit_v1'){
       requireTrue(supportsInlineDeposit(m)&&r.value.schema===2,'inline capability unavailable');
-      const plan=await buildInlineDepositPlan({deploymentId:m.deployment_id,manifestHash:m.manifest_hash,vaultBinding:m.vault_binding,programId:new PublicKey(m.program_id),pool:new PublicKey(m.pool),feePayer:new PublicKey(roles.feePayer),payload,financial,snapshot:{slot:s.slot,sequence:BigInt(s.sequence)},priorityFeeMicroLamports:BigInt(op.priorityFeeMicroLamports!)});
+      const plan=await buildInlineDepositPlan({deploymentId:m.deployment_id,manifestHash:m.manifest_hash,vaultBinding:m.vault_binding,programId:address(m.program_id),pool:address(m.pool),feePayer:address(roles.feePayer),payload,financial,snapshot:{slot:s.slot,sequence:BigInt(s.sequence)},priorityFeeMicroLamports:BigInt(op.priorityFeeMicroLamports!)});
       op.inlinePlan=snapshotInlineDepositPlan(plan);
     }else{
       requireTrue(roles.uploader&&roles.rentPayer,'explicit buffer roles required');
-      const plan=await buildUploadPlan({programId:new PublicKey(m.program_id),pool:new PublicKey(m.pool),uploader:new PublicKey(roles.uploader),rentPayer:new PublicKey(roles.rentPayer),feePayer:new PublicKey(roles.feePayer),nonce:crypto.getRandomValues(new Uint8Array(32)),expires:BigInt(s.clock)+3600n,operation,payload,priorityFeeMicroLamports:this.o.priorityFeeMicroLamports,financial,snapshot:{slot:s.slot,sequence:BigInt(s.sequence)}});
+      const plan=await buildUploadPlan({programId:address(m.program_id),pool:address(m.pool),uploader:address(roles.uploader),rentPayer:address(roles.rentPayer),feePayer:address(roles.feePayer),nonce:crypto.getRandomValues(new Uint8Array(32)),expires:BigInt(s.clock)+3600n,operation,payload,priorityFeeMicroLamports:this.o.priorityFeeMicroLamports,financial,snapshot:{slot:s.slot,sequence:BigInt(s.sequence)}});
       op.plan=snapshotPlan(plan);
     }
     op.phase='ready';op.step=0;return this.save(id,r);
@@ -356,18 +356,18 @@ export class WalletClient {
     const w=r.value.wallet!,op=w.operation,m=this.o.manifest,witness=r.value.witness!;
     requireTrue(r.value.pending===null&&w.status==='active'&&op?.kind==='initiate_escape'&&op.destinationOwner
       &&op.attempts.length>0,'same-state escape setup required');
-    const identity=await this.o.prover.inspect(witness,r.value.state),destination=new PublicKey(op.destinationOwner);
-    const expectedDestination=await destinationBinding(destination.toBytes());
-    const financial=vaultAccounts({programId:new PublicKey(m.program_id),pool:new PublicKey(m.pool),mint:new PublicKey(m.mint),
-      payer:new PublicKey(op.roles.payer),noteId:witness.note_id,operation:'initiate_escape',destinationOwner:destination,nullifier:parseField(identity.nullifier)});
+    const identity=await this.o.prover.inspect(witness,r.value.state),destination=address(op.destinationOwner);
+    const expectedDestination=await destinationBinding(new Uint8Array(getAddressEncoder().encode(destination)));
+    const financial=await vaultAccounts({programId:address(m.program_id),pool:address(m.pool),mint:address(m.mint),
+      payer:address(op.roles.payer),noteId:witness.note_id,operation:'initiate_escape',destinationOwner:destination,nullifier:parseField(identity.nullifier)});
     const integer=(n:string|number)=>'0x'+BigInt(n).toString(16).padStart(64,'0');
     for(const saved of op.attempts){
       requireTrue(saved.kind!=='deposit_inline'&&saved.kind!=='finalize','invalid escape attempt');
       const plan=await restorePlan(saved.plan),at=(index:number)=>'0x'+saved.plan.payloadHex.slice(index*64,(index+1)*64);
-      requireTrue(plan.operation==='initiate_escape'&&plan.programId.toBase58()===m.program_id&&plan.pool.toBase58()===m.pool
-        &&plan.uploader.toBase58()===op.roles.uploader&&plan.rentPayer.toBase58()===op.roles.rentPayer
-        &&plan.feePayer.toBase58()===op.roles.feePayer
-        &&Object.entries(financial).every(([key,value])=>plan.financial[key as keyof typeof financial].equals(value)),
+      requireTrue(plan.operation==='initiate_escape'&&plan.programId===m.program_id&&plan.pool===m.pool
+        &&plan.uploader===op.roles.uploader&&plan.rentPayer===op.roles.rentPayer
+        &&plan.feePayer===op.roles.feePayer
+        &&Object.entries(financial).every(([key,value])=>plan.financial[key as keyof typeof financial]===value),
         'escape destination or financial roles changed');
       requireTrue(at(8)===integer(witness.note_id)&&at(9)===integer(r.value.state.balance_micro_usdc)
         &&at(10)===expectedDestination&&at(11)===identity.nullifier&&at(12)===integer(0)
@@ -396,14 +396,14 @@ export class WalletClient {
       let minimumSlot=active.snapshot.slot;
       for(const saved of op.attempts){
         const attempt=saved as Attempt,plan=await restorePlan(attempt.plan);
-        requireTrue(plan.operation===op.kind&&plan.programId.toBase58()===this.o.manifest.program_id
-          &&plan.pool.toBase58()===this.o.manifest.pool,'creation deployment mismatch');
+        requireTrue(plan.operation===op.kind&&plan.programId===this.o.manifest.program_id
+          &&plan.pool===this.o.manifest.pool,'creation deployment mismatch');
         requireTrue((await recoverAttempt(attempt,this.o.rpc)).state==='expired_reconcile_required','creation expiry or history unresolved');
         const observed=await this.o.chain.bufferObservation(plan,Math.max(minimumSlot,plan.snapshot.slot));
-        requireTrue(observed.commitment==='finalized'&&observed.address===plan.buffer.toBase58()
+        requireTrue(observed.commitment==='finalized'&&observed.address===plan.buffer
           &&observed.account===null&&Number.isSafeInteger(observed.slot)&&observed.slot>=minimumSlot&&observed.slot>=plan.snapshot.slot
           &&Number.isSafeInteger(observed.blockHeight)&&observed.blockHeight>attempt.lastValidBlockHeight
-          &&typeof observed.blockhash==='string'&&new PublicKey(observed.blockhash).toBase58()===observed.blockhash,
+          &&typeof observed.blockhash==='string'&&address(observed.blockhash)===observed.blockhash,
           'creation absence is not finalized beyond expiry');
         // Recheck history after the anchored account read. No missing account
         // substitutes for exact signature validation or the expiry barrier.
@@ -443,8 +443,8 @@ export class WalletClient {
         requireTrue(s.note?.status==='pending_escape'&&s.pending?.nullifier===identity.nullifier
           &&s.pending.destinationOwner===op.destinationOwner&&s.pending.balance_micro_usdc===r.value.state.balance_micro_usdc
           &&BigInt(s.clock)>=BigInt(s.pending.deadline),'saved escape is not ready to finalize');
-        const m=this.o.manifest,financial=vaultAccounts({programId:new PublicKey(m.program_id),pool:new PublicKey(m.pool),mint:new PublicKey(m.mint),payer:new PublicKey(op.roles.payer),operation:'finalize_escape',noteId:r.value.witness!.note_id,destinationOwner:new PublicKey(op.destinationOwner!),treasuryOwner:new PublicKey(s.treasuryOwner)});
-        op.finalization!.financial=Object.fromEntries(Object.entries(financial).map(([k,v])=>[k,v.toBase58()])) as FinalizationAttempt['finalization']['financial'];
+        const m=this.o.manifest,financial=await vaultAccounts({programId:address(m.program_id),pool:address(m.pool),mint:address(m.mint),payer:address(op.roles.payer),operation:'finalize_escape',noteId:r.value.witness!.note_id,destinationOwner:address(op.destinationOwner!),treasuryOwner:address(s.treasuryOwner)});
+        op.finalization!.financial={...financial};
         op.finalization!.snapshotSlot=s.slot;op.finalization!.snapshotSequence=s.sequence;op.phase='ready';
       }else{
         requireTrue(op.plan,'missing rejected proof plan');
@@ -462,8 +462,8 @@ export class WalletClient {
       const s=await this.o.chain.snapshot(r.value.witness!.note_id,'zero');await this.note(r,s);
       const identity=await this.o.prover.inspect(r.value.witness!,r.value.state);
       requireTrue(s.note?.status==='pending_escape'&&s.pending?.nullifier===identity.nullifier&&BigInt(s.clock)>=BigInt(s.pending.deadline),'escape challenge period has not ended');
-      const m=this.o.manifest,financial=vaultAccounts({programId:new PublicKey(m.program_id),pool:new PublicKey(m.pool),mint:new PublicKey(m.mint),payer:new PublicKey(roles.payer),operation:'finalize_escape',noteId:r.value.witness!.note_id,destinationOwner:new PublicKey(s.pending.destinationOwner),treasuryOwner:new PublicKey(s.treasuryOwner)});
-      r.value.wallet!.operation={id:crypto.randomUUID(),kind:'finalize_escape',phase:'ready',roles,destinationOwner:s.pending.destinationOwner,step:0,attempts:[],finalized:[],finalization:{programId:m.program_id,pool:m.pool,noteId:r.value.witness!.note_id,feePayer:roles.feePayer,financial:Object.fromEntries(Object.entries(financial).map(([k,v])=>[k,v.toBase58()])) as FinalizationAttempt['finalization']['financial'],snapshotSlot:s.slot,snapshotSequence:s.sequence}};
+      const m=this.o.manifest,financial=await vaultAccounts({programId:address(m.program_id),pool:address(m.pool),mint:address(m.mint),payer:address(roles.payer),operation:'finalize_escape',noteId:r.value.witness!.note_id,destinationOwner:address(s.pending.destinationOwner),treasuryOwner:address(s.treasuryOwner)});
+      r.value.wallet!.operation={id:crypto.randomUUID(),kind:'finalize_escape',phase:'ready',roles,destinationOwner:s.pending.destinationOwner,step:0,attempts:[],finalized:[],finalization:{programId:m.program_id,pool:m.pool,noteId:r.value.witness!.note_id,feePayer:roles.feePayer,financial:{...financial},snapshotSlot:s.slot,snapshotSequence:s.sequence}};
       r=await this.save(id,r);
     });
   }
@@ -507,7 +507,7 @@ export class WalletClient {
           attempt=await prepareInlineDepositAttempt(plan,await this.o.chain.blockhash(),this.signers(plan.steps[0].instruction,plan.feePayer),{save:saveAttempt});freshInline=true;
         }else if(op.kind==='finalize_escape'){
           const p=op.finalization!;
-          const plan:FinalizationPlan={programId:new PublicKey(p.programId),pool:new PublicKey(p.pool),noteId:p.noteId,feePayer:new PublicKey(p.feePayer),financial:Object.fromEntries(Object.entries(p.financial).map(([k,v])=>[k,new PublicKey(v)])) as FinalizationPlan['financial'],snapshot:{slot:p.snapshotSlot,sequence:BigInt(p.snapshotSequence)}};
+          const plan:FinalizationPlan={programId:address(p.programId),pool:address(p.pool),noteId:p.noteId,feePayer:address(p.feePayer),financial:Object.fromEntries(Object.entries(p.financial).map(([k,v])=>[k,address(v)])) as FinalizationPlan['financial'],snapshot:{slot:p.snapshotSlot,sequence:BigInt(p.snapshotSequence)}};
           const step=await finalizeEscape(plan.programId,plan.financial,plan.noteId);
           attempt=await prepareFinalizationAttempt(plan,await this.o.chain.blockhash(),this.signers(step.instruction,plan.feePayer),{save:saveAttempt});
         }else{
@@ -520,8 +520,8 @@ export class WalletClient {
       let recovery=attempt.kind==='deposit_inline'?await recoverInlineDepositAttempt(attempt,this.o.rpc,freshInline):attempt.kind==='finalize'?await recoverFinalizationAttempt(attempt as FinalizationAttempt,this.o.rpc,true):await recoverAttempt(attempt as Attempt,this.o.rpc,true);
       if(recovery.state==='expired_reconcile_required'&&!['execute','close','finalize','deposit_inline'].includes(attempt.kind)){
         const plan=await restorePlan((attempt as Attempt).plan);
-        const tx=VersionedTransaction.deserialize(fromHex(attempt.wireHex,attempt.wireHex.length/2)),required=new Set(tx.message.staticAccountKeys.slice(0,tx.message.header.numRequiredSignatures).map(k=>k.toBase58()));
-        const refreshed=await refreshExpiredUpload(attempt as Attempt,this.o.rpc,await this.o.chain.buffer(plan),await this.o.chain.blockhash(),this.o.wallets.filter(w=>required.has(w.publicKey.toBase58())),{save:saveAttempt});
+        const tx=getTransactionDecoder().decode(fromHex(attempt.wireHex,attempt.wireHex.length/2)),required=new Set(Object.keys(tx.signatures));
+        const refreshed=await refreshExpiredUpload(attempt as Attempt,this.o.rpc,await this.o.chain.buffer(plan),await this.o.chain.blockhash(),this.o.wallets.filter(w=>required.has(w.publicKey)),{save:saveAttempt});
         if('next'in refreshed){op!.step=plan.steps.findIndex(s=>s===refreshed.next||s.kind===refreshed.next.kind&&s.offset===refreshed.next.offset);requireTrue(op!.step>=0,'invalid recovered upload prefix');delete op!.current;r=await this.save(id,r);return {state:'ready'};}
         return recoverAttempt(refreshed,this.o.rpc,true);
       }

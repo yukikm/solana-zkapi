@@ -2,7 +2,9 @@
  * Financial recovery deliberately retains the separate Note/Pending PDA checks.
  * A content hash identifies bytes; the finalized TreeState authenticates them. */
 import { Buffer } from 'buffer';
-import { Connection, PublicKey, SYSVAR_CLOCK_PUBKEY } from '@solana/web3.js';
+import { address, getAddressEncoder, getAddressDecoder, getProgramDerivedAddress, type Rpc, type SolanaRpcApi } from '@solana/kit';
+import { decodeRpcAccount, safeRpcNumber } from './solana-rpc.ts';
+const SYSVAR_CLOCK_ADDRESS = address('SysvarC1ock11111111111111111111111111111111');
 import { parseField, parseMicroUsdc } from './encoding.ts';
 import { discriminator } from './transport.ts';
 import { hex } from './layout2.ts';
@@ -35,7 +37,7 @@ function uint(v: unknown): bigint {
   return BigInt(v);
 }
 function key(value: unknown): void {
-  requireTrue(typeof value === 'string' && new PublicKey(value).toBase58() === value, 'snapshot public key');
+  requireTrue(typeof value === 'string' && address(value) === value, 'snapshot public key');
 }
 function rootView(root: any, pool: string): void {
   record(root, ['pool','root','slot','blockhash','sequence','next_note_id']);
@@ -53,7 +55,7 @@ async function read(fetcher: typeof fetch, url: string, max: number): Promise<Ui
   return new Uint8Array(Buffer.concat(parts));
 }
 
-export async function privateSessionSnapshot(connection: Connection, manifest: VerifiedManifest, origin: string,
+export async function privateSessionSnapshot(connection: Rpc<SolanaRpcApi>, manifest: VerifiedManifest, origin: string,
   fetcher: typeof fetch, noteId: number, prover: SnapshotPathProver, minimumSlot = 0): Promise<SessionSnapshot> {
   requireTrue(Number.isSafeInteger(noteId) && noteId >= 0 && noteId <= 0xffffffff, 'snapshot note ID');
   requireTrue(Number.isSafeInteger(minimumSlot) && minimumSlot >= 0, 'invalid minimum snapshot slot');
@@ -93,25 +95,25 @@ export async function privateSessionSnapshot(connection: Connection, manifest: V
   }
   // Pending fields are syntax checked only; the active root does not authenticate
   // them. They must never supply withdrawal/finalization decisions here.
-  const root=file.snapshot,program=new PublicKey(manifest.program_id),pool=new PublicKey(manifest.pool);
-  const [tree,treeBump]=PublicKey.findProgramAddressSync([Buffer.from('tree'),pool.toBytes()],program);
+  const root=file.snapshot,program=address(manifest.program_id),pool=address(manifest.pool);
+  const [tree,treeBump]=await getProgramDerivedAddress({seeds:[Buffer.from('tree'),getAddressEncoder().encode(pool)],programAddress:program});
   const sourceSlot=Number(root.slot), minimum=Math.max(sourceSlot,minimumSlot);
-  const header=(slot:number)=>connection.getBlock(slot,{commitment:'finalized',transactionDetails:'none',rewards:false,maxSupportedTransactionVersion:1});
-  const [genesis,sourceBlock,accounts]=await Promise.all([connection.getGenesisHash(),header(sourceSlot),
-    connection.getMultipleAccountsInfoAndContext([pool,tree,SYSVAR_CLOCK_PUBKEY],{commitment:'finalized',minContextSlot:minimum})]);
-  const slot=accounts.context.slot;
+  const header=(slot:number)=>connection.getBlock(BigInt(slot),{commitment:'finalized',transactionDetails:'none',rewards:false,maxSupportedTransactionVersion:1}).send();
+  const [genesis,sourceBlock,accounts]=await Promise.all([connection.getGenesisHash().send(),header(sourceSlot),
+    connection.getMultipleAccounts([pool,tree,SYSVAR_CLOCK_ADDRESS],{commitment:'finalized',minContextSlot:BigInt(minimum),encoding:'base64'}).send()]);
+  const slot=safeRpcNumber(accounts.context.slot,'finalized account slot');
   requireTrue(Number.isSafeInteger(slot)&&slot>=minimum&&accounts.value.length===3&&sourceBlock&&sourceBlock.blockhash===root.blockhash,'RPC/indexer finalized cut changed; retry snapshot');
   const accountBlock=slot===sourceSlot?sourceBlock:await header(slot);
   requireTrue(accountBlock,'RPC finalized account cut block missing or invalid');key(accountBlock.blockhash);
-  const [poolAccount,treeAccount,clock]=accounts.value;
+  const [poolAccount,treeAccount,clock]=accounts.value.map(decodeRpcAccount);
   requireTrue(poolAccount&&treeAccount&&clock,'missing finalized accounts');
-  const checked=await verifyPoolConfig(manifest,genesis,{address:manifest.pool,owner:poolAccount.owner.toBase58(),executable:poolAccount.executable,
+  const checked=await verifyPoolConfig(manifest,genesis,{address:manifest.pool,owner:poolAccount.owner,executable:poolAccount.executable,
     lamports:BigInt(poolAccount.lamports),data:poolAccount.data,slot:BigInt(slot),commitment:'finalized'},BigInt(minimumSlot));
-  requireTrue(treeAccount.owner.equals(program)&&!treeAccount.executable&&treeAccount.data.length===66
+  requireTrue(treeAccount.owner===program&&!treeAccount.executable&&treeAccount.data.length===66
     &&treeAccount.data[8]===2&&treeAccount.data[9]===treeBump&&hex(treeAccount.data.subarray(0,8))===hex(await discriminator('TreeState','account')),'invalid finalized TreeState');
   const t=new DataView(treeAccount.data.buffer,treeAccount.data.byteOffset,treeAccount.data.length);
   requireTrue('0x'+hex(treeAccount.data.subarray(10,42))===root.root&&t.getBigUint64(42,true)===next&&t.getBigUint64(50,true)===uint(root.sequence),'untrusted indexer root');
-  requireTrue(clock.owner.toBase58()==='Sysvar1111111111111111111111111111111111111'&&!clock.executable&&clock.data.length===40,'invalid Clock');
+  requireTrue(clock.owner==='Sysvar1111111111111111111111111111111111111'&&!clock.executable&&clock.data.length===40,'invalid Clock');
   const time=new DataView(clock.data.buffer,clock.data.byteOffset,clock.data.length).getBigInt64(32,true);requireTrue(time>=0n,'invalid Clock time');
   // Membership selection happens after all shared network reads. Both success
   // and missing-note failures expose the same pool/snapshot selectors.

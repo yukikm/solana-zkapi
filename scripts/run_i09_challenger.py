@@ -96,7 +96,7 @@ with tempfile.TemporaryDirectory(prefix='zkapi-i09-', dir='/tmp') as directory:
             Path(cfg['database_dsn_file']).write_text(f'host={socket} port=55439 user=i09_reader dbname=postgres')
             Path(cfg['database_dsn_file']).chmod(0o600)
             cfg['fee_key_file'] = str(work / 'test-fee.json')
-            fixture_key = subprocess.run(['node', '--input-type=module', '-e', "import {Keypair} from '@solana/web3.js';process.stdout.write(JSON.stringify([...Keypair.fromSeed(new Uint8Array(32).fill(10)).secretKey]))"], cwd=ROOT, env=ENV, text=True, capture_output=True, check=True)
+            fixture_key = subprocess.run(['node', '--input-type=module', '-e', "import {createKeyPairSignerFromPrivateKeyBytes,getAddressEncoder} from '@solana/kit';const seed=new Uint8Array(32).fill(10),key=await createKeyPairSignerFromPrivateKeyBytes(seed);process.stdout.write(JSON.stringify([...seed,...getAddressEncoder().encode(key.address)]))"], cwd=ROOT, env=ENV, text=True, capture_output=True, check=True)
             Path(cfg['fee_key_file']).write_text(fixture_key.stdout)
             Path(cfg['fee_key_file']).chmod(0o600)
             config_path = work / 'native-cli.json'

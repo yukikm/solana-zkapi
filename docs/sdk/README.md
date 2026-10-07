@@ -10,6 +10,10 @@ the SDK handles the proof, authorization and signed settlement locally.
 4. Add [recovery and user-facing states](recovery.md).
 5. Consult the [API reference](api.md) and [verified feature status](status.md).
 
+The current SDK uses `@solana/kit` 8.4.0 directly. Applications upgrading from
+the first preview should read the [Kit migration guide](kit-migration.md) before
+changing their wallet or RPC adapters.
+
 ## Responsibilities
 
 | SDK | Application | Deployment operator |

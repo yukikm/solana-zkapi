@@ -1,3 +1,7 @@
+import {transactionSignature} from '../src/solana.ts';
+import {kitAddress, fixtureSigner, signWith, decodeTransaction} from './kit-helpers.ts';
+/** Same-journal emergency escape recovery with real encryption, ControlClient and v0
+ * signing. HTTP, proofs and finalized chain receipts are explicit fixtures. */
 /** Same-journal emergency escape recovery with real encryption, ControlClient and v0
  * signing. HTTP, proofs and finalized chain receipts are explicit fixtures. */
 import assert from 'node:assert/strict';
@@ -6,7 +10,7 @@ import {mkdtemp, rm} from 'node:fs/promises';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 import test, {type TestContext} from 'node:test';
-import {Keypair, PublicKey, VersionedTransaction} from '@solana/web3.js';
+
 import bs58 from 'bs58';
 import {ClientDaemon,DaemonConflict} from '../src/clientd-bridge.ts';
 import {ControlClient, validateNoteJournal, type NoteJournal, type PreparedSession, type PrivateState,
@@ -21,12 +25,12 @@ import type {WalletSnapshot} from '../src/wallet-chain.ts';
 
 const fixture=JSON.parse(readFileSync(new URL('../../../tests/fixtures/vault/genesis-a.json',import.meta.url),'utf8'));
 const field=(n:number)=>'0x'+n.toString(16).padStart(64,'0');
-const key=(hex:string)=>new PublicKey(Buffer.from(hex,'hex')).toBase58();
+const key=(hex:string)=>kitAddress(Buffer.from(hex,'hex'));
 const nullifier:string=fixture.auth.withdrawal.public_inputs[11];
 const signature={r_x:field(9),r_y:field(10),s:field(11)};
 const manifest={deployment_id:'wallet-clearance-fixture',program_id:key(fixture.program_id),pool:key(fixture.pool),
   mint:key(fixture.mint),note_ttl_seconds:String(fixture.ttl),control_api_origin:'https://control.invalid',
-  inference_api_origin:'https://inference.invalid'} as VerifiedManifest;
+  inference_api_origin:'https://inference.invalid'} as unknown as VerifiedManifest;
 const context={deployment_id:manifest.deployment_id,pool:manifest.pool,vault_binding:field(1),state_key:[field(2),field(3)],
   cap_micro_usdc:'100',control_api_origin:manifest.control_api_origin,inference_api_origin:manifest.inference_api_origin,
   quote_public_key:'00'.repeat(32),receipt_public_key:'00'.repeat(32),request_vk_sha256:'00'.repeat(32),tariff_hashes:['33'.repeat(32)]} as VerificationContext;
@@ -48,7 +52,7 @@ async function setup(t:TestContext,unknownAuth=false){
   const directory=await mkdtemp(join(tmpdir(),'zkapi-emergency-escape-'));t.after(()=>rm(directory,{recursive:true,force:true}));
   const store=await NativeJournalStore.open(directory),aes=await importJournalKey(new Uint8Array(32).fill(87));
   const open=()=>new EncryptedJournal<NoteJournal>(store,aes,{deploymentId:manifest.deployment_id,pool:manifest.pool},validateNoteJournal);
-  const journal=open(),pair=Keypair.fromSeed(new Uint8Array(32).fill(1)),owner=pair.publicKey.toBase58();
+  const journal=open(),pair=(await fixtureSigner(new Uint8Array(32).fill(1))),owner=pair.address;
   const state:PrivateState={balance_micro_usdc:String(fixture.deposit),balance_blinding:field(3),note_leaf:field(4),
     commitment:{x:field(5),y:field(6)},anchor:field(1),state_signature:null};
   await journal.create('note',{schema:1,state,witness:{secret:field(2),note_id:0,deposit_micro_usdc:String(fixture.deposit),
@@ -78,14 +82,14 @@ async function setup(t:TestContext,unknownAuth=false){
     await assert.rejects(control().close('note'),/503/);
   }
   const original=(await journal.read('note'))!.value;
-  const wallet:V0Wallet={publicKey:pair.publicKey,supportedTransactionVersions:new Set([0]),async signTransaction(tx){signs++;tx.sign([pair]);return tx;}};
+  const wallet:V0Wallet={publicKey:pair.address,supportedTransactionVersions:new Set([0]),async signTransaction(tx){signs++;tx = await signWith(tx, [pair]);return tx;}};
   const snapshot:WalletSnapshot={root:fixture.trees[1].public_inputs[1],siblings:Array(32).fill(field(0)),slot:110,sequence:'2',nextNoteId:1,clock:String(fixture.now),paused:false,
     treasuryOwner:owner,note:{note_id:0,registration_commitment:'0x'+fixture.commitment,deposit_micro_usdc:String(fixture.deposit),expiry:String(fixture.expiry),status:'active'}};
   let minimumSlot=0,challengeBeforeObservation=false,hideReceipt=false;
   const challenge=()=>{snapshot.note!.status='active';delete snapshot.pending;snapshot.sequence='4';snapshot.slot=160;};
   const rpc:TransportRpc={async signatureStatus(){return null;},async finalizedReceipt(sig){return hideReceipt?null:receipts.get(sig)??null;},
     async finalizedBlockHeight(){return 50;},async sendRawTransaction(bytes){
-      sends++;const tx=VersionedTransaction.deserialize(bytes),sig=bs58.encode(tx.signatures[0]);
+      sends++;const tx=decodeTransaction(bytes),sig=transactionSignature(tx);
       const op=(await journal.read('note'))!.value.wallet!.operation!,attempt=op.attempts.find(a=>a.signature===sig)!;
       assert.ok(attempt);assert.equal(attempt.wireHex,Buffer.from(bytes).toString('hex'));assert.ok(!receipts.has(sig),'no financial replay after receipt');
       if(attempt.kind==='execute'){
@@ -94,7 +98,7 @@ async function setup(t:TestContext,unknownAuth=false){
         if(challengeBeforeObservation)challenge();
       }
       if(attempt.kind==='finalize'){snapshot.note!.status='closed';delete snapshot.pending;snapshot.slot=170;snapshot.sequence='4';}
-      receipts.set(sig,{signature:sig,message:tx.message.serialize(),slot:120+receipts.size,err:null});return sig;
+      receipts.set(sig,{signature:sig,message:new Uint8Array(tx.messageBytes),slot:120+receipts.size,err:null});return sig;
     }};
   const prover={async inspect(_w:unknown,s:PrivateState){return {nullifier:s.anchor===field(21)?field(22):nullifier,registration_commitment:'0x'+fixture.commitment};},
     async tree(){return structuredClone(fixture.trees[1]);},async withdrawal(_w:unknown,s:PrivateState,_root:unknown,_path:unknown,_owner:unknown,clearance:unknown){
@@ -102,7 +106,7 @@ async function setup(t:TestContext,unknownAuth=false){
     }} as unknown as NoteProver;
   const options:WalletOptions={manifest,journal,prover,rpc,wallets:[wallet],fetch:async()=>{throw Error('emergency escape must not call operator');},
     chain:{async snapshot(_id,_path,min=0){minimumSlot=min;return structuredClone(snapshot);},async buffer(){throw Error('not used');},
-      async blockhash(){return {blockhash:new PublicKey(new Uint8Array(32).fill(7)).toBase58(),lastValidBlockHeight:200};}}};
+      async blockhash(){return {blockhash:kitAddress(new Uint8Array(32).fill(7)),lastValidBlockHeight:200};}}};
   const restart=()=>new WalletClient({...options,journal:open()});
   const drive=async()=>{for(let i=0;i<20;i++){if(!(await journal.read('note'))!.value.wallet!.operation)return;await restart().advance('note');}throw Error('fixture did not finish');};
   return {journal,open,control,original,restart,drive,roles:{uploader:owner,rentPayer:owner,feePayer:owner,payer:owner,tokenOwner:owner},owner,calls,receipts,snapshot,
@@ -226,10 +230,10 @@ test('emergency archive rejects fabricated phase, missing exact receipt, modifie
   await h.restart().reconcileChallengedEscape('note');
   const prior=(await h.open().read('note'))!.value;
   const fabricated=structuredClone(prior);fabricated.wallet!.emergencyEscapes![0].phase='settled';fabricated.pending=null;
-  assert.throws(()=>validateNoteJournal(fabricated),/settlement missing/);
+  await assert.rejects(()=>validateNoteJournal(fabricated),/settlement missing/);
   h.settle();await h.control().recover('note');
-  const settled=(await h.open().read('note'))!.value;validateNoteJournal(settled);
-  settled.history.push(structuredClone(settled.history[0]));assert.throws(()=>validateNoteJournal(settled),/duplicated/);
+  const settled=(await h.open().read('note'))!.value;await validateNoteJournal(settled);
+  settled.history.push(structuredClone(settled.history[0]));await assert.rejects(()=>validateNoteJournal(settled),/duplicated/);
 });
 
  test('challenge reconciliation cancels only unsigned or conclusively rejected finalization attempts, retaining every signed byte',async t=>{

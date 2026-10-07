@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { generateKeyPairSync, sign, createHash } from 'node:crypto';
-import { PublicKey } from '@solana/web3.js';
+import { address, getProgramDerivedAddress } from '@solana/kit';
 import bs58 from 'bs58';
 import { vaultBinding, parseField } from '../src/encoding.ts';
 import { parseStrictJson, jcsBytes, sha256Hex, manifestDigest, circuitProfileDigest, verifyManifest, verifyPoolConfig, verifyArtifactBundle, supportsInlineDeposit } from '../src/trust.ts';
@@ -11,7 +11,7 @@ import type { Manifest, ManifestTrustPolicy, ArtifactBundle, FinalizedPoolAccoun
 import { createZkApiClient, type CreateClientOptions } from '../src/client.ts';
 import { createBrowserClient } from '../src/browser.ts';
 import { importJournalKey } from '../src/journal.ts';
-import type { Connection } from '@solana/web3.js';
+import type { Rpc, SolanaRpcApi } from '@solana/kit';
 
 type Mutable<T> = { -readonly [K in keyof T]: T[K] extends readonly (infer U)[] ? U[] : T[K] extends object ? Mutable<T[K]> : T[K] };
 const utf8 = (text: string) => new TextEncoder().encode(text);
@@ -31,7 +31,7 @@ async function resign(manifest: Mutable<Manifest>): Promise<void> {
 async function fixture() {
   const idl = read('docs/contracts/zkapi_vault.json');
   const program = JSON.parse(idl.toString()).address;
-  const pool = PublicKey.findProgramAddressSync([utf8('pool'), poolSeed], new PublicKey(program))[0].toBase58();
+  const pool = (await getProgramDerivedAddress({seeds:[utf8('pool'),poolSeed],programAddress:address(program)}))[0];
   const authority = { authority: key(20), program_id: key(21), config_hash: '77'.repeat(32), threshold: 2 as const, members: [key(22), key(23), key(24)] };
   const manifest: Mutable<Manifest> = {
     ...structuredClone(profile), deployment_id: 'sdk-trust-fixture', deployment_environment: 'local',
@@ -69,7 +69,7 @@ async function devnetSingleKeyFixture() {
 async function poolAccount(m: Manifest): Promise<FinalizedPoolAccount> {
   const bytes = new Uint8Array(422); const view = new DataView(bytes.buffer);
   bytes.set(createHash('sha256').update('account:PoolConfig').digest().subarray(0, 8)); bytes[8] = 2;
-  bytes[9] = PublicKey.findProgramAddressSync([utf8('pool'), poolSeed], new PublicKey(m.program_id))[1];
+  bytes[9] = (await getProgramDerivedAddress({seeds:[utf8('pool'),poolSeed],programAddress:address(m.program_id)}))[1];
   for (const [offset, value] of [[10, m.genesis_hash], [42, m.mint], [74, m.token_program], [139, m.authorities.admin.authority], [171, key(29)]] as const) bytes.set(bs58.decode(value), offset);
   bytes[106] = 6;
   for (const [offset, value] of [[107, m.vault_binding], [203, m.state_key.x], [235, m.state_key.y], [267, m.clearance_key.x], [299, m.clearance_key.y]] as const) bytes.set(parseField(value), offset);
@@ -255,9 +255,9 @@ test('application factory authenticates independent pins, tariffs and finalized 
   const tariff = {...body,tariff_hash:await sha256Hex(jcsBytes(body))};manifest.tariff_hashes=[tariff.tariff_hash];await resign(manifest);
   const pool=await poolAccount(manifest);let reads=0;
   const options:CreateClientOptions={deployment:{manifest:jcsBytes(manifest),trust:policyFor(manifest),artifacts:bundle,indexerOrigin:'http://127.0.0.1:8790',
-    connection:{getGenesisHash:async()=>{reads++;return manifest.genesis_hash;},getAccountInfoAndContext:async()=>{reads++;return {context:{slot:123},value:{owner:new PublicKey(manifest.program_id),executable:false,lamports:1,data:pool.data}};}} as unknown as Connection},
+    connection:{getGenesisHash:()=>({send:async()=>{reads++;return manifest.genesis_hash;}}),getAccountInfo:()=>({send:async()=>{reads++;return {context:{slot:123n},value:{owner:address(manifest.program_id),executable:false,lamports:1n,data:[Buffer.from(pool.data).toString('base64'),'base64']}};}})} as unknown as Rpc<SolanaRpcApi>},
     storage:{key:await importJournalKey(new Uint8Array(32).fill(2)),store:{read:async()=>null,compareAndSwap:async()=>{throw Error('unexpected write');},withLock:async(_key,action)=>action()}},
-    prover:{run:async()=>{throw Error('unexpected proof');}},wallet:{publicKey:new PublicKey(key(10)),supportedTransactionVersions:new Set([0]),signTransaction:async()=>{throw Error('unexpected signature');}},
+    prover:{run:async()=>{throw Error('unexpected proof');}},wallet:{publicKey:address(key(10)),supportedTransactionVersions:new Set([0]),signTransaction:async()=>{throw Error('unexpected signature');}},
     mode:'proxy',noteId:'first',models:[{id:'fixture',provider:'openrouter',apis:['chat'],tariff}]};
   const client=await createZkApiClient(options);assert.equal((await client.status()).wallet,'empty');assert.equal(reads,2);
   const tampered=structuredClone(options.deployment.artifacts);tampered.requestPk[0]^=1;
@@ -267,7 +267,7 @@ test('application factory authenticates independent pins, tariffs and finalized 
   await assert.rejects(createZkApiClient({...options,deployment:{...options.deployment,trust:wrongTrust}}),/trust/);
   const corruptStore={...options.storage.store,read:async()=>({schema:1 as const,revision:1,ivHex:'00'.repeat(12),ciphertextHex:'00'.repeat(20)})};
   await assert.rejects(createZkApiClient({...options,storage:{...options.storage,store:corruptStore}}),/journal/);
-  const wrongConnection={...options.deployment.connection,getGenesisHash:async()=>key(11)} as Connection;
+  const wrongConnection={...options.deployment.connection,getGenesisHash:()=>({send:async()=>key(11)})} as Rpc<SolanaRpcApi>;
   await assert.rejects(createZkApiClient({...options,deployment:{...options.deployment,connection:wrongConnection}}),/genesis/);
   await assert.rejects(createBrowserClient({...options,storageName:'test',createWorker:()=>{throw Error('must not create worker');},wasm:new Uint8Array([1]),wasmSha256:'00'.repeat(32)}),/WASM hash mismatch/);
 });

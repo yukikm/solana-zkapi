@@ -8,7 +8,8 @@ import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 import {fileURLToPath} from 'node:url';
 import test from 'node:test';
-import {Keypair, PublicKey, VersionedTransaction} from '@solana/web3.js';
+import {createKeyPairSignerFromPrivateKeyBytes} from '@solana/kit';
+import {parseAddress,addressBytes,decodeTransaction,signerWallet} from './solana-kit.ts';
 import {challengePlan, challengerWallet} from '../packages/sdk/src/challenger.ts';
 import {prepareAttempt, type TransportRpc} from '../packages/sdk/src/transport.ts';
 import {parseField} from '../packages/sdk/src/encoding.ts';
@@ -16,14 +17,14 @@ import {encodeLayout2Args, type PublicProof} from '../packages/sdk/src/layout2.t
 import {parseStrictJson} from '../packages/sdk/src/trust.ts';
 import {parseCollectorInput, readCollectorInput, readOnlyRecovery, verifyChallengeEvent, verifyChallengeTree, type ChallengeEventBinding} from './verify_i10_devnet_challenge.ts';
 
-const key = (byte: number) => new PublicKey(new Uint8Array(32).fill(byte)).toBase58();
+const key = (byte: number) => parseAddress(new Uint8Array(32).fill(byte));
 const field = (value: number) => '0x' + value.toString(16).padStart(64, '0');
 const binding: ChallengeEventBinding = {program: key(1), pool: key(2), noteId: 7,
   nullifier: field(4), sequence: '9', oldRoot: field(2), newRoot: field(3), deadline: '1600'};
 function event(): string {
   const b = Buffer.alloc(251);
   createHash('sha256').update('event:VaultTransitionV1').digest().copy(b, 0, 0, 8);
-  b[8] = 1; new PublicKey(binding.pool).toBuffer().copy(b, 9);
+  b[8] = 1; Buffer.from(addressBytes(parseAddress(binding.pool))).copy(b,9);
   b.writeBigUInt64LE(9n, 41); b[49] = 3; b.writeUInt32LE(7, 50); b[54] = 1;
   Buffer.from(parseField(binding.oldRoot)).copy(b, 55); Buffer.from(parseField(binding.newRoot)).copy(b, 87);
   b[167] = 1; Buffer.from(parseField(binding.nullifier)).copy(b, 168);
@@ -52,18 +53,18 @@ test('a child program cannot impersonate the Vault event', () => {
 });
 
 test('read-only I04 recovery never sends and rejects altered exact bytes/receipts', async () => {
-  const signer = Keypair.fromSeed(new Uint8Array(32).fill(9));
+  const signer = await createKeyPairSignerFromPrivateKeyBytes(new Uint8Array(32).fill(9));
   const payload = Buffer.alloc(1252); payload.writeUInt32LE(7); payload[1252 - 608 + 31] = 2; payload[1252 - 608 + 127] = 7;
-  const plan = await challengePlan({programId: key(1), pool: key(2), mint: key(3), payer: signer.publicKey.toBase58(),
+  const plan = await challengePlan({programId: key(1), pool: key(2), mint: key(3), payer: signer.address,
     noteId: 7, payloadHex: payload.toString('hex'), nonceHex: '01'.repeat(32), expires: '1000000', slot: 100, sequence: '8'});
   const attempt = await prepareAttempt(plan, plan.steps[0], {blockhash: key(8), lastValidBlockHeight: 1000},
-    [challengerWallet(signer.secretKey)], {save: async () => {}});
+    [signerWallet(signer)], {save: async () => {}});
   let sends = 0, reads = 0;
   const rpc: TransportRpc = {signatureStatus: async () => { reads++; return null; }, finalizedReceipt: async () => null,
     finalizedBlockHeight: async () => 0, sendRawTransaction: async () => { sends++; throw Error('send forbidden'); }};
   assert.equal((await readOnlyRecovery(attempt, rpc)).state, 'pending'); assert.equal(sends, 0);
-  const tx = VersionedTransaction.deserialize(Buffer.from(attempt.wireHex, 'hex'));
-  const finalized = {...rpc, finalizedReceipt: async () => ({message: tx.message.serialize(), signature: attempt.signature, err: null, slot: 101})};
+  const tx = decodeTransaction(Buffer.from(attempt.wireHex, 'hex'));
+  const finalized = {...rpc, finalizedReceipt: async () => ({message: new Uint8Array(tx.messageBytes), signature: attempt.signature, err: null, slot: 101})};
   assert.deepEqual(await readOnlyRecovery(attempt, finalized), {state: 'finalized', slot: 101});
   assert.equal((await readOnlyRecovery(attempt, {...finalized, finalizedReceipt: async () => ({message: new Uint8Array([1]), signature: attempt.signature, err: null, slot: 101})})).state, 'unknown');
   const corrupt = Buffer.from(attempt.wireHex, 'hex'); corrupt[corrupt.length - 1] ^= 1;
