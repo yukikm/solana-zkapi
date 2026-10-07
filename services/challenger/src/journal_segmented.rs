@@ -237,7 +237,11 @@ fn read_chunk(path: &Path, current: &ChunkRef, pool: Hash) -> Result<Chunk<Vec<F
     validate_chunk(chunk, hash, bytes, current, pool)
 }
 fn validate_chunk(
-    chunk: Chunk<Vec<FinalizedBlock>>, hash: Hash, bytes: u64, current: &ChunkRef, pool: Hash,
+    chunk: Chunk<Vec<FinalizedBlock>>,
+    hash: Hash,
+    bytes: u64,
+    current: &ChunkRef,
+    pool: Hash,
 ) -> Result<Chunk<Vec<FinalizedBlock>>> {
     if hash != current.sha256
         || bytes != current.bytes
@@ -409,7 +413,9 @@ pub(super) fn load(root: &Path, pool: Hash, head: Head) -> Result<Archive> {
     load_observed(root, pool, head, None)
 }
 fn load_observed(
-    root: &Path, pool: Hash, head: Head,
+    root: &Path,
+    pool: Hash,
+    head: Head,
     mut observations: Option<&mut readonly::Observations>,
 ) -> Result<Archive> {
     let path = archive_directory(root)?;
@@ -465,7 +471,8 @@ fn load_observed(
         if current.sequence != expected_sequence {
             return Err(Error::Conflict("archive chunk sequence/count"));
         }
-        let chunk = readonly::read_chunk_observed(&path, &current, pool, observations.as_deref_mut())?;
+        let chunk =
+            readonly::read_chunk_observed(&path, &current, pool, observations.as_deref_mut())?;
         if tail.is_none() {
             tail = chunk.blocks.last().map(ArchiveTail::from);
         }
@@ -500,7 +507,12 @@ fn load_observed(
             break;
         }
         let chunk = if let Some(observations) = observations.as_deref_mut() {
-            let chunk = readonly::read_chunk_observed(&path, &archive.references[index], pool, Some(observations))?;
+            let chunk = readonly::read_chunk_observed(
+                &path,
+                &archive.references[index],
+                pool,
+                Some(observations),
+            )?;
             if chunk.previous.as_ref() != index.checked_sub(1).map(|i| &archive.references[i]) {
                 return Err(Error::Conflict("archive indexed parent"));
             }

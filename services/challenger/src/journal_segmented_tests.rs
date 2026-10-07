@@ -721,7 +721,11 @@ fn segmented_disk_reads_reject_post_open_chunk_substitution_before_callback_or_c
         let mut bytes = fs::read(&path).unwrap();
         // Same byte length and valid JSON, but a different archived payload.
         let needle = b"\"data\":[31,";
-        let position = bytes.windows(needle.len()).position(|w| w == needle).unwrap() + 8;
+        let position = bytes
+            .windows(needle.len())
+            .position(|w| w == needle)
+            .unwrap()
+            + 8;
         bytes[position] = b'2';
         fs::write(&path, bytes).unwrap();
         let mut visits = 0;

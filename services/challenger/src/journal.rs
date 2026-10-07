@@ -26,7 +26,11 @@ pub struct ArchiveTail {
 }
 impl From<&zkapi_indexer::FinalizedBlock> for ArchiveTail {
     fn from(block: &zkapi_indexer::FinalizedBlock) -> Self {
-        Self { slot: block.slot, blockhash: block.blockhash, block_time: block.block_time }
+        Self {
+            slot: block.slot,
+            blockhash: block.blockhash,
+            block_time: block.block_time,
+        }
     }
 }
 
@@ -516,29 +520,44 @@ impl Journal {
         Ok(delivered)
     }
     pub fn archive_len(&self) -> u64 {
-        self.segmented.as_ref().map_or(self.state.archive.len() as u64, |archive| archive.len())
+        self.segmented
+            .as_ref()
+            .map_or(self.state.archive.len() as u64, |archive| archive.len())
     }
     pub fn archive_is_empty(&self) -> bool {
         self.archive_len() == 0
     }
     pub fn archive_tail(&self) -> Option<ArchiveTail> {
-        self.segmented.as_ref().map_or_else(|| self.state.archive.last().map(ArchiveTail::from), |archive| archive.tail())
+        self.segmented.as_ref().map_or_else(
+            || self.state.archive.last().map(ArchiveTail::from),
+            |archive| archive.tail(),
+        )
     }
     /// Visit all committed blocks in order. A callback may stop replay by
     /// returning an error. V2 revalidates one complete chunk before exposing
     /// its borrowed blocks; no whole-history payload Vec is materialized.
-    pub fn replay_archive(&self, mut visit: impl FnMut(&zkapi_indexer::FinalizedBlock) -> Result<()>) -> Result<()> {
+    pub fn replay_archive(
+        &self,
+        mut visit: impl FnMut(&zkapi_indexer::FinalizedBlock) -> Result<()>,
+    ) -> Result<()> {
         if let Some(archive) = &self.segmented {
             return archive.replay(&self.directory, visit);
         }
-        for block in &self.state.archive { visit(block)?; }
+        for block in &self.state.archive {
+            visit(block)?;
+        }
         Ok(())
     }
     pub fn archive_block_time(&self, slot: u64) -> Result<Option<u64>> {
         if let Some(archive) = &self.segmented {
             return archive.block_time(&self.directory, slot);
         }
-        Ok(self.state.archive.iter().find(|block| block.slot == slot).map(|block| block.block_time))
+        Ok(self
+            .state
+            .archive
+            .iter()
+            .find(|block| block.slot == slot)
+            .map(|block| block.block_time))
     }
     pub fn transport(&self, signature: &str) -> Option<&serde_json::Value> {
         self.state.transport.get(signature)

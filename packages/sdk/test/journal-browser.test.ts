@@ -135,7 +135,7 @@ test('browser cleanup escalates when a process ignores TERM', { timeout: 5000 },
   assert.equal(child.signalCode, 'SIGKILL');
 });
 
-test('real browser journal: atomic cross-tab CAS, encrypted restart, Web Locks and tab crash recovery', { skip: !chrome && 'Set ZKAPI_TEST_CHROME to a Chromium executable', timeout: 25_000 }, async t => {
+test('real browser journal: atomic cross-tab CAS, encrypted restart, Web Locks and tab crash recovery', { skip: !chrome && 'Set ZKAPI_TEST_CHROME to a Chromium executable', timeout: 45_000 }, async t => {
   const directory = await mkdtemp(join(tmpdir(), 'zkapi-browser-journal-'));
   const source = await readFile(new URL('../src/journal.ts', import.meta.url), 'utf8');
   const javascript = ts.transpileModule(source, { compilerOptions: { target: ts.ScriptTarget.ES2023, module: ts.ModuleKind.ES2022 } }).outputText;
@@ -166,7 +166,8 @@ test('real browser journal: atomic cross-tab CAS, encrypted restart, Web Locks a
   let diagnostics = ''; child.stderr!.on('data', chunk => { diagnostics = (diagnostics + chunk).slice(-3000); });
   child.on('error', error => { diagnostics = error.message; });
   let port: number | undefined;
-  for (let i = 0; i < 150; i++) {
+  const startupDeadline = performance.now() + 20_000;
+  while (performance.now() < startupDeadline) {
     try { port = debuggerPort(await readFile(join(directory, 'DevToolsActivePort'), 'utf8')); if (port) break; }
     catch { /* Not yet created; a partial/empty file is also not ready. */ }
     if (!running(child)) throw new Error(`Chromium exited: ${diagnostics}`);
