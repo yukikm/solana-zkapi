@@ -1,5 +1,24 @@
 # Public Devnet integration implementation
 
+Current core scope — 2026-10-09 JST: the user directed completion of ZKAPI core
+and stopped demo/chat UI work. PD-08 and funded Phantom cases are deferred, not
+completed and not core gates. The [scope/evidence audit](evidence/PD-core-scope-reconciliation.md)
+joins published `.3` public-input setup, existing production-handler rejection,
+N-01–N-04 native closure, deployed readiness and historical backup restoration.
+The remaining core work is the separate E-01 escape/finalize outcome, the
+[reviewed OpenRouter Ethereum-parity candidate](evidence/PD-openrouter-ethereum-parity.md)
+and its deployment evidence, then the final handoff. The user explicitly selected
+upstream's captured-management-USD contract with operator delay risk and immutable
+charges; provider invoice completeness is not an additional preview gate.
+The observed [response-cost discrepancy](evidence/PD-openrouter-management-usage-limit.md)
+remains disclosed. No UI, reconciliation service, pristine-OS requirement or new
+paid matrix is added; broader G3 and production qualification remain separate.
+The backlog now credits the completed scoped route/readiness, streaming,
+price/cap, funding-guide and isolated-onboarding checks. The latest retained
+16:27 UTC service cut still reports primary RPC429/indexer503; current transport
+recovery, E-01 and actual parity rollout remain separate unfinished outcomes.
+The original candidate record below is retained with its historical scope.
+
 Recorded 2026-10-07 JST. This implements the independent-consumer backlog, starting
 from source `eb9a5d1e384cee97a545e7482c0f3c223da0b2ac`. The existing immutable
 `v0.2.0-devnet.1` release remains historical and unchanged. New APIs described
@@ -18,8 +37,9 @@ verified. The user also approved seven additional USDC of maximum provider
 exposure for one selected authority. No running private profile becomes a
 public default by implication.
 
-The first intended public acceptance is one explicitly configured Devnet Chat
-path, consumed by an independent browser app. Direct OpenRouter Chat is a
+The original first-acceptance proposal was one explicitly configured Devnet Chat
+path consumed by an independent browser app. That app requirement is deferred
+under the current core-only scope above. Direct OpenRouter Chat is a
 candidate because separate historical JSON/SSE lifecycles exist; selecting a
 model in a new profile is still an operator decision. The exact program, Pool,
 setup, manifest, bundle, profile digest and released SDK digest must be frozen
@@ -57,11 +77,12 @@ and transport admission/recovery policy. Existing SDK financial and journal
 tests remain regression gates. Tests use local service/chain fixtures unless
 their report explicitly says otherwise.
 
-Public readiness still requires PD-01 hosted deployment and PD-02 complete
-anonymous asset download/proof acceptance,
-PD-05/06 actual provider and access/subsidy policy, then the PD-08 browser
-lifecycle and PD-10 operator recovery exercise. PD-09 is required before
-advertising native public-service readiness. PD-11 remains a separate expansion.
+The original execution dependencies were PD-01 hosted deployment, PD-02 complete
+assets, PD-05/06 provider/access policy, PD-08 browser acceptance and PD-10 recovery.
+Current evidence now covers the published inputs, native PD-09 lifecycle and
+recorded operator recovery. PD-08 is deferred by the user; PD-10 no longer depends
+on completing a demo application. The accounting and E-01 boundaries above remain
+open. PD-11 is a separate expansion.
 
 The existing campaign retains 17 reservations and 9,154,216 micro-USDC reserved
 out of 10,000,000. Its 845,784 remaining capacity cannot admit another full
@@ -79,7 +100,10 @@ The [backlog](public-devnet-readiness-backlog.md) remains the acceptance checkli
 its boxes close only with the actual evidence required there. Implementation of
 a helper alone does not close public-service acceptance.
 
-## Backlog disposition
+## Original candidate backlog disposition
+
+This table records the implementation-stage requirements, not the current task
+queue. Current outcomes and core scope are in the audit linked above.
 
 | Backlog | Source implementation in this candidate | Required external completion |
 |---|---|---|

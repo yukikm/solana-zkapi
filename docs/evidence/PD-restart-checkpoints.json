@@ -1,0 +1,278 @@
+{
+  "schema_version": 1,
+  "scope": "Private restart checkpoint implementation, local verification, Linux build and exact writer/follower installation; live warm-restart timing not measured",
+  "recorded_at": "2026-10-08T18:19:39.535Z",
+  "status": "deployed_first_cache_population_not_yet_observed",
+  "behavior": {
+    "complete_private_indexer_state": true,
+    "scanner_pending_generations_retained": true,
+    "restored_readiness": false,
+    "fresh_finalized_account_reconciliation_required": true,
+    "financial_journal_authoritative": true,
+    "invalid_or_missing_cache": "original full validation and replay",
+    "normal_restart_reads": "exact saved anchor chunk plus authenticated new suffix, with metadata checks on retained files",
+    "checkpoint_integrity_scope": "Protected local storage checksum and Unix file identity continuity; not cryptographic proof of chain-derived state",
+    "checkpoint_runtime_byte_limit": 268435456,
+    "checkpoint_metadata_byte_limit": 67108864,
+    "cache_save_interval_seconds": 60,
+    "bounded_json_capture_byte_limit": 33554432,
+    "oversized_json": "existing streaming parser retained"
+  },
+  "local_checks": [
+    {
+      "log": "indexer-restart-checkpoint-tests-01.log",
+      "sha256": "eb2aadddd68e934898e0f78caaa3158f81d14e96647d7f6f98788e383d6e24a5",
+      "scope": "Indexer replay codec",
+      "passed": 4,
+      "failed": 0,
+      "ignored": 0
+    },
+    {
+      "log": "challenger-restart-checkpoint-tests-02.log",
+      "sha256": "ab19770e0301a92f26d49d7f3a881fdb9f3d6df286097e7c6d8fae2cc8f05531",
+      "scope": "Focused challenger checkpoint tests",
+      "passed": 13,
+      "failed": 0,
+      "ignored": 0
+    },
+    {
+      "log": "challenger-restart-sbf-history-02.log",
+      "sha256": "943a9fef054b1f35f1f35eff4e2d8af7f0472d982f119a72a78f275882c053fe",
+      "scope": "Explicit saved-SBF Pending restoration",
+      "passed": 1,
+      "failed": 0,
+      "ignored": 0
+    },
+    {
+      "log": "challenger-restart-regression-01.log",
+      "sha256": "ab3e69c3b389633a95959fc210a867b28a95e9f5336fad372751077132052d87",
+      "scope": "Initial broad challenger unit run",
+      "passed": 76,
+      "failed": 0,
+      "ignored": 12
+    },
+    {
+      "log": "challenger-restart-regression-02.log",
+      "sha256": "2dbcb2000cabbe016a87e9d30cfdc02de71db029b43bcdd469635048060cf557",
+      "scope": "Broad run after bounded parser change",
+      "passed": 77,
+      "failed": 2,
+      "ignored": 12
+    },
+    {
+      "log": "challenger-restart-regression-03.log",
+      "sha256": "6ddafa466334c34794d37d3575e74ed1e61183929153b70e1d38a9561cc3a09c",
+      "scope": "Serial broad challenger unit run after bounded parser; same runtime semantics",
+      "passed": 79,
+      "failed": 0,
+      "ignored": 12,
+      "duration_seconds": 20.49
+    }
+  ],
+  "preserved_failures": [
+    {
+      "log": "challenger-restart-checkpoint-tests-01.log",
+      "sha256": "a6893b207b7804ff0c384e967d4e69690bea725f823fa8a273a60a8d4472656e",
+      "scope": "Initial private re-export visibility compile failure, corrected before the 13-test run"
+    },
+    {
+      "log": "challenger-restart-sbf-history-01.log",
+      "sha256": "f07fe15b7df93ad993e91b66953f08cc84a0187192535a77ad466e95fb8f691f",
+      "scope": "Initial filter selected zero tests; not a pass of the intended scenario"
+    },
+    {
+      "log": "challenger-restart-clippy-01.log",
+      "sha256": "3fe15c5d272f7e62deaa2a0cbc6d9e23e8de4c9f457caed62eb63f6fdc6daa7a",
+      "scope": "Initial Clippy -D warnings rejected one eight-argument helper; explicit documented local allowance then passed Clippy"
+    }
+  ],
+  "failure_diagnosis": "The retained parallel run failed two immediate temporary-journal ownership checks. The final serial run passed all 79 enabled tests without production lock retries or changed test architecture. Historical pre-exec inherited-flock evidence is consistent with these failures but does not identify their exact child/cause.",
+  "linux_build_history": [
+    {
+      "log": "build-01.log",
+      "sha256": "0efda2665ce92de2358dd485290cec3e985d109bfadd6f57a047245b24c4a4fa",
+      "status": "failed",
+      "detail": "Private re-export visibility compile error"
+    },
+    {
+      "log": "build-02.log",
+      "sha256": "42ecfd237f65c4b57bee00ef839882e0810eabc687cef84a5e18e260e1fb0bb8",
+      "status": "passed_intermediate",
+      "detail": "Linux release build before bounded parser follow-up"
+    },
+    {
+      "log": "build-03.log",
+      "sha256": "ad3633016ccf3e4ab28d4dcb37a910cdf928d1e002b0b9f8755d31b7b42958a7",
+      "status": "failed",
+      "detail": "Local Docker image reference typo; no successful build"
+    },
+    {
+      "log": "build-04.log",
+      "sha256": "763e0c186828788fe801be26be9f692de37a24b2e1a188530fb0282c541c355f",
+      "status": "passed_intermediate",
+      "detail": "Linux release build after bounded parser change; final test/Clippy approval still pending"
+    }
+  ],
+  "source_at_document_cut": {
+    "services/indexer/src/replay.rs": "4215bf479231ec0ad6b358e4ce70cbae94b8bda25943854834d42780ddc74d9c",
+    "services/indexer/src/replay_checkpoint.rs": "5802e1433220a20af078e3fbcad3ce9a821c15544db1a8428cf286d2a79b2ca8",
+    "services/indexer/src/replay_checkpoint_tests.rs": "3336c2b7030efed45a2806f58f63adf6eb4c9f6c3f2779e90d54fde73e89fd6a",
+    "services/indexer/src/runtime.rs": "9cb9ce41d2e4a40999874203002c22fb376fbfbd14d0632853deed7ac2abb694",
+    "services/indexer/src/runtime_archive.rs": "61e177a137826d736f29f65f820d0efd0805a94d6ae0ba303b6dfee4786af97e",
+    "services/challenger/src/journal.rs": "751853624bb50c324e688557a09530a1f3804b190f93108a5148776c4c0da2cd",
+    "services/challenger/src/journal_segmented.rs": "71e2ea624be2cbc73e4a25cda99e13bee85b96c45ba70e5f0899459a8e43a707",
+    "services/challenger/src/journal_readonly.rs": "f95680adec49b4c41ce57a488d6cc8cea7474584c02025e8301812bea8f12fed",
+    "services/challenger/src/journal_checkpoint.rs": "5f4304e2ced0e7e86200c4976637468237a370ef3833a76ba7b0f50d09854d19",
+    "services/challenger/src/journal_checkpoint_tests.rs": "92fd29b18f656066f63f296d179ae24adc660fc6293b2efd180377a35b8dc47d",
+    "services/challenger/src/scan.rs": "56c2a49d51d55d5ce2148ef490887270762b7493619fd1fecf1331b95009d9b4",
+    "services/challenger/src/runtime.rs": "c3011445f997b23a402fb8ce925e23bd4e1a686d5f019d02375542b8cd39ee1f",
+    "services/challenger/src/archive_indexer.rs": "5b7068f9098c6b29e44293ff816cbba8caae5616810e305f434c53d28cb8bc60",
+    "services/challenger/src/tests.rs": "83657758d6becbc8d9a48bbf074b6812d645c1609dde571ff79dc4920a7dbee0",
+    "services/challenger/src/journal_segmented_tests.rs": "d1b402feec5e11ab7e3d12801d9383955b0d4219961b8db5714b31e653606a55"
+  },
+  "source_pin_scope": "All listed current candidate sources match the final 193-file Linux source-manifest-v4. Intermediate builds retain their separate historical scopes.",
+  "saved_sbf_history": {
+    "path": "target/i04/sdk-svm-history.json",
+    "sha256": "236dc9e81759f10ee040e99478bbe67edfbea808471861fc6eddeb793d14da9c",
+    "bytes": 426244,
+    "scope": "Previously generated actual local-SBF challenge history; this run replays it and generates no new transaction or proof"
+  },
+  "independent_source_review": "No blocking correctness finding in codec, archive metadata, writer/follower integration or bounded parser review; final validation remains separate.",
+  "deployment": {
+    "invocation": {
+      "local_record": "restart-checkpoint-install-execution-02/invocation-03.json",
+      "sha256": "de7813e0a92eb14e2557a9c83ae5d98989e31c4256b3e897a68c3d647a3f0373",
+      "command_id": "4db0320c-2ece-498b-95bb-f4cf83390567",
+      "status": "Success",
+      "response_code": 0,
+      "started_at": "2026-10-08T18:18:45.663Z",
+      "finished_at": "2026-10-08T18:19:01.663Z"
+    },
+    "host_result_sha256_reported": "af13e3ddac373622e58014b8a95d21a9f89eef7145c323d232bf192c8e75c7dc",
+    "host_result_raw_bytes_independently_fetched": false,
+    "binary_sha256": "0037eca87a656aeae06f8c01fa4102d90f15dbacee4bf1074caf2292ed7c8f49",
+    "binary_bytes": 13309128,
+    "installed_destinations": [
+      "/opt/zkapi/bin/challengerd",
+      "/opt/zkapi/bin/archive-indexerd"
+    ],
+    "configuration_changes": 0,
+    "financial_actions": 0,
+    "only_writer_and_follower_stopped_and_started": true,
+    "gateway_remained_stopped": true,
+    "scope": "Pinned installer success after archive preservation, full closed four-session DB/reservations and other process guards; no readiness claim"
+  },
+  "measured_live_restart_duration": null,
+  "new_financial_actions": 0,
+  "limits": [
+    "No hosted-CI result for this selected successor",
+    "No measured live restart speed or availability claim",
+    "No inference, AUTH replay, transaction send or new reservation",
+    "No long-term capacity qualification or archive truncation",
+    "Existing cold archive and financial state remain unchanged by these local tests",
+    "Installation success does not establish first-cache completion, a measured warm restart or public gateway recovery"
+  ],
+  "clippy_followup": {
+    "log": "challenger-restart-clippy-02.log",
+    "sha256": "9aabadcf8da78bf16f45666c8c41d955562f97902723d092268ffd51d6b1a997",
+    "exit_code": 0,
+    "duration_seconds": 2.38,
+    "source_delta": "Documented local allow(clippy::too_many_arguments) on shared explicit-input serialization helper; no runtime behavior or test architecture change"
+  },
+  "prior_parallel_broad_failures": [
+    "journal::segmented::tests::segmented_migration_failures_and_cancellation_leave_v1_before_activation",
+    "tests::v0_record_and_unknown_attempt_are_one_atomic_durable_transition"
+  ],
+  "final_linux_build": {
+    "verification_sha256": "024cac66978b58b1003989ee067c1ab5e32401ca16db901880339c93f45f21c7",
+    "source_manifest_sha256": "7a5d7c8cfb68d455f2b20dc840a7319a34789b3ab6248ddf0249694ec7a7891c",
+    "source_files": 193,
+    "build_exit_code": 0,
+    "build_started_at": "2026-10-08T18:03:51.653817379Z",
+    "build_finished_at": "2026-10-08T18:06:39.831288929Z",
+    "smoke_exit_code": 0,
+    "binary_sha256": "0037eca87a656aeae06f8c01fa4102d90f15dbacee4bf1074caf2292ed7c8f49",
+    "binary_bytes": 13309128,
+    "elf": "x86_64_linux",
+    "maximum_glibc": "2.34",
+    "no_configuration_exit_status": 2,
+    "before_after_build_and_smoke_source_checks_identical": true,
+    "provider_requests": 0,
+    "host_installation": false
+  },
+  "prior_document_cut": {
+    "recorded_at": "2026-10-08T18:10:35.183694+00:00",
+    "status": "local_verification_and_final_linux_build_passed_deployment_pending",
+    "sha256": "45bc27240124c6e0a0da70cc645481abca59f926e8413fc37a80d74b65979114"
+  },
+  "staging_history": {
+    "first_failed_invocation": {
+      "local_record": "restart-checkpoint-transfer-prepared-01/stage-execution-01/invocation-01.json",
+      "sha256": "1a6ddfb80745d3e0a8910b78f91a6eb19d37a798af81c84a3e2622da20c32867",
+      "command_id": "8f546358-3501-46c8-881f-584309dd0f9b",
+      "status": "Failed",
+      "response_code": 1,
+      "started_at": "2026-10-08T18:09:56.193Z",
+      "finished_at": "2026-10-08T18:09:56.193Z"
+    },
+    "diagnosis": {
+      "local_record": "checkpoint-stage-path-diagnostic-01/execution-01/invocation-01.json",
+      "sha256": "2b0bad09c1a98c4702910b385267bcfd2026204c6233e379e7096ee42c14e5f5",
+      "command_id": "855a4f02-6ff9-4699-9f9c-12117bf2f1d8",
+      "status": "Success",
+      "response_code": 0,
+      "started_at": "2026-10-08T18:11:43.592Z",
+      "finished_at": "2026-10-08T18:11:43.592Z"
+    },
+    "first_attempt_created_staging_or_incoming_directory": false,
+    "cause": "Guard checked /opt/zkapi/bin/indexerd instead of the authenticated running follower /opt/zkapi/bin/archive-indexerd; corrected before installation",
+    "corrected_stage_invocation": {
+      "local_record": "restart-checkpoint-transfer-prepared-02/stage-execution-01/invocation-01.json",
+      "sha256": "661ec237e4dfdcd9731141c06203ed402ed5e6755eef2b1cfbb2f41ed8f35fc1",
+      "command_id": "b8ff124d-1e42-4c74-b78e-8ff7eb88a7cb",
+      "status": "Success",
+      "response_code": 0,
+      "started_at": "2026-10-08T18:13:35.174Z",
+      "finished_at": "2026-10-08T18:13:39.174Z"
+    },
+    "same_existing_uploaded_object_version_reused": true,
+    "stage_service_actions": 0,
+    "stage_financial_actions": 0,
+    "cleanup_result_sha256": "74770e8d0374ab6594b5db00f1708f3d084305dbba2f4237213cc970da6b7120",
+    "temporary_owned_policy_removed": true
+  },
+  "installation_dispatch_history": {
+    "record_sha256": "b57dfd68f3129be7db239031f3dadfde52a649b525440b946729f39e43da0944",
+    "summary": {
+      "first_attempt": "AWS CLI connection timeout; no CommandId returned",
+      "reconciliation": "Two read-only filtered pages contained only the preceding read-only diagnostic; no installation command",
+      "manual_second_dispatch_command_id": "4db0320c-2ece-498b-95bb-f4cf83390567",
+      "second_dispatch_completed": true,
+      "initial_list_parameter_error_preserved": true,
+      "pagination_assertion_failed_before_resolution_file_write": true,
+      "pagination_completed_after_manual_second_dispatch": true,
+      "service_operations_dispatched_by_first_attempt": 0
+    }
+  },
+  "first_cache_observation": {
+    "invocation": {
+      "local_record": "restart-checkpoint-cache-observation-01/execution-01/invocation-01.json",
+      "sha256": "d0d32f2a54ec8ce0f72ae98b2f55337b069b1261db763bbeac781f5eb12baf65",
+      "command_id": "c7a18469-2aa9-47c5-95a1-eb5d8014b507",
+      "status": "Success",
+      "response_code": 0,
+      "started_at": "2026-10-08T18:19:38.535Z",
+      "finished_at": "2026-10-08T18:19:39.535Z"
+    },
+    "writer_pid": 99030,
+    "follower_pid": 99043,
+    "both_executables_match_installed_binary": true,
+    "writer_cache_present": false,
+    "follower_cache_present": false,
+    "journal_jobs": 0,
+    "journal_transport_records": 0,
+    "gateway_state": "inactive",
+    "readiness_claimed": false,
+    "historical_archive_payload_reads_by_observer": 0
+  }
+}

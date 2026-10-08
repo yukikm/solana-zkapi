@@ -220,7 +220,7 @@ def initialize(root, expected):
     providers = {'direct':[{'provider':'openrouter', 'api_base':'https://openrouter.ai/api/v1',
         'inference_base':'https://openrouter.ai/api/v1',
         'credential_file':str(STATE / 'runtime/openrouter-management.credential'),
-        'settlement_grace_seconds':60}], 'proxy':[]}
+        'settlement_grace_seconds':5}], 'proxy':[]}
     dispatcher = {'local_test_only':False, 'devnet':{'deployment':devnet, 'manifest':manifest,
         'trusted_manifest_hash':manifest['manifest_hash']}, 'database_url':dsn['provider'],
         'pool':key(manifest['pool']), 'claims_directory':str(STATE / 'dispatcher'), 'providers':providers}

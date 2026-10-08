@@ -1,5 +1,7 @@
 # Public Devnet preview deployment
 
+Readiness checkpoint — 2026-10-08 15:16 UTC: [the public readiness endpoint is deployed and admission resumed](../evidence/PD-public-readiness-deployment.md). It reports control/indexer/signer capabilities with a five-second expiry; provider credit and admission are explicitly `not_checked`, with admission reported separately by relay configuration. The first indexer-unavailable HTTP503 and later successful samples remain distinct; continuous availability and final provider-cost accuracy are not established. Funded browser cases, E01 and planned 80 GiB expansion remain outside this checkpoint.
+
 Native closure checkpoint — 2026-10-08 14:27 UTC: [N-04 interrupted-stream recovery and mutual withdrawal](../evidence/PD-native-public-N04.md) are complete: one deliberate process-group kill, same-journal .3 restart, one explicit recovery, four independently verified signed settlements totaling **20 micro-USDC**, and return of **4,999,980 micro-USDC**. Six finalized exact-wire transactions establish the closed note and Vault zero; wallet equals treasury owner, so its restored balance does not erase charges. The final operator cut retains four full-cap reservations (4M micro-USDC exposure), four settled sessions and all 25 checkpoint rows. [OpenClaw text/read-tool continuation](../evidence/PD-native-public-N02-N03.md) passed in its separate scope; [external provider-cost reconciliation](../evidence/PD-openrouter-management-usage-limit.md) remains unresolved. [SDK .3 source CI](../evidence/PD-hosted-ci-e2ee932.md) passed all nine implementation jobs at exact source `e2ee9320…`, separate from live acceptance. Subsequent [independent backup verification](../evidence/PD-N01-backup-independent-verify.md) completed exact-version download, streamed archive checks and isolated PG16 logical restoration of the original one-session N01 cut; it does not restore the later four-session state or physical services. Funded browser cases, the separate zero-AUTH emergency exercise and deployed aggregate readiness remain unfinished. Preserve the interrupted response, all failed preparations/observations, immutable releases and original journals; no inference replay or chat-history restoration is implied.
 
 New consumers should use the published **SDK/native `v0.2.0-devnet.3`**, its revision-2 profile, and the [independent browser app](https://d30nr98svcwdoe.cloudfront.net/releases/public-devnet-20261008-a/chat-en-sdk3/index-r2.html). [Release verification](../evidence/PD-sdk3-publication.md) records anonymous downloads and installed-file hashes; [browser publication](../evidence/PD-browser-sdk3-publication.md) records exact static bytes and Chrome page/settings rendering. Existing funded custody keeps its original profile, journal and recovery inputs. There is no automatic profile or custody migration.
@@ -9,8 +11,8 @@ Native N-01 completed Chat settlement and service recovery. [OpenClaw N-02/N-03]
 The operator uses the AWS account selected by the repository maintainer. This is
 an invitation-only, single-model Devnet preview with one operator host. It has
 no production availability commitment. The current hosting target is roughly
-USD50/month; the current fixed illustration is USD39.969 for 730 hours, before
-variable charges and actual taxes, after the same-volume expansion to 40 GiB
+USD50/month; the current fixed illustration is USD43.169 for 730 hours, before
+variable charges and actual taxes, after the [same-volume expansion to 80 GiB](../evidence/PD-preview-capacity-80g.md)
 of durable data. That target is separate from the seven-USDC maximum provider
 exposure authorized for the acceptance campaign. Reservations are maximum
 exposure, not measured provider charges.

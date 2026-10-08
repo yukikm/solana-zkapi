@@ -1,0 +1,212 @@
+{
+  "schema": 1,
+  "scope": "Actual public readiness deployment, preserved first 503, separate read-only completion and explicit admission resume; no funded acceptance or provider billing-finality claim",
+  "checkpoint_at_utc": "2026-10-08T15:16:43+00:00",
+  "deployment_id": "public-devnet-20261008-a",
+  "manifest_hash": "b97e200769be24448a51999346a28d0ca497892d68212f517b2b9bb4cc1a4643",
+  "public_readiness_url": "https://d366buuvadnp3.cloudfront.net/zkapi/v1/readiness",
+  "payloads": [
+    {
+      "role": "control_binary",
+      "sha256": "505b7e650ca2e258e5e282f24f6534fa20d9864a68c40e0046fc51a8920c36a7",
+      "bytes": 14013552
+    },
+    {
+      "role": "gateway_host_source",
+      "sha256": "e070011e3cb5b569307de049403e73151ef9c047e91777753452a061d1c188ff",
+      "bytes": 44656
+    },
+    {
+      "role": "public_gateway_source",
+      "sha256": "aa5867462b90e83239841aa114ad4354a48ddc65640509dde17718fd765ab3e3",
+      "bytes": 16661
+    },
+    {
+      "role": "readiness_projection_source",
+      "sha256": "db5a207e54828184276dca680eaa838ef3a9996076a9670c1d180c485ba87634",
+      "bytes": 3776
+    }
+  ],
+  "source_commit": "27ef2a4c842927240e0fae776a5017a46b6c141d",
+  "build_verification_sha256": "3aa879abdd8960853683495f30b45b200aa5ea8354074df8fb292510f735c474",
+  "publication_input_join_sha256": "6722a32d9a3e5c81cce016652119411051017e00eea66e13b01a1e89ab83e61a",
+  "staging": {
+    "exact_object_version_verified": true,
+    "production_binary_and_six_processes_unchanged_during_staging": true,
+    "temporary_owned_policy_removed": true,
+    "unrelated_policy_removed": false
+  },
+  "initial_apply": {
+    "command_id": "626877b6-22d8-4abf-a5eb-fe0b5e30c45a",
+    "started_at": "2026-10-08T15:04:49.780Z",
+    "finished_at": "2026-10-08T15:05:59.780Z",
+    "status": "failed_after_install_and_start",
+    "failure_stage": "gateway_readiness",
+    "control_readiness_http_status": 200,
+    "local_gateway_readiness_http_status": 503,
+    "unavailable_capability": "indexer",
+    "local_check_seconds": 21,
+    "cause_proven": false,
+    "public_sample_in_failed_apply": false,
+    "admission_enabled": false,
+    "control_native_exit_zero": true,
+    "gateway_native_exit_zero": null,
+    "original_failure_sha256": "7ac5a1636ab5bc32700fa00ac13a2ba5b1db986894631be22f3bc77686c2ff64"
+  },
+  "subsequent_public_sample": {
+    "observed_at_utc": "2026-10-08T15:09:43+00:00",
+    "http_status": 200,
+    "elapsed_seconds": 13.570979,
+    "body_sha256": "badb014319f96a74deef041642f9125f99ace58097831adb5a805c428af2612a",
+    "body": {
+      "schema": 1,
+      "scope": "read_only_capabilities",
+      "deployment_id": "public-devnet-20261008-a",
+      "manifest_hash": "b97e200769be24448a51999346a28d0ca497892d68212f517b2b9bb4cc1a4643",
+      "started_at": 1791472170,
+      "completed_at": 1791472183,
+      "expires_at": 1791472188,
+      "control": "available",
+      "indexer": "available",
+      "signer": "available",
+      "providers": [
+        {
+          "provider": "openrouter",
+          "mode": "direct_openrouter",
+          "model": "*",
+          "tariff_hash": "ca205b230ac0e68b1fc84383d6948f215b46b604c3dbe8502bce83940af75ff5",
+          "status": "enabled"
+        }
+      ],
+      "provider_credit": "not_checked",
+      "operator_admission": "not_checked"
+    }
+  },
+  "read_only_completion": {
+    "command_id": "4ce4f746-f47c-4349-abbe-869b36c6fb4b",
+    "observed_at_utc": "2026-10-08T15:12:55+00:00",
+    "completed": true,
+    "verification_only": true,
+    "same_installed_payloads": true,
+    "same_six_processes_as_failed_apply": true,
+    "required_current_checks": [
+      "direct control readiness HTTP200",
+      "local gateway readiness HTTP200",
+      "public gateway readiness HTTP200",
+      "local relay admission suspended and recovery enabled"
+    ],
+    "service_actions": 0,
+    "config_writes": 0,
+    "financial_actions": 0,
+    "original_failure_preserved": true
+  },
+  "resume": {
+    "command_id": "5c375a33-a452-4cdb-a9c1-4224e89760e7",
+    "observed_at_utc": "2026-10-08T15:16:43+00:00",
+    "completed": true,
+    "admission_enabled": true,
+    "required_final_checks": [
+      "local relay admission enabled and recovery enabled",
+      "public readiness HTTP200",
+      "unchanged financial cut and other five processes"
+    ],
+    "gateway_restart_count": 1,
+    "gateway_config_only_allowNewAdmissions_changed": true,
+    "financial_actions": 0,
+    "automatic_retry": false
+  },
+  "preservation": {
+    "all_six_services_active": true,
+    "unchanged_services_across_rollout": [
+      "postgresql",
+      "signer",
+      "challenger",
+      "archive-indexer"
+    ],
+    "control_started_once_during_apply": true,
+    "gateway_started_once_during_apply_and_once_during_resume": true,
+    "original_before_images_and_failure_preserved": true,
+    "reservations": 4,
+    "maximum_reserved_micro_usdc": "4000000",
+    "settled_sessions": 4,
+    "signed_charge_micro_usdc": "20",
+    "retained_checkpoint_rows": 25,
+    "database_raw_sha256": "49c3b1387f2916e8fe94c4672ebb848f22b73b98787f99e2483bfb9c06260f16",
+    "reservations_sha256": "29be8a5b46f7efc666b8ad623093ab83a133365ef42cee036ea533453c337706",
+    "database_and_reservations_unchanged": true,
+    "custody_or_ledger_reset": false
+  },
+  "limits": {
+    "readiness_scope": "read_only_capabilities",
+    "sample_ttl_seconds": 5,
+    "provider_credit": "not_checked",
+    "operator_admission_by_readiness_endpoint": "not_checked",
+    "provider_enabled_means": "configured capability and active tariff, not funded credit or final provider bill",
+    "external_billing_reconciliation": "unresolved",
+    "continuous_availability_claimed": false,
+    "funded_browser_claimed": false,
+    "emergency_escape_finalize_claimed": false,
+    "80_gib_expansion_claimed": false,
+    "fault_matrix_completed": false,
+    "inference_or_AUTH_or_wallet_action": false
+  },
+  "receipts": {
+    "cut": {
+      "sha256": "974ad5e6b65f94cb10637124e3bef3de1a677b8b0cdc78e202ab7e958181ab38",
+      "bytes": 57363
+    },
+    "apply_failure": {
+      "sha256": "469286d9e0d4324d88d321ae5a162267cb3e6d6ae40a4533a1bf556f8cc23778",
+      "bytes": 5789
+    },
+    "public_sample": {
+      "sha256": "0833f47e12f28d715ac998a060f9286e9be98c44ddf84c539d38aec3acad7e20",
+      "bytes": 930
+    },
+    "completion": {
+      "sha256": "0678c41ef0a8811f227885da6332f5215f1a3333f3973cfff5bbdf5f20480028",
+      "bytes": 57982
+    },
+    "resume": {
+      "sha256": "e1d6969d9e98414f9bee675147c604c7c4e87efa2b0ed12dd5c309fe7c7cdf55",
+      "bytes": 48280
+    },
+    "stage": {
+      "sha256": "7860e25e14d75aa2e990936f3bb66bb3643b68c7bab68fc7cac16836638f3d1b",
+      "bytes": 463
+    },
+    "permission_cleanup": {
+      "sha256": "74770e8d0374ab6594b5db00f1708f3d084305dbba2f4237213cc970da6b7120",
+      "bytes": 154
+    },
+    "payload_manifest": {
+      "sha256": "b166d71d4449c6ced3197bc7f9f5b24c187cd92f50ce35e28fe19f01d24c3802",
+      "bytes": 2057
+    },
+    "apply_invocation": {
+      "sha256": "54bbe169179f385ea7596f85f7564d7525dc5eb70fcc1bc7ec39ed402b100602",
+      "bytes": 940
+    },
+    "completion_invocation": {
+      "sha256": "8db06a3cb826527981dbcd5be7dcf88710d98188574007c0398d1836e918409c",
+      "bytes": 1047
+    },
+    "resume_invocation": {
+      "sha256": "9fcd0616bf1d4479b923b572f2051d5c4b587d2a6626cd997541a5951acf446e",
+      "bytes": 1018
+    },
+    "completion_source": {
+      "sha256": "9afc2255fb011d97ee90a566bbff3f1b3fd2adbc8d73c4bb979bf48443879e94",
+      "bytes": 15696
+    },
+    "resume_source": {
+      "sha256": "29f49503e34992b055609d2b98b7514b8c50f213f340b320d461a768fbaca716",
+      "bytes": 21293
+    }
+  },
+  "related_evidence": [
+    "PD-public-readiness-candidate.md",
+    "PD-native-public-N04.md",
+    "PD-openrouter-management-usage-limit.md"
+  ]
+}

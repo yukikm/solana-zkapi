@@ -1,0 +1,205 @@
+{
+  "schema": 1,
+  "scope": "Public gateway signature-status routing correction and bounded deployment; E01 SDK confirmation still failed after this rollout",
+  "cutoff_utc": "2026-10-08T16:27:37+00:00",
+  "production_change": {
+    "file": "scripts/devnet-browser-relay/host.ts",
+    "before_sha256": "e070011e3cb5b569307de049403e73151ef9c047e91777753452a061d1c188ff",
+    "after_sha256": "329c0dc8df7dee9ea7d03522e822e59f6536d26b63e1a3bc0b2fcaea63321cb5",
+    "bytes": 44700,
+    "one_condition_only": true,
+    "methods_using_existing_explicit_history_rpc": [
+      "getTransaction",
+      "getSignatureStatuses"
+    ],
+    "fresh_devnet_genesis_check_retained": true,
+    "fallback_or_resend_added": false,
+    "sdk_changed": false
+  },
+  "diagnosis": {
+    "observed_at": "2026-10-08T15:52:07.552528+00:00",
+    "public_getSignatureStatuses_http": 429,
+    "public_getTransaction_http": 200,
+    "direct_getSignatureStatuses_http": 200,
+    "finalized_slot": 508866751,
+    "transaction_error": null,
+    "aws_history_probe": {
+      "observed_at": "2026-10-08T15:56:07.376619Z",
+      "genesis_http": 200,
+      "signature_status_http": 200,
+      "finalized_slot": 508866751,
+      "reads": 2,
+      "transaction_sends": 0
+    },
+    "saved_primary_error": {
+      "body": "max usage reached",
+      "bytes": 17,
+      "sha256": "53aa2db9c4c33354ebc05ab7a1f79d512ab17cc2dead68eaa2fc4bfcdebf3536",
+      "provider_plan_or_reset_details_known": false,
+      "causal_join_to_later_indexer_503_established": true,
+      "causal_join_scope": "Current writer/indexer pause logs on the same configured primary RPC; no provider account plan/reset classification or exact earlier generic-client-error attribution."
+    }
+  },
+  "local_tests": {
+    "argv": [
+      "/Users/yukikimura/.nvm/versions/node/v24.19.0/bin/node",
+      "--test",
+      "scripts/devnet-browser-relay/host.test.ts"
+    ],
+    "exit_code": 0,
+    "tests": 19,
+    "passed": 19,
+    "failed": 0,
+    "skipped": 0,
+    "duration_ms": 1587.810292,
+    "log_sha256": "a0e56cde401cbb1b76d2cd39fe8941c9017f90ceb7394110e098c18135c7c542"
+  },
+  "preserved_initial_failure": {
+    "kind": "sandbox loopback listen EPERM",
+    "exit_code": 1,
+    "superseded_as_test_result_only": true
+  },
+  "deployment": {
+    "command_id": "8b959573-d42d-4850-8fb4-09f9e9f3638d",
+    "ssm_status": "Success",
+    "response_code": 0,
+    "host_result_sha256": "44ba0adb03d2e2881bf7da3473f0cece61d56a73148811f94fa83cdd0a4ce942",
+    "raw_result_fetched": true,
+    "gateway_starts": 1,
+    "other_five_processes_unchanged": true,
+    "gateway_config_sha256": "cd8bd41e1d7c06baa82ea96a430953c1feacc63d05654fe611a080463c3fcb9c",
+    "admission_enabled": true,
+    "configuration_changes": 0,
+    "database_raw_sha256": "49c3b1387f2916e8fe94c4672ebb848f22b73b98787f99e2483bfb9c06260f16",
+    "reservations_sha256": "29be8a5b46f7efc666b8ad623093ab83a133365ef42cee036ea533453c337706",
+    "financial_actions": 0,
+    "transaction_sends": 0,
+    "automatic_retry": false,
+    "observed_at_utc": "2026-10-08T16:07:54+00:00"
+  },
+  "postfix_sdk_observation": {
+    "completed_at": "2026-10-08T16:10:14.855890+00:00",
+    "exit_code": 1,
+    "same_journal": true,
+    "sdk": "0.2.0-devnet.3",
+    "result": "client_request_failed",
+    "cause": "unproven by this observation",
+    "receipt_confirmation_pass": false
+  },
+  "evidence": {
+    "source_test_result": {
+      "sha256": "c3210d26b67cf5bbb582bf6ae804c5efd864fe97c261b049bc362766cccd6682",
+      "bytes": 1271
+    },
+    "initial_test_failure": {
+      "sha256": "e8d5ca98624940102190d6a3b0a5e68132212ddde7578533526581418058575a",
+      "bytes": 287
+    },
+    "initial_test_log": {
+      "sha256": "3a13084b8761acaa176c6123cf2435824582c0a0393305652f835e65968cf4dc",
+      "bytes": 12020
+    },
+    "passing_test_log": {
+      "sha256": "a0e56cde401cbb1b76d2cd39fe8941c9017f90ceb7394110e098c18135c7c542",
+      "bytes": 2303
+    },
+    "public_and_direct_diagnostic": {
+      "sha256": "c8f55520851eff905116606947a20e23ed90b6229135aa34a693ab3df4b8d804",
+      "bytes": 1368
+    },
+    "host_history_rpc_probe": {
+      "sha256": "bd2cbc9a4b63052d4e13983ff6e1818de69be43f5fc736f099e1484ebc22e0fd",
+      "bytes": 1300
+    },
+    "rollout_request": {
+      "sha256": "dfef27ad53e39a260d9adb8dd218cc3d84e44a98bcb6e34391331cb782905466",
+      "bytes": 9737
+    },
+    "rollout_source": {
+      "sha256": "594d18d6bac913aeec6eecba105e5a78790812961e0d8b26fa3283156f2b7b07",
+      "bytes": 17159
+    },
+    "rollout_invocation": {
+      "sha256": "edeb6239ee8d08ba46644fc2865d59221d0cc9b685ec9f36369995ac3662af4f",
+      "bytes": 982
+    },
+    "postfix_sdk_observation": {
+      "sha256": "705ebbbe2876210564ce91a9184503b9ed5fedf934e5c856ae51a5cd14bcc8f3",
+      "bytes": 89
+    },
+    "postfix_sdk_output": {
+      "sha256": "4493bf6b952b7535f151f626543c5d29fb39687340d1f4e5c85b08904d21f1d4",
+      "bytes": 120
+    },
+    "rollout_raw_receipt": {
+      "sha256": "44ba0adb03d2e2881bf7da3473f0cece61d56a73148811f94fa83cdd0a4ce942",
+      "bytes": 49645
+    },
+    "rollout_receipt_fetch": {
+      "sha256": "3301f883b517e04ed24b1af5f88bf2024f8247dabda69d90eb4756b3de93bd38",
+      "bytes": 13160
+    },
+    "separate_postfix_snapshot": {
+      "sha256": "76bb829ca93b14c259dad07fb4b0978544a8f92313591b28bc2a6cbb2d41fbeb",
+      "bytes": 1035
+    },
+    "current_host_readonly_diagnostic": {
+      "sha256": "6de5b247ad4e96fe3dfa59a56513eb14cd204cb64705c57e3dff59d7b1253c14",
+      "bytes": 9369,
+      "stdout_sha256": "23f6e7802ae026e748ffcb62868d79c56269e325ab502a8228b5a1c889bdf079"
+    }
+  },
+  "excluded_claims": [
+    "E01 escape/finalize completion",
+    "successful SDK deposit confirmation after this rollout",
+    "new inference or provider acceptance",
+    "provider final-cost reconciliation",
+    "funded browser acceptance",
+    "full I10/G1-G4"
+  ],
+  "separate_postfix_snapshot_diagnostic": {
+    "started_at": "2026-10-08T16:16:45.876Z",
+    "completed_at": "2026-10-08T16:16:47.269Z",
+    "same_released_sdk": true,
+    "method": "SolanaWalletChain.snapshot",
+    "requested_minimum_slot": 508866751,
+    "requests": 1,
+    "path": "/zkapi/v1/tree/root",
+    "http_status": 503,
+    "failure_category": "finalized indexer unavailable",
+    "auth_requests": 0,
+    "transaction_sends": 0,
+    "journal_reads": 0,
+    "journal_writes": 0,
+    "cause_of_prior_generic_advance_proven": false,
+    "upstream_cause_of_503_proven": false,
+    "cause_scope": "The 16:27 host cut establishes the current primary-RPC 429/root-503 blocker; it does not provide an exact trace of the earlier 16:16 snapshot or generic 16:10 advance."
+  },
+  "current_host_diagnostic": {
+    "observed_at": "2026-10-08T16:27:37+00:00",
+    "writer_failed_method": "getGenesisHash",
+    "indexer_failed_method": "getSlot",
+    "upstream_http_status": 429,
+    "configured_primary_same_for_writer_indexer_gateway_control": true,
+    "history_endpoint_differs": true,
+    "source_halted": false,
+    "archive_tail_slot": 508866844,
+    "archive_blocks": 343925,
+    "archive_chunks": 18950,
+    "reported_finalized_lag_seconds": 2386,
+    "local_root_http_status": 503,
+    "writer_ready": false,
+    "pending_jobs": 0,
+    "emergency_jobs": 0,
+    "unknown_signatures": 0,
+    "proof_failure_total": 0,
+    "six_processes_and_configs_unchanged": true,
+    "rpc_requests_by_diagnostic": 0,
+    "local_http_requests": 1,
+    "service_actions": 0,
+    "financial_actions": 0,
+    "provider_plan_reset_classification_known": false,
+    "browser_failure_cause_established": false,
+    "current_native_scope": "Deposit finalized on chain; saved SDK operation still unconfirmed. No escape/finalize completion."
+  }
+}

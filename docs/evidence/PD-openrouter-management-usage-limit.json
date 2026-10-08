@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "scope": "Observed management-counter settlements with demonstrated unresolved external provider-cost discrepancy; no G3/final-invoice reconciliation claim",
+  "scope": "Observed management-counter settlements with client-retained response usage.cost discrepancy; eventual provider invoice and operator loss not independently quantified; no G3/final-cost reconciliation claim",
   "cutoff_utc": "2026-10-08T13:31:26Z",
   "records": {
     "operator_cut": {
@@ -140,5 +140,148 @@
     "service_actions": 0,
     "financial_writes": 0,
     "provider_account_requests": 0
+  },
+  "cost_provenance_followup": {
+    "observed_utc": "2026-10-08T16:04:39Z",
+    "prior_evidence_pair": {
+      "md": {
+        "sha256": "17fbc31529f4c8189e336707b3aa96ec5ac6bed338124afcb4566f2f47d12787",
+        "bytes": 4132
+      },
+      "json": {
+        "sha256": "1bfc4b159f8755cec8f8a2a29562f80fba14a2d16ac841d4b88f3877d12292e7",
+        "bytes": 5395
+      }
+    },
+    "observation": {
+      "sha256": "42b245f089f84c1852a32ad63293f746c61a4b67cddabab02659a49649d2599a",
+      "bytes": 3683
+    },
+    "source_versions": {
+      "openclaw": "2026.9.8",
+      "@openclaw/ai": "2026.9.8"
+    },
+    "inspected_installed_sources": [
+      {
+        "installed_component": "openclaw/package.json",
+        "sha256": "d2e734563bfb126d273beeb1e2cc5d4525b4d59efe00fdfec50a39b427524f56",
+        "bytes": 145254,
+        "matches_frozen_R5_input": true
+      },
+      {
+        "installed_component": "@openclaw/ai/package.json",
+        "sha256": "436225dc8a8af1e50d8327e8d2d1090faf83a4d8e5861c7331c75fc37c0f604e",
+        "bytes": 4314,
+        "matches_frozen_R5_input": false
+      },
+      {
+        "installed_component": "OpenClaw installation/package-lock.json",
+        "sha256": "ddfe519b9c9d159dd2737b2bf963cd75b2c70421b495d26507c93be35380badd",
+        "bytes": 235042,
+        "matches_frozen_R5_input": true
+      },
+      {
+        "installed_component": "@openclaw/ai/dist/openai-completions-stream-dju_5F3P.mjs",
+        "sha256": "590082faab7127b061cd23bacf491d77fba1691ac0d8bd73df42c4b2179a62fc",
+        "bytes": 80461,
+        "matches_frozen_R5_input": false
+      },
+      {
+        "installed_component": "@openclaw/ai/dist/openai-transport-params-DyFJ4cgR.mjs",
+        "sha256": "3c1d41c8584fde5d0bb11bdb6fe001bbfbceaea5d2f7a1a031e263d313b0a4b4",
+        "bytes": 32324,
+        "matches_frozen_R5_input": false
+      },
+      {
+        "installed_component": "@openclaw/ai/dist/host-DwBmNMCC.mjs",
+        "sha256": "f6c141d24da7155f8276377c7324bd65058ee62fa853fc3566c5a95230cfcd0b",
+        "bytes": 25962,
+        "matches_frozen_R5_input": false
+      },
+      {
+        "installed_component": "openclaw/dist/usage-DDsrNSO2.mjs",
+        "sha256": "a8396cb880e2b6d874361d78b45adb472c02d7f9fae657159986d4193b22d503",
+        "bytes": 11536,
+        "matches_frozen_R5_input": false
+      },
+      {
+        "installed_component": "openclaw/dist/usage-accumulator-BPdXi2rv.mjs",
+        "sha256": "7c696b3fb8c5ded0e2337d10867e9b8c93313737ed2d9e9568f4484de81f0272",
+        "bytes": 3413,
+        "matches_frozen_R5_input": false
+      }
+    ],
+    "transcript_observations": [
+      {
+        "case": "N-02",
+        "transcript_sequence": 5,
+        "event_utf8_sha256": "73ea67ee3758e99ff594d4a66b6cd1977053ffe71a839ba19a43a92f5e577016",
+        "event_utf8_bytes": 748,
+        "input_tokens": 3597,
+        "output_tokens": 14,
+        "cache_read_tokens": 0,
+        "reported_response_cost_usd": "0.00054795",
+        "origin": "provider-billed",
+        "local_cost_components": {
+          "input": 0,
+          "output": 0,
+          "cacheRead": 0,
+          "cacheWrite": 0
+        }
+      },
+      {
+        "case": "N-03",
+        "transcript_sequence": 8,
+        "event_utf8_sha256": "b84c7550a723ac59bfd89f158738f1a54db74612304cbd923af2a0cd744ea644",
+        "event_utf8_bytes": 743,
+        "input_tokens": 41,
+        "output_tokens": 20,
+        "cache_read_tokens": 3584,
+        "reported_response_cost_usd": "0.00028695",
+        "origin": "provider-billed",
+        "local_cost_components": {
+          "input": 0,
+          "output": 0,
+          "cacheRead": 0,
+          "cacheWrite": 0
+        }
+      }
+    ],
+    "conclusion": "The retained provider-billed totals follow the installed parser path for numeric response usage.cost, not its locally calculated token-price estimate. This is client-retained response-cost evidence, not an independently captured provider invoice.",
+    "raw_provider_sse_retained": false,
+    "independent_invoice_observed": false,
+    "actual_operator_loss_quantified": false,
+    "all_execution_time_dependency_sources_independently_frozen": false,
+    "installed_package_and_lock_match_frozen_R5": true,
+    "billing_complete": false,
+    "historical_charges_changed": false
+  },
+  "reviewed_documentation_limitation": {
+    "finding": "The reviewed official management-key and accounting pages provide no documented per-key accounting finality marker, maximum post-disable update lag, or exhaustive drained-request watermark.",
+    "classification": "Limitation of the reviewed documentation and an inference about what those interfaces establish; not a claim that the provider cannot offer other guarantees.",
+    "policy_change_selected": false
+  },
+  "upstream_parity_followup": {
+    "upstream_commit": "045b444ea1b52538d1b40273c7cb6ed09468a052",
+    "user_direction": "Match Ethereum direct OpenRouter lifecycle; no additional final-invoice/completeness completion gate",
+    "sequence": [
+      "confirmed disable",
+      "configured grace",
+      "one valid usage + byok_usage capture",
+      "durable persistence",
+      "confirmed deletion",
+      "capped immutable settlement"
+    ],
+    "accounting_delay_assumption": "operator risk",
+    "no_repricing": true,
+    "missing_usage_is_zero": false,
+    "prior_normative_final_cost_gate": "superseded; historical assessment retained above",
+    "all_existing_fields_and_observations_preserved": true,
+    "runtime_status": "local candidate; no new deployment claimed",
+    "new_reconciliation_service_required": false,
+    "new_paid_matrix_required": false,
+    "provider_invoice_accuracy_claimed": false,
+    "broad_G3_closed": false,
+    "evidence": "PD-openrouter-ethereum-parity.json"
   }
 }

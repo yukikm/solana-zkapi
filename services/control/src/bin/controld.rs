@@ -89,7 +89,7 @@ async fn run() -> Result<()> {
     let app = App::connect(config, &url).await?;
     let worker = app.clone();
     tokio::spawn(async move {
-        let mut tick = tokio::time::interval(std::time::Duration::from_secs(1));
+        let mut tick = tokio::time::interval(std::time::Duration::from_secs(2));
         loop {
             tick.tick().await;
             if worker.recover().await.is_err() {

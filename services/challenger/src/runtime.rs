@@ -14,7 +14,7 @@ use serde_json::{json, Value};
 use std::{
     path::{Path, PathBuf},
     process::Stdio,
-    time::{Duration, SystemTime, UNIX_EPOCH},
+    time::{Duration, Instant, SystemTime, UNIX_EPOCH},
 };
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use zkapi_indexer::{
@@ -262,6 +262,8 @@ pub struct Runtime {
     trust: Trust,
     rpc: ArchiveRpc,
     shutdown: Option<Shutdown>,
+    checkpoint_binding: Hash,
+    checkpoint_saved: Option<Instant>,
 }
 impl Runtime {
     pub fn open(config: Config, initialize: bool) -> Result<Self> {
@@ -276,32 +278,98 @@ impl Runtime {
             shutdown.checkpoint()?;
         }
         let trust = config.trust()?;
-        let journal = if initialize {
-            Journal::initialize(&config.journal_directory, trust.pool())?
+        // Transport credentials do not change the authenticated replay domain.
+        let checkpoint_binding = sha(&serde_json::to_vec(&json!({
+            "domain": "zkapi-challenger-replay-v1",
+            "program": trust.pool.program_id, "pool": trust.pool.pool,
+            "genesis": trust.pool.genesis_hash, "profile": trust.pool.circuit_profile_hash,
+            "start_slot": config.start_slot, "manifest": hex::encode(trust.manifest_hash),
+        }))?);
+        let (mut journal, cached) = if initialize {
+            (
+                Journal::initialize(&config.journal_directory, trust.pool())?,
+                None,
+            )
         } else {
-            Journal::open(&config.journal_directory, trust.pool())?
+            Journal::open_with_checkpoint(
+                &config.journal_directory,
+                trust.pool(),
+                checkpoint_binding,
+            )?
         };
-        let mut scanner = Scanner::new(trust.clone());
-        journal.replay_archive(|block| {
+        let restored = cached.as_ref().and_then(|cache| {
+            Scanner::restore_checkpoint(trust.clone(), &cache.bytes, cache.sha256, cache.tail?).ok()
+        });
+        // Metadata reuse is allowed only with a complete valid runtime payload.
+        // A damaged/incompatible runtime payload takes the original cold path.
+        if cached.is_some() && restored.is_none() {
+            drop(journal);
+            journal = Journal::open(&config.journal_directory, trust.pool())?;
+        }
+        let restored_slot = restored
+            .as_ref()
+            .and_then(|scan| scan.replay_state().ok())
+            .map(|s| s.slot);
+        let mut scanner = restored.unwrap_or_else(|| Scanner::new(trust.clone()));
+        let mut replay = |block: &zkapi_indexer::FinalizedBlock| {
             if let Some(shutdown) = &shutdown {
                 shutdown.checkpoint()?;
             }
             scanner.apply_finalized(block)
-        })?;
+        };
+        if let Some(slot) = restored_slot {
+            journal.replay_archive_after(slot, &mut replay)?;
+        } else {
+            journal.replay_archive(&mut replay)?;
+        }
         // A v1 queue with a checkpoint but no archive must explicitly import its
         // finalized history, never silently continue from an empty scanner.
         if journal.checkpoint().is_some() && journal.archive_is_empty() {
             return Err(bad("legacy journal requires archive import"));
         }
         let rpc = ArchiveRpc::new(config.rpc_url.clone()).map_err(|_| bad("RPC config"))?;
-        Ok(Self {
+        let mut runtime = Self {
             config,
             journal,
             scanner,
             trust,
             rpc,
             shutdown,
-        })
+            checkpoint_binding,
+            checkpoint_saved: None,
+        };
+        // A valid durable prefix is useful even when the next RPC is unavailable.
+        // It remains a candidate: restoring it never restores readiness.
+        runtime.save_replay_checkpoint();
+        Ok(runtime)
+    }
+    fn save_replay_checkpoint(&mut self) {
+        if self
+            .checkpoint_saved
+            .is_some_and(|at| at.elapsed() < Duration::from_secs(60))
+        {
+            return;
+        }
+        let Some(anchor) = self.journal.archive_tail() else {
+            return;
+        };
+        self.checkpoint_saved = Some(Instant::now());
+        let result = (|| -> Result<()> {
+            let state = self.scanner.replay_state()?;
+            if (state.slot, state.blockhash) != (anchor.slot, anchor.blockhash) {
+                return Err(bad("scanner checkpoint archive anchor"));
+            }
+            self.journal.save_checkpoint(
+                self.checkpoint_binding,
+                &self.scanner.checkpoint_bytes()?,
+                anchor,
+            )?;
+            Ok(())
+        })();
+        if result.is_err() {
+            // Cache failure cannot change durable jobs, cause a send, or assert readiness.
+            eprintln!("challenger replay checkpoint unavailable");
+        }
     }
     fn checkpoint_stop(&self) -> Result<()> {
         self.shutdown.as_ref().map_or(Ok(()), Shutdown::checkpoint)
@@ -314,7 +382,7 @@ impl Runtime {
     async fn bridge(&self, input: Value) -> Result<Value> {
         bridge_supervised(&self.config, input, self.shutdown.as_ref()).await
     }
-    /// Every restart replays durable history and then authenticates the current
+    /// Every restart restores authenticated history and then authenticates the current
     /// genesis, block anchor, PoolConfig, Note, Pending and tree account cut.
     pub async fn scan(&mut self) -> Result<FinalizedView> {
         if self.rpc_call("getGenesisHash", json!([])).await?.as_str()
@@ -433,6 +501,9 @@ impl Runtime {
         if !blocks.is_empty() {
             self.journal.append_archive_batch(std::mem::take(blocks))?;
             self.scanner = checked.clone();
+            // Long catch-up can span many polls; save at most once per minute,
+            // and only after the archive prefix itself is durable.
+            self.save_replay_checkpoint();
         }
         Ok(())
     }
@@ -1056,6 +1127,7 @@ async fn run_command(runtime: &mut Runtime, command: &str) -> Result<()> {
         if matches!(result, Err(Error::Interrupted | Error::BridgeCleanup)) {
             return result;
         }
+        runtime.save_replay_checkpoint();
         let alerts = runtime.emit_alerts(now());
         let result = result.and(alerts);
         runtime.publish_health(result.is_ok(), now())?;

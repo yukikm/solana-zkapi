@@ -53,12 +53,13 @@ fn empty_inline_archive<'de, D: serde::Deserializer<'de>>(
     d.deserialize_seq(Empty)
 }
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(deny_unknown_fields)]
 pub(super) struct FileStamp {
-    fields: [u64; 11],
+    pub(super) fields: [u64; 11],
 }
 impl FileStamp {
-    fn of(metadata: &fs::Metadata) -> Result<Self> {
+    pub(super) fn of(metadata: &fs::Metadata) -> Result<Self> {
         #[cfg(unix)]
         {
             use std::os::unix::fs::MetadataExt;
@@ -86,7 +87,7 @@ impl FileStamp {
             ))
         }
     }
-    fn at(path: &Path) -> Result<Self> {
+    pub(super) fn at(path: &Path) -> Result<Self> {
         let file = regular(path)?;
         Self::of(&file.metadata()?)
     }
@@ -105,7 +106,7 @@ impl FileStamp {
 }
 pub(super) type Observations = BTreeMap<PathBuf, FileStamp>;
 #[cfg(test)]
-thread_local! { static READS: std::cell::RefCell<Vec<PathBuf>> = const { std::cell::RefCell::new(Vec::new()) }; }
+thread_local! { pub(super) static READS: std::cell::RefCell<Vec<PathBuf>> = const { std::cell::RefCell::new(Vec::new()) }; }
 
 // No second parser: these hooks wrap the writer's existing JSON/checksum/chain
 // validation, recording file identity around the same open file descriptor.
@@ -151,10 +152,10 @@ pub(super) fn read_chunk_observed(
     validate_chunk(chunk, hash, bytes, reference, pool)
 }
 
-#[derive(Clone, PartialEq, Eq)]
-struct DirectoryStamp([u64; 5]);
+#[derive(Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub(super) struct DirectoryStamp([u64; 5]);
 impl DirectoryStamp {
-    fn at(path: &Path) -> Result<Self> {
+    pub(super) fn at(path: &Path) -> Result<Self> {
         directory(path)?;
         let metadata = fs::symlink_metadata(path)?;
         let stamp = FileStamp::of(&metadata)?;
@@ -176,13 +177,13 @@ impl DirectoryStamp {
 /// RPC response or a cryptographic proof of finality. A consumer must still run
 /// its original replay validation and current finalized account reconciliation.
 pub struct ReadOnlyArchive {
-    directory: PathBuf,
-    pool: Hash,
-    archive: Archive,
-    first: Option<(u64, u64)>,
-    observations: Observations,
-    root_identity: DirectoryStamp,
-    archive_identity: DirectoryStamp,
+    pub(super) directory: PathBuf,
+    pub(super) pool: Hash,
+    pub(super) archive: Archive,
+    pub(super) first: Option<(u64, u64)>,
+    pub(super) observations: Observations,
+    pub(super) root_identity: DirectoryStamp,
+    pub(super) archive_identity: DirectoryStamp,
 }
 impl ReadOnlyArchive {
     pub fn open(directory: &Path, pool: Hash) -> Result<Self> {
@@ -204,7 +205,7 @@ impl ReadOnlyArchive {
         reader.verify_files()?;
         Ok(reader)
     }
-    fn read_head(directory: &Path, pool: Hash) -> Result<Head> {
+    pub(super) fn read_head(directory: &Path, pool: Hash) -> Result<Head> {
         // Both the bounded probe and the existing strict decoder read one open
         // inode. An atomic newer head cannot be mixed into this captured cut.
         let mut file = regular(&directory.join("journal.json"))?;
@@ -237,7 +238,7 @@ impl ReadOnlyArchive {
         envelope.state.validate_job_identities()?;
         Ok(head)
     }
-    fn first(archive: &Archive, directory: &Path) -> Result<Option<(u64, u64)>> {
+    pub(super) fn first(archive: &Archive, directory: &Path) -> Result<Option<(u64, u64)>> {
         if archive.references.is_empty() {
             return Ok(None);
         }
@@ -247,7 +248,7 @@ impl ReadOnlyArchive {
             .first()
             .map(|block| (block.slot, block.parent_slot)))
     }
-    fn verify_files(&self) -> Result<()> {
+    pub(super) fn verify_files(&self) -> Result<()> {
         if DirectoryStamp::at(&self.directory)? != self.root_identity
             || DirectoryStamp::at(&self.directory.join(ARCHIVE_DIR))? != self.archive_identity
         {
@@ -276,8 +277,11 @@ impl ReadOnlyArchive {
     /// Unchanged prefixes use trusted Unix metadata continuity, not a fresh
     /// whole-archive rehash. Every new/replayed chunk is always rehashed.
     pub fn refresh(&mut self) -> Result<bool> {
-        self.verify_files()?;
         let head = Self::read_head(&self.directory, self.pool)?;
+        self.refresh_head(head)
+    }
+    pub(super) fn refresh_head(&mut self, head: Head) -> Result<bool> {
+        self.verify_files()?;
         if head == self.archive.head {
             return Ok(false);
         }
@@ -331,6 +335,7 @@ impl ReadOnlyArchive {
             references,
             tail,
             head,
+            verified: None,
         };
         let first = match self.first {
             Some(first) => Some(first),

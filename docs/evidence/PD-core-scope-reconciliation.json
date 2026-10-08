@@ -1,0 +1,196 @@
+{
+  "schema": 1,
+  "scope": "Documentation and retained-evidence/source audit only; no new runtime, network, host, wallet or provider action",
+  "recorded_date_jst": "2026-10-09",
+  "scope_decision": {
+    "core_first": true,
+    "demo_chat_ui_work_stopped": true,
+    "PD08_funded_browser": "deferred, not completed, not a core completion gate",
+    "long_term_qualification": "deferred by user",
+    "other_platforms": "not added"
+  },
+  "onboarding": {
+    "environment": "Same macOS ARM64 host, new private directory outside checkout, fresh consumer HOME and TMPDIR; shipped tools with /usr/bin:/bin PATH",
+    "pristine_os": false,
+    "archive_sha256": "e122202b6d6f58430baf818889edd7f7d9d46eee7dfee338996f8811e78f9762",
+    "release_manifest_sha256": "e066122897cfe694fd9b2541a95a6341d2ab6734be1ab34626470ba3ec01d20f",
+    "profile_sha256": "449657cc3fe90f12878236b83d68ada8077e3c56e67ccb8268c5f301e69e02e5",
+    "release_files_verified_by_original_installer": 7257,
+    "preflight_checks": [
+      "profile",
+      "assets",
+      "manifest",
+      "tariffs",
+      "genesis",
+      "finalized_pool",
+      "control_config",
+      "catalog",
+      "shared_snapshot",
+      "chain_clock"
+    ],
+    "preflight_sha256": "1b023b2bdb40f1723a232313e5bdcfaeb96e133e12bad3cd30adea60b2c56d20",
+    "first_input_installation": "snapshot validation failed; preserved; cause unknown",
+    "first_failure_stderr_sha256": "34a3c3007b7fa989acc929495f745fa9962588a783411761a66b791096f9c5b3",
+    "input_installation_result_sha256": "f91a2aeb7837f9eb1dffebe475bdba6a189c5fb18703b3bdc5734eb068e65033",
+    "input_installation_result": {
+      "completed_at": "2026-10-08T15:18:11.978536+00:00",
+      "exit_code": 0,
+      "inputs_created": true,
+      "profile_created": false,
+      "automatic_retries": 0,
+      "setup_calls": 0,
+      "custody_starts": 0,
+      "auth_requests": 0,
+      "inference_requests": 0,
+      "wallet_calls": 0,
+      "prior_failure_cause": "Not established by the later successful diagnostic.",
+      "installation_sha256": "ebe9474e4c84ea40fda9eba5db13912b8cf597bc5b20a60abd61cac1f8caf123",
+      "runtime_sha256": "3dca32b79c523036247e8c706c496922ff3e52388853add1d56119869b303a5f",
+      "network_sha256": "d3f1f09e2896d1df1145b6fd29c0f77f41c3b800df9ab4e15de515ef20a791bb"
+    },
+    "setup_result_sha256": "e98c138e9c44a773319f6323bf117e0689e8a970a078ec949795ecbad8d23a96",
+    "setup_result": {
+      "completed_at": "2026-10-08T15:25:22.405161+00:00",
+      "exit_code": 0,
+      "profile_created": true,
+      "custody_started": false,
+      "financial_commands_executed": 0,
+      "automatic_retry": false,
+      "profile_config_sha256": "2a340c36862203d15a1eb377c79c9efc8f13d7842635d58a7dd6928988042a24",
+      "profile_runtime_sha256": "b3f9c84ee5e94795d1b1483e4390c24df14e55c5f754d8e0b0f3b4535ecd041c"
+    },
+    "onboarding_source_sha256": "740744098e8eec9103a4313a1e484274e440d363926aad68a5796bb38349f10c",
+    "input_continuation_source_sha256": "e0c0e5d77bd709c7aa3c7deec707abd1fe96cd856d56e4258c24eedcbf7a66ad",
+    "setup_continuation_source_sha256": "af63976350821c951c0758f5f7d9ee6869a88c606e485f56d6bc3bb4cd98f092"
+  },
+  "unsupported_request": {
+    "actual_production_go_probe": "Claude Code 2.1.220; unsupported query route; HTTP400 unsupported_route; zero backend dispatch, AUTH or inference",
+    "historical_claude_all_four_source_hashes_still_match": true,
+    "go_handler_matches_sdk3_build_input": true,
+    "historical_codex_source_snapshot": "Preserved; bridge/models have since changed; not relabeled current",
+    "actual_first_openclaw_400": "Cause unknown; not used as rejection evidence",
+    "current_sdk_local_tests": {
+      "result_sha256": "0fae8c22dfa8d95deb8b9dbba2f42dae7e69f7392d9c8b8bc377afeefa4e3457",
+      "log_sha256": "6850b223e4b771e715aeac49688472d71fa5b7b354f92c28b5e1476ef7e151b4",
+      "passed": 385,
+      "failed": 0,
+      "skipped": 0,
+      "all_75_guarded_inputs_still_match": true,
+      "selected_passing_test_names": [
+        "validated model policies drive the advertised provider and reject unsupported APIs before AUTH",
+        "direct identity and transport metadata is rejected before AUTH or inference",
+        "stream cancel still closes reuse-zero session, unsupported direct modalities never authorize",
+        "quote verifies real Ed25519 and signed tariff binding while preserving request/price snapshots",
+        "SSE terminal usage metadata cannot append content, change terminal reason, or carry tool calls"
+      ]
+    },
+    "PD09_recovery_handler_criterion": "Supported by actual N04 recovery plus exact production Go rejection and scoped current SDK guard fixtures"
+  },
+  "readiness": {
+    "targeted_fixture_scope": "stale/future indexer, signer unavailable/unreconciled, disabled provider and finite public projection",
+    "actual_deployed_scope": "Preserved indexer-unavailable503, separate later successful direct/local/public reads and explicit resume",
+    "live_all_fault_branches": false,
+    "new_fault_injection_required_by_this_audit": false
+  },
+  "financial_completion": {
+    "selected_policy": "Ethereum upstream captured management USD after disable/grace, durable capture, confirmed deletion and capped immutable settlement",
+    "upstream_commit": "045b444ea1b52538d1b40273c7cb6ed09468a052",
+    "previous_final_invoice_completeness_gate": "superseded by explicit user instruction to match upstream",
+    "provider_invoice_accuracy_claimed": false,
+    "historical_signed_charges_remain_immutable": true,
+    "delayed_unobserved_cost_risk": "operator",
+    "missing_usage_is_zero": false,
+    "new_reconciliation_service_required": false,
+    "runtime_successor_status": "local candidate; deployment not established by this document",
+    "evidence": "PD-openrouter-ethereum-parity.json"
+  },
+  "remaining_core": [
+    "E01 current public-profile zero-AUTH voluntary escape/finalize outcome",
+    "Selected OpenRouter parity runtime validation and deployment evidence",
+    "Final evidence/handoff for those outcomes"
+  ],
+  "no_new_actions": [
+    "paid inference",
+    "AUTH",
+    "wallet or custody mutation",
+    "host deployment",
+    "UI integration/build/publication",
+    "broad regression matrix"
+  ],
+  "source_sha256": {
+    "apps/clientd/internal/daemon/server.go": "571a8fb21399cd362f0b0817d5b63338c2f0e004957ab8bbffb2daa2db77175a",
+    "packages/sdk/src/clientd-bridge.ts": "2eacee6ef760122a27442d130e6acbd1c1538a851211c4f6af155a5fca935aba",
+    "packages/sdk/src/clientd-models.ts": "00ea4233e29fc0516f98f83bc6f47151a6583ba632a027893a2fe7ec79c18331",
+    "packages/sdk/src/control.ts": "db10d87155ce8f7716a88294507f5117d19d23d7018e5a1188d5e2c61754339f",
+    "packages/sdk/test/clientd.test.ts": "b3f317e8a665bee97f40c5e771589a0ce7c2c047a6264d08f8dbd84614c9172a",
+    "packages/sdk/test/control.test.ts": "3c05958042b3442a27e01d72151a441432b2db1c6ceaed9bffff094692b4f3aa",
+    "packages/sdk/test/chat.test.ts": "ea7a195db2a921261aa23f21ff6c543ab641b93505bf57b57001a6a459917563",
+    "docs/specs/api-proxy.md": "77a7b925a7332af7bd2a008f34fd52779fd7be597dab806c4cc3375493c233cc",
+    "services/control/PROVIDERS.md": "3437137b1af196c4892a7dee05a4696e2224edaf85fb73cda5946594a62149fd",
+    "services/control/src/direct/runtime.rs": "846157a9429fc4fd6e9dba3db3973c43323538670e4592fc1ed8d7c16a2efce9",
+    "services/control/src/provider_runtime.rs": "50f17d018bb7c7e95e733085ff8356e1787149b8fcdfdb40ef53afe863643e93",
+    "services/control/src/ledger.rs": "1ad42fc08c482adcae327084c9485e5b2816a66f5d811f86269d2fb371c0f994",
+    "services/control/src/receipts.rs": "7205be2eed4598fa5b75551a997ddedf0e79f735ce17452e37d38ab190ee69d0"
+  },
+  "evidence_sha256": {
+    "docs/evidence/PD-native-public-N01.json": "ba6ba3d41a43122a88d21f5d1608c2ae5a46b2b2b946493fa61e171da518374b",
+    "docs/evidence/PD-native-public-N02-N03.json": "453a4df975dc367d131e666712c432fc58109f62b385eee858b5cd7d53113fad",
+    "docs/evidence/PD-native-public-N04.json": "50986be91f81ddf6a44bdcfe27ff2e4b0e739bc038532c6539cb22bd0d6de5f2",
+    "docs/evidence/PD-public-readiness-deployment.json": "8db0764d56b3324838d229c092feedfa7974e9996c8ebde4bccdaaa998614ca9",
+    "docs/evidence/PD-N01-service-recovery.json": "64885d8780fd8420dd9c1f40facf6b49be01b22a86531e5116de364d403d4625",
+    "docs/evidence/PD-N01-backup-independent-verify.json": "db4604fc1316a13a1349eca1e28d93ea4ebc251416b45877d001387cfca48529",
+    "docs/evidence/PD-openrouter-management-usage-limit.json": "1bfc4b159f8755cec8f8a2a29562f80fba14a2d16ac841d4b88f3877d12292e7",
+    "docs/evidence/PD-sdk3-publication.json": "020e6f5bf9026590edcb47064ecd60f9913cb1b29dfd9886f9bfe3fdd574364d",
+    "docs/evidence/I10-claude-code-configuration-results.json": "55ae258d955be6b1395ee38c0f366b702703f893fa92529bdc19ed6e8f7d922a",
+    "docs/evidence/I10-codex-configuration-results.json": "0c9073b73abcbcd4eb20690132e3a083d7e4d3e80f0ca202f9f0d4080461e0d3"
+  },
+  "private_audit_sha256": "55fdf98343acd6e0568460b8c45046142706fecb68e1ccab679e8409e1300b6f",
+  "prior_financial_assessment": {
+    "direct_final_usd_requirement_satisfied": false,
+    "historical_signed_charges_remain_immutable": true,
+    "delayed_operator_loss_receipt_contract_exists": true,
+    "production_caller_of_append_late_loss_receipt_found": false,
+    "two_equal_samples_prove_finality": false,
+    "direct_unknown_waiver_automatically_allowed": false,
+    "judgment": "A core accounting contract/implementation gap remains. A bounded-preview disclosure does not itself satisfy direct final-USD metering. Require authoritative completeness/accounting behavior or an explicitly reviewed compatible operator-loss contract and implementation; no policy is selected here.",
+    "sources": [
+      "docs/specs/api-proxy.md sections 6, 8, 9",
+      "services/control/PROVIDERS.md stabilization warning",
+      "services/control/src/direct/runtime.rs DirectRuntime::reconcile",
+      "services/control/src/provider_runtime.rs advance_direct",
+      "services/control/src/ledger.rs append_late_loss_receipt"
+    ]
+  },
+  "source_sha256_scope": "Retained initial audit source snapshot; not a claim that the new runtime candidate has these bytes.",
+  "checklist_reconciliation": {
+    "scope": "Existing evidence only; same-host isolated installation, not pristine OS; no new action or test",
+    "newly_checked": [
+      "PD01 public-route independent-installation scope",
+      "PD01 specific readiness capability behavior",
+      "PD05 advertised streaming with local terminal/cancellation guards",
+      "PD05 immutable price/cap and ordinary-consumer credential boundary",
+      "PD06 complete funding/access instructions",
+      "PD07 isolated public-input install/setup",
+      "PD10 reproducible public setup and exact verified-combination reporting"
+    ],
+    "still_unchecked_core": [
+      "PD06 funding/error recovery while E01 operation remains unresolved",
+      "PD10 final linked publication after E01 and actual parity deployment"
+    ],
+    "deferred": [
+      "PD08 funded demo/Phantom",
+      "pristine OS and additional platforms",
+      "long-term qualification"
+    ],
+    "current_service_observation": "2026-10-08T16:27:37Z: primary RPC429/indexer503; recovery underway, no E01 completion claim",
+    "evidence": [
+      "PD-native-public-N01.json",
+      "PD-native-public-N02-N03.json",
+      "PD-native-public-N04.json",
+      "PD-public-readiness-candidate.json",
+      "PD-public-readiness-deployment.json",
+      "PD-sdk3-publication.json",
+      "PD-public-signature-status-route.json"
+    ]
+  }
+}

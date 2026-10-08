@@ -487,7 +487,7 @@ export async function startUiHost(options: HostOptions) {
           assert.ok(Number.isSafeInteger(fee?.value) && fee.value >= 0 && fee.value <= 10_000);
           json.params[1] = {encoding: 'base64', skipPreflight: false, preflightCommitment: preparationCommitment, maxRetries: 0};
         }
-        if (json.method === 'getTransaction' && historyRpc) {
+        if (historyRpc && (json.method === 'getTransaction' || json.method === 'getSignatureStatuses')) {
           // Explicit history routing, with a fresh Devnet pin check. Failure is
           // never absence, and neither endpoint is retried or substituted.
           assert.equal(await callRpc('getGenesisHash', [], historyRpc, signal), GENESIS);

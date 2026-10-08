@@ -175,19 +175,6 @@ impl DirectRuntime {
         }
         if checkpoint.usage.is_none() {
             let now = now_seconds();
-            if let DirectConfig::Openrouter {
-                settlement_grace_seconds,
-                ..
-            } = self.adapter.config
-            {
-                if checkpoint
-                    .observation
-                    .as_ref()
-                    .is_some_and(|o| now < o.observed_at.saturating_add(settlement_grace_seconds))
-                {
-                    return Ok(None);
-                }
-            }
             let usage = self
                 .adapter
                 .read_usage(
@@ -199,33 +186,24 @@ impl DirectRuntime {
                 .await?;
             let Some(usage) = usage else { return Ok(None) };
             if matches!(self.adapter.config, DirectConfig::Openrouter { .. }) {
-                let stable = checkpoint
-                    .observation
-                    .as_ref()
-                    .is_some_and(|o| o.usage.provider_reported_usd == usage.provider_reported_usd);
-                if !stable {
-                    if let Some(prior) = &checkpoint.observation {
-                        ensure!(
-                            decimal_cmp(
-                                &usage.provider_reported_usd,
-                                &prior.usage.provider_reported_usd
-                            ) != std::cmp::Ordering::Less,
-                            "direct usage decreased during reconciliation"
-                        );
-                    }
-                    let previous = checkpoint.clone();
-                    checkpoint.observation = Some(UsageObservation {
-                        observed_at: now,
-                        usage,
-                    });
-                    save(ledger, id, Some(&previous), &checkpoint).await?;
-                    return Ok(None);
+                // Retain historical observations without allowing a counter
+                // regression. New retirements capture one post-grace sample,
+                // matching the upstream OpenRouter retirement policy.
+                if let Some(prior) = &checkpoint.observation {
+                    ensure!(
+                        decimal_cmp(
+                            &usage.provider_reported_usd,
+                            &prior.usage.provider_reported_usd
+                        ) != std::cmp::Ordering::Less,
+                        "direct usage decreased during reconciliation"
+                    );
                 }
             }
             let previous = checkpoint.clone();
             checkpoint.usage = Some(usage);
-            // Critical ordering: exact final USD/evidence is durable BEFORE
-            // deletion removes provider-side usage and a lost response can occur.
+            // Persist the selected management-counter observation BEFORE
+            // deletion or a lost response. Provider accounting completeness
+            // after the configured grace remains an operator assumption.
             save(ledger, id, Some(&previous), &checkpoint).await?;
         }
         if !checkpoint.deleted {

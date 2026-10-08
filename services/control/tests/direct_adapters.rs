@@ -163,19 +163,19 @@ fn intent() -> IssueIntent {
 #[tokio::test]
 async fn openrouter_exact_decimal_lease_and_retirement_order() {
     let state = Shared::default();
-    let (_dir, adapter, task) = openrouter_fixture(state.clone(), 60).await;
+    let (_dir, adapter, task) = openrouter_fixture(state.clone(), 5).await;
     let intent = intent();
     let key = adapter.create_key(&intent).await.unwrap();
     adapter.verify_created(&key).await.unwrap();
     assert_eq!(key.runtime_key, "runtime-key-canary");
     adapter.disable_key(&key.reference).await.unwrap();
     assert!(adapter
-        .read_usage(&intent, &key.reference, 100, 159)
+        .read_usage(&intent, &key.reference, 100, 104)
         .await
         .unwrap()
         .is_none());
     let usage = adapter
-        .read_usage(&intent, &key.reference, 100, 160)
+        .read_usage(&intent, &key.reference, 100, 105)
         .await
         .unwrap()
         .unwrap();
@@ -260,6 +260,33 @@ fn provider_config_rejects_insecure_origins_and_credentials() {
             true
         )
         .is_err());
+    }
+}
+
+#[test]
+fn openrouter_production_grace_accepts_upstream_default_and_explicit_longer_wait() {
+    let (_dir, path) = credential();
+    for (grace, valid) in [
+        (0, false),
+        (4, false),
+        (5, true),
+        (60, true),
+        (86_401, false),
+    ] {
+        assert_eq!(
+            DirectAdapter::new(
+                DirectConfig::Openrouter {
+                    api_base: "https://openrouter.ai/api/v1".into(),
+                    credential_file: path.clone(),
+                    inference_base: "https://openrouter.ai/api/v1".into(),
+                    settlement_grace_seconds: grace,
+                },
+                false,
+            )
+            .is_ok(),
+            valid,
+            "grace={grace}",
+        );
     }
 }
 
@@ -540,7 +567,6 @@ async fn direct_issuance_starts_lease_after_wait_and_preserves_recovery_intent()
         .unwrap()
         .is_none());
     ledger.close(id).await.unwrap();
-    assert!(runtime.reconcile(&ledger, id).await.unwrap().is_none());
     assert!(runtime.reconcile(&ledger, id).await.unwrap().is_some());
     let recovered: Checkpoint =
         serde_json::from_value(ledger.direct_checkpoint(id).await.unwrap().unwrap()).unwrap();
@@ -567,7 +593,7 @@ async fn direct_ledger_persists_final_usage_before_ambiguous_delete_and_restart(
         ..Default::default()
     }));
     let (_dir, adapter, task) = openrouter_fixture(state.clone(), 0).await;
-    let runtime = DirectRuntime::new(adapter);
+    let runtime = DirectRuntime::new(adapter.clone());
     let (ledger, url, identity) = direct_ledger().await;
     let intent = reserve_direct(&ledger).await;
     let id = intent.request_id;
@@ -583,21 +609,24 @@ async fn direct_ledger_persists_final_usage_before_ambiguous_delete_and_restart(
         .is_none());
     assert_eq!(ledger.session(id).await.unwrap().state, "ACTIVE");
     ledger.close(id).await.unwrap();
-    assert!(runtime.reconcile(&ledger, id).await.unwrap().is_none()); // first stable-usage observation
     assert!(runtime.reconcile(&ledger, id).await.is_err()); // provider deleted; DELETE response lost
     let checkpoint = ledger.direct_checkpoint(id).await.unwrap().unwrap();
     assert_eq!(checkpoint["usage"]["provider_reported_usd"], "0.0000000011");
     assert_eq!(checkpoint["deleted"], false);
+    assert!(checkpoint["observation"].is_null());
     let dumped = checkpoint.to_string();
     assert!(!dumped.contains("runtime-key-canary"));
     assert!(!dumped.contains("management-secret"));
     let before = state.lock().unwrap().events.clone();
+    assert_eq!(before.iter().filter(|e| *e == "usage").count(), 1);
+    drop(runtime);
     drop(ledger);
     // Give the closed client connection its completion turn before obtaining its lock.
     tokio::task::yield_now().await;
     let ledger = zkapi_control::ledger::Ledger::connect(&url, &identity)
         .await
         .unwrap();
+    let runtime = DirectRuntime::new(adapter);
     let finalized = runtime.reconcile(&ledger, id).await.unwrap().unwrap();
     assert_eq!(finalized.usage.observed_nano, "2");
     let events = &state.lock().unwrap().events;
@@ -624,7 +653,6 @@ async fn direct_ledger_unknown_recovery_never_reissues_or_returns_plaintext() {
         .unwrap()
         .is_none());
     assert_eq!(ledger.session(id).await.unwrap().state, "ISSUANCE_UNKNOWN");
-    assert!(runtime.reconcile(&ledger, id).await.unwrap().is_none());
     assert!(runtime.reconcile(&ledger, id).await.unwrap().is_some());
     assert_eq!(ledger.session(id).await.unwrap().state, "DRAINING");
     let events = &state.lock().unwrap().events;
@@ -664,17 +692,16 @@ async fn direct_ledger_late_issuance_after_close_is_drained() {
     assert!(result.is_err());
     assert_eq!(ledger.session(id).await.unwrap().state, "DRAINING");
     assert!(ledger.provider_key_ref(id).await.unwrap().is_some());
-    assert!(runtime.reconcile(&ledger, id).await.unwrap().is_none());
     assert!(runtime.reconcile(&ledger, id).await.unwrap().is_some());
     task.abort();
 }
 
 #[tokio::test]
 #[ignore = "requires isolated PostgreSQL"]
-async fn direct_usage_growth_restarts_stabilization_and_subnano_regression_is_rejected() {
+async fn historical_observation_is_preserved_and_subnano_regression_is_rejected() {
     let state = Shared::default();
     let (_dir, adapter, task) = openrouter_fixture(state.clone(), 0).await;
-    let runtime = DirectRuntime::new(adapter);
+    let runtime = DirectRuntime::new(adapter.clone());
     let (ledger, _url, _identity) = direct_ledger().await;
     let intent = reserve_direct(&ledger).await;
     let id = intent.request_id;
@@ -683,21 +710,129 @@ async fn direct_usage_growth_restarts_stabilization_and_subnano_regression_is_re
         .await
         .unwrap();
     ledger.close(id).await.unwrap();
-    assert!(runtime.reconcile(&ledger, id).await.unwrap().is_none());
+    // Seed the exact old checkpoint shape: a disabled key with an observation,
+    // but no captured usage. Its evidence remains append-only across upgrade.
+    let old = ledger.direct_checkpoint(id).await.unwrap().unwrap();
+    let mut historical: Checkpoint = serde_json::from_value(old.clone()).unwrap();
+    let reference = historical.reference.as_ref().unwrap();
+    adapter.disable_key(reference).await.unwrap();
+    historical.disabled_at = Some(now());
+    historical.observation = Some(UsageObservation {
+        observed_at: now(),
+        usage: adapter
+            .read_usage(&historical.intent, reference, 0, now())
+            .await
+            .unwrap()
+            .unwrap(),
+    });
+    let historical_value = serde_json::to_value(&historical).unwrap();
+    ledger
+        .save_direct_checkpoint(id, Some(&old), &historical_value)
+        .await
+        .unwrap();
     state.lock().unwrap().usage_raw = Some(
         r#"{"data":{"hash":"provider-hash","disabled":true,"usage":0.00000000105,"byok_usage":0}}"#
             .into(),
     );
     assert!(runtime.reconcile(&ledger, id).await.is_err());
     assert!(!state.lock().unwrap().deleted);
+    assert_eq!(
+        ledger.direct_checkpoint(id).await.unwrap().unwrap(),
+        historical_value
+    );
     state.lock().unwrap().usage_raw = Some(
         r#"{"data":{"hash":"provider-hash","disabled":true,"usage":0.0000000021,"byok_usage":0}}"#
             .into(),
     );
-    assert!(runtime.reconcile(&ledger, id).await.unwrap().is_none());
-    assert!(!state.lock().unwrap().deleted);
     let finalization = runtime.reconcile(&ledger, id).await.unwrap().unwrap();
     assert_eq!(finalization.usage.provider_reported_usd, "0.0000000021");
     assert_eq!(finalization.usage.observed_nano, "3");
+    let final_checkpoint = ledger.direct_checkpoint(id).await.unwrap().unwrap();
+    assert_eq!(
+        final_checkpoint["observation"],
+        historical_value["observation"]
+    );
+    task.abort();
+}
+
+#[tokio::test]
+#[ignore = "requires isolated PostgreSQL"]
+async fn direct_openrouter_captures_one_post_grace_sample_including_zero() {
+    for (usd, nano) in [("0", "0"), ("0.000001234", "1234")] {
+        let state = Arc::new(Mutex::new(Fixture {
+            usage_raw: Some(format!(
+                r#"{{"data":{{"hash":"provider-hash","disabled":true,"usage":{usd},"byok_usage":0}}}}"#
+            )),
+            ..Default::default()
+        }));
+        let (_dir, adapter, task) = openrouter_fixture(state.clone(), 0).await;
+        let runtime = DirectRuntime::new(adapter);
+        let (ledger, _url, _identity) = direct_ledger().await;
+        let intent = reserve_direct(&ledger).await;
+        let id = intent.request_id;
+        runtime
+            .issue(&ledger, intent, Uuid::new_v4(), || async { Ok(()) })
+            .await
+            .unwrap()
+            .unwrap();
+        ledger.close(id).await.unwrap();
+        let finalization = runtime.reconcile(&ledger, id).await.unwrap().unwrap();
+        assert_eq!(finalization.usage.provider_reported_usd, usd);
+        assert_eq!(finalization.usage.observed_nano, nano);
+        let checkpoint = ledger.direct_checkpoint(id).await.unwrap().unwrap();
+        assert!(checkpoint["observation"].is_null());
+        assert_eq!(checkpoint["deleted"], true);
+        assert_eq!(
+            checkpoint["usage"],
+            serde_json::to_value(&finalization.usage).unwrap()
+        );
+        assert_eq!(
+            finalization.stop_evidence,
+            zkapi_control::wire::sha256(&serde_jcs::to_vec(&checkpoint).unwrap())
+        );
+        assert_eq!(
+            state.lock().unwrap().events,
+            ["create", "disable", "usage", "delete"]
+        );
+        // Retrying completed retirement reuses durable usage, including zero.
+        assert_eq!(
+            runtime
+                .reconcile(&ledger, id)
+                .await
+                .unwrap()
+                .unwrap()
+                .stop_evidence,
+            finalization.stop_evidence
+        );
+        assert_eq!(
+            state.lock().unwrap().events,
+            ["create", "disable", "usage", "delete"]
+        );
+        task.abort();
+    }
+}
+
+#[tokio::test]
+#[ignore = "requires isolated PostgreSQL"]
+async fn direct_openrouter_before_grace_neither_reads_usage_nor_deletes() {
+    let state = Shared::default();
+    let (_dir, adapter, task) = openrouter_fixture(state.clone(), 5).await;
+    let runtime = DirectRuntime::new(adapter);
+    let (ledger, _url, _identity) = direct_ledger().await;
+    let intent = reserve_direct(&ledger).await;
+    let id = intent.request_id;
+    runtime
+        .issue(&ledger, intent, Uuid::new_v4(), || async { Ok(()) })
+        .await
+        .unwrap()
+        .unwrap();
+    ledger.close(id).await.unwrap();
+    assert!(runtime.reconcile(&ledger, id).await.unwrap().is_none());
+    let checkpoint = ledger.direct_checkpoint(id).await.unwrap().unwrap();
+    assert!(checkpoint["disabled_at"].is_u64());
+    assert!(checkpoint["usage"].is_null());
+    assert!(checkpoint["observation"].is_null());
+    assert_eq!(checkpoint["deleted"], false);
+    assert_eq!(state.lock().unwrap().events, ["create", "disable"]);
     task.abort();
 }

@@ -14,11 +14,13 @@ use zkapi_indexer::Position;
 
 #[path = "journal_segmented.rs"]
 mod segmented;
+pub use segmented::ArchiveCheckpointState;
 pub use segmented::MigrationReport;
 pub use segmented::ReadOnlyArchive;
 
 /// Small committed archive cursor. Full v2 block payloads stay on disk.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct ArchiveTail {
     pub slot: u64,
     pub blockhash: Hash,
@@ -548,6 +550,23 @@ impl Journal {
         }
         Ok(())
     }
+    /// Resume after an authenticated runtime checkpoint. The containing and
+    /// subsequent chunks are still hashed before any block is delivered.
+    pub fn replay_archive_after(
+        &self,
+        slot: u64,
+        mut visit: impl FnMut(&zkapi_indexer::FinalizedBlock) -> Result<()>,
+    ) -> Result<()> {
+        if let Some(archive) = &self.segmented {
+            return archive.replay_after(&self.directory, slot, visit);
+        }
+        for block in &self.state.archive {
+            if block.slot > slot {
+                visit(block)?;
+            }
+        }
+        Ok(())
+    }
     pub fn archive_block_time(&self, slot: u64) -> Result<Option<u64>> {
         if let Some(archive) = &self.segmented {
             return archive.block_time(&self.directory, slot);
@@ -640,29 +659,58 @@ impl Journal {
         })
     }
     pub fn open(directory: &Path, pool: Hash) -> Result<Self> {
+        Self::open_checkpointed(directory, pool, None).map(|(journal, _)| journal)
+    }
+    pub fn open_with_checkpoint(
+        directory: &Path,
+        pool: Hash,
+        binding: Hash,
+    ) -> Result<(Self, Option<ArchiveCheckpointState>)> {
+        Self::open_checkpointed(directory, pool, Some(binding))
+    }
+    fn open_checkpointed(
+        directory: &Path,
+        pool: Hash,
+        binding: Option<Hash>,
+    ) -> Result<(Self, Option<ArchiveCheckpointState>)> {
         let lock = lock(directory)?;
         let (envelope, _, _) = segmented::read_source(directory)?;
         if envelope.state.pool != pool {
             return Err(Error::Conflict("journal checksum/version/pool"));
         }
+        // Current jobs, signed attempts, transport and unknown outcomes always
+        // come from the authoritative journal, never the optional replay cache.
+        envelope.state.validate_job_identities()?;
+        let mut restored = None;
         let archive = match (envelope.state.version, &envelope.segmented) {
             (1, None) if envelope.digest == state_digest(&envelope.state)? => None,
             (2, Some(head))
                 if envelope.state.archive.is_empty()
                     && envelope.digest == segmented::digest(&envelope.state, head)? =>
             {
-                Some(segmented::load(directory, pool, head.clone())?)
+                let cached = binding.and_then(|binding| {
+                    segmented::load_checkpoint(directory, pool, head.clone(), binding).ok()
+                });
+                match cached {
+                    Some((archive, state)) => {
+                        restored = Some(state);
+                        Some(archive)
+                    }
+                    None => Some(segmented::load(directory, pool, head.clone())?),
+                }
             }
             _ => return Err(Error::Conflict("journal checksum/version/pool")),
         };
-        envelope.state.validate_job_identities()?;
-        Ok(Self {
-            directory: directory.into(),
-            _lock: lock,
-            state: envelope.state,
-            segmented: archive,
-            poisoned: false,
-        })
+        Ok((
+            Self {
+                directory: directory.into(),
+                _lock: lock,
+                state: envelope.state,
+                segmented: archive,
+                poisoned: false,
+            },
+            restored,
+        ))
     }
     pub fn jobs(&self) -> impl Iterator<Item = (&str, &Job)> {
         self.state.jobs.iter().map(|(id, j)| (id.as_str(), j))

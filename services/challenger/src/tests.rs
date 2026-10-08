@@ -808,6 +808,23 @@ fn finalized_scanner_replays_actual_sbf_archive_and_rejects_account_cut_mismatch
     let state = scan.replay_state().unwrap();
     let pool_account = &cut["accounts"][&trust.pool.pool];
     let view = scan.reconcile(&state, pool_account).unwrap();
+    let checkpoint_bytes = scan.checkpoint_bytes().unwrap();
+    let mut restored = scan::Scanner::restore_checkpoint(
+        trust.clone(),
+        &checkpoint_bytes,
+        sha(&checkpoint_bytes),
+        ArchiveTail {
+            slot: state.slot,
+            blockhash: state.blockhash,
+            block_time: view.now,
+        },
+    )
+    .unwrap();
+    // Complete Scanner generations survive restart and are not inferred from
+    // the current Pending account alone. Fresh account reconciliation remains required.
+    let restored_view = restored.reconcile(&state, pool_account).unwrap();
+    assert_eq!(restored_view.generations, view.generations);
+    assert_eq!(restored_view.state, view.state);
     let logless_view = without_logs.reconcile(&state, pool_account).unwrap();
     assert_eq!(logless_view.generations, view.generations);
     assert_eq!(logless_view.state, view.state);
@@ -1416,5 +1433,159 @@ fn paused_error_display_retains_static_categories_and_redacts_nested_details() {
         assert_eq!(displayed, expected);
         assert!(!displayed.contains("PRIVATE_"));
         assert!(!displayed.contains("https://"));
+    }
+}
+
+#[test]
+fn private_scanner_checkpoint_roundtrip_and_binding_refusals() {
+    let (trust, _) = trust_and_manifest();
+    let mut scanner = scan::Scanner::new(trust.clone());
+    let first = zkapi_indexer::FinalizedBlock {
+        finalized: true,
+        slot: 3,
+        parent_slot: 2,
+        blockhash: [3; 32],
+        previous_blockhash: [2; 32],
+        block_time: 100,
+        transactions: Vec::new(),
+    };
+    scanner.apply_finalized(&first).unwrap();
+    let bytes = scanner.checkpoint_bytes().unwrap();
+    let anchor = ArchiveTail::from(&first);
+    let mut restored =
+        scan::Scanner::restore_checkpoint(trust.clone(), &bytes, sha(&bytes), anchor).unwrap();
+    assert_eq!(
+        restored.replay_state().unwrap(),
+        scanner.replay_state().unwrap()
+    );
+    let second = zkapi_indexer::FinalizedBlock {
+        slot: 5,
+        parent_slot: 3,
+        blockhash: [5; 32],
+        previous_blockhash: [3; 32],
+        block_time: 102,
+        ..first.clone()
+    };
+    restored.apply_finalized(&second).unwrap();
+    scanner.apply_finalized(&second).unwrap();
+    assert_eq!(
+        restored.replay_state().unwrap(),
+        scanner.replay_state().unwrap()
+    );
+    assert!(scan::Scanner::restore_checkpoint(trust.clone(), &bytes, [0; 32], anchor).is_err());
+    assert!(scan::Scanner::restore_checkpoint(
+        trust.clone(),
+        &bytes,
+        sha(&bytes),
+        ArchiveTail {
+            block_time: 101,
+            ..anchor
+        }
+    )
+    .is_err());
+    assert!(scan::Scanner::restore_checkpoint(
+        trust.clone(),
+        &bytes,
+        sha(&bytes),
+        ArchiveTail {
+            blockhash: [8; 32],
+            ..anchor
+        }
+    )
+    .is_err());
+    let mut wrong = trust.clone();
+    wrong.manifest_hash = [8; 32];
+    assert!(scan::Scanner::restore_checkpoint(wrong, &bytes, sha(&bytes), anchor).is_err());
+    let mut oversized = bytes;
+    oversized[8..16].copy_from_slice(&u64::MAX.to_le_bytes());
+    assert!(scan::Scanner::restore_checkpoint(trust, &oversized, sha(&oversized), anchor).is_err());
+}
+
+#[test]
+fn runtime_restart_saves_private_checkpoint_without_mutating_unknown_attempt() {
+    let temp = tempfile::tempdir().unwrap();
+    let root = temp.path().canonicalize().unwrap();
+    let (trust, manifest) = trust_and_manifest();
+    let manifest_path = root.join("manifest.json");
+    std::fs::write(&manifest_path, serde_json::to_vec(&manifest).unwrap()).unwrap();
+    let config = runtime::Config {
+        manifest: manifest_path,
+        manifest_sha256: hex::encode(trust.manifest_hash),
+        devnet: None,
+        rpc_url: "http://127.0.0.1:1".into(),
+        database_dsn_file: root.join("absent-dsn"),
+        start_slot: 1,
+        journal_directory: root.join("journal"),
+        tree_pk: root.join("absent-pk"),
+        node: root.join("absent-node"),
+        transport_bridge: root.join("absent-bridge"),
+        transport_bridge_sha256: "00".repeat(32),
+        fee_key_file: root.join("absent-key"),
+        payer: zkapi_indexer::snapshot::key([7; 32]),
+        poll_seconds: 1,
+        alert_sink_directory: None,
+        priority_fee: None,
+        archive_batch: None,
+    };
+    let evidence = evidence(&trust);
+    let prepared =
+        PreparedChallenge::from_finalized(&view(trust.clone(), &evidence), 0, evidence.clone())
+            .unwrap();
+    let id = prepared.job.id();
+    let bytes = payload(&prepared, &trust);
+    let digest = sha(&bytes);
+    let mut journal = Journal::initialize(&config.journal_directory, trust.pool()).unwrap();
+    journal
+        .enqueue_cut(checkpoint(3), vec![(prepared.job, evidence)], 10)
+        .unwrap();
+    journal
+        .save_payload(
+            &id,
+            Payload {
+                bytes,
+                digest,
+                buffer: [9; 32],
+                checkpoint: checkpoint(3),
+            },
+        )
+        .unwrap();
+    journal.save_v0_attempt(&id, Attempt {
+        signature: "private-cache-unknown".into(), signed_bytes: vec![1, 2, 3], stage: Stage::Execute,
+        payload_digest: digest, buffer: [9; 32], outcome: Outcome::Unknown,
+    }, json!({"signature":"private-cache-unknown","wireHex":"010203","planDigest":hex::encode(digest),
+        "buffer":zkapi_indexer::snapshot::key([9; 32]),"kind":"execute","stepIndex":3,
+        "plan":{"operation":"challenge_escape"}})).unwrap();
+    for slot in 1..=3 {
+        journal
+            .append_archive(zkapi_indexer::FinalizedBlock {
+                finalized: true,
+                slot,
+                parent_slot: slot - 1,
+                blockhash: [slot as u8; 32],
+                previous_blockhash: [(slot - 1) as u8; 32],
+                block_time: slot,
+                transactions: Vec::new(),
+            })
+            .unwrap();
+    }
+    drop(journal);
+    Journal::migrate_v1_to_segmented(&config.journal_directory, trust.pool()).unwrap();
+    let before = std::fs::read(config.journal_directory.join("journal.json")).unwrap();
+    for _ in 0..2 {
+        let runtime = runtime::Runtime::open(config.clone(), false).unwrap();
+        assert_eq!(runtime.journal.archive_len(), 3);
+        assert_eq!(
+            runtime.journal.jobs().next().unwrap().1.attempts[0].outcome,
+            Outcome::Unknown
+        );
+        assert!(config
+            .journal_directory
+            .join("archive-runtime-checkpoint-v1")
+            .is_file());
+        drop(runtime);
+        assert_eq!(
+            std::fs::read(config.journal_directory.join("journal.json")).unwrap(),
+            before
+        );
     }
 }

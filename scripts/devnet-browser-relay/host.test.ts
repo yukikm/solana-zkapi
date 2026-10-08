@@ -272,14 +272,14 @@ test('compact relay accepts exact SDK wire only for authenticated compact build 
   assert.equal(forwarded.length, 1);
 });
 
-test('explicit history endpoint receives only transaction reads after its own Devnet pin; primary reads remain primary', async t => {
+test('explicit history endpoint receives transaction and signature status reads after its own Devnet pin; other reads remain primary', async t => {
   const output = await mkdtemp(join(tmpdir(), 'zkapi-ui-history-')); t.after(() => rm(output, {recursive: true, force: true}));
   for (const file of ['index.html', 'app.js', 'style.css']) await writeFile(join(output, file), 'fixture');
   const primary: any[] = [], history: any[] = [];
   let historyResult: unknown = null;
   const host = await startUiHost({port: 0, output,
     rpc: async data => { const json = JSON.parse(data.toString()); primary.push(json); return {status: 200, bytes: Buffer.from(JSON.stringify({jsonrpc: '2.0', id: json.id, result: 'primary'}))}; },
-    historyRpc: async data => { const json = JSON.parse(data.toString()); history.push(json); assert.ok(['getGenesisHash','getTransaction'].includes(json.method)); return {status: 200, bytes: Buffer.from(JSON.stringify({jsonrpc: '2.0', id: json.id, result: json.method === 'getGenesisHash' ? GENESIS : historyResult}))}; }}); t.after(() => host.close());
+    historyRpc: async data => { const json = JSON.parse(data.toString()); history.push(json); assert.ok(['getGenesisHash','getTransaction','getSignatureStatuses'].includes(json.method)); return {status: 200, bytes: Buffer.from(JSON.stringify({jsonrpc: '2.0', id: json.id, result: json.method === 'getGenesisHash' ? GENESIS : historyResult}))}; }}); t.after(() => host.close());
   const post = (value: unknown) => fetch(host.origin + '/rpc', {method: 'POST', headers: {origin: host.origin}, body: JSON.stringify(value)});
   const query = {jsonrpc: '2.0', id: 'saved-signature-check', method: 'getTransaction', params: ['fixture-signature', {commitment: 'finalized', maxSupportedTransactionVersion: 0}]};
   assert.deepEqual(await (await post(query)).json(), {jsonrpc: '2.0', id: query.id, result: null});
@@ -287,43 +287,58 @@ test('explicit history endpoint receives only transaction reads after its own De
   historyResult = {slot: 123, meta: {err: null}, transaction: {signatures: ['fixture-signature']}};
   assert.deepEqual(await (await post(query)).json(), {jsonrpc: '2.0', id: query.id, result: historyResult});
   assert.deepEqual(history.map(value => value.method), ['getGenesisHash','getTransaction','getGenesisHash','getTransaction'], 'genesis is checked for each history read');
-  for (const method of ['getGenesisHash','getSignatureStatuses','getBlockHeight','getLatestBlockhash','getAccountInfo','getBalance']) {
+  const statusQuery = {jsonrpc: '2.0', id: 'saved-status-check', method: 'getSignatureStatuses', params: [['fixture-signature'], {searchTransactionHistory: true}]};
+  for (const value of [null, {slot: 123, err: null, confirmationStatus: 'finalized'}]) {
+    historyResult = {context: {slot: 125}, value: [value]};
+    assert.deepEqual(await (await post(statusQuery)).json(), {jsonrpc: '2.0', id: statusQuery.id, result: historyResult});
+    assert.deepEqual(history.at(-1), statusQuery, 'status signatures, search option and request ID remain exact');
+  }
+  assert.deepEqual(history.map(value => value.method), ['getGenesisHash','getTransaction','getGenesisHash','getTransaction','getGenesisHash','getSignatureStatuses','getGenesisHash','getSignatureStatuses']);
+  for (const method of ['getGenesisHash','getBlockHeight','getLatestBlockhash','getAccountInfo','getBalance']) {
     assert.equal((await (await post({...query, method, params: []})).json()).result, 'primary');
   }
-  assert.equal(primary.length, 6); assert.equal(history.length, 4);
+  assert.equal(primary.length, 5); assert.equal(history.length, 8);
   const ordinary = await startUiHost({port: 0, output, rpc: async data => { const json = JSON.parse(data.toString()); return {status: 200, bytes: Buffer.from(JSON.stringify({jsonrpc: '2.0', id: json.id, result: 'legacy-primary-history'}))}; }}); t.after(() => ordinary.close());
-  const response = await fetch(ordinary.origin + '/rpc', {method: 'POST', headers: {origin: ordinary.origin}, body: JSON.stringify(query)});
-  assert.equal((await response.json()).result, 'legacy-primary-history');
+  for (const value of [query, statusQuery]) {
+    const response = await fetch(ordinary.origin + '/rpc', {method: 'POST', headers: {origin: ordinary.origin}, body: JSON.stringify(value)});
+    assert.equal((await response.json()).result, 'legacy-primary-history');
+  }
 });
 
-test('history identity failures stop before transaction lookup and never fall back, retry or expose credentials', async t => {
+test('history identity failures stop before transaction or status lookup and never fall back, retry or expose credentials', async t => {
   const output = await mkdtemp(join(tmpdir(), 'zkapi-ui-history-pin-')); t.after(() => rm(output, {recursive: true, force: true}));
   for (const file of ['index.html', 'app.js', 'style.css']) await writeFile(join(output, file), 'fixture');
-  let fault = 'genesis', primary = 0, lookups = 0;
+  let fault = 'genesis', primary = 0, lookups = 0, genesisCalls = 0;
   const canary = 'PRIVATE_HISTORY_RPC_CREDENTIAL_CANARY';
   const host = await startUiHost({port: 0, output, rpc: async () => { primary++; throw Error(canary); },
-    historyRpc: async data => { const json = JSON.parse(data.toString()); if (json.method === 'getTransaction') lookups++;
+    historyRpc: async data => { const json = JSON.parse(data.toString()); if (json.method === 'getGenesisHash') genesisCalls++; else lookups++;
       if (fault === 'exception') throw Error(canary);
       return {status: fault === 'http' ? 503 : 200, bytes: Buffer.from(JSON.stringify({jsonrpc: '2.0', id: fault === 'id' ? 'wrong' : json.id,
         ...(fault === 'rpc' ? {error: {code: -32011, message: canary}} : {result: fault === 'genesis' ? 'another-cluster' : GENESIS})}))}; }}); t.after(() => host.close());
   for (fault of ['genesis','id','http','rpc','exception']) {
-    const response = await fetch(host.origin + '/rpc', {method: 'POST', headers: {origin: host.origin}, body: JSON.stringify({jsonrpc: '2.0', id: 7, method: 'getTransaction', params: ['saved']})});
-    assert.equal(response.status, 400, fault); assert.equal((await response.text()).includes(canary), false);
+    for (const method of ['getTransaction', 'getSignatureStatuses']) {
+      const response = await fetch(host.origin + '/rpc', {method: 'POST', headers: {origin: host.origin}, body: JSON.stringify({jsonrpc: '2.0', id: 7, method, params: method === 'getTransaction' ? ['saved'] : [['saved'], {searchTransactionHistory: true}]})});
+      assert.equal(response.status, 400, fault); assert.equal((await response.text()).includes(canary), false);
+    }
   }
-  assert.equal(primary, 0); assert.equal(lookups, 0);
+  assert.equal(primary, 0); assert.equal(lookups, 0); assert.equal(genesisCalls, 10, 'each failed request checks history identity only once');
 });
 
 test('history RPC and HTTP failures stay failures; only an actual successful null result represents absence', async t => {
   const output = await mkdtemp(join(tmpdir(), 'zkapi-ui-history-errors-')); t.after(() => rm(output, {recursive: true, force: true}));
   for (const file of ['index.html', 'app.js', 'style.css']) await writeFile(join(output, file), 'fixture');
-  let status = 200, calls = 0, primary = 0;
+  let status = 200, calls = 0, primary = 0, wrongId = false, genesisCalls = 0;
   const host = await startUiHost({port: 0, output, rpc: async () => { primary++; throw Error('primary must not be substituted'); },
-    historyRpc: async data => { const json = JSON.parse(data.toString()); if (json.method === 'getGenesisHash') return {status: 200, bytes: Buffer.from(JSON.stringify({jsonrpc:'2.0',id:json.id,result:GENESIS}))};
-      calls++; return {status, bytes: Buffer.from(JSON.stringify({jsonrpc:'2.0',id:json.id,error:{code:-32011,message:'PRIVATE_HISTORY_URL',data:{url:'PRIVATE_HISTORY_URL'}}}))}; }}); t.after(() => host.close());
-  const post = () => fetch(host.origin + '/rpc', {method:'POST',headers:{origin:host.origin},body:JSON.stringify({jsonrpc:'2.0',id:9,method:'getTransaction',params:['saved']})});
-  assert.deepEqual(await (await post()).json(), {jsonrpc:'2.0',id:9,error:{code:-32011,message:'configured RPC request failed'}});
-  status=429;const response=await post();assert.equal(response.status,429);assert.deepEqual(await response.json(),{error:'configured upstream unavailable'});
-  assert.equal(calls,2);assert.equal(primary,0);
+    historyRpc: async data => { const json = JSON.parse(data.toString()); if (json.method === 'getGenesisHash') { genesisCalls++; return {status: 200, bytes: Buffer.from(JSON.stringify({jsonrpc:'2.0',id:json.id,result:GENESIS}))}; }
+      calls++; return {status, bytes: Buffer.from(JSON.stringify({jsonrpc:'2.0',id:wrongId ? 'another-request' : json.id,error:{code:-32011,message:'PRIVATE_HISTORY_URL',data:{url:'PRIVATE_HISTORY_URL'}}}))}; }}); t.after(() => host.close());
+  const post = (method: string) => fetch(host.origin + '/rpc', {method:'POST',headers:{origin:host.origin},body:JSON.stringify({jsonrpc:'2.0',id:9,method,params:method === 'getTransaction' ? ['saved'] : [['saved'], {searchTransactionHistory:true}]})});
+  for (const method of ['getTransaction', 'getSignatureStatuses']) {
+    status = 200; wrongId = false;
+    assert.deepEqual(await (await post(method)).json(), {jsonrpc:'2.0',id:9,error:{code:-32011,message:'configured RPC request failed'}});
+    status = 429; const response = await post(method); assert.equal(response.status,429); assert.deepEqual(await response.json(),{error:'configured upstream unavailable'});
+    status = 200; wrongId = true; const mismatch = await post(method); assert.equal(mismatch.status,400); assert.equal((await mismatch.text()).includes('PRIVATE_HISTORY_URL'),false);
+  }
+  assert.equal(calls,6); assert.equal(genesisCalls,6); assert.equal(primary,0);
 });
 
 test('read-only host refuses permanent clearance; upstream HTTP/RPC error credentials never reach browser', async t => {

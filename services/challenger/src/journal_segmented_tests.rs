@@ -14,7 +14,7 @@ fn archive(journal: &Journal) -> Vec<FinalizedBlock> {
         .unwrap();
     blocks
 }
-fn block(slot: u64, bytes: usize) -> FinalizedBlock {
+pub(super) fn block(slot: u64, bytes: usize) -> FinalizedBlock {
     FinalizedBlock {
         finalized: true,
         slot,
@@ -71,7 +71,7 @@ fn read_head(root: &Path) -> (State, Head) {
     let (envelope, _, _) = read_source(root).unwrap();
     (envelope.state, envelope.segmented.unwrap())
 }
-fn migrated(count: u64) -> (tempfile::TempDir, Vec<FinalizedBlock>) {
+pub(super) fn migrated(count: u64) -> (tempfile::TempDir, Vec<FinalizedBlock>) {
     let root = tempfile::tempdir().unwrap();
     let blocks = seed(root.path(), count, 128);
     Journal::migrate_v1_to_segmented(root.path(), POOL).unwrap();
@@ -841,4 +841,58 @@ fn segmented_disk_cold_replay_memory_does_not_retain_growing_payload_history() {
         "{}",
         json!({"scope":"synthetic disk archive cold-open and ordered replay; not full-stack capacity", "measurements":reports})
     );
+}
+
+#[test]
+fn bounded_archive_json_matches_streaming_value_hash_and_byte_count() {
+    let temp = tempfile::tempdir().unwrap();
+    let path = temp.path().join("chunk.json");
+    let value = Chunk {
+        version: 2,
+        pool: POOL,
+        sequence: 1,
+        nonce: [8; 32],
+        previous: None,
+        blocks: vec![block(1, 1024), block(2, 2048)],
+    };
+    let mut bytes = serde_json::to_vec(&value).unwrap();
+    bytes.extend_from_slice(b" \n\t");
+    fs::write(&path, &bytes).unwrap();
+    let fast: (serde_json::Value, _, _) = read_json(regular(&path).unwrap()).unwrap();
+    let streaming: (serde_json::Value, _, _) = read_json_stream(regular(&path).unwrap()).unwrap();
+    assert_eq!(fast, streaming);
+    assert_eq!(fast.1, sha(&bytes));
+    assert_eq!(fast.2, bytes.len() as u64);
+}
+#[test]
+fn bounded_archive_json_keeps_strict_eof_and_malformed_rejection() {
+    let temp = tempfile::tempdir().unwrap();
+    let path = temp.path().join("chunk.json");
+    for bytes in [b"{}{}".as_slice(), b"{} trailing", b"{", b"[1,]", b"{}\0"] {
+        fs::write(&path, bytes).unwrap();
+        assert!(read_json::<serde_json::Value>(regular(&path).unwrap()).is_err());
+        assert!(read_json_stream::<serde_json::Value>(regular(&path).unwrap()).is_err());
+    }
+}
+#[test]
+fn oversized_archive_json_retains_streaming_fallback() {
+    let temp = tempfile::tempdir().unwrap();
+    let path = temp.path().join("legacy.json");
+    let mut file = create(&path).unwrap();
+    file.write_all(b"{\"retained\":true}").unwrap();
+    let padding = [b' '; 65536];
+    for _ in 0..CHUNK_BYTES / padding.len() as u64 {
+        file.write_all(&padding).unwrap();
+    }
+    file.sync_all().unwrap();
+    let expected_bytes = file.metadata().unwrap().len();
+    assert!(expected_bytes > CHUNK_BYTES);
+    drop(file);
+    let result: (serde_json::Value, _, _) = read_json(regular(&path).unwrap()).unwrap();
+    assert_eq!(result.0, serde_json::json!({"retained":true}));
+    assert_eq!(
+        (result.1, result.2),
+        fingerprint(regular(&path).unwrap()).unwrap()
+    );
+    assert_eq!(result.2, expected_bytes);
 }

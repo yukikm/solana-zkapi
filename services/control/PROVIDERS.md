@@ -117,12 +117,23 @@ repeated POST cannot recover plaintext or OA verification evidence. Verification
 evidence is never included in OpenRouter or proxy responses. Clients close and
 recover the existing session if independent OA verification fails, without key
 reissuance or a proxy fallback. They can close the saved management
-reference. Issuance uncertainty never creates a replacement key. OpenRouter is
-disabled, then exact USD is observed twice over the configured drain intervals,
-then final usage is checkpointed before deletion. This operational stabilization
-still requires live provider finality validation; it is not a mathematical
-finality guarantee. A missing key before final usage stays pending. OA final
-receipts follow its issuer's retirement lifecycle.
+reference. Issuance uncertainty never creates a replacement key. The selected
+OpenRouter policy follows [Ethereum zkAPI's retirement sequence](https://github.com/ethereum/zkapi/blob/045b444ea1b52538d1b40273c7cb6ed09468a052/crates/zkapi-serverd/src/processor_v2.rs#L1050-L1146):
+confirm disable, wait the configured grace, capture one valid management
+`usage + byok_usage` observation, durably checkpoint it, confirm deletion, and
+sign the capped immutable charge. Missing/unavailable usage stays pending; a
+delete retry reuses captured usage. Finalized sessions are never repriced.
+
+The grace covers in-flight calls and accounting propagation by operator
+assumption. It is not provider invoice finality: delayed/unobserved cost belongs
+to the operator and cannot increase a settled customer charge. An observed zero
+is valid, but neither zero nor repeated equal samples proves absence of external
+cost. Exact decimal arithmetic and cap/receipt guards remain unchanged. The
+[parity record](../../docs/evidence/PD-openrouter-ethereum-parity.md) currently
+labels the local successor as a candidate; it does not relabel the deployed
+historical two-sample implementation. Upstream defaults are grace 5 seconds and
+settlement polling 2 seconds; configured values are explicit operator choices.
+OA final receipts follow its issuer's separate retirement lifecycle.
 
 Proxy unknown usage is waived only during drain after the owner returned or was
 independently fenced. Old-epoch unquiesced attempts stop admission and settlement;

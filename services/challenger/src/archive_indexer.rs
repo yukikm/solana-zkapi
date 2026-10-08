@@ -8,7 +8,11 @@
 //! directory. The archive must already use v2; no migration/initialization is
 //! performed. Source corruption/rollback requires operator review and process
 //! restart; incomplete history remains unavailable with bounded polling.
-use crate::{bad, journal::ReadOnlyArchive, Result};
+use crate::{
+    bad,
+    journal::{ArchiveCheckpointState, ArchiveTail, ReadOnlyArchive},
+    sha, Hash, Result,
+};
 use serde::Deserialize;
 use std::{
     io::Read,
@@ -16,7 +20,7 @@ use std::{
 };
 use zkapi_indexer::{
     runtime::{self, ArchiveSourceResult, FinalizedArchiveSource},
-    FinalizedBlock,
+    FinalizedBlock, Indexer,
 };
 
 #[derive(Deserialize)]
@@ -26,7 +30,22 @@ pub struct Config {
     pub indexer: runtime::Config,
 }
 
-struct Source(ReadOnlyArchive);
+struct Source {
+    archive: ReadOnlyArchive,
+    directory: PathBuf,
+    checkpoint_path: PathBuf,
+    binding: Hash,
+    cached: Option<ArchiveCheckpointState>,
+}
+fn checkpoint_binding(config: &runtime::Config) -> Hash {
+    sha(&serde_json::to_vec(&serde_json::json!({
+        "domain": "zkapi-archive-indexer-replay-v1",
+        "program": config.program_id, "pool": config.pool,
+        "genesis": config.genesis_hash, "profile": config.circuit_profile_hash,
+        "start_slot": config.start_slot,
+    }))
+    .expect("private checkpoint binding"))
+}
 fn snapshot_destination(path: &Path) -> Result<PathBuf> {
     if !path.is_absolute()
         || path
@@ -73,17 +92,62 @@ fn separated_paths(config: &Config) -> Result<()> {
     Ok(())
 }
 impl FinalizedArchiveSource for Source {
+    fn restore_indexer(
+        &mut self,
+        program: Hash,
+        pool: Hash,
+    ) -> ArchiveSourceResult<Option<Indexer>> {
+        let Some(cache) = self.cached.take() else {
+            return Ok(None);
+        };
+        let restored = cache.tail.and_then(|tail| {
+            Indexer::restore_checkpoint(
+                &cache.bytes,
+                cache.sha256,
+                program,
+                pool,
+                tail.slot,
+                tail.blockhash,
+            )
+            .ok()
+        });
+        if restored.is_none() {
+            // A metadata cache without a valid complete runtime state must not
+            // bypass the original full history validation.
+            self.archive = ReadOnlyArchive::open(&self.directory, pool)?;
+        }
+        Ok(restored)
+    }
+    fn save_indexer(&self, index: &Indexer) -> ArchiveSourceResult<()> {
+        let state = index.replay_state()?;
+        let bytes = index.checkpoint_bytes()?;
+        let mut anchor = None;
+        self.archive.replay_range(state.slot, state.slot, |block| {
+            if block.slot != state.slot || block.blockhash != state.blockhash || anchor.is_some() {
+                return Err(bad("private index checkpoint anchor"));
+            }
+            anchor = Some(ArchiveTail::from(block));
+            Ok(())
+        })?;
+        self.archive.save_checkpoint(
+            &self.checkpoint_path,
+            self.binding,
+            &bytes,
+            anchor.ok_or_else(|| bad("private index checkpoint anchor absent"))?,
+        )?;
+        Ok(())
+    }
     fn refresh(&mut self) -> ArchiveSourceResult<()> {
-        self.0
+        self.archive
             .refresh()
             .map(|_| ())
             .map_err(|_| "local archive validation failed".into())
     }
     fn first(&self) -> Option<(u64, u64)> {
-        self.0.archive_first()
+        self.archive.archive_first()
     }
     fn tail(&self) -> Option<(u64, [u8; 32])> {
-        self.0
+        self.archive
             .archive_tail()
             .map(|tail| (tail.slot, tail.blockhash))
     }
@@ -93,7 +157,7 @@ impl FinalizedArchiveSource for Source {
         end: u64,
         visit: &mut dyn FnMut(&FinalizedBlock) -> ArchiveSourceResult<()>,
     ) -> ArchiveSourceResult<()> {
-        self.0
+        self.archive
             .replay_range(start, end, |block| {
                 visit(block).map_err(|_| bad("local archive indexer replay"))
             })
@@ -113,8 +177,26 @@ pub async fn run(path: &Path) -> Result<()> {
     separated_paths(&config)?;
     let pool = zkapi_control::wire::pubkey(&config.indexer.pool)
         .map_err(|_| bad("archive indexer pool"))?;
-    // Full cold validation completes before the HTTP listener or RPC exists.
-    let source = Source(ReadOnlyArchive::open(&config.archive_directory, pool)?);
+    // The filename cannot match the public digest.json snapshot route; archive
+    // storage creates it owner-only. Neither this file nor its payload is served.
+    let checkpoint_path = config
+        .indexer
+        .snapshots_directory
+        .join(".archive-runtime-checkpoint");
+    let binding = checkpoint_binding(&config.indexer);
+    let (archive, cached) = ReadOnlyArchive::open_with_checkpoint(
+        &config.archive_directory,
+        pool,
+        binding,
+        &checkpoint_path,
+    )?;
+    let source = Source {
+        archive,
+        directory: config.archive_directory.clone(),
+        checkpoint_path,
+        binding,
+        cached,
+    };
     runtime::serve_with_archive(config.indexer, source)
         .await
         .map_err(|_| bad("archive indexer unavailable"))
@@ -137,6 +219,118 @@ mod tests {
                 public_origin: "https://example.invalid".into(),
                 snapshots_directory,
             },
+        }
+    }
+    #[test]
+    fn follower_private_checkpoint_restores_partial_chunk_and_replays_suffix() {
+        use crate::journal::Journal;
+        let temp = tempfile::tempdir().unwrap();
+        let directory = temp.path().canonicalize().unwrap();
+        let archive_dir = directory.join("archive");
+        let checkpoint_path = directory.join(".archive-runtime-checkpoint");
+        let pool = [2; 32];
+        let program = [1; 32];
+        let binding = [3; 32];
+        let blocks: Vec<_> = (1..=3)
+            .map(|slot| FinalizedBlock {
+                finalized: true,
+                slot,
+                parent_slot: slot - 1,
+                blockhash: [slot as u8; 32],
+                previous_blockhash: [(slot - 1) as u8; 32],
+                block_time: slot,
+                transactions: Vec::new(),
+            })
+            .collect();
+        let mut journal = Journal::initialize(&archive_dir, pool).unwrap();
+        journal.append_archive_batch(blocks.clone()).unwrap();
+        drop(journal);
+        Journal::migrate_v1_to_segmented(&archive_dir, pool).unwrap();
+        let (archive, cached) =
+            ReadOnlyArchive::open_with_checkpoint(&archive_dir, pool, binding, &checkpoint_path)
+                .unwrap();
+        assert!(cached.is_none());
+        let source = Source {
+            archive,
+            directory: archive_dir.clone(),
+            checkpoint_path: checkpoint_path.clone(),
+            binding,
+            cached,
+        };
+        let mut index = Indexer::new(program, pool);
+        index.apply_block(&blocks[0]).unwrap();
+        source.save_indexer(&index).unwrap();
+        let (archive, cached) =
+            ReadOnlyArchive::open_with_checkpoint(&archive_dir, pool, binding, &checkpoint_path)
+                .unwrap();
+        assert_eq!(cached.as_ref().unwrap().tail.unwrap().slot, 1);
+        let mut source = Source {
+            archive,
+            directory: archive_dir.clone(),
+            checkpoint_path: checkpoint_path.clone(),
+            binding,
+            cached,
+        };
+        let mut restored = source.restore_indexer(program, pool).unwrap().unwrap();
+        assert!(!restored.is_ready());
+        source.refresh().unwrap();
+        source
+            .replay_range(2, 3, &mut |block| {
+                restored.apply_block(block)?;
+                Ok(())
+            })
+            .unwrap();
+        for block in &blocks[1..] {
+            index.apply_block(block).unwrap();
+        }
+        assert_eq!(
+            restored.replay_state().unwrap(),
+            index.replay_state().unwrap()
+        );
+        source.save_indexer(&restored).unwrap();
+        // Valid archive metadata cannot authorize malformed opaque runtime data.
+        source
+            .archive
+            .save_checkpoint(
+                &checkpoint_path,
+                binding,
+                b"invalid runtime",
+                ArchiveTail::from(&blocks[2]),
+            )
+            .unwrap();
+        let (archive, cached) =
+            ReadOnlyArchive::open_with_checkpoint(&archive_dir, pool, binding, &checkpoint_path)
+                .unwrap();
+        assert!(cached.is_some());
+        let mut source = Source {
+            archive,
+            directory: archive_dir,
+            checkpoint_path,
+            binding,
+            cached,
+        };
+        assert!(source.restore_indexer(program, pool).unwrap().is_none());
+        assert_eq!(source.archive.archive_len(), 3);
+    }
+    #[test]
+    fn private_checkpoint_binding_tracks_chain_domain_not_transport() {
+        let mut cfg = config(PathBuf::from("/archive"), PathBuf::from("/snapshots")).indexer;
+        let original = checkpoint_binding(&cfg);
+        cfg.rpc_url = "https://example.invalid/new-private-rpc".into();
+        cfg.listen = "127.0.0.1:2345".into();
+        cfg.public_origin = "https://another.invalid".into();
+        assert_eq!(checkpoint_binding(&cfg), original);
+        for field in ["program", "pool", "genesis", "profile", "start"] {
+            let mut changed = cfg.clone();
+            match field {
+                "program" => changed.program_id.push('x'),
+                "pool" => changed.pool.push('x'),
+                "genesis" => changed.genesis_hash.push('x'),
+                "profile" => changed.circuit_profile_hash.push('x'),
+                "start" => changed.start_slot += 1,
+                _ => unreachable!(),
+            }
+            assert_ne!(checkpoint_binding(&changed), original);
         }
     }
     #[test]

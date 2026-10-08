@@ -4,7 +4,12 @@
 The 16 GiB operator and managed NAT gateway sizing below is retained as the
 original design. The user selected the roughly USD50/month
 [US East budget configuration](aws-budget-host.md): a 4 GiB `t3a.medium` operator,
-separate `t3a.nano` HTTPS NAT instance, and 48 GiB total encrypted gp3 storage.
+separate `t3a.nano` HTTPS NAT instance, initially with 48 GiB total encrypted gp3
+storage. The existing data volume was later expanded from 20 to 40 GiB, then
+to 80 GiB, making the current total 108 GiB. The [initial storage checkpoint](../../docs/evidence/PD-rpc-migration-startup.md)
+and [80-GiB record](../../docs/evidence/PD-preview-capacity-80g.md) preserve these
+separate changes. CPU credits are back to Standard; the [root handoff](../../README.md)
+records the remaining storage decision. The original design below remains historical.
 The [actual infrastructure record](../../docs/evidence/PD-aws-live-infrastructure.md)
 and [current public-input guide](../../docs/sdk/public-devnet-preview.md) describe
 the deployed resources and publication checkpoint. Operator catch-up and funded

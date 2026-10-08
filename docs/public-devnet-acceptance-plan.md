@@ -1,18 +1,75 @@
 # Public Devnet acceptance and approved supplemental budget
 
-Recorded 2026-10-07 JST. Updated status: **the user explicitly approved the seven
-additional USDC scope below; the supplemental grant is not initialized, no
-supplemental reservation or spend has occurred, and no live case has run**.
-Actual public profile/release/tariff pins and the single-authority review must
-be completed before creating the final authorization record. The selected AWS
-path is [the detached V2 authority](../deploy/public-devnet/detached-budget.md),
-with seven new full caps and no original-capacity transfer. On 2026-10-08 JST the
+Current scope — 2026-10-09 JST: the user directed completion of ZKAPI core and
+stopped demo/chat UI work. **B-01–B-03 / PD-08 are deferred, not core completion
+gates.** Existing browser state and failures remain preserved. The
+[core evidence audit](evidence/PD-core-scope-reconciliation.md) joins actual
+public-input `.3` setup and production-handler rejection to the completed native
+path. E-01 escape/finalize remains underway. The user selected
+[OpenRouter Ethereum parity](evidence/PD-openrouter-ethereum-parity.md): captured
+management USD after disable/grace, persisted before confirmed deletion, capped
+immutable settlement, and operator risk for delayed costs. The runtime successor
+is a candidate until actual deployment evidence exists. Final-invoice completeness
+is not an extra core-preview gate; the observed discrepancy and broader G3 limits
+remain explicit. No new reconciliation service, paid matrix, UI work or long-term
+qualification is added. The [current checklist](public-devnet-readiness-backlog.md)
+credits completed public-input installation, specific readiness reporting and
+stream/price/funding guidance checks with their actual or local-test scope. The
+latest retained primary-RPC429/indexer503 observation still blocks E-01 receipt
+progress; no successful emergency payout or completed parity rollout is inferred.
+
+Recorded 2026-10-07 JST; native closure checkpoint 2026-10-08 14:27 UTC.
+**N-01–N-04 now have public native response, conversation, signed-settlement,
+interrupted-recovery and finalized mutual-withdrawal evidence.** Four signed
+charges total **20 micro-USDC**; the five-USDC Devnet note returned
+**4,999,980 micro-USDC** and is closed. N-02/N-03's signed zero amounts match
+the observed management counters, but their
+[external provider-cost reconciliation remains unresolved](evidence/PD-openrouter-management-usage-limit.md).
+This is not full billing acceptance. Funded B-01–B-03 are deferred under the
+current scope; the separate zero-AUTH emergency escape/finalize exercise remains
+incomplete.
+
+The [separate seven-cap grant](evidence/PD-detached-budget-initialization.md)
+retained four reservations at the final native operator cut: **4,000,000
+micro-USDC maximum exposure**, leaving three unused caps. Withdrawal and low
+actual charges do not refund those reservations. Preserve every original
+attempt and failure; none authorizes inference replay. Use the
+[published client/profile pins](sdk/public-devnet-preview.md) and the recorded
+release boundaries below. The selected AWS path remains
+[the detached V2 authority](../deploy/public-devnet/detached-budget.md), with no
+original-capacity transfer. On 2026-10-08 JST the
 user approved the roughly USD50/month US East AWS configuration with generated
 HTTPS; it supersedes the earlier USD100 proposal. Long-term capacity
-qualification is outside this preview's current scope. This plan defines
-the remaining browser and stock native acceptance scope after publication of a
-usable operator, complete assets, a reviewed profile and matching client
-artifacts. It does not turn the candidate's local tests into public readiness.
+qualification is outside this preview's current scope. The original browser and
+native matrix below is retained as the authorized historical plan. The current
+core queue is the narrower scope above; unused browser capacity does not become
+permission for replacement requests. Local fixtures remain separate from live
+provider acceptance.
+
+## Recorded native results and remaining scope
+
+| Case | Recorded result | Scope boundary |
+|---|---|---|
+| [N-01](evidence/PD-native-public-N01.md) | Stock public transport, compact deposit, nonstreaming Chat and verified six-micro-USDC settlement | Immutable `.2` native client; its earlier active-note checkpoint is preserved |
+| [N-02/N-03](evidence/PD-native-public-N02-N03.md) | Actual OpenClaw streamed read-tool exchange and continuation; two distinct AUTHs and verified metered-zero settlements | Running `.3` with the explicit local settlement scheduling adapter; external billing reconciliation remains open |
+| [N-04 and final closure](evidence/PD-native-public-N04.md) | Process-group kill during an unresolved stream, same-journal `.3` restart, one explicit recovery, 14-micro-USDC settlement and finalized withdrawal | Compatible retained `.2` command/observer tools were separately pinned; upstream packet counts remain unknown |
+
+The final independent chain cut matched all six exact transaction wires and
+signatures, closed the note and found Vault zero. Wallet and treasury share an
+owner, so the restored wallet balance does not erase the 20-micro-USDC charge.
+The operator cut retained four settled sessions and all 25 checkpoint rows.
+These observations do not claim another platform, provider/API or funded
+browser path.
+
+[Service suspension, capture, same-state restart and resume](evidence/PD-N01-service-recovery.md)
+preserved the earlier one-session N-01 cut. Subsequent
+[independent backup verification](evidence/PD-N01-backup-independent-verify.md)
+checked the exact downloaded encrypted archive and restored its logical
+PostgreSQL state in an isolated PG16 instance. That backup predates N-02–N-04;
+it is not a physical service or latest-four-session restoration. Current
+aggregate readiness deployment is recorded separately and is not inferred
+from these historical results. Mutual closure does not substitute for emergency
+escape/finalize.
 
 ## Preserved campaign and read-only observation
 
@@ -51,7 +108,11 @@ expire before 2026-10-11 UTC. Execution must independently confirm current
 model access, provider terms/prices and tariff validity, then freeze the chosen
 profile; an expired tariff is not patched into an initialized old campaign.
 
-## Preconditions before the first reservation
+## Original preconditions before the first reservation
+
+These requirements are retained as the original execution plan. The results
+above identify the completed native path; they do not establish the remaining
+funded browser path or current service availability.
 
 1. Publish anonymously retrievable, immutable complete assets and a profile with
    an independently authenticated digest. Verify every downloaded hash and
@@ -79,7 +140,10 @@ profile; an expired tariff is not patched into an initialized old campaign.
    public pins and the selected single authority before grant initialization.
    Default public admission stays suspended until these conditions hold.
 
-## Minimal deliberate-operation matrix
+## Original deliberate-operation matrix
+
+B-01–B-03 are now deferred. Keep their original plan and budget accounting below;
+do not execute them to satisfy the core-only completion request.
 
 The generated native configuration uses `key_reuse_seconds: 0`; the application
 SDK also closes each request's session. Therefore **each deliberately dispatched
@@ -89,20 +153,38 @@ this candidate's reservation count. All requests use stable distinct operation
 UUIDs, bounded outputs (at most 128 tokens for this proposal), disabled automatic
 inference retries and disabled model/privacy fallbacks.
 
-Production direct OpenRouter settlement waits at least 60 seconds after key
-disable. Historical zero-reuse runtimes return a conflict when a new request
+Historical campaign configuration: direct OpenRouter settlement used a
+60-second grace after key disable. The subsequent user-selected Ethereum-parity
+candidate uses a 5-second configured grace and one durable usage capture; its
+actual rollout is recorded separately. The following describes the original
+60-second campaign behavior. Historical zero-reuse runtimes return a conflict when a new request
 arrives while the prior session remains pending. The new candidate helper opts
 into a bounded `settlement_wait_ms: 120000` admission wait: only a successfully
 consumed same-process response qualifies; existing status/close/receipt checks
 must verify its signed settlement before the new request's first AUTH/inference.
 Unknown/canceled responses, restarts, errors and the deadline preserve explicit
-recovery. The old defaults and journal protocol remain unchanged. Before
-N-02/N-03, verify that the actual OpenClaw version consumes responses to EOF and
-permits the wait plus proof preparation; a client that cancels immediately on
-an SSE terminal event may still hit the recovery gate. Do not lower provider
-settlement grace or treat inference retries as recovery. A positive-key-reuse
+recovery. The old defaults and journal protocol remain unchanged. The original
+N-02/N-03 precondition required verifying response consumption through EOF and
+the wait plus proof preparation; a client that cancels immediately on an SSE
+terminal event may still hit the recovery gate. That original campaign did not authorize an implicit grace change or inference
+retry; the later explicit parity instruction is recorded separately. A positive-key-reuse
 configuration would be a separately reviewed policy; the seven-cap count here
 preserves zero reuse. Local synthetic wait tests are not live client acceptance.
+
+The actual N-01 final settlement completed about 180 seconds after response
+completion. The configured 60-second grace is not the total close duration, and
+the released native 120-second next-operation wait is unchanged. N-02/N-03
+therefore use the explicitly documented
+[local settlement scheduling adapter](integrations/openclaw-settlement-adapter.md)
+before the stock native endpoint. It holds the second input until authenticated
+SDK status verifies completion of the first, with no inference retry. Its local
+checks are recorded separately in the
+[adapter evidence](evidence/PD-openclaw-settlement-adapter.md). The
+[actual N-02/N-03 result](evidence/PD-native-public-N02-N03.md) used that adapter
+and completed the read-tool exchange; it does not establish immediate
+unmediated continuation to the stock native port. The public egress and
+seven-cap matrix were retained, and the separately authenticated `.3` runtime
+upgrade preserved the funded profile, custody and journal.
 
 Use one new note per client path and retain each note through its complete
 lifecycle. With cap `C`, funding `(planned AUTHs + 1) × C` test micro-USDC leaves
@@ -246,8 +328,10 @@ tests, including 14 detached tests, plus four V1/V2 gateway boundary fixtures an
 strict gateway TypeScript checks. The fixtures establish preservation, exact
 recovery rules, count limits, collision rejection, partial-initialization
 refusal, uncertain-fsync behavior and concurrency using synthetic ledgers.
-Root-owned installation/systemd confinement and actual public recovery still
-require host validation. Selected client archive pins and the output limit are
+Later [hosted admission](evidence/PD-public-admission-recovery.md),
+[same-state service recovery](evidence/PD-N01-service-recovery.md), and
+[native interrupted recovery](evidence/PD-native-public-N04.md) provide their
+separate actual scopes. Selected client archive pins and the output limit are
 reviewed acceptance records; AUTH cannot remotely attest the client's binary
 or inspect its private direct-provider body.
 
@@ -281,10 +365,11 @@ The received approval is: **up to seven additional one-USDC AUTH reservations
 (7 USDC total supplemental worst-case provider exposure, using the existing
 1 USD = 1 USDC test accounting assumption), for B-01 through B-03 and N-01
 through N-04, with no automatic replacement requests, preserving the original
-ten-USDC campaign and all its reservations**. This document records the proposal
-with approval received, but no initialized grant or additional spend. Operator
-hosting purchases, unlimited public subsidy and broader provider
-or client combinations are separate decisions.
+ten-USDC campaign and all its reservations**. The selected grant is initialized;
+the 14:27 UTC native cut records four consumed caps and 20 micro-USDC of signed
+charges, with the external-cost limitation above. This approval does not provide
+unlimited public subsidy, replacement paid cases or broader provider/client
+combinations. The separately approved hosting scope remains roughly USD50/month.
 
 After the matrix, publish exact client/profile/artifact/source identities,
 deliberate versus observed send counts, redacted SDK receipt verification,
@@ -292,6 +377,7 @@ per-case timings and failures, actual finalized signatures/slots/CU/wire bytes,
 deposit/return accounting and separately timed original/new grant observations.
 Any combined accounting must be labeled as arithmetic over those observations,
 not live aggregate capacity reported by V2. Link the operator restart/emergency
-exercise separately. Mark PD-08/09/10 complete only
-for the actual observed paths; preserve every untested combination and the
-historical CI/release-gate limitations.
+exercise separately. Mark core PD-09/10 items complete only for the supported
+evidence and current contract. Keep PD-08 explicitly deferred rather than checked
+complete; preserve every untested combination, financial accounting limitation
+and historical CI/release-gate boundary.

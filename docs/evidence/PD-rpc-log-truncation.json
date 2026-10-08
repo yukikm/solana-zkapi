@@ -1,8 +1,8 @@
 {
   "schema": 1,
-  "status": "Verified writer-only decoder installation and startup checkpoint; public readiness not established",
-  "observed_at": "2026-10-08T02:59:38.268401+00:00",
-  "scope": "Pre-fix hosted diagnosis, exact saved-block native reproduction, local regression, isolated Linux build and writer-only deployment/start. Cold validation/replay was still in progress at the recorded start; no recovered readiness or funded acceptance claim.",
+  "status": "Local regression and writer deployment verified; actual progress past stalled block; public readiness remains unverified",
+  "observed_at": "2026-10-08T03:15:49.662103+00:00",
+  "scope": "Pre-fix diagnosis, exact saved-block regression, isolated Linux build, writer-only update and actual retained-history progress. No recovered public readiness or funded acceptance.",
   "host_diagnosis": {
     "observed_at": "2026-10-08T02:39:44.191848+00:00",
     "classifier_at": "2026-10-08T02:42:51.708616+00:00",
@@ -203,7 +203,7 @@
     "Initial network-disabled Linux invocation triggered a Rustup component lookup before compilation; explicit installed RUSTUP_TOOLCHAIN=1.90.0 succeeded offline with networking disabled"
   ],
   "limitations": [
-    "Writer installation/start is verified; this checkpoint does not establish completed cold replay, recovered public readiness, full CI or funded acceptance",
+    "Cold validation completed far enough to append past the stalled block, but root/snapshot remain503; no completed current account cut, recovered public readiness, full CI or funded acceptance",
     "No new AUTH, inference, deposit, withdrawal, grant initialization or budget reservation from these checks",
     "Existing client artifacts, journal formats and retained history are unchanged"
   ],
@@ -243,5 +243,36 @@
     "automatic_retry": false,
     "cold_validation_or_replay_in_progress": true,
     "readiness_claim": false
+  },
+  "post_start_progress": {
+    "observed_at": "2026-10-08T03:15:49.662103+00:00",
+    "receipt_sha256": "cece47b861fa96bea57907f9a37c1f68dee03c6f61f9b7838a5b6c59f39a0899",
+    "receipt_kind": "Completed SSM observation wrapper; native projection allowlisted here",
+    "archive": {
+      "blocks": 103637,
+      "chunks": 522,
+      "tail_slot": 508624737,
+      "advanced_blocks_since_rpc_migration_stop": 32522,
+      "advanced_blocks_since_decoder_stop": 9178
+    },
+    "passed_original_stalled_slot": 508615470,
+    "writer_binary_sha256": "3893ca8fe2bbdb1275e6d8faea24a918f24192ccd7daa584b6baa8a28a4df2d8",
+    "follower_binary_sha256": "7b2a41955e8a280a74235611388225a1b459b8bea73dfc2a4cd0b5ca955afce8",
+    "writer_rss_bytes": 60710912,
+    "follower_rss_bytes": 75476992,
+    "available_memory_bytes": 3409977344,
+    "data_available_bytes": 27586183168,
+    "root_http_status": 503,
+    "snapshot_http_status": 503,
+    "control_active": false,
+    "gateway_active": false,
+    "admission_enabled": false,
+    "saved_health_ready": false,
+    "saved_health_age_seconds": 1660,
+    "saved_health_lag_is_current": false,
+    "new_external_rpc_probe_requests": 0,
+    "observer_service_actions": 0,
+    "usable_readiness": false,
+    "sustained_throughput_or_capacity_claim": false
   }
 }

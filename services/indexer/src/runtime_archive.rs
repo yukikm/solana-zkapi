@@ -12,6 +12,21 @@ pub type ArchiveSourceResult<T> = std::result::Result<T, Box<dyn Error + Send + 
 /// use protected-file identity/size/mtime/ctime checks for unchanged files.
 /// No implementation may fill holes from RPC or adopt uncommitted files.
 pub trait FinalizedArchiveSource: Send {
+    /// Optional private replay cache, authenticated by the source against its
+    /// retained prefix. Invalid payloads must discard the metadata fast path and
+    /// cold-validate the archive before returning None. Never restore readiness.
+    fn restore_indexer(
+        &mut self,
+        _program: Bytes32,
+        _pool: Bytes32,
+    ) -> ArchiveSourceResult<Option<Indexer>> {
+        Ok(None)
+    }
+    /// Optional best-effort private cache. It must bind the exact replay anchor
+    /// and cannot mutate committed history or authorize financial activity.
+    fn save_indexer(&self, _index: &Indexer) -> ArchiveSourceResult<()> {
+        Ok(())
+    }
     fn refresh(&mut self) -> ArchiveSourceResult<()>;
     /// First retained block's (slot, parent_slot), authenticated with its chunk.
     fn first(&self) -> Option<(u64, u64)>;

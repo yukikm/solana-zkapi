@@ -308,7 +308,7 @@ fn public_provider_dispatcher_requires_pinned_devnet_and_prohibits_fixture_egres
         api_base: "https://openrouter.ai/api/v1".into(),
         credential_file: credential.clone(),
         inference_base: "https://openrouter.ai/api/v1".into(),
-        settlement_grace_seconds: 60,
+        settlement_grace_seconds: 5,
     });
     config.validate_scope().unwrap(); // No database connection, RPC or provider request.
     for change in [

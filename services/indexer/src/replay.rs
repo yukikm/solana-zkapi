@@ -5,6 +5,9 @@ use crate::{
 use std::collections::{BTreeMap, BTreeSet};
 use zkapi_layout2::{Command, Operation};
 
+#[path = "replay_checkpoint.rs"]
+mod checkpoint;
+
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ChainState {
     pub slot: u64,

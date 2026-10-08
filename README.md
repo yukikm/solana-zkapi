@@ -7,11 +7,39 @@ verified billing and withdrawals. Your application owns the conversation UI,
 model selection and chat history. SOL pays network fees; API usage is accounted
 for in integer micro-USDC (1 USDC = 1,000,000 micro-USDC).
 
+## Current handoff — 2026-10-09 JST
+
+The current scope is the core SDK/API, Ethereum-style history restart and
+OpenRouter accounting. Demo UI work and long-term qualification are deferred.
+
+- **Accounting:** the [Ethereum-parity implementation](docs/evidence/PD-openrouter-ethereum-parity.md) disables the managed key, waits five seconds, captures one valid usage observation, persists it, and confirms deletion before capped settlement. Captured amounts survive recovery; signed charges are never repriced. Delayed provider accounting remains the operator's risk, not a promise of final-invoice accuracy.
+- **History:** [durable checkpoints](docs/evidence/PD-restart-checkpoints.md) retain complete replay state and cursor, authenticate the suffix on normal restart, and fall back to full replay for a missing or invalid cache. Local checks passed 79 serial challenger tests (12 ignored), four Indexer tests and one explicitly enabled saved-SBF Pending restoration test; these scopes overlap. Binary `0037eca8…7c8f49` is installed (receipt `af13e3dd…5c7dc`). Initial cache creation and a measured warm restart remain unverified; the public gateway is stopped.
+
+**Remaining for the next session:**
+
+- [ ] Confirm initial checkpoint creation and measure a normal restart from it. Require fresh finalized account reconciliation before declaring the public API ready or restarting its gateway.
+- [ ] Complete the separate E01 emergency withdrawal lifecycle only when resuming acceptance. Its existing one-micro-USDC deposit and saved journal must be continued; never repeat that deposit or blindly resend a transaction. Escape/finalize is still unverified.
+- [x] Include the selected core source/documentation changes and this handoff in the publication commit. Unrelated working-tree changes and the existing Git index are preserved.
+- [ ] Resolve the remaining 80 GiB storage increase. The previous 40 GiB volume was nearly full; returning to it requires a verified data migration, not an in-place size change or deletion of retained history.
+
+Browser work and additional lifecycle/recovery acceptance are deferred. See the
+[core scope](docs/evidence/PD-core-scope-reconciliation.md) and
+[readiness backlog](docs/public-devnet-readiness-backlog.md) for their separate
+boundaries. Preserve existing journals, signed attempts, reservations, immutable
+releases and failed observations.
+
+**AWS cost status:** the temporary Unlimited CPU setting was restored to
+Standard and verified on 2026-10-08 at 18:21:52 UTC. The instance type remains
+the original `t3a.medium`. The data volume is still 80 GiB; its additional 40 GiB has an illustrative
+cost of USD 3.20/month. Storage restoration remains undecided at this handoff;
+it has not been reported as complete. See the [capacity record](docs/evidence/PD-preview-capacity-80g.md)
+and [AWS's restriction on shrinking volumes](https://docs.aws.amazon.com/ebs/latest/userguide/ebs-modify-volume.html).
+
 **Development preview.** Local protocol tests and selected Devnet/provider demos
 have passed. Independent SDK installation and selected devnet/provider lifecycles
 also have [separate evidence](docs/evidence/I10-external-integration.md). Full provider
 acceptance, production setup, audits and release gates remain incomplete.
-The [public-profile client release](docs/evidence/PD-public-client-publication.md)
+The [public-profile client release](docs/evidence/PD-sdk3-publication.md)
 provides an SDK tarball and a macOS ARM64 clientd distribution.
 There is no published npm release or ready-to-use production deployment bundle.
 See [supported features and evidence](docs/sdk/status.md).
@@ -20,7 +48,7 @@ For the remaining work to offer a public Devnet deployment that independent
 apps can use from published inputs, see the [public Devnet readiness backlog](docs/public-devnet-readiness-backlog.md).
 It distinguishes existing implementation/live evidence from missing hosted
 services, complete artifacts, onboarding and current-release acceptance.
-The published `0.2.0-devnet.2` preview adds an
+The published `0.2.0-devnet.3` preview provides an
 [authenticated public profile and read-only preflight](docs/sdk/public-profile.md),
 an [independent consumer example](tools/public-devnet-consumer/README.md),
 and [funding instructions](docs/sdk/devnet-funding.md).
@@ -32,12 +60,12 @@ catch-up and funded acceptance; downloading a client is not service readiness.
 
 [Kit migration](docs/sdk/kit-migration.md) · [SDK quickstart](docs/sdk/quickstart.md) · [SDK tarball](docs/sdk/distribution.md) · [Local clientd](docs/sdk/clientd-quickstart.md)
 
-The current source and published `0.2.0-devnet.2` use `@solana/kit` 8.4.0 throughout the
+The current source and published `0.2.0-devnet.3` use `@solana/kit` 8.4.0 throughout the
 SDK and native client. Its native Kit API is a breaking change from the first
 preview; follow the [migration guide](docs/sdk/kit-migration.md). The existing
 immutable `v0.1.0-devnet.1` release remains historical.
-[`v0.2.0-devnet.2`](https://github.com/yukikm/solana-zkapi/releases/tag/v0.2.0-devnet.2)
-is published; [signature and anonymous-download verification](docs/evidence/PD-public-client-publication.json)
+[`v0.2.0-devnet.3`](https://github.com/yukikm/solana-zkapi/releases/tag/v0.2.0-devnet.3)
+is published; [signature and anonymous-download verification](docs/evidence/PD-sdk3-publication.json)
 identify the exact released files.
 
 ## Build an application

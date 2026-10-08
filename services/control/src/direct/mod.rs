@@ -203,7 +203,7 @@ impl DirectAdapter {
                     );
                 }
                 ensure!(
-                    (local_test_only || *settlement_grace_seconds >= 60)
+                    (local_test_only || *settlement_grace_seconds >= 5)
                         && *settlement_grace_seconds <= 86_400,
                     "invalid direct usage drain interval"
                 );

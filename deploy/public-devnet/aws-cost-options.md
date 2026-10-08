@@ -10,25 +10,35 @@ asking for that old amount or create its larger configuration by default.
 
 The revised [budget template and qualification plan](aws-budget-host.md) use
 US East (N. Virginia), a 4-GiB `t3a.medium` operator and a `t3a.nano` NAT instance,
-with 48 GiB total gp3 storage, one public IPv4 address and the same CloudFront
+with 108 GiB total gp3 storage, one public IPv4 address and the same CloudFront
 generated HTTPS hostname/private origin. Both instances explicitly use Standard
 CPU credits. This removes the managed NAT gateway's hourly charge and reduces
 the unmeasured 16-GiB server assumption. It adds responsibility for maintaining
 the small NAT instance and increases origin latency for users in Japan.
 
-Fresh AWS Price List observations, effective 2026-10-01:
+The existing data volume was expanded from 20 to 40 GiB, then to 80 GiB on
+2026-10-08, without replacement. The original 48-GiB / USD 38.369 plan and
+the intermediate 68-GiB / USD 39.969 estimate remain historical. The final
+40-to-80-GiB increase adds USD 3.20 per full month at the retained rate. See the
+[initial storage checkpoint](../../docs/evidence/PD-rpc-migration-startup.md) and
+[80-GiB capacity record](../../docs/evidence/PD-preview-capacity-80g.md).
+The temporary Unlimited CPU setting was restored to Standard at 18:21:52 UTC.
+Storage migration back to 40 GiB remains undecided in the
+[root handoff](../../README.md#current-handoff--2026-10-09-jst).
+
+Retained AWS Price List observations, effective 2026-10-01:
 
 | Item | Rate | 730-hour monthly illustration |
 |---|---:|---:|
 | Operator `t3a.medium`, 2 vCPU / 4 GiB | USD 0.0376/hour | USD 27.448 |
 | NAT instance `t3a.nano` | USD 0.0047/hour | USD 3.431 |
 | One public IPv4 | USD 0.005/hour | USD 3.650 |
-| gp3, 48 GiB total | USD 0.08/GB-month | USD 3.840 |
-| **Fixed subtotal** | | **USD 38.369** |
+| gp3, 108 GiB total | USD 0.08/GB-month | USD 8.640 |
+| **Fixed subtotal** | | **USD 43.169** |
 
-The fixed subtotal is USD 39.0312 for 744 hours using the same monthly storage
+The fixed subtotal is USD 43.8312 for 744 hours using the same monthly storage
 illustration. An illustrative 10% tax on that subtotal gives approximately
-USD 42.93, leaving about USD 7.07 of a USD 50 target for all remaining charges,
+USD 48.21, leaving about USD 1.79 of a USD 50 target for all remaining charges,
 including tax on them. Actual tax follows the account's billing treatment.
 CloudFront, S3, requests, backups, logs and transfer still vary with use. No free
 tier is assumed, and this is neither unlimited traffic nor an AWS-enforced cap.
@@ -43,8 +53,9 @@ Pool alone does not bound ongoing memory, CPU or disk. The
 [capacity review](../../docs/evidence/PD-runtime-capacity-review.md) records the
 required implementation and measured Linux acceptance before a month-long
 deployment can be claimed. Neither 4 GiB nor the earlier 16 GiB has proven
-sustainable operation. No services, funded state or AWS resources were changed
-by this cost review.
+sustainable operation. The original cost review changed no services, funded state or AWS resources.
+The separately recorded storage extension above does not establish sustained
+capacity or change the AI-provider allowance.
 
 ## Previous larger proposal — retained for comparison
 

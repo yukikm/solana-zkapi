@@ -10,6 +10,10 @@ use zkapi_indexer::FinalizedBlock;
 #[path = "journal_readonly.rs"]
 mod readonly;
 pub use readonly::ReadOnlyArchive;
+#[path = "journal_checkpoint.rs"]
+mod checkpoint;
+pub(super) use checkpoint::load_checkpoint;
+pub use checkpoint::ArchiveCheckpointState;
 
 const ARCHIVE_DIR: &str = "archive-v2";
 const BACKUP: &str = "legacy-v1.json";
@@ -48,6 +52,7 @@ pub(super) struct Archive {
     references: Vec<ChunkRef>,
     tail: Option<ArchiveTail>,
     pub(super) head: Head,
+    verified: Option<checkpoint::VerifiedFiles>,
 }
 #[derive(Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -159,6 +164,22 @@ impl<R: Read> Read for HashedReader<R> {
     }
 }
 fn read_json<T: DeserializeOwned>(file: File) -> Result<(T, Hash, u64)> {
+    // Ordinary chunks are bounded. Parsing their captured bytes avoids serde's
+    // per-byte reader adapter without changing EOF, hash or caller validation.
+    // Legacy archives and oversized singleton blocks retain streaming below.
+    let length = file.metadata()?.len();
+    if length <= CHUNK_BYTES {
+        let mut bytes = Vec::with_capacity(length as usize + 1);
+        file.take(CHUNK_BYTES + 1).read_to_end(&mut bytes)?;
+        if bytes.len() as u64 != length {
+            return Err(Error::Conflict("archive file changed during read"));
+        }
+        let hash = sha(&bytes);
+        return Ok((serde_json::from_slice(&bytes)?, hash, length));
+    }
+    read_json_stream(file)
+}
+fn read_json_stream<T: DeserializeOwned>(file: File) -> Result<(T, Hash, u64)> {
     // serde_json's reader adapter requests individual bytes. Hash beneath the
     // buffer so the digest sees bounded file reads, not one update per byte.
     let mut reader = BufReader::with_capacity(
@@ -225,7 +246,11 @@ fn archive_directory(root: &Path) -> Result<PathBuf> {
 fn chunk_path(root: &Path, reference: &ChunkRef) -> PathBuf {
     root.join(format!("{}.json", hex::encode(reference.sha256)))
 }
+#[cfg(test)]
+thread_local! { static PAYLOAD_READS: std::cell::RefCell<Vec<PathBuf>> = const { std::cell::RefCell::new(Vec::new()) }; }
 fn read_chunk(path: &Path, current: &ChunkRef, pool: Hash) -> Result<Chunk<Vec<FinalizedBlock>>> {
+    #[cfg(test)]
+    PAYLOAD_READS.with(|reads| reads.borrow_mut().push(chunk_path(path, current)));
     if current.sequence == 0 || current.blocks == 0 || current.blocks > CHUNK_BLOCKS as u64 {
         return Err(Error::Conflict("archive chunk sequence/count"));
     }
@@ -294,6 +319,32 @@ impl Archive {
             for block in &chunk.blocks {
                 visit(block)?;
             }
+        }
+        Ok(())
+    }
+    pub(super) fn replay_after(
+        &self,
+        root: &Path,
+        slot: u64,
+        mut visit: impl FnMut(&FinalizedBlock) -> Result<()>,
+    ) -> Result<()> {
+        if let Some(verified) = &self.verified {
+            verified.verify(root)?;
+        }
+        let path = archive_directory(root)?;
+        let first = self
+            .references
+            .partition_point(|reference| reference.last_slot <= slot);
+        for index in first..self.references.len() {
+            let chunk = self.read_indexed(&path, index)?;
+            for block in &chunk.blocks {
+                if block.slot > slot {
+                    visit(block)?;
+                }
+            }
+        }
+        if let Some(verified) = &self.verified {
+            verified.verify(root)?;
         }
         Ok(())
     }
@@ -410,7 +461,10 @@ impl<'de> Deserialize<'de> for ArchiveSummary {
     }
 }
 pub(super) fn load(root: &Path, pool: Hash, head: Head) -> Result<Archive> {
-    load_observed(root, pool, head, None)
+    let mut observations = readonly::Observations::new();
+    let mut archive = load_observed(root, pool, head, Some(&mut observations))?;
+    archive.verified = Some(checkpoint::VerifiedFiles::capture(root, observations)?);
+    Ok(archive)
 }
 fn load_observed(
     root: &Path,
@@ -498,6 +552,7 @@ fn load_observed(
         references: reversed,
         tail,
         head,
+        verified: None,
     };
     // The original full-content prefix commitment is order-sensitive. Verify
     // it in a separate forward pass, without retaining history payloads.
@@ -873,6 +928,21 @@ impl Journal {
                 return Err(error);
             }
         };
+        // A cache-observation failure cannot undo a committed journal append.
+        // Disable optional checkpoint saving; the authoritative head still wins.
+        if let Some(verified) = &mut archive.verified {
+            let observations = references
+                .iter()
+                .map(|reference| {
+                    let file = chunk_path(&path, reference);
+                    readonly::FileStamp::at(&file).map(|stamp| (file, stamp))
+                })
+                .collect::<Result<Vec<_>>>();
+            match observations {
+                Ok(observations) => verified.observations.extend(observations),
+                Err(_) => archive.verified = None,
+            }
+        }
         archive.references.extend(references);
         archive.tail = tail;
         archive.head = head;

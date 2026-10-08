@@ -733,6 +733,20 @@ async fn serve_source(
     {
         return Err("public origin".into());
     }
+    let restored = match archive.as_mut() {
+        Some(source) => source.restore_indexer(program, pool)?,
+        None => None,
+    };
+    if let Some(index) = &restored {
+        if index.program() != program
+            || index.pool() != pool
+            || index.is_ready()
+            || index.replay_state()?.slot < cfg.start_slot
+            || index.replay_state()?.slot == u64::MAX
+        {
+            return Err("invalid private archive checkpoint".into());
+        }
+    }
     let rpc = ArchiveRpc::new(cfg.rpc_url.clone())?;
     if rpc.call("getGenesisHash", json!([])).await?.as_str() != Some(cfg.genesis_hash.as_str()) {
         return Err("RPC genesis mismatch".into());
@@ -752,8 +766,17 @@ async fn serve_source(
         updated: changes,
     };
     let worker = tokio::spawn(async move {
-        let mut index = Indexer::new(program, pool);
-        let mut next = config.start_slot;
+        let mut next = match restored.as_ref() {
+            Some(index) => index
+                .replay_state()
+                .expect("validated private checkpoint")
+                .slot
+                .checked_add(1)
+                .expect("private checkpoint slot overflow"),
+            None => config.start_slot,
+        };
+        let mut index = restored.unwrap_or_else(|| Indexer::new(program, pool));
+        let mut checkpoint_saved: Option<std::time::Instant> = None;
         let mut archive_refresh = ArchiveRefresh::default();
         loop {
             {
@@ -795,6 +818,19 @@ async fn serve_source(
                 eprintln!("indexer paused: next_slot={next} category={category}");
             }
             updated.send_replace(());
+            // Cache even a valid partial prefix waiting for the writer/RPC. It
+            // is never a public snapshot, and restoration remains unavailable
+            // until the existing finalized account checks succeed again.
+            if checkpoint_saved.is_none_or(|at| at.elapsed() >= Duration::from_secs(60))
+                && index.replay_state().is_ok()
+            {
+                checkpoint_saved = Some(std::time::Instant::now());
+                if let Some(source) = archive.as_ref() {
+                    if source.save_indexer(&index).is_err() {
+                        eprintln!("indexer private replay checkpoint unavailable");
+                    }
+                }
+            }
             tokio::time::sleep(Duration::from_secs(2)).await;
         }
     });

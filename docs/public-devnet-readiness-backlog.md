@@ -1,12 +1,38 @@
 # Public Devnet readiness backlog
 
+Current core scope — 2026-10-09 JST: **finish ZKAPI core; stop demo/chat UI work**.
+Funded browser/Phantom PD-08 is deferred, not completed and not a core gate.
+The [evidence reconciliation](evidence/PD-core-scope-reconciliation.md) verifies
+fresh same-host public-input `.3` install/setup and existing production-handler
+rejection alongside the completed native lifecycle. The concrete remaining core
+requirements are E-01 escape/finalize and the selected
+[OpenRouter Ethereum-parity candidate and deployment evidence](evidence/PD-openrouter-ethereum-parity.md),
+followed by the final handoff. The user selected captured management USD after
+disable/grace, with operator accounting-delay risk and no repricing. An additional
+final-invoice/completeness gate was stronger than that upstream contract and is
+removed. The [observed cost discrepancy](evidence/PD-openrouter-management-usage-limit.md)
+remains disclosed. No reconciliation service, new paid matrix, UI work,
+pristine-OS/platform expansion or long-term qualification is added. Dated
+observations below remain historical; their old pending statements do not undo
+later receipts.
+
+The checklist now credits public-input installation, deployed capability reporting,
+streaming and price/cap guards in their recorded live or fixture scopes. Current
+service availability is separate: the latest retained 16:27 UTC cut found primary
+RPC HTTP429 and indexer HTTP503; [transport recovery](evidence/PD-public-signature-status-route.md)
+is underway. E-01 and actual parity deployment are not yet marked complete.
+
+## Historical checkpoints
+
+Readiness deployment checkpoint — 2026-10-08 15:16 UTC: [public capability reporting and explicit admission resume](evidence/PD-public-readiness-deployment.md) completed. The first local HTTP503 (`indexer: unavailable`) remains preserved with cause unproven; separate read-only completion passed without a source change. Only control/gateway restarted, preserving the other four processes and the complete closed four-session financial cut. Provider credit and admission are not checked by the readiness endpoint; the separate relay configuration confirms admission enabled. Funded browser cases, E01, provider-cost reconciliation and planned 80 GiB expansion remain outside this checkpoint.
+
 Native closure checkpoint — 2026-10-08 14:27 UTC: [N-04 interrupted-stream recovery and mutual withdrawal](evidence/PD-native-public-N04.md) are complete: one deliberate process-group kill, same-journal .3 restart, one explicit recovery, four independently verified signed settlements totaling **20 micro-USDC**, and return of **4,999,980 micro-USDC**. Six finalized exact-wire transactions establish the closed note and Vault zero; wallet equals treasury owner, so its restored balance does not erase charges. The final operator cut retains four full-cap reservations (4M micro-USDC exposure), four settled sessions and all 25 checkpoint rows. [OpenClaw text/read-tool continuation](evidence/PD-native-public-N02-N03.md) passed in its separate scope; [external provider-cost reconciliation](evidence/PD-openrouter-management-usage-limit.md) remains unresolved. [SDK .3 source CI](evidence/PD-hosted-ci-e2ee932.md) passed all nine implementation jobs at exact source `e2ee9320…`, separate from live acceptance. Subsequent [independent backup verification](evidence/PD-N01-backup-independent-verify.md) completed exact-version download, streamed archive checks and isolated PG16 logical restoration of the original one-session N01 cut; it does not restore the later four-session state or physical services. Funded browser cases, the separate zero-AUTH emergency exercise and deployed aggregate readiness remain unfinished. Preserve the interrupted response, all failed preparations/observations, immutable releases and original journals; no inference replay or chat-history restoration is implied.
 
 OpenClaw failure checkpoint — 2026-10-08 12:04:14 UTC: the first actual request returned HTTP 400; no read-tool continuation or second forwarded request completed. The [failure record](evidence/PD-openclaw-first-request-failure.md) preserves the original launch/forward fences, unchanged native journal revision 371 and the independently observed unchanged one-reservation N-01 operator cut. No new AUTH, reservation, session or charge is evidenced; network packet counts remain unknown. The surfaced `400 terminated` error and separate context warning do not yet establish the original cause. N-02/N-03 remain unverified, with no acceptance checkbox changed.
 
 Resume checkpoint — 2026-10-08 11:45 UTC: **admission resume completed**, followed by public HTTP 200 reporting admission and recovery enabled. The [service-recovery record](evidence/PD-N01-service-recovery.md) joins the successful run06 to fresh installed-native preflight and two unchanged full local readiness checks; public `/relay-status` remains configuration-only. The pre-resume financial cut retained one N-01 full-cap reservation, the verified six-micro-USDC charge and active signed balance of 4,999,994 micro-USDC. Earlier attempts01–05 and all capture/restart/decoder failures remain preserved. This is a dated checkpoint, not a current balance or continuous-availability claim. Root launched N-02/N-03 around 11:48 UTC; their outcomes and any later reservations or charges are not included here. N-04, funded browser acceptance, withdrawal and independent backup restoration remain unverified. The readiness control candidate is still undeployed.
 
-Latest handoff — 2026-10-08 10:55 UTC: the [writer application-log correction](evidence/PD-rpc-program-log.md) is installed as binary `23bbb73f…83b372`; its start receipt records cold validation/replay in progress. **Fresh readiness and admission resume remain unverified; admission is false.** N-01 still has one full-cap reservation, a verified six-micro-USDC charge and an active signed balance of 4,999,994 micro-USDC. No additional paid case, funded browser case or withdrawal is claimed. [CI at `27ef2a4`](evidence/PD-hosted-ci-27ef2.md) passed all nine jobs; the latest root-saved successor `e36cfbcd…` cut had eight successful jobs and client/challenger pending. The dated text and checklist below remain unchanged historical records.
+Historical handoff — 2026-10-08 10:55 UTC: the [writer application-log correction](evidence/PD-rpc-program-log.md) is installed as binary `23bbb73f…83b372`; its start receipt records cold validation/replay in progress. **Fresh readiness and admission resume remain unverified; admission is false.** N-01 still has one full-cap reservation, a verified six-micro-USDC charge and an active signed balance of 4,999,994 micro-USDC. No additional paid case, funded browser case or withdrawal is claimed. [CI at `27ef2a4`](evidence/PD-hosted-ci-27ef2.md) passed all nine jobs; the latest root-saved successor `e36cfbcd…` cut had eight successful jobs and client/challenger pending. The dated text and checklist below remain unchanged historical records.
 
 Original handoff: 2026-10-07 JST. Status checkpoint: 2026-10-08 09:40:40 UTC.
 **Public inputs and earlier read-only browser/native preflight are verified.
@@ -29,7 +55,7 @@ their separately recorded scopes. Completed distribution, profile, preflight and
 policy checks are marked below with their evidence. Local fixtures do not close
 the separately required funded lifecycle acceptance.
 
-Latest follow-up: [independent app, complete proof bundle and deployment preparation](evidence/PD-public-devnet-followup.md).
+Historical follow-up: [independent app, complete proof bundle and deployment preparation](evidence/PD-public-devnet-followup.md).
 The four-file redistribution question is resolved. AWS-generated HTTPS is
 selected and seven additional USDC of provider exposure are approved. The user
 approved proceeding with the roughly USD50/month
@@ -205,7 +231,8 @@ with the independent-consumer experience.
 
 ## Priority and dependency map
 
-P0 tasks are blockers for advertising the proposed public Devnet integration.
+P0 tasks below apply to the current core preview scope. The original funded
+browser requirement is now deferred by the user.
 P1 work improves the broader product or production release and must not be
 quietly claimed by completing P0.
 
@@ -218,14 +245,14 @@ quietly claimed by completing P0.
 | PD-05 | P0 | Live provider, model and tariff configuration | PD-01; operator provider access |
 | PD-06 | P0 | Devnet funding, access and provider-spend policy | PD-01/05 |
 | PD-07 | P0 | Public-input-only SDK and clientd onboarding | PD-02/03/04/05/06 |
-| PD-08 | P0 | Independent browser lifecycle on released Kit SDK | PD-01 through PD-07 |
-| PD-09 | P1 | Released native client lifecycle through supported transport | PD-01 through PD-07 |
-| PD-10 | P0 | Published evidence, service recovery and release handoff | PD-08; PD-09 if native readiness is advertised |
+| PD-08 | Deferred | Independent browser lifecycle on released Kit SDK | Separate app work; not a current core gate |
+| PD-09 | P0 for native scope | Released native client lifecycle through supported transport | PD-01 through PD-07 |
+| PD-10 | P0 | Published evidence, service recovery and release handoff | Current core evidence and PD-09; PD-08 deferred |
 | PD-11 | P1 | Additional clients/platforms and production gates | Scoped follow-up after P0 |
 
-PD-09 is required before claiming the native public-service path is ready, but
-it need not delay a clearly browser-scoped preview. Checked items below cite their
-completed evidence; unchecked items still require their stated acceptance.
+PD-09 applies to the selected native core path. Checked items below cite their
+completed evidence. Unchecked items retain their stated coverage boundaries;
+PD-08 and broader platform/OS coverage are explicitly outside the current scope.
 The original requirements called for an owner, chosen deployment, exact release
 versions and measurable scope before implementation. Current choices are
 recorded in the linked deployment evidence, not inferred from this baseline.
@@ -255,11 +282,12 @@ Work:
 
 Acceptance:
 
-- [ ] A third party can obtain the public addresses and reach all required routes
-  from a clean machine without a developer's tunnel, checkout or private CA.
+- [x] An independent installation on the supported macOS ARM64 host obtains
+  public addresses and reaches the documented routes without a developer tunnel,
+  source checkout or private CA. A pristine-OS run is outside this preview scope.
 - [x] Read-only validation binds the selected cluster and finalized Pool to the
   release's reviewed program/build/setup identity.
-- [ ] A stale indexer, unavailable signer or disabled provider is reported as a
+- [x] A stale indexer, unavailable signer or disabled provider is reported as a
   specific unavailable capability; no fabricated healthy state is returned.
 
 Binding evidence: [actual independent Chrome and installed-native preflight](evidence/PD-public-runtime-origin-followup.md)
@@ -268,9 +296,14 @@ artifact bundle, including genesis, finalized Pool owner/PDA/configuration,
 circuit-profile binding and shared snapshot/chain clock. The
 [immutable release and independently published profile pin](evidence/PD-public-client-publication.md)
 and [matching downloaded native/WASM proof checks](evidence/PD-public-assets.md)
-retain the reviewed artifact identities. This closes the read-only binding
-item; it does not establish clean-machine coverage of every financial route
-or the complete signer/provider/indexer failure matrix.
+retain the reviewed artifact identities. The [isolated public-input `.3` installation/setup](evidence/PD-core-scope-reconciliation.md)
+and native N-01–N-04 cover the recorded consumer routes. This is same-host
+installation isolation, not a pristine operating system or live injection of
+every signer/provider/indexer failure. The later
+[deployed readiness record](evidence/PD-public-readiness-deployment.md) and
+[targeted production readiness fixtures](evidence/PD-public-readiness-candidate.md)
+now cover specific capability reporting in their stated scopes. No new live
+fault matrix or provider-disable feature is required by this scope reconciliation.
 
 Reuse: [control service](../services/control/README.md),
 [indexer](../services/indexer/README.md),
@@ -467,15 +500,27 @@ Acceptance:
 
 - [x] The advertised Chat model returns actual provider output and a
   SDK-verified signed successor/charge through the public deployment.
-- [ ] Streaming is live-tested if advertised; terminal usage/empty choices,
+- [x] Streaming is live-tested if advertised; terminal usage/empty choices,
   cancellation and settlement state are handled.
-- [ ] Pricing/cap changes cannot alter an already accepted operation; no
+- [x] Pricing/cap changes cannot alter an already accepted operation; no
   provider-management secret is requested from an ordinary hosted-service user.
 
 The [native N-01 checkpoint](evidence/PD-native-public-N01.md) establishes the
 first item for direct OpenRouter `openai/gpt-4o-mini` nonstreaming Chat on the
-immutable `.2` native client. Streaming, tools and interruption are separate
-remaining cases.
+immutable `.2` native client. Later [N-02/N-03](evidence/PD-native-public-N02-N03.md)
+completed streamed OpenClaw text/read-tool continuation on `.3` through the
+explicit local scheduling adapter; [N-04](evidence/PD-native-public-N04.md)
+completed interrupted-stream recovery and withdrawal. These are scoped live
+results, not every streaming/error combination. N-02/N-03's signed zero amounts
+remain valid for the observed management counters, while
+the [response-cost discrepancy](evidence/PD-openrouter-management-usage-limit.md)
+remains disclosed under the selected [captured-usage parity policy](evidence/PD-openrouter-ethereum-parity.md).
+No invoice-finality claim follows. The streaming item combines these actual
+streamed/interrupted cases with the released [SDK’s 385 passing local guards](evidence/PD-core-scope-reconciliation.md), including
+empty terminal-usage choices and cancellation. Quote tests verify Ed25519, exact
+cap/tariff binding and retained price snapshots; native consumers used only
+their local credential and invitation, never operator management credentials.
+These checked behaviors do not claim every provider/API combination.
 
 Reuse: [model contract](sdk/deployment.md),
 [provider acceptance](provider-acceptance.md),
@@ -513,7 +558,7 @@ Work:
 
 Acceptance:
 
-- [ ] A new tester can fund the right assets and understand all prerequisites
+- [x] A new tester can fund the right assets and understand all prerequisites
   from public instructions, including any access gate.
 - [x] The operator has an explicit accountable provider-spend policy; a test
   token balance is never represented as real provider credit.
@@ -525,7 +570,16 @@ The [funding guide](sdk/devnet-funding.md),
 separate test tokens, actual provider charges and seven nonreclaimable exposure
 reservations. The [later admission checkpoint](evidence/PD-public-admission-recovery.md)
 records enabled admission, and [N-01](evidence/PD-native-public-N01.md) records
-the first metered use. The other live acceptance checks stay open.
+the first metered use. The [final native cut](evidence/PD-native-public-N04.md)
+retains four nonreclaimable caps, 20 micro-USDC of signed charges and a closed
+note after return of 4,999,980 test micro-USDC. That does not close every
+funding/access/budget failure path. The funding guide gives the exact mint,
+Devnet faucets, SOL/rent, cap headroom and private invitation procedure, supported
+by actual native deposits. The error/recovery item remains open while E-01's
+finalized deposit is still unconfirmed in its SDK operation after the RPC/indexer
+outage. Existing state remains preserved; no new failure matrix is required. The
+[provider-cost discrepancy](evidence/PD-openrouter-management-usage-limit.md)
+remains disclosed under the selected operator-risk policy.
 
 ## PD-07 — Provide public-input-only SDK and native quickstarts
 
@@ -550,9 +604,10 @@ Work:
 
 Acceptance:
 
-- [ ] On a clean machine, the documented steps work with downloaded releases
-  and user-owned wallet state; no source-relative import, `target/` artifact,
-  unpublished JSON, private backend profile or reference app is required.
+- [x] In a fresh installation outside the checkout on supported macOS ARM64,
+  the documented steps use downloaded releases and user-owned state; no
+  source-relative import, unpublished runtime input, operator profile or reference
+  app is required. Pristine-OS and other-platform coverage are deferred.
 - [x] The browser example and native onboarding use the existing SDK lifecycle,
   preserve durable state, and disable automatic inference retries/fallbacks.
 - [x] An actual user can reach a configured ready state without inventing URLs,
@@ -560,9 +615,11 @@ Acceptance:
 - [x] npm registry publication is not treated as a blocker: authenticated
   immutable tarballs remain a valid distribution channel.
 
-The [verified immutable `.2` tarballs](evidence/PD-public-client-publication.md)
-are publicly downloadable without npm-registry publication. Current service-ready
-onboarding is additionally supported by the
+The [verified immutable `.3` SDK/native release and revision-2 profile](evidence/PD-sdk3-publication.md)
+and [independent `.3` browser app](evidence/PD-browser-sdk3-publication.md) are
+the current public distribution. The [original `.2` publication](evidence/PD-public-client-publication.md)
+and its funded custody/profile remain preserved; no automatic migration follows.
+Recorded service-ready onboarding is additionally supported by the
 [actual downloaded-native setup and explicit unfunded browser initialization](evidence/PD-consumer-unfunded-startup.md)
 and [later independent browser/installed-native ten-check preflight](evidence/PD-public-runtime-origin-followup.md).
 Native inputs were derived by the installed public-profile helper; the browser
@@ -573,16 +630,28 @@ Shared lifecycle, durable identity and no-retry behavior are covered by the
 [independent application integration](evidence/PD-zkchat-integration.md) and
 the exact released client's [hosted SDK, external-package and Go guard checks](evidence/PD-public-client-hosted-ci.md).
 Those continuity/recovery guards are fixture evidence. The separately scoped
-[native N-01](evidence/PD-native-public-N01.md) adds actual stock public-transport
-deposit, response and verified settlement; it does not close interrupted
-recovery, withdrawal or either complete consumer lifecycle. The clean-machine
-item remains open.
+[native N-01](evidence/PD-native-public-N01.md),
+[OpenClaw N-02/N-03](evidence/PD-native-public-N02-N03.md) and
+[N-04](evidence/PD-native-public-N04.md) now establish the recorded native
+lifecycle, including interrupted recovery and finalized withdrawal. They do not
+establish a pristine-OS run or funded browser lifecycle. The later
+[isolated `.3` public-input installation and setup](evidence/PD-core-scope-reconciliation.md)
+passed outside the checkout with empty consumer HOME/TMPDIR and only shipped
+runtime tools. The tested scope is same-host installed-artifact acceptance. Pristine-OS and
+other-platform coverage remain unverified outside the advertised macOS preview
+checks; the broader original clean-machine follow-up remains uncompleted and is
+not a core-preview gate. Funded browser acceptance is deferred.
 
 Reuse: [SDK quickstart](sdk/quickstart.md),
 [native quickstart](sdk/clientd-quickstart.md),
 [clientd runtime](../apps/clientd/README.md).
 
 ## PD-08 — Verify the released Kit SDK in an independent browser app
+
+**Deferred by the user on 2026-10-09 JST.** Demo/chat UI work and funded Phantom
+cases are not current ZKAPI core completion gates. The original work and unchecked
+acceptance items below are retained; no custody reset, transaction retry, new
+funding or app publication follows from this scope change.
 
 **Gap:** the independent zkchat UI/adapter tests are not live acceptance;
 historical browser/native cases do not revalidate the newly published Kit client
@@ -619,9 +688,11 @@ Acceptance:
 
 ## PD-09 — Verify native integration through the shipped transport
 
-**Gap:** historical OpenClaw live acceptance used a custom bounded Devnet relay;
-installed-package/local fixtures do not establish current stock-supervisor
-public transport or Kit live acceptance.
+**Recorded scope:** N-01 used the shipped `.2` public transport; the separately
+pinned `.3` upgrade preserved its funded profile/custody for N-02–N-04. The native
+note is now closed with four verified signed settlements. OpenClaw used an
+explicit local scheduling adapter; immediate unmediated continuation and other
+platforms/providers remain outside the verified scope.
 
 Work:
 
@@ -636,12 +707,30 @@ Work:
 
 Acceptance:
 
-- [ ] The installed released client completes a real funded lifecycle through
+- [x] The installed released client completes a real funded lifecycle through
   its advertised public transport and produces independently checkable receipts.
-- [ ] The external AI client receives only its local inference credential.
-- [ ] Recovery/unsupported-request behavior is verified in the production
+- [x] The external AI client receives only its local inference credential.
+- [x] Recovery/unsupported-request behavior is verified in the production
   handler, not only a synthetic HTTP compatibility fixture.
-- [ ] The report names any remaining relay or platform limitation explicitly.
+- [x] The report names any remaining relay or platform limitation explicitly.
+
+The [native N-01](evidence/PD-native-public-N01.md),
+[OpenClaw text/read-tool continuation](evidence/PD-native-public-N02-N03.md), and
+[interrupted recovery/final withdrawal](evidence/PD-native-public-N04.md)
+records cover the completed path. Six finalized exact-wire transactions close
+the five-USDC note and return 4,999,980 micro-USDC; signed charges total 20.
+The actual OpenClaw configuration selects only the local inference-token file;
+the scheduling adapter retains its separate local management credential, and
+provider-management credentials remain operator-side. The reports distinguish
+the adapter, macOS ARM64 and retained `.2` observer from the running `.3` client.
+The recovery/unsupported-request item combines actual N-04 recovery with the
+[existing production Go rejection and current SDK guard audit](evidence/PD-core-scope-reconciliation.md).
+The actual Claude Code unsupported-route probe reached the production handler;
+its source pins still match the released Go handler. SDK API/metadata rejection
+fixtures remain local tests, not paid acceptance. The first OpenClaw HTTP400's
+cause is still unproven and is not used as rejection evidence. The
+[external provider-cost discrepancy](evidence/PD-openrouter-management-usage-limit.md)
+remains separate from signature and lifecycle completion.
 
 Reuse: [OpenClaw integration](integrations/openclaw.md),
 [external native evidence](evidence/I10-clientd-external.md),
@@ -649,9 +738,11 @@ Reuse: [OpenClaw integration](integrations/openclaw.md),
 
 ## PD-10 — Publish the evidence and retain a recoverable service
 
-**Gap:** public release/download verification is already available, but it does
-not establish continued service readiness, a complete artifact bundle or a
-current public-consumer lifecycle.
+**Remaining core scope:** E-01 escape/finalize, the selected OpenRouter parity
+candidate/deployment evidence, and the final evidence handoff remain incomplete. Published
+inputs, native lifecycle, actual readiness deployment and historical backup
+restoration have scoped evidence. Funded browser acceptance is deferred. None of
+the dated service observations is a continuous-availability guarantee.
 
 Work:
 
@@ -661,7 +752,7 @@ Work:
 - Add focused public-distribution/preflight checks and retain their exact scope.
   Keep funded live tests deliberate and budgeted; do not put unattended paid
   inference into ordinary install, health or CI checks.
-- Publish PD-08 evidence and PD-09 evidence if native readiness is advertised,
+- Publish PD-09 evidence for the advertised native path; retain PD-08 as deferred,
   with a supported feature matrix and explicit
   unverified combinations. Preserve the known comprehensive-CI/evidence
   limitations until independently resolved; a focused pass is not "all CI".
@@ -684,15 +775,30 @@ Work:
 
 Acceptance:
 
-- [ ] A reviewer can reproduce the published setup and identify exactly which
+- [x] A reviewer can reproduce the published setup and identify exactly which
   app/client/network/provider combinations were actually verified.
-- [ ] An operator restart/outage does not lose acknowledged reservations or
+- [x] An operator restart/outage does not lose acknowledged reservations or
   authorize duplicate inference/settlement; applicable recovery remains usable.
-- [ ] Current preview memory/disk headroom and restart/recovery are measured on
+- [x] Current preview memory/disk headroom and restart/recovery are measured on
   the selected host. Long-term capacity qualification is deferred by the user
   on 2026-10-08 JST and is not a completion gate for this preview.
 - [ ] All P0 evidence is linked, versioned and redacted; no production/mainnet,
   ceremony, audit or full I10/G1-G4 claim is inferred from a Devnet preview.
+
+The [N-01 service recovery](evidence/PD-N01-service-recovery.md) retained the
+acknowledged reservation, signed settlement, database cut and original journals
+through admission suspension, capture, same-state restart and resume. It also
+records actual host memory/disk and cold-replay observations, including failures.
+[Independent backup verification](evidence/PD-N01-backup-independent-verify.md)
+later verified the complete encrypted archive and restored its original
+one-session logical database in isolated PG16. This is not restoration of the
+later four-session state, physical services or signer state. These checked
+items concern the measured preview scope. Published `.3` releases/profile,
+isolated public-input setup and the N-01–N-04 evidence identify the exact supported
+macOS/native/OpenClaw combination and its limitations. The emergency escape/finalize path,
+OpenRouter parity candidate/deployment evidence and final core handoff remain open. Funded browser evidence
+is deferred. [Readiness deployment and explicit admission resume](evidence/PD-public-readiness-deployment.md)
+are now recorded separately, preserving the earlier failed observation.
 
 ## PD-11 — Keep broader follow-ups explicit
 
@@ -721,11 +827,12 @@ These are separate from proving the first public Chat integration:
    to rebuild the protocol.
 2. Freeze the compatible public profile, transport, model/tariff and access/
    funding policy (PD-03 through PD-06).
-3. Run clean-environment onboarding and read-only validation (PD-07).
-4. Run the separately budgeted browser live cases, with failures and recovery
-   preserved (PD-08); run PD-09 before advertising native public-service readiness.
-5. Publish the immutable release/profile, operations handoff and scoped
-   evidence (PD-10); schedule PD-11 separately.
+3. Retain the completed isolated public-input onboarding and read-only validation
+   (PD-07), with its same-host rather than pristine-OS scope explicit.
+4. Retain completed N-01–N-04 native evidence (PD-09). Complete the separately
+   started E-01 escape/finalize path and record the selected OpenRouter parity
+   implementation/deployment; do not replay historical inference. PD-08 is deferred.
+5. Finish the core operations/evidence handoff (PD-10); schedule PD-11 separately.
 
 For every task, append or link an evidence record under `docs/evidence/`
 containing: task ID, owner, source/release/profile hashes, commands, environment,

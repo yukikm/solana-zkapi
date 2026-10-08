@@ -188,16 +188,42 @@ unitは `input_tokens, output_tokens, cache_read_tokens, cache_write_tokens, cac
 
 各usage count、rate分子・分母は0〜2^63−1（分母は1〜2^63−1）、rate最大6件。中間計算は任意精度整数の有理数で行い、丸めた結果はNUMERIC(38,0)以内か検査する。超過/未知のusage項目は推定請求せずunknownとして処理する。予約上限を計算できない入力は送信前拒否。
 
-operationの観測費用は `observed_nano = ceil(Σ count_i * numerator_i / denominator_i)`。項目ごとのnano切上げは行わない。利用者負担は `min(observed_nano, reservation_nano)`、差額を運営損失にする。sessionでは利用者負担nanoだけを合算して一度microへ切上げる。directでは最終USD明細を文字列/JSON数値lexemeから正確な十進有理数へ変換し、全model分を合計したUSD×10^9を一度nanoへ切上げ、cap_micro×1000で制限してからmicroへ切上げる。binary floatを経由しない。
+operationの観測費用は `observed_nano = ceil(Σ count_i * numerator_i / denominator_i)`。項目ごとのnano切上げは行わない。利用者負担は `min(observed_nano, reservation_nano)`、差額を運営損失にする。sessionでは利用者負担nanoだけを合算して一度microへ切上げる。For direct metering, convert the selected provider USD strings/JSON numeric lexemes to exact decimal rationals, sum across models, round USD × 10^9 upward once to nano-USDC, cap at cap_micro × 1000, then round upward to micro-USDC. Do not pass through binary floating point.
 
 正規化usageは料金unitと同じ名前の整数count配列（ASCII順、重複なし）。usage欠落を0とは解釈しない。OpenAI系のinclusive inputからcache-read/cache-writeを差し引き、Anthropicのexclusive inputにはcache分を足し戻してinputとして再請求しない。5m/1hのwrite内訳は分離する。outputに含まれるreasoning tokenを二重計上しない。SSEの累積値を各frameで足し込まない。正確な写像、欠落が0を意味するfield、利用可能なcache区分はprovider/model/API version別adapter fixtureにpinし、未検証の区分をcatalogへ公開しない。
 一次資料：[OpenAI cache usage](https://developers.openai.com/api/docs/guides/prompt-caching)、[Anthropic cache usage](https://platform.claude.com/docs/en/build-with-claude/prompt-caching)。外部schemaはI07で再確認し、snapshotと正常/欠落/矛盾usageのfixtureを保存する。
+
+### Direct OpenRouter capture policy — Ethereum parity
+
+For direct OpenRouter, the selected amount is the exact `usage + byok_usage`
+management observation captured after the key is confirmed disabled and the
+configured grace has elapsed. Capture that observation durably before deletion;
+confirm deletion before signing the capped settlement. Missing, malformed or
+unavailable usage is not zero. A failed/ambiguous deletion remains pending and
+reuses the saved amount; it does not issue a replacement key or replay inference.
+A finalized session is never repriced.
+
+This follows [Ethereum zkAPI at the reviewed immutable revision](https://github.com/ethereum/zkapi/blob/045b444ea1b52538d1b40273c7cb6ed09468a052/docs/note-bound-commitments.md#L58-L62).
+The configured grace is an **operator assumption** about in-flight requests and
+accounting delay. It does not establish an authoritative final provider invoice.
+Delayed or unobserved cost remains the operator's risk and cannot retroactively
+increase the customer's signed charge. `operator_loss_nano_usdc` measures excess
+of this selected observation over the charge, not all eventual external losses.
+A separately obtained late observation may use the existing operator-only
+append contract; a new reconciliation service is not required for this preview.
+OA's issuer-finalized receipt path and proxy metering retain their own rules.
+
+The [parity evidence](../evidence/PD-openrouter-ethereum-parity.md) distinguishes
+this selected contract from the earlier two-sample implementation and records
+whether the successor has actually been deployed. Upstream's default grace and
+settlement-poll intervals are 5 and 2 seconds; deployed configuration remains an
+explicit operator choice, not an accounting guarantee.
 
 ## 9. 署名付き明細
 
 `GET /zkapi/v1/sessions/{request_id}/receipts` はcontrol token認証、cursor付きの署名明細一覧。OperationStatusも終端時にはreceiptを必須とし、0課金/waiverを区別する。directはoperation_id=nullのsession明細を一件作る。本文や生provider keyは含めない。
 
-ReceiptBodyのfieldはOpenAPIを正本とする。receipt_hash=SHA256(JCS(ReceiptBody))、署名はmanifestにpinした専用Ed25519 receipt_public_keyによるraw hash32への署名。request_id、pool、deployment、operation_id、tariff_hash、reservation_nano_usdc、provider_reported_usd、provider_request_id（未知ならnull）、usage、観測nano、利用者nano、運営損失nano、reasonと証拠区分を結合する。proxy署名は運営者の記録への署名であり、OA署名明細そのものやproviderの証明と混同しない。provider_evidence_digestは元の検証済み/観測した明細のdigestで、未取得ならnull。directのmetered明細はprovider_reported_usdへ正確な最終USD合計（非指数表記、不要な先頭/末尾0なし、最大128文字）を含め、usage=[]、reservation_nano_usdc=cap_micro×1000とする。proxyではprovider_reported_usd=null、reservation_nano_usdcは予約R。未発行/unknownはUSD=nullとし、0の実測と区別する。これで利用者はUSD→nano→capまたはusage×rate→Rの計算を再現できる。
+ReceiptBodyのfieldはOpenAPIを正本とする。receipt_hash=SHA256(JCS(ReceiptBody))、署名はmanifestにpinした専用Ed25519 receipt_public_keyによるraw hash32への署名。request_id、pool、deployment、operation_id、tariff_hash、reservation_nano_usdc、provider_reported_usd、provider_request_id（未知ならnull）、usage、観測nano、利用者nano、運営損失nano、reasonと証拠区分を結合する。proxy署名は運営者の記録への署名であり、OA署名明細そのものやproviderの証明と混同しない。provider_evidence_digestは元の検証済み/観測した明細のdigestで、未取得ならnull。A metered direct receipt contains the exact selected USD total in provider_reported_usd (non-exponential canonical decimal, no unnecessary leading/trailing zeroes, at most 128 characters), usage=[], and reservation_nano_usdc=cap_micro×1000. For OpenRouter, this is the captured management observation defined below, not a provider invoice-finality assertion.proxyではprovider_reported_usd=null、reservation_nano_usdcは予約R。未発行/unknownはUSD=nullとし、0の実測と区別する。これで利用者はUSD→nano→capまたはusage×rate→Rの計算を再現できる。
 
 billing_effect="charge"は各operation（directはsession）につき一件で不変。SETTLED前に全charge明細を署名保存し、そのcharged_nano_usdc合計とsettlementのmicro切上げ結果を照合する。unknownは観測額/損失額null、利用者額0の明細を発行する。遅延usageはbilling_effect="late_loss_observation"、利用者額0、元receipt_hashをrelated_receipt_hashへ指定した追記とし、既存明細・後継署名を変更しない。保存順のcursorで取得し、cursorは当該sessionだけで有効。署名検証・集計に必要なfieldを自由形式metadataへ隠さない。
 

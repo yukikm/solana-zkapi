@@ -821,7 +821,7 @@ async fn direct_http_one_time_key_and_durable_usage_before_lost_delete() -> Resu
     assert!(state.get("provider_key").is_none());
     assert!(state.get("provider_key_verification").is_none());
     fixture.app.ledger.close(id).await?;
-    // First finalization obtains final usage and then loses deletion confirmation.
+    // First finalization captures one usage observation, then loses deletion confirmation.
     for _ in 0..10 {
         fixture.app.advance(id).await.ok();
         if deletes.load(Ordering::SeqCst) > 0 {
@@ -834,6 +834,7 @@ async fn direct_http_one_time_key_and_durable_usage_before_lost_delete() -> Resu
     assert_eq!(checkpoint["usage"]["observed_nano"], "1236");
     assert_eq!(checkpoint["deleted"], false);
     let usage_reads = reads.load(Ordering::SeqCst);
+    assert_eq!(usage_reads, 1);
     settled(&fixture, id).await?;
     assert_eq!(
         reads.load(Ordering::SeqCst),
@@ -860,6 +861,22 @@ async fn direct_http_one_time_key_and_durable_usage_before_lost_delete() -> Resu
         receipt.body.provider_reported_usd.as_deref(),
         Some("0.0000012351")
     );
+    let captured = fixture.app.ledger.direct_checkpoint(id).await?;
+    fixture
+        .app
+        .advance(id)
+        .await
+        .map_err(|_| anyhow::anyhow!("settled direct session advance failed"))?;
+    let settled_again = response(
+        client
+            .get(format!("{sessions}/{id}/receipts"))
+            .header("authorization", &control),
+        200,
+    )
+    .await;
+    assert_eq!(settled_again, page, "settled receipts cannot be repriced");
+    assert_eq!(fixture.app.ledger.direct_checkpoint(id).await?, captured);
+    assert_eq!(reads.load(Ordering::SeqCst), usage_reads);
     let checkpoints = fixture
         .sql
         .query("SELECT metadata::text FROM outbox", &[])
