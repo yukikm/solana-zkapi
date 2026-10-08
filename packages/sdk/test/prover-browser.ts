@@ -20,6 +20,36 @@ class Cdp {
   call(method:string,params:object={}):Promise<any>{const id=this.next++,p=new Promise((resolve,reject)=>this.pending.set(id,{resolve,reject}));this.socket.send(JSON.stringify({id,method,params}));return p;}
   async evaluate(expression:string){const r=await this.call('Runtime.evaluate',{expression,awaitPromise:true,returnByValue:true});if(r.exceptionDetails)throw Error(r.exceptionDetails.exception?.description??r.exceptionDetails.text);return r.result.value;}
 }
+/** Retry only the read-only document probe, never proof execution. */
+async function waitForDocument(cdp: Pick<Cdp, 'evaluate'>, url: string): Promise<void> {
+  const expected = new URL(url).href, deadline = Date.now() + 20_000;
+  while (Date.now() < deadline) {
+    try {
+      if (await cdp.evaluate(`location.href === ${JSON.stringify(expected)} && document.readyState === 'complete'`)) return;
+    } catch (error) {
+      if (!(error instanceof Error) || error.message !== 'Execution context was destroyed.') throw error;
+    }
+    await delay(10);
+  }
+  throw new Error('browser document did not become ready before proof execution');
+}
+test('proof document readiness waits through navigation before importing worker modules', async () => {
+  let probes = 0;
+  await waitForDocument({ async evaluate(expression) {
+    assert.equal(expression, 'location.href === "http://127.0.0.1:1234/" && document.readyState === \'complete\'');
+    probes++;
+    if (probes === 1) throw new Error('Execution context was destroyed.');
+    return probes === 3;
+  } }, 'http://127.0.0.1:1234');
+  assert.equal(probes, 3);
+});
+test('proof document readiness does not retry an unrelated debugger failure', async () => {
+  let probes = 0;
+  await assert.rejects(waitForDocument({ async evaluate() {
+    probes++; throw new Error('browser target closed');
+  } }, 'http://127.0.0.1:1234'), /browser target closed/);
+  assert.equal(probes, 1);
+});
 test('real Chromium worker: new RP/WPs/tree proofs, shared receipt verifier, termination/native fallback and no fallback on rejection',{skip:!chrome&&'Chromium required',timeout:180_000},async t=>{
   const wasm=await read('apps/clientd/prover/target/wasm32-unknown-unknown/release/zkapi_client_prover.wasm'),hash=digest(wasm);
   const binary=resolve('apps/clientd/prover/target/release/zkapi-client-prover'),native=new NativeProver(binary,digest(await read(binary)));
@@ -41,7 +71,11 @@ test('real Chromium worker: new RP/WPs/tree proofs, shared receipt verifier, ter
   t.after(async()=>{if(child.exitCode===null){const exited=once(child,'exit');child.kill('SIGTERM');await exited;}await rm(directory,{recursive:true,force:true,maxRetries:10,retryDelay:100});});
   let port=0;for(let i=0;i<150;i++){try{port=Number((await readFile(join(directory,'DevToolsActivePort'),'utf8')).split('\n')[0]);break;}catch{if(child.exitCode!==null)throw Error(diagnostics);await delay(30);}}assert.ok(port);
   const debug=`http://127.0.0.1:${port}`,version=(await(await fetch(`${debug}/json/version`)).json() as any).Browser;t.diagnostic(`Runtime browser: ${version}`);
-  const target=await(await fetch(`${debug}/json/new?${encodeURIComponent(origin)}`,{method:'PUT'})).json() as any,cdp=await Cdp.connect(target.webSocketDebuggerUrl);t.after(()=>cdp.socket.close());
+  const target=await(await fetch(`${debug}/json/new?about:blank`,{method:'PUT'})).json() as any,cdp=await Cdp.connect(target.webSocketDebuggerUrl);t.after(()=>cdp.socket.close());
+  await cdp.call('Page.enable');
+  const navigation=await cdp.call('Page.navigate',{url:origin});
+  assert.equal(navigation.errorText,undefined);
+  await waitForDocument(cdp,origin);
   const output=await cdp.evaluate(`(async()=>{
     const {WorkerProver}=await import('/prover-runtime.ts');const data=await(await fetch('/data')).json();const wasm=new Uint8Array(await(await fetch('/wasm')).arrayBuffer());
     const fallback={run:async command=>{const r=await fetch('/native',{method:'POST',body:JSON.stringify(command)});if(!r.ok)throw Error('native rejected');return r.json();}};

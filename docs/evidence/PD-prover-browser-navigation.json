@@ -1,0 +1,245 @@
+{
+  "schema": 1,
+  "scope": "Test-only browser navigation correction; focused actual Chrome/WASM/native fixture, not full CI or live acceptance",
+  "source_parent": "47684a2225f2133153f6e042a268e43b41f0b696",
+  "source_path": "packages/sdk/test/prover-browser.ts",
+  "before_sha256": "904aa638b693f88f638ead9855d4f59a74cdf147646789c9b1f428a8e1f6e988",
+  "after_sha256": "d64bbd957da69cddb896c640352d0b0753e92c68190374774052c9c34ddc2dae",
+  "hosted_failure": {
+    "schema": 1,
+    "head_sha": "47684a2225f2133153f6e042a268e43b41f0b696",
+    "run_id": 37730079578,
+    "run_conclusion": "failure",
+    "successful_jobs": 8,
+    "failed_job": "client-challenger",
+    "failed_stage": "wallet",
+    "failed_subtest": "actual Chromium prover worker",
+    "before_source_sha256": "904aa638b693f88f638ead9855d4f59a74cdf147646789c9b1f428a8e1f6e988",
+    "candidate_source_sha256": "d64bbd957da69cddb896c640352d0b0753e92c68190374774052c9c34ddc2dae",
+    "aggregate_passed": false,
+    "all_saved_stage_logs_and_reports_match_aggregate_hashes": true,
+    "stages": [
+      {
+        "name": "backend",
+        "exit_code": 0,
+        "started_at_utc": "2026-10-08T05:12:17.900887+00:00",
+        "finished_at_utc": "2026-10-08T05:20:22.513604+00:00",
+        "seconds": 484.613,
+        "log_sha256": "71f94eaae9cd4ff9c33c9abe469d11f6371f24c60c11820e4a1869303b3ff6b2",
+        "report_sha256": "e2f617030e28542ee79ae6108f435004be64624bdabeddea9609b36ec00baa93",
+        "tests": 95
+      },
+      {
+        "name": "sdk",
+        "exit_code": 0,
+        "started_at_utc": "2026-10-08T05:20:22.764988+00:00",
+        "finished_at_utc": "2026-10-08T05:24:23.537798+00:00",
+        "seconds": 240.773,
+        "log_sha256": "3077f92c436af7246a24dc4e8ca7852091db620c17e290bcae3e1880b7ffc596",
+        "report_sha256": "0c23348f6ff3c7e56dcd68ae71b735cf696f06274677c7280861081da3f9ea91",
+        "tests": {
+          "sdk-tests": {
+            "tests": 377,
+            "pass": 377,
+            "fail": 0,
+            "skipped": 0
+          },
+          "native-integration": {
+            "tests": 2,
+            "pass": 2,
+            "fail": 0,
+            "skipped": 0
+          },
+          "native-tests": {
+            "pass": 7,
+            "fail": 0,
+            "skipped": 0
+          }
+        }
+      },
+      {
+        "name": "challenger",
+        "exit_code": 0,
+        "started_at_utc": "2026-10-08T05:24:23.878711+00:00",
+        "finished_at_utc": "2026-10-08T05:31:50.704013+00:00",
+        "seconds": 446.825,
+        "log_sha256": "b8a40bccb810993c70e30b0985a333f89847a888a2a8f4b7a6c2958bb8f02950",
+        "report_sha256": "ed4f9a83aebed646812815fd90bd80fe84991455f2f0e09802e67a390c9ed2bd",
+        "tests": 86
+      },
+      {
+        "name": "wallet",
+        "exit_code": 1,
+        "started_at_utc": "2026-10-08T05:31:50.801521+00:00",
+        "finished_at_utc": "2026-10-08T05:36:24.951018+00:00",
+        "seconds": 274.149,
+        "log_sha256": "bcb96ce50b7da5f78eeac39bd4feb98c631e66e506ec436f520393df88f4396b",
+        "report_sha256": null
+      }
+    ],
+    "wallet_sdk_counts": {
+      "tests": 377,
+      "pass": 377,
+      "fail": 0,
+      "skipped": 0
+    },
+    "exact_failure": "TypeError: Failed to resolve module specifier /prover-runtime.ts",
+    "failure_before_browser_proof_execution": true,
+    "artifact_zip_digest_independently_verified": false,
+    "production_runtime_changes": false,
+    "full_hosted_ci_claim": false,
+    "live_actions": 0
+  },
+  "failure_inputs": [
+    {
+      "path": "target/public-devnet-live-20261008/main-476-hosted-ci/implementation-artifacts/target/i10-acceptance/run-ydx235_5/wallet.log",
+      "bytes": 115259,
+      "sha256": "bcb96ce50b7da5f78eeac39bd4feb98c631e66e506ec436f520393df88f4396b"
+    },
+    {
+      "path": "target/public-devnet-live-20261008/main-476-hosted-ci/implementation-artifacts/target/i08-wallet/wasm-browser.log",
+      "bytes": 1223,
+      "sha256": "69b3560a71e6483f1ee8890b2c4befa0fcb39df9442be0fb427086936d93e497"
+    },
+    {
+      "path": "target/public-devnet-live-20261008/main-476-hosted-ci/implementation-artifacts/target/i10-acceptance/run-ydx235_5/runtime-report.json",
+      "bytes": 65803,
+      "sha256": "a24d6f071deebeb7fdf52ce3b524398840a7f88fdec0c5bae54ceac6d9c37768"
+    }
+  ],
+  "actual_focused_run": {
+    "schema": 1,
+    "scope": "Focused isolated actual Chrome/WASM/native test; no production, public-chain or provider action",
+    "started_at": "2026-10-08T05:57:09.059442+00:00",
+    "manifest_sha256": "c48a2e339969f9e02072e0a526bd391b8ad1020c41ca8908608e21b4d27dd1bf",
+    "argv": [
+      "/Users/yukikimura/.nvm/versions/node/v24.19.0/bin/node",
+      "--test",
+      "--test-reporter=tap",
+      "/Users/yukikimura/work/solana-zkapi/packages/sdk/test/prover-browser.ts"
+    ],
+    "working_directory": "/Users/yukikimura/work/solana-zkapi/target/public-devnet-live-20261008/prover-browser-navigation-followup/fixture",
+    "passed": true,
+    "exit_code": 0,
+    "automatic_retry": false,
+    "counts": {
+      "tests": 3,
+      "pass": 3,
+      "fail": 0,
+      "skipped": 0,
+      "cancelled": 0
+    },
+    "new_outputs": {
+      "target/i08-wallet/wasm-vault.json": "b6e448a6896f58b7dbc024a21d686979ae89c967811762893ef30553945608fb",
+      "target/i08-wallet/wasm-results.json": "8518a46db178872869f2a08fd99cdcb15ce7a20365dc5ddadf3bee93bc754ff2"
+    },
+    "wasm": {
+      "scope": "real Chromium dedicated worker, new WASM proofs, shared verifier and actual native fallback",
+      "browser": "Chrome/154.0.8037.98",
+      "wasm_sha256": "c06a247e1ff88f1ac415ea127bcf49d486b5b4954715cdf00f133b5ac71c1f30",
+      "wasm_bytes": 3678975,
+      "timings_ms": {
+        "request": 11190.5,
+        "close": 13489.09999999404,
+        "escape": 12680.90000000596,
+        "tree0": 11424.5,
+        "tree1": 11551.09999999404
+      },
+      "js_heap_bytes": 76466710,
+      "native_fallback_calls": 1,
+      "rejections": 3,
+      "request_nullifier": "0x297c134bc2ba2db527d7d6cf5818de29f838328162eb1566546ec75916e6a33f"
+    },
+    "all_source_fixture_and_original_output_guards_unchanged": true,
+    "elapsed_seconds": 65.345,
+    "log_sha256": "3f415a2c38df58acfc4d8373466f0637815baf3a9d250a03cf8fca5e915d143a"
+  },
+  "fixture_manifest_sha256": "c48a2e339969f9e02072e0a526bd391b8ad1020c41ca8908608e21b4d27dd1bf",
+  "runner_sha256": "0e6d2b5c839020daf37d657c966dbf57bfd42cc2eaad045fa76c91c51bab3bf0",
+  "focused_result_sha256": "eb52d24d8355b4ea4c11b5022a3a16fcbcebd9219e8015446a01a6527dbde397",
+  "source_guard_count": 75,
+  "isolated_fixture_input_count": 15,
+  "historical_outputs_unchanged": true,
+  "production_or_released_artifact_changes": false,
+  "chrome_security_flags_changed": false,
+  "proof_retry_added": false,
+  "full_hosted_ci_pass": false,
+  "live_provider_or_chain_actions": 0,
+  "known_public_test_fixture_inputs": [
+    {
+      "path": "apps/clientd/prover/target/wasm32-unknown-unknown/release/zkapi_client_prover.wasm",
+      "sha256": "c06a247e1ff88f1ac415ea127bcf49d486b5b4954715cdf00f133b5ac71c1f30",
+      "bytes": 3678975
+    },
+    {
+      "path": "apps/clientd/prover/target/release/zkapi-client-prover",
+      "sha256": "e0f6891e4320040db6f54e03eb03b11f5de194a42ddd477ab26dd376c42df8d6",
+      "bytes": 4010416
+    },
+    {
+      "path": "target/i08-wallet/crypto-fixture.json",
+      "sha256": "1e0d82c13c9aa6ff68ce8744252be3ab39853a730bac4e13e0bcb912d5bfd4ef",
+      "bytes": 4316
+    },
+    {
+      "path": "target/i08/prepare-command.json",
+      "sha256": "60f36f7a8e7aba77ede8c0c1c38142845e89e99bd1d65430688015ea9c2f48e2",
+      "bytes": 5353
+    },
+    {
+      "path": "target/i08/settlement-command.json",
+      "sha256": "65ce8ff568c0279f29626da2c61f9c5edc275b7a3ab3cf15dd88a98b63cc6352",
+      "bytes": 8675
+    },
+    {
+      "path": "target/i08/expected-next-state.json",
+      "sha256": "db9045ca5d4fb82be15d4d394a8536254896fa8f62a1ed93c121ea967dc2d080",
+      "bytes": 744
+    },
+    {
+      "path": "target/i09-challenger/test-tree.pk",
+      "sha256": "c01b31f6806ce59114fe8befa210967415e20229b0a998018d4955a726fd0f80",
+      "bytes": 7414736
+    },
+    {
+      "path": "tests/fixtures/layout2/test-tree.vk",
+      "sha256": "9141a035fdba50b13a5776182be029bb23dd15e69cd579c5d6e310b7e2ee5fb7",
+      "bytes": 616
+    },
+    {
+      "path": "tests/fixtures/vault/genesis-a.json",
+      "sha256": "495a322bf4e05eb1e15d9750dbbb11f0782982752ec45efbcd096d5b77c17c96",
+      "bytes": 17709
+    },
+    {
+      "path": "packages/sdk/src/prover-runtime.ts",
+      "sha256": "3c4d7e15984613307c4137d16200b5d75d236e616de50db482d1c1a3ad6e4ff4",
+      "bytes": 6432
+    },
+    {
+      "path": "packages/sdk/src/prover-worker.ts",
+      "sha256": "342ae466853e540185a1b67e37b0fb1262a08a23f36f4a5d4af5d473ab6e9cc8",
+      "bytes": 961
+    },
+    {
+      "path": "vendor/ethereum-zkapi/protocol/setup/v2/request.pk",
+      "sha256": "c894b261a13f571d0df36be29734aabf2a8cd7162baddc5e08a50341aa076584",
+      "bytes": 5935783
+    },
+    {
+      "path": "vendor/ethereum-zkapi/protocol/setup/v2/request.vk",
+      "sha256": "8011244c99fa1a8524870906462d430fc86366b8ad821736c5fa726b479e6d97",
+      "bytes": 671
+    },
+    {
+      "path": "vendor/ethereum-zkapi/protocol/setup/v2/withdrawal.pk",
+      "sha256": "8e41398092fdd02b9ff86c6ccbecbd7ce2402e6f22ec162e6124d1d04fe0a668",
+      "bytes": 7783719
+    },
+    {
+      "path": "vendor/ethereum-zkapi/protocol/setup/v2/withdrawal.vk",
+      "sha256": "2a8ea7f07176e369a93d1d816124192a798d1466c99fd6dc47850ba82094b679",
+      "bytes": 735
+    }
+  ]
+}
