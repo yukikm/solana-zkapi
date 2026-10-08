@@ -1,0 +1,222 @@
+{
+  "schema": 1,
+  "recorded_date_jst": "2026-10-08",
+  "verified_at_utc": "2026-10-08T01:35:29.715159+00:00",
+  "scope": "Minimal source correction for a completed hosted Clippy failure; local pinned formatter, Clippy and existing snapshot unit tests only",
+  "source_parent": "a2a88cc748874631dc80542864c4092914b55edc",
+  "source_change": {
+    "path": "apps/clientd/prover/src/snapshot.rs",
+    "before_sha256": "4b3b862e09174f61ae0788e6caf424dc1e7a63ecf8eba6dd5527928f4ed98dcd",
+    "after_sha256": "7c585601321694ea4f74a340ac43fb9dcc351d851189c910f5ae9f7399c0f305"
+  },
+  "algorithm_preserved": {
+    "levels": 32,
+    "level_indices": "0 through 31",
+    "zero_default": "zeros[level] via the corresponding borrowed iterator item",
+    "same_three_sibling_and_parent_defaults": true,
+    "final_root_default": "zeros[32] unchanged",
+    "hash_and_validation_logic_unchanged": true
+  },
+  "guarded_prover_inputs": 7,
+  "other_guarded_prover_inputs_unchanged": 6,
+  "checks": [
+    {
+      "name": "format-file",
+      "argv": [
+        "rustfmt",
+        "+1.90.0",
+        "--edition",
+        "2021",
+        "--config",
+        "skip_children=true",
+        "apps/clientd/prover/src/snapshot.rs"
+      ],
+      "exit_code": 0,
+      "seconds": 0.12,
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "name": "format-check",
+      "argv": [
+        "cargo",
+        "+1.90.0",
+        "fmt",
+        "--manifest-path",
+        "apps/clientd/prover/Cargo.toml",
+        "--",
+        "--check"
+      ],
+      "exit_code": 0,
+      "seconds": 0.112,
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "name": "clippy",
+      "argv": [
+        "cargo",
+        "+1.90.0",
+        "clippy",
+        "--locked",
+        "--offline",
+        "--manifest-path",
+        "apps/clientd/prover/Cargo.toml",
+        "--all-targets",
+        "--",
+        "-D",
+        "warnings"
+      ],
+      "exit_code": 0,
+      "seconds": 2.644,
+      "log_sha256": "6c369d622d5417e43082c3db0c9a4e43cf0e157cfe9d6bb6871e873d83b5f0dc"
+    },
+    {
+      "name": "snapshot-tests",
+      "argv": [
+        "cargo",
+        "+1.90.0",
+        "test",
+        "--locked",
+        "--offline",
+        "--manifest-path",
+        "apps/clientd/prover/Cargo.toml",
+        "--lib",
+        "snapshot::tests::",
+        "--",
+        "--nocapture"
+      ],
+      "exit_code": 0,
+      "seconds": 1.564,
+      "log_sha256": "dec3f3390f942096d8ab4976631daa4496bd1b5cd1841dc28044d5e8a9af8abb"
+    }
+  ],
+  "existing_snapshot_tests": {
+    "passed": 3,
+    "failed": 0,
+    "ignored": 0,
+    "test_seconds": 0.04,
+    "cases": [
+      "upstream circuit path equality including u32::MAX leaf",
+      "multiple-note paths against upstream tree and omission detection",
+      "changed, omitted, duplicate, unsorted and noncanonical rejection"
+    ]
+  },
+  "initial_local_format_check": {
+    "exit_code": 1,
+    "reason": "New shorter unwrap_or line required canonical formatter layout; no checks bypassed"
+  },
+  "independent_readonly_review": "No blocking finding; fixed 33-element array iterator over its first 32 items preserves previous zero defaults and level indices",
+  "hosted": {
+    "source": "a2a88cc748874631dc80542864c4092914b55edc",
+    "implementation": {
+      "run_id": 37701729982,
+      "url": "https://github.com/yukikm/solana-zkapi/actions/runs/37701729982",
+      "conclusion": "failure",
+      "successful_jobs": 8,
+      "failed_jobs": 1,
+      "failed_job_id": 113066513110,
+      "component": "wallet",
+      "failed_command": [
+        "cargo",
+        "clippy",
+        "--locked",
+        "--manifest-path",
+        "apps/clientd/prover/Cargo.toml",
+        "--all-targets",
+        "--",
+        "-D",
+        "warnings"
+      ],
+      "diagnostic": "clippy::needless_range_loop at src/snapshot.rs:73",
+      "preceding_sdk_and_challenger_components": "passed",
+      "wallet_prover_format_builds_and_five_native_tests": "passed before Clippy",
+      "later_wallet_runtime_integration_reached": false
+    },
+    "focused": {
+      "run_id": 37701729958,
+      "url": "https://github.com/yukikm/solana-zkapi/actions/runs/37701729958",
+      "conclusion": "success",
+      "sdk_passed": 377,
+      "sdk_skipped": 0,
+      "installed_passed": 75,
+      "installed_skipped": 0,
+      "verified_downloaded_stage_logs": 12,
+      "source_input_hashes_joined_to_exact_commit": 58,
+      "tarball_reported_sha256": "e5da3b8294ae3394c0876df4d29a7af1afc96e8ef1b32fb1cd4b7c4e2efd2282",
+      "tarball_reported_bytes": 121464,
+      "tarball_bytes_not_in_downloaded_artifact": true
+    }
+  },
+  "retained_inputs": [
+    {
+      "retained_file": "prover-clippy-followup/snapshot.rs.before",
+      "bytes": 6799,
+      "sha256": "4b3b862e09174f61ae0788e6caf424dc1e7a63ecf8eba6dd5527928f4ed98dcd"
+    },
+    {
+      "retained_file": "prover-clippy-followup/before-manifest.json",
+      "bytes": 1316,
+      "sha256": "8efd30d03abf0f34dbefde0c9ce40ef2f3a13892da7dd6b6e3a8d4d2ff86c1a1"
+    },
+    {
+      "retained_file": "prover-clippy-followup/source.diff",
+      "bytes": 1179,
+      "sha256": "7f1bf7c9c056946ab95964cd1c5815259b961d554f8a3a1c3bcd5b849286a54f"
+    },
+    {
+      "retained_file": "prover-clippy-followup/checks.json",
+      "bytes": 1856,
+      "sha256": "04d80da472cce28e8e5c341df435f7bdcb1a5fba6d827fdf6a88acfa1d227133"
+    },
+    {
+      "retained_file": "main-a2a-hosted-ci/collected-summary.json",
+      "bytes": 6224,
+      "sha256": "15a924ba2d1312277bfb79f0884f83d7e2a46cf00bf2233db09c53db4297720a"
+    },
+    {
+      "retained_file": "main-a2a-hosted-ci/job-113066513110.log",
+      "bytes": 328989,
+      "sha256": "0dc6da7139ab53fd656d05857c859fb308fadb74f32aa37dcefa7dcb6ac80500"
+    },
+    {
+      "retained_file": "main-a2a-hosted-ci/runtime-artifacts/target/i10-acceptance/run-tw3gjqks/wallet.log",
+      "bytes": 24247,
+      "sha256": "9185d563bec7b260bb9808e4e3be21d57058d5840b74d1e26dd31864248bf52f"
+    },
+    {
+      "retained_file": "main-a2a-hosted-ci/runtime-artifacts/target/i08-wallet/prover-clippy.log",
+      "bytes": 5246,
+      "sha256": "5b7d8a8cf3ac05255ecf0a277db47a770b780d5ee6aad49e5bf94ade09c6b5f5"
+    },
+    {
+      "retained_file": "main-a2a-hosted-ci/37701729982-meta.json",
+      "bytes": 13595,
+      "sha256": "d69e071dfd959c8b1faefaa924a1f1955742030d153c52c03db9707faf050cbc"
+    },
+    {
+      "retained_file": "main-a2a-hosted-ci/37701729982-jobs.json",
+      "bytes": 32896,
+      "sha256": "ed0597199c36bb4f3e9acdde84cd8903eb0ec1040bd5b369d6f096cfff958d26"
+    },
+    {
+      "retained_file": "main-a2a-hosted-ci/37701729958-meta.json",
+      "bytes": 13622,
+      "sha256": "4464cb58fd7fb051984c6c648633537c28370a0a88b3630b2be83aa2e80be886"
+    },
+    {
+      "retained_file": "main-a2a-hosted-ci/37701729958-jobs.json",
+      "bytes": 9160,
+      "sha256": "53d2afb4be408d3868e4371f06391c119c14188b243575ac9939e34c1ab80f87"
+    }
+  ],
+  "limits": {
+    "corrected_successor_hosted_result": "unverified",
+    "new_tests_added": 0,
+    "release_artifact_rebuilds": 0,
+    "release_artifact_replacements": 0,
+    "new_workflow_dispatches": 0,
+    "new_public_chain_or_provider_calls": 0,
+    "service_or_budget_changes": 0,
+    "public_funded_acceptance_established": false,
+    "release_gates_passed": []
+  }
+}

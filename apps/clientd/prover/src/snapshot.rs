@@ -70,19 +70,17 @@ pub fn path(
     // Sparse levels never allocate proportional to next_note_id. Even a valid
     // u32::MAX leaf uses at most 32 ancestors. Each parent is hashed once.
     let mut siblings = Vec::with_capacity(32);
-    for level in 0..32 {
+    for (level, zero) in zeros.iter().take(32).enumerate() {
         siblings.push(FieldElement::from(
-            *current
-                .get(&((selected >> level) ^ 1))
-                .unwrap_or(&zeros[level]),
+            *current.get(&((selected >> level) ^ 1)).unwrap_or(zero),
         ));
         let mut parents = BTreeMap::new();
         for &id in current.keys() {
             let parent = id >> 1;
             parents.entry(parent).or_insert_with(|| {
                 node(
-                    *current.get(&(parent << 1)).unwrap_or(&zeros[level]),
-                    *current.get(&((parent << 1) | 1)).unwrap_or(&zeros[level]),
+                    *current.get(&(parent << 1)).unwrap_or(zero),
+                    *current.get(&((parent << 1) | 1)).unwrap_or(zero),
                 )
             });
         }
