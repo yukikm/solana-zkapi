@@ -29,7 +29,7 @@ import {ControlClient, createCredentials, verifiedClientContext, validateNoteJou
   type NoteJournal, type Mode, type Tariff} from '../src/control.ts';
 import {EncryptedJournal, importJournalKey} from '../src/journal.ts';
 import {NativeJournalStore} from '../src/journal-node.ts';
-import {verifyManifest} from '../src/trust.ts';
+import {verifyManifest, jcsBytes} from '../src/trust.ts';
 import {buildUploadPlan, prepareAttempt, recoverAttempt, vaultAccounts, type Attempt, type UploadPlan, type TransportRpc, type V0Wallet} from '../src/transport.ts';
 import {challengePlan} from '../src/challenger.ts';
 import {encodeLayout2Args, hex} from '../src/layout2.ts';
@@ -49,7 +49,13 @@ svm.on('exit', code => {for (const p of pending.splice(0)) p.reject(Error(`SBF e
 const call = (value:object) => new Promise<any>((resolve,reject) => {
   pending.push({resolve,reject}); svm.stdin.write(JSON.stringify(value)+'\n');
 });
-const {manifest:base, artifacts} = await walletFixture();
+const fixture = await walletFixture();
+// Optional exact bytes for a retained local fixture manifest. Production trust
+// verification still checks every digest; CI normally uses its freshly built IDL.
+const fixtureIdl=process.env.ZKAPI_I10_FIXTURE_IDL?await read(process.env.ZKAPI_I10_FIXTURE_IDL):fixture.artifacts.idl;
+assert.equal(digest(fixtureIdl),fixture.manifest.idl_hash,'fixture IDL must match the existing manifest');
+const base=fixture.manifest,artifacts={...fixture.artifacts,idl:fixtureIdl,
+  additional:{...fixture.artifacts.additional,vault_idl:fixtureIdl}};
 const directory = await mkdtemp(join(tmpdir(),'zkapi-i10-e2e-'));
 const counts: Record<string,number> = {};
 const count = (key:string) => counts[key] = (counts[key] ?? 0)+1;
@@ -57,6 +63,29 @@ const now = () => Math.floor(Date.now()/1000);
 let origin = '', directOrigin = '', controlOrigin = '', routerKey:any, oaKey:any;
 const streamGates=new Map<string,{release():void;cancelled:boolean;finalUsageSent:boolean}>();
 const providerCases=new Map<string,number>();
+const sharedSnapshotFiles=new Map<string,Uint8Array>();
+let sharedSnapshotReads=0, sharedSnapshotDownloads=0, fixtureOaEvidenceMappings=0;
+async function sharedSnapshotFixture(){
+  // Read real SBF state for every note. This lifecycle requests authorization
+  // only at active/closed cuts; refuse unsupported pending cuts rather than
+  // inventing pending fields or omitting them from the pool-wide snapshot.
+  const root=await call({kind:'root'}),next=Number(root.next_note_id),active_notes:any[]=[];
+  assert.ok(Number.isSafeInteger(next)&&next>=0&&next<=16_384);
+  for(let id=0;id<next;id++){
+    const view=await call({kind:'snapshot',note_id:id});
+    assert.equal(view.root,root.root);assert.equal(String(view.slot),root.slot);
+    assert.equal(view.sequence,root.sequence);assert.equal(String(view.nextNoteId),root.next_note_id);
+    assert.equal(view.note.note_id,id);assert.equal(view.pending,undefined);
+    assert.ok(['active','closed'].includes(view.note.status),'shared fixture requires an active/closed cut');
+    if(view.note.status==='active')active_notes.push({note_id:String(id),commitment:view.note.registration_commitment,
+      deposit_micro_usdc:view.note.deposit_micro_usdc,expiry:view.note.expiry});
+  }
+  assert.deepEqual(await call({kind:'root'}),root,'one coherent SBF snapshot cut');
+  const bytes=jcsBytes({schema_version:'1',snapshot:root,active_notes,pending_withdrawals:[]}),hash=digest(bytes);
+  const previous=sharedSnapshotFiles.get(hash);if(previous)assert.deepEqual(previous,bytes);
+  else sharedSnapshotFiles.set(hash,new Uint8Array(bytes));
+  return {snapshot:root,sha256:hash,download_url:origin+'/zkapi/v1/tree/snapshots/'+hash+'.json'};
+}
 const reply = (res:ServerResponse, value:unknown) => {res.setHeader('Content-Type','application/json');res.end(JSON.stringify(value));};
 const chatUsage={prompt_tokens:10,completion_tokens:5,total_tokens:15,prompt_tokens_details:{cached_tokens:2}};
 const responsesUsage={input_tokens:7,output_tokens:1,total_tokens:8,input_tokens_details:{cached_tokens:0}};
@@ -119,6 +148,14 @@ const handler = async (req:IncomingMessage,res:ServerResponse) => {
       }
       reply(res,{jsonrpc:'2.0',id:b.id,result});return;
     }
+    if(path==='/zkapi/v1/tree/snapshot'){
+      assert.equal(req.method,'GET');sharedSnapshotReads++;reply(res,await sharedSnapshotFixture());return;
+    }
+    if(/^\/zkapi\/v1\/tree\/snapshots\/[0-9a-f]{64}\.json$/.test(path)){
+      assert.equal(req.method,'GET');const bytes=sharedSnapshotFiles.get(path.split('/').at(-1)!.slice(0,-5));
+      if(!bytes){res.writeHead(404);res.end();return;}
+      sharedSnapshotDownloads++;res.setHeader('Content-Type','application/json');res.end(Buffer.from(bytes));return;
+    }
     if(path==='/zkapi/v1/tree/root'){reply(res,await call({kind:'root'}));return;}
     if(path.startsWith('/zkapi/v1/tree/notes/')){reply(res,await call({kind:'path',note_id:Number(path.split('/')[5])}));return;}
     // Explicit fixture wire for all three proxy adapters and both direct modes.
@@ -171,7 +208,26 @@ const fixtureFetch:typeof fetch=async(url,init)=>{
   if(String(url)==='https://openrouter.ai/api/v1/chat/completions')url=directOrigin+'/api/v1/chat/completions';
   if(!String(url).startsWith(directOrigin+'/')){
     assert.equal(new URL(String(url)).origin,controlOrigin,'fixture fetch refuses non-local or unlisted provider routes');
-    return fetch(url,init);
+    const response=await fetch(url,init);
+    if(String(url)===controlOrigin+'/zkapi/v1/sessions'&&init?.method==='POST'&&response.ok){
+      const body=await response.clone().json();
+      if(body.mode==='direct_oa'&&body.provider_key!==undefined){
+        // The Rust provider fixture verifies over its numeric-loopback HTTP
+        // origin. Explicitly map only that synthetic verifier metadata to this
+        // fixture's CA-pinned TLS endpoint for the SDK's independent check.
+        // AUTH, proof, receipt and signed successor bytes are never rewritten.
+        assert.equal(body.provider_key_verification.verifier_url,origin);
+        assert.equal(body.provider_key_verification.station_id,'i10-station');
+        assert.equal(body.provider_api_origin,directOrigin+'/inference');
+        body.provider_key_verification.verifier_url=directOrigin;fixtureOaEvidenceMappings++;
+        await response.body?.cancel();return Response.json(body,{status:response.status});
+      }
+    }
+    return response;
+  }
+  if(String(url)===directOrigin+'/submit_key'){
+    assert.equal(init?.method,'POST');assert.equal(init?.credentials,'omit');assert.equal(init?.redirect,'error');
+    assert.equal(new Headers(init?.headers).has('Authorization'),false);
   }
   return new Promise<Response>((resolve,reject)=>{
     const headers:Record<string,string>={};new Headers(init?.headers).forEach((value,key)=>headers[key]=value);
@@ -257,7 +313,7 @@ try {
   assert.equal(sends.filter(s=>s===sends[0]).length,1,'finalized lost send recovered without duplicate execution');
   assert.equal((await journal.read('note'))!.value.wallet!.status,'active');
   const witness=structuredClone((await journal.read('note'))!.value.witness!);
-  const options=()=>({context,journal,verifier,fetch:fixtureFetch,allowLoopbackHttp:true,directProviderBases:{direct_oa:directOrigin+'/inference',direct_openrouter:'https://openrouter.ai/api/v1'}});
+  const options=()=>({context,journal,verifier,fetch:fixtureFetch,allowLoopbackHttp:true,oaVerifier:{base:directOrigin,stationId:'i10-station'},directProviderBases:{direct_oa:directOrigin+'/inference',direct_openrouter:'https://openrouter.ai/api/v1'}});
   let client=new ControlClient(options());
   const modes:any[]=[],cases:any[]=[];
   for(const tariff of configuration.tariffs as Tariff[]) {
@@ -329,7 +385,10 @@ try {
     process.stderr.write(`I10 ${mode}/${tariff.provider}: receipt and successor verified\n`);
   }
   assert.equal((await journal.read('note'))!.value.history.length,5);
-  assert.deepEqual(counts,{inference_openai:12,inference_anthropic:8,inference_openrouter:6,oa_create:1,oa_verify:1,inference_oa:1,oa_retire_usage:1,openrouter_create:1,inference_direct_openrouter:1,openrouter_disable:1,openrouter_usage:2,openrouter_delete:1});
+  assert.equal(sharedSnapshotReads,5);assert.equal(sharedSnapshotDownloads,5);
+  const retainedSnapshot=[...sharedSnapshotFiles.entries()][0];assert.ok(retainedSnapshot);
+  assert.deepEqual(counts,{inference_openai:12,inference_anthropic:8,inference_openrouter:6,oa_create:1,oa_verify:2,inference_oa:1,oa_retire_usage:1,openrouter_create:1,inference_direct_openrouter:1,openrouter_disable:1,openrouter_usage:2,openrouter_delete:1});
+  assert.equal(fixtureOaEvidenceMappings,1,'one fixture-only OA verifier metadata mapping');
   assert.equal(cases.length,28);assert.equal(cases.filter(c=>c.disconnect_before_final_usage).length,4);
   // An adversarial stale client can retain the pre-authorization witness even
   // though WalletClient correctly forbids an escape while that session is open.
@@ -399,13 +458,20 @@ try {
   const exitRace={request_id:racePrepared.request.authorization.request_id,operation_id:raceOperation,rejected_issuance_request_id:refusedPrepared.request.authorization.request_id,accepted_real_request_proof:true,actual_sbf_escape:true,exit_nullifier_observed:true,proxy_status:blocked.status,direct_issuance_status:refused.status,direct_issuance_error:'exit_consumed',provider_calls:0,dispatch_attempts:0,escape_signatures:escapeSignatures,challenge_signatures:challengeSignatures,historical_request_root:raceSnapshot.root,challenge_zero_root:escaped.root,restored_root:restored.root,exact_accepted_request_proof_used:true,pending_cleared:true,exit_tombstone_preserved:true,receipt_evidence_kind:raceReceipt.evidence_kind,receipt_verified:true,signed_successor_verified:true,charge_micro_usdc:'0',challenger_daemon_joined:false,scope:'actual SBF race with SDK challenger plan; challenger daemon scheduling covered separately'};
   await walletClient.beginWithdrawal('note','mutual_close',destination,roles);await drive();
   assert.equal((await journal.read('note'))!.value.wallet!.status,'closed');
+  // A later real Vault transition must not rewrite previously advertised bytes.
+  assert.notEqual((await call({kind:'root'})).root,JSON.parse(Buffer.from(retainedSnapshot[1]).toString()).snapshot.root);
+  const retainedResponse=await fetch(origin+'/zkapi/v1/tree/snapshots/'+retainedSnapshot[0]+'.json');
+  assert.equal(retainedResponse.status,200);const retainedBytes=new Uint8Array(await retainedResponse.arrayBuffer());
+  assert.deepEqual(retainedBytes,retainedSnapshot[1]);assert.equal(digest(retainedBytes),retainedSnapshot[0]);
+  const absentHash='0'.repeat(64);assert.equal(sharedSnapshotFiles.has(absentHash),false);
+  assert.equal((await fetch(origin+'/zkapi/v1/tree/snapshots/'+absentHash+'.json')).status,404);
   const chainReport=await call({kind:'report',name:'i10'});
   assert.equal(chainReport.vault_micro_usdc,0);assert.equal(chainReport.destination_micro_usdc,4999992);assert.equal(chainReport.treasury_micro_usdc,8);assert.equal(chainReport.source_micro_usdc,95000000);
   assert.equal(chainReport.source_micro_usdc+chainReport.destination_micro_usdc+chainReport.vault_micro_usdc+chainReport.treasury_micro_usdc,100000000);
   assert.ok(chainReport.rows.every((row:any)=>row.error===null));
   const journalBytes=Buffer.concat(await Promise.all((await readdir(directory)).map(name=>readFile(join(directory,name)).catch(()=>Buffer.alloc(0))))).toString();
   for(const secret of ['I10_PRIVATE_PROMPT',witness.secret,'i10-oa-runtime','i10-openrouter-runtime'])assert.equal(journalBytes.includes(secret),false);
-  process.stdout.write(JSON.stringify({passed:true,modes,cases,exit_race:exitRace,coverage:cases.map(c=>`${c.mode}/${c.provider}/${c.variant}`),provider_fixture_counts:counts,chain:chainReport,encrypted_journal:true,same_note_all_modes:true,lost_finalized_send_recovered:true,automatic_inference_replays:0,deposit_micro_usdc:'5000000',withdrawal_micro_usdc:'4999992',total_charge_micro_usdc:'8',balance_conservation:true,direct_openrouter_transport:'canonical HTTPS pin, test fetch maps to local TLS fixture',live_provider_verified:false,public_rpc_verified:false,release_gates_passed:[]})+'\n');
+  process.stdout.write(JSON.stringify({passed:true,modes,cases,exit_race:exitRace,coverage:cases.map(c=>`${c.mode}/${c.provider}/${c.variant}`),provider_fixture_counts:counts,chain:chainReport,encrypted_journal:true,same_note_all_modes:true,lost_finalized_send_recovered:true,automatic_inference_replays:0,deposit_micro_usdc:'5000000',withdrawal_micro_usdc:'4999992',total_charge_micro_usdc:'8',balance_conservation:true,direct_openrouter_transport:'canonical HTTPS pin, test fetch maps to local TLS fixture',direct_oa_verifier_transport:'synthetic loopback verifier metadata explicitly mapped to CA-pinned local TLS; control and SDK verify separately',live_provider_verified:false,public_rpc_verified:false,release_gates_passed:[]})+'\n');
 } finally {
   stdin.close();
   for(const gate of streamGates.values()){gate.cancelled=true;gate.release();}

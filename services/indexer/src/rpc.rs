@@ -286,6 +286,14 @@ fn decode_transaction(value: &Value) -> Result<Transaction> {
     if let Some(logs) = meta["logMessages"].as_array() {
         for value in logs {
             let line = string(value)?;
+            // Agave can retain shorter lines after its first dropped log. The
+            // invocation stack is no longer complete past this exact runtime
+            // marker, so later logs cannot establish ownership or completion.
+            // Preserve earlier evidence; unknown CPI outcomes remain unknown.
+            // Program-generated text has the distinct "Program log: " prefix.
+            if line == "Log truncated" {
+                break;
+            }
             if let Some(rest) = line.strip_prefix("Program ") {
                 if let Some((program, depth)) = rest.split_once(" invoke [") {
                     let depth = depth

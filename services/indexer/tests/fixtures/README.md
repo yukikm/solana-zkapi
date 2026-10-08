@@ -38,3 +38,23 @@ checks exact equivalence of the large-payload decoder with bs58 0.5.1; it is not
 a full-block or finality fixture. The optimized path uses the already locked
 num-bigint 0.4.8 for instruction data only; signature and key decoding keep the
 existing implementation.
+
+
+## Runtime log truncation regression
+
+`devnet-log-truncated-block.json` is the exact public finalized Devnet
+`getBlock` JSON response at slot 508615470 (parent 508615469), fetched read-only
+on 2026-10-08. SHA256:
+`1cb64ee1a19f96a52356488312e3a563f673b328ff1b57f2e252bb160f109b1c`.
+It contains nine complete transactions and no RPC URL, request credentials or
+private operator state. Transaction index 2 has the runtime `Log truncated`
+marker followed by a later short success line. The prior native decoder
+rejected this transaction; the regression preserves every transaction and
+instruction while treating post-marker logs as unavailable evidence.
+
+Official behavior: [Agave v2.3.13 log collector](https://github.com/anza-xyz/agave/blob/v2.3.13/log-collector/src/lib.rs#L23-L37)
+can retain shorter messages after dropping an over-limit line because dropped
+bytes do not advance its byte counter. [Stable log formatting](https://github.com/anza-xyz/agave/blob/v2.3.13/program-runtime/src/stable_log.rs#L30-L40)
+prefixes program-generated text with `Program log: `; that prefixed text is not
+the runtime marker. This fixture demonstrates offline decoding only, not
+live operator recovery, snapshot readiness or a funded lifecycle.

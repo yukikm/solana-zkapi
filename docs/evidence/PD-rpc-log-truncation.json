@@ -1,0 +1,247 @@
+{
+  "schema": 1,
+  "status": "Verified writer-only decoder installation and startup checkpoint; public readiness not established",
+  "observed_at": "2026-10-08T02:59:38.268401+00:00",
+  "scope": "Pre-fix hosted diagnosis, exact saved-block native reproduction, local regression, isolated Linux build and writer-only deployment/start. Cold validation/replay was still in progress at the recorded start; no recovered readiness or funded acceptance claim.",
+  "host_diagnosis": {
+    "observed_at": "2026-10-08T02:39:44.191848+00:00",
+    "classifier_at": "2026-10-08T02:42:51.708616+00:00",
+    "classifier_reuses_retained_log_window": true,
+    "window": "last ten minutes of current invocations; neither retained window was capped",
+    "archive_tail_slot": 508615469,
+    "archive_blocks": 94459,
+    "archive_chunks": 485,
+    "challenger_encoding_errors": 264,
+    "indexer_reconciliation_unavailable": 297,
+    "matching_numeric_rpc_failure_diagnostics": 0,
+    "absence_scope": "Only this retained log window; not a general transport-availability assertion",
+    "admission_enabled": false,
+    "pending_jobs": 0,
+    "unknown_signatures": 0,
+    "writer_binary_sha256": "c73d58baebb1ad0d992ba63ca0827af4fb9636d93985440c9dffdd98e9fb7ac2",
+    "progress_receipt_sha256": "fe8a1771b204bbb464076ac76a02603231b7feb0d3434a765af17799f9f60c4b",
+    "classification_receipt_sha256": "90c8969f5d40fc94e75ffb3723f264df4179548507c466ed6f4b5c5383eb060f"
+  },
+  "saved_public_block": {
+    "slot": 508615470,
+    "parent_slot": 508615469,
+    "bytes": 61307,
+    "sha256": "1cb64ee1a19f96a52356488312e3a563f673b328ff1b57f2e252bb160f109b1c",
+    "transactions": 9,
+    "affected_transaction_zero_based": 2,
+    "affected_log_count": 128,
+    "exact_marker_zero_based_log_index": 126,
+    "retained_short_lines_after_marker": 1,
+    "before_full_block_passed": false,
+    "before_typed_error": "Vault invocation success cannot be established",
+    "after_full_block_passed": true,
+    "after_individual_transactions_passed": 9,
+    "diagnostic_logless_variant_used_for_acceptance": false
+  },
+  "change": {
+    "description": "Stop parsing log evidence after exact runtime Log truncated marker. Preserve complete transactions/instructions and preceding evidence; do not infer missing CPI success.",
+    "production_added_lines": 8,
+    "prior_rpc_sha256": "360b63394d25fc107f721c5e2c706223a38f70eae0a6db9e4ad637e744ee8305",
+    "source_freeze_sha256": "b5f5394a449bca9c9fea3ef931ad0a1971e1f7e1a495826d7ec0141163137362",
+    "files": [
+      {
+        "path": "services/indexer/src/rpc.rs",
+        "bytes": 19693,
+        "sha256": "0fb4ef7412f8c218f192e13c0f0e3232cf4238b0e4afd6e7a479004b59968556"
+      },
+      {
+        "path": "services/indexer/tests/replay.rs",
+        "bytes": 35654,
+        "sha256": "e618efd55ec8fc4e28af0c1c495ea4425b8de505faf7b90985873a389f8cb3c8"
+      },
+      {
+        "path": "services/indexer/tests/fixtures/README.md",
+        "bytes": 3779,
+        "sha256": "b50c64a373098bbd6d06546ef1e0e595a0d466a55aeafb15a3c40b16d91b274e"
+      },
+      {
+        "path": "services/indexer/tests/fixtures/devnet-log-truncated-block.json",
+        "bytes": 61307,
+        "sha256": "1cb64ee1a19f96a52356488312e3a563f673b328ff1b57f2e252bb160f109b1c"
+      }
+    ],
+    "on_disk_format_changed": false,
+    "history_skipped": false,
+    "public_client_artifacts_changed": false,
+    "invariants": [
+      "All transactions and compiled instructions remain decoded",
+      "Evidence before the marker retains strict ownership and completion checks",
+      "Unknown inner invocation or ancestor completion remains unknown and cannot authorize Vault replay",
+      "Known failed ancestors remain failed",
+      "Program log: Log truncated is ordinary program text, not the boundary",
+      "Existing successful outer-transaction and optional-event replay semantics are unchanged"
+    ]
+  },
+  "primary_sources": [
+    "https://github.com/anza-xyz/agave/blob/v2.3.13/log-collector/src/lib.rs#L23-L37",
+    "https://github.com/anza-xyz/agave/blob/v2.3.13/program-runtime/src/stable_log.rs#L30-L40"
+  ],
+  "local_validation": {
+    "replay": {
+      "command": "cargo +1.90.0 test --locked --offline --manifest-path services/indexer/Cargo.toml --test replay",
+      "passed": 19,
+      "failed": 0,
+      "ignored": 0,
+      "reported_test_seconds": 0.05
+    },
+    "formatter": {
+      "command": "cargo +1.90.0 fmt --manifest-path services/indexer/Cargo.toml -- --check",
+      "exit_code": 0
+    },
+    "clippy": {
+      "schema": 1,
+      "observed_at": "2026-10-08T02:55:06.140807+00:00",
+      "source_freeze_sha256": "b5f5394a449bca9c9fea3ef931ad0a1971e1f7e1a495826d7ec0141163137362",
+      "four_source_inputs_unchanged": true,
+      "command": [
+        "cargo",
+        "+1.90.0",
+        "clippy",
+        "--locked",
+        "--offline",
+        "--manifest-path",
+        "services/indexer/Cargo.toml",
+        "--all-targets",
+        "--",
+        "-D",
+        "warnings"
+      ],
+      "exit_code": 0,
+      "cargo_reported_seconds": 2.01,
+      "log_sha256": "b1407d08c32f174ac3e9b9cca2ea2ea980afb952384b5e40bac02ec5bf3941b2",
+      "scope": "Local current-indexer compile/lint check; no test execution, host action or financial operation",
+      "linux_snapshot_files_verified": 184,
+      "linux_binary_sha256_verified": "3893ca8fe2bbdb1275e6d8faea24a918f24192ccd7daa584b6baa8a28a4df2d8"
+    },
+    "native_decoder_before_sha256": "9ba1fd32b62e6f3c519c434fae39a84e08be1924308c4116dbef9bd2e4c60b84",
+    "native_decoder_after_sha256": "63cfa73a20b38cfc55b8c0cff1f7a50798a31fb5a7ae769506805180a7fb4ff0",
+    "retained_evidence": [
+      {
+        "path": "helius-migration-20261008/log-truncation-fix/before.json",
+        "sha256": "24006a7060d74987d475eb5d2389a7d6e7685cb184fdf1f424c1d65c61bb956e"
+      },
+      {
+        "path": "helius-migration-20261008/log-truncation-fix/replay-tests.log",
+        "sha256": "243515e12c71bb76205b4c4424e0a12db67f3209ae0af3a3e45739320d6d979b"
+      },
+      {
+        "path": "helius-migration-20261008/log-truncation-fix/fmt-verified.log",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "path": "helius-migration-20261008/log-truncation-fix/native-decoder-fixed.json",
+        "sha256": "63cfa73a20b38cfc55b8c0cff1f7a50798a31fb5a7ae769506805180a7fb4ff0"
+      },
+      {
+        "path": "helius-migration-20261008/log-truncation-fix/native-decoder-fixed.log",
+        "sha256": "cd614df837b7fa8ccb7f4c842faf1631a7df67bce69b6c23aca2e572e62dc153"
+      },
+      {
+        "path": "helius-migration-20261008/stalled-block-decoder-01/result-verified.json",
+        "sha256": "9ba1fd32b62e6f3c519c434fae39a84e08be1924308c4116dbef9bd2e4c60b84"
+      }
+    ]
+  },
+  "linux_build": {
+    "observed_at": "2026-10-08T02:51:50.000248+00:00",
+    "passed": true,
+    "source_manifest_sha256": "2a64f42f3346cfbdd6c9a7b2f5691ffc88fe2e6607dc958fc6b65c231c299c99",
+    "source_files": 184,
+    "source_snapshot_unchanged": true,
+    "runtime_source_changes": [
+      "services/indexer/src/rpc.rs"
+    ],
+    "rust": "1.90.0",
+    "target": "x86_64-unknown-linux-gnu",
+    "cargo_locked": true,
+    "cargo_offline": true,
+    "build_network": "none",
+    "build_started_at": "2026-10-08T02:50:03.662162834Z",
+    "build_finished_at": "2026-10-08T02:50:46.058273215Z",
+    "exit_code": 0,
+    "oom_killed": false,
+    "glibc_max": "2.34",
+    "no_config_exit": 2,
+    "smoke_network": "none",
+    "smoke_read_only": true,
+    "binary": {
+      "sha256": "3893ca8fe2bbdb1275e6d8faea24a918f24192ccd7daa584b6baa8a28a4df2d8",
+      "bytes": 11669872
+    },
+    "verification_sha256": "dc7487b92ba2427baff55105a3b03c4174b378bdbf782223dd1bfa6613293d5a",
+    "retained_logs": [
+      {
+        "path": "build.log",
+        "sha256": "56b00f23cb26aa39daa3cc20b29f3466b5e457d49fa442442c1f5f64a2346c8a",
+        "bytes": 416
+      },
+      {
+        "path": "build-r2.log",
+        "sha256": "841558a3a061127903762437fbe3dee32e738ff8dafcf8f52ea6e62a95a33857",
+        "bytes": 1061
+      },
+      {
+        "path": "smoke/no-config.log",
+        "sha256": "28e46fad7a49b8a23581ce1be7392e29efc84355dbc0f2b9de3ae946d551144c",
+        "bytes": 97
+      }
+    ]
+  },
+  "review": {
+    "coordinator_read_only_review": "No blocking finding reported for exact-marker change and regression invariants",
+    "independent_peer_read_only_review": "No blocking finding; verified four source pins and six retained result pins; did not rerun tests"
+  },
+  "preserved_initial_failures": [
+    "Pre-fix native full-block and transaction-2 invocation rejection",
+    "First isolated decoder manifest had a relative-path typo and did not execute",
+    "Initial formatter check failed on newly added test formatting",
+    "Initial network-disabled Linux invocation triggered a Rustup component lookup before compilation; explicit installed RUSTUP_TOOLCHAIN=1.90.0 succeeded offline with networking disabled"
+  ],
+  "limitations": [
+    "Writer installation/start is verified; this checkpoint does not establish completed cold replay, recovered public readiness, full CI or funded acceptance",
+    "No new AUTH, inference, deposit, withdrawal, grant initialization or budget reservation from these checks",
+    "Existing client artifacts, journal formats and retained history are unchanged"
+  ],
+  "host_update": {
+    "receipt_sha256": {
+      "stop": "87a2df785f504b83c77d3b8771ab80fa2f7e75e58e3e93f27a3b757972572721",
+      "install": "19011853c7110c83b78274bafbc3d066eb1dc4954a80914a57ce78cc11762519",
+      "start": "19a91160dc4e14d498abe536739c332b7e4c721c95e6a0fff0caa8b81b1c087f"
+    },
+    "stopped_at": "2026-10-08T02:48:10.443719+00:00",
+    "stop_observed": {
+      "inactive": true,
+      "empty_cgroup": true,
+      "unit_result": "success",
+      "native_exit_zero": null,
+      "native_exit_metadata_available": false
+    },
+    "installed_at": "2026-10-08T02:55:10.959096+00:00",
+    "started_at": "2026-10-08T02:59:38.268401+00:00",
+    "installed_binary_sha256": "3893ca8fe2bbdb1275e6d8faea24a918f24192ccd7daa584b6baa8a28a4df2d8",
+    "binary_bytes": 11669872,
+    "old_binary_before_image_retained": true,
+    "head_unchanged_through_installation": true,
+    "head_sha256": "576ed781a848eb9adfeb8b22f0dd6a8a56daa4aa3834946e4ccf657fb8b23a00",
+    "archive_tail_slot_through_installation": 508615469,
+    "archive_blocks_through_installation": 94459,
+    "archive_chunks_through_installation": 485,
+    "immutable_archive_inventory_sha256": "e66104308cd520f2173cab2bf95c12dc66c478e4783f51ced201fc3c744ff1ad",
+    "immutable_archive_entries": 486,
+    "owner_lock_and_legacy_identity_preserved": true,
+    "financial_and_database_cut_unchanged_through_installation": true,
+    "reservations_at_start": 0,
+    "other_service_processes_unchanged": true,
+    "configuration_changed": false,
+    "control_gateway_inactive": true,
+    "admission_enabled": false,
+    "automatic_retry": false,
+    "cold_validation_or_replay_in_progress": true,
+    "readiness_claim": false
+  }
+}

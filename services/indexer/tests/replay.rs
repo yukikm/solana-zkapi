@@ -877,3 +877,129 @@ fn successful_vault_cpi_is_rolled_back_when_its_ancestor_fails_and_parent_catche
     let mut index = initial();
     assert_eq!(index.apply_block(&decoded), Err(Error::Invocation));
 }
+
+#[test]
+fn public_block_with_runtime_log_gap_retains_all_transactions_and_instructions() {
+    let raw = include_bytes!("fixtures/devnet-log-truncated-block.json");
+    assert_eq!(
+        hex::encode(hash(raw)),
+        "1cb64ee1a19f96a52356488312e3a563f673b328ff1b57f2e252bb160f109b1c"
+    );
+    let response: Value = serde_json::from_slice(raw).unwrap();
+    let value = &response["result"];
+    let decoded = decode_finalized_block(508615470, value).unwrap();
+    assert_eq!(decoded.parent_slot, 508615469);
+    assert_eq!(decoded.transactions.len(), 9);
+    for (tx, original) in decoded
+        .transactions
+        .iter()
+        .zip(value["transactions"].as_array().unwrap())
+    {
+        let outer = original["transaction"]["message"]["instructions"]
+            .as_array()
+            .unwrap()
+            .len();
+        let inner: usize = original["meta"]["innerInstructions"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|group| group["instructions"].as_array().unwrap().len())
+            .sum();
+        assert_eq!(tx.instructions.len(), outer + inner);
+    }
+    let logs = value["transactions"][2]["meta"]["logMessages"]
+        .as_array()
+        .unwrap();
+    assert_eq!(logs[126], "Log truncated");
+    assert_eq!(logs.len(), 128);
+    assert!(logs[127].as_str().unwrap().ends_with(" success"));
+    let mut prefix = value.clone();
+    prefix["transactions"][2]["meta"]["logMessages"]
+        .as_array_mut()
+        .unwrap()
+        .truncate(126);
+    assert_eq!(decoded, decode_finalized_block(508615470, &prefix).unwrap());
+}
+
+#[test]
+fn runtime_truncation_never_promotes_unknown_vault_cpi_or_reassigns_later_events() {
+    let mut tree = Tree::new();
+    let deposit = ix(
+        "deposit",
+        payload(&mut tree, &note(0), Operation::Deposit, 0),
+        accounts(),
+    );
+    let mut value = rpc_value(&deposit);
+    let message = &mut value["transactions"][0]["transaction"]["message"];
+    let mut vault = message["instructions"][0].clone();
+    vault["stackHeight"] = json!(3);
+    let keys = message["accountKeys"].as_array_mut().unwrap();
+    keys.push(json!(key([90; 32])));
+    let parent = keys.len() - 1;
+    keys.push(json!(key([91; 32])));
+    let wrapper = keys.len() - 1;
+    message["instructions"] = json!([{"programIdIndex":parent,"accounts":[],"data":""}]);
+    value["transactions"][0]["meta"]["innerInstructions"] = json!([{"index":0,"instructions":[
+        {"programIdIndex":wrapper,"accounts":[],"data":"","stackHeight":2},vault]}]);
+    let complete = vec![
+        format!("Program {} invoke [1]", key([90; 32])),
+        format!("Program {} invoke [2]", key([91; 32])),
+        "Program data: YQ== Yg==".to_owned(),
+        format!("Program {} invoke [3]", key(PROGRAM)),
+        format!("Program {} success", key(PROGRAM)),
+        format!("Program {} success", key([91; 32])),
+        format!("Program {} success", key([90; 32])),
+    ];
+    // No inner completion, or a completed Vault with an unknown ancestor,
+    // cannot use a later, potentially gapped success/event as evidence.
+    for prefix in [4, 5] {
+        let mut logs = complete[..prefix].to_vec();
+        logs.push("Log truncated".to_owned());
+        logs.extend(complete[prefix..].iter().cloned());
+        logs.push("Program data: /w==".to_owned());
+        value["transactions"][0]["meta"]["logMessages"] = json!(logs);
+        let block = decode_finalized_block(2, &value).unwrap();
+        assert_eq!(block.transactions[0].instructions[2].succeeded, None);
+        assert!(block.transactions[0].instructions[2].events.is_empty());
+        assert_eq!(
+            block.transactions[0].instructions[1].events,
+            vec![b"a".to_vec(), b"b".to_vec()]
+        );
+        assert_eq!(initial().apply_block(&block), Err(Error::Invocation));
+    }
+    // A known failed ancestor still rolls back its child after truncation.
+    let mut logs = complete[..6].to_vec();
+    logs[5] = format!("Program {} failed: caught rollback", key([91; 32]));
+    logs.push("Log truncated".to_owned());
+    logs.push(complete[6].clone());
+    value["transactions"][0]["meta"]["logMessages"] = json!(logs);
+    let block = decode_finalized_block(2, &value).unwrap();
+    assert_eq!(block.transactions[0].instructions[2].succeeded, Some(false));
+    let mut index = initial();
+    index.apply_block(&block).unwrap();
+    assert_eq!(index.replay_state().unwrap().sequence, 0);
+    // Completed prefix evidence remains useful; program output cannot spoof
+    // the runtime marker. Both cases retain the verified Vault transition.
+    for real_marker in [false, true] {
+        let mut logs = complete.clone();
+        if real_marker {
+            logs.push("Log truncated".to_owned());
+            logs.push("Program data: /w==".to_owned());
+        } else {
+            logs.insert(4, "Program log: Log truncated".to_owned());
+        }
+        value["transactions"][0]["meta"]["logMessages"] = json!(logs);
+        let block = decode_finalized_block(2, &value).unwrap();
+        assert_eq!(block.transactions[0].instructions[2].succeeded, Some(true));
+        assert!(block.transactions[0].instructions[2].events.is_empty());
+        let mut index = initial();
+        index.apply_block(&block).unwrap();
+        assert_eq!(index.replay_state().unwrap().sequence, 1);
+    }
+    // Malformed evidence before a marker is still rejected strictly.
+    let mut logs = complete;
+    logs[4] = format!("Program {} success", key([99; 32]));
+    logs.push("Log truncated".to_owned());
+    value["transactions"][0]["meta"]["logMessages"] = json!(logs);
+    assert_eq!(decode_finalized_block(2, &value), Err(Error::Invocation));
+}
