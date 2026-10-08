@@ -14,7 +14,9 @@ from clientd_release_provenance import BUILD_INPUTS_PATH, NOTICE_INDEX_PATH, sou
 from collect_clientd_release_notices import native_platform
 
 ROOT = Path(__file__).resolve().parents[1]
-VERSION = '0.2.0-devnet.1'
+VERSION = json.loads((ROOT / 'packages/sdk/package.json').read_text())['version']
+if not re.fullmatch(r'\d+\.\d+\.\d+-devnet\.\d+', VERSION):
+    raise ValueError('an explicit SDK devnet preview version is required')
 NATIVE_NAME = f'zkapi-clientd-{VERSION}-darwin-arm64'
 SDK_NAME = f'zkapi-solana-sdk-{VERSION}.tgz'
 

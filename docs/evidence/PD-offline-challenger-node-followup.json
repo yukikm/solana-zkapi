@@ -1,0 +1,236 @@
+{
+  "schema": 1,
+  "date_utc": "2026-10-08",
+  "scope": "Hosted source-specific aggregate pass and separate offline test harness Node-path failure/fix; not whole CI or live acceptance",
+  "source_commit": "9109de3cacf742616e360284ad7b7d02c084a639",
+  "hosted": {
+    "run_id": 37735440260,
+    "url": "https://github.com/yukikm/solana-zkapi/actions/runs/37735440260",
+    "job_id": 113173787152,
+    "overall_conclusion": "failure",
+    "other_jobs_succeeded": 8,
+    "client_challenger_conclusion": "failure",
+    "step_9_aggregate": "success",
+    "step_10_offline_regression": "failure",
+    "failure": "Backend.read_rpcs used absent default target/i08-toolchain/bin/node; test had only validated setup-node executable on PATH",
+    "failure_time_utc": "2026-10-08T07:04:34Z",
+    "job_log_sha256": "f4579001433532c5ab9d0b07379e0f73e5446e17abba896d013970049ed4100f",
+    "jobs_response_sha256": "45fbd40ea992fd846eff17439f4566ba6584cd72515a0f0a88f74f38ea6924a3"
+  },
+  "downloaded_aggregate": {
+    "artifact_id": 11533163546,
+    "artifact_name": "I08-I10-local-runtime-not-release",
+    "service_reported_zip_sha256": "18834fd7505475d0f8058fd094077beef58ea2d6e9eb47620519eb8672d7b406",
+    "zip_independently_hashed": false,
+    "extracted_files": 100,
+    "aggregate_sha256": "e0a20848a3dccb26146ec9a697bc7aecdc6f4ef5a850c7be226aabf7e7870212",
+    "passed": true,
+    "started_at_utc": "2026-10-08T06:18:56.158713+00:00",
+    "finished_at_utc": "2026-10-08T07:02:04.997707+00:00",
+    "elapsed_seconds": 2588.839,
+    "stages": [
+      {
+        "name": "backend",
+        "exit_code": 0,
+        "tests": 95,
+        "seconds": 573.917,
+        "report_sha256": "73e3556cf975c1556877b8bedfe79f304ad1a8e66c95663705cabd484d968e20",
+        "log_sha256": "0d782a7e0f2a4da0f6b50dd49c99dba36267014ede826d1042e0e235fac1a7d2"
+      },
+      {
+        "name": "sdk",
+        "exit_code": 0,
+        "tests": {
+          "sdk-tests": {
+            "tests": 377,
+            "pass": 377,
+            "fail": 0,
+            "skipped": 0
+          },
+          "native-integration": {
+            "tests": 2,
+            "pass": 2,
+            "fail": 0,
+            "skipped": 0
+          },
+          "native-tests": {
+            "pass": 7,
+            "fail": 0,
+            "skipped": 0
+          }
+        },
+        "seconds": 296.059,
+        "report_sha256": "58a3650eef4f7520aa0ae9fe7710d35473f762c90b402953f55ba4290eb15171",
+        "log_sha256": "e420340740789fce02f9fc4f83c5a4dfd5f0e30d2187f6084a7f54ab0726c464"
+      },
+      {
+        "name": "challenger",
+        "exit_code": 0,
+        "tests": 86,
+        "seconds": 553.162,
+        "report_sha256": "f349577413cc76e8a1241c9b74e30738df2a20fc7c3aa9e98dfcb5e4fd330c5b",
+        "log_sha256": "405264ba85bb18f438a96a44a6bba1f147b4fd43f7882329c6f2ac9c4300e43b"
+      },
+      {
+        "name": "wallet",
+        "exit_code": 0,
+        "tests": {
+          "sdk-tests": {
+            "tests": 377,
+            "pass": 377,
+            "fail": 0,
+            "skipped": 0
+          },
+          "wasm-browser": {
+            "tests": 3,
+            "pass": 3,
+            "fail": 0,
+            "skipped": 0
+          },
+          "wasm-sbf": {
+            "tests": 1,
+            "pass": 1,
+            "fail": 0,
+            "skipped": 0
+          },
+          "wallet-sbf": {
+            "tests": 1,
+            "pass": 1,
+            "fail": 0,
+            "skipped": 0
+          },
+          "native-tests": {
+            "pass": 5,
+            "fail": 0,
+            "skipped": 0
+          }
+        },
+        "seconds": 574.202,
+        "report_sha256": "4941f81cbedb831d3991b87b198f82c5277332602b6fc43e0aacd9b03f2708a5",
+        "log_sha256": "bfb043d1e2253dc92fdce454cfc9aba512bfaa18869b68df93668bd4036705df"
+      },
+      {
+        "name": "clientd",
+        "exit_code": 0,
+        "tests": {
+          "go_with_subtests": 69,
+          "sdk": 105,
+          "go_sdk_actual_sbf": 1
+        },
+        "seconds": 188.833,
+        "report_sha256": "3a305d06539d546ffccc1b3ba83d0229c9fb3a82a2c742b36fd189c88411b53b",
+        "log_sha256": "701d6a260bc67f579d1927d68493332caec84affa4fe4d6ff63d066a8d3a00c1"
+      },
+      {
+        "name": "operations",
+        "exit_code": 0,
+        "tests": {
+          "passed": 19,
+          "failed": 0,
+          "ignored": 0
+        },
+        "seconds": 79.392,
+        "report_sha256": "fb07216b8aba1ae71ca74db7ca291ca17337e7ac1913eee6de015eec382f7f34",
+        "log_sha256": "68d6d828b582e17e0687ac5fc2ff67dec6e3bade27879ccbfc7139ee40ee0542"
+      },
+      {
+        "name": "integration",
+        "exit_code": 0,
+        "tests": {
+          "dispatcher_frame_order": {
+            "passed": 1,
+            "failed": 0,
+            "ignored": 0
+          },
+          "i10_load": {
+            "passed": 1,
+            "failed": 0,
+            "ignored": 0
+          },
+          "i10_faults": {
+            "passed": 1,
+            "failed": 0,
+            "ignored": 0
+          },
+          "i10_e2e": {
+            "passed": 1,
+            "failed": 0,
+            "ignored": 0
+          }
+        },
+        "seconds": 322.502,
+        "report_sha256": "1d00ca93bc19d8368ff172fae934458b1d234cfb2a36fa6f4b8d5badf1b9e1e4",
+        "log_sha256": "90a318d123f5eafa611d36d2299ff71cba88761265e566f1972ef413a299ed01"
+      }
+    ],
+    "stage_report_and_log_hash_joins_verified": 14,
+    "counts_overlap_between_stages": true,
+    "full_I10_or_release_gate_claim": false
+  },
+  "test_only_change": {
+    "schema": 1,
+    "scope": "test-only exact validated PATH Node propagation",
+    "path": "scripts/test_i10_devnet_challenger.py",
+    "before_sha256": "a8479ceae51fccd1770297029efd9a3bea41f292c967baf9dd965c4e89bdbdcf",
+    "after_sha256": "6b97656abfaee3ae206e9f559cf26cebeed1eb7c2d4194d8a08595cc1d8b342d",
+    "production_backend_sha256": "520189f44cd915f341ebe617ec0b7d5ea0a6779e0eb2ee584c7ed45a1ad92f08"
+  },
+  "local_regression": {
+    "passed": true,
+    "checks_passed": 16,
+    "checks": [
+      "isolated_current_artifacts_and_signed_offline_manifest",
+      "first_prepare_native_init_and_select_only_role",
+      "repeat_prepare_native_status_preserves_journal",
+      "actual_native_rejects_substituted_idl_hash",
+      "explicit_release_selection_and_actual_binary_source_hashes",
+      "actual_reader_rejects_write_even_readonly_default_disabled",
+      "missing_journal_refused",
+      "substituted_cluster_pin_refused",
+      "lost_identity_refused",
+      "restored_identity_and_journal_reopen",
+      "changed_manifest_identity_refused",
+      "missing_cluster_identity_refused",
+      "existing_excess_reader_authority_refused",
+      "bounded_child_stop_and_sanitized_metrics_log",
+      "log_allowlist_rejects_unknown_string_fields",
+      "original_inputs_and_disposable_fixture_pins_unchanged"
+    ],
+    "seconds": 3.631,
+    "ZKAPI_NODE_initially_unset": true,
+    "node_version": "24.19.0",
+    "node_binary_sha256": "27db838bb204ef7c21df2931f5656e4c8fb32e6e947f363a402b49714d32b5b1",
+    "result_sha256": "371d8b97914732f685a97c19e0b0767582a7addf5abc4842d6c3e89a24f37a2e",
+    "log_sha256": "b1685d7e60c39dfbbe8df39d5a7ff732993ecc1827e3a44c99ed57b295a65a8f",
+    "guarded_inputs": 4,
+    "guarded_inputs_unchanged": true,
+    "scope": "New disposable local PostgreSQL and signed fixture deployment; native init/status, privilege, artifact/identity and bounded shutdown checks; no public RPC or fee-key read"
+  },
+  "limitations": [
+    "Corrected test has local evidence only; no subsequent hosted pass is claimed.",
+    "The seven hosted stages use fixture providers and local SBF/runtime components; they do not establish full I10, release gates, live-provider, public-wallet or production acceptance.",
+    "The artifact ZIP digest is GitHub metadata; extracted stage report/log bytes were independently verified.",
+    "SDK counts overlap across stages. No immutable release artifact was rebuilt or repinned."
+  ],
+  "actions": {
+    "provider_inferences": 0,
+    "funding": 0,
+    "host_service_changes": 0,
+    "ci_reruns": 0,
+    "git_publication": false
+  },
+  "publication": {
+    "commit": "1a25289a70a9171667be388e6ac18bc1586c1960",
+    "parent": "9109de3cacf742616e360284ad7b7d02c084a639",
+    "published_paths": [
+      "scripts/test_i10_devnet_challenger.py"
+    ],
+    "receipt_sha256": "afd8802d71b1577fec335e17e768f73551fe52a79d46faa0abede8a3d9fddd1a",
+    "remote_main_verified": true,
+    "real_head_and_index_unchanged": true,
+    "corrected_hosted_result": "pending",
+    "pending_run_id": 37743037686,
+    "pending_run_url": "https://github.com/yukikm/solana-zkapi/actions/runs/37743037686",
+    "pending_observation_source": "root read-only GitHub run listing; not a completed outcome"
+  }
+}

@@ -1,0 +1,157 @@
+{
+  "schema": 1,
+  "scope": "First actual OpenClaw request failure and subsequent bounded read-only native/operator observations. N-02/N-03 success is not established; no independent packet count or original error-cause conclusion.",
+  "dated_utc": "2026-10-08",
+  "launch_at_utc": "2026-10-08T11:48:31.774Z",
+  "first_gate_record_at_utc": "2026-10-08T11:48:36.706Z",
+  "cases": [
+    "N-02",
+    "N-03"
+  ],
+  "status": "first_request_http_400_no_successful_tool_continuation",
+  "records": {
+    "operator_actual_cut": {
+      "sha256": "8879bf4daedac5b18da1bc7b7c78385e16e6481ce33ac7d68fc8e4cbefd07abc",
+      "bytes": 7808
+    },
+    "native_before_status": {
+      "sha256": "18ba8beb45e2cf23a743ff88a8b0c932d9a73dd9dbabeb704dcc712dfbed9c8a",
+      "bytes": 651
+    },
+    "native_after_status": {
+      "sha256": "18ba8beb45e2cf23a743ff88a8b0c932d9a73dd9dbabeb704dcc712dfbed9c8a",
+      "bytes": 651
+    },
+    "sole_agent_launch_fence": {
+      "sha256": "f7baee5aa724b46003ebe49e462d66005d6bd79e42f70d48439698baa3d5279e",
+      "bytes": 165
+    },
+    "first_gate_forward_record": {
+      "sha256": "bff6d4c8375321e7d030aa615c42a0e3cb9856458b455fd47eb7a5b6d31cc236",
+      "bytes": 246
+    },
+    "openclaw_cli_result": {
+      "sha256": "61bf64e9cf9d8a46f0034b3d46a02d5ec8628918f8c34b10fa89a648f964bf24",
+      "bytes": 152
+    },
+    "openclaw_cli_stderr": {
+      "sha256": "e92319b1895446143f174ccf483e911e6d4a43508cd23331a0a308f16f5d08e9",
+      "bytes": 3528
+    },
+    "gate_stop_attempt": {
+      "sha256": "8b61cd032293ba41c6d43fcdfe3d80fbcbe89dae9442cf0bb359585307598156",
+      "bytes": 539
+    },
+    "gate_stop_observation": {
+      "sha256": "9375b8ff268d9bdaafd202dc88adf8cf17828c4538eb3fe041300acf25ba91cd",
+      "bytes": 99
+    },
+    "before_launch_guard": {
+      "sha256": "1819e57fa2f23c26b3e08e423746a4a0ad8eb31108314443ddeceaa3670b0fd2",
+      "bytes": 415
+    }
+  },
+  "client_observation": {
+    "http_status": 400,
+    "elapsed_ms_reported": 11995,
+    "raw_error": "400 terminated",
+    "cli_error_type": "cli_error",
+    "automatic_retry_reported": 0,
+    "rotations_reported": 0,
+    "fallback_next": "none",
+    "actual_read_tool_completed": false,
+    "second_gate_forward_record_present": false,
+    "successful_response_or_settlement_for_these_cases": false,
+    "original_error_cause_confirmed": false,
+    "scope": "The local error-body handling defect is under investigation. This surfaced text does not prove a schema, tool-payload or provider rejection cause."
+  },
+  "separate_context_warning": {
+    "configured_context_tokens": 4096,
+    "estimated_input_tokens": 4529,
+    "computed_output_tokens": 1,
+    "scope": "OpenClaw diagnostic estimates and configured limits, not measured provider token usage, billing evidence or the established cause of HTTP400."
+  },
+  "native_observation": {
+    "before_after_status_bytes_identical": true,
+    "journal_head": {
+      "revision": 371,
+      "digest": "bf4e9052a2edd80c34bfe2654b2b578ae2ffc0ce2c5bc754125987eb630c55b8"
+    },
+    "balance_micro_usdc": 4999994,
+    "phase": "ready",
+    "in_flight": 0,
+    "recovery_required": false,
+    "unresolved_operations": [],
+    "wallet_status": "active",
+    "wallet_operation": null,
+    "scope": "Read-only status observation; the existing N-01 signed state remains the comparison baseline."
+  },
+  "operator_observation": {
+    "command_id": "f191692c-21e3-4b80-80de-d74d9068d4e8",
+    "observed_at_unix": 1791461054,
+    "observed_at_utc": "2026-10-08T12:04:14+00:00",
+    "reservations_count": 1,
+    "reservations_sha256": "653f4fd10b716d5cbebedc794665d1c7313d346a17ce080ac8935827c71d61e8",
+    "reservation_bytes_equal_prior_one_cap": true,
+    "budget_validated": true,
+    "database_counts": {
+      "sessions": 1,
+      "operations": 0,
+      "dispatch_attempts": 1,
+      "settlements": 1,
+      "receipts": 1,
+      "outbox": 7,
+      "nullifier_reservations": 1,
+      "clearances": 0,
+      "provider_evidence": 0,
+      "chain_transactions": 0
+    },
+    "complete_private_table_rows": {
+      "sessions": true,
+      "operations": true,
+      "dispatch_attempts": true,
+      "settlements": true,
+      "receipts": true,
+      "outbox": true,
+      "nullifier_reservations": true,
+      "clearances": true,
+      "provider_evidence": true,
+      "chain_transactions": true
+    },
+    "database_raw_sha256": "0efc45119e897da7ce5d33f6a473241c33ef4c8b41f8c4efd3645e6d8c229c9f",
+    "n01_session_present": true,
+    "gate_operation_found_in_operations": false,
+    "same_service_identities": true,
+    "gateway_config_unchanged": true,
+    "reservation_bytes_unchanged_during_capture": true,
+    "new_AUTH_reservation_session_or_charge_evidenced": false,
+    "independent_AUTH_packet_count": null,
+    "independent_provider_packet_count": null,
+    "scope": "Actual count/hash and one repeatable-read read-only transaction, not a presumed count of one. Every bounded table fit completely. The unchanged ledger and native state do not independently count network packets."
+  },
+  "retained_fences": {
+    "original_agent_attempt_preserved": true,
+    "original_first_forward_record_preserved": true,
+    "gate_operation_id": "02745390-88e4-47a9-806d-45bb9393ec75",
+    "gate_body_sha256": "a88a9163cc67308b0eb914d7eede29e6f27731e0aab8a1219611348cd3feef5f",
+    "gate_operation_id_is_not_assumed_AUTH_id": true,
+    "request_body_is_not_assumed_exact_AUTH": true,
+    "new_reservations_reset": false,
+    "failed_case_relabelled_as_success": false
+  },
+  "gate_shutdown": {
+    "owned_gate_pid": 21819,
+    "signal": "SIGTERM",
+    "observed_pid_absent": true,
+    "observed_at_utc": "2026-10-08T12:01:18.382635+00:00",
+    "native_supervisor_untouched": true,
+    "root_observed_exec_session_exit_code": 0,
+    "exit_code_scope": "Root reported completion of the owned gate session; the retained local stop observation independently records PID absence."
+  },
+  "remaining": [
+    "Diagnose the original HTTP400 cause while preserving this failed attempt.",
+    "N-02/N-03 text, read-tool continuation, response consumption and signed settlement remain unverified.",
+    "N-04, funded browser cases and withdrawal remain separate unfinished acceptance."
+  ],
+  "report_host_or_financial_actions": 0
+}

@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { createHash } from 'node:crypto';
 import { createServer } from 'node:http';
 import { mkdtemp, realpath, writeFile, readFile, rm, chmod, access } from 'node:fs/promises';
 import { join } from 'node:path';
@@ -49,6 +50,7 @@ async function fixture(t, modify = () => {}) {
   const tokenFile = join(root, 'inference'), managementTokenFile = join(root, 'management');
   await writeFile(tokenFile, inference + '\n', { mode: 0o600 }); await writeFile(managementTokenFile, management + '\n', { mode: 0o600 });
   const seen = []; let current = status(), statusReads = 0, statusCode = 200, statusHook = async () => {};
+  let chatResponse = { status: 200, type: 'text/event-stream', body: 'data: {"choices":[]}\n\ndata: [DONE]\n\n' };
   const server = createServer(async (req, res) => {
     if (req.url === '/admin/status') {
       assert.equal(req.method, 'GET'); assert.equal(req.headers.authorization, 'Bearer ' + management); statusReads++;
@@ -60,7 +62,7 @@ async function fixture(t, modify = () => {}) {
     const chunks = []; for await (const chunk of req) chunks.push(chunk);
     seen.push({ bytes: Buffer.concat(chunks), operationId: req.headers['idempotency-key'] });
     current = status('closing', seen.length * 2, req.headers['idempotency-key']); modify(current);
-    res.writeHead(200, { 'content-type': 'text/event-stream' }); res.end('data: {"choices":[]}\n\ndata: [DONE]\n\n');
+    res.writeHead(chatResponse.status, { 'content-type': chatResponse.type }); res.end(chatResponse.body);
   });
   await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
   const config = { listenPort: 0, model, tokenFile, managementTokenFile, stateDirectory: join(root, 'state'), upstreamOrigin: `http://127.0.0.1:${server.address().port}` };
@@ -69,6 +71,7 @@ async function fixture(t, modify = () => {}) {
   return { root, config, seen, start: async () => gate = await startSettlementInputGate(config), get gate() { return gate; }, get reads() { return statusReads; },
     set status(v) { current = v; }, set statusCode(v) { statusCode = v; },
     set statusHook(v) { statusHook = v; },
+    set chatResponse(v) { chatResponse = v; },
     post: (second = false, signal) => fetch(gate.origin + '/v1/chat/completions', { method: 'POST', body: body(second), signal,
       headers: { authorization: 'Bearer ' + inference, 'content-type': 'application/json', 'idempotency-key': second ? 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb' : op } }) };
 }
@@ -146,4 +149,42 @@ test('canceling the first stream before the withheld terminal event poisons the 
   for (let i = 0; i < 100 && !f.gate.status().poisoned; i++) await sleep(10);
   assert.equal(f.gate.status().poisoned, true); release();
   assert.equal(f.seen.length, 1); assert.equal((await f.post(true)).status, 503);
+});
+
+test('first native JSON error is forwarded exactly and permanently fences the adapter without a post-response status read', async t => {
+  const f = await fixture(t), bytes = Buffer.from('{"error":"fixture rejection — no SSE"}\n');
+  f.chatResponse = { status: 400, type: 'application/json; charset=utf-8', body: bytes };
+  await f.start(); const response = await f.post();
+  assert.equal(response.status, 400); assert.equal(response.headers.get('content-type'), 'application/json; charset=utf-8');
+  assert.deepEqual(Buffer.from(await response.arrayBuffer()), bytes);
+  assert.equal(f.reads, 1); assert.equal(f.seen.length, 1); assert.equal(f.gate.status().poisoned, true);
+  const record = JSON.parse(await readFile(join(f.config.stateDirectory, 'response-1.json')));
+  assert.deepEqual(record, { schema: 1, status: 400, contentTypeCategory: 'application/json', bodyBytes: bytes.length,
+    bodySha256: createHash('sha256').update(bytes).digest('hex') });
+  assert(!JSON.stringify(record).includes('fixture rejection'));
+  assert.equal((await f.post(true)).status, 503); assert.equal(f.reads, 1); assert.equal(f.seen.length, 1);
+  await assert.rejects(access(join(f.config.stateDirectory, 'held-second.json')));
+  await assert.rejects(access(join(f.config.stateDirectory, 'forward-2.json')));
+});
+
+test('second native non-200 bytes bypass SSE and no further native status or POST is sent', async t => {
+  const f = await fixture(t); await f.start(); await (await f.post()).text();
+  f.status = { ...status('ready', 3), balance_micro_usdc: '4999994' };
+  const bytes = Buffer.from([0, 255, 13, 10, 1]);
+  f.chatResponse = { status: 502, type: 'application/octet-stream', body: bytes };
+  const response = await f.post(true); assert.equal(response.status, 502);
+  assert.deepEqual(Buffer.from(await response.arrayBuffer()), bytes);
+  assert.equal(f.reads, 3); assert.equal(f.seen.length, 2); assert.equal(f.gate.status().poisoned, true);
+  const record = JSON.parse(await readFile(join(f.config.stateDirectory, 'response-2.json')));
+  assert.deepEqual(record, { schema: 1, status: 502, contentTypeCategory: 'other', bodyBytes: bytes.length,
+    bodySha256: createHash('sha256').update(bytes).digest('hex') });
+  assert.equal((await f.post(true)).status, 503); assert.equal(f.reads, 3); assert.equal(f.seen.length, 2);
+});
+
+test('oversized native error body is refused before forwarding and never retried or marked complete', async t => {
+  const f = await fixture(t); f.chatResponse = { status: 400, type: 'application/json', body: Buffer.alloc(65_537, 65) };
+  await f.start(); const response = await f.post(); assert.equal(response.status, 503); await response.text();
+  assert.equal(f.gate.status().poisoned, true); assert.equal(f.reads, 1); assert.equal(f.seen.length, 1);
+  await assert.rejects(access(join(f.config.stateDirectory, 'response-1.json')));
+  assert.equal((await f.post(true)).status, 503); assert.equal(f.seen.length, 1);
 });

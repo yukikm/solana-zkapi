@@ -12,7 +12,7 @@ import { pathToFileURL } from 'node:url';
 import { once } from 'node:events';
 import { parseStrictJson } from '../packages/sdk/dist/trust.js';
 
-const BODY_LIMIT = 2 * 1024 * 1024, RESPONSE_LIMIT = 8 * 1024 * 1024;
+const BODY_LIMIT = 2 * 1024 * 1024, RESPONSE_LIMIT = 8 * 1024 * 1024, ERROR_RESPONSE_LIMIT = 64 * 1024;
 const sha = value => createHash('sha256').update(value).digest('hex');
 async function privateFile(path, maximum) {
   assert(isAbsolute(path) && resolve(path) === path && await realpath(path) === path);
@@ -241,6 +241,22 @@ export async function startSettlementInputGate(config) {
       if (upstreamResponse.statusCode >= 300 && upstreamResponse.statusCode < 400) { abort(); error(response, 502, 'upstream_redirect_refused'); return; }
       const headers = { 'content-type': upstreamResponse.headers['content-type'] ?? 'application/octet-stream', 'cache-control': 'no-store', connection: 'close' };
       if (upstreamResponse.headers['content-encoding']) headers['content-encoding'] = upstreamResponse.headers['content-encoding'];
+      if (upstreamResponse.statusCode !== 200) {
+        // A failed native POST consumes this slot permanently. Preserve its
+        // bounded response verbatim without SSE parsing or later status reads.
+        poisoned = true;
+        const chunks = []; let bytes = 0;
+        for await (const chunk of upstreamResponse) {
+          bytes += chunk.length; assert(bytes <= ERROR_RESPONSE_LIMIT);
+          canceled.signal.throwIfAborted(); chunks.push(chunk);
+        }
+        const body = Buffer.concat(chunks), type = headers['content-type'].split(';', 1)[0].trim().toLowerCase();
+        await durable(join(directory, `response-${sequence}.json`), { schema: 1,
+          status: upstreamResponse.statusCode, contentTypeCategory: ['application/json', 'text/plain', 'text/event-stream'].includes(type) ? type : 'other',
+          bodyBytes: body.length, bodySha256: sha(body) });
+        canceled.signal.throwIfAborted();
+        response.writeHead(upstreamResponse.statusCode, headers); response.end(body); return;
+      }
       response.writeHead(upstreamResponse.statusCode ?? 502, headers); response.flushHeaders();
       let responseSize = 0, pendingFrame = Buffer.alloc(0), terminal = false;
       const drainFrames = async eof => {

@@ -24,7 +24,24 @@ has 33 resources, is scoped to `us-east-1`, and has SHA-256
 `05e38287c3e4bdf7a5a87a8eb1eb7a621efa4895f079399e8876c460be33af99`. The originally reviewed low-cost template was
 `c023450b795728dd4b978d711938498208ddb3777a897fe69f55ff5aef746829`;
 the live CREATE used a separately recorded copy with the same exact AMI pin.
-The subsequent bootstrap fix below preserves its resource sizes and network rules.
+The subsequent bootstrap fix below preserved its resource sizes and network rules.
+The 2026-10-08 02:31 UTC operational follow-up expanded only the existing data
+volume from 20 to 40 GiB, preserving its identity and mounted filesystem. The
+source template at that checkpoint was SHA-256 `087453dc26c3359f59562dd49bc8a6cd8154fbcc0bf17d8c8db9906b2a55fd25`;
+the earlier template hashes and 48-GiB validation below remain historical.
+See the [migration and storage checkpoint](../../docs/evidence/PD-rpc-migration-startup.md)
+for the actual change-set and host receipts; storage growth is not service readiness.
+
+The subsequent [independent static-origin update](../../docs/evidence/PD-public-runtime-origin-followup.md)
+adds one CloudFront distribution, its bounded S3 policy grant and two outputs,
+without another compute or NAT resource. The current source template is
+`c49a35cb497d653f9035b1e4cb9a9c179c93d4562daee05bc4da30c0f57d4391`;
+the exact deployed template is
+`60ba2b14c2d6f9ab46fdbb34a305d3679c3278cfa017a805f17ad76601d9aff8`.
+Both retain 40 GiB of data. Source preserves the repaired pinned-RPM NAT
+bootstrap; deployed metadata still contains the earlier dnf bootstrap because
+the actual NAT repair used SSM. Any later stack application must account for
+that known difference. Source promotion alone performed no AWS action.
 
 ## Cost and operating tradeoffs
 
@@ -37,12 +54,14 @@ They are retained in
 | Operator | `t3a.medium`, 2 vCPU / 4 GiB, USD 0.0376/hour; SKU `CEC547W2ASCGJKER` | USD 27.448 |
 | HTTPS NAT | `t3a.nano`, 2 vCPU / 0.5 GiB, USD 0.0047/hour; SKU `3NY3EX7YAET2WWYZ` | USD 3.431 |
 | One public IPv4 | NAT Elastic IP, USD 0.005/hour | USD 3.650 |
-| Encrypted gp3 | 20 GiB operator root + 20 GiB durable state + 8 GiB NAT root, USD 0.08/GB-month; SKU `JG3KUJMBRGHV3N8G` | USD 3.840 |
-| **Fixed illustration** | Compute, disk and one IP | **USD 38.369** |
+| Encrypted gp3 | 20 GiB operator root + 40 GiB durable state + 8 GiB NAT root, USD 0.08/GB-month; SKU `JG3KUJMBRGHV3N8G` | USD 5.440 |
+| **Fixed illustration** | Compute, disk and one IP | **USD 39.969** |
 
-At 744 hours, the same fixed illustration is USD 39.0312. Applying an
-illustrative 10% tax gives USD 42.2059–42.9343, leaving approximately
-**USD 7.07–7.79** within the USD 50 target for all other AWS charges and their
+The original 48-GiB fixed illustration was USD 38.369 at 730 hours. The extra
+20 GiB adds USD 1.600 per full month using the same retained rate.
+At 744 hours, the current fixed illustration is USD 40.6312. Applying an
+illustrative 10% tax gives USD 43.9659–44.6943, leaving approximately
+**USD 5.31–6.03** within the USD 50 target for all other AWS charges and their
 tax. Actual tax depends on account billing. CloudFront/S3 requests and transfer,
 artifact and encrypted backup storage, snapshots, logs and any other retained
 resources must fit that remaining allocation. Do not assume a free allowance
@@ -190,15 +209,17 @@ do not delete required history or abandon funded recovery to hit a cost target.
 
 Build and package Linux x86-64 binaries off this small runtime host. The
 20-GiB root allocation is for installed services, not an unbounded Cargo/toolchain
-workspace. The 20-GiB durable allocation is a candidate limit requiring actual
-growth measurements and safe stop thresholds, not permission to prune state.
+workspace. The original 20-GiB durable allocation was expanded to 40 GiB for
+current preview headroom. It still requires actual growth measurements and
+safe stop thresholds, not permission to prune state. Data expansion does not
+increase the separate root-filesystem space used for local encrypted backup.
 Increasing storage or retaining backups adds cost and requires updating the
 whole estimate rather than claiming the fixed figure remains complete.
 
 ## Validation completed and remaining
 
-Local review parsed the new JSON and checked every Ref/GetAtt/Sub/DependsOn
-target, all 33 resources, 48 GiB of encrypted gp3, Standard credits on both
+The original local review parsed the then-current JSON and checked every
+Ref/GetAtt/Sub/DependsOn target, all 33 resources, 48 GiB of encrypted gp3, Standard credits on both
 instances, absence of managed NAT and public ingress, and all financial-state
 retention policies. Sixteen unchanged security/API/storage resource definitions
 were compared exactly to the original template. The outer bootstrap and inner

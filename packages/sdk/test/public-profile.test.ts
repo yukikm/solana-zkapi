@@ -25,7 +25,7 @@ test('independent profile hash and retained installation pin fail before followi
   assert.equal(f.calls.length,1);
 });
 test('profile compatibility, public URLs, modes, capabilities and closed fields fail before asset fetch',async()=>{
-  const changes:((p:any)=>void)[]=[p=>{p.sdkVersions=['0.1.0-devnet.1'];},p=>{p.protocolLayoutVersion=3;},p=>{p.schema=2;},
+  const changes:((p:any)=>void)[]=[p=>{p.sdkVersions=['0.1.0-devnet.1'];},p=>{p.sdkVersions=['0.2.0-devnet.2'];},p=>{p.protocolLayoutVersion=3;},p=>{p.schema=2;},
     p=>{p.surprise='secret';},p=>{p.rpcUrl='https://rpc.example.com/?key=SECRET';},p=>{p.rpcUrl='https://127.0.0.1/';},
     p=>{p.indexerOrigin='http://indexer.example.com';},p=>{p.bundle.url='https://user:SECRET@assets.example.com/bundle.json';},
     p=>{p.models[0].apis=['messages'];},p=>{p.models[0].apis=['chat','chat'];},p=>{p.mode='proxy';},

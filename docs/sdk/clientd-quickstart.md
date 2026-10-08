@@ -17,7 +17,7 @@ provider charges. SDK settlement and withdrawal remain necessary.
 ## Install the current-platform package
 
 Download and verify the prebuilt macOS ARM64 archive from the
-[public-profile client release](../evidence/PD-public-client-publication.md), then extract it into a
+[public deployment guide](public-devnet-preview.md), then extract it into a
 new directory. Obtain the archive and installed `release.json` hashes from the
 authenticated release manifest. The following build command is for maintainers.
 
@@ -49,16 +49,17 @@ packages need separate builds and verification.
 
 ## Create a private profile
 
-For the released `0.2.0-devnet.2` preview, the
+For a public-profile preview, the
 [public-profile consumer](../../tools/public-devnet-consumer/README.md#derive-native-setup-files)
 derives the files below from one independently authenticated public profile and
 its verified assets into a new directory. Use its recorded runtime digest with
-`clientd setup`. Use the matching `.2` native archive and the
-[current public profile](public-devnet-preview.md); earlier immutable releases
-do not include the new profile/capability support.
+`clientd setup`. Use the native archive whose SDK version is included in the
+authenticated profile's `sdkVersions`, as listed in the
+[current public profile](public-devnet-preview.md). Releases before
+`0.2.0-devnet.2` do not include profile/capability support.
 
 The public gateway requires an invitation for new AUTH reservations.
-The `.2` native client supports a private admission token file through
+The native client supports a private admission token file through
 `network.json`'s optional `admission: {origin, token_file}` configuration; the
 consumer helper accepts its path with `--admission-token-file`. Keep that file
 owner-only and separate from public profiles, runtime artifacts and logs. The

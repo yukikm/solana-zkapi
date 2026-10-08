@@ -276,7 +276,7 @@
           ]
         },
         "Encrypted": true,
-        "Size": 20,
+        "Size": 40,
         "VolumeType": "gp3",
         "Tags": [
           {
@@ -778,6 +778,29 @@
                   }
                 }
               }
+            },
+            {
+              "Sid": "IndependentBrowserPublicFilesOnly",
+              "Effect": "Allow",
+              "Principal": {
+                "Service": "cloudfront.amazonaws.com"
+              },
+              "Action": "s3:GetObject",
+              "Resource": [
+                {
+                  "Fn::Sub": "${Artifacts.Arn}/releases/public-devnet-20261008-a/chat-en-r2/*"
+                },
+                {
+                  "Fn::Sub": "${Artifacts.Arn}/releases/public-devnet-20261008-a/pd04-check-v1/*"
+                }
+              ],
+              "Condition": {
+                "StringEquals": {
+                  "AWS:SourceArn": {
+                    "Fn::Sub": "arn:${AWS::Partition}:cloudfront::${AWS::AccountId}:distribution/${IndependentBrowserDistribution}"
+                  }
+                }
+              }
             }
           ]
         }
@@ -910,6 +933,70 @@
           "Ref": "NatInstance"
         }
       }
+    },
+    "IndependentBrowserDistribution": {
+      "Type": "AWS::CloudFront::Distribution",
+      "Properties": {
+        "DistributionConfig": {
+          "Enabled": true,
+          "Comment": "Independent-origin Devnet browser preflight; static public files only; readiness separate",
+          "HttpVersion": "http2and3",
+          "IPV6Enabled": true,
+          "PriceClass": "PriceClass_All",
+          "ViewerCertificate": {
+            "CloudFrontDefaultCertificate": true
+          },
+          "DefaultRootObject": "releases/public-devnet-20261008-a/pd04-check-v1/index.html",
+          "Origins": [
+            {
+              "Id": "artifacts",
+              "DomainName": {
+                "Fn::GetAtt": [
+                  "Artifacts",
+                  "RegionalDomainName"
+                ]
+              },
+              "S3OriginConfig": {
+                "OriginAccessIdentity": ""
+              },
+              "OriginAccessControlId": {
+                "Fn::GetAtt": [
+                  "ArtifactAccess",
+                  "Id"
+                ]
+              },
+              "ConnectionAttempts": 1,
+              "ConnectionTimeout": 5
+            }
+          ],
+          "DefaultCacheBehavior": {
+            "TargetOriginId": "artifacts",
+            "ViewerProtocolPolicy": "https-only",
+            "AllowedMethods": [
+              "GET",
+              "HEAD"
+            ],
+            "CachedMethods": [
+              "GET",
+              "HEAD"
+            ],
+            "CachePolicyId": {
+              "Ref": "StaticCache"
+            },
+            "Compress": true
+          },
+          "CustomErrorResponses": [
+            {
+              "ErrorCode": 403,
+              "ErrorCachingMinTTL": 0
+            },
+            {
+              "ErrorCode": 404,
+              "ErrorCachingMinTTL": 0
+            }
+          ]
+        }
+      }
     }
   },
   "Outputs": {
@@ -959,6 +1046,17 @@
     "NatInstanceId": {
       "Value": {
         "Ref": "NatInstance"
+      }
+    },
+    "IndependentBrowserOrigin": {
+      "Description": "Separate static HTTPS origin; requires explicit gateway origin allowlist update before API preflight",
+      "Value": {
+        "Fn::Sub": "https://${IndependentBrowserDistribution.DomainName}"
+      }
+    },
+    "IndependentBrowserDistributionId": {
+      "Value": {
+        "Ref": "IndependentBrowserDistribution"
       }
     }
   },

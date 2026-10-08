@@ -1,10 +1,18 @@
 # Public Devnet readiness backlog
 
-Original handoff: 2026-10-07 JST. Status updated: 2026-10-08 JST.
-**The public profile, complete proof assets, SDK/native archives and independent
-chat app are hosted and verified; public service readiness is blocked by the
-configured RPC's monthly quota, and funded lifecycle acceptance remains
-unfinished.** The original document below records the
+OpenClaw failure checkpoint — 2026-10-08 12:04:14 UTC: the first actual request returned HTTP 400; no read-tool continuation or second forwarded request completed. The [failure record](evidence/PD-openclaw-first-request-failure.md) preserves the original launch/forward fences, unchanged native journal revision 371 and the independently observed unchanged one-reservation N-01 operator cut. No new AUTH, reservation, session or charge is evidenced; network packet counts remain unknown. The surfaced `400 terminated` error and separate context warning do not yet establish the original cause. N-02/N-03 remain unverified, with no acceptance checkbox changed.
+
+Resume checkpoint — 2026-10-08 11:45 UTC: **admission resume completed**, followed by public HTTP 200 reporting admission and recovery enabled. The [service-recovery record](evidence/PD-N01-service-recovery.md) joins the successful run06 to fresh installed-native preflight and two unchanged full local readiness checks; public `/relay-status` remains configuration-only. The pre-resume financial cut retained one N-01 full-cap reservation, the verified six-micro-USDC charge and active signed balance of 4,999,994 micro-USDC. Earlier attempts01–05 and all capture/restart/decoder failures remain preserved. This is a dated checkpoint, not a current balance or continuous-availability claim. Root launched N-02/N-03 around 11:48 UTC; their outcomes and any later reservations or charges are not included here. N-04, funded browser acceptance, withdrawal and independent backup restoration remain unverified. The readiness control candidate is still undeployed.
+
+Latest handoff — 2026-10-08 10:55 UTC: the [writer application-log correction](evidence/PD-rpc-program-log.md) is installed as binary `23bbb73f…83b372`; its start receipt records cold validation/replay in progress. **Fresh readiness and admission resume remain unverified; admission is false.** N-01 still has one full-cap reservation, a verified six-micro-USDC charge and an active signed balance of 4,999,994 micro-USDC. No additional paid case, funded browser case or withdrawal is claimed. [CI at `27ef2a4`](evidence/PD-hosted-ci-27ef2.md) passed all nine jobs; the latest root-saved successor `e36cfbcd…` cut had eight successful jobs and client/challenger pending. The dated text and checklist below remain unchanged historical records.
+
+Original handoff: 2026-10-07 JST. Status checkpoint: 2026-10-08 09:40:40 UTC.
+**Public inputs and earlier read-only browser/native preflight are verified.
+Native N-01 completed its deposit, Chat response and signed settlement; encrypted
+capture and same-state service restart also completed. Cold replay later ended,
+but the writer now pauses on archive-decoding errors at the next finalized block.
+Fresh readiness and admission resume are blocked; new admission is false.
+Withdrawal and the remaining live cases are unfinished.** The original document below records the
 separate-session request after an independent chat application could install
 the SDK but could not complete a public-input-only integration. Subsequent
 deployment and verification evidence is linked here; historical checkpoints
@@ -29,17 +37,87 @@ long-term qualification from the current scope; current deployment headroom and
 live lifecycle acceptance still require verification. The actual `zkchat` app
 is updated and published. Earlier public preflight and unfunded browser/native
 initialization passed in their recorded scopes. The
-[current RPC checkpoint](evidence/PD-public-rpc-quota-blocker.md) confirms an
-actual monthly-quota response from the configured endpoint; a bounded official
-free Devnet fallback also returned HTTP 429 before completing its sample.
-The [shared archive follower](evidence/PD-shared-archive-indexer-host.md) preserves
-the original history, but current root/snapshot endpoints are unavailable and
-control remains stopped. New admission remains suspended; funded browser,
-native/provider and recovery acceptance remain unfinished. No history is skipped
-and no RPC replacement or paid upgrade is established by these observations.
+[earlier RPC checkpoint](evidence/PD-public-rpc-quota-blocker.md) preserves the
+previous endpoint's monthly quota and the official free fallback's HTTP 429.
+The supplied Helius Devnet RPC is now configured. The
+[migration/storage checkpoint](evidence/PD-rpc-migration-startup.md) records
+four transport-field changes with original history and financial identities
+preserved. The [decoder correction](evidence/PD-rpc-log-truncation.md) passed
+the previously stalled block: at 03:15:49 UTC the writer had appended 9,178
+blocks since that stop. Root/snapshot still returned HTTP 503, control/gateway
+were inactive and admission remained suspended. Funded browser/native/provider
+and recovery acceptance remain unfinished. The same-volume 20-to-40-GiB data
+expansion changes the fixed 730-hour hosting illustration to USD39.969,
+excluding variable charges and actual taxes; it does not establish long-term
+capacity. No new AI-provider inference or budget reservation occurred.
 The [detached authority checkpoint](evidence/PD-detached-budget-initialization.md)
 records the approved seven-cap grant initialized with zero reservations, without
 transferring or reclaiming the original ledger's capacity.
+
+The [runtime and independent-origin checkpoint](evidence/PD-public-runtime-origin-followup.md)
+records later six-service readiness, public/local response agreement, actual
+cross-origin Chrome preflight and worker execution, and installed-native
+preflight through 05:32:43 UTC. It supersedes the earlier 503 observations for
+that read-only checkpoint. The [admission recovery checkpoint](evidence/PD-public-admission-recovery.md)
+records the subsequent failed policy check, preserved original operation and
+successful explicit continuation at 06:20 UTC. Admission and recovery were
+publicly observed enabled with zero reservations. The first native deposit
+preparation then failed before a saved wallet operation or funding; a public
+wallet read route returned HTTP 400. The separately recorded
+[wallet-route correction](evidence/PD-public-wallet-route-fix.md) then passed
+installed-SDK snapshot checks through the unchanged stock native transport.
+The [native N-01 checkpoint](evidence/PD-native-public-N01.md), through
+06:54:45 UTC, records a finalized five-USDC Devnet deposit, one real Chat
+response and a cryptographically verified six-micro-USDC charge. The note
+remains active with a signed balance of 4,999,994 micro-USDC. Service recovery,
+OpenClaw, interrupted-session recovery, withdrawal and funded browser acceptance
+remain unfinished.
+
+The [operator authority and settlement join](evidence/PD-N01-operator-join.md),
+at 07:43:48 UTC, subsequently matched N-01's exact pending AUTH digest,
+SDK-verified successor signature and six-micro-USDC charge to the existing
+one-cap reservation and selected operator settlement. Its read-only collector
+classified seven retained terminal checkpoint rows with zero unresolved work;
+it did not remove rows or change financial state. The following local draft
+assembly failed its certificate-phase check. That failed attempt remains
+preserved, the cut was not approved, and no admission suspension, backup or
+restart success follows from this join.
+
+Dated follow-up — 09:22 UTC: the [service-recovery checkpoint](evidence/PD-N01-service-recovery.md)
+records the successful capture continuation and guarded same-state restart,
+preserving the first failed capture and all 13 stopped-prefix records. The
+09:01 observation found all six services active, zero automatic restarts and
+the original follower unchanged; fresh writer readiness and admission resume
+remain pending. The note remains active at a signed 4,999,994 micro-USDC after
+one reservation and a six-micro-USDC charge. No N-02–N-04, funded browser case,
+withdrawal or backup restore follows from these receipts.
+
+The 24-path source follow-up is public at
+[`27ef2a4c842927240e0fae776a5017a46b6c141d`](https://github.com/yukikm/solana-zkapi/commit/27ef2a4c842927240e0fae776a5017a46b6c141d).
+Its [readiness candidate](evidence/PD-public-readiness-candidate.md) has a built
+Linux control binary (`505b7e65…20c36a7`) but is not deployed. The
+[OpenClaw scheduling adapter](evidence/PD-openclaw-settlement-adapter.md) has
+local fixture evidence only. [Hosted CI at `1a25289`](evidence/PD-hosted-ci-1a252.md)
+passed all nine jobs; successor [run 37755041914](https://github.com/yukikm/solana-zkapi/actions/runs/37755041914)
+at the new source was in progress with four of nine jobs successful at 09:21 UTC.
+No new whole-workflow pass is claimed. All existing checklist boxes remain
+unchanged, as do the original 17-row ledger, client releases, initial anchors
+and private credentials/custody.
+
+Dated follow-up — 09:40:40 UTC: the [recovery evidence](evidence/PD-N01-service-recovery.md)
+records a new post-replay blocker, separate from the successful capture/restart.
+Fresh non-ready writer health and repeated `RPC archive encoding` messages stop
+progress at durable tail `508763135`; the next-slot response is retained for
+source/fixture diagnosis. The frozen old native decoder isolates application
+`Program log: ` text containing ` failed:` as misclassified runtime completion.
+A narrow correction is under local verification; no deployed fix is claimed. Pending jobs and unknown signatures are zero; the settled N-01 note
+and one-cap reservation remain unchanged. No additional paid case, browser
+funding or withdrawal has run. The root-saved successor CI cut around 10:05
+had eight jobs successful and client/challenger in progress; it is not a new
+whole-workflow pass. Existing checklist boxes and earlier dated checkpoints
+remain unchanged.
+
+Dated follow-up — 10:55 UTC: the [application-log correction and deployment record](evidence/PD-rpc-program-log.md) supersedes the earlier “under local verification” status for the writer fix. The exact installed binary is `23bbb73fe88fcb111a1ca090cabe9cb0233693e09c9e2fc0d70b790f3b83b372`; only the writer was stopped, replaced and started. Its old executable, archive, configuration, five other processes and complete financial rows were retained. The stop had unavailable native exit metadata; the new start receipt records cold validation/replay, not fresh readiness. Admission remains false, with N-01's one reservation, six-micro-USDC charge and active funds unchanged. No resume, additional inference, withdrawal or full lifecycle follows from this deployment. [Hosted CI at exact source `27ef2a4`](evidence/PD-hosted-ci-27ef2.md) finished all nine jobs successfully. The latest root-saved `e36cfbcd…` cut remained eight successful jobs plus client/challenger pending. Readiness candidate `505b7e65…` is still undeployed; checklist acceptance is unchanged.
 
 ## Objective and scope
 
@@ -49,6 +127,13 @@ and complete funding -> real chat -> verified settlement -> recovery -> withdraw
 without access to the operator's checkout, private configuration or signing keys.
 Application users should choose a wallet and fund it; they should not assemble
 cryptographic deployment pins.
+
+Conversation history storage, display and inclusion in later requests belong to
+the consuming application. Multi-turn acceptance checks that ZKAPI accepts the
+application's next explicit request after settlement; it does not add a chat
+history feature to ZKAPI. Recovery in this backlog concerns financial operations,
+signed settlement and operator chain-monitoring state after interruption. It must
+not replay inference or claim to restore the application's conversation history.
 
 Deliver a usable, explicitly scoped **public Devnet preview** first. This backlog
 extends the external-integration work under I10 and the relevant distribution
@@ -170,10 +255,20 @@ Acceptance:
 
 - [ ] A third party can obtain the public addresses and reach all required routes
   from a clean machine without a developer's tunnel, checkout or private CA.
-- [ ] Read-only validation binds the selected cluster and finalized Pool to the
+- [x] Read-only validation binds the selected cluster and finalized Pool to the
   release's reviewed program/build/setup identity.
 - [ ] A stale indexer, unavailable signer or disabled provider is reported as a
   specific unavailable capability; no fabricated healthy state is returned.
+
+Binding evidence: [actual independent Chrome and installed-native preflight](evidence/PD-public-runtime-origin-followup.md)
+passed all ten checks against the authenticated profile, manifest and complete
+artifact bundle, including genesis, finalized Pool owner/PDA/configuration,
+circuit-profile binding and shared snapshot/chain clock. The
+[immutable release and independently published profile pin](evidence/PD-public-client-publication.md)
+and [matching downloaded native/WASM proof checks](evidence/PD-public-assets.md)
+retain the reviewed artifact identities. This closes the read-only binding
+item; it does not establish clean-machine coverage of every financial route
+or the complete signer/provider/indexer failure matrix.
 
 Reuse: [control service](../services/control/README.md),
 [indexer](../services/indexer/README.md),
@@ -326,14 +421,15 @@ Work:
 
 Acceptance:
 
-- [ ] A separately hosted app on its own origin passes preflight in a supported
+- [x] A separately hosted app on its own origin passes preflight in a supported
   real browser and runs the published worker/WASM.
 - [x] Preflight/status performs no deposit, AUTH, paid inference, custody reset or
   silent prompt to sign; any user permission requirement is documented.
 - [x] Public assets, diagnostics and network traces contain no operator secrets;
   failure identifies the failing component instead of saying only "disconnected."
 
-Evidence: [actual public unfunded startup](evidence/PD-consumer-unfunded-startup.md),
+Evidence: [independent-origin Chrome preflight and worker](evidence/PD-public-runtime-origin-followup.md),
+[actual public unfunded startup](evidence/PD-consumer-unfunded-startup.md),
 [public app and redacted diagnostics](evidence/PD-zkchat-english-publication.md),
 [anonymous assets](evidence/PD-public-assets.md), and the exact released client's
 [preflight/redaction fixture checks](evidence/PD-public-client-hosted-ci.md).
@@ -367,12 +463,17 @@ Work:
 
 Acceptance:
 
-- [ ] The advertised Chat model returns actual provider output and a
+- [x] The advertised Chat model returns actual provider output and a
   SDK-verified signed successor/charge through the public deployment.
 - [ ] Streaming is live-tested if advertised; terminal usage/empty choices,
   cancellation and settlement state are handled.
 - [ ] Pricing/cap changes cannot alter an already accepted operation; no
   provider-management secret is requested from an ordinary hosted-service user.
+
+The [native N-01 checkpoint](evidence/PD-native-public-N01.md) establishes the
+first item for direct OpenRouter `openai/gpt-4o-mini` nonstreaming Chat on the
+immutable `.2` native client. Streaming, tools and interruption are separate
+remaining cases.
 
 Reuse: [model contract](sdk/deployment.md),
 [provider acceptance](provider-acceptance.md),
@@ -420,8 +521,9 @@ The [funding guide](sdk/devnet-funding.md),
 [detached authority policy](../deploy/public-devnet/detached-budget.md), and
 [actual authority initialization](evidence/PD-detached-budget-initialization.md)
 separate test tokens, actual provider charges and seven nonreclaimable exposure
-reservations. Admission is still disabled; the other live acceptance checks stay
-open.
+reservations. The [later admission checkpoint](evidence/PD-public-admission-recovery.md)
+records enabled admission, and [N-01](evidence/PD-native-public-N01.md) records
+the first metered use. The other live acceptance checks stay open.
 
 ## PD-07 — Provide public-input-only SDK and native quickstarts
 
@@ -449,16 +551,30 @@ Acceptance:
 - [ ] On a clean machine, the documented steps work with downloaded releases
   and user-owned wallet state; no source-relative import, `target/` artifact,
   unpublished JSON, private backend profile or reference app is required.
-- [ ] The browser example and native onboarding use the existing SDK lifecycle,
+- [x] The browser example and native onboarding use the existing SDK lifecycle,
   preserve durable state, and disable automatic inference retries/fallbacks.
-- [ ] An actual user can reach a configured ready state without inventing URLs,
+- [x] An actual user can reach a configured ready state without inventing URLs,
   hashes, tariffs or native absolute paths.
 - [x] npm registry publication is not treated as a blocker: authenticated
   immutable tarballs remain a valid distribution channel.
 
 The [verified immutable `.2` tarballs](evidence/PD-public-client-publication.md)
 are publicly downloadable without npm-registry publication. Current service-ready
-onboarding and funded use remain separate from their distribution checks.
+onboarding is additionally supported by the
+[actual downloaded-native setup and explicit unfunded browser initialization](evidence/PD-consumer-unfunded-startup.md)
+and [later independent browser/installed-native ten-check preflight](evidence/PD-public-runtime-origin-followup.md).
+Native inputs were derived by the installed public-profile helper; the browser
+used the configured authenticated profile. These are actual configured-state
+observations on the recorded environments, not a fresh-machine acceptance run.
+
+Shared lifecycle, durable identity and no-retry behavior are covered by the
+[independent application integration](evidence/PD-zkchat-integration.md) and
+the exact released client's [hosted SDK, external-package and Go guard checks](evidence/PD-public-client-hosted-ci.md).
+Those continuity/recovery guards are fixture evidence. The separately scoped
+[native N-01](evidence/PD-native-public-N01.md) adds actual stock public-transport
+deposit, response and verified settlement; it does not close interrupted
+recovery, withdrawal or either complete consumer lifecycle. The clean-machine
+item remains open.
 
 Reuse: [SDK quickstart](sdk/quickstart.md),
 [native quickstart](sdk/clientd-quickstart.md),
@@ -619,3 +735,7 @@ Final acceptance is a fresh independent consumer completing the documented
 public Devnet lifecycle from public inputs. A build, mock UI response, HTTP 200
 health check, faucet transaction, earlier private-profile success or a published
 SDK tarball alone does not satisfy it.
+
+## Dated resume checkpoint — 2026-10-08 11:45 UTC
+
+The [same-state service-recovery evidence](evidence/PD-N01-service-recovery.md) records successful admission resume after a fresh preflight/operator cut and two full readiness checks. Earlier failed attempts remain immutable; the public response confirms configuration only. The one-reservation/six-micro-USDC figures describe the pre-resume cut, before the N-02/N-03 launch at approximately 11:48 UTC. No OpenClaw result, later budget count, withdrawal, backup restore or new checklist closure is inferred from this checkpoint.

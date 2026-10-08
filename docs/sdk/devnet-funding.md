@@ -32,17 +32,42 @@ note principal and SOL fees/rent are distinct quantities.
 
 ## Access and real provider spending
 
-Devnet tokens have no financial value and do not purchase provider credit.
-The operator must publish who subsidizes inference, the authorized spend ceiling,
-per-AUTH cap, admission/rate limits, availability window and any invitation
-process. A new public subsidy policy has not been activated by this code change.
-Do not ask ordinary consumers for operator provider-management credentials.
+Devnet faucet tokens do not purchase real provider credit. The preview operator
+covers provider charges using the separately authorized acceptance budget;
+ordinary consumers do not supply provider-management credentials or send mainnet
+USDC to obtain faucet funds. The campaign accounts for provider exposure using
+the reviewed one-USD-to-one-USDC assumption; faucet balances and the real
+provider bill remain separate.
 
-The previous private acceptance campaign is not a public subsidy. Its immutable
-17 reservations total 9,154,216 of 10,000,000 micro-USDC, leaving 845,784. That
-capacity cannot admit another full one-USDC AUTH. A new authorized campaign or
-explicit budget extension must preserve every old reservation; installing a
-profile never authorizes new spending.
+The [initialized grant](../evidence/PD-detached-budget-initialization.md) allows
+at most **seven new AUTH reservations of 1,000,000 micro-USDC each**, a total
+seven-USDC maximum exposure, for the named B-01–B-03 and N-01–N-04 acceptance
+cases. It selects direct OpenRouter Chat, `openai/gpt-4o-mini`, a 60-second session
+TTL and at most 128 output tokens. This is a bounded, invitation-only campaign,
+not an ongoing public spending allowance. Reservations are retained even when
+the verified charge is smaller; no automatic retry or replacement grant is
+authorized.
+
+At the [N-01 checkpoint](../evidence/PD-native-public-N01.md) on
+2026-10-08 at 06:54 UTC, a five-USDC **Devnet** deposit had finalized and one
+response had settled for 6 micro-USDC, leaving an active note balance of
+4,999,994. The [07:43 operator join](../evidence/PD-N01-operator-join.md)
+independently matched its one full-cap reservation and signed settlement.
+Admission was subsequently suspended at 07:58 UTC. These are dated observations,
+not permission to fund or send a request now; consult the
+[operator status and incident guide](public-devnet-operations.md).
+
+Request an invitation from the deployment operator through the repository
+maintainer's private communication channel. There is no public invitation code.
+An invitation does not reserve capacity, override suspended admission or authorize
+an additional campaign. Keep it out of URLs, shared configuration and issue
+reports. Browser connections hold it in memory; native installation uses an
+owner-only file scoped to the exact AUTH endpoint.
+
+The previous private campaign remains separate: its historical 17 reservations
+total 9,154,216 of 10,000,000 micro-USDC, leaving 845,784. No original capacity
+was transferred to the new grant, and reservations must never be reset or
+reclaimed to retry a case. Installing a profile alone authorizes no spending.
 
 ## When a request cannot proceed
 
@@ -51,9 +76,13 @@ profile never authorizes new spending.
 | Wrong network/mint/profile | Stop before deposit; restore the reviewed configuration |
 | Low wallet SOL | Obtain Devnet SOL for fees/rent; preserve any pending operation |
 | Note below authorization cap | Settle existing work first; inspect the note and funding lifecycle |
-| Admission/subsidy/provider unavailable | Wait for operator admission to reopen; keep settlement/recovery/withdrawal available |
+| New admission suspended or invitation/capacity unavailable | Do not start a new AUTH; consult the dated operator notice and preserve existing operations |
+| Provider or required service unavailable | Stop new work; existing recovery may also need services to return during maintenance |
 | Uncertain inference or transaction | Inspect the same journal/UUID; explicitly recover without replay |
 | Profile retired or service outage | Retain the original profile/custody and use its recovery route or documented escape/finalize |
 
 Never clear browser storage or create a replacement note to make an error
-disappear. Read [recovery](recovery.md) before acting on unresolved funds.
+disappear. Suspending new admission preserves existing request identities; it
+does not prove that every recovery endpoint is currently online. Read
+[recovery](recovery.md) and the [incident procedure](public-devnet-operations.md#incident-and-maintenance-procedure)
+before acting on unresolved funds.

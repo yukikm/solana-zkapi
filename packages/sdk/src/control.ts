@@ -505,7 +505,27 @@ export class ControlClient {
       : (b.mode === 'direct_oa' && b.provider === 'oa' || b.mode === 'direct_openrouter' && b.provider === 'openrouter') && b.models[0] === '*' && frozenTariff.pricing_basis === 'provider_reported_usd', 'mode/provider mismatch');
     uuid(b.quote_id); parseMicroUsdc(b.cap_micro_usdc);
     for (const v of [b.issued_at,b.expires_at,b.session_ttl_seconds,frozenTariff.valid_from,frozenTariff.valid_until]) requireTrue(typeof v === 'string' && /^(0|[1-9][0-9]*)$/.test(v) && v.length <= 20 && BigInt(v) <= 0xffffffffffffffffn, 'quote time');
-    const now = this.options.now?.() ?? BigInt(Math.floor(Date.now()/1000));
+    // Only an authenticated, otherwise valid quote may wait for a small clock
+    // skew. Keep its exact bytes and make no additional quote/AUTH request.
+    requireTrue(BigInt(b.expires_at) === BigInt(b.issued_at)+120n
+      && BigInt(b.issued_at) >= BigInt(frozenTariff.valid_from) && BigInt(b.issued_at) < BigInt(frozenTariff.valid_until)
+      && BigInt(b.session_ttl_seconds) >= 1n && BigInt(b.session_ttl_seconds) <= 300n
+      && b.session_ttl_seconds === (wanted.session_ttl_seconds ?? '60') && b.max_concurrency === '4', 'quote limits');
+    signal?.throwIfAborted();
+    let now = this.options.now?.() ?? BigInt(Math.floor(Date.now()/1000));
+    if (BigInt(b.issued_at) > now) {
+      const ahead = BigInt(b.issued_at) - now;
+      requireTrue(ahead <= 5n, 'quote limits');
+      await new Promise<void>((resolve,reject) => {
+        const cleanup = () => { clearTimeout(timer); signal?.removeEventListener('abort',abort); };
+        const abort = () => { cleanup(); reject(signal!.reason); };
+        const timer = setTimeout(() => { cleanup(); resolve(); }, Number(ahead)*1000);
+        signal?.addEventListener('abort',abort,{once:true});
+        if (signal?.aborted) abort();
+      });
+      signal?.throwIfAborted();
+      now = this.options.now?.() ?? BigInt(Math.floor(Date.now()/1000));
+    }
     requireTrue(BigInt(b.issued_at) <= now && now < BigInt(b.expires_at) && BigInt(b.expires_at) === BigInt(b.issued_at)+120n
       && BigInt(b.issued_at) >= BigInt(frozenTariff.valid_from) && BigInt(b.issued_at) < BigInt(frozenTariff.valid_until)
       && BigInt(b.session_ttl_seconds) >= 1n && BigInt(b.session_ttl_seconds) <= 300n

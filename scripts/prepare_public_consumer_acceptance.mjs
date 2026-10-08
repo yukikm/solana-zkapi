@@ -53,7 +53,7 @@ export async function prepareConsumer(input, output) {
   assert.equal(profileUrl.pathname, releaseBase + 'profile.json');
   const profileBytes = await file(input.profileFile, 256 * 1024); assert.equal(hash(profileBytes), input.profileSha256);
   const profile = parseStrictJson(profileBytes, 256 * 1024);
-  assert.equal(profile.schema, 1); assert.equal(profile.protocolLayoutVersion, 2); assert(profile.sdkVersions.includes('0.2.0-devnet.2'));
+  assert.equal(profile.schema, 1); assert.equal(profile.protocolLayoutVersion, 2); assert(profile.sdkVersions.includes('0.2.0-devnet.3'));
   assert.equal(profile.mode, 'direct_openrouter'); assert.equal(publicUrl(profile.bundle.url).origin, profileUrl.origin);
   assert(publicUrl(profile.bundle.url).pathname.startsWith(releaseBase + 'assets/'));
   assert.equal(publicUrl(profile.rpcUrl).origin, profileUrl.origin); assert.equal(publicUrl(profile.indexerOrigin).origin, profileUrl.origin);

@@ -30,7 +30,7 @@ export async function publicProfileFixture() {
   const descriptor = {schema:1,trust,manifest:'manifest.json',artifacts:{...Object.fromEntries(names.map(n=>[n,n+'.bin'])),additional:{}},
     wasm:{path:'prover.wasm',sha256:await sha256Hex(wasm)},files:Object.fromEntries(await Promise.all([...files].map(async ([url,bytes])=>[new URL(url).pathname.slice(1),{sha256:await sha256Hex(bytes),bytes:bytes.length}])))};
   const descriptorBytes=jcsBytes(descriptor);files.set('https://assets.example.com/bundle.json',descriptorBytes);
-  const profile: PublicDeploymentProfile = {schema:1,id:'public-fixture',revision:1,sdkVersions:['0.2.0-devnet.2'],protocolLayoutVersion:2,
+  const profile: PublicDeploymentProfile = {schema:1,id:'public-fixture',revision:1,sdkVersions:['0.2.0-devnet.3'],protocolLayoutVersion:2,
     bundle:{url:'https://assets.example.com/bundle.json',sha256:await sha256Hex(descriptorBytes)},rpcUrl:'https://rpc.example.com/',indexerOrigin:'https://indexer.example.com',
     mode:'direct_openrouter',models:[{id:'fixture-model',provider:'openrouter',apis:['chat'],tariff}],modelCapabilities:{'fixture-model':{streaming:true,tools:false}},
     directProviderBases:{direct_openrouter:'https://provider.example.com/v1'}};

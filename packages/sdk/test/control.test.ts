@@ -663,3 +663,73 @@ test('schema 2 survives every ControlClient authorization, inference, recovery a
   await h.restart().close('note');await check();
   const saved=(await h.journal.read('note'))!.value;assert.equal(saved.pending,null);assert.equal(saved.history.length,1);assert.deepEqual(saved.state,successor());
 });
+
+/** Deterministic scheduling only: signed quote validation and the clock remain real APIs. */
+function quoteWaitTimer(t: TestContext) {
+  let fire: (() => void) | undefined, announce!: () => void;
+  const scheduled = new Promise<void>(resolve => { announce = resolve; });
+  const delays: number[] = [], cleared: unknown[] = [], handle = {} as ReturnType<typeof setTimeout>;
+  t.mock.method(globalThis, 'setTimeout', (callback: () => void, milliseconds: number) => {
+    assert.equal(fire, undefined, 'at most one wait'); delays.push(milliseconds); fire = callback; announce(); return handle;
+  });
+  t.mock.method(globalThis, 'clearTimeout', (value: unknown) => { cleared.push(value); });
+  return { scheduled, delays, cleared, handle, fire: () => { assert.ok(fire); fire(); } };
+}
+
+test('verified quote waits once for two seconds of skew and returns the same signed quote with one fetch', async t => {
+  const h = await signedQuoteSetup(t), quote = await h.sign(h.body), before = (await h.journal.read('note'))!.head;
+  h.setHandler(async () => response(quote)); const timer = quoteWaitTimer(t); let now = 98n, settled = false;
+  const pending = h.clientWith({ context: h.quoteContext, now: () => now }).quote(h.request,h.tariff).then(q => { settled = true; return q; });
+  await timer.scheduled; assert.equal(settled,false); assert.deepEqual(timer.delays,[2000]); assert.equal(h.calls.length,1);
+  now = 100n; timer.fire(); const accepted = await pending;
+  assert.equal(JSON.stringify(accepted),JSON.stringify(quote)); assert.deepEqual(timer.cleared,[timer.handle]);
+  assert.equal(h.calls.length,1); assert.deepEqual((await h.journal.read('note'))!.head,before); assert.equal(h.verified.prepares,0);
+});
+
+test('verified quote permits only the five-second boundary and still requires the local clock to catch up', async t => {
+  const h = await signedQuoteSetup(t), quote = await h.sign(h.body); h.setHandler(async () => response(quote));
+  const timer = quoteWaitTimer(t); let now = 95n;
+  const pending = h.clientWith({context:h.quoteContext,now:()=>now}).quote(h.request,h.tariff);
+  await timer.scheduled; assert.deepEqual(timer.delays,[5000]); now=100n; timer.fire();
+  assert.equal((await pending).quote_hash,quote.quote_hash); assert.equal(h.calls.length,1);
+});
+
+test('excessive future quote is rejected without scheduling a wait or a second request', async t => {
+  const h = await signedQuoteSetup(t), quote = await h.sign(h.body); h.setHandler(async () => response(quote));
+  const timer=quoteWaitTimer(t);
+  await assert.rejects(h.clientWith({context:h.quoteContext,now:()=>94n}).quote(h.request,h.tariff),/quote limits/);
+  assert.deepEqual(timer.delays,[]); assert.equal(h.calls.length,1);
+});
+
+test('invalid signatures and static quote limits fail before any clock wait', async t => {
+  const h=await signedQuoteSetup(t), timer=quoteWaitTimer(t), client=h.clientWith({context:h.quoteContext,now:()=>98n});
+  for(const change of [{expires_at:'221'},{session_ttl_seconds:'0'},{session_ttl_seconds:'301'},{session_ttl_seconds:'61'},{max_concurrency:'5'},{issued_at:'0100'}]) {
+    const quote=await h.sign({...h.body,...change}); h.setHandler(async()=>response(quote));
+    await assert.rejects(client.quote(h.request,h.tariff),/quote (limits|time)/);
+  }
+  const quote=await h.sign(h.body),bad=Buffer.from(quote.signature,'base64');bad[0]^=1;
+  h.setHandler(async()=>response({...quote,signature:bad.toString('base64')}));await assert.rejects(client.quote(h.request,h.tariff),/signature/);
+  const {tariff_hash:_hash,...body}=h.tariff,expiredBody={...body,valid_until:'100'},tariff={...expiredBody,tariff_hash:await sha256Hex(jcsBytes(expiredBody))};
+  const outside=await h.sign({...h.body,tariff_hash:tariff.tariff_hash});h.setHandler(async()=>response(outside));
+  await assert.rejects(h.clientWith({context:{...h.quoteContext,tariff_hashes:[tariff.tariff_hash]},now:()=>98n}).quote(h.request,tariff),/quote limits/);
+  assert.deepEqual(timer.delays,[]);assert.equal(h.calls.length,8);
+});
+
+test('quote clock wait cancellation rejects and removes its timer and abort listener without another fetch', async t => {
+  const h=await signedQuoteSetup(t),quote=await h.sign(h.body);h.setHandler(async()=>response(quote));
+  const timer=quoteWaitTimer(t),controller=new AbortController(),reason=Error('fixture cancel');
+  const removed=t.mock.method(controller.signal,'removeEventListener');
+  const pending=h.clientWith({context:h.quoteContext,now:()=>98n}).quote(h.request,h.tariff,controller.signal);
+  const rejected=assert.rejects(pending,e=>e===reason);await timer.scheduled;controller.abort(reason);await rejected;
+  assert.deepEqual(timer.cleared,[timer.handle]);assert(removed.mock.calls.some(c=>c.arguments[0]==='abort'));assert.equal(h.calls.length,1);
+});
+
+for(const [label,after] of [['frozen',98n],['backwards',97n],['expired after waiting',220n]] as const) {
+  test(`quote clock remains fail-closed when ${label}`,async t=>{
+    const h=await signedQuoteSetup(t),quote=await h.sign(h.body);h.setHandler(async()=>response(quote));
+    const timer=quoteWaitTimer(t);let now=98n;
+    const pending=h.clientWith({context:h.quoteContext,now:()=>now}).quote(h.request,h.tariff);
+    const rejected=assert.rejects(pending,/quote limits/);await timer.scheduled;now=after;timer.fire();await rejected;
+    assert.deepEqual(timer.delays,[2000]);assert.deepEqual(timer.cleared,[timer.handle]);assert.equal(h.calls.length,1);
+  });
+}

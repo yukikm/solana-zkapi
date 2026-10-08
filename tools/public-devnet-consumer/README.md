@@ -1,8 +1,9 @@
 # Independent public-profile consumer
 
 This small integration imports only published SDK exports. Copy this directory
-to an independent application and install the **reviewed `0.2.0-devnet.2` SDK tarball**
-containing `@zkapi/solana-sdk/public-profile`. The immutable `v0.2.0-devnet.1`
+to an independent application and install the **reviewed SDK tarball matching the
+authenticated profile's `sdkVersions`** and containing `@zkapi/solana-sdk/public-profile`.
+The immutable `v0.2.0-devnet.1`
 package does not contain these APIs. Use the
 [current public deployment guide](../../docs/sdk/public-devnet-preview.md) for
 the authenticated profile, exact downloads, access policy and service status.

@@ -1,0 +1,138 @@
+{
+  "schema": 1,
+  "scope": "Completed hosted implementation workflow at one exact source revision; GitHub run/job metadata only",
+  "recorded_date_utc": "2026-10-08",
+  "run": {
+    "id": 37755041914,
+    "name": "implementation",
+    "head_sha": "27ef2a4c842927240e0fae776a5017a46b6c141d",
+    "status": "completed",
+    "conclusion": "success",
+    "run_attempt": 1,
+    "event": "push",
+    "created_at": "2026-10-08T09:12:28Z",
+    "run_started_at": "2026-10-08T09:12:28Z",
+    "updated_at": "2026-10-08T10:15:20Z",
+    "html_url": "https://github.com/yukikm/solana-zkapi/actions/runs/37755041914"
+  },
+  "jobs": [
+    {
+      "id": 113237404023,
+      "name": "control",
+      "head_sha": "27ef2a4c842927240e0fae776a5017a46b6c141d",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-10-08T09:12:32Z",
+      "completed_at": "2026-10-08T09:31:06Z",
+      "html_url": "https://github.com/yukikm/solana-zkapi/actions/runs/37755041914/job/113237404023"
+    },
+    {
+      "id": 113237404278,
+      "name": "transport",
+      "head_sha": "27ef2a4c842927240e0fae776a5017a46b6c141d",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-10-08T09:12:32Z",
+      "completed_at": "2026-10-08T09:25:45Z",
+      "html_url": "https://github.com/yukikm/solana-zkapi/actions/runs/37755041914/job/113237404278"
+    },
+    {
+      "id": 113237404362,
+      "name": "rust",
+      "head_sha": "27ef2a4c842927240e0fae776a5017a46b6c141d",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-10-08T09:12:32Z",
+      "completed_at": "2026-10-08T09:20:39Z",
+      "html_url": "https://github.com/yukikm/solana-zkapi/actions/runs/37755041914/job/113237404362"
+    },
+    {
+      "id": 113237404401,
+      "name": "contracts",
+      "head_sha": "27ef2a4c842927240e0fae776a5017a46b6c141d",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-10-08T09:12:33Z",
+      "completed_at": "2026-10-08T09:12:54Z",
+      "html_url": "https://github.com/yukikm/solana-zkapi/actions/runs/37755041914/job/113237404401"
+    },
+    {
+      "id": 113237404420,
+      "name": "vault",
+      "head_sha": "27ef2a4c842927240e0fae776a5017a46b6c141d",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-10-08T09:12:32Z",
+      "completed_at": "2026-10-08T09:27:47Z",
+      "html_url": "https://github.com/yukikm/solana-zkapi/actions/runs/37755041914/job/113237404420"
+    },
+    {
+      "id": 113237404438,
+      "name": "node",
+      "head_sha": "27ef2a4c842927240e0fae776a5017a46b6c141d",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-10-08T09:12:31Z",
+      "completed_at": "2026-10-08T09:13:46Z",
+      "html_url": "https://github.com/yukikm/solana-zkapi/actions/runs/37755041914/job/113237404438"
+    },
+    {
+      "id": 113237404504,
+      "name": "svm",
+      "head_sha": "27ef2a4c842927240e0fae776a5017a46b6c141d",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-10-08T09:12:32Z",
+      "completed_at": "2026-10-08T09:25:14Z",
+      "html_url": "https://github.com/yukikm/solana-zkapi/actions/runs/37755041914/job/113237404504"
+    },
+    {
+      "id": 113237404515,
+      "name": "go",
+      "head_sha": "27ef2a4c842927240e0fae776a5017a46b6c141d",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-10-08T09:12:39Z",
+      "completed_at": "2026-10-08T09:13:05Z",
+      "html_url": "https://github.com/yukikm/solana-zkapi/actions/runs/37755041914/job/113237404515"
+    },
+    {
+      "id": 113237404558,
+      "name": "client-challenger",
+      "head_sha": "27ef2a4c842927240e0fae776a5017a46b6c141d",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-10-08T09:12:32Z",
+      "completed_at": "2026-10-08T10:15:19Z",
+      "html_url": "https://github.com/yukikm/solana-zkapi/actions/runs/37755041914/job/113237404558"
+    }
+  ],
+  "summary": {
+    "jobs_success": 9,
+    "jobs_failed": 0,
+    "jobs_in_progress": 0,
+    "test_case_count": null,
+    "test_count_reason": "No case count inferred from job status or overlapping stages."
+  },
+  "retained_metadata": [
+    {
+      "name": "run.json",
+      "sha256": "ea659ac2e273d478c2a82c6ad4ac99f270e56f7daf15a4e171162f14f72e1c21",
+      "bytes": 12394
+    },
+    {
+      "name": "jobs.json",
+      "sha256": "a6fcfed2f0ac2e199f99f65d84ea9b65572632792dfb8820fde067e8d48e85c2",
+      "bytes": 23416
+    }
+  ],
+  "artifacts_downloaded_or_verified_for_this_report": false,
+  "source_rebuilt_for_this_report": false,
+  "network_calls_for_this_report": 0,
+  "limitations": [
+    "Success applies only to commit27ef2a4c842927240e0fae776a5017a46b6c141d; the later e36 decoder commit and current operational helper preparations have separate validation.",
+    "This records job metadata, not a downloaded artifact/source or test-total join.",
+    "No new public funded acceptance, live readiness, release rebuild, admission resume, withdrawal or G1-G4 claim follows.",
+    "All earlier failed and partial observations remain preserved; no workflow rerun or cancellation was performed."
+  ]
+}

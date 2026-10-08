@@ -13,7 +13,7 @@ async function fixture(t) {
   await writeFile(join(bundle, 'manifest.json'), manifest);
   const descriptor = Buffer.from(JSON.stringify({ schema: 2, manifest: 'manifest.json', files: { 'manifest.json': { sha256: sha(manifest), bytes: manifest.length } } }));
   await writeFile(join(bundle, 'bundle.json'), descriptor);
-  const profile = { schema: 1, protocolLayoutVersion: 2, sdkVersions: ['0.2.0-devnet.2'], mode: 'direct_openrouter', bundle: { url: 'https://preview.example/releases/r1/assets/bundle.json', sha256: sha(descriptor) }, rpcUrl: 'https://preview.example/rpc', indexerOrigin: 'https://preview.example', directProviderBases: { direct_openrouter: 'https://openrouter.ai/api/v1' }, models: [{ id: 'openai/gpt-4o-mini', provider: 'openrouter', apis: ['chat'], tariff: { tariff_hash: 'c'.repeat(64) } }], modelCapabilities: { 'openai/gpt-4o-mini': { streaming: true, tools: true } } };
+  const profile = { schema: 1, protocolLayoutVersion: 2, sdkVersions: ['0.2.0-devnet.3'], mode: 'direct_openrouter', bundle: { url: 'https://preview.example/releases/r1/assets/bundle.json', sha256: sha(descriptor) }, rpcUrl: 'https://preview.example/rpc', indexerOrigin: 'https://preview.example', directProviderBases: { direct_openrouter: 'https://openrouter.ai/api/v1' }, models: [{ id: 'openai/gpt-4o-mini', provider: 'openrouter', apis: ['chat'], tariff: { tariff_hash: 'c'.repeat(64) } }], modelCapabilities: { 'openai/gpt-4o-mini': { streaming: true, tools: true } } };
   const bytes = Buffer.from(JSON.stringify(profile)); const profileFile = join(root, 'profile.json'); await writeFile(profileFile, bytes);
   await writeFile(join(build, 'index.html'), '<html><head><script type="module" src="/releases/r1/chat/assets/index.js"></script></head><body></body></html>');
   await writeFile(join(build, 'assets/index.js'), '/* synthetic build */'); await writeFile(join(build, 'zkapi-config.json'), 'null\n');
@@ -45,7 +45,8 @@ test('refuses the wrong release build base and an existing app configuration', a
 test('requires the actual seven-case capability/model policy and excludes injected secret fields', async t => {
   const f = await fixture(t); await assert.rejects(prepareConsumer({ ...f.input, token: 'secret' }, join(f.root, 'secret')));
   f.profile.modelCapabilities[f.input.model].tools = false; await f.rewriteProfile(); await assert.rejects(prepareConsumer(f.input, join(f.root, 'tools')));
-  f.profile.modelCapabilities[f.input.model].tools = true; f.profile.mode = 'proxy'; await f.rewriteProfile(); await assert.rejects(prepareConsumer(f.input, join(f.root, 'mode')));
+  f.profile.modelCapabilities[f.input.model].tools = true; f.profile.sdkVersions = ['0.2.0-devnet.2']; await f.rewriteProfile(); await assert.rejects(prepareConsumer(f.input, join(f.root, 'version')));
+  f.profile.sdkVersions = ['0.2.0-devnet.3']; f.profile.mode = 'proxy'; await f.rewriteProfile(); await assert.rejects(prepareConsumer(f.input, join(f.root, 'mode')));
 });
 test('rejects unreviewed local URL and symlinked public input', async t => {
   const f = await fixture(t); await assert.rejects(prepareConsumer({ ...f.input, profileUrl: 'https://127.0.0.1/releases/r1/profile.json' }, join(f.root, 'local')));

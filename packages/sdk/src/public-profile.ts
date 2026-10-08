@@ -9,7 +9,7 @@ import { decodeRpcAccount } from './solana-rpc.ts';
 import { jcsBytes, parseStrictJson, sha256Hex, verifyArtifactBundle, verifyManifest, verifyPoolConfig, type VerifiedManifest } from './trust.ts';
 
 export const PUBLIC_PROFILE_SCHEMA = 1;
-export const PUBLIC_PROFILE_SDK_VERSION = '0.2.0-devnet.2';
+export const PUBLIC_PROFILE_SDK_VERSION = '0.2.0-devnet.3';
 const DEVNET_GENESIS = 'EtWTRABZaYq6iMfeYKouRu166VU2xqa1wcaWoxPkrZBG';
 const DEVNET_USDC = '4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU';
 const TOKEN_PROGRAM = 'TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA';

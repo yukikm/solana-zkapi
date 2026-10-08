@@ -36,6 +36,11 @@ it. A **session** authorizes bounded API usage. A **settlement** is a verified
 update to that balance. A **journal** saves operations encrypted on the user's
 device so interrupted work can be recovered.
 
+The financial journal is not a conversation-history store. The application owns
+saved messages and supplies any prior context in each new request. SDK recovery
+resolves interrupted authorization, settlement or withdrawal without replaying
+inference; it does not reconstruct a lost response or chat transcript.
+
 Amounts are decimal strings of integer micro-USDC. `"2000000"` means 2 USDC.
 An authorization cap reserves spending capacity; it is not the API charge.
 SOL for transaction fees and account rent is separate.

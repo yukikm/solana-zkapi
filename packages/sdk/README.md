@@ -10,8 +10,9 @@ Applications keep control of their UI, conversation history and provider mode.
 
 Install the reviewed npm tarball with compiled ES modules and TypeScript
 declarations from an independent application. See [distribution and artifact
-setup](DISTRIBUTION.md). This checkout is the unreleased `0.2.0-devnet.2` candidate;
-the immutable published preview remains `0.2.0-devnet.1`. The package uses
+setup](DISTRIBUTION.md). This checkout builds `0.2.0-devnet.3`; download availability
+and verification are recorded in the [public deployment guide](../../docs/sdk/public-devnet-preview.md).
+Earlier immutable preview releases remain unchanged. The package uses
 `private: true` to prevent accidental npm publication. Node integrations use Node 24.19.0; browser
 integrations bundle the browser entry points. Do not install an unrelated
 registry package just because it has this name.
@@ -28,7 +29,7 @@ The SDK is [MIT licensed](LICENSE). Its dependencies retain their own licenses.
 | `@zkapi/solana-sdk` | `createZkApiClient`, `ZkApiClient`, application types |
 | `@zkapi/solana-sdk/browser` | Browser factory, durable custody, Wallet Standard adapter |
 | `@zkapi/solana-sdk/deployment` | Download and verify an independently pinned public artifact bundle |
-| `@zkapi/solana-sdk/public-profile` | Authenticate a versioned deployment profile and run read-only preflight (unreleased candidate) |
+| `@zkapi/solana-sdk/public-profile` | Authenticate a versioned deployment profile and run read-only preflight |
 | `@zkapi/solana-sdk/chat` | Bounded text and streaming response readers |
 | `@zkapi/solana-sdk/prover-worker` | Entry point to bundle as a module Worker |
 | Existing subpaths (`./wallet`, `./control`, etc.) | Advanced integration; preserved |
@@ -46,6 +47,11 @@ saved authorization and journal state; inference is never automatically replayed
 The application API closes each inference session after response consumption or
 cancellation. Close can remain pending, so inspect `status()` and use `recover()`.
 The advanced clientd interface retains its configurable key reuse policy.
+
+A signature-verified quote issued up to five seconds ahead of the local clock
+can wait once for that clock to catch up. The original time and expiry checks
+still apply afterward. Larger clock differences, cancellation and a clock that
+does not catch up are rejected; no quote or inference request is resent.
 
 ## Single-signature deposit
 
