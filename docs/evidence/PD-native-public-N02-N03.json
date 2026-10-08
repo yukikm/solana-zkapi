@@ -1,0 +1,273 @@
+{
+  "schema": 1,
+  "scope": "R5 normal conversation/tool success and valid observed signed settlements; external billing reconciliation remains unresolved. No acceptance checklist closure.",
+  "observed_at_utc": "2026-10-08T13:31:26+00:00",
+  "runtime": {
+    "sdk_version": "0.2.0-devnet.3",
+    "running_release_manifest_sha256": "e066122897cfe694fd9b2541a95a6341d2ab6734be1ab34626470ba3ec01d20f",
+    "serve_config_sha256": "cdb7565636f843ec3134786bc9de6ff5a34a1f2c0e90b258650735deffdd466d",
+    "same_funded_profile": true,
+    "initialize_key": false,
+    "runtime_sha256": "ea0b69e1745ca39a7d77125ef046fb999707da099c7690dcb31f3fb9d5195209",
+    "independent_observer_release_manifest_sha256": "0b5733718f51eabcf4ca57f2406eb36bab641e23d642aac2436ca0e3090572ca",
+    "observer_scope": "Retained compatible .2 journal/receipt verifier; separate actual serve receipt authenticates running .3."
+  },
+  "conversation": {
+    "attempt": "N-02-attempt02 / R5",
+    "session_id": "fb846484-aae2-433d-a859-01dbd9340925",
+    "exit_code": 0,
+    "finished_at_utc": "2026-10-08T13:19:02.209817+00:00",
+    "duration_ms_reported": 186979,
+    "assistant_turns": 2,
+    "tool_calls": 1,
+    "successful_tools": [
+      "read"
+    ],
+    "tool_failures": 0,
+    "final_text_matches_fixed_probe": true,
+    "fallback_used": false,
+    "aborted": false,
+    "automatic_agent_retries_reported": 0,
+    "forward_fences": 2,
+    "adapter_held_second_until_authenticated_native_ready": true,
+    "initial_head": {
+      "revision": 371,
+      "digest": "bf4e9052a2edd80c34bfe2654b2b578ae2ffc0ce2c5bc754125987eb630c55b8"
+    },
+    "first_settled_head": {
+      "revision": 619,
+      "digest": "e1a8ca647fa8168b220ae5c0a37c43ae3eebf09fe9816bea7274e90f8c52741f"
+    },
+    "released_native_120_second_wait_compatibility_claimed": false,
+    "independent_network_packet_counts": null
+  },
+  "cases": [
+    {
+      "case": "N-02",
+      "operation_id": "89e56cfa-4097-4a72-be91-6be54f1fa848",
+      "request_id": "ed3f89e2-0518-4b87-a25e-8d623adb0401",
+      "body_sha256": "ec56773780b31ea33a47208f623600736ab615c1f5e8fcc54992a52e6af3aebd",
+      "exact_auth_sha256_from_reservation": "d6469b9aa446f3fa3909a2c7edb6c83ff40336db4d1719aeddfb055655e524be",
+      "canonical_auth_object_sha256_from_journal": "c2adc12af5dfb5d4101ce9e56407e88afc951125ab0bc4c641e3d532f61182da",
+      "exact_auth_bytes_retained_in_settled_journal": false,
+      "charge_micro_usdc": "0",
+      "signed_receipt": {
+        "receipt_hash": "45e3b6dbd165b49bb3fef176a45c94354022eefca6618b486cbd2dfc76fef3fb",
+        "evidence_kind": "OPENROUTER_USAGE",
+        "billing_effect": "charge",
+        "reason": "metered",
+        "charged_nano_usdc": "0"
+      },
+      "cryptographically_reverified": true,
+      "verified_successor_signature_sha256": "818310da823adfbbccae2386efbd7ea70c5ca473a3457f1c1138c562ce47ef3e",
+      "signer_message_digest": null,
+      "management_checkpoint": {
+        "disabled_at_unix": 1791465388,
+        "zero_observation_seconds_after_disable": 60,
+        "zero_final_usage_record_seconds_after_disable": 120,
+        "deleted_recorded": true,
+        "provider_reported_usd": "0",
+        "observed_nano": "0",
+        "evidence_digest": "0fb79869689ea0b42b85064f14b459d7e9f80fc6bdfc2d3ca9f09413a9cb518a"
+      }
+    },
+    {
+      "case": "N-03",
+      "operation_id": "5a1e3f32-d447-436d-9313-c484808f9196",
+      "request_id": "90c5735a-d30d-4c4b-90fd-c97778564d6c",
+      "body_sha256": "d11b4eb6ad40a3dedfb367392549058619db1d2d57c0ae7f9adc49f5b614f36d",
+      "exact_auth_sha256_from_reservation": "a3b3dfa606843b72b4779ea188010471d9f36ead7ca692babf1d26970514a34b",
+      "canonical_auth_object_sha256_from_journal": "0c08e409e2ef566d666c685419082f576b382810d9614668e440672136fa3eca",
+      "exact_auth_bytes_retained_in_settled_journal": false,
+      "charge_micro_usdc": "0",
+      "signed_receipt": {
+        "receipt_hash": "7f237a07c3bd7fc9128463f8e33eab5d6461061eb6a65f839680eb825b1c61e4",
+        "evidence_kind": "OPENROUTER_USAGE",
+        "billing_effect": "charge",
+        "reason": "metered",
+        "charged_nano_usdc": "0"
+      },
+      "cryptographically_reverified": true,
+      "verified_successor_signature_sha256": "8254e52dc094c75b37e5b768ba0b2c25ed3141f617d4d13d33145789320f4957",
+      "signer_message_digest": null,
+      "management_checkpoint": {
+        "disabled_at_unix": 1791465542,
+        "zero_observation_seconds_after_disable": 60,
+        "zero_final_usage_record_seconds_after_disable": 120,
+        "deleted_recorded": true,
+        "provider_reported_usd": "0",
+        "observed_nano": "0",
+        "evidence_digest": "e50218a1a6d31b70caa2380330179c501ce372ead6b251fca2a95fff88e8d334"
+      }
+    }
+  ],
+  "billing": {
+    "new_signed_charge_micro_usdc": "0",
+    "total_signed_charge_including_N01_micro_usdc": "6",
+    "openclaw_cost_metadata_total_usd": "0.0008349",
+    "openclaw_cost_metadata_last_call_usd": "0.00028695",
+    "cost_origin_label": "provider-billed",
+    "independent_provider_invoice_obtained": false,
+    "valid_receipt_for_observed_zero": true,
+    "zero_is_waiver": false,
+    "external_billing_reconciliation_passed": false,
+    "cause_proven": false,
+    "retroactive_repricing_performed": false,
+    "management_usage_limit_report": "PD-openrouter-management-usage-limit.md"
+  },
+  "financial_checkpoint": {
+    "native_observed_at_utc": "2026-10-08T13:22:07.890Z",
+    "journal_head": {
+      "revision": 866,
+      "digest": "b9653c0566ea60ccb0ada1003e3d29aafa2cabd99080a2640ebc1582773e0da9"
+    },
+    "pending": null,
+    "phase": "ready",
+    "wallet_status": "active",
+    "signed_balance_micro_usdc": "4999994",
+    "reservation_count": 3,
+    "reserved_micro_usdc": "3000000",
+    "reservations_sha256": "dc78582e908260101d624b46c12db4c00c4f3fcd3ab5b3efc187d8e49361ee26",
+    "database_counts": {
+      "sessions": 3,
+      "operations": 0,
+      "dispatch_attempts": 3,
+      "settlements": 3,
+      "receipts": 3,
+      "outbox": 19,
+      "nullifier_reservations": 3,
+      "clearances": 0,
+      "provider_evidence": 0,
+      "chain_transactions": 0
+    },
+    "complete_table_rows": {
+      "sessions": true,
+      "operations": true,
+      "dispatch_attempts": true,
+      "settlements": true,
+      "receipts": true,
+      "outbox": true,
+      "nullifier_reservations": true,
+      "clearances": true,
+      "provider_evidence": true,
+      "chain_transactions": true
+    },
+    "database_raw_sha256": "d13ece2bc5548c2cf7eceff32731a5c6a96f45df38a38111c38e25bd68666361",
+    "outbox_unresolved_count_claimed": null,
+    "native_recorded_wallet_transactions": 1
+  },
+  "operator_observation": {
+    "command_id": "1d9f8a19-7719-46e8-a883-1de199b1a104",
+    "budget_validated": true,
+    "same_service_identities": true,
+    "gateway_config_unchanged": true,
+    "reservation_bytes_unchanged": true,
+    "transaction": "REPEATABLE READ READ ONLY",
+    "tables": 10,
+    "max_rows_per_table": 64,
+    "max_serialized_row_bytes": 32768,
+    "provider_queries": 0,
+    "financial_writes": 0,
+    "cryptographic_verification_by_collector": false
+  },
+  "source_comparison": {
+    "same_original_control_linux_build": true,
+    "sha256": {
+      "services/control/src/direct/runtime.rs": "846157a9429fc4fd6e9dba3db3973c43323538670e4592fc1ed8d7c16a2efce9",
+      "services/control/src/direct/openrouter.rs": "f78f90e4145fee1dde1dfeabdccb33caeb4b9bef4c3d573e8cd3c2833e024391",
+      "services/control/src/ledger.rs": "1ad42fc08c482adcae327084c9485e5b2816a66f5d811f86269d2fb371c0f994",
+      "services/control/src/receipts.rs": "7205be2eed4598fa5b75551a997ddedf0e79f735ce17452e37d38ab190ee69d0"
+    },
+    "operational_grace_equal_sample_rule_is_not_external_finality": "docs/i06-i07-implementation-ready.md",
+    "receipt_invariant": "Direct metered receipts match management usage plus BYOK, bounded by the accepted cap; exact observed zero is valid.",
+    "external_reconciliation_limitation": "Two equal management samples do not independently prove provider billing finality."
+  },
+  "receipts": {
+    "native_observer": {
+      "sha256": "3670e4945698fc007e22da00b007229c62b8bb64dfceac93c5239779846a090b",
+      "bytes": 8033
+    },
+    "operator_result": {
+      "sha256": "57d1090a839d328a0d12c6d98f9b6afd383d80d2f57a081bea4273e6798190e4",
+      "bytes": 26079
+    },
+    "operator_collector": {
+      "sha256": "c48f04f84c6ba00920face1d54c8740d4819d30248738d97c9b4ec796c010c60",
+      "bytes": 12659
+    },
+    "operator_successful_ssm": {
+      "sha256": "3167dec08e777863d0cc9444d9542be86b52303ef822901119b0101df5f81fbf",
+      "bytes": 5649
+    },
+    "openclaw_output": {
+      "sha256": "5b6cb8e62ee9a491017ac6ee7e360ed0f78efad14ca97f7e000357c286a379b2",
+      "bytes": 8535
+    },
+    "root_agent_result": {
+      "sha256": "cfc6162e00f741fc0868676e839987195b994d857b2ad01e5669738cdb554c58",
+      "bytes": 120
+    },
+    "agent_attempt_fence": {
+      "sha256": "052b950eb67510947eb06c0ee54e0e4d967ee18fc07157cbb1e06b05e8d77dd0",
+      "bytes": 298
+    },
+    "first_forward": {
+      "sha256": "56bd7a9ebd4e991ff6ed792addcbe293a24f1c0adaba27366f9143049533c77e",
+      "bytes": 246
+    },
+    "second_forward": {
+      "sha256": "f8785e5728268f2c6e2b2f073f40f70dcde7b7efe21fec0d441b910bdf536a2b",
+      "bytes": 246
+    },
+    "held_second": {
+      "sha256": "0cfbc9558f52fbb603110f9f747380dc6a0166d9219dd316469a96ed80333f0f",
+      "bytes": 508
+    },
+    "first_settled": {
+      "sha256": "21820152f6fd85471af237f36fa06eaf7b48aa81a7ad9ef95e6c0966def6948e",
+      "bytes": 566
+    },
+    "native3_start": {
+      "sha256": "f0ec9a30e2c74c8fdb5f98b858a77b68e07f4fa4736fe29c3231e29f99c447ef",
+      "bytes": 3225
+    },
+    "successful_current_sdk3_preparation": {
+      "sha256": "d6a1915195a3a5dd78d7aca45c6477807fe260f2046bc87ac6732f7ac8132597",
+      "bytes": 3075
+    },
+    "gate_stop_attempt": {
+      "sha256": "6495c12c1ff23e7a301b3081c35e72263f230f255a4e6dae53238f4a75759555",
+      "bytes": 523
+    },
+    "gate_absence_observation": {
+      "sha256": "0e6b438782d69dd9cbda620ded9dc218c0bbbfb4e025d72d24b06a3efb03cbd3",
+      "bytes": 74
+    }
+  },
+  "preserved_history": {
+    "original_HTTP400_cause_still_unproven": true,
+    "prior_first_request_failure": "PD-openclaw-first-request-failure.md",
+    "separate_clock_failure_and_fix": "PD-quote-clock-wait.md",
+    "held_R4_unexecuted": true,
+    "supervisor_reparent_diagnostic_failure_preserved": true,
+    "initial_status_capture_failure_preserved": true
+  },
+  "limits": {
+    "checklist_closures": 0,
+    "full_N02_N03_billing_acceptance_claimed": false,
+    "N04_fault_recovery_claimed": false,
+    "withdrawal_claimed": false,
+    "funded_browser_acceptance_claimed": false,
+    "active_funds_remain": true,
+    "raw_prompts_provider_keys_or_key_references_published": false
+  },
+  "adapter_stop": {
+    "signal": "SIGTERM",
+    "sent_at_utc": "2026-10-08T13:38:35+00:00",
+    "absent_observed_at_utc": "2026-10-08T13:38:43+00:00",
+    "absent": true,
+    "native_exit_code": null,
+    "native_service_untouched": true,
+    "automatic_restart": false
+  }
+}

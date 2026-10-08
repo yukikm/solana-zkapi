@@ -1,0 +1,26 @@
+# Native public N-02/N-03: conversation success, billing discrepancy
+
+The explicitly reviewed R5 corrected attempt completed **two assistant turns, one successful read-tool call and the text continuation** through the public Devnet service with native SDK .3. OpenClaw exited zero at **2026-10-08 13:19:02 UTC**, reported no fallback or abort, and returned the fixed probe file's contents. Its reported duration was **186.979 seconds**. **External billing reconciliation remains unresolved:** both new signed settlements charged zero, while OpenClaw reported nonzero provider-billed cost metadata.
+
+The actual stock `serve` transition retained the existing funded profile, runtime, custody and journal, without initializing a key. A separately pinned .3 start receipt identifies the running release. The retained compatible .2 observer independently reverified the journal's receipts and successor signatures; its historical release/profile labels do not identify the running .3 process.
+
+The scheduling adapter recorded two distinct operation/body fences and held the second request until authenticated native status advanced from head371 to settled head619 with no unresolved operation. This is explicit adapter scheduling, not an unmodified native 120-second wait compatibility claim. One OpenClaw invocation and two local forward records do not establish independent AUTH or upstream packet counts.
+
+| Case | Actual AUTH request ID | SDK-verified charge |
+|---|---|---|
+| N-02, corrected attempt | `ed3f89e2-0518-4b87-a25e-8d623adb0401` | 0 micro-USDC |
+| N-03, read-tool continuation | `90c5735a-d30d-4c4b-90fd-c97778564d6c` | 0 micro-USDC |
+
+At **13:22:07 UTC**, the native observer reverified all three retained sessions, including N-01. Both new receipts are signed `OPENROUTER_USAGE`, `billing_effect=charge`, `reason=metered`, with zero observed/charged amounts. These are valid receipts for the observed zero amounts, not unknown-usage waivers. The journal is ready at revision **866**, with no pending operation and active signed balance **4,999,994 micro-USDC**. Total verified charge remains N-01's **6 micro-USDC**. The observer records no additional wallet transaction beyond the original deposit.
+
+The **13:31:26 UTC** read-only operator cut corroborates three settled sessions/receipts and **three immutable full-cap reservations totaling 3,000,000 micro-USDC**. Reservations are maximum exposure, not measured charges. All ten bounded table captures are complete: three issuance attempts, zero proxy operations, three settlements and 19 retained outbox rows. This report does not classify those historical rows as unfinished operations or grant new maintenance authority. Service identities, gateway configuration and reservation bytes stayed unchanged during collection; it made no provider query or financial write.
+
+For each new session, retained management checkpoints record zero about **60 seconds** after disable, zero final usage about **120 seconds** after disable, then deletion. The installed control source matches its reviewed build: it treats two equal management-usage observations separated by the configured grace as operationally stable and persists final usage before deletion. The [existing contract](../i06-i07-implementation-ready.md) already distinguishes that rule from external billing finality. The receipt invariant holds for the observed zero; the external reconciliation did not pass. The separate [management-usage limitation report](PD-openrouter-management-usage-limit.md) records the supported counter semantics and the remaining billing gap.
+
+OpenClaw separately reported **USD 0.0008349** total and **USD 0.00028695** for its last call, labeled `provider-billed`. This is application metadata, not an independently obtained provider invoice. Its nonzero total conflicts with the two signed metered-zero results. The cause remains unproven. No signed settlement is rewritten, no retroactive charge is asserted, and this record does not authorize a paid retry.
+
+The [machine-readable evidence](PD-native-public-N02-N03.json) joins actual operation IDs, exact AUTH digests from reservation rows, receipt hashes and verified successor signatures. Canonical request-object digests from settled journal history remain separate from exact AUTH byte digests; signer message digests were not exposed by this collector. Raw prompts, provider key references and private database rows are omitted.
+
+At **13:38:35 UTC**, root sent one SIGTERM to the identity-checked R5 scheduling adapter. A separate **13:38:43 UTC** observation found it absent; its native exit code was not captured. The funded native supervisor and SDK were left running. This adapter stop adds no recovery, withdrawal or billing-finality claim.
+
+The [original HTTP400 failure](PD-openclaw-first-request-failure.md), separate [future-quote diagnostic and fix](PD-quote-clock-wait.md), unexecuted R4, supervisor-reparent diagnostic refusal and initial status-capture failure remain preserved. R5 is the explicit corrected attempt, not an erasure of those failures. **No checklist box is closed here.** N-04 fault recovery, withdrawal and funded browser acceptance remain separate; the note and its **4,999,994 micro-USDC remain active** at this checkpoint.

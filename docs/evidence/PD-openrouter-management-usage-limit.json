@@ -1,0 +1,144 @@
+{
+  "schema": 1,
+  "scope": "Observed management-counter settlements with demonstrated unresolved external provider-cost discrepancy; no G3/final-invoice reconciliation claim",
+  "cutoff_utc": "2026-10-08T13:31:26Z",
+  "records": {
+    "operator_cut": {
+      "sha256": "57d1090a839d328a0d12c6d98f9b6afd383d80d2f57a081bea4273e6798190e4",
+      "bytes": 26079
+    },
+    "independent_native_observer": {
+      "sha256": "3670e4945698fc007e22da00b007229c62b8bb64dfceac93c5239779846a090b",
+      "bytes": 8033
+    },
+    "openclaw_result": {
+      "sha256": "5b6cb8e62ee9a491017ac6ee7e360ed0f78efad14ca97f7e000357c286a379b2",
+      "bytes": 8535
+    },
+    "collector_source": {
+      "sha256": "c48f04f84c6ba00920face1d54c8740d4819d30248738d97c9b4ec796c010c60",
+      "bytes": 12659
+    },
+    "collector_request": {
+      "sha256": "455d8539929b4c753afe5ab3c9eab564f4da01517342b4f06d2f9580d48133a2",
+      "bytes": 13199
+    }
+  },
+  "installed_control_source_manifest_sha256": "dc22fbd23d28c49fd68bb8b8f3e767ebe8cafefbe685da169cb0086e2ebe3c98",
+  "examined_sources": [
+    {
+      "path": "services/control/src/direct/openrouter.rs",
+      "sha256": "f78f90e4145fee1dde1dfeabdccb33caeb4b9bef4c3d573e8cd3c2833e024391",
+      "matches_installed_control_snapshot": true
+    },
+    {
+      "path": "services/control/src/direct/runtime.rs",
+      "sha256": "846157a9429fc4fd6e9dba3db3973c43323538670e4592fc1ed8d7c16a2efce9",
+      "matches_installed_control_snapshot": true
+    },
+    {
+      "path": "services/control/src/direct/mod.rs",
+      "sha256": "c9b9cc6173533f5ec8ff65d28b03e384210096f4b762ab941403d9d8e54c6c86",
+      "matches_installed_control_snapshot": true
+    },
+    {
+      "path": "services/control/src/provider_runtime.rs",
+      "sha256": "50f17d018bb7c7e95e733085ff8356e1787149b8fcdfdb40ef53afe863643e93",
+      "matches_installed_control_snapshot": true
+    },
+    {
+      "path": "services/control/src/quote.rs",
+      "sha256": "9fe998f1897154c4f9a5a48769be9a0a5f6f3643bb599c286bf851faeabdc0dd",
+      "matches_installed_control_snapshot": true
+    },
+    {
+      "path": "services/control/src/receipts.rs",
+      "sha256": "7205be2eed4598fa5b75551a997ddedf0e79f735ce17452e37d38ab190ee69d0",
+      "matches_installed_control_snapshot": true
+    },
+    {
+      "path": "services/control/src/ledger.rs",
+      "sha256": "1ad42fc08c482adcae327084c9485e5b2816a66f5d811f86269d2fb371c0f994",
+      "matches_installed_control_snapshot": true
+    },
+    {
+      "path": "services/control/src/signer.rs",
+      "sha256": "420a011829a7f2fbf3e0e37dfd0b17d2f03a837c660e816fa6c5dff7beceee3d",
+      "matches_installed_control_snapshot": true
+    }
+  ],
+  "actual_cut": {
+    "reservation_count": 3,
+    "reservation_state_sha256": "dc78582e908260101d624b46c12db4c00c4f3fcd3ab5b3efc187d8e49361ee26",
+    "counts": {
+      "sessions": 3,
+      "operations": 0,
+      "dispatch_attempts": 3,
+      "settlements": 3,
+      "receipts": 3,
+      "outbox": 19,
+      "nullifier_reservations": 3,
+      "clearances": 0,
+      "provider_evidence": 0,
+      "chain_transactions": 0
+    },
+    "all_bounded_table_rows_complete": true,
+    "budget_readonly_validation_passed": true,
+    "all_process_identities_unchanged": true,
+    "database_raw_sha256": "d13ece2bc5548c2cf7eceff32731a5c6a96f45df38a38111c38e25bd68666361"
+  },
+  "billing": {
+    "N01": {
+      "management_usage_nano_at_nominal_seconds": {
+        "60": "0",
+        "120": "5850",
+        "180": "5850"
+      },
+      "signed_charge_micro_usdc": "6"
+    },
+    "N02": {
+      "management_usage_nano_at_nominal_seconds": {
+        "60": "0",
+        "120": "0"
+      },
+      "signed_charge_micro_usdc": "0",
+      "reason": "metered",
+      "evidence_kind": "OPENROUTER_USAGE"
+    },
+    "N03": {
+      "management_usage_nano_at_nominal_seconds": {
+        "60": "0",
+        "120": "0"
+      },
+      "signed_charge_micro_usdc": "0",
+      "reason": "metered",
+      "evidence_kind": "OPENROUTER_USAGE"
+    },
+    "sdk_verified_total_charge_micro_usdc": "6",
+    "sdk_verified_balance_micro_usdc": "4999994",
+    "openclaw_reported_provider_billed_usd": "0.0008349",
+    "openclaw_cost_origin": "provider-billed",
+    "provider_counter_finality_established": false,
+    "external_cost_reconciled": false,
+    "zero_charge_reclassified_as_waiver": false,
+    "provider_internal_cause_known": false
+  },
+  "scope_limits": [
+    "Valid signed snapshot arithmetic is separate from eventual provider billing accuracy.",
+    "Counter stabilization is an operational heuristic; missing or unavailable usage is not replaced by zero.",
+    "operator_loss zero refers to selected observations, not independently established absence of external loss.",
+    "No new provider request, inference replay, cap grant, runtime edit, retroactive charge, or indefinite hold.",
+    "Continued invitation-only preview/recovery remains within existing authorization; G3 and normative final-cost acceptance remain open."
+  ],
+  "documentation_sources": [
+    "https://openrouter.ai/docs/api/api-reference/api-keys/get-key",
+    "https://openrouter.ai/docs/cookbook/administration/usage-accounting",
+    "https://openrouter.ai/docs/api/api-reference/generations/get-request-&-usage-metadata-for-a-generation"
+  ],
+  "followup_actions": {
+    "runtime_edits": 0,
+    "service_actions": 0,
+    "financial_writes": 0,
+    "provider_account_requests": 0
+  }
+}

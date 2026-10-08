@@ -1,0 +1,412 @@
+{
+  "schema": 1,
+  "scope": "Actual N-04 interrupted stream, same-journal native .3 restart, explicit recovery, signed settlement, mutual withdrawal and independent finalized chain/operator observations.",
+  "checkpoint_utc": "2026-10-08T14:27:08+00:00",
+  "case": "N-04",
+  "operation_id": "dfa32c33-cb0b-44de-b798-5230aa44bc36",
+  "request_id": "89dfb3c9-fdc9-4b4a-ab39-1e7c83facafd",
+  "exact_authorization_sha256": "1d3254898cf2e116ade08c0b07f70126c1ab38f6f66d2256dfea480cefd3707e",
+  "running_sdk_version": "0.2.0-devnet.3",
+  "command_client_and_offline_observer_version": "0.2.0-devnet.2",
+  "version_scope": "Retained command client and compatible offline verifier; separate actual .3 process/configuration binding, no custody or profile reinitialization.",
+  "request": {
+    "request_sha256": "40010b3a753b9f5fe41fec81d2a4714bbabb2d8ed1f94dfcd3f34aebfa8ab3f9",
+    "request_bytes": 201,
+    "local_http_request_invocations": 1,
+    "automatic_local_retries": 0,
+    "redirects_followed": 0,
+    "http_status": 200,
+    "content_type": "text/event-stream",
+    "operation_id_response_matches": true,
+    "response_complete": false,
+    "response_bytes": 3730,
+    "response_sha256": "a69a976a83e1a2b13d850cdd3466ee4540a4c1900a71355bcbf09431d0018983",
+    "response_persistence_uncertain": false,
+    "stop_reason": "response_interrupted",
+    "duration_ms": 27771,
+    "provider_inference_sends": null,
+    "auth_http_packets": null,
+    "inference_replays": null
+  },
+  "interruption": {
+    "sent_at": "2026-10-08T13:57:04.971378+00:00",
+    "signal": "SIGKILL",
+    "boundary_verified": true,
+    "first_sse_data_event": {
+      "case_id": "N-04",
+      "operation_id": "dfa32c33-cb0b-44de-b798-5230aa44bc36",
+      "event": "first_sse_data_event",
+      "elapsed_ms": 27658,
+      "response_bytes": 1242,
+      "data_events": 4,
+      "done_marker_seen": false,
+      "operation_id_response_matches": true
+    },
+    "status_phase": "active",
+    "in_flight": 1,
+    "unknown_operation_matches_case": true,
+    "supervisor_and_sdk_identity_rechecked": true,
+    "automatic_restart": false,
+    "coordinator_exit_code": 0,
+    "driver_exit_code": 1,
+    "driver_exit_scope": "Expected interrupted local HTTP stream; not a successful complete response."
+  },
+  "interrupted_journal": {
+    "observed_at": "2026-10-08T13:58:21.155Z",
+    "head": {
+      "revision": 870,
+      "digest": "dabff07b1f2321eb0f287c224e01834aee1b6b5c6448d0fcba075878f124d826"
+    },
+    "ciphertext_sha256": "4bd22965b9b027d0755cb6070aecc9bed95fff4a1ca1884910f16ae754b828bd",
+    "wallet_status": "active",
+    "balance_micro_usdc": "4999994",
+    "pending_phase": "active",
+    "pending_operations": [
+      {
+        "id": "dfa32c33-cb0b-44de-b798-5230aa44bc36",
+        "phase": "send_unknown"
+      }
+    ],
+    "close_requested": false,
+    "prior_three_sessions_unchanged": true,
+    "verified_total_prior_charge_micro_usdc": "6",
+    "observer_auth_requests": 0,
+    "observer_inference_requests": 0,
+    "observer_financial_writes": 0
+  },
+  "recovery": {
+    "same_native3_configuration": true,
+    "same_custody_profile": true,
+    "initialize_key": false,
+    "automatic_start_retries": 0,
+    "restart_observed_at_utc": "2026-10-08T13:59:41+00:00",
+    "initial_status": {
+      "phase": "closing",
+      "recovery_required": true,
+      "journal_head": {
+        "revision": 873,
+        "digest": "06c8eb50e3a9910411578b062482535b352fef7daa5177b25e185ca04bde0776"
+      }
+    },
+    "startup_scope": "Stock startup attempted recovery/close but returned with recovery_required; ordinary maintenance does not retry while that flag is set.",
+    "explicit_recover_commands": 1,
+    "explicit_inference_replay_commands": 0,
+    "recovered_observed_at_utc": "2026-10-08T14:04:10.552Z",
+    "phase": "ready",
+    "pending": null,
+    "journal_head": {
+      "revision": 874,
+      "digest": "f29b17e7beb1dbb3fc5faa01cc54549627ddd5133be6bbaee90c44a58906f19a"
+    },
+    "balance_micro_usdc": "4999980",
+    "prior_three_sessions_unchanged": true,
+    "total_verified_sessions": 4,
+    "new_session": {
+      "request_id": "89dfb3c9-fdc9-4b4a-ab39-1e7c83facafd",
+      "authorization_sha256": null,
+      "exact_authorization_bytes_retained": false,
+      "authorization_object_canonical_sha256": "1269d6c35be113a96296145c11682160f68728f74a142c6bac90b4d599717651",
+      "authorization_hash_scope": "History retains the request object, not its exact sent JSON bytes; canonical object digest is not the exact AUTH digest.",
+      "operation_ids": [
+        "dfa32c33-cb0b-44de-b798-5230aa44bc36"
+      ],
+      "receipt_count": 1,
+      "receipt_hashes": [
+        "cb49cf6cfb7ed3fb30f1f2754e9d4cc2000f95800c8a4f3106ccc04d0cfd57bd"
+      ],
+      "charge_micro_usdc": "14",
+      "cryptographically_reverified": true,
+      "receipt_classification": {
+        "receipts": [
+          {
+            "receipt_hash": "cb49cf6cfb7ed3fb30f1f2754e9d4cc2000f95800c8a4f3106ccc04d0cfd57bd",
+            "evidence_kind": "OPENROUTER_USAGE",
+            "billing_effect": "charge",
+            "reason": "metered",
+            "charged_nano_usdc": "13950"
+          }
+        ],
+        "metered_charge_receipts": 1,
+        "waived_unknown_receipts": 0,
+        "not_dispatched_receipts": 0,
+        "late_loss_observations": 0,
+        "all_charge_receipts_metered": true,
+        "classification_scope": "Signed receipt classification after native verification; not proof of inference correctness, HTTP completion or provider packet counts."
+      },
+      "signed_successor": {
+        "signature_sha256": "e6f84c3f857ad004a42b2a550ea2a1d0b3caf6fd7b7a56c1ba7343d1b2149abb",
+        "signature_encoding": "96 bytes: r_x || r_y || s, each the canonical 32 bytes from the verified SDK fields",
+        "message_digest": null,
+        "message_digest_scope": "Signer state-message digest is not retained by the native journal; obtain a separately authenticated operator observation for that join."
+      }
+    },
+    "total_verified_charge_micro_usdc": "20",
+    "independent_packet_counts": null
+  },
+  "withdrawal": {
+    "state": "closed",
+    "observed_at": "2026-10-08T14:26:29.472Z",
+    "wallet_closed_verified": true,
+    "finalized_chain_verified": true,
+    "pending": null,
+    "journal_head": {
+      "revision": 887,
+      "digest": "062aeb9817a687b956ceceed75cba024006700b1874baecd4117ce53f3f80086"
+    },
+    "retained_wallet_balance_micro_usdc": "4999980",
+    "deposit_micro_usdc": "5000000",
+    "returned_payload_micro_usdc": "4999980",
+    "total_verified_charge_micro_usdc": "20",
+    "finalized_transactions": 6,
+    "transaction_scope": "One compact deposit and five mutual-close buffer transactions; exact recorded wire and signatures independently checked.",
+    "transactions": [
+      {
+        "signature": "2smNULHCHoFzHtpD7c8QjCULb8P9sFWu2UFbb8mhLYaf1MRswJUrQgD2RGCBZWRWPXsetBhupd78W6Q1iBPL8nRz",
+        "slot": 508730317,
+        "kind": "deposit",
+        "instruction": "deposit_compact_v1",
+        "wire_sha256": "75121018f78ade7dbcade8aafe76c9fca428916cf8364dfedc6c24314838771a",
+        "wire_bytes": 995,
+        "compute_units": 184417,
+        "exact_recorded_wire_matches": true,
+        "signatures_verified": true
+      },
+      {
+        "signature": "51sXgjH8nZQiW9QNfLa7ui35Ez9zfrF7HgRLLUkDA3UXbahTc47w6gTXKkd7M3Pq7GEDz2CmjntYJXzxBUQYmfD1",
+        "slot": 508841241,
+        "kind": "mutual_close",
+        "instruction": "create_payload",
+        "wire_sha256": "91876fbb3c52acad4332ec9a5afe26bfca76595ed552a389fed3b0a9b58b11ca",
+        "wire_bytes": 397,
+        "compute_units": 15833,
+        "exact_recorded_wire_matches": true,
+        "signatures_verified": true
+      },
+      {
+        "signature": "2DksRjoJspSGcZxWqTU2fD1E45s6TKAk6fjN8Nj9JUeMFh6BGURNPLkV2R4xF1bwss4UZZcFUtU6VgkfpPkGSXAH",
+        "slot": 508845291,
+        "kind": "mutual_close",
+        "instruction": "append_payload",
+        "wire_sha256": "bc72e47aa75f208c565e67f0743368bc4070b8ab0aaea9d26f8202d5f9fe5c5a",
+        "wire_bytes": 1232,
+        "compute_units": 13256,
+        "exact_recorded_wire_matches": true,
+        "signatures_verified": true
+      },
+      {
+        "signature": "tDnPaYmKbTsyhTHSvLgZ1orQRMHy2c3r9bc8nPBxZWU6ydFTBPp9oLQ2eFZR7fTZY8Mwoku79oagWCdrTsjoebF",
+        "slot": 508845500,
+        "kind": "mutual_close",
+        "instruction": "append_payload",
+        "wire_sha256": "f9f6f49b6ecf2b1e894f0fab45dbc3dd24dfe459eff2b8d072516e6c488c3a48",
+        "wire_bytes": 670,
+        "compute_units": 13256,
+        "exact_recorded_wire_matches": true,
+        "signatures_verified": true
+      },
+      {
+        "signature": "3ac37eojjmbR1AEfs9jZf5D8zrhN5LbEvgvASAuJspYGUnUEuLEHXezj5tS9hcmxt6AZmEzhsf1nXTALRk1eNBdd",
+        "slot": 508845752,
+        "kind": "mutual_close",
+        "instruction": "seal_payload",
+        "wire_sha256": "99bbce33fc65fbe61770a48c66d046efff02d7a0c98e3902a44d6798b31dbf54",
+        "wire_bytes": 286,
+        "compute_units": 13820,
+        "exact_recorded_wire_matches": true,
+        "signatures_verified": true
+      },
+      {
+        "signature": "3bh5kw8eX8W294EW9ut7FKGWYY8CgP4qZXVwtAxENsCgNjw4d7NYQiieg9ksCeRh59zYnzpksyPSHUYBWFsBpVDf",
+        "slot": 508846082,
+        "kind": "mutual_close",
+        "instruction": "execute_payload",
+        "wire_sha256": "4d56959629362dbb4241323705885838e6f020fc49b9e53f04cf6d39e494c313",
+        "wire_bytes": 656,
+        "compute_units": 349441,
+        "exact_recorded_wire_matches": true,
+        "signatures_verified": true
+      }
+    ],
+    "max_wire_bytes": 1232,
+    "max_compute_units": 349441,
+    "finalized_balance_cut": {
+      "slot": 508846448,
+      "note_id": 0,
+      "note_status": 3,
+      "wallet_micro_usdc": "36010000",
+      "vault_micro_usdc": "0"
+    },
+    "wallet_owner_is_treasury_owner": true,
+    "balance_scope": "The shared owner receives both the 4,999,980-micro return and 20-micro treasury amount. Restored wallet balance does not erase charges.",
+    "rpc_finality_scope": "Independent finalized RPC observation, not cryptographic proof of RPC finality."
+  },
+  "preserved_failure": {
+    "local_prelaunch_freeze_parser_failed": true,
+    "coordinator_invoked_at_failure": false,
+    "review_or_case_fence_created_at_failure": false,
+    "auth_or_inference_at_failure": false,
+    "relative_path_observer_refusal_before_start": true,
+    "observer_started_at_relative_path_refusal": false,
+    "withdraw_step02_cli_usage_refusal": true,
+    "first_withdraw_rpc_tls_failure": true,
+    "first_rpc_default_ca_certificates": 0,
+    "explicit_system_ca_correction": true,
+    "failure_scope": "The CLI usage refusal and first RPC observer URLError are retained separately; the detailed RPC error cause was not captured. A later diagnostic found an empty default CA store and the system-CA observation succeeded. Neither establishes a failed on-chain transaction or provider HTTP failure."
+  },
+  "receipts": {
+    "boundary": {
+      "sha256": "bf2264696c55fede9418d5f3ea26db74882470508e00520e3851c2412ef562e1",
+      "bytes": 1670
+    },
+    "signal": {
+      "sha256": "9aa81b9900898bf705f97cc1a510674e559f360ae44c310549cf043451575b30",
+      "bytes": 169
+    },
+    "interruption_result": {
+      "sha256": "f950cc2b3fa5d2d921636613a8bf85134124173548dcc2990b1c6451c835ecbe",
+      "bytes": 351
+    },
+    "one_shot_result": {
+      "sha256": "77c650454aa0df8bce9e1b8016ff52e49921cd04b140662e21239f8fff2d6fa2",
+      "bytes": 1559
+    },
+    "interrupted_observer": {
+      "sha256": "035a8836511e1d78c21231f5711b9ab3fa2e0723e5241319c4f21ca403cccb31",
+      "bytes": 8014
+    },
+    "prior_observer": {
+      "sha256": "3670e4945698fc007e22da00b007229c62b8bb64dfceac93c5239779846a090b",
+      "bytes": 8033
+    },
+    "coordinator_source": {
+      "sha256": "b5ba04b1459bb458839c96cb8abc5c61699ed98b2620cf0859a0a4e5ac3ec556",
+      "bytes": 12923
+    },
+    "coordinator_freeze": {
+      "sha256": "b244cd751f2564cdd0d9c6b8b680a42a4ffefce69499f9daab760c4709d61952",
+      "bytes": 1059
+    },
+    "coordinator_exit": {
+      "sha256": "2cf2071d7ec52bb5c155a16bc57a50f3745e85d36fb2783493ad50bf6280bb10",
+      "bytes": 55
+    },
+    "prelaunch_local_failure": {
+      "sha256": "d69dfe46a7786a7aa27a973b71597b3a17483f2300df61eb11a2c2293a356c17",
+      "bytes": 253
+    },
+    "restart_source_freeze": {
+      "sha256": "d29c767a99360206f9b82a851bac35606c7383053cd85bba85e412ef1a9f9d40",
+      "bytes": 1959
+    },
+    "restart_result": {
+      "sha256": "428858521b4ec3ebdf92a828a1cd7bf41e09ddc965eb73dfa7566fc97e695c5c",
+      "bytes": 3672
+    },
+    "restart_process": {
+      "sha256": "e053d6a727de6f43fe66986db4cebe0f70a19e293b89519af0bff22ff04134c6",
+      "bytes": 244
+    },
+    "restart_exit": {
+      "sha256": "01ead43c4dd940ff2deefa2e71ee563d050f0572f37442f8aeb748401e6ae9b9",
+      "bytes": 55
+    },
+    "explicit_recover": {
+      "sha256": "e656efe6b742a9cce29734e4b858c972dc64780558ca389675afa193ece45a0d",
+      "bytes": 651
+    },
+    "recovered_observer": {
+      "sha256": "9aab58dfc1f1935264515360bd68c77c7daf7591cd6b23d111d3219c54acda8f",
+      "bytes": 9938
+    },
+    "observer_relative_path_refusal": {
+      "sha256": "6df9d662057e8b862c41ce28a26f09f4ae411740c93d667d5cb964a170afc544",
+      "bytes": 191
+    },
+    "withdraw_prepared_status": {
+      "sha256": "0254d4994f01dbe964a205179a1d5d916f78e16d128a9633f30474fd755876e4",
+      "bytes": 686
+    },
+    "withdraw_step1_status": {
+      "sha256": "09f79f83d86c15ea310392f72a59e890e5d69ab782abf73bbecb8beb402d8d4a",
+      "bytes": 686
+    },
+    "closed_observer": {
+      "sha256": "1faae850494453a7e3ecb74bc200ac20fb711aa0f5eea1e343b59a8ad5e518ab",
+      "bytes": 11369
+    },
+    "final_chain_observer": {
+      "sha256": "a34bff5e04de92880ecf3a9afc12892d629a38b6c054587bcb6a755c23252f5e",
+      "bytes": 9085
+    },
+    "final_operator_observer": {
+      "sha256": "4ba3d7ae2a628453029245788284acb4f1c27775a101db1c7b62b1fcc14c1c41",
+      "bytes": 39752
+    },
+    "withdraw_step02_usage_stderr": {
+      "sha256": "69d51d1fe1fd1141e53c6c72d36f023ef6e0ab54a0d31b49cd24ab6b74c7c4f1",
+      "bytes": 632
+    },
+    "withdraw_rpc_tls_diagnostic": {
+      "sha256": "f86f03cfac546cc15f72784313137451ecfa5c900ff2023ba2b5d18b378de10e",
+      "bytes": 545
+    },
+    "withdraw_rpc_system_ca_result": {
+      "sha256": "f5157d9d2c83188973fc4c2c39190dc8c7cb57622b5c2a58c63b143a5974ad78",
+      "bytes": 406
+    }
+  },
+  "limits": {
+    "full_N04_acceptance_claimed": true,
+    "settlement_claimed": true,
+    "withdrawal_claimed": true,
+    "independent_provider_packet_counts": null,
+    "provider_billing_finality_claimed": false,
+    "checklist_closures": 0,
+    "raw_response_or_credentials_published": false,
+    "full_seven_case_matrix_claimed": false
+  },
+  "operator_join": {
+    "observed_at_utc": "2026-10-08T14:27:08+00:00",
+    "ssm_command_id": "bc48f0d1-2f86-46e3-abba-af89180e7ac1",
+    "reservations_count": 4,
+    "reserved_exposure_micro_usdc": "4000000",
+    "reservations_sha256": "29be8a5b46f7efc666b8ad623093ab83a133365ef42cee036ea533453c337706",
+    "budget_validated": true,
+    "complete_bounded_private_tables": {
+      "sessions": true,
+      "operations": true,
+      "dispatch_attempts": true,
+      "settlements": true,
+      "receipts": true,
+      "outbox": true,
+      "nullifier_reservations": true,
+      "clearances": true,
+      "provider_evidence": true,
+      "chain_transactions": true
+    },
+    "table_counts": {
+      "sessions": 4,
+      "operations": 0,
+      "dispatch_attempts": 4,
+      "settlements": 4,
+      "receipts": 4,
+      "outbox": 25,
+      "nullifier_reservations": 5,
+      "clearances": 1,
+      "provider_evidence": 0,
+      "chain_transactions": 0
+    },
+    "database_raw_sha256": "49c3b1387f2916e8fe94c4672ebb848f22b73b98787f99e2483bfb9c06260f16",
+    "all_four_sessions_settled": true,
+    "signed_settlement_charge_matches_native_receipts": true,
+    "selected_n04_exact_auth_matches": true,
+    "selected_n04_receipt_hash_matches": true,
+    "selected_n04_finished_issuances_before_restart": 1,
+    "selected_n04_attempt_rows_at_or_after_restart": 0,
+    "no_new_recorded_issuance_scope": "Complete retained table observation; not proof of absence of upstream packets or an independent cryptographic signature verification by the SQL collector.",
+    "service_actions": 0,
+    "financial_writes": 0,
+    "auth_requests": 0,
+    "inference_requests": 0
+  }
+}

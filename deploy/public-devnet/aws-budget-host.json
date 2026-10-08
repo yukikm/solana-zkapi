@@ -792,6 +792,9 @@
                 },
                 {
                   "Fn::Sub": "${Artifacts.Arn}/releases/public-devnet-20261008-a/pd04-check-v1/*"
+                },
+                {
+                  "Fn::Sub": "${Artifacts.Arn}/releases/public-devnet-20261008-a/chat-en-sdk3/*"
                 }
               ],
               "Condition": {

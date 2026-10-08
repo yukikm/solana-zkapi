@@ -1,0 +1,181 @@
+{
+  "schema": 1,
+  "scope": "SDK3 independent-origin static publication and Chrome page/settings rendering; no wallet connection or funded browser acceptance",
+  "current_entrypoint": "https://d30nr98svcwdoe.cloudfront.net/releases/public-devnet-20261008-a/chat-en-sdk3/index-r2.html",
+  "initial_entrypoint_preserved": "https://d30nr98svcwdoe.cloudfront.net/releases/public-devnet-20261008-a/chat-en-sdk3/index.html",
+  "sdk_archive_sha256": "5dfa1d9edf58e6a8b3359cc16d29e55657b6c205e948b7ca1b7b40018e452887",
+  "profile": {
+    "url": "https://d366buuvadnp3.cloudfront.net/releases/public-devnet-20261008-a/profile-sdk-0.2.0-devnet.3.json",
+    "sha256": "449657cc3fe90f12878236b83d68ada8077e3c56e67ccb8268c5f301e69e02e5",
+    "revision": 2
+  },
+  "initial_publication": {
+    "app_objects": 136,
+    "app_bytes": 6462779,
+    "index_last": true,
+    "static_downloads": 137,
+    "exact_matches": 137,
+    "observed_at_utc": "2026-10-08T13:13:57.397Z",
+    "profile_downloads": 1,
+    "normal_tls": true,
+    "initial_dns_failure_retained": true
+  },
+  "label_followup": {
+    "reason": "Actual Chrome settings and About copy retained two SDK .2 display literals despite installed .3 SDK/profile",
+    "source_literals_corrected": 2,
+    "new_objects": [
+      {
+        "key": "releases/public-devnet-20261008-a/chat-en-sdk3/assets/index-DxAfmtZp.js",
+        "sha256": "1920c896332f619d79c64a884a489788f487dd3d42683672901e017df1c0938d",
+        "bytes": 293206,
+        "version_id": "Jp21LZkdjihZAqWOJESlX3S2c1zhRukk",
+        "checksum_and_sse_confirmed": true
+      },
+      {
+        "key": "releases/public-devnet-20261008-a/chat-en-sdk3/index-r2.html",
+        "sha256": "06536c8df5d041743ba6ca2f373ac62d5c27d0187c189e14a2174ffea2c92c4c",
+        "bytes": 1392,
+        "version_id": "r60eVxPi8ZZAi.YmTjf9KdR1MUCEkh.P",
+        "checksum_and_sse_confirmed": true
+      }
+    ],
+    "total_new_bytes": 294598,
+    "uploaded_at_utc": "2026-10-08T13:30:59.974215+00:00",
+    "index_r2_last": true,
+    "old_index_unchanged": true,
+    "policy_mutations": 0,
+    "profile_puts": 0,
+    "production_js_exact_two_text_replacements": true,
+    "reused_static_objects": 134,
+    "typecheck_and_build_passed": true,
+    "full_test_matrix_repeated": false
+  },
+  "new_static_verification": {
+    "observed_at_utc": "2026-10-08T13:36:20.200Z",
+    "gets": 2,
+    "exact_matches": 2,
+    "prior_saved_bodies_locally_rehashed": 137,
+    "reused_objects_locally_joined": 134,
+    "csp_unchanged": true,
+    "worker_reference_unchanged": true,
+    "profile_configuration_unchanged": true,
+    "normal_tls": true,
+    "authentication": false,
+    "cookies": false,
+    "redirects": 0,
+    "retries": 0
+  },
+  "chrome_observation": {
+    "source": "Root actual Chrome navigation and saved Connection settings screenshot, independently visually inspected locally",
+    "page_loaded": true,
+    "settings_opened": true,
+    "sdk_label": "SDK 0.2.0-devnet.3 \u00b7 preview artifact",
+    "deployment_label": "Public Devnet preview \u2014 SDK 0.2.0-devnet.3",
+    "capture_time_exact_utc": null,
+    "screenshot_sha256": "06d458344adb277e05035af26e45ae23c7dee4beb985e157b53955af665039ac",
+    "screenshot_bytes": 43167,
+    "invitation_entered": false,
+    "wallet_selected_or_connected": false,
+    "sdk_connection_preflight": false,
+    "wallet_signature_or_transaction": false,
+    "auth_or_inference": false
+  },
+  "custody": {
+    "new_namespace": "zkchat-sdk-0.2.0-devnet.3",
+    "new_note_id": "zkchat-note-sdk-0.2.0-devnet.3",
+    "old_namespace_custody_migrated_or_reset": false,
+    "chat_history_migration": false
+  },
+  "source_overlay": {
+    "modified_files": 10,
+    "new_vendor_files": 1,
+    "original_baseline_guarded_files": 33,
+    "published_release_wording_corrected_in_source_only": true,
+    "published_app_assets_unchanged_by_wording_correction": true,
+    "config_autoenabled": false,
+    "applied": true,
+    "applied_at_utc": "2026-10-08T13:39:46.186151+00:00",
+    "all_before_images_retained": 33,
+    "after_install_guarded_inputs": 34,
+    "after_install_guarded_inputs_unchanged": true,
+    "offline_ignore_scripts_install_passed": true,
+    "archive_hash_check_passed": true,
+    "isolated_build_passed": true,
+    "existing_root_dist_rebuild_claimed": false,
+    "source_config_still_null": true,
+    "guard_scope": "34 selected source inputs; ignored build metadata outside that set is not claimed unchanged"
+  },
+  "receipts": {
+    "initial_137_static_verification": {
+      "sha256": "2b03f2fe8f3ed626123ba8b34dfbd11ee2c48c11c45061fd0a69efc110fef744",
+      "bytes": 91889
+    },
+    "initial_dns_failure": {
+      "sha256": "adcb1f9263c8e304fda18e0ff4e35b8576a1c1803bfdff0fbf9dd968308c5668",
+      "bytes": 2740
+    },
+    "initial_app_upload": {
+      "sha256": "3b638da55c8e54a63ad02f29e1f9d0f13e83dea66943b7cd8d821faaa522bb12",
+      "bytes": 47639
+    },
+    "policy_extension": {
+      "sha256": "d04dcb09bfe977d569a568b54286eda6e603805c09c441c3595d11e522dc7e08",
+      "bytes": 702
+    },
+    "label_followup_upload": {
+      "sha256": "0a292c729bc116ae7db3219c5cb6f59dae8f06b9f59c21fa3758c37a885acfa5",
+      "bytes": 836
+    },
+    "label_followup_two_static_gets": {
+      "sha256": "a2a4b13b02320592722d07149c12085a477ee1a33d4a61cd8df951ca276e7b06",
+      "bytes": 1737
+    },
+    "chrome_connection_settings_screenshot": {
+      "sha256": "06d458344adb277e05035af26e45ae23c7dee4beb985e157b53955af665039ac",
+      "bytes": 43167
+    },
+    "label_build_result": {
+      "sha256": "3fb7138d010ef813e1f42be46bc954b3a4ed00990ecadeb6c878802ccb39a7c1",
+      "bytes": 721
+    },
+    "label_source_freeze": {
+      "sha256": "f711bb0a6d469ebfca0e6f5715a1de38f9711521303f7229253b67d29a742ee2",
+      "bytes": 6356
+    },
+    "published_wording_overlay_freeze": {
+      "sha256": "b9a2f23371ae91d03b5ad08c2e995dfe223d82c3f39768c7c635c6d736194d68",
+      "bytes": 4967
+    },
+    "published_wording_guard_check": {
+      "sha256": "701c40fbb0bfc9591d32cbc382819bb4a91d105b5f1e6643680489085fd98468",
+      "bytes": 419
+    },
+    "source_application": {
+      "sha256": "d221e8bf6734353da64f9c552729f3d2dc1c47de9dd0f95ea679f3289ed74d0c",
+      "bytes": 615
+    },
+    "final_source_guard": {
+      "sha256": "28e12e07699e64b25de7c13fda007ad7e945256b84a87ef9ba01c1b5cbe0d72c",
+      "bytes": 1049
+    },
+    "root_source_install": {
+      "sha256": "fafb637451a178d271d2c741b2b7cf9837e43db9ca64a024f74adc63d30d323b",
+      "bytes": 132
+    },
+    "root_source_archive": {
+      "sha256": "de0a892ca8f26c0baac87a8d2ff102bc76a7d7d60b37b4600a1552010015b319",
+      "bytes": 134
+    },
+    "root_source_build": {
+      "sha256": "e8b36e4ef6e7b00657844823567713e41509f29829ffb1a023f06221f121024c",
+      "bytes": 132
+    }
+  },
+  "limits": {
+    "browser_CORS_preflight_not_claimed_from_page_render": true,
+    "funded_browser_acceptance": false,
+    "current_operator_readiness": false,
+    "new_provider_or_chain_financial_actions": 0,
+    "mainnet_or_full_release_gate": false
+  }
+}

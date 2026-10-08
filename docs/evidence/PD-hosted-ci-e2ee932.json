@@ -1,0 +1,125 @@
+{
+  "schema": 1,
+  "scope": "GitHub hosted implementation workflow completion at the exact SDK .3 source; metadata only, no new artifact or runtime acceptance verification.",
+  "source_revision": "e2ee9320ff52b8e6dd4af1dd906d35eeef88a57f",
+  "run_id": 37779911537,
+  "run_url": "https://github.com/yukikm/solana-zkapi/actions/runs/37779911537",
+  "status": "completed",
+  "conclusion": "success",
+  "jobs_passed": 9,
+  "last_job_completed_at": "2026-10-08T13:33:29Z",
+  "metadata_receipt": {
+    "sha256": "ea34902749da5f4ea619358a37b4a6b2ed2c5bf2e090c242f1ec74a89cef970b",
+    "bytes": 17770
+  },
+  "jobs": [
+    {
+      "name": "contracts",
+      "databaseId": 113320108261,
+      "status": "completed",
+      "conclusion": "success",
+      "startedAt": "2026-10-08T12:51:41Z",
+      "completedAt": "2026-10-08T12:52:05Z",
+      "url": "https://github.com/yukikm/solana-zkapi/actions/runs/37779911537/job/113320108261"
+    },
+    {
+      "name": "svm",
+      "databaseId": 113320108540,
+      "status": "completed",
+      "conclusion": "success",
+      "startedAt": "2026-10-08T12:51:41Z",
+      "completedAt": "2026-10-08T13:07:32Z",
+      "url": "https://github.com/yukikm/solana-zkapi/actions/runs/37779911537/job/113320108540"
+    },
+    {
+      "name": "vault",
+      "databaseId": 113320108560,
+      "status": "completed",
+      "conclusion": "success",
+      "startedAt": "2026-10-08T12:51:41Z",
+      "completedAt": "2026-10-08T13:02:58Z",
+      "url": "https://github.com/yukikm/solana-zkapi/actions/runs/37779911537/job/113320108560"
+    },
+    {
+      "name": "control",
+      "databaseId": 113320108569,
+      "status": "completed",
+      "conclusion": "success",
+      "startedAt": "2026-10-08T12:51:41Z",
+      "completedAt": "2026-10-08T13:07:16Z",
+      "url": "https://github.com/yukikm/solana-zkapi/actions/runs/37779911537/job/113320108569"
+    },
+    {
+      "name": "client-challenger",
+      "databaseId": 113320108580,
+      "status": "completed",
+      "conclusion": "success",
+      "startedAt": "2026-10-08T12:51:41Z",
+      "completedAt": "2026-10-08T13:33:29Z",
+      "url": "https://github.com/yukikm/solana-zkapi/actions/runs/37779911537/job/113320108580"
+    },
+    {
+      "name": "transport",
+      "databaseId": 113320108645,
+      "status": "completed",
+      "conclusion": "success",
+      "startedAt": "2026-10-08T12:51:41Z",
+      "completedAt": "2026-10-08T13:08:19Z",
+      "url": "https://github.com/yukikm/solana-zkapi/actions/runs/37779911537/job/113320108645"
+    },
+    {
+      "name": "rust",
+      "databaseId": 113320108691,
+      "status": "completed",
+      "conclusion": "success",
+      "startedAt": "2026-10-08T12:51:41Z",
+      "completedAt": "2026-10-08T12:59:41Z",
+      "url": "https://github.com/yukikm/solana-zkapi/actions/runs/37779911537/job/113320108691"
+    },
+    {
+      "name": "go",
+      "databaseId": 113320108741,
+      "status": "completed",
+      "conclusion": "success",
+      "startedAt": "2026-10-08T12:51:41Z",
+      "completedAt": "2026-10-08T12:52:05Z",
+      "url": "https://github.com/yukikm/solana-zkapi/actions/runs/37779911537/job/113320108741"
+    },
+    {
+      "name": "node",
+      "databaseId": 113320108766,
+      "status": "completed",
+      "conclusion": "success",
+      "startedAt": "2026-10-08T12:51:41Z",
+      "completedAt": "2026-10-08T12:53:07Z",
+      "url": "https://github.com/yukikm/solana-zkapi/actions/runs/37779911537/job/113320108766"
+    }
+  ],
+  "client_challenger_stages": [
+    {
+      "number": 9,
+      "name": "I10 local SDK, WASM, Go, challenger, backend, operations and integration acceptance",
+      "status": "completed",
+      "conclusion": "success",
+      "startedAt": "2026-10-08T13:02:30Z",
+      "completedAt": "2026-10-08T13:31:33Z"
+    },
+    {
+      "number": 10,
+      "name": "I10 offline provider preparation, financial relay and shutdown regression",
+      "status": "completed",
+      "conclusion": "success",
+      "startedAt": "2026-10-08T13:31:33Z",
+      "completedAt": "2026-10-08T13:33:23Z"
+    }
+  ],
+  "previous_in_progress_cut_preserved": true,
+  "limits": {
+    "runtime_artifacts_independently_downloaded_or_rehashed_here": false,
+    "hosted_test_counts_verified_here": null,
+    "hosted_archive_matches_published_release_claimed": false,
+    "working_tree_or_later_source_success_claimed": false,
+    "financial_or_live_provider_actions": 0,
+    "all_P0_full_I10_mainnet_or_external_audit_claimed": false
+  }
+}
