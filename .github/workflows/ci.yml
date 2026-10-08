@@ -250,7 +250,8 @@ jobs:
           python3 scripts/test_provider_acceptance.py
           PATH="/usr/lib/postgresql/16/bin:$PATH" python3 scripts/test_i10_provider_backend.py
           python3 scripts/test_i10_challenger_shutdown.py
-          python3 scripts/test_i10_devnet_challenger.py
+          cargo build --locked --release --manifest-path services/challenger/Cargo.toml --bin challengerd
+          PATH="/usr/lib/postgresql/16/bin:$PATH" python3 scripts/test_i10_devnet_challenger.py
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         if: always()
         with:

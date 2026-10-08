@@ -1,7 +1,9 @@
 #!/usr/bin/env python3
-"""Offline integration check: existing public devnet artifacts + fresh local PG only.
-Never reads a user key or calls RPC. Does not alter existing backend/fixtures."""
-import argparse, importlib.util, json, os, pathlib, sys, tempfile, traceback, subprocess
+"""Offline native integration using disposable I04/I05/I09-derived inputs and PG.
+Prerequisites: local I04/I05/I09 fixtures, control/debug and challenger/debug +
+release builds, pinned Node, and PostgreSQL tools in PATH. No user key or RPC.
+"""
+import argparse, json, os, pathlib, shutil, sys, tempfile, subprocess
 ROOT=pathlib.Path(__file__).resolve().parents[1]
 sys.path.insert(0,str(ROOT/'scripts'))
 import run_i10_devnet_backend as backend
@@ -12,13 +14,19 @@ os.environ['SOLANA_DEVNET_SECONDARY_RPC']='https://secondary.invalid'
 tmp=tempfile.TemporaryDirectory(prefix='i10-ch-',dir='/tmp')
 p=pathlib.Path(tmp.name).resolve()
 backend.private_directory(p/'backend')
-args=argparse.Namespace(output=p/'backend',deployment=ROOT/'target/i10-devnet-vault',program=ROOT/'target/i10-devnet-sbf/zkapi_vault.so',env_file=p/'no-env-file',indexer='http://127.0.0.1:18883',port=19887,pg_port=55496,local_adapter=True,no_build=True,mode='check-local',allow_legacy_devnet_fixtures=True)
+node=shutil.which('node')
+assert node, 'pinned Node required in PATH'
+assert subprocess.check_output([node,'--version'],text=True).strip()=='v'+(ROOT/'.node-version').read_text().strip()
+args=argparse.Namespace(output=p/'backend',deployment=p/'deployment',program=p/'deployment/zkapi_vault.so',env_file=p/'no-env-file',indexer='http://127.0.0.1:18883',port=19887,pg_port=55496,local_adapter=True,no_build=True,mode='check-local',allow_legacy_devnet_fixtures=True,provider_state=None,public_devnet_profile=None,public_devnet_profile_sha256=None)
 b=backend.Backend(args)
 results=[]
 try:
+ fixture=json.loads(subprocess.check_output([node,str(ROOT/'scripts/i10_devnet_challenger_test_fixture.ts'),str(args.deployment)],cwd=ROOT,text=True))
+ assert fixture['offline_fixture'] and fixture['sdk_manifest_signature_verified']
+ results.append('isolated_current_artifacts_and_signed_offline_manifest')
  b.prepare();b.start_local()
  fee=p/'fee-path-never-read.json';fee.write_text('not a key')
- common=['prepare','--deployment',str(args.deployment),'--backend',str(args.output),'--output',str(p/'challenger'),'--fee-key-file',str(fee),'--no-build']
+ common=['prepare','--deployment',str(args.deployment),'--backend',str(args.output),'--output',str(p/'challenger'),'--fee-key-file',str(fee),'--node',node,'--no-build']
  a=launcher.arguments(common)
  backend.private_directory(a.output)
  def prepare():
@@ -33,6 +41,13 @@ try:
  pathlib.Path.read_bytes=protected
  prepare();results.append('first_prepare_native_init_and_select_only_role')
  prepare();results.append('repeat_prepare_native_status_preserves_journal')
+ # The actual native parser must continue rejecting a substituted artifact.
+ idl=args.deployment/'vault-idl.json';saved_idl=idl.read_bytes();idl.write_bytes(saved_idl+b' ')
+ try:
+  subprocess.run([str(ROOT/'services/challenger/target/debug/challengerd'),'status',str(a.output/'config.json')],cwd=ROOT,env=b.env,stdout=subprocess.PIPE,stderr=subprocess.PIPE,check=True)
+  raise AssertionError('native trust accepted substituted IDL bytes')
+ except subprocess.CalledProcessError:results.append('actual_native_rejects_substituted_idl_hash')
+ finally:idl.write_bytes(saved_idl)
  release_args=launcher.arguments(common+['--release'])
  release=launcher.Challenger(release_args)
  assert release.binary==ROOT/'services/challenger/target/release/challengerd'
@@ -104,7 +119,10 @@ try:
  assert launcher.sanitized_metric(b'{"rpc":"https://secret.invalid/key"}') is None
  assert launcher.sanitized_metric(json.dumps({k:None for k in launcher.METRICS})) is not None
  results.append('log_allowlist_rejects_unknown_string_fields')
- print(json.dumps({'passed':True,'checks':results,'scope':'disposable local PG and native init/status only; no network or fee key read'}))
+ assert all(backend.digest(ROOT/name)==digest for name,digest in fixture['input_sha256'].items())
+ assert all(backend.digest(args.deployment/name)==digest for name,digest in fixture['output_sha256'].items())
+ results.append('original_inputs_and_disposable_fixture_pins_unchanged')
+ print(json.dumps({'passed':True,'checks':results,'fixture':fixture,'scope':'disposable local PG and native init/status only; no network or fee key read'}))
 finally:
  pathlib.Path.read_bytes=original if 'original' in locals() else pathlib.Path.read_bytes
  assert b.close()
