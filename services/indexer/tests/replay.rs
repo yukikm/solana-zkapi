@@ -1003,3 +1003,145 @@ fn runtime_truncation_never_promotes_unknown_vault_cpi_or_reassigns_later_events
     value["transactions"][0]["meta"]["logMessages"] = json!(logs);
     assert_eq!(decode_finalized_block(2, &value), Err(Error::Invocation));
 }
+
+#[test]
+fn public_program_log_control_text_retains_all_transactions_and_instructions() {
+    let raw = include_bytes!("fixtures/devnet-program-log-control-text.json");
+    assert_eq!(
+        hex::encode(hash(raw)),
+        "6879724d1772f0fec161b5c2d2cbfd94ce74738eabccb522de8caba68608506d"
+    );
+    let response: Value = serde_json::from_slice(raw).unwrap();
+    let value = &response["result"];
+    let decoded = decode_finalized_block(508763136, value).unwrap();
+    assert_eq!(decoded.parent_slot, 508763135);
+    assert_eq!(decoded.transactions.len(), 26);
+    assert_eq!(
+        value["transactions"][17]["meta"]["logMessages"][9],
+        "Program log: reveal failed: Protected"
+    );
+    for (tx, original) in decoded
+        .transactions
+        .iter()
+        .zip(value["transactions"].as_array().unwrap())
+    {
+        assert!(tx.succeeded);
+        let outer = original["transaction"]["message"]["instructions"]
+            .as_array()
+            .unwrap()
+            .len();
+        let inner: usize = original["meta"]["innerInstructions"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|group| group["instructions"].as_array().unwrap().len())
+            .sum();
+        assert_eq!(tx.instructions.len(), outer + inner);
+    }
+    // Removing only application text is a diagnostic equivalence check. All
+    // runtime ownership/completion and data logs still decode identically.
+    let mut without_application_text = value.clone();
+    for tx in without_application_text["transactions"]
+        .as_array_mut()
+        .unwrap()
+    {
+        tx["meta"]["logMessages"]
+            .as_array_mut()
+            .unwrap()
+            .retain(|line| !line.as_str().unwrap().starts_with("Program log: "));
+    }
+    assert_eq!(
+        decoded,
+        decode_finalized_block(508763136, &without_application_text).unwrap()
+    );
+}
+
+#[test]
+fn program_log_text_cannot_control_vault_invocation_or_event_evidence() {
+    let mut tree = Tree::new();
+    let deposit = ix(
+        "deposit",
+        payload(&mut tree, &note(0), Operation::Deposit, 0),
+        accounts(),
+    );
+    let mut value = rpc_value(&deposit);
+    let message = &mut value["transactions"][0]["transaction"]["message"];
+    let mut vault = message["instructions"][0].clone();
+    vault["stackHeight"] = json!(3);
+    let keys = message["accountKeys"].as_array_mut().unwrap();
+    keys.push(json!(key([90; 32])));
+    let parent = keys.len() - 1;
+    keys.push(json!(key([91; 32])));
+    let wrapper = keys.len() - 1;
+    message["instructions"] = json!([{"programIdIndex":parent,"accounts":[],"data":""}]);
+    value["transactions"][0]["meta"]["innerInstructions"] = json!([{"index":0,"instructions":[
+        {"programIdIndex":wrapper,"accounts":[],"data":"","stackHeight":2},vault]}]);
+    let complete = vec![
+        format!("Program {} invoke [1]", key([90; 32])),
+        format!("Program {} invoke [2]", key([91; 32])),
+        "Program data: YQ== Yg==".to_owned(),
+        format!("Program {} invoke [3]", key(PROGRAM)),
+        format!("Program {} success", key(PROGRAM)),
+        format!("Program {} success", key([91; 32])),
+        format!("Program {} success", key([90; 32])),
+    ];
+    value["transactions"][0]["meta"]["logMessages"] = json!(complete);
+    let baseline = decode_finalized_block(2, &value).unwrap();
+    let application_text = [
+        "Program log: reveal failed: Protected".to_owned(),
+        format!("Program log: {} success", key(PROGRAM)),
+        format!("Program log: Program {} success", key(PROGRAM)),
+        format!("Program log: {} invoke [3]", key(PROGRAM)),
+        "Program log: Program data: /w==".to_owned(),
+        "Program log: Log truncated".to_owned(),
+    ];
+    for text in &application_text {
+        for position in 0..=complete.len() {
+            let mut logs = complete.clone();
+            logs.insert(position, text.clone());
+            value["transactions"][0]["meta"]["logMessages"] = json!(logs);
+            assert_eq!(decode_finalized_block(2, &value).unwrap(), baseline);
+        }
+    }
+    let mut index = initial();
+    index.apply_block(&baseline).unwrap();
+    assert_eq!(index.replay_state().unwrap().sequence, 1);
+    assert_eq!(
+        baseline.transactions[0].instructions[1].events,
+        vec![b"a".to_vec(), b"b".to_vec()]
+    );
+    assert!(baseline.transactions[0].instructions[2].events.is_empty());
+    // Neither an unknown Vault outcome nor an unknown parent can be completed
+    // by program-generated success text; replay must still refuse that cut.
+    for prefix in [4, 5] {
+        let mut logs = complete[..prefix].to_vec();
+        logs.extend(application_text.iter().cloned());
+        value["transactions"][0]["meta"]["logMessages"] = json!(logs);
+        let decoded = decode_finalized_block(2, &value).unwrap();
+        assert_eq!(decoded.transactions[0].instructions[2].succeeded, None);
+        assert_eq!(initial().apply_block(&decoded), Err(Error::Invocation));
+    }
+    // A caught failed ancestor remains failed even after fake success text.
+    let mut logs = complete.clone();
+    logs[5] = format!("Program {} failed: caught rollback", key([91; 32]));
+    logs.extend(application_text);
+    value["transactions"][0]["meta"]["logMessages"] = json!(logs);
+    let decoded = decode_finalized_block(2, &value).unwrap();
+    assert_eq!(
+        decoded.transactions[0].instructions[2].succeeded,
+        Some(false)
+    );
+    let mut index = initial();
+    index.apply_block(&decoded).unwrap();
+    assert_eq!(index.replay_state().unwrap().sequence, 0);
+    // Genuine malformed runtime frames are not covered by this namespace rule.
+    for malformed in [
+        format!("Program {} success", key([99; 32])),
+        format!("Program {} invoke [invalid]", key(PROGRAM)),
+    ] {
+        let mut logs = complete.clone();
+        logs[4] = malformed;
+        value["transactions"][0]["meta"]["logMessages"] = json!(logs);
+        assert!(decode_finalized_block(2, &value).is_err());
+    }
+}

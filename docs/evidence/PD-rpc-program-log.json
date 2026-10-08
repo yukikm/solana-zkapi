@@ -1,0 +1,253 @@
+{
+  "schema": 1,
+  "scope": "Application-log decoder correction, offline verification and bounded writer-only installation/start; fresh readiness and admission resume unverified",
+  "observed_at_utc": "2026-10-08T09:40:40+00:00",
+  "host_before": {
+    "record": {
+      "sha256": "3275a9b0c36a46c746190f86efec4f482c95f5fec4a11cb378bf6ebe8659ca9a",
+      "bytes": 4132
+    },
+    "ready": false,
+    "finalized_slot": 508763135,
+    "finalized_lag_seconds": 2722,
+    "archive_encoding_pauses": 20,
+    "pending_jobs": 0,
+    "unknown_signatures": 0,
+    "proof_failure_total": 0
+  },
+  "fetch_history": {
+    "initial_tls_failure": {
+      "record": {
+        "sha256": "139932faca4574518486fefb4563ad0d502b395162639489c7dad8a258fb7ea1",
+        "bytes": 137
+      },
+      "error_type": "SSLCertVerificationError",
+      "http_requests_completed": 0,
+      "meaning": "Local Python trust-store failure; not a provider HTTP failure"
+    },
+    "corrected_verified_tls": {
+      "record": {
+        "sha256": "18fbf08af231c35b3436d7bdffc8a8727a5342890652437628bdf7e38648293e",
+        "bytes": 1478
+      },
+      "getBlocks_http_status": 200,
+      "getBlock_http_status": 200,
+      "verification_disabled": false,
+      "trust_store_sha256": "9dae8d76e55cb08991f2b672d58999ea15560d910759c16b544f843bdffbb994"
+    }
+  },
+  "public_block": {
+    "slot": 508763136,
+    "parent_slot": 508763135,
+    "transactions": 26,
+    "response": {
+      "sha256": "6879724d1772f0fec161b5c2d2cbfd94ce74738eabccb522de8caba68608506d",
+      "bytes": 95548
+    },
+    "fixture": "services/indexer/tests/fixtures/devnet-program-log-control-text.json"
+  },
+  "native_diagnosis": {
+    "old_source_sha256": "0fb4ef7412f8c218f192e13c0f0e3232cf4238b0e4afd6e7a479004b59968556",
+    "matches_live_writer_decoder": true,
+    "old_full_block_decodes": false,
+    "only_failed_transaction_index": 17,
+    "transaction_succeeded": true,
+    "transaction_version": "legacy",
+    "log_count": 14,
+    "log_index": 9,
+    "log_text": "Program log: reveal failed: Protected",
+    "runtime_truncation_marker_present": false,
+    "typed_error": "Vault invocation success cannot be established",
+    "in_memory_logless_transaction_decodes": true,
+    "new_full_block_decodes": true,
+    "new_decoded_transactions": 26,
+    "new_per_transaction_decodes": 26,
+    "diagnostic_log_removal_used_in_production": false
+  },
+  "fix": {
+    "added_production_lines": 6,
+    "ignored_namespace": "Program log: ",
+    "preserved": [
+      "exact runtime truncation boundary",
+      "genuine invocation/completion frame checks",
+      "Program data ownership",
+      "unknown Vault CPI and ancestor rejection",
+      "caught failed ancestor propagation",
+      "all transactions and instructions",
+      "archive format, cursor, financial state and recovery semantics"
+    ]
+  },
+  "source_files": [
+    {
+      "path": "services/indexer/src/rpc.rs",
+      "sha256": "8cf3efda5e3d11454a201bb9173f1313d70144535633f64a7f4fc81514c5eca4",
+      "bytes": 20016
+    },
+    {
+      "path": "services/indexer/tests/replay.rs",
+      "sha256": "85967bc94cb9a9bc3cd9d0ef13b6b2843bca8b4e07c4ead9cecd1a73e15e9093",
+      "bytes": 41684
+    },
+    {
+      "path": "services/indexer/tests/fixtures/README.md",
+      "sha256": "6f3c0b6d2d75f9eeef4fd6e9a590e583a6eadf22caefa9d69d5d02909e8f12da",
+      "bytes": 4990
+    },
+    {
+      "path": "services/indexer/tests/fixtures/devnet-program-log-control-text.json",
+      "sha256": "6879724d1772f0fec161b5c2d2cbfd94ce74738eabccb522de8caba68608506d",
+      "bytes": 95548
+    }
+  ],
+  "validation": {
+    "replay_tests": {
+      "command": "cargo +1.90.0 test --locked --offline --manifest-path services/indexer/Cargo.toml --test replay",
+      "passed": 21,
+      "failed": 0,
+      "ignored": 0,
+      "duration_seconds": 0.04
+    },
+    "fmt": {
+      "command": "cargo +1.90.0 fmt --manifest-path services/indexer/Cargo.toml -- --check",
+      "exit_code": 0
+    },
+    "clippy": {
+      "command": "cargo +1.90.0 clippy --locked --offline --manifest-path services/indexer/Cargo.toml --lib --test replay -- -D warnings",
+      "exit_code": 0
+    },
+    "independent_source_review": "No blocking finding; read-only review, no independently rerun tests",
+    "logs": {
+      "decoder-before.json": {
+        "sha256": "89ca77aa6eb163eeed4fd6d3fdd1114884f13c0aa3ec2b977edc21ea5371d045",
+        "bytes": 11636
+      },
+      "decoder-before.log": {
+        "sha256": "e2c66cfefa1dc5c83923fd1aede6e11550dc97df0fefa3559ba2513bdd84c46e",
+        "bytes": 5547
+      },
+      "decoder-after.json": {
+        "sha256": "4235bdc79a4454af7d69d07795822dfca1d9fce7cadd86e6361915f3646dca96",
+        "bytes": 11657
+      },
+      "decoder-after.log": {
+        "sha256": "d43c834c0db8115b649f4ad5ff7eddb57739575973ec587a8848e5ece9c5c235",
+        "bytes": 531
+      },
+      "replay-tests.log": {
+        "sha256": "74d6b8d5ca41c2884e6700196f3bd892f883b7c38478e68b0fec2e8218e506f9",
+        "bytes": 2036
+      },
+      "fmt.log": {
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "bytes": 0
+      },
+      "clippy.log": {
+        "sha256": "6f0ba8587190b7d126636a828e3b3adf12c8d655111310d011a4731852cf4618",
+        "bytes": 161
+      }
+    }
+  },
+  "upstream_format": {
+    "url": "https://github.com/anza-xyz/agave/blob/v2.3.13/program-runtime/src/stable_log.rs#L34-L44",
+    "locally_inspected_package": "solana-program-runtime 2.3.13",
+    "source": {
+      "sha256": "d832dcfa12118352ac0ab809ae01b1c247a1e5906e89794029b36a05e89eda10",
+      "bytes": 2899
+    },
+    "network_reads_for_this_review": 0
+  },
+  "linux_build": {
+    "source_manifest_sha256": "22ffdfc6464d288de1a2769e73e58d4590a1e24a267e8c2bd3c48dbbf9cadf93",
+    "source_files": 184,
+    "source_snapshot_unchanged": true,
+    "runtime_source_changes": [
+      "services/indexer/src/rpc.rs"
+    ],
+    "rust": "1.90.0",
+    "target": "x86_64-unknown-linux-gnu",
+    "cargo_locked": true,
+    "cargo_offline": true,
+    "build_network": "none",
+    "build_started_at": "2026-10-08T10:03:47.221545086Z",
+    "build_finished_at": "2026-10-08T10:05:55.061729923Z",
+    "exit_code": 0,
+    "oom_killed": false,
+    "glibc_max": "2.34",
+    "no_config_exit": 2,
+    "smoke_network": "none",
+    "smoke_read_only": true,
+    "on_disk_archive_format_changed": false,
+    "verification": {
+      "sha256": "5fb3972b5813a5b84088973ae40f8b6e004f3ef836a5ebc0b52764ea5d11bcf7",
+      "bytes": 2890
+    },
+    "binary": {
+      "sha256": "23bbb73fe88fcb111a1ca090cabe9cb0233693e09c9e2fc0d70b790f3b83b372",
+      "bytes": 11669936
+    },
+    "scope_note": "The isolated writer build uses the earlier 184-file writer snapshot with only rpc.rs replaced; it is not a build of the complete current main tree."
+  },
+  "deployment": {
+    "stop": {
+      "record": {
+        "sha256": "8913240817289b007bda71c04dd20a3317b4cbb37b00ebbab8046ebfb765c8c1",
+        "bytes": 48236
+      },
+      "finished_at_utc": "2026-10-08T10:08:54+00:00",
+      "inactive": true,
+      "remaining_cgroup_pids": 0,
+      "native_exit_zero": null,
+      "native_exit_note": "systemd exit metadata was unavailable after stop; no native exit-zero claim"
+    },
+    "install": {
+      "record": {
+        "sha256": "be8907bf3053f0450bd98a9f419e88847d7fd6963fbff44f5a1d96e52c74c708",
+        "bytes": 9141
+      },
+      "old_binary_sha256": "3893ca8fe2bbdb1275e6d8faea24a918f24192ccd7daa584b6baa8a28a4df2d8",
+      "new_binary_sha256": "23bbb73fe88fcb111a1ca090cabe9cb0233693e09c9e2fc0d70b790f3b83b372",
+      "protected_before_image_preserved": true,
+      "archive_inventory_sha256": "5374d7fbee68db83d9cd42f8d3b02f0d2cc27ea7d6f15e16805246794a4ba0e3"
+    },
+    "start": {
+      "record": {
+        "sha256": "b096366896dbc7e14b36b5c320e0b4412d4199b30cc24a3d34e81e9a73f50fcd",
+        "bytes": 8646
+      },
+      "active": true,
+      "pid": 76113,
+      "invocation_id": "f1ed5df8ee57463ca43f7339cd236c0e",
+      "start_ticks": 6394295,
+      "executable_sha256": "23bbb73fe88fcb111a1ca090cabe9cb0233693e09c9e2fc0d70b790f3b83b372",
+      "cold_validation_or_replay_in_progress": true,
+      "readiness_claimed": false
+    },
+    "other_five_processes_unchanged": true,
+    "full_ordered_financial_rows_sha256": "0a3d787b1957e295a8d8059673f4f398bea5f311893f6309ba9fc99adb917c8c",
+    "financial_cut_unchanged": true,
+    "configuration_changed": false,
+    "new_admission_enabled": false,
+    "automatic_retry": false
+  },
+  "limitations": [
+    "Source tests and the isolated writer build do not establish current hosted CI, fresh public readiness, successful catch-up or admission resume.",
+    "N01 remains active with one reservation and a verified six-micro-USDC charge. This writer correction adds no AUTH, inference, funding, withdrawal or reservation.",
+    "The first TLS failure, original block, old native decoder rejection, capture/restart history and unavailable stop exit metadata remain retained.",
+    "The immutable SDK/native releases and the separate follower executable are unchanged."
+  ],
+  "checkpoint": "2026-10-08; through completed writer-only start receipt, while cold validation/replay remained in progress",
+  "source_freeze": {
+    "sha256": "643f09eb783b762f659fbea4783cd1ec0012ee4751dc15b32cb94fba1c107477",
+    "bytes": 2770
+  },
+  "prior_candidate_evidence": [
+    {
+      "sha256": "4f48f6a3b203ef726a7a18176c54c63d71f6dc40bd09d4f0cb8318a938dcff28",
+      "bytes": 2524
+    },
+    {
+      "sha256": "f7c6324d51cb1c858626fae10f4d8d18acbe109f2420e9614ec5cd42f48a4ce0",
+      "bytes": 6066
+    }
+  ]
+}

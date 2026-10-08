@@ -58,3 +58,23 @@ bytes do not advance its byte counter. [Stable log formatting](https://github.co
 prefixes program-generated text with `Program log: `; that prefixed text is not
 the runtime marker. This fixture demonstrates offline decoding only, not
 live operator recovery, snapshot readiness or a funded lifecycle.
+
+## Application log text regression
+
+`devnet-program-log-control-text.json` preserves the exact public finalized
+Devnet `getBlock` JSON response at slot 508763136 (parent 508763135), fetched
+read-only on 2026-10-08. SHA256:
+`6879724d1772f0fec161b5c2d2cbfd94ce74738eabccb522de8caba68608506d`.
+The response contains 26 complete successful transactions, no RPC URL or
+request credentials. Transaction index 17, log index 9 contains
+`Program log: reveal failed: Protected`. The old decoder mistook that
+application message for a runtime failure frame and rejected the block.
+
+[Agave v2.3.13 stable log formatting](https://github.com/anza-xyz/agave/blob/v2.3.13/program-runtime/src/stable_log.rs#L30-L40)
+places application text in the `Program log: ` namespace, separate from the
+runtime's invocation and completion frames. Ignoring that namespace as stack
+evidence preserves all decoded transactions, instructions and runtime-owned
+events. Synthetic cases also check fake invocation/success/failure/event text,
+unknown Vault/ancestor completion, caught ancestor failures and malformed real
+frames. This is offline decoder evidence; it does not establish deployment,
+catch-up readiness or another funded operation.

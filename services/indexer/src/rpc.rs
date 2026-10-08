@@ -294,6 +294,12 @@ fn decode_transaction(value: &Value) -> Result<Transaction> {
             if line == "Log truncated" {
                 break;
             }
+            // sol_log text has its own namespace and may contain arbitrary
+            // invoke/success/failure-looking words. It is never runtime stack
+            // evidence, even when it names a real program or event payload.
+            if line.starts_with("Program log: ") {
+                continue;
+            }
             if let Some(rest) = line.strip_prefix("Program ") {
                 if let Some((program, depth)) = rest.split_once(" invoke [") {
                     let depth = depth
