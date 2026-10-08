@@ -17,6 +17,7 @@ backend.private_directory(p/'backend')
 node=shutil.which('node')
 assert node, 'pinned Node required in PATH'
 assert subprocess.check_output([node,'--version'],text=True).strip()=='v'+(ROOT/'.node-version').read_text().strip()
+os.environ['ZKAPI_NODE']=node  # Pass the already version-checked executable to Backend.
 args=argparse.Namespace(output=p/'backend',deployment=p/'deployment',program=p/'deployment/zkapi_vault.so',env_file=p/'no-env-file',indexer='http://127.0.0.1:18883',port=19887,pg_port=55496,local_adapter=True,no_build=True,mode='check-local',allow_legacy_devnet_fixtures=True,provider_state=None,public_devnet_profile=None,public_devnet_profile_sha256=None)
 b=backend.Backend(args)
 results=[]
