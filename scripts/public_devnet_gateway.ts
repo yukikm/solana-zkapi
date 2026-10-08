@@ -11,6 +11,7 @@ import {loadPublicDeploymentProfile, publicProfileClientOptions, type LoadedPubl
 import {parseStrictJson,sha256Hex,jcsBytes} from '../packages/sdk/src/trust.ts';
 import {directControlRelay,loadBrowserChatBudget,localForwarder,type BrowserChatDevnetHostConfig,type DirectDemoBudget} from './browser_chat_devnet_host.ts';
 import {startUiHost,type HostOptions,type UiDirectProviderBudget} from './devnet-browser-relay/host.ts';
+import {publicReadiness} from './public_devnet_readiness.ts';
 
 export interface SupplementalGatewayBudget {
   kind:'supplemental-v1'; planPath:string; stateDir:string;
@@ -201,6 +202,8 @@ export async function configuredPublicDevnetGateway(config:PublicDevnetGatewayCo
     allowedBrowserOrigins:[...config.allowedBrowserOrigins],allowNativeRequests:config.allowNativeRequests,
     allowTransactions:config.allowTransactions,allowNewAdmissions:config.allowNewAdmissions,admissionTokenSha256:config.admissionTokenSha256,manifest,
     preparationCommitment:profile.preparationCommitment,controlRelay:control,directBudget:budget.status,
+    readiness:signal=>publicReadiness(bound=>forward(config.controlUrl+'/zkapi/v1/readiness','GET',undefined,{},8192,bound),
+      {deploymentId:manifest.deployment_id,manifestHash:manifest.manifest_hash,tariffHash:model.tariff.tariff_hash},signal),
     rpc:(data,signal)=>forward(config.rpcUrl,'POST',data,{},4*1024*1024,signal),
     ...(config.historyRpcUrl?{historyRpc:(data:Buffer,signal?:AbortSignal)=>forward(config.historyRpcUrl!,'POST',data,{},4*1024*1024,signal)}:{}),
     indexer:(path,signal)=>forward(config.indexerUrl+path,'GET',undefined,{},path.startsWith('/zkapi/v1/tree/snapshots/')?4*1024*1024:65536,signal)};

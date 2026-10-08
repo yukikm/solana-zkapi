@@ -12,6 +12,7 @@ pub mod ledger;
 pub mod provider_runtime;
 pub mod proxy;
 pub mod quote;
+pub mod readiness;
 pub mod receipts;
 pub mod signer;
 pub mod signer_client;

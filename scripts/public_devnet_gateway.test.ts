@@ -14,6 +14,10 @@ import {loadGatewayPublicProfile,validateGatewayProfile,loadSupplementalGatewayB
 import {startUiHost,type HostOptions} from './devnet-browser-relay/host.ts';
 import {localForwarder} from './browser_chat_devnet_host.ts';
 import {preflightPublicDeployment} from '../packages/sdk/src/public-profile.ts';
+import {SolanaWalletChain} from '../packages/sdk/src/wallet-chain.ts';
+import {createSolanaRpcWithFetch} from '../packages/sdk/src/solana.ts';
+import {address,getAddressEncoder,getProgramDerivedAddress} from '@solana/kit';
+import {u32} from '../packages/sdk/src/layout2.ts';
 
 const publicOrigin='https://control.example.com', browserOrigin='https://independent-chat.example.com';
 async function call(base:string,path:string,method='GET',headers:Record<string,string>={},body?:string){
@@ -133,8 +137,70 @@ test('canonical public routes work without UI output and retain no arbitrary pre
   for(const path of ['/zkapi/v1/tree/root','/zkapi/v1/tree/snapshot','/zkapi/v1/tree/snapshots/'+'ab'.repeat(32)+'.json'])assert.equal((await call(h.base,path)).status,200);
   assert.equal((await call(h.base,'/rpc','POST',{'content-type':'application/json'},JSON.stringify({jsonrpc:'2.0',id:1,method:'getGenesisHash',params:[]}))).status,200);
   assert.deepEqual(rpc,['getGenesisHash']);assert.equal(control.length,3);assert.equal(indexer.length,3);
-  for(const path of ['/','/app.js','/control/zkapi/v1/config','/indexer/zkapi/v1/tree/root','/zkapi/v1/tree/notes/7/path','/v1/chat/completions','/zkapi/v1/config?destination=evil','/zkapi/v1/%63onfig'])assert.equal((await call(h.base,path)).status,400);
+  for(const path of ['/','/app.js','/control/zkapi/v1/config','/indexer/zkapi/v1/tree/root','/v1/chat/completions','/zkapi/v1/config?destination=evil','/zkapi/v1/%63onfig'])assert.equal((await call(h.base,path)).status,400);
   assert.equal(control.length,3);assert.equal(indexer.length,3);
+});
+
+test('canonical wallet paths forward only exact u32 GET routes with existing origin and credential guards',async t=>{
+  const forwarded:string[]=[];
+  const h=await host(t,{indexer:async path=>{forwarded.push(path);return{status:200,bytes:Buffer.from(JSON.stringify({path}))};}});
+  for(const id of ['0','7','4294967295'])for(const kind of ['path','zero-path']){
+    const path=`/zkapi/v1/tree/notes/${id}/${kind}`;
+    const r=await call(h.base,path,'GET',{'sec-fetch-mode':'cors'});
+    assert.equal(r.status,200);assert.deepEqual(JSON.parse(r.body),{path});assert.equal(forwarded.at(-1),path);
+  }
+  const path='/zkapi/v1/tree/notes/0/zero-path',count=forwarded.length;
+  for(const bad of ['-1','+1','01','4294967296','99999999999','1.0','1e1','%30'])
+    assert.equal((await call(h.base,`/zkapi/v1/tree/notes/${bad}/zero-path`)).status,400);
+  for(const bad of [path+'?x=1',path+'/',path+'/other',path.replace('zero-path','ZERO-PATH'),'/indexer'+path])
+    assert.equal((await call(h.base,bad)).status,400);
+  for(const headers of [{authorization:'Bearer private'},{cookie:'private'},{'x-zkapi-admission':'A'.repeat(43)},{origin:'https://unreviewed.example.com'}])
+    assert.equal((await call(h.base,path,'GET',headers)).status,400);
+  assert.equal((await call(h.base,path,'POST')).status,400);
+  const cors=await call(h.base,path,'OPTIONS',{origin:browserOrigin,'access-control-request-method':'GET'});
+  assert.equal(cors.status,204);assert.equal(cors.headers['access-control-allow-origin'],browserOrigin);
+  assert.equal(cors.headers['access-control-allow-credentials'],undefined);assert.equal(forwarded.length,count);
+  assert.equal((await call(h.base,path,'GET',{origin:browserOrigin})).status,200);
+  assert.equal(forwarded.length,count+1);
+});
+
+test('SDK wallet deposit snapshot authenticates canonical zero path through public gateway before any financial action',async t=>{
+  const {config,f}=await installedFixture(t),loaded=await loadGatewayPublicProfile(config);
+  const indexerCalls:string[]=[],rpcCalls:string[]=[];
+  const pool=address(f.manifest.pool),program=address(f.manifest.program_id);
+  const derive=(name:string,suffix?:Uint8Array)=>getProgramDerivedAddress({programAddress:program,
+    seeds:[Buffer.from(name),getAddressEncoder().encode(pool),...(suffix?[suffix]:[])]});
+  const [[tree],[note],[pending]]=await Promise.all([derive('tree'),derive('note',u32(0)),derive('pending',u32(0))]);
+  const account=(bytes:Uint8Array,owner:string=program)=>({owner,executable:false,lamports:1,rentEpoch:0,data:[Buffer.from(bytes).toString('base64'),'base64']});
+  const h=await host(t,{manifest:loaded.assets.verifiedManifest,
+    indexer:async path=>{
+      indexerCalls.push(path);assert.ok(['/zkapi/v1/tree/root','/zkapi/v1/tree/notes/0/zero-path'].includes(path));
+      const value=path.endsWith('/root')?f.snapshot.snapshot:{snapshot:f.snapshot.snapshot,note_id:'0',leaf:'0x'+'00'.repeat(32),siblings:Array(32).fill('0x'+'00'.repeat(32))};
+      return{status:200,bytes:Buffer.from(JSON.stringify(value))};
+    },rpc:async bytes=>{
+      const request=JSON.parse(bytes.toString());rpcCalls.push(request.method);
+      assert.ok(['getGenesisHash','getBlock','getMultipleAccounts'].includes(request.method));
+      if(request.method==='getMultipleAccounts'){
+        assert.deepEqual(request.params[0],[pool,tree,note,pending,'SysvarC1ock11111111111111111111111111111111']);
+        assert.equal(request.params[1].commitment,'finalized');
+        return{status:200,bytes:Buffer.from(JSON.stringify({jsonrpc:'2.0',id:request.id,result:{context:{slot:f.state.slot},value:[
+          account(f.poolData),account(f.treeData),null,null,account(f.clock,'Sysvar1111111111111111111111111111111111111')]}}))};
+      }
+      const response=await f.fetcher(publicOrigin+'/rpc',{method:'POST',body:bytes.toString(),credentials:'omit',redirect:'error'});
+      return{status:response.status,bytes:Buffer.from(await response.arrayBuffer())};
+    }});
+  const fetcher:typeof fetch=async(input,init)=>{
+    const url=new URL(String(input));assert.equal(url.origin,publicOrigin);
+    const result=await call(h.base,url.pathname,init?.method??'GET',{'sec-fetch-mode':'cors',...(init?.body?{'content-type':'application/json'}:{})},init?.body?String(init.body):undefined);
+    return new Response(result.body,{status:result.status});
+  };
+  const chain=new SolanaWalletChain(createSolanaRpcWithFetch(publicOrigin+'/rpc',fetcher),loaded.assets.verifiedManifest,publicOrigin,{fetch:fetcher});
+  const snapshot=await chain.snapshot();
+  assert.deepEqual(indexerCalls,['/zkapi/v1/tree/root','/zkapi/v1/tree/notes/0/zero-path']);
+  assert.equal(snapshot.nextNoteId,0);assert.equal(snapshot.slot,f.state.slot);assert.equal(snapshot.paused,false);
+  assert.equal(snapshot.siblings.length,32);assert.equal(snapshot.note,undefined);
+  assert.equal(rpcCalls.filter(v=>v==='getMultipleAccounts').length,1);
+  assert.equal(rpcCalls.filter(v=>v==='getBlock').length,2);
 });
 
 test('CORS explicitly allows reviewed browser origin, methods and headers without credentials or financial work',async t=>{
@@ -320,4 +386,26 @@ test('detached gateway rejects live aggregate, historical receipt and changed de
   const budget=await loadSupplementalGatewayBudget(f.config,f.loaded,oldReceipt);
   await assert.rejects(budget.reserve('12345678-1234-4123-8123-123456789012','ee'.repeat(32)));
   await assert.rejects(loadGatewayPublicProfile({...f.config,budget:{...f.selection,planPath:'/legacy/plan.json'} as any}));
+});
+
+test('readiness is a credential-free exact GET with reviewed CORS and leaves relay configuration scope unchanged',async t=>{
+  let samples=0,other=0;
+  const h=await host(t,{readiness:async signal=>{assert.ok(signal);samples++;return{status:503,bytes:Buffer.from('{"scope":"read_only_capabilities","signer":"unavailable"}')};},
+    controlRelay:async()=>{other++;throw Error('must not forward');},rpc:async()=>{other++;throw Error('must not forward');}});
+  for(const path of ['/zkapi/v1/readiness?x=1','/zkapi/v1/readiness/','/readiness'])assert.equal((await call(h.base,path)).status,400);
+  for(const headers of [{authorization:'Bearer private'},{cookie:'private'},{'x-zkapi-admission':'A'.repeat(43)},
+    {'x-api-key':'private'},{origin:'https://unreviewed.example.com'}])assert.equal((await call(h.base,'/zkapi/v1/readiness','GET',headers)).status,400);
+  assert.equal((await call(h.base,'/zkapi/v1/readiness','POST')).status,400);
+  assert.equal((await call(h.base,'/zkapi/v1/readiness','GET',{'content-length':'1'},'x')).status,400);
+  assert.equal(samples,0);assert.equal(other,0);
+  const preflight=await call(h.base,'/zkapi/v1/readiness','OPTIONS',{origin:browserOrigin,'access-control-request-method':'GET'});
+  assert.equal(preflight.status,204);assert.equal(preflight.headers['access-control-allow-origin'],browserOrigin);
+  assert.equal(preflight.headers['access-control-allow-credentials'],undefined);assert.equal(samples,0);
+  for(const headers of [{origin:browserOrigin},{'sec-fetch-mode':'cors'}]){
+    const result=await call(h.base,'/zkapi/v1/readiness','GET',headers);assert.equal(result.status,503);assert.equal(JSON.parse(result.body).signer,'unavailable');
+    assert.equal(result.headers['cache-control'],'no-store');
+  }
+  assert.equal(samples,2);assert.equal(other,0);
+  const status=JSON.parse((await call(h.base,'/relay-status')).body);
+  assert.equal(status.scope,'relay_configuration_only');assert.equal(status.readiness,'not_checked');assert.equal(status.signer,'not_checked');assert.equal(samples,2);
 });

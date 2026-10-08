@@ -1,0 +1,1280 @@
+{
+  "schema": 1,
+  "scope": "Installed follower and local/public read-only readiness, distinct-origin Chrome preflight/worker, installed native preflight; admission and funded acceptance remain separate",
+  "draft_not_frozen": false,
+  "records": {
+    "follower_stop": {
+      "path": "helius-migration-20261008/31-host-result.json",
+      "sha256": "23151003ce98e528a97ea4935810bce298eacdba51ee2643ff4842934af2c04a",
+      "bytes": 11190
+    },
+    "follower_install": {
+      "path": "helius-migration-20261008/32-host-result.json",
+      "sha256": "239f618199a84e8d6d8004c53159158560781751794310169d56c045e774d4bd",
+      "bytes": 7959
+    },
+    "follower_start": {
+      "path": "helius-migration-20261008/33-host-result.json",
+      "sha256": "e600b66b918439487f7fb9a94899729714596c5dae65d7649ec0b256bc8c2db8",
+      "bytes": 8610
+    },
+    "earlier_initial_replay_observation": {
+      "path": "helius-migration-20261008/34-04-host-result.json",
+      "sha256": "de7600f2d53f64b9f19e2268464a40faf6287a6c23155ea402651e150f974b9f",
+      "bytes": 5142
+    },
+    "initial_replay_observation": {
+      "path": "helius-migration-20261008/34-05-host-result.json",
+      "sha256": "cd28b324ce311579529bb3e8f47d7684debe9d30b2aedf70f01b7400e88a01e8",
+      "bytes": 5141
+    },
+    "first_bounded_follower_ready_observation": {
+      "path": "helius-migration-20261008/34-06-host-result.json",
+      "sha256": "345521eca9e128fe831eac1887cd0814f7a511564dbe095bbfe8224dc733c8c5",
+      "bytes": 8121
+    },
+    "gateway_origin_install": {
+      "path": "PD04-independent-origin-prepared-01/gateway-origin-update-01/executable-01/host-result.json",
+      "sha256": "dd76aa536ddd44527f1ba9a3ecc19a17eaf4249d4404e2ec412fa375516983cd",
+      "bytes": 6328
+    },
+    "v5_source_install": {
+      "path": "H04-v5-source-transfer/installation-verification.json",
+      "sha256": "0bf9b7c0effe24cf405220bcde4e9d4abd3d831c313e7f85981994771a50890a",
+      "bytes": 1241
+    },
+    "cloudformation_complete": {
+      "path": "PD04-independent-origin-prepared-01/drivers-01/cf-execute-root-01/04-stack.json",
+      "sha256": "65114d69a5999dda9a5ccbfda8f467ffcebac855858620bf87b49c26ed0dfda5",
+      "bytes": 4160
+    },
+    "independent_distribution": {
+      "path": "PD04-independent-origin-prepared-01/drivers-01/cf-execute-root-01/05-new-distribution.json",
+      "sha256": "82df63236b0a5740b274086791d26cb0dfd978fd419f0cb7b7ff0d5d8581324f",
+      "bytes": 4759
+    },
+    "bucket_policy": {
+      "path": "PD04-independent-origin-prepared-01/drivers-01/cf-execute-root-01/06-bucket-policy.json",
+      "sha256": "1f59c1fbb867f5375c836e487ebe9411cfc7783302db24d61393149c754e2496",
+      "bytes": 912
+    },
+    "deployed_template_source": {
+      "path": "PD04-independent-origin-prepared-01/template.json",
+      "sha256": "60ba2b14c2d6f9ab46fdbb34a305d3679c3278cfa017a805f17ad76601d9aff8",
+      "bytes": 30308
+    },
+    "submitted_template_request": {
+      "path": "PD04-independent-origin-prepared-01/create-change-set-request.json",
+      "sha256": "d57b2e9b2217b4252fd7fd6299e1eec1a647856676a0ab4a5d49e568f4fb4428",
+      "bytes": 33858
+    },
+    "static_upload": {
+      "path": "PD04-independent-origin-prepared-01/drivers-02/public-upload-02/completed.json",
+      "sha256": "a66a705634dd6a74a4a1235a95f0d914dcde448cc02fb78491c1e09bc1e60265",
+      "bytes": 1293
+    },
+    "anonymous_https": {
+      "path": "PD04-independent-origin-prepared-01/anonymous-verify-01/anonymous-01/completed.json",
+      "sha256": "9b4f74308b11423a71892922e1edc2e45d4fd566f29b8b5b6b71e4fcb070a3db",
+      "bytes": 6086
+    },
+    "page_build": {
+      "path": "PD04-independent-origin-prepared-01/page-build-result-v4.json",
+      "sha256": "76b56c6c515402ce6e0d02572388f376ede1290ffa52b6c78fc4bd14cf650368",
+      "bytes": 27861
+    },
+    "static_preparation_inputs": {
+      "path": "PD04-independent-origin-prepared-01/source-freeze.json",
+      "sha256": "f206b05a9d251159e295387912e994d73aee2e9bf68b3dc7118d17bfa19d16b7",
+      "bytes": 4547
+    },
+    "pre_independent_origin_template": {
+      "path": "storage-headroom-20261008/03-data40-template.json",
+      "sha256": "2cdb301d488377e3aef549d6bc73d31de552d30437994099e4b4646b89f46ace",
+      "bytes": 27183
+    },
+    "control_start_after_follower_update": {
+      "path": "helius-migration-20261008/35-host-result.json",
+      "sha256": "49495210e2c04df4504f9d43a960dd1ccc4aea83a7554305e14fe816bdba141b",
+      "bytes": 3865
+    },
+    "original_challenger_unit_restore": {
+      "path": "helius-migration-20261008/36-host-result.json",
+      "sha256": "9a9248062b6f1735797876682327fba9e43967f6d2b5717e8bfcff4f4343da27",
+      "bytes": 5828
+    },
+    "blocked_gateway_preaction_attempt": {
+      "path": "helius-migration-20261008/37-result.json",
+      "sha256": "80e095705a9bd186232d195d9c556746638dad7a9d8cd5641fa6946d879ee9a2",
+      "bytes": 950
+    },
+    "twelve_bounded_follower_root_samples": {
+      "path": "helius-migration-20261008/40-host-result.json",
+      "sha256": "19f4cad4e6a154fcf374d2d92fec51b37882b01a51dd546d58f5bfeed1546f52",
+      "bytes": 11298
+    },
+    "gateway_prestart_readonly_diagnosis": {
+      "path": "helius-migration-20261008/42b-host-result.json",
+      "sha256": "7d636f287689936f5bd0175dbf7ea985a611ce405341e0b42826839b3ea8ee2f",
+      "bytes": 4304
+    },
+    "explicit_gateway_start_continuation": {
+      "path": "helius-migration-20261008/37b-host-result.json",
+      "sha256": "53aadcd2157ce7da3f1ecd31cc8db150ba1e9429bb6942da3246201d321ac219",
+      "bytes": 3639
+    },
+    "local_six_service_idle_readiness": {
+      "path": "helius-migration-20261008/38-host-result.json",
+      "sha256": "abff7e6f71ca1d1194a35f564559ee3bbb64f1dc702fb83a869651e1d2debd6e",
+      "bytes": 5761
+    },
+    "root_source_template_promotion": {
+      "path": "current-runtime-followup-prepared-01/root-template-promotion.json",
+      "sha256": "4c3066f0ad47e281f1a84afd131d8674becb0b4458d639f758bad952e63f519c",
+      "bytes": 554
+    },
+    "public_gateway_local_comparison": {
+      "path": "helius-migration-20261008/39-host-result.json",
+      "sha256": "3067183f633aebc132a34561f560c1666b16723f5b6194cdf0f72af701ffd316",
+      "bytes": 5316
+    },
+    "independent_browser_visible_result": {
+      "path": "PD04-independent-origin-prepared-01/browser-actual-01/visible-result.json",
+      "sha256": "e2997da59dda9d7b4870b23d2a9d2ae7f3b753c77f71f4b74c0ee291e5187d19",
+      "bytes": 1647
+    },
+    "independent_browser_visible_dom": {
+      "path": "PD04-independent-origin-prepared-01/browser-actual-01/page-dom.txt",
+      "sha256": "c59ae7d9670b69b3c9c3a43311cc01784358c76cfe596a0bdb0ec04bfb747cdb",
+      "bytes": 2377
+    },
+    "independent_browser_screenshot": {
+      "path": "PD04-independent-origin-prepared-01/browser-actual-01/result.jpg",
+      "sha256": "d8037cb3380eb459382cbc1bc226c08974089db9490058a98765b639939fbde5",
+      "bytes": 128071
+    },
+    "installed_native_readonly_preflight": {
+      "path": "H03-initial-execution-v6-prepared/preflight.json",
+      "sha256": "7646ef1d64c364bce0d0a3b23b7ae645c62bc65ac121a16f8c1487ce157556c0",
+      "bytes": 1105
+    },
+    "installed_native_preflight_stderr": {
+      "path": "H03-initial-execution-v6-prepared/preflight.json.stderr",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "installed_native_preflight_runner": {
+      "path": "H03-operations-v6/02-preflight-local.py",
+      "sha256": "bb75b1fad16f75c8eba54c1f34d85ca5c8323797a927b5b5f9e89ed66b018bc2",
+      "bytes": 2813
+    },
+    "installed_native_release_manifest": {
+      "path": "public-native-install/zkapi-clientd-0.2.0-devnet.2-darwin-arm64/release.json",
+      "sha256": "0b5733718f51eabcf4ca57f2406eb36bab641e23d642aac2436ca0e3090572ca",
+      "bytes": 1134135
+    },
+    "v6_failed_readonly_collector": {
+      "path": "H03-initial-execution-v6-prepared/collector-result.json",
+      "sha256": "8be9eeb4542f60b9b8b07a5658dda7c301adb4001b5a6302a06cf4d0639846d1",
+      "bytes": 977
+    },
+    "v6_collector_retained_diagnostic": {
+      "path": "H03-initial-execution-v6-prepared/collector-diagnostic-01/result.json",
+      "sha256": "e1cb5b35cb0ce4c5057180edf628bc6100a91c2d42aa4be69737a83a977afe55",
+      "bytes": 1699
+    },
+    "v6_collector_path_diagnostic": {
+      "path": "H03-initial-execution-v6-prepared/path-diagnostic-01/host-result.json",
+      "sha256": "202586191396d9f60ebe16a274193da0e8b2406859ccdc53c0fb802faef8afba",
+      "bytes": 4030
+    },
+    "v6_sources_actual_installation": {
+      "path": "H04-v6-source-transfer/installation-verification.json",
+      "sha256": "48ea5e756e664ab243302e94b7b703717be1be066f265a045ad837f2b42a6895",
+      "bytes": 1241
+    },
+    "complete_native_file_integrity": {
+      "path": "native-live-acceptance/execution-prepared-r2/evidence/before-funding-runtime-integrity-01.json",
+      "sha256": "cc7e36b6a81170f328c95560905383ead1803b5481f10571ae8a86a8c851286f",
+      "bytes": 468
+    }
+  },
+  "follower": {
+    "old_binary_sha256": "7b2a41955e8a280a74235611388225a1b459b8bea73dfc2a4cd0b5ca955afce8",
+    "new_binary_sha256": "8237fdbcbb671eb9956e8b11ab470df21ae227cf9ba6dc862ad66e879aee1216",
+    "bytes": 12709360,
+    "source_manifest_sha256": "8f1219ebd7559b1e75c6be87fa0ea77fbb50c6ce523725e247fa58fae91659ea",
+    "build_verification_sha256": "604bd17efe3ea3f343b4af385fa4de130b2efef81592c991ebd25cc9a4b82638",
+    "stop_finished_at": "2026-10-08T04:28:54.337929+00:00",
+    "native_stop_exit_zero": true,
+    "install_finished_at": "2026-10-08T04:30:03.904642+00:00",
+    "start_finished_at": "2026-10-08T04:35:40.864652+00:00",
+    "original_start_slot": 508520236,
+    "uid": 990,
+    "gid": 990,
+    "capabilities_zero": true,
+    "no_new_privileges": true,
+    "seccomp_active": true,
+    "private_mount_namespace": true,
+    "private_source_and_proc_hidden": true,
+    "configuration_changed": false,
+    "writer_and_other_processes_unchanged": true,
+    "old_snapshots_preserved": true
+  },
+  "independent_static_origin": {
+    "origin": "https://d30nr98svcwdoe.cloudfront.net",
+    "distribution_id": "E2NJ6KOTSQGG11",
+    "distribution_status": "Deployed",
+    "stack_status": "UPDATE_COMPLETE",
+    "new_static_files": 5,
+    "new_static_bytes": 758846,
+    "anonymous_gets": 9,
+    "exact_file_responses": 7,
+    "denied_paths": 2,
+    "checks": [
+      {
+        "path": "/releases/public-devnet-20261008-a/pd04-check-v1/LICENSE.txt",
+        "expect": "exact",
+        "status": 200,
+        "response_sha256": "71afea996cef8ff3d3ef4f84705180bb0b124c1c21a16e89fddacd3b482d4fa7",
+        "response_bytes": 1097,
+        "finished_at": "2026-10-08T04:17:38.865Z"
+      },
+      {
+        "path": "/releases/public-devnet-20261008-a/pd04-check-v1/index.html",
+        "expect": "exact",
+        "status": 200,
+        "response_sha256": "9f0b665b7b016cecddaaca79fdc67f1c63d9c0f3459fd420d30d079a4551d9a4",
+        "response_bytes": 1427,
+        "finished_at": "2026-10-08T04:17:39.488Z"
+      },
+      {
+        "path": "/releases/public-devnet-20261008-a/pd04-check-v1/main.js",
+        "expect": "exact",
+        "status": 200,
+        "response_sha256": "2d7550d931b84fad2dd9a20efd73a47a8ee77ef0519d8e5467560a19e943d5fe",
+        "response_bytes": 751895,
+        "finished_at": "2026-10-08T04:17:40.768Z"
+      },
+      {
+        "path": "/releases/public-devnet-20261008-a/pd04-check-v1/style.css",
+        "expect": "exact",
+        "status": 200,
+        "response_sha256": "3c436d3f543d54c382cc9148478c4cab92197ec46c2b580c73a0633ad7da271c",
+        "response_bytes": 340,
+        "finished_at": "2026-10-08T04:17:41.350Z"
+      },
+      {
+        "path": "/releases/public-devnet-20261008-a/pd04-check-v1/worker.js",
+        "expect": "exact",
+        "status": 200,
+        "response_sha256": "547cd525fc9e75398ac69377d06e3ddcc9d70be31404a94e9fe8ae12f815edcd",
+        "response_bytes": 4087,
+        "finished_at": "2026-10-08T04:17:41.924Z"
+      },
+      {
+        "path": "/releases/public-devnet-20261008-a/chat-en-r2/index.html",
+        "expect": "exact",
+        "status": 200,
+        "response_sha256": "982ccc1e5160dd369ded940e53e555da200a1ee6eba1953725231947a0328e81",
+        "response_bytes": 1382,
+        "finished_at": "2026-10-08T04:17:42.499Z"
+      },
+      {
+        "path": "/releases/public-devnet-20261008-a/chat-en-r2/THIRD-PARTY-NOTICES.txt",
+        "expect": "exact",
+        "status": 200,
+        "response_sha256": "8b505488b901f1edf0063d2d5482010be4c17a39fb0b50db479278be042d012b",
+        "response_bytes": 247813,
+        "finished_at": "2026-10-08T04:17:43.622Z"
+      },
+      {
+        "path": "/releases/public-devnet-20261008-a/profile.json",
+        "expect": "denied",
+        "status": 403,
+        "response_sha256": "a824bc7739e226e1b40ea0f8c4e4f4c6f796fc3b4abfa6e9abe3bd119a30d938",
+        "response_bytes": 111,
+        "finished_at": "2026-10-08T04:17:44.286Z"
+      },
+      {
+        "path": "/rpc",
+        "expect": "denied",
+        "status": 403,
+        "response_sha256": "a824bc7739e226e1b40ea0f8c4e4f4c6f796fc3b4abfa6e9abe3bd119a30d938",
+        "response_bytes": 111,
+        "finished_at": "2026-10-08T04:17:44.869Z"
+      }
+    ],
+    "browser_execution_verified": true,
+    "worker_execution_verified": true,
+    "CORS_acceptance_verified": true,
+    "public_preflight_verified": true,
+    "gateway_allowlist_install": {
+      "finished_at": "2026-10-08T04:38:41.316163+00:00",
+      "gateway_before_sha256": "2a2795bce3a841569072d74d1dc6a0991786fe14dcd07dbb64ef60731b41bffd",
+      "gateway_after_sha256": "02ca9c4b4ba6bec06b682570b13490c8337630d7b1e50150a75d3e3e2326f5cb",
+      "new_origin": "https://d30nr98svcwdoe.cloudfront.net",
+      "service_actions": 0,
+      "admission_false": true
+    },
+    "CORS_scope": "Observed read-only profile/assets/control/snapshot/RPC requests only; no AUTH, provider or settlement CORS claim"
+  },
+  "deployed_template": {
+    "source_path": "PD04-independent-origin-prepared-01/template.json",
+    "source_sha256": "60ba2b14c2d6f9ab46fdbb34a305d3679c3278cfa017a805f17ad76601d9aff8",
+    "data_volume_gib": 40,
+    "adds_independent_browser_distribution": true,
+    "tracked_base_path": "deploy/public-devnet/aws-budget-host.json",
+    "tracked_base_sha256": "c49a35cb497d653f9035b1e4cb9a9c179c93d4562daee05bc4da30c0f57d4391",
+    "tracked_base_includes_new_distribution": true,
+    "tracked_base_additional_differences": [
+      "Metadata.DeploymentAuthorization",
+      "Metadata.NatBootstrap",
+      "Outputs.Readiness.Value",
+      "Parameters.AmiId.Description",
+      "NatInstance.Properties.UserData.Fn::Base64"
+    ],
+    "pre_origin_baseline_sha256": "2cdb301d488377e3aef549d6bc73d31de552d30437994099e4b4646b89f46ace",
+    "new_resources_from_baseline": [
+      "IndependentBrowserDistribution"
+    ],
+    "changed_existing_resources_from_baseline": [
+      "ArtifactPolicy"
+    ],
+    "future_stack_update_requires_deployed_template_reconciliation": true
+  },
+  "operational_helper_install": {
+    "version": 5,
+    "source_manifest_sha256": "652cd548286421597634fe568f692ef297533eb172df5ec5021f170b1c0107a2",
+    "files": [
+      {
+        "name": "same_state_rpc_v5.py",
+        "sha256": "c16666f37cecce1efb62c5a3aa79bae8e35e353c1d286591eb7dadfb714ea3e0",
+        "bytes": 73222,
+        "mode": "0700"
+      },
+      {
+        "name": "admission_transition_rpc_v5.py",
+        "sha256": "f85a5fcd2b1ee0c5ea534f9c1786385e759ae2e69d8429dc5b1ff66def9f35b2",
+        "bytes": 20297,
+        "mode": "0700"
+      },
+      {
+        "name": "collect_admission_inputs_rpc_v5.py",
+        "sha256": "e757700cf6a3647788edf0016457aa1f8d3b8067484833e3b4800657e40671e3",
+        "bytes": 7167,
+        "mode": "0700"
+      },
+      {
+        "name": "H03-post-n01-readonly-v5.py",
+        "sha256": "c7cbbcded555bce13b1d5be52b21006de5d3c9eb8d5410b1d0af853045ec6d60",
+        "bytes": 9754,
+        "mode": "0700"
+      }
+    ],
+    "sources_imported_or_executed": false,
+    "runtime_state_touched": false,
+    "all_prior_sources_and_migration_receipts_unchanged": true,
+    "service_actions": 0,
+    "admission_actions": 0,
+    "financial_actions": 0
+  },
+  "initial_replay_observation": {
+    "observed_at": "2026-10-08T04:58:49.295420+00:00",
+    "finished_at": "2026-10-08T04:59:29.582998+00:00",
+    "archive": {
+      "blocks": 181964,
+      "chunks": 3877,
+      "tail_slot": 508703663,
+      "advanced_blocks_since_rpc_migration_stop": 110849,
+      "advanced_blocks_since_decoder_stop": 87505
+    },
+    "challenger_health": {
+      "ready": true,
+      "observed_at": 1791435527,
+      "age_seconds": 2,
+      "metrics": {
+        "finalized_slot": 508703663,
+        "finalized_lag_seconds": 0,
+        "pending_jobs": 0,
+        "unknown_signatures": 0
+      }
+    },
+    "local_http": {
+      "root": {
+        "status": 503,
+        "elapsed_seconds": 20.01
+      },
+      "snapshot": {
+        "status": 503,
+        "elapsed_seconds": 20.002
+      }
+    },
+    "admission_false": true,
+    "scope": "Writer health and two indexer HTTP samples only; fresh follower initial replay not complete at this cut"
+  },
+  "conservation": {
+    "reservations": 0,
+    "reservations_sha256": "9e72b378b53cbd7dd474c7c14eb340a564f3f88120283acef2a3be6cdaaf47fe",
+    "database_counts": {
+      "pools": 1,
+      "sessions": 0,
+      "operations": 0,
+      "dispatch_attempts": 0,
+      "chain_transactions": 0,
+      "outbox": 0,
+      "settlements": 0,
+      "clearances": 0,
+      "nullifier_reservations": 0
+    },
+    "admission_enabled": false,
+    "inference_or_funding_in_this_update": false
+  },
+  "first_bounded_follower_ready_observation": {
+    "observed_at": "2026-10-08T05:09:44.564926+00:00",
+    "finished_at": "2026-10-08T05:09:48.521951+00:00",
+    "archive": {
+      "blocks": 184709,
+      "chunks": 4320,
+      "tail_slot": 508706420,
+      "advanced_blocks_since_rpc_migration_stop": 113594,
+      "advanced_blocks_since_decoder_stop": 90250
+    },
+    "challenger_health": {
+      "ready": true,
+      "observed_at": 1791436184,
+      "age_seconds": 0,
+      "metrics": {
+        "finalized_slot": 508706420,
+        "finalized_lag_seconds": 1,
+        "pending_jobs": 0,
+        "unknown_signatures": 0
+      }
+    },
+    "local_http": {
+      "root": {
+        "status": 200,
+        "bytes": 243,
+        "sha256": "bc93ac263e216de26548f46023486e86fa5ea7500600b5d4da20671d664e9a71",
+        "elapsed_seconds": 3.667
+      },
+      "snapshot": {
+        "status": 200,
+        "bytes": 480,
+        "sha256": "3fd3b35166ee7b28dce4908b0e91f0fa8c5fdb84a26e0bef28cf46f45a5f75b0",
+        "elapsed_seconds": 0.004
+      }
+    },
+    "admission_false": true,
+    "scope": "One bounded pair of HTTP200 responses; not six-service, browser or SDK acceptance"
+  },
+  "current_readiness": {
+    "observed_at": "2026-10-08T05:22:29.612490+00:00",
+    "scope": "Read-only local six-service idle readiness after private RPC migration; independent public installed preflight and admission remain separate",
+    "all_six_services_active": true,
+    "ready_cut": {
+      "root_slot": "508709609",
+      "snapshot_slot": "508709609",
+      "snapshot_sha256": "455beae19024fa36c38817483d74d3e27c3859c2fd09bdc8dd3eaf9986d76b23",
+      "active_notes": 0,
+      "pending_withdrawals": 0,
+      "challenger_health_age_seconds": 1,
+      "challenger_finalized_slot": 508709612,
+      "challenger_lag_seconds": 1,
+      "signer_reconciled": true,
+      "independent_chain_clock_authentication": "Separate installed SDK preflight"
+    },
+    "archive": {
+      "blocks": 187885,
+      "chunks": 4840,
+      "tail_slot": 508709612
+    },
+    "reservations": 0,
+    "database_counts": {
+      "pools": 1,
+      "sessions": 0,
+      "operations": 0,
+      "dispatch_attempts": 0,
+      "chain_transactions": 0,
+      "outbox": 0,
+      "settlements": 0,
+      "clearances": 0,
+      "nullifier_reservations": 0
+    },
+    "admission_false": true,
+    "service_actions": 0,
+    "external_rpc_probe_requests": 0,
+    "financial_actions": 0,
+    "independent_chain_authentication_verified": false,
+    "peak_or_monthly_capacity_claim": false
+  },
+  "installed_sdk_preflight": {
+    "scope": "Root-executed installed public native consumer CLI preflight; read-only direct HTTPS; retained historical cut, not an admission review",
+    "result": {
+      "installationTransport": "direct_https",
+      "preflight": {
+        "profileId": "zkapi-public-devnet-20261008-a",
+        "profileSha256": "5e868f8e57ef06961b73ba8cb755635e81d4bb168dd6ad498152496ac1b02d14",
+        "deploymentId": "public-devnet-20261008-a",
+        "pool": "Cx8DbA49UCuASoc3goLCU9ro25eWVtcGMbvfPPJsSQzV",
+        "manifestHash": "b97e200769be24448a51999346a28d0ca497892d68212f517b2b9bb4cc1a4643",
+        "slot": "508710203",
+        "paused": false,
+        "chainAllowsNewOperations": true,
+        "operatorAdmission": "unverified",
+        "models": [
+          "openai/gpt-4o-mini"
+        ],
+        "snapshot": {
+          "root": "0x2bb43759c24665d98a33afa8d5094817d359d5e4c72a45b45a2a563176d37933",
+          "slot": 508710203,
+          "sequence": "0",
+          "nextNoteId": 0,
+          "clock": "1791437087",
+          "paused": false,
+          "sourceSlot": 508710188,
+          "pendingCount": 0,
+          "activeCount": 0
+        },
+        "checks": [
+          "profile",
+          "assets",
+          "manifest",
+          "tariffs",
+          "genesis",
+          "finalized_pool",
+          "control_config",
+          "catalog",
+          "shared_snapshot",
+          "chain_clock"
+        ]
+      }
+    },
+    "stderr_bytes": 0,
+    "release_manifest_sha256": "0b5733718f51eabcf4ca57f2406eb36bab641e23d642aac2436ca0e3090572ca",
+    "execution_guard_scope": "Pinned release manifest plus actual Node, consumer CLI and complete installed JavaScript dependency tree before CLI imports",
+    "execution_guard_selected_files": 5990,
+    "whole_native_release_files_rehashed_claim_for_this_preflight": false,
+    "clientd_or_prover_invoked": false,
+    "custody_opened": false,
+    "auth_requests": 0,
+    "inference_requests": 0,
+    "funding_or_transactions": 0,
+    "operator_admission_verified": false,
+    "allows_reusing_expired_preflight_for_admission": false
+  },
+  "browser_acceptance": {
+    "scope": "Actual Chrome from a distinct public origin: authenticated read-only preflight and synthetic worker/WASM reconstruction",
+    "visible_result": {
+      "schema": 1,
+      "scope": "Real browser public preflight and offline WASM snapshot reconstruction",
+      "app_origin": "https://d30nr98svcwdoe.cloudfront.net",
+      "api_origin": "https://d366buuvadnp3.cloudfront.net",
+      "started_at": "2026-10-08T05:23:00.573Z",
+      "profile_sha256": "5e868f8e57ef06961b73ba8cb755635e81d4bb168dd6ad498152496ac1b02d14",
+      "passed": true,
+      "worker_check": {
+        "passed": true,
+        "wasm_sha256": "c06a247e1ff88f1ac415ea127bcf49d486b5b4954715cdf00f133b5ac71c1f30",
+        "valid_reconstruction": true,
+        "invalid_root_rejected": true,
+        "usable_after_rejection": true,
+        "fixture": "Public existing layout2/a.json projection; synthetic offline math, no live account or generated proof claim"
+      },
+      "preflight": {
+        "passed": true,
+        "profileSha256": "5e868f8e57ef06961b73ba8cb755635e81d4bb168dd6ad498152496ac1b02d14",
+        "manifestHash": "b97e200769be24448a51999346a28d0ca497892d68212f517b2b9bb4cc1a4643",
+        "pool": "Cx8DbA49UCuASoc3goLCU9ro25eWVtcGMbvfPPJsSQzV",
+        "slot": "508709869",
+        "checks": [
+          "profile",
+          "assets",
+          "manifest",
+          "tariffs",
+          "genesis",
+          "finalized_pool",
+          "control_config",
+          "catalog",
+          "shared_snapshot",
+          "chain_clock"
+        ],
+        "chainAllowsNewOperations": true,
+        "operatorAdmission": "unverified"
+      },
+      "financial_actions": 0,
+      "custody_opened": false,
+      "invitation_used": false,
+      "finished_at": "2026-10-08T05:23:29.103Z",
+      "read_requests": {
+        "asset_get": 27,
+        "control_get": 2,
+        "snapshot_get": 2,
+        "rpc_read": 6
+      },
+      "status": "Checks passed. This does not establish funded or provider acceptance."
+    },
+    "visible_dom_json_exactly_matches_saved_result": true,
+    "screenshot_visually_reviewed_without_secrets_or_wallet_ui": true,
+    "published_sdk_tarball_sha256": "fe9917b7f11e4bec0837bc7aac7624ad2965aa9bca007d61b877f263620143dc",
+    "generated_proof_claim": false,
+    "funded_lifecycle_claim": false,
+    "provider_cors_claim": false,
+    "auth_or_inference_packet_trace_claim": false,
+    "read_request_counts_scope": "Application instrumented read-only fetch counts, not a packet capture"
+  },
+  "funded_acceptance": null,
+  "full_hosted_ci_claim": false,
+  "subsequent_service_steps": {
+    "control_started_at": "2026-10-08T05:10:43.567990+00:00",
+    "control_acceptance_not_claimed": true,
+    "original_challenger_unit_restored_at": "2026-10-08T05:11:57.492180+00:00",
+    "unit_sha256": "86d14785b3019bcba6c58d3335292077f14336161e70ec4b393ed1810317292b",
+    "unit_restore_started_or_restarted_services": false,
+    "first_gateway_attempt": {
+      "status": "Failed",
+      "response_code": 1,
+      "started_at": "2026-10-08T05:13:03.907Z",
+      "finished_at": "2026-10-08T05:13:03.907Z",
+      "root_reviewed_scope": "Writer ready guard refused before gateway start; failed observation retained",
+      "gateway_start_not_claimed": true
+    },
+    "admission_false": true
+  },
+  "bounded_follower_root_sampling": {
+    "started_at": "2026-10-08T05:14:13.190065+00:00",
+    "finished_at": "2026-10-08T05:15:02.769925+00:00",
+    "status_counts": {
+      "200": 12
+    },
+    "shape_validated_samples": 12,
+    "observations": [
+      {
+        "ordinal": 1,
+        "started_at": "2026-10-08T05:14:13.193117+00:00",
+        "finished_at": "2026-10-08T05:14:13.201149+00:00",
+        "status": 200,
+        "bytes": 243,
+        "sha256": "c941e637ba6ab5cbf61e1c7ed55a7e35e9fe7c2b56f5971b0bb820b36a143153",
+        "root": {
+          "slot": "508707525",
+          "sequence": "0",
+          "next_note_id": "0"
+        },
+        "shape_validated_only": true,
+        "elapsed_seconds": 0.008,
+        "writer_before": {
+          "ready": true,
+          "age_seconds": 2,
+          "finalized_slot": 508707531,
+          "lag_seconds": 1,
+          "pending_jobs": 0,
+          "unknown_signatures": 0
+        },
+        "writer_after": {
+          "ready": true,
+          "age_seconds": 2,
+          "finalized_slot": 508707531,
+          "lag_seconds": 1,
+          "pending_jobs": 0,
+          "unknown_signatures": 0
+        }
+      },
+      {
+        "ordinal": 2,
+        "started_at": "2026-10-08T05:14:14.205164+00:00",
+        "finished_at": "2026-10-08T05:14:21.636490+00:00",
+        "status": 200,
+        "bytes": 243,
+        "sha256": "22f6faacc81f1b9e988a091939c5ba1af714ca49e3c15257e275950e3221657d",
+        "root": {
+          "slot": "508707556",
+          "sequence": "0",
+          "next_note_id": "0"
+        },
+        "shape_validated_only": true,
+        "elapsed_seconds": 7.431,
+        "writer_before": {
+          "ready": true,
+          "age_seconds": 1,
+          "finalized_slot": 508707543,
+          "lag_seconds": 0,
+          "pending_jobs": 0,
+          "unknown_signatures": 0
+        },
+        "writer_after": {
+          "ready": true,
+          "age_seconds": 2,
+          "finalized_slot": 508707565,
+          "lag_seconds": 1,
+          "pending_jobs": 0,
+          "unknown_signatures": 0
+        }
+      },
+      {
+        "ordinal": 3,
+        "started_at": "2026-10-08T05:14:22.640124+00:00",
+        "finished_at": "2026-10-08T05:14:22.643897+00:00",
+        "status": 200,
+        "bytes": 243,
+        "sha256": "22f6faacc81f1b9e988a091939c5ba1af714ca49e3c15257e275950e3221657d",
+        "root": {
+          "slot": "508707556",
+          "sequence": "0",
+          "next_note_id": "0"
+        },
+        "shape_validated_only": true,
+        "elapsed_seconds": 0.004,
+        "writer_before": {
+          "ready": true,
+          "age_seconds": 0,
+          "finalized_slot": 508707577,
+          "lag_seconds": 1,
+          "pending_jobs": 0,
+          "unknown_signatures": 0
+        },
+        "writer_after": {
+          "ready": true,
+          "age_seconds": 0,
+          "finalized_slot": 508707577,
+          "lag_seconds": 1,
+          "pending_jobs": 0,
+          "unknown_signatures": 0
+        }
+      },
+      {
+        "ordinal": 4,
+        "started_at": "2026-10-08T05:14:23.647503+00:00",
+        "finished_at": "2026-10-08T05:14:28.961475+00:00",
+        "status": 200,
+        "bytes": 243,
+        "sha256": "a9d277d5dcceeb60234308d05d5c0d6469d5474f3cb3b6361b50ae08d6e17815",
+        "root": {
+          "slot": "508707597",
+          "sequence": "0",
+          "next_note_id": "0"
+        },
+        "shape_validated_only": true,
+        "elapsed_seconds": 5.314,
+        "writer_before": {
+          "ready": true,
+          "age_seconds": 1,
+          "finalized_slot": 508707577,
+          "lag_seconds": 1,
+          "pending_jobs": 0,
+          "unknown_signatures": 0
+        },
+        "writer_after": {
+          "ready": true,
+          "age_seconds": 1,
+          "finalized_slot": 508707601,
+          "lag_seconds": 1,
+          "pending_jobs": 0,
+          "unknown_signatures": 0
+        }
+      },
+      {
+        "ordinal": 5,
+        "started_at": "2026-10-08T05:14:29.965404+00:00",
+        "finished_at": "2026-10-08T05:14:29.969166+00:00",
+        "status": 200,
+        "bytes": 243,
+        "sha256": "a9d277d5dcceeb60234308d05d5c0d6469d5474f3cb3b6361b50ae08d6e17815",
+        "root": {
+          "slot": "508707597",
+          "sequence": "0",
+          "next_note_id": "0"
+        },
+        "shape_validated_only": true,
+        "elapsed_seconds": 0.004,
+        "writer_before": {
+          "ready": true,
+          "age_seconds": 2,
+          "finalized_slot": 508707601,
+          "lag_seconds": 1,
+          "pending_jobs": 0,
+          "unknown_signatures": 0
+        },
+        "writer_after": {
+          "ready": true,
+          "age_seconds": 2,
+          "finalized_slot": 508707601,
+          "lag_seconds": 1,
+          "pending_jobs": 0,
+          "unknown_signatures": 0
+        }
+      },
+      {
+        "ordinal": 6,
+        "started_at": "2026-10-08T05:14:30.972988+00:00",
+        "finished_at": "2026-10-08T05:14:38.478283+00:00",
+        "status": 200,
+        "bytes": 242,
+        "sha256": "ce3b4e4df4b4cd2fbf8acadd9fbe4e2af2a198bd521d9c2c73d58e964d0bd518",
+        "root": {
+          "slot": "508707637",
+          "sequence": "0",
+          "next_note_id": "0"
+        },
+        "shape_validated_only": true,
+        "elapsed_seconds": 7.505,
+        "writer_before": {
+          "ready": true,
+          "age_seconds": 0,
+          "finalized_slot": 508707613,
+          "lag_seconds": 1,
+          "pending_jobs": 0,
+          "unknown_signatures": 0
+        },
+        "writer_after": {
+          "ready": true,
+          "age_seconds": 2,
+          "finalized_slot": 508707639,
+          "lag_seconds": 1,
+          "pending_jobs": 0,
+          "unknown_signatures": 0
+        }
+      },
+      {
+        "ordinal": 7,
+        "started_at": "2026-10-08T05:14:39.481995+00:00",
+        "finished_at": "2026-10-08T05:14:39.485624+00:00",
+        "status": 200,
+        "bytes": 242,
+        "sha256": "ce3b4e4df4b4cd2fbf8acadd9fbe4e2af2a198bd521d9c2c73d58e964d0bd518",
+        "root": {
+          "slot": "508707637",
+          "sequence": "0",
+          "next_note_id": "0"
+        },
+        "shape_validated_only": true,
+        "elapsed_seconds": 0.003,
+        "writer_before": {
+          "ready": true,
+          "age_seconds": 0,
+          "finalized_slot": 508707651,
+          "lag_seconds": 1,
+          "pending_jobs": 0,
+          "unknown_signatures": 0
+        },
+        "writer_after": {
+          "ready": true,
+          "age_seconds": 0,
+          "finalized_slot": 508707651,
+          "lag_seconds": 1,
+          "pending_jobs": 0,
+          "unknown_signatures": 0
+        }
+      },
+      {
+        "ordinal": 8,
+        "started_at": "2026-10-08T05:14:40.488950+00:00",
+        "finished_at": "2026-10-08T05:14:45.781503+00:00",
+        "status": 200,
+        "bytes": 243,
+        "sha256": "784b3022a915f0f008e3a59c78b6ab646b778e5d7ebbef4d66ce2787be028c0d",
+        "root": {
+          "slot": "508707668",
+          "sequence": "0",
+          "next_note_id": "0"
+        },
+        "shape_validated_only": true,
+        "elapsed_seconds": 5.292,
+        "writer_before": {
+          "ready": true,
+          "age_seconds": 1,
+          "finalized_slot": 508707651,
+          "lag_seconds": 1,
+          "pending_jobs": 0,
+          "unknown_signatures": 0
+        },
+        "writer_after": {
+          "ready": true,
+          "age_seconds": 1,
+          "finalized_slot": 508707673,
+          "lag_seconds": 1,
+          "pending_jobs": 0,
+          "unknown_signatures": 0
+        }
+      },
+      {
+        "ordinal": 9,
+        "started_at": "2026-10-08T05:14:46.785036+00:00",
+        "finished_at": "2026-10-08T05:14:46.788727+00:00",
+        "status": 200,
+        "bytes": 243,
+        "sha256": "784b3022a915f0f008e3a59c78b6ab646b778e5d7ebbef4d66ce2787be028c0d",
+        "root": {
+          "slot": "508707668",
+          "sequence": "0",
+          "next_note_id": "0"
+        },
+        "shape_validated_only": true,
+        "elapsed_seconds": 0.003,
+        "writer_before": {
+          "ready": true,
+          "age_seconds": 2,
+          "finalized_slot": 508707673,
+          "lag_seconds": 1,
+          "pending_jobs": 0,
+          "unknown_signatures": 0
+        },
+        "writer_after": {
+          "ready": true,
+          "age_seconds": 2,
+          "finalized_slot": 508707673,
+          "lag_seconds": 1,
+          "pending_jobs": 0,
+          "unknown_signatures": 0
+        }
+      },
+      {
+        "ordinal": 10,
+        "started_at": "2026-10-08T05:14:47.792588+00:00",
+        "finished_at": "2026-10-08T05:14:53.097348+00:00",
+        "status": 200,
+        "bytes": 243,
+        "sha256": "a33e3b225390671d9ab816146cf88aa4fb188fa5f3aa38027383fd48c78af491",
+        "root": {
+          "slot": "508707699",
+          "sequence": "0",
+          "next_note_id": "0"
+        },
+        "shape_validated_only": true,
+        "elapsed_seconds": 5.305,
+        "writer_before": {
+          "ready": true,
+          "age_seconds": 0,
+          "finalized_slot": 508707686,
+          "lag_seconds": 1,
+          "pending_jobs": 0,
+          "unknown_signatures": 0
+        },
+        "writer_after": {
+          "ready": false,
+          "age_seconds": 1,
+          "finalized_slot": 508707703,
+          "lag_seconds": 2,
+          "pending_jobs": 0,
+          "unknown_signatures": 0
+        }
+      },
+      {
+        "ordinal": 11,
+        "started_at": "2026-10-08T05:14:54.101007+00:00",
+        "finished_at": "2026-10-08T05:14:54.104957+00:00",
+        "status": 200,
+        "bytes": 243,
+        "sha256": "a33e3b225390671d9ab816146cf88aa4fb188fa5f3aa38027383fd48c78af491",
+        "root": {
+          "slot": "508707699",
+          "sequence": "0",
+          "next_note_id": "0"
+        },
+        "shape_validated_only": true,
+        "elapsed_seconds": 0.004,
+        "writer_before": {
+          "ready": false,
+          "age_seconds": 2,
+          "finalized_slot": 508707703,
+          "lag_seconds": 2,
+          "pending_jobs": 0,
+          "unknown_signatures": 0
+        },
+        "writer_after": {
+          "ready": false,
+          "age_seconds": 2,
+          "finalized_slot": 508707703,
+          "lag_seconds": 2,
+          "pending_jobs": 0,
+          "unknown_signatures": 0
+        }
+      },
+      {
+        "ordinal": 12,
+        "started_at": "2026-10-08T05:14:55.108533+00:00",
+        "finished_at": "2026-10-08T05:15:02.634735+00:00",
+        "status": 200,
+        "bytes": 243,
+        "sha256": "835d3defa91c97894d0e79bca3a92b69d6c74e19202de820a27b1191ab2ec576",
+        "root": {
+          "slot": "508707740",
+          "sequence": "0",
+          "next_note_id": "0"
+        },
+        "shape_validated_only": true,
+        "elapsed_seconds": 7.526,
+        "writer_before": {
+          "ready": false,
+          "age_seconds": 3,
+          "finalized_slot": 508707703,
+          "lag_seconds": 2,
+          "pending_jobs": 0,
+          "unknown_signatures": 0
+        },
+        "writer_after": {
+          "ready": true,
+          "age_seconds": 2,
+          "finalized_slot": 508707741,
+          "lag_seconds": 1,
+          "pending_jobs": 0,
+          "unknown_signatures": 0
+        }
+      }
+    ],
+    "writer_ready_false_observation_ordinals": [
+      10,
+      11,
+      12
+    ],
+    "main_processes_configs_unchanged": true,
+    "admission_false": true,
+    "service_actions": 0,
+    "direct_rpc_requests": 0,
+    "automatic_retries": 0,
+    "scope": "Twelve loopback root availability and shape checks; independent chain authentication, writer health, public gateway and SDK preflight remain separate"
+  },
+  "gateway_start_followup": {
+    "prestart_diagnosis_at": "2026-10-08T05:19:15.903185+00:00",
+    "health_before": {
+      "sha256": "2942cbcf6b3ef442e5c5177d40972e51ff1f02c78f5fb8bbd6b09922e376fd52",
+      "ready": true,
+      "observed_at": 1791436754,
+      "age_seconds": 1,
+      "proof_failure_total": 0,
+      "metrics": {
+        "finalized_slot": 508708805,
+        "finalized_lag_seconds": 1,
+        "pending_jobs": 0,
+        "unknown_signatures": 0
+      }
+    },
+    "health_after": {
+      "sha256": "2942cbcf6b3ef442e5c5177d40972e51ff1f02c78f5fb8bbd6b09922e376fd52",
+      "ready": true,
+      "observed_at": 1791436754,
+      "age_seconds": 1,
+      "proof_failure_total": 0,
+      "metrics": {
+        "finalized_slot": 508708805,
+        "finalized_lag_seconds": 1,
+        "pending_jobs": 0,
+        "unknown_signatures": 0
+      }
+    },
+    "retained_static_rpc_finalized_tail_missing_log_count": 15,
+    "scope_of_logs": "Bounded historical window; fresh health was separately ready at this cut",
+    "started_at": "2026-10-08T05:20:35.238065+00:00",
+    "other_services_unchanged": true,
+    "admission_false": true,
+    "automatic_retry": false
+  },
+  "public_gateway_comparison": {
+    "started_at": "2026-10-08T05:23:31.912816+00:00",
+    "finished_at": "2026-10-08T05:23:36.165966+00:00",
+    "scope": "Read-only public HTTPS versus local nginx comparison; not installed SDK authentication or admission",
+    "observations": [
+      {
+        "label": "public-profile",
+        "surface": "public_https",
+        "path": "/releases/public-devnet-20261008-a/profile.json",
+        "status": 200,
+        "bytes": 982,
+        "sha256": "5e868f8e57ef06961b73ba8cb755635e81d4bb168dd6ad498152496ac1b02d14",
+        "cache_age_seconds": null,
+        "elapsed_seconds": 0.103
+      },
+      {
+        "label": "local-relay",
+        "surface": "local_nginx",
+        "path": "/relay-status",
+        "status": 200,
+        "bytes": 280,
+        "sha256": "d678fca2fc1520a460f0db9c644e4f7a024a48ce8ec9938953eb05f90bc182f9",
+        "cache_age_seconds": null,
+        "elapsed_seconds": 0.003
+      },
+      {
+        "label": "public-relay",
+        "surface": "public_https",
+        "path": "/relay-status",
+        "status": 200,
+        "bytes": 280,
+        "sha256": "d678fca2fc1520a460f0db9c644e4f7a024a48ce8ec9938953eb05f90bc182f9",
+        "cache_age_seconds": null,
+        "elapsed_seconds": 0.051
+      },
+      {
+        "label": "local-config",
+        "surface": "local_nginx",
+        "path": "/zkapi/v1/config",
+        "status": 200,
+        "bytes": 3594,
+        "sha256": "a0d752a415101559afb10a7795d9c011cb9d4d2fa6caa07ea4b525284aa0756a",
+        "cache_age_seconds": null,
+        "elapsed_seconds": 0.004
+      },
+      {
+        "label": "public-config",
+        "surface": "public_https",
+        "path": "/zkapi/v1/config",
+        "status": 200,
+        "bytes": 3594,
+        "sha256": "a0d752a415101559afb10a7795d9c011cb9d4d2fa6caa07ea4b525284aa0756a",
+        "cache_age_seconds": null,
+        "elapsed_seconds": 0.03
+      },
+      {
+        "label": "local-catalog",
+        "surface": "local_nginx",
+        "path": "/zkapi/v1/catalog",
+        "status": 200,
+        "bytes": 198,
+        "sha256": "0101c8beb2a521da17660699e05e927009f8928e77a31c37c1624c0189cd4a5a",
+        "cache_age_seconds": null,
+        "elapsed_seconds": 0.005
+      },
+      {
+        "label": "public-catalog",
+        "surface": "public_https",
+        "path": "/zkapi/v1/catalog",
+        "status": 200,
+        "bytes": 198,
+        "sha256": "0101c8beb2a521da17660699e05e927009f8928e77a31c37c1624c0189cd4a5a",
+        "cache_age_seconds": null,
+        "elapsed_seconds": 0.035
+      },
+      {
+        "label": "local-root-before",
+        "surface": "local_nginx",
+        "path": "/zkapi/v1/tree/root",
+        "status": 200,
+        "bytes": 243,
+        "sha256": "0205e84ca0898f110bc2db529d7dd5d9ff5e681b7b160f54a9ccc74990239b34",
+        "cache_age_seconds": null,
+        "elapsed_seconds": 3.455
+      },
+      {
+        "label": "public-root",
+        "surface": "public_https",
+        "path": "/zkapi/v1/tree/root",
+        "status": 200,
+        "bytes": 243,
+        "sha256": "0205e84ca0898f110bc2db529d7dd5d9ff5e681b7b160f54a9ccc74990239b34",
+        "cache_age_seconds": null,
+        "elapsed_seconds": 0.034
+      },
+      {
+        "label": "public-descriptor",
+        "surface": "public_https",
+        "path": "/zkapi/v1/tree/snapshot",
+        "status": 200,
+        "bytes": 480,
+        "sha256": "80a985035554b232b24747df0c0d75d57bfa355059a789931b189eb52863a0eb",
+        "cache_age_seconds": null,
+        "elapsed_seconds": 0.03
+      },
+      {
+        "label": "public-snapshot",
+        "surface": "public_https",
+        "path": "/zkapi/v1/tree/snapshots/842f704fc3b1479a1254e6a25a71d7b78cebe42ddae46b057520bb54cfa54c07.json",
+        "status": 200,
+        "bytes": 320,
+        "sha256": "842f704fc3b1479a1254e6a25a71d7b78cebe42ddae46b057520bb54cfa54c07",
+        "cache_age_seconds": null,
+        "elapsed_seconds": 0.031
+      },
+      {
+        "label": "local-snapshot",
+        "surface": "local_nginx",
+        "path": "/zkapi/v1/tree/snapshots/842f704fc3b1479a1254e6a25a71d7b78cebe42ddae46b057520bb54cfa54c07.json",
+        "status": 200,
+        "bytes": 320,
+        "sha256": "842f704fc3b1479a1254e6a25a71d7b78cebe42ddae46b057520bb54cfa54c07",
+        "cache_age_seconds": null,
+        "elapsed_seconds": 0.006
+      },
+      {
+        "label": "local-root-after",
+        "surface": "local_nginx",
+        "path": "/zkapi/v1/tree/root",
+        "status": 200,
+        "bytes": 243,
+        "sha256": "0205e84ca0898f110bc2db529d7dd5d9ff5e681b7b160f54a9ccc74990239b34",
+        "cache_age_seconds": null,
+        "elapsed_seconds": 0.004
+      }
+    ],
+    "completed": true,
+    "static_public_and_local_values_equal": true,
+    "profile_pin_matched": true,
+    "snapshot_content_address_matched": true,
+    "snapshot_sha256": "842f704fc3b1479a1254e6a25a71d7b78cebe42ddae46b057520bb54cfa54c07",
+    "slots": {
+      "local_before": "508709888",
+      "public_root": "508709888",
+      "public_snapshot": "508709888",
+      "local_after": "508709888"
+    },
+    "processes_unchanged": true,
+    "admission_false": true,
+    "service_actions": 0,
+    "auth_requests": 0,
+    "inference_requests": 0,
+    "transactions_submitted": 0,
+    "external_rpc_probe_requests": 0,
+    "automatic_retry": false,
+    "independent_chain_clock_authentication": false
+  },
+  "proposed_acceptance_update": {
+    "id": "PD-04",
+    "requirement": "A separately hosted app on its own origin passes preflight in a supported real browser and runs the published worker/WASM.",
+    "supported": true,
+    "scope": "Read-only Chrome case and synthetic WASM snapshot fixture only",
+    "tracked_backlog_edited": false
+  },
+  "v6_operational_followup": {
+    "source_installation": {
+      "installed": true,
+      "source_manifest_sha256": "84b786ae41cf12640b17c5dfbbb506ee431e340f61c2c20f6b41c42495ea8339",
+      "service_actions": 0,
+      "admission_actions": 0,
+      "financial_actions": 0
+    },
+    "readonly_collector": {
+      "status": "Failed",
+      "response_code": 1,
+      "started_at": "2026-10-08T05:25:19.932Z",
+      "finished_at": "2026-10-08T05:25:19.932Z",
+      "cause": "The restricted helper PATH could not resolve runuser in /usr/sbin",
+      "usable_collection_produced": false,
+      "approval_generated": false,
+      "admission_enabled": false
+    },
+    "path_diagnosis": {
+      "old_path": "/usr/local/bin:/usr/bin:/bin",
+      "corrected_path": "/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+      "runuser_old_resolution": null,
+      "runuser_corrected_resolution": "/usr/sbin/runuser",
+      "service_actions": 0,
+      "financial_actions": 0
+    },
+    "successor_v7": {
+      "scope": "New source closure and fresh attempt; prior successful preflight and failed collection retained",
+      "installation_or_execution_claim": false
+    }
+  },
+  "complete_native_file_integrity": {
+    "observed_at": "2026-10-08T05:32:43.500533+00:00",
+    "manifest_sha256": "0b5733718f51eabcf4ca57f2406eb36bab641e23d642aac2436ca0e3090572ca",
+    "verified_file_count": 7257,
+    "verified_total_bytes": 271025916,
+    "all_release_file_hashes_matched": true,
+    "scope": "Read-only complete installed native release file rehash before new funding; not a runtime or financial acceptance",
+    "private_custody_read": false,
+    "network_requests": 0,
+    "financial_actions": 0
+  },
+  "observation_cutoff_utc": "2026-10-08T05:32:43Z",
+  "later_v7_installation_execution_or_admission_actions_in_scope": false
+}

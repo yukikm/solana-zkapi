@@ -38,6 +38,7 @@ pub struct App {
     pub chain: ChainClient,
     pub signer: SignerClient,
     pub providers: crate::provider_runtime::ProviderRuntime,
+    pub(crate) readiness: crate::readiness::Cache,
     rate: Mutex<(u64, u32)>,
 }
 #[derive(Debug)]
@@ -194,11 +195,13 @@ impl App {
             chain,
             signer,
             providers,
+            readiness: crate::readiness::Cache::default(),
             rate: Mutex::new((0, 0)),
         }))
     }
     pub fn router(self: &Arc<Self>) -> Router {
         Router::new()
+            .route("/zkapi/v1/readiness", get(crate::readiness::endpoint))
             .route("/zkapi/v1/config", get(config))
             .route("/zkapi/v1/catalog", get(catalog))
             .route("/zkapi/v1/attestation", get(attestation))

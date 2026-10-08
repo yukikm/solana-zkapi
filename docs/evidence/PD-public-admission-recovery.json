@@ -1,0 +1,266 @@
+{
+  "schema": 1,
+  "scope": "Actual initial admission continuation and its preserved failures; subsequent unfunded deposit preparation failure. No funded lifecycle acceptance.",
+  "cutoff_utc": "2026-10-08T06:32:51.111Z",
+  "records": {
+    "initial_failed_execution": {
+      "sha256": "31273b174a27da896c5f686256404405b025e078c4e776bc52cdd7f8a88fabac",
+      "bytes": 927
+    },
+    "stopped_state_diagnosis": {
+      "sha256": "b6b4ec07ff55d5b3edd6b448cdfac42e20068d667edb00d9df4d1833343d641b",
+      "bytes": 2991
+    },
+    "policy_diagnosis": {
+      "sha256": "4a21c4a9395f6b3f8d048882297af83ffd58a1b6a030144b74afdc095c589f4d",
+      "bytes": 30022
+    },
+    "restore_failed_execution": {
+      "sha256": "cb061acbf7e67748d6b9f38c9553c149721f631bbafe10e7f621661682c3e8d1",
+      "bytes": 923
+    },
+    "restore_observation": {
+      "sha256": "20c8d3a60211a022db04a6b0d2f9da4db951370f8ebe51bee1b99fc54aadf453",
+      "bytes": 873
+    },
+    "restore_readonly_validation": {
+      "sha256": "153f9be13732100a6865161bcf866ed78af7a08db7825b961bc70ef4872935a1",
+      "bytes": 3903
+    },
+    "continuation_source_freeze": {
+      "sha256": "61392b32c10244a4f8cfb41481f416fdf9ef0a1cf3873c9451e04fb92fbb177f",
+      "bytes": 2653
+    },
+    "continuation_preflight": {
+      "sha256": "e6b7cfbc1c419f02c9164e4581a8bfe4a1101f502b2abdf00d6648daf8ec2f33",
+      "bytes": 1105
+    },
+    "approved_continuation_review": {
+      "sha256": "fd9e7857701b130ed0faa1690aacf2c852c975f29bc6b00b6b4799b3268f4eed",
+      "bytes": 27211
+    },
+    "continuation_execution": {
+      "sha256": "c32853b98dc85a7b2fa75a598776f9866037b70eef404acf68550d3911e7f966",
+      "bytes": 1018
+    },
+    "completed_native_transition": {
+      "sha256": "5d3a1eb436eeb97896d69be226899d9dfe703d52555930dccc3e119f431fab85",
+      "bytes": 5436
+    },
+    "completed_transition_observation": {
+      "sha256": "b9bdc8c8738df77e8dbaf7651acd0edd84c8fd3f0c41125df6493eafe64f1c3b",
+      "bytes": 6630
+    },
+    "initial_python_tls_failure": {
+      "sha256": "9e5802b4a130a0e24158a44839b6b80bbeaf52c30a033d7143c8fd66d0e6e768",
+      "bytes": 210
+    },
+    "public_relay_observation": {
+      "sha256": "1d0af23fb8733da08e54a208d56e50ce3d192132abd92069cb34845df9ca5312",
+      "bytes": 587
+    },
+    "public_relay_response": {
+      "sha256": "ae800c6c21a5040cddff501c90cc0d8b16cbf0e799449320daa63eaa8917bdab",
+      "bytes": 278
+    },
+    "deposit_prepare_execution": {
+      "sha256": "a1872a1d240a591cc25a03a31552e6042725c4988c1fc57a6996a74cef598333",
+      "bytes": 227
+    },
+    "deposit_prepare_response": {
+      "sha256": "4493bf6b952b7535f151f626543c5d29fb39687340d1f4e5c85b08904d21f1d4",
+      "bytes": 120
+    },
+    "deposit_prepare_status": {
+      "sha256": "2200b293e1ac9d69e6a5a8f0b1b9026db73fd0f67e026c788c397e443894cd78",
+      "bytes": 386
+    },
+    "deposit_route_diagnosis": {
+      "sha256": "858560a7eeb73a2aeea00e304613617a734a73e7f788df4640d3a830db7697a0",
+      "bytes": 693
+    },
+    "installed_wallet_source": {
+      "sha256": "21682554f9c31797a84fc034fc63f2925263fc46d11b4874d0c1345138841149",
+      "bytes": 50180
+    },
+    "installed_wallet_chain_source": {
+      "sha256": "016f1d8f3240b248e0816d388e137576dd162df85d2fce4a9e41ab0ace3761ed",
+      "bytes": 10121
+    }
+  },
+  "deployment": {
+    "profile_sha256": "5e868f8e57ef06961b73ba8cb755635e81d4bb168dd6ad498152496ac1b02d14",
+    "manifest_sha256": "b97e200769be24448a51999346a28d0ca497892d68212f517b2b9bb4cc1a4643",
+    "sdk_tarball_sha256": "fe9917b7f11e4bec0837bc7aac7624ad2965aa9bca007d61b877f263620143dc",
+    "native_release_manifest_sha256": "0b5733718f51eabcf4ca57f2406eb36bab641e23d642aac2436ca0e3090572ca"
+  },
+  "preserved_failures": {
+    "initial_enable": {
+      "started_utc": "2026-10-08T05:37:18.549Z",
+      "completed": false,
+      "gateway_stopped": true,
+      "gateway_config_changed": false,
+      "failure_boundary": "effective unit-policy comparison after gateway stop",
+      "diagnosis": "Managed inverse Before edges disappeared when the stopped gateway unit was unloaded. Forward dependency policy and unit source pins remain enforced by the corrected operational comparison.",
+      "reserved_requests": 0
+    },
+    "suspended_restore": {
+      "started_utc": "2026-10-08T05:55:54.874Z",
+      "original_completed": false,
+      "gateway_start_invocations": 1,
+      "post_start_error": "URLError",
+      "cause_proven": false,
+      "immediate_listener_readiness_race": "hypothesis",
+      "subsequent_readonly_validation": true,
+      "admission": "suspended",
+      "recovery": "enabled",
+      "old_failure_preserved": true
+    },
+    "public_python_tls": {
+      "certificate_validation_failure_preserved": true,
+      "verification_disabled": false,
+      "later_node_verification_separate": true
+    }
+  },
+  "continuation": {
+    "original_transition_id": "7ce7e87e-ecbc-4d10-9827-66d394b403e9",
+    "transition_id": "6f0d2f22-db82-478d-9cdb-866f8efb64dc",
+    "executed_from_utc": "2026-10-08T06:18:49.776Z",
+    "executed_until_utc": "2026-10-08T06:18:57.776Z",
+    "completed_result_observed_utc": "2026-10-08T06:20:11.127Z",
+    "approved_review_sha256": "fd9e7857701b130ed0faa1690aacf2c852c975f29bc6b00b6b4799b3268f4eed",
+    "fresh_preflight_checks": [
+      "profile",
+      "assets",
+      "manifest",
+      "tariffs",
+      "genesis",
+      "finalized_pool",
+      "control_config",
+      "catalog",
+      "shared_snapshot",
+      "chain_clock"
+    ],
+    "preflight_slot": "508723637",
+    "preflight_chain_clock": "1791440295",
+    "preflight_operator_admission": "unverified",
+    "gateway_config_before_sha256": "02ca9c4b4ba6bec06b682570b13490c8337630d7b1e50150a75d3e3e2326f5cb",
+    "gateway_config_after_sha256": "cd8bd41e1d7c06baa82ea96a430953c1feacc63d05654fe611a080463c3fcb9c",
+    "changed_fields": [
+      "allowNewAdmissions"
+    ],
+    "enabled": true,
+    "gateway_stop_invocations": 1,
+    "gateway_start_invocations": 1,
+    "local_status_get_observations": 8,
+    "other_five_service_processes_unchanged": true,
+    "original_cut_preserved": true,
+    "original_failed_records_preserved": true,
+    "automatic_transition_retry": false,
+    "financial_actions": 0,
+    "budget": {
+      "validated": true,
+      "reserved_requests": 0,
+      "state_sha256": "9e72b378b53cbd7dd474c7c14eb340a564f3f88120283acef2a3be6cdaaf47fe",
+      "authorization_sha256": "e4c09a7e3cf9de33296893b7bc1922f26fe980cf63e64d6199ad8bb4c4f740f7",
+      "original_capacity_transferred": 0,
+      "state_written": false
+    },
+    "prior_financial_rows_validated": {
+      "sessions_total": 0,
+      "signed_settlements": 0,
+      "sessions_unfinished": 0,
+      "operations_unfinished": 0,
+      "dispatch_unfinished": 0,
+      "chain_unfinished": 0,
+      "outbox_unfinished": 0,
+      "in_recovery": false
+    },
+    "original_retained_records_sha256": [
+      "6b196b7b7f81f047633052a0eab9dcb3d58c88436e5bfdff011c5db5e4ed06fb",
+      "530fd3a94704eb14d44aed55cd832687b991176ec32480a698554c95d20df38c",
+      "6d73e8e9691facd6cf08b370dc3efb9c381ea9bd52f2b4bdf81d3c30e9307f45",
+      "c91777c14826e8876d33bef9524b5a90f80e011a138a4ab2f8ca7ed75d13f53d",
+      "b8f3f9a1ee62c3fcaa49a143ca88a7e12ba78aa40a2b99daaf41eed633f2966e",
+      "02ca9c4b4ba6bec06b682570b13490c8337630d7b1e50150a75d3e3e2326f5cb",
+      "cd8bd41e1d7c06baa82ea96a430953c1feacc63d05654fe611a080463c3fcb9c",
+      "f8baf170503c6a3f7c62fcb2cfb90bbc4c9840206490807c910a3a23c4133443",
+      "a7bffd312e88ba5cbcc3c2caf22affe995e69db399a04459e04c2a4e91fdc296",
+      "a7bffd312e88ba5cbcc3c2caf22affe995e69db399a04459e04c2a4e91fdc296",
+      "a7bffd312e88ba5cbcc3c2caf22affe995e69db399a04459e04c2a4e91fdc296"
+    ],
+    "restore_retained_records_sha256": [
+      "8ab9673258bc13784db33ff635be78a1320ac50d790d84dd6da2b4a567038efa",
+      "8ecc7b0edff2030ea1b3e53557c55111ffd2f7adb7d6394a8a70035ecd337e21",
+      "34eb3980f731c5df86c7cae19868d814f625665ebf362b699fb9a1d9e860ddde"
+    ]
+  },
+  "public_configuration_observation": {
+    "observed_utc": "2026-10-08T06:20:46.458Z",
+    "http_status": 200,
+    "requests": 1,
+    "scope": "relay_configuration_only",
+    "readiness": "not_checked",
+    "admission": "enabled",
+    "recovery": "enabled",
+    "tls_verification": "default-enabled",
+    "redirects": false,
+    "response_sha256": "ae800c6c21a5040cddff501c90cc0d8b16cbf0e799449320daa63eaa8917bdab"
+  },
+  "deposit_preparation": {
+    "observed_utc": "2026-10-08T06:22:47.967140+00:00",
+    "requested_amount_micro_usdc": "5000000",
+    "request_sha256": "6266745d24e1a5d5b2f0e0d3c5fefbb4e253442eafe8bd125671368a27413267",
+    "process_exit_code": 1,
+    "error_code": "client_request_failed",
+    "automatic_advance": false,
+    "saved_status": {
+      "balance_micro_usdc": "0",
+      "phase": "unfunded",
+      "in_flight": 0,
+      "recovery_required": false,
+      "unresolved_operations": [],
+      "journal_head": null,
+      "wallet_status": "unfunded",
+      "wallet_operation": null
+    },
+    "new_note_journal_creation_observed": false,
+    "transaction_submission": false,
+    "authorization_submission": false,
+    "provider_inference": false,
+    "route_observations": [
+      {
+        "name": "public",
+        "route": "/zkapi/v1/tree/notes/0/zero-path",
+        "http_status": 400,
+        "body_bytes": 44,
+        "body_sha256": "a6c29387cd225ce2be04038edef0d6482accfbdbd803bba84faf83cb392e7b98",
+        "observed_at": "2026-10-08T06:32:50.756Z"
+      },
+      {
+        "name": "stock-relay",
+        "route": "/zkapi/v1/tree/notes/0/zero-path",
+        "http_status": 400,
+        "body_bytes": 44,
+        "body_sha256": "a6c29387cd225ce2be04038edef0d6482accfbdbd803bba84faf83cb392e7b98",
+        "observed_at": "2026-10-08T06:32:51.111Z"
+      }
+    ],
+    "source_order": [
+      "chain.snapshot(): root then next-note zero-path",
+      "native prover.deposit",
+      "journal.create",
+      "build transaction preparation"
+    ],
+    "route_diagnosis": "The installed deposit path requires the rejected zero-path GET before native proof preparation and note-journal creation. No captured inner exception proves an additional cause; the missing route is an independently reproduced blocking condition.",
+    "corrected_route_deployment_or_retry_in_scope": false
+  },
+  "excluded_claims": [
+    "Funded N-01 or any other planned acceptance case",
+    "Provider inference, settlement, same-state encrypted backup/restart or withdrawal",
+    "Browser or OpenClaw funded lifecycle acceptance",
+    "Seven-cap capacity replenishment or original-capacity transfer",
+    "Full hosted CI success",
+    "A general service availability or signer/provider readiness guarantee from relay-status"
+  ]
+}

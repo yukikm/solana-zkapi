@@ -1,0 +1,232 @@
+{
+  "schema": 1,
+  "date_utc": "2026-10-08",
+  "scope": "Local source candidate and synthetic read-only readiness fixtures; not deployed or a live fault-injection result.",
+  "endpoint": {
+    "method": "GET",
+    "path": "/zkapi/v1/readiness",
+    "aliases": [],
+    "response_scope": "read_only_capabilities",
+    "http_success_meaning": "Current checked indexer, signer and pinned provider configuration are available. This is not an admission or provider-credit guarantee.",
+    "provider_credit": "not_checked",
+    "operator_admission": "not_checked",
+    "relay_status_changed": false
+  },
+  "implementation": {
+    "source_files": [
+      {
+        "path": "services/control/src/lib.rs",
+        "sha256": "f16fee85839904e1eeedfc9164f91604a4461314781eb3a1fbc8ea356d5ce8ca",
+        "bytes": 487
+      },
+      {
+        "path": "services/control/src/api.rs",
+        "sha256": "5d22a4781d2d295650b27807075ac301d5107f428cfe0fc98cd554191a4e839d",
+        "bytes": 35922
+      },
+      {
+        "path": "scripts/public_devnet_gateway.ts",
+        "sha256": "aa5867462b90e83239841aa114ad4354a48ddc65640509dde17718fd765ab3e3",
+        "bytes": 16661
+      },
+      {
+        "path": "scripts/devnet-browser-relay/host.ts",
+        "sha256": "e070011e3cb5b569307de049403e73151ef9c047e91777753452a061d1c188ff",
+        "bytes": 44656
+      },
+      {
+        "path": "scripts/public_devnet_gateway.test.ts",
+        "sha256": "9eb19c5671fe8e7cb10850702694266a9d65fa1a54ad3c03c52c7adc516d3774",
+        "bytes": 34454
+      },
+      {
+        "path": "services/control/src/readiness.rs",
+        "sha256": "b9a92b074f6f63d704a473b91e44247c1057fbb4ffc0fb5f37dea7850052757e",
+        "bytes": 34086
+      },
+      {
+        "path": "scripts/public_devnet_readiness.ts",
+        "sha256": "db5a207e54828184276dca680eaa838ef3a9996076a9670c1d180c485ba87634",
+        "bytes": 3776
+      },
+      {
+        "path": "scripts/public_devnet_readiness.test.ts",
+        "sha256": "60bee6c6f41b2dbcf22da30d42af82ab4aa83d4bc9ba780138ef604ae377e95f",
+        "bytes": 4465
+      }
+    ],
+    "source_freeze": {
+      "sha256": "e180c294ccc853187f2a965965c3c852a9814c326fa986f3d7f7c8fd7f094579",
+      "bytes": 1445
+    },
+    "existing_before_images": [
+      {
+        "path": "services/control/src/lib.rs",
+        "sha256": "470fe993cc938b2c5f5d6231ac37359671b588c932ee47b3221d830562687abb",
+        "bytes": 468
+      },
+      {
+        "path": "services/control/src/api.rs",
+        "sha256": "f8a10c2337b49272a9a1a108a13dc090753e80433e547cc9c575b41e224b8ce9",
+        "bytes": 35737
+      },
+      {
+        "path": "scripts/public_devnet_gateway.ts",
+        "sha256": "cc7d9be6307ac738d0f9f980b59b42794cf3b43fbbc7fc1c3d0c1439cd1b1d43",
+        "bytes": 16349
+      },
+      {
+        "path": "scripts/devnet-browser-relay/host.ts",
+        "sha256": "ff23574d51bd7ba95de8ec2afd53035b581fb67b37ec87ade2359629082ecc0c",
+        "bytes": 43903
+      },
+      {
+        "path": "scripts/public_devnet_gateway.test.ts",
+        "sha256": "940dc75c0339a239047af3cb229a01f435aa37cc40000ba8ab34aba50bb36b8d",
+        "bytes": 32414
+      }
+    ],
+    "indexer_validation": [
+      "trusted genesis and exact per-request UUID response nonce",
+      "finalized source blockhash",
+      "finalized Pool configuration",
+      "derived TreeState address, owner, version and bump",
+      "exact root, sequence and next-note count",
+      "finalized account-context header when different from source slot",
+      "Clock account owner, encoding, slot and nonnegative time",
+      "source block and local wall clock within 120 seconds of finalized Clock"
+    ],
+    "provider_enabled_meaning": "Configured supported adapter, currently valid tariff and read-only database breaker available; no provider API or credit check.",
+    "signer_available_meaning": "Read-only health audit reports reconciled with privately matched configured digest; public output contains neither digest nor socket path.",
+    "bounds": {
+      "single_flight_per_control_process": true,
+      "cache_seconds_after_completion": 5,
+      "indexer_total_deadline_seconds": 25,
+      "signer_client_deadline_seconds": 2,
+      "provider_database_wait_seconds": 2,
+      "gateway_deadline_seconds": 28,
+      "maximum_rpc_reads_per_sample": 4,
+      "rpc_indexer_body_bytes": 65536,
+      "signer_line_bytes_limit": 4096,
+      "gateway_control_body_bytes": 8192,
+      "automatic_retries": 0
+    },
+    "signer_server_audit_deadline_claimed": false,
+    "request_cancellation": "Disconnected HTTP callers do not cancel or duplicate the shared bounded control probe.",
+    "secret_projection": "Only finite component states and independently pinned deployment/manifest/provider identity reach the public gateway response."
+  },
+  "validation": {
+    "rust": {
+      "command": "cargo +1.90.0 test --locked --offline --manifest-path services/control/Cargo.toml --lib readiness::tests -- --test-threads=1",
+      "passed": 7,
+      "failed": 0,
+      "ignored": 0,
+      "seconds": 0.09,
+      "log": {
+        "sha256": "f6e992698b812d275fcf2a0c9dd8e83ce6be716171f567c3cd8780a90dcdec49",
+        "bytes": 985
+      },
+      "readiness_source_sha256_at_run": "f9f8a77ce929762da5e2decee7c179d2286713c5874b802b51689c20ff79bccb"
+    },
+    "typescript_final_route": {
+      "command": "node --test scripts/public_devnet_gateway.test.ts scripts/devnet-browser-relay/host.test.ts",
+      "node": "24.19.0",
+      "passed": 35,
+      "failed": 0,
+      "skipped": 0,
+      "log": {
+        "sha256": "f01e2c11e2d70374f3660458dd1f3151c947833152fcd0d3f52ccb79e2f51e72",
+        "bytes": 4106
+      }
+    },
+    "typescript_projection": {
+      "command": "node --test scripts/public_devnet_readiness.test.ts",
+      "node": "24.19.0",
+      "passed": 4,
+      "failed": 0,
+      "skipped": 0,
+      "log": {
+        "sha256": "1f38b50bbc3c830d61546d67b02dc28f616c2586d65ace7e8d6ffe49e0254528",
+        "bytes": 626
+      },
+      "source_unchanged_during_route_revision": true
+    },
+    "initial_root_typescript_snapshot": {
+      "passed": 39,
+      "failed": 0,
+      "skipped": 0,
+      "log": {
+        "sha256": "fd4bf7cfc4b7b1e28a27b349cf150936957f574d320a1646206871e3add2ae8a",
+        "bytes": 4634
+      },
+      "scope": "Preceding /readiness route spelling; final canonical route separately rerun."
+    },
+    "static_checks": [
+      {
+        "command": "cargo +1.90.0 fmt --manifest-path services/control/Cargo.toml -- --check",
+        "exit_code": 0,
+        "log": {
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "bytes": 0
+        }
+      },
+      {
+        "command": "cargo +1.90.0 clippy --locked --offline --manifest-path services/control/Cargo.toml --lib --tests -- -D warnings",
+        "exit_code": 0,
+        "log": {
+          "sha256": "8eb686965cd38a7481c3bd20a814103c4c1309edc238db72e6055909bad01f3f",
+          "bytes": 161
+        }
+      },
+      {
+        "command": "tsc --noEmit --strict --target ES2023 --module NodeNext --moduleResolution NodeNext --allowImportingTsExtensions --skipLibCheck scripts/public_devnet_readiness.ts scripts/public_devnet_readiness.test.ts",
+        "exit_code": 0,
+        "log": {
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "bytes": 0
+        }
+      }
+    ],
+    "preserved_initial_sandbox_failures": {
+      "rust_passed": 4,
+      "rust_failed": 3,
+      "reason": "Local TCP/Unix socket bind denied with EPERM before fixture execution; unrestricted root execution passed without test relaxation.",
+      "rust_log": {
+        "sha256": "bbdcc1d05b0fecc6b1306e19feaaa3ad6fb13da9c4bd05375e4b4765c455c16d",
+        "bytes": 2367
+      },
+      "node_log": {
+        "sha256": "2984bab3d6bf48ea6a3f7de32380d1bd4a99de5c26648bae928b46c519af1943",
+        "bytes": 7795
+      }
+    },
+    "independent_review": "Peer review found one expired panic-fallback cache issue; corrected with a regression. Final TreeState, bounds, projection and canonical route reviewed with no remaining blocker.",
+    "final_clock_test_stability": {
+      "scope": "Only the clock fixture now reuses its captured timestamp instead of multiple wall-clock reads. Production module prefix is byte-identical to the seven-test run.",
+      "passed": 1,
+      "failed": 0,
+      "ignored": 0,
+      "seconds": 0.01,
+      "log": {
+        "sha256": "281c9d46a45659aee30a0c764f9d8472dfaea701333041c701fcc487fb9a9207",
+        "bytes": 464
+      },
+      "production_source_prefix_unchanged": true,
+      "initial_freeze": {
+        "sha256": "1be12cd27acc47be0627fbf5b1937e207fd49fad1b0415b16db0d31e1c5d6873",
+        "bytes": 2892
+      }
+    }
+  },
+  "limitations": {
+    "deployed": false,
+    "new_host_or_provider_actions": false,
+    "sdk_or_native_release_changed": false,
+    "financial_runtime_semantics_changed": false,
+    "live_unavailable_signer_or_disabled_provider_matrix_executed": false,
+    "PD01_live_acceptance_closed": false,
+    "systemd_dependency": "If stopping signer also stops its dependent control service, the gateway reports control unavailable and other components not_checked; it does not invent a signer-only diagnosis.",
+    "cached_observation": "Up to five seconds old; admission, invitation, capacity, provider credit and request-time policy remain separate checks.",
+    "indexer_failure_source": "RPC/transport/decoding errors can produce indexer unavailable; the public diagnostic intentionally does not expose private upstream details."
+  }
+}

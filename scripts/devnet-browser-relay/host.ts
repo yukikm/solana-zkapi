@@ -190,6 +190,8 @@ export interface HostOptions {
    * The installed application must enforce its exact native routes and budget. */
   controlRelay?: (input: {path: string; method: 'GET' | 'POST'; authorization?: string; data: Buffer; allowNewAdmissions?: boolean; newAdmissionAuthorized?: boolean; signal?: AbortSignal}) => Promise<UpstreamReply>;
   directBudget?: () => Promise<UiDirectProviderBudget>;
+  /** Redacted, bounded read-only capability projection; no admission claim. */
+  readiness?: (signal?: AbortSignal) => Promise<UpstreamReply>;
   preparationCommitment?: TransactionPreparationCommitment;
   rpc?: (data: Buffer, signal?: AbortSignal) => Promise<{status: number; bytes: Buffer}>;
   historyRpc?: (data: Buffer, signal?: AbortSignal) => Promise<{status: number; bytes: Buffer}>;
@@ -277,11 +279,13 @@ export async function startUiHost(options: HostOptions) {
     assert.ok(parsed && parsed.jsonrpc === '2.0' && parsed.id === id && !parsed.error); return parsed.result;
   };
   const gatewayMethod = (path: string): 'GET' | 'POST' | undefined => {
+    const notePath = /^\/zkapi\/v1\/tree\/notes\/(0|[1-9][0-9]{0,9})\/(?:path|zero-path)$/.exec(path);
     if (['/rpc','/zkapi/v1/quotes','/zkapi/v1/sessions','/zkapi/v1/withdraw/clearance'].includes(path)
       || new RegExp(`^/zkapi/v1/sessions/${uuidPattern}/close$`).test(path)) return 'POST';
-    if (['/relay-status','/provider-budget','/zkapi/v1/config','/zkapi/v1/catalog','/zkapi/v1/attestation'].includes(path)
+    if (['/relay-status','/zkapi/v1/readiness','/provider-budget','/zkapi/v1/config','/zkapi/v1/catalog','/zkapi/v1/attestation'].includes(path)
       || /^\/zkapi\/v1\/tariffs\/[0-9a-f]{64}$/.test(path)
       || /^\/zkapi\/v1\/tree\/(root|snapshot|snapshots\/[0-9a-f]{64}\.json)$/.test(path)
+      || notePath && Number(notePath[1]) <= 0xffffffff
       || new RegExp(`^/zkapi/v1/sessions/${uuidPattern}(?:/receipts(?:\\?cursor=[1-9][0-9]{0,18})?|/operations/${uuidPattern})?$`).test(path)) return 'GET';
   };
   const server = createServer(async (request, response) => {
@@ -343,6 +347,13 @@ export async function startUiHost(options: HostOptions) {
         if (request.headers.origin) assert.equal(request.headers.origin, origin);
       }
       if (request.method === 'GET' && assets.has(path)) { const asset = assets.get(path)!; response.setHeader('content-type', asset.mime); response.end(asset.bytes); return; }
+      if (publicApi && request.method === 'GET' && path === '/control/zkapi/v1/readiness') {
+        for (const name of ['authorization','cookie','proxy-authorization','x-api-key','transfer-encoding']) assert.equal(request.headers[name],undefined);
+        assert.ok(request.headers['content-length']===undefined||request.headers['content-length']==='0');
+        assert.ok(options.readiness);
+        const result=await options.readiness(signal);response.statusCode=result.status;
+        response.setHeader('content-type','application/json');response.end(result.bytes);return;
+      }
       if (request.method === 'GET' && path === '/relay-status') {
         for (const name of ['authorization', 'cookie', 'proxy-authorization', 'x-api-key']) assert.equal(request.headers[name], undefined);
         response.setHeader('content-type', 'application/json');

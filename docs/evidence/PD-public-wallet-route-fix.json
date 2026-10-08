@@ -1,0 +1,252 @@
+{
+  "schema": 1,
+  "scope": "Two-line public gateway wallet-read allowlist fix: local fixtures, actual gateway-only deployment and released stock native WalletChain snapshot. No funded acceptance.",
+  "cutoff_utc": "2026-10-08T06:42:41.435Z",
+  "records": {
+    "before_public_and_stock_egress_diagnosis": {
+      "sha256": "858560a7eeb73a2aeea00e304613617a734a73e7f788df4640d3a830db7697a0",
+      "bytes": 693
+    },
+    "gateway_source_before": {
+      "sha256": "82673784a2565a981e1f27d720f353593dee2fd9c6dca8d99eda7577c206bff5",
+      "bytes": 43745
+    },
+    "gateway_source_after": {
+      "sha256": "ff23574d51bd7ba95de8ec2afd53035b581fb67b37ec87ade2359629082ecc0c",
+      "bytes": 43903
+    },
+    "local_test_result": {
+      "sha256": "08ea6aeaa88d1d2190c40007a193f6edc53fd036de66253ae0050ca788916b6f",
+      "bytes": 639
+    },
+    "local_test_log": {
+      "sha256": "539896349a11c27c727dd41b692508148c3666bcbc54632d98ac038da15d6202",
+      "bytes": 5162
+    },
+    "local_source_verification": {
+      "sha256": "6c6a3a52d4b2182f87ae78a7a15108830b82337c322a6b6a2ac6f242c0613e98",
+      "bytes": 1678
+    },
+    "host_deployment_result": {
+      "sha256": "6d8293b163f084c2f4095e8a809838df607fb6ccc58cb6752d92430e9c4a5d01",
+      "bytes": 2735
+    },
+    "initial_snapshot_probe_failure": {
+      "sha256": "9dd50a80178e1ceec81f6e3bc09ce0a51596ed4b42bf026a4d9ef1a0225f4025",
+      "bytes": 231
+    },
+    "initial_snapshot_probe_source": {
+      "sha256": "7b3534a0f0a31ec3e697b069f139a80c3153c8b0006d6b3eca0dde04548b7c79",
+      "bytes": 4001
+    },
+    "corrected_snapshot_probe_source": {
+      "sha256": "838a693ea06c02783e2fd2373e13aeb10eff2a96139ed3e7086878d8f511a8c8",
+      "bytes": 4000
+    },
+    "released_stock_snapshot_result": {
+      "sha256": "bc42ac9293bea4f9067dc130e17c24f2397a9c8f9f73853df94c80bb1cf4cf5f",
+      "bytes": 1091
+    },
+    "released_stock_snapshot": {
+      "sha256": "f6e57006c663223e28ab13306e3e9556a9a85ddd149de6eafa6858fc39c588ae",
+      "bytes": 2640
+    },
+    "public_gateway_test_source": {
+      "sha256": "940dc75c0339a239047af3cb229a01f435aa37cc40000ba8ab34aba50bb36b8d",
+      "bytes": 32414
+    },
+    "host_test_source": {
+      "sha256": "5ca7cc8be2349c14edc1cf0219fc528c8dac976b7dd8dc91956746161243dbfe",
+      "bytes": 53244
+    },
+    "browser_host_test_source": {
+      "sha256": "83fbe2f5cce970ae106fb903545a2102b9a9f5643d66049a8159d18da3f83ba3",
+      "bytes": 24450
+    }
+  },
+  "problem": {
+    "before_observations": [
+      {
+        "name": "public",
+        "route": "/zkapi/v1/tree/notes/0/zero-path",
+        "http_status": 400,
+        "body_bytes": 44,
+        "body_sha256": "a6c29387cd225ce2be04038edef0d6482accfbdbd803bba84faf83cb392e7b98",
+        "observed_at": "2026-10-08T06:32:50.756Z"
+      },
+      {
+        "name": "stock-relay",
+        "route": "/zkapi/v1/tree/notes/0/zero-path",
+        "http_status": 400,
+        "body_bytes": 44,
+        "body_sha256": "a6c29387cd225ce2be04038edef0d6482accfbdbd803bba84faf83cb392e7b98",
+        "observed_at": "2026-10-08T06:32:51.111Z"
+      }
+    ],
+    "boundary": "Canonical public method allowlist omitted note path and zero-path reads already supported by the bounded indexer handler.",
+    "deposit_preparation_order": "WalletClient.beginDeposit invokes chain.snapshot before native prover.deposit and journal.create.",
+    "shared_snapshot_preflight_gap": "The successful shared-snapshot preflight does not exercise per-note wallet proof-path reads.",
+    "earlier_unfunded_failure_preserved": true
+  },
+  "change": {
+    "source_file": "scripts/devnet-browser-relay/host.ts",
+    "before_sha256": "82673784a2565a981e1f27d720f353593dee2fd9c6dca8d99eda7577c206bff5",
+    "after_sha256": "ff23574d51bd7ba95de8ec2afd53035b581fb67b37ec87ade2359629082ecc0c",
+    "added_lines": 2,
+    "accepted_routes": [
+      "GET /zkapi/v1/tree/notes/{note_id}/path",
+      "GET /zkapi/v1/tree/notes/{note_id}/zero-path"
+    ],
+    "note_id": "Canonical unsigned decimal, 0 through 4294967295 inclusive; no leading zero except zero.",
+    "rejected_variants": [
+      "negative or signed IDs",
+      "leading zeros",
+      "u32 overflow",
+      "fractional or exponential IDs",
+      "encoded ID",
+      "query parameters",
+      "trailing slash or suffix",
+      "uppercase path variant",
+      "legacy prefixed path",
+      "POST",
+      "credentials or admission token on the read",
+      "unreviewed browser Origin"
+    ],
+    "unchanged_guards": [
+      "browser origin/CORS policy",
+      "native metadata opt-in",
+      "no credentials on tree reads",
+      "bounded fixed indexer upstream",
+      "invitation-only AUTH",
+      "financial transaction/budget checks"
+    ],
+    "sdk_native_or_prover_artifact_changes": false
+  },
+  "local_validation": {
+    "tests_passed": 44,
+    "tests_failed": 0,
+    "tests_skipped": 0,
+    "wall_seconds": 1.6414539169927593,
+    "node_report_duration_ms": 1613.382334,
+    "guarded_source_files": 4,
+    "source_hashes_unchanged_during_tests": true,
+    "new_cases": [
+      "Exact canonical path forwarding and denial/CORS matrix",
+      "Actual SDK SolanaWalletChain.snapshot with coherent synthetic finalized accounts, genesis and block anchors through gateway"
+    ],
+    "financial_requests_in_new_fixture": 0,
+    "scope": "Local synthetic network/chain fixture tests; distinct from live read-only snapshot."
+  },
+  "deployment": {
+    "completed": true,
+    "observed_utc": "2026-10-08T06:40:04+00:00",
+    "action": "exact_gateway_wallet_read_route_source_fix",
+    "receipt_sha256": "6d8293b163f084c2f4095e8a809838df607fb6ccc58cb6752d92430e9c4a5d01",
+    "source_before_sha256": "82673784a2565a981e1f27d720f353593dee2fd9c6dca8d99eda7577c206bff5",
+    "source_after_sha256": "ff23574d51bd7ba95de8ec2afd53035b581fb67b37ec87ade2359629082ecc0c",
+    "configuration_changed": false,
+    "gateway_config_sha256": "cd8bd41e1d7c06baa82ea96a430953c1feacc63d05654fe611a080463c3fcb9c",
+    "admission_enabled": true,
+    "original_admission_records_preserved": true,
+    "initial_result_sha256": "5d3a1eb436eeb97896d69be226899d9dfe703d52555930dccc3e119f431fab85",
+    "other_five_service_processes_unchanged": true,
+    "gateway_stop_invocations": 1,
+    "gateway_start_invocations": 1,
+    "local_readiness_get_observations": 7,
+    "local_zero_path": {
+      "note_id": "0",
+      "siblings": 32,
+      "pool": "Cx8DbA49UCuASoc3goLCU9ro25eWVtcGMbvfPPJsSQzV",
+      "slot": "508729113"
+    },
+    "budget_cut": {
+      "validated": true,
+      "reserved_requests": 0,
+      "state_sha256": "9e72b378b53cbd7dd474c7c14eb340a564f3f88120283acef2a3be6cdaaf47fe",
+      "authorization_sha256": "e4c09a7e3cf9de33296893b7bc1922f26fe980cf63e64d6199ad8bb4c4f740f7",
+      "original_capacity_transferred": 0,
+      "state_written": false
+    },
+    "database_counts": {
+      "sessions_total": 0,
+      "signed_settlements": 0,
+      "sessions_unfinished": 0,
+      "operations_unfinished": 0,
+      "dispatch_unfinished": 0,
+      "chain_unfinished": 0,
+      "outbox_unfinished": 0,
+      "in_recovery": false
+    },
+    "financial_actions": 0,
+    "automatic_retry": false
+  },
+  "installed_stock_snapshot": {
+    "completed": true,
+    "observed_utc": "2026-10-08T06:42:41.435Z",
+    "release_manifest_sha256": "0b5733718f51eabcf4ca57f2406eb36bab641e23d642aac2436ca0e3090572ca",
+    "sdk_tarball_sha256": "fe9917b7f11e4bec0837bc7aac7624ad2965aa9bca007d61b877f263620143dc",
+    "probe_integrity_scope": "Exact release manifest, installed Node and four directly imported SDK module hashes plus native runtime configuration pin; not a new whole-installation inventory.",
+    "transport": "Existing stock Go relay; unchanged immutable installed SDK and native artifacts.",
+    "snapshot_slot": 508729783,
+    "chain_clock": "1791441760",
+    "next_note_id": 0,
+    "siblings": 32,
+    "paused": false,
+    "requests": [
+      {
+        "method": "GET",
+        "path": "/zkapi/v1/tree/root",
+        "rpc_method": null,
+        "http_status": 200
+      },
+      {
+        "method": "GET",
+        "path": "/zkapi/v1/tree/notes/0/zero-path",
+        "rpc_method": null,
+        "http_status": 200
+      },
+      {
+        "method": "POST",
+        "path": "/rpc",
+        "rpc_method": "getGenesisHash",
+        "http_status": 200
+      },
+      {
+        "method": "POST",
+        "path": "/rpc",
+        "rpc_method": "getMultipleAccounts",
+        "http_status": 200
+      },
+      {
+        "method": "POST",
+        "path": "/rpc",
+        "rpc_method": "getBlock",
+        "http_status": 200
+      },
+      {
+        "method": "POST",
+        "path": "/rpc",
+        "rpc_method": "getBlock",
+        "http_status": 200
+      }
+    ],
+    "wallet_actions": 0,
+    "authorization_requests": 0,
+    "inference_requests": 0
+  },
+  "preserved_initial_probe_failure": {
+    "error_class": "TypeError",
+    "boundary": "Diagnostic harness mapped import destructuring to the wrong module, so createSolanaRpcWithFetch was undefined. Corrected only that harness module list.",
+    "network_requests": 0,
+    "wallet_actions": 0,
+    "artifact_changes": false,
+    "old_failure_and_source_retained": true
+  },
+  "excluded_claims": [
+    "Successful deposit preparation or transaction submission after this route update",
+    "Funded N-01 or other native/browser/OpenClaw acceptance",
+    "AUTH, provider inference, metered settlement, withdrawal or backup/restart",
+    "Full hosted implementation CI success",
+    "A new SDK/native/prover artifact release"
+  ]
+}
