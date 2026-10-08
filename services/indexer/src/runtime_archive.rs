@@ -26,6 +26,12 @@ pub trait FinalizedArchiveSource: Send {
 
 const MAX_CUT_AGE: Duration = Duration::from_secs(30);
 
+// Only these authenticated-prefix waits may keep an HTTP readiness wait open.
+// A source/RPC error with identical text must never acquire this classification.
+#[derive(Debug, thiserror::Error)]
+#[error("local archive is not yet complete")]
+pub(super) struct ArchivePending;
+
 #[derive(Default)]
 pub struct ArchiveRefresh {
     target: Option<u64>,
@@ -36,6 +42,25 @@ pub struct ArchiveRefresh {
 }
 
 impl ArchiveRefresh {
+    /// Numeric observation only. Cleared/expired cuts remain absent; this
+    /// never recaptures a bank, refreshes the source or alters retry progress.
+    pub(super) fn failure_diagnostic(
+        &self,
+        source: &dyn FinalizedArchiveSource,
+        next_slot: u64,
+        category: &str,
+    ) -> Value {
+        json!({
+            "event": "archive_indexer_failure",
+            "category": category,
+            "next_slot": next_slot,
+            "target_slot": self.target,
+            "cut_slot": self.cut.as_ref().map(|(cut, _)| cut.slot()),
+            "cut_age_ms": self.cut.as_ref().map(|(_, captured)| captured.elapsed().as_millis().min(u64::MAX as u128) as u64),
+            "archive_tail_slot": source.tail().map(|(slot, _)| slot),
+            "source_halted": self.failed,
+        })
+    }
     fn discard_expired_cut(&mut self, now: Instant) -> bool {
         if let Some((cut, captured)) = &self.cut {
             if now.saturating_duration_since(*captured) > MAX_CUT_AGE {
@@ -66,7 +91,7 @@ impl ArchiveRefresh {
         target: u64,
     ) -> Result<()> {
         let Some((first, parent)) = source.first() else {
-            return Err("local archive is not yet complete".into());
+            return Err(ArchivePending.into());
         };
         if first > cfg.start_slot && parent >= cfg.start_slot {
             self.failed = true;
@@ -88,7 +113,7 @@ impl ArchiveRefresh {
             }
         }
         if source.tail().is_none_or(|(slot, _)| slot < target) {
-            return Err("local archive is not yet complete".into());
+            return Err(ArchivePending.into());
         }
         if index.replay_state()?.slot != target {
             self.failed = true;
@@ -166,6 +191,173 @@ impl ArchiveRpc {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    struct Prefix {
+        blocks: Vec<FinalizedBlock>,
+        bad_refresh: bool,
+        bad_replay: bool,
+    }
+    impl FinalizedArchiveSource for Prefix {
+        fn refresh(&mut self) -> ArchiveSourceResult<()> {
+            if self.bad_refresh {
+                // Matching display text is not a pending classification.
+                Err("local archive is not yet complete".into())
+            } else {
+                Ok(())
+            }
+        }
+        fn first(&self) -> Option<(u64, u64)> {
+            self.blocks.first().map(|b| (b.slot, b.parent_slot))
+        }
+        fn tail(&self) -> Option<(u64, Bytes32)> {
+            self.blocks.last().map(|b| (b.slot, b.blockhash))
+        }
+        fn replay_range(
+            &self,
+            start: u64,
+            end: u64,
+            visit: &mut dyn FnMut(&FinalizedBlock) -> ArchiveSourceResult<()>,
+        ) -> ArchiveSourceResult<()> {
+            if self.bad_replay {
+                return Err(ArchivePending.into());
+            }
+            for block in self
+                .blocks
+                .iter()
+                .filter(|b| b.slot >= start && b.slot <= end)
+            {
+                visit(block)?;
+            }
+            Ok(())
+        }
+    }
+    fn prefix_fixture() -> (Prefix, Config, Indexer, ArchiveRefresh) {
+        (
+            Prefix {
+                blocks: Vec::new(),
+                bad_refresh: false,
+                bad_replay: false,
+            },
+            Config {
+                rpc_url: "http://127.0.0.1:1".into(),
+                program_id: b58(&[1; 32]),
+                pool: b58(&[2; 32]),
+                genesis_hash: b58(&[0; 32]),
+                circuit_profile_hash: "00".repeat(32),
+                start_slot: 1,
+                listen: "127.0.0.1:0".into(),
+                public_origin: "https://indexer.example".into(),
+                snapshots_directory: PathBuf::new(),
+            },
+            Indexer::new([1; 32], [2; 32]),
+            ArchiveRefresh {
+                target: Some(2),
+                ..ArchiveRefresh::default()
+            },
+        )
+    }
+    fn prefix_block(slot: u64, parent: u64) -> FinalizedBlock {
+        FinalizedBlock {
+            finalized: true,
+            slot,
+            parent_slot: parent,
+            blockhash: [slot as u8; 32],
+            previous_blockhash: [parent as u8; 32],
+            block_time: slot,
+            transactions: Vec::new(),
+        }
+    }
+    #[tokio::test]
+    async fn authenticated_empty_and_partial_prefixes_are_typed_pending_without_rpc() {
+        let (mut source, config, mut index, mut progress) = prefix_fixture();
+        let rpc = ArchiveRpc::new(config.rpc_url.clone()).unwrap();
+        let mut next = 1;
+        for expected_next in [1, 2] {
+            let error = rpc
+                .refresh_from_archive(&config, &mut index, &mut next, &mut source, &mut progress)
+                .await
+                .unwrap_err();
+            assert!(error.is::<ArchivePending>());
+            assert_eq!(error.to_string(), "local archive is not yet complete");
+            assert_eq!(next, expected_next);
+            assert_eq!(progress.target, Some(2));
+            assert!(!progress.failed && !index.is_ready());
+            source.blocks.push(prefix_block(1, 0));
+        }
+    }
+    #[tokio::test]
+    async fn source_corruption_replay_failure_and_missing_target_are_never_pending() {
+        for failure in ["refresh", "replay", "target"] {
+            let (mut source, config, mut index, mut progress) = prefix_fixture();
+            source.blocks = vec![prefix_block(1, 0)];
+            source.bad_refresh = failure == "refresh";
+            source.bad_replay = failure == "replay";
+            if failure == "target" {
+                // Slot 2 is absent although the authenticated source is past it.
+                source.blocks.push(prefix_block(3, 1));
+            }
+            let error = ArchiveRpc::new(config.rpc_url.clone())
+                .unwrap()
+                .refresh_from_archive(&config, &mut index, &mut 1, &mut source, &mut progress)
+                .await
+                .unwrap_err();
+            assert!(!error.is::<ArchivePending>(), "{failure}");
+            assert!(progress.failed && !index.is_ready(), "{failure}");
+        }
+    }
+
+    #[test]
+    fn archive_failure_diagnostic_is_bounded_numeric_and_does_not_refresh_source() {
+        struct Source;
+        impl FinalizedArchiveSource for Source {
+            fn refresh(&mut self) -> ArchiveSourceResult<()> {
+                panic!("diagnostic must not refresh")
+            }
+            fn first(&self) -> Option<(u64, u64)> {
+                panic!("diagnostic must not replay")
+            }
+            fn tail(&self) -> Option<(u64, Bytes32)> {
+                Some((11, [99; 32]))
+            }
+            fn replay_range(
+                &self,
+                _: u64,
+                _: u64,
+                _: &mut dyn FnMut(&FinalizedBlock) -> ArchiveSourceResult<()>,
+            ) -> ArchiveSourceResult<()> {
+                panic!("diagnostic must not replay")
+            }
+        }
+        let mut progress = ArchiveRefresh {
+            target: Some(10),
+            cut: Some((
+                AccountCut {
+                    slot: 12,
+                    program: [0; 32],
+                    values: BTreeMap::new(),
+                    raw_accounts: BTreeMap::new(),
+                },
+                Instant::now(),
+            )),
+            failed: false,
+        };
+        let output = progress.failure_diagnostic(&Source, 12, "local archive incomplete");
+        assert_eq!(output.as_object().unwrap().len(), 8);
+        assert_eq!(output["event"], "archive_indexer_failure");
+        assert_eq!(output["target_slot"], 10);
+        assert_eq!(output["cut_slot"], 12);
+        assert!(output["cut_age_ms"].as_u64().is_some());
+        assert_eq!(output["archive_tail_slot"], 11);
+        assert_eq!(output["source_halted"], false);
+        assert_eq!(progress.target, Some(10));
+        assert_eq!(progress.cut.as_ref().unwrap().0.slot(), 12);
+        progress.cut = None;
+        assert!(
+            progress.failure_diagnostic(&Source, 12, "local archive account cut expired")
+                ["cut_age_ms"]
+                .is_null()
+        );
+    }
     #[test]
     fn expired_account_cut_keeps_exact_replayed_target_but_requires_new_capture() {
         let captured = Instant::now();

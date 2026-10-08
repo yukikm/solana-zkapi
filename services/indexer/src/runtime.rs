@@ -197,6 +197,42 @@ impl RpcFailureDiagnostic {
         );
     }
 }
+// Only compile-time categories may cross the operator log boundary.
+fn refresh_error_category(error: &(dyn Error + Send + Sync + 'static)) -> String {
+    if let Some(error) = error.downcast_ref::<crate::Error>() {
+        return error.to_string();
+    }
+    match error.to_string().as_str() {
+        "RPC transport unavailable" => "RPC transport unavailable",
+        "RPC HTTP error" => "RPC HTTP error",
+        "RPC response error" => "RPC response error",
+        "RPC result unavailable" => "RPC result unavailable",
+        "captured account inventory missing; retry after replay" => "account inventory changed",
+        "RPC account cut advanced or regressed between batches" => "account cut moved",
+        "finalized tip block is unavailable" => "finalized tip unavailable",
+        "local archive source halted" => "local archive source halted",
+        "local archive source unavailable" => "local archive source unavailable",
+        "local archive is not yet complete" => "local archive incomplete",
+        "local archive omits the configured start" => "local archive start missing",
+        "local archive replay failed" => "local archive replay failed",
+        "local archive lacks the finalized target" => "local archive target missing",
+        "local archive account cut expired" => "local archive account cut expired",
+        "account/replay cut mismatch" => "account replay cut mismatch",
+        "pool length" => "pool length mismatch",
+        "pool profile/genesis mismatch" => "pool profile genesis mismatch",
+        "invalid account layout/PDA" => "account layout PDA mismatch",
+        "RPC account owner/encoding" => "account owner encoding mismatch",
+        "RPC account cut" => "invalid account cut",
+        "RPC account list" => "invalid account list",
+        "RPC account count" => "invalid account count",
+        "missing account at captured cut" => "account missing at cut",
+        "blockhash missing" => "blockhash missing",
+        "block anchor mismatch" => "block anchor mismatch",
+        _ => "runtime reconciliation unavailable",
+    }
+    .to_owned()
+}
+
 impl ArchiveRpc {
     pub fn new(url: String) -> Result<Self> {
         let parsed = reqwest::Url::parse(&url)?;
@@ -541,6 +577,15 @@ struct Published {
     available: bool,
     refreshing: bool,
 }
+impl Published {
+    fn finish_failed_refresh(&mut self, error: &(dyn Error + Send + Sync + 'static)) {
+        self.available = false;
+        // Waiting for a verified local writer prefix is still the same logical
+        // refresh, including its two-second polling sleeps. HTTP keeps its one
+        // bounded deadline and cannot read the previously published index.
+        self.refreshing = error.is::<archive_source::ArchivePending>();
+    }
+}
 #[derive(Clone)]
 struct HttpState {
     state: Arc<RwLock<Published>>,
@@ -737,28 +782,16 @@ async fn serve_source(
             }
             // Never log raw RPC errors: URLs can contain provider credentials.
             else if let Err(error) = result {
-                state.write().await.refreshing = false;
+                state.write().await.finish_failed_refresh(error.as_ref());
                 // Typed replay errors contain only compile-time descriptions.
                 // Never interpolate an arbitrary transport error or RPC URL.
-                let category = if let Some(error) = error.downcast_ref::<crate::Error>() {
-                    error.to_string()
-                } else {
-                    match error.to_string().as_str() {
-                        "RPC transport unavailable" => "RPC transport unavailable",
-                        "RPC HTTP error" => "RPC HTTP error",
-                        "RPC response error" => "RPC response error",
-                        "RPC result unavailable" => "RPC result unavailable",
-                        "captured account inventory missing; retry after replay" => {
-                            "account inventory changed"
-                        }
-                        "RPC account cut advanced or regressed between batches" => {
-                            "account cut moved"
-                        }
-                        "finalized tip block is unavailable" => "finalized tip unavailable",
-                        _ => "runtime reconciliation unavailable",
-                    }
-                    .to_owned()
-                };
+                let category = refresh_error_category(error.as_ref());
+                if let Some(source) = archive.as_ref() {
+                    eprintln!(
+                        "{}",
+                        archive_refresh.failure_diagnostic(source.as_ref(), next, &category)
+                    );
+                }
                 eprintln!("indexer paused: next_slot={next} category={category}");
             }
             updated.send_replace(());
@@ -788,6 +821,42 @@ mod http_tests {
     use axum::body::to_bytes;
     use std::sync::atomic::{AtomicU64, Ordering};
     static NEXT: AtomicU64 = AtomicU64::new(0);
+    #[test]
+    fn refresh_failure_categories_preserve_known_reasons_and_redact_arbitrary_errors() {
+        for (input, expected) in [
+            (
+                "local archive is not yet complete",
+                "local archive incomplete",
+            ),
+            (
+                "local archive account cut expired",
+                "local archive account cut expired",
+            ),
+            (
+                "pool profile/genesis mismatch",
+                "pool profile genesis mismatch",
+            ),
+            ("block anchor mismatch", "block anchor mismatch"),
+            ("RPC HTTP error", "RPC HTTP error"),
+            (
+                "https://rpc.invalid/?key=SECRET",
+                "runtime reconciliation unavailable",
+            ),
+            (
+                "local archive incomplete SECRET",
+                "runtime reconciliation unavailable",
+            ),
+        ] {
+            let error: Box<dyn Error + Send + Sync> = input.into();
+            assert_eq!(refresh_error_category(error.as_ref()), expected);
+            assert!(!refresh_error_category(error.as_ref()).contains("SECRET"));
+        }
+        let typed: Box<dyn Error + Send + Sync> = crate::Error::State.into();
+        assert_eq!(
+            refresh_error_category(typed.as_ref()),
+            crate::Error::State.to_string()
+        );
+    }
     #[test]
     fn rpc_failure_diagnostic_has_only_static_labels_and_numeric_fields() {
         for method in [
@@ -1100,6 +1169,145 @@ mod http_tests {
             assert_eq!(request.await.unwrap().status(), StatusCode::OK);
         }
         std::fs::remove_dir_all(directory).unwrap();
+    }
+
+    #[tokio::test]
+    async fn pending_prefix_waits_across_poll_notifications_and_returns_only_the_new_cut() {
+        let (index, config) = fixture();
+        let old = index.replay_state().unwrap();
+        let mut fresh = index.clone();
+        fresh
+            .apply_block(&crate::FinalizedBlock {
+                finalized: true,
+                slot: old.slot + 1,
+                parent_slot: old.slot,
+                blockhash: [77; 32],
+                previous_blockhash: old.blockhash,
+                block_time: old.slot + 1,
+                transactions: Vec::new(),
+            })
+            .unwrap();
+        // API fixture only; real account-cut validation remains covered by
+        // tests/runtime.rs. Even a ready retained index must never be served.
+        fresh.reconcile(&fresh.replay_state().unwrap()).unwrap();
+        let (updated, changes) = watch::channel(());
+        let shared = HttpState {
+            state: Arc::new(RwLock::new(Published {
+                index,
+                available: false,
+                refreshing: true,
+            })),
+            config: Arc::new(config),
+            updated: changes,
+        };
+        let request = tokio::spawn(root(State(shared.clone())));
+        for _ in 0..2 {
+            shared
+                .state
+                .write()
+                .await
+                .finish_failed_refresh(&archive_source::ArchivePending);
+            updated.send_replace(());
+            tokio::time::sleep(Duration::from_millis(20)).await;
+            assert!(!request.is_finished());
+            assert!(!shared.state.read().await.available);
+        }
+        *shared.state.write().await = Published {
+            index: fresh,
+            available: true,
+            refreshing: false,
+        };
+        updated.send_replace(());
+        let response = request.await.unwrap();
+        assert_eq!(response.status(), StatusCode::OK);
+        assert_eq!(body(response).await["slot"], (old.slot + 1).to_string());
+    }
+
+    #[tokio::test]
+    async fn repeated_pending_notifications_do_not_extend_the_http_deadline() {
+        let (index, config) = fixture();
+        let (updated, changes) = watch::channel(());
+        let shared = HttpState {
+            state: Arc::new(RwLock::new(Published {
+                index,
+                available: false,
+                refreshing: true,
+            })),
+            config: Arc::new(config),
+            updated: changes,
+        };
+        let deadline = Duration::from_millis(80);
+        let started = tokio::time::Instant::now();
+        let waiting = ready_state(&shared, deadline);
+        tokio::pin!(waiting);
+        let mut notices = 0;
+        tokio::time::timeout(Duration::from_secs(1), async {
+            loop {
+                tokio::select! {
+                    result = &mut waiting => {
+                        assert!(result.is_none());
+                        break;
+                    }
+                    _ = tokio::time::sleep(Duration::from_millis(5)) => {
+                        shared.state.write().await.finish_failed_refresh(&archive_source::ArchivePending);
+                        updated.send_replace(());
+                        notices += 1;
+                    }
+                }
+            }
+        })
+        .await
+        .expect("pending notifications must not restart the request deadline");
+        assert!(started.elapsed() >= deadline);
+        assert!(notices >= 2);
+        assert!(!shared.state.read().await.available);
+    }
+
+    #[tokio::test]
+    async fn pending_then_hard_error_wakes_http_without_returning_the_old_cut() {
+        for error in [
+            "RPC response error",
+            "local archive source unavailable",
+            "local archive account cut expired",
+            "block anchor mismatch",
+            // Exact matching display text still lacks the trusted error type.
+            "local archive is not yet complete",
+        ] {
+            let (index, config) = fixture();
+            let (updated, changes) = watch::channel(());
+            let shared = HttpState {
+                state: Arc::new(RwLock::new(Published {
+                    index,
+                    available: false,
+                    refreshing: true,
+                })),
+                config: Arc::new(config),
+                updated: changes,
+            };
+            shared
+                .state
+                .write()
+                .await
+                .finish_failed_refresh(&archive_source::ArchivePending);
+            let request = tokio::spawn(root(State(shared.clone())));
+            tokio::time::sleep(Duration::from_millis(10)).await;
+            assert!(!request.is_finished());
+            let error: Box<dyn Error + Send + Sync> = error.into();
+            shared
+                .state
+                .write()
+                .await
+                .finish_failed_refresh(error.as_ref());
+            updated.send_replace(());
+            let response = tokio::time::timeout(Duration::from_secs(1), request)
+                .await
+                .expect("hard failures wake the waiter immediately")
+                .unwrap();
+            assert_eq!(response.status(), StatusCode::SERVICE_UNAVAILABLE);
+            let state = shared.state.read().await;
+            assert!(state.index.is_ready());
+            assert!(!state.available && !state.refreshing);
+        }
     }
 
     #[tokio::test]

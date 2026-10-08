@@ -1,0 +1,407 @@
+{
+  "schema": 1,
+  "recorded_at": "2026-10-08T04:30:18.622657+00:00",
+  "status": "linux_candidate_verified_deployment_pending",
+  "scope": "Pre-change read-only host observations and a locally tested, Linux-built typed archive-pending HTTP wait correction. Deployment and post-deployment readiness remain pending in this record; no funded acceptance or full hosted CI success is claimed.",
+  "runtime_observed": {
+    "follower_binary_sha256": "7b2a41955e8a280a74235611388225a1b459b8bea73dfc2a4cd0b5ca955afce8",
+    "writer_binary_sha256": "3893ca8fe2bbdb1275e6d8faea24a918f24192ccd7daa584b6baa8a28a4df2d8"
+  },
+  "observations": {
+    "rpc_account_anchor": {
+      "started_at": "2026-10-08T03:55:30.359Z",
+      "finished_at": "2026-10-08T03:55:30.710Z",
+      "requests": [
+        {
+          "ordinal": 1,
+          "method": "getGenesisHash",
+          "http_status": 200,
+          "bytes": 81,
+          "sha256": "9d0f36530a5526131672857c8ff1d2b6dbcbab3e18f347161fc36b2c3a0825c3",
+          "elapsed_ms": 100
+        },
+        {
+          "ordinal": 2,
+          "method": "getMultipleAccounts",
+          "http_status": 200,
+          "bytes": 1075,
+          "sha256": "0c179ec4b7273ae2a94510cd720d6746afb8f208e5bb4dcc4127c248319371d9",
+          "elapsed_ms": 23
+        },
+        {
+          "ordinal": 3,
+          "method": "getBlock",
+          "http_status": 200,
+          "bytes": 231,
+          "sha256": "37a11b695926db65ea42a2cea71fd2ddeb6bfdcbeffca6dc592c6f2ece48be54",
+          "elapsed_ms": 38
+        }
+      ],
+      "checks": {
+        "rpc_genesis": true,
+        "account_owner_and_encoding": true,
+        "pool_length": true,
+        "pool_layout_pda": true,
+        "pool_genesis": true,
+        "pool_backends": true,
+        "pool_circuit_profile": true,
+        "tree_layout_pda": true,
+        "empty_tree_counters": true,
+        "block_anchor_decodable": true
+      },
+      "account_cut_slot": 508687745,
+      "scope": "Read-only finalized RPC account/anchor self-consistency against exact deployed runtime checks; not full replay reconciliation or readiness"
+    },
+    "saved_archive_anchor": {
+      "started_at": "2026-10-08T04:05:10.085271+00:00",
+      "finished_at": "2026-10-08T04:05:21.521385+00:00",
+      "captured_head_sha256": "4f626dcdae2b57f107115a057da312917c7d3959d77efebc2161cc2ff842e2a9",
+      "comparison": {
+        "slot": 508687745,
+        "blockhash_matches": true,
+        "parent_slot_matches": true,
+        "previous_blockhash_matches": true,
+        "archive_blockhash_sha256": "d43545b5d944770afd9fbef5b9ef4ab4f24b7c080d497ab475c3cbc3b20d1c3b"
+      },
+      "chunks_read": 399,
+      "chunk_bytes_read": 226273494,
+      "elapsed_seconds": 11.436,
+      "external_requests": 0,
+      "runtime_state_writes": 0,
+      "scope": "Exact saved RPC account-cut block versus one captured committed archive prefix; not native full-prefix validation or readiness"
+    },
+    "cursor_progress": {
+      "observed_at": "2026-10-08T04:12:38.164028+00:00",
+      "window_seconds": 120,
+      "pause_count": 38,
+      "distinct_next_slot_count": 32,
+      "first_next_slot": 508691532,
+      "last_next_slot": 508692025,
+      "slot_advance": 493,
+      "categories": {
+        "runtime reconciliation unavailable": 38
+      },
+      "panic_marker_count": 0,
+      "scope": "Cursor movement rules out a completely stalled replay at this observation. It does not itself count successful publications."
+    },
+    "loopback_root_sampling": {
+      "started_at": "2026-10-08T04:16:00.461742+00:00",
+      "finished_at": "2026-10-08T04:16:12.222533+00:00",
+      "samples": 12,
+      "status_counts": {
+        "503": 9,
+        "200": 3
+      },
+      "successful_response_slots": [
+        "508692893",
+        "508692893",
+        "508692923"
+      ],
+      "responses": [
+        {
+          "ordinal": 1,
+          "status": 503,
+          "bytes": 127,
+          "sha256": "be64766761f638db4b637241aa918ba81879751b4046541fa6170a58ac92a8ae",
+          "elapsed_seconds": 0.007
+        },
+        {
+          "ordinal": 2,
+          "status": 503,
+          "bytes": 127,
+          "sha256": "be64766761f638db4b637241aa918ba81879751b4046541fa6170a58ac92a8ae",
+          "elapsed_seconds": 0.004
+        },
+        {
+          "ordinal": 3,
+          "status": 503,
+          "bytes": 127,
+          "sha256": "be64766761f638db4b637241aa918ba81879751b4046541fa6170a58ac92a8ae",
+          "elapsed_seconds": 0.004
+        },
+        {
+          "ordinal": 4,
+          "status": 200,
+          "bytes": 243,
+          "sha256": "99012a640b410d27b6e21903a9514e0abe67e033a5ba936f8ded44eb92ed2ac1",
+          "elapsed_seconds": 0.006
+        },
+        {
+          "ordinal": 5,
+          "status": 200,
+          "bytes": 243,
+          "sha256": "99012a640b410d27b6e21903a9514e0abe67e033a5ba936f8ded44eb92ed2ac1",
+          "elapsed_seconds": 0.003
+        },
+        {
+          "ordinal": 6,
+          "status": 503,
+          "bytes": 127,
+          "sha256": "be64766761f638db4b637241aa918ba81879751b4046541fa6170a58ac92a8ae",
+          "elapsed_seconds": 0.003
+        },
+        {
+          "ordinal": 7,
+          "status": 503,
+          "bytes": 127,
+          "sha256": "be64766761f638db4b637241aa918ba81879751b4046541fa6170a58ac92a8ae",
+          "elapsed_seconds": 0.004
+        },
+        {
+          "ordinal": 8,
+          "status": 503,
+          "bytes": 127,
+          "sha256": "be64766761f638db4b637241aa918ba81879751b4046541fa6170a58ac92a8ae",
+          "elapsed_seconds": 0.28
+        },
+        {
+          "ordinal": 9,
+          "status": 503,
+          "bytes": 127,
+          "sha256": "be64766761f638db4b637241aa918ba81879751b4046541fa6170a58ac92a8ae",
+          "elapsed_seconds": 0.004
+        },
+        {
+          "ordinal": 10,
+          "status": 503,
+          "bytes": 127,
+          "sha256": "be64766761f638db4b637241aa918ba81879751b4046541fa6170a58ac92a8ae",
+          "elapsed_seconds": 0.068
+        },
+        {
+          "ordinal": 11,
+          "status": 503,
+          "bytes": 127,
+          "sha256": "be64766761f638db4b637241aa918ba81879751b4046541fa6170a58ac92a8ae",
+          "elapsed_seconds": 0.004
+        },
+        {
+          "ordinal": 12,
+          "status": 200,
+          "bytes": 243,
+          "sha256": "37c1a0d4ad408ab0117691b1bf0815b73b9884e61b0d790ee1a64926a7a3fe73",
+          "elapsed_seconds": 0.262
+        }
+      ],
+      "shape_validated_only": true,
+      "main_processes_configs_unchanged": true,
+      "admission_false": true,
+      "direct_rpc_requests": 0,
+      "scope": "Twelve bounded loopback root availability samples; not finalized chain authentication or readiness acceptance"
+    }
+  },
+  "correction": {
+    "source_files": [
+      {
+        "path": "services/indexer/src/runtime.rs",
+        "sha256": "0613ddabf6bcf2a5cbff2f9f16531e407c53bea544c1ad0e500b8e96a26b48d0",
+        "bytes": 55466,
+        "before_sha256": "311a0ec6ae2f6949a925b16c77abc62f9be486eb75998298cc3028f3d5755b69"
+      },
+      {
+        "path": "services/indexer/src/runtime_archive.rs",
+        "sha256": "2a6c6233ca003f4ab9c60bf2d0dfec9e5a27b24fab698d36bc3192910fcf6b76",
+        "bytes": 14658,
+        "before_sha256": "507a9f00d05cd1aa4c986180259aee683ac5de414127c99c9f65a88407fff93d"
+      }
+    ],
+    "source_freeze_sha256": "888f10098695624b3845a141d3dd3aeebec5814406a2c209e59afebe71f2c2c3",
+    "typed_pending": "Private ArchivePending constructed only for a refreshed authenticated source with no committed first block or a committed tail below the retained target. Source/replay errors are remapped to hard failures.",
+    "http_behavior": "Keep available=false and the logical refresh pending across the existing two-second polling sleeps. Return only a later successfully reconciled publication within the existing single twenty-second request deadline.",
+    "ready_wait_seconds": 20,
+    "poll_sleep_seconds": 2,
+    "hard_failures_unchanged": [
+      "RPC errors",
+      "source corruption or rollback",
+      "replay failures",
+      "missing exact finalized target",
+      "expired captured account cut",
+      "account or block-anchor mismatch",
+      "worker loss"
+    ],
+    "diagnostic_code_unchanged": true,
+    "new_rpc_calls": 0,
+    "previous_root_fallback": false,
+    "history_skip": false,
+    "format_change": false
+  },
+  "validation": {
+    "unit": {
+      "command": "cargo +1.90.0 test --locked --offline --manifest-path services/indexer/Cargo.toml --lib runtime::",
+      "passed": 16,
+      "failed": 0,
+      "ignored": 0,
+      "filtered_out": 7,
+      "seconds": 0.12
+    },
+    "integration": {
+      "command": "cargo +1.90.0 test --locked --offline --manifest-path services/indexer/Cargo.toml --test runtime",
+      "passed": 17,
+      "failed": 0,
+      "ignored": 0,
+      "seconds": 0.1,
+      "log_sha256": "646a759204678f53dc3482ec976d0ec06c262619af72da7359c828c182bedb1a"
+    },
+    "fmt": {
+      "command": "cargo +1.90.0 fmt --manifest-path services/indexer/Cargo.toml -- --check",
+      "exit_code": 0
+    },
+    "clippy": {
+      "command": "cargo +1.90.0 clippy --locked --offline --manifest-path services/indexer/Cargo.toml --all-targets -- -D warnings",
+      "exit_code": 0,
+      "seconds": 1.52
+    },
+    "logs": {
+      "focused-tests.log": {
+        "sha256": "c11d099062a24005e5b2970a2db731e3d4e3a9c74a5b0b9790d8ee21a64d528b",
+        "bytes": 2044
+      },
+      "fmt.log": {
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "bytes": 0
+      },
+      "clippy.log": {
+        "sha256": "eb0f9ae148c68059bd479cf721a9404cae0a241dcf4886d19efea3837752b059",
+        "bytes": 161
+      }
+    },
+    "independent_read_only_review": {
+      "agent": "public_profile",
+      "blocking_findings": 0,
+      "tests_rerun": false
+    },
+    "source_unchanged_after_local_checks": true
+  },
+  "retained_observations": [
+    {
+      "record": "26-dispatch-failure.json",
+      "stage": "Request preparation",
+      "outcome": "SSM rejected an overlong Comment before creating a command. Parsing the empty rejected output also failed; no CommandId or host action resulted."
+    },
+    {
+      "record": "26-result-r2.json",
+      "stage": "Read-only anchor probe",
+      "outcome": "Failed at capture_head before reading any chunk because the helper required an explicit empty archive field that the existing v2 serializer omits. No runtime state was changed."
+    },
+    {
+      "record": "26b-result.json",
+      "stage": "Corrected read-only anchor probe",
+      "outcome": "Accepts omitted or empty inline archive according to the existing v2 format, still rejects null/nonempty, and passed the bounded saved-anchor comparison."
+    }
+  ],
+  "diagnostic_candidate": {
+    "binary_sha256": "759e72536250fe16aa55b87b0762009c226275d9be5b4165317aaa3c023c99f0",
+    "bytes": 12708568,
+    "build_verification_sha256": "e3ddcee0e23b24568505abd4183a91e5b7b0ccea54d5d9120c94de968941c99c",
+    "source_manifest_sha256": "7a4c537d84a932ae4f93f5c355825500491afa72daf535450e00807c1a1e584e",
+    "scope": "Earlier diagnostics-only candidate built and checked locally; transfer/sidecar preparations are retained. It is not the observed deployed follower and is not reported as deployed."
+  },
+  "retained_record_hashes": {
+    "25-result.json": {
+      "sha256": "62355511aed3c1e8c7942b4ead3697ac1fb4245a40c55db4af944d940a362483",
+      "bytes": 2241
+    },
+    "26-dispatch-failure.json": {
+      "sha256": "f31980a3df9c6d9d3e140b9fc3640a9a9505e88d512c652da7c1ea616c7d6ca3",
+      "bytes": 198
+    },
+    "26-result-r2.json": {
+      "sha256": "7812f56909730337f4bce097306a66c4291a3362396391c65da7e26735b4e4a9",
+      "bytes": 1793
+    },
+    "26b-result.json": {
+      "sha256": "8976ec230b80916c3458a2d2cc46e9d6c99377cb080467375b0e98753f3b112f",
+      "bytes": 2879
+    },
+    "29-result.json": {
+      "sha256": "e19f12e4ee9644942ad158d67264c895a5c6f8d68f07094846c34550ac2b3ed8",
+      "bytes": 1917
+    },
+    "30-result.json": {
+      "sha256": "3ddd0c7a4768ea8c8c0ad232d00be241519d2bef621314bd5a506a105dd45981",
+      "bytes": 8678
+    }
+  },
+  "candidate_linux_build": {
+    "observed_at": "2026-10-08T04:28:55.447587+00:00",
+    "scope": "Isolated archive follower candidate with typed local-prefix pending HTTP wait and static diagnostics. Parent executed locked offline Linux build, network-disabled smoke and loopback fixtures; local byte, ABI, exit and 187-source joins verified. Deployment remains separate.",
+    "source_manifest_sha256": "8f1219ebd7559b1e75c6be87fa0ea77fbb50c6ce523725e247fa58fae91659ea",
+    "source_files_verified_unchanged": 187,
+    "changed_deployed_sources": [
+      "services/indexer/src/runtime.rs",
+      "services/indexer/src/runtime_archive.rs"
+    ],
+    "prior_follower_binary_sha256": "7b2a41955e8a280a74235611388225a1b459b8bea73dfc2a4cd0b5ca955afce8",
+    "maximum_glibc": "2.34",
+    "smoke_exit_codes": {
+      "no_config": 2,
+      "archive_mode_missing_config": 1
+    },
+    "libraries_resolved": true,
+    "binary": {
+      "sha256": "8237fdbcbb671eb9956e8b11ab470df21ae227cf9ba6dc862ad66e879aee1216",
+      "bytes": 12709360
+    },
+    "verification_sha256": "604bd17efe3ea3f343b4af385fa4de130b2efef81592c991ebd25cc9a4b82638",
+    "retained_build_and_smoke_hashes": {
+      "build-r2.log": {
+        "sha256": "a7e371ab3453f051aeb98374618fc9096d3c5bdc95ef2951335d743fba255710",
+        "bytes": 1768
+      },
+      "run-build-r2.sh": {
+        "sha256": "1c41baf8e6776120844fc53e5cb670139693caea6488f454d3dce91f77f73a37",
+        "bytes": 1124
+      },
+      "build.sh": {
+        "sha256": "a650e9dc3cde0ee087ff33983b92a18fffd27ba3765e696c6aa919adccb032dc",
+        "bytes": 325
+      },
+      "run-smoke.sh": {
+        "sha256": "fe1f56d69dd9e2c6f06ea2cf437190a87b43754e2e70dbd0808093bd6321be57",
+        "bytes": 644
+      },
+      "smoke.sh": {
+        "sha256": "f7e6a5d5763cf6d41f4d3b63ed4f5723b81fad58661548d774eb28fe5da9ec34",
+        "bytes": 622
+      },
+      "smoke/archive-mode-no-config-exit.txt": {
+        "sha256": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865",
+        "bytes": 2
+      },
+      "smoke/archive-mode-no-config.log": {
+        "sha256": "cff279a1091393dfef50366515d0f98d8556d89958afe82ed5727e48f1ab363c",
+        "bytes": 68
+      },
+      "smoke/dependencies.txt": {
+        "sha256": "03ea5ec20cfa39f792e0821753f1becde125a3af03d3eed69c6a0da42333edea",
+        "bytes": 214
+      },
+      "smoke/glibc-versions.txt": {
+        "sha256": "1caff544aefb549c1ef2fb44b4a3f8e0bf430d995e4ffebd5c59e7d6db79daf3",
+        "bytes": 4988
+      },
+      "smoke/no-config-exit.txt": {
+        "sha256": "53c234e5e8472b6ac51c1ae1cab3fe06fad053beb8ebfd8977b010655bfdd3c3",
+        "bytes": 2
+      },
+      "smoke/no-config.log": {
+        "sha256": "e4c3c1070e4fbc324c596962e3d4e1ba6eadc91e381a5d632d60da714fef9dfb",
+        "bytes": 113
+      }
+    },
+    "snapshot_scope": "The retained deployed follower source snapshot with exactly two changed source files. Other185 copied inputs stay pinned; this is not an entire current working-tree build."
+  },
+  "deployment": null,
+  "post_deployment_verification": null,
+  "claims": {
+    "full_readiness": false,
+    "browser_or_native_funded_acceptance": false,
+    "full_hosted_implementation_ci_success": false,
+    "new_provider_or_financial_actions": false,
+    "client_release_changed": false
+  },
+  "previous_draft": {
+    "PD-indexer-archive-pending.md": "f7ff804d26f4847c16e94ede2b5340f1b1badad7e6ae1c832d00ba71909627bc",
+    "PD-indexer-archive-pending.json": "28e7d4f3fcb9c2a4a7964a1bdcb003867594274b0633606404cf2724db507049"
+  }
+}
