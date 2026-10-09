@@ -1,10 +1,18 @@
 # Solana zkAPI
 
+[Privacy release verified](docs/evidence/PD-sdk7-publication-20261010.md): SDK/native
+**`0.2.0-devnet.7`** adds direct-request filtering, direct OpenRouter ZDR policy and
+request-journal minimization. See the [release guide](docs/releases/privacy-preview.md)
+for downloads and the immutable revision-5 profile. Both client CI jobs, 528 local
+source tests, 209 installed-package tests and all six asset attestations/downloads
+passed. Full implementation CI was still running at the recorded cut. Existing
+custody keeps its original profile and recovery inputs.
+
 [Publication verified](docs/evidence/PD-sdk6-publication-20261009.md): SDK/native `.6`, both client-preview CI jobs,
 six anonymous asset downloads and all release/asset attestations passed. Full
 implementation CI was still running at the recorded release cut.
 
-New SDK/native **`0.2.0-devnet.6`** consumers: see the [session reuse release guide](docs/releases/session-reuse-preview.md)
+Earlier SDK/native **`0.2.0-devnet.6`** consumers: see the [session reuse release guide](docs/releases/session-reuse-preview.md)
 for exact downloads and the compatible immutable revision-4 profile. Existing
 `.3` installations retain their original profile and recovery inputs.
 
