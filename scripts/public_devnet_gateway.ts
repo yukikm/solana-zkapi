@@ -12,6 +12,7 @@ import {parseStrictJson,sha256Hex,jcsBytes} from '../packages/sdk/src/trust.ts';
 import {directControlRelay,loadBrowserChatBudget,localForwarder,type BrowserChatDevnetHostConfig,type DirectDemoBudget} from './browser_chat_devnet_host.ts';
 import {startUiHost,validatePublicBrowserOrigins,type HostOptions,type UiDirectProviderBudget} from './devnet-browser-relay/host.ts';
 import {publicReadiness} from './public_devnet_readiness.ts';
+import {validatePublicModelExpansion} from './public_model_profile.ts';
 
 export interface SupplementalGatewayBudget {
   kind:'supplemental-v1'; planPath:string; stateDir:string;
@@ -42,6 +43,8 @@ export interface PublicDevnetGatewayConfig {
   profileUrl:string;
   profilePath:string;
   profileSha256:string;
+  /** Separately pinned consumer model expansion; original grant binding stays intact. */
+  modelProfile?:{url:string;path:string;sha256:string};
   bundleDescriptorPath:string;
   rpcUrl:string;
   historyRpcUrl?:string;
@@ -56,7 +59,7 @@ function fields(value:any,required:string[],optional:string[]=[]){
 }
 function validateConfig(config:PublicDevnetGatewayConfig){
   fields(config,['port','publicOrigin','allowedBrowserOrigins','allowNativeRequests','allowTransactions','allowNewAdmissions',
-    'profileUrl','profilePath','profileSha256','bundleDescriptorPath','rpcUrl','indexerUrl','controlUrl','budget'],['historyRpcUrl','localCaPath','admissionTokenSha256','requireInvitation']);
+    'profileUrl','profilePath','profileSha256','bundleDescriptorPath','rpcUrl','indexerUrl','controlUrl','budget'],['historyRpcUrl','localCaPath','admissionTokenSha256','requireInvitation','modelProfile']);
   assert.ok(Number.isInteger(config.port)&&config.port>=0&&config.port<=65535);
   const origin=new URL(config.publicOrigin);assert.ok(origin.protocol==='https:'&&origin.origin===config.publicOrigin&&!origin.username&&!origin.password);
   validatePublicBrowserOrigins(config.allowedBrowserOrigins);
@@ -64,6 +67,11 @@ function validateConfig(config:PublicDevnetGatewayConfig){
   assert.ok(config.requireInvitation===undefined||typeof config.requireInvitation==='boolean');
   if(((config.requireInvitation??true)&&config.allowNewAdmissions)||config.admissionTokenSha256!==undefined)assert.match(config.admissionTokenSha256??'',/^[0-9a-f]{64}$/, 'public admission invitation digest required');
   assert.match(config.profileSha256,/^[0-9a-f]{64}$/);
+  if(config.modelProfile!==undefined){
+    fields(config.modelProfile,['url','path','sha256']);assert.match(config.modelProfile.sha256,/^[0-9a-f]{64}$/);
+    const u=new URL(config.modelProfile.url);assert.ok(u.origin===config.publicOrigin&&!u.search&&!u.hash&&!u.username&&!u.password&&u.pathname.startsWith('/releases/'));
+    assert.equal(typeof config.modelProfile.path,'string');
+  }
   for(const input of [config.rpcUrl,...(config.historyRpcUrl?[config.historyRpcUrl]:[])]){
     const u=new URL(input);assert.ok(u.protocol==='https:'&&!u.username&&!u.password&&!u.hash);
   }
@@ -121,6 +129,19 @@ export function validateGatewayProfile(config:PublicDevnetGatewayConfig,loaded:L
   assert.equal(p.models[0].provider,'openrouter');assert.deepEqual(p.models[0].apis,['chat']);
   assert.equal(m.cap_micro_usdc,'1000000');
   return {profile:p,manifest:m,model:p.models[0]};
+}
+
+/** Validate the expanded consumer list against the untouched grant-era profile.
+ * Direct AUTH keeps its wildcard tariff; this is discovery, not provider-key ACLs. */
+export async function gatewayModelDiscovery(config:PublicDevnetGatewayConfig,loaded:LoadedPublicDeploymentProfile):Promise<NonNullable<HostOptions['modelDiscovery']>>{
+  const {profile}=validateGatewayProfile(config,loaded);
+  let selected=profile,profileUrl=config.profileUrl,profileSha256=config.profileSha256;
+  if(config.modelProfile!==undefined){
+    const raw=await publicFile(config.modelProfile.path,1024*1024);assert.equal(await sha256Hex(raw),config.modelProfile.sha256);
+    selected=parseStrictJson(raw) as unknown as typeof profile;validatePublicModelExpansion(profile,selected);
+    profileUrl=config.modelProfile.url;profileSha256=config.modelProfile.sha256;
+  }
+  return {profileUrl,profileSha256,models:selected.models.map(m=>({id:m.id,label:m.label??m.id,capabilities:selected.modelCapabilities[m.id]}))};
 }
 
 /** Select only explicitly initialized, independently pinned supplemental state.
@@ -195,6 +216,7 @@ export async function loadSupplementalGatewayBudget(config:PublicDevnetGatewayCo
 export async function configuredPublicDevnetGateway(config:PublicDevnetGatewayConfig){
   config=structuredClone(config);
   const loaded=await loadGatewayPublicProfile(config), {profile,manifest,model}=validateGatewayProfile(config,loaded);
+  const modelDiscovery=await gatewayModelDiscovery(config,loaded);
   const budget='kind' in config.budget?await loadSupplementalGatewayBudget(config,loaded):
     await loadBrowserChatBudget(config.budget,manifest,model.tariff,model.id,config.allowTransactions,config.allowNewAdmissions);
   const forward=localForwarder(config.localCaPath?await publicFile(config.localCaPath,1024*1024):undefined);
@@ -204,7 +226,7 @@ export async function configuredPublicDevnetGateway(config:PublicDevnetGatewayCo
   const options:HostOptions={port:config.port,application:'public-api',publicOrigin:config.publicOrigin,
     allowedBrowserOrigins:[...config.allowedBrowserOrigins],allowNativeRequests:config.allowNativeRequests,
     allowTransactions:config.allowTransactions,allowNewAdmissions:config.allowNewAdmissions,requireInvitation:config.requireInvitation,admissionTokenSha256:config.admissionTokenSha256,manifest,
-    preparationCommitment:profile.preparationCommitment,controlRelay:control,directBudget:budget.status,
+    preparationCommitment:profile.preparationCommitment,controlRelay:control,directBudget:budget.status,modelDiscovery,
     readiness:signal=>publicReadiness(bound=>forward(config.controlUrl+'/zkapi/v1/readiness','GET',undefined,{},8192,bound),
       {deploymentId:manifest.deployment_id,manifestHash:manifest.manifest_hash,tariffHash:model.tariff.tariff_hash},signal),
     rpc:(data,signal)=>forward(config.rpcUrl,'POST',data,{},4*1024*1024,signal),

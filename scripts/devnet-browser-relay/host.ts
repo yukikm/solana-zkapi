@@ -193,6 +193,8 @@ export interface HostOptions {
    * The installed application must enforce its exact native routes and budget. */
   controlRelay?: (input: {path: string; method: 'GET' | 'POST'; authorization?: string; data: Buffer; allowNewAdmissions?: boolean; newAdmissionAuthorized?: boolean; signal?: AbortSignal}) => Promise<UpstreamReply>;
   directBudget?: () => Promise<UiDirectProviderBudget>;
+  /** Public consumer profile and configured Chat models, with no provider request. */
+  modelDiscovery?: {profileUrl:string;profileSha256:string;models:readonly {id:string;label:string;capabilities:{streaming:boolean;tools:boolean}}[]};
   /** Redacted, bounded read-only capability projection; no admission claim. */
   readiness?: (signal?: AbortSignal) => Promise<UpstreamReply>;
   preparationCommitment?: TransactionPreparationCommitment;
@@ -240,6 +242,12 @@ export async function startUiHost(options: HostOptions) {
   assert.ok(!options.directBudget || (options.application === 'browser-chat' || publicApi) && !options.provider && options.controlRelay);
   const directProviderOrigin = options.directProviderOrigin, controlRelay = options.controlRelay, directBudget = options.directBudget;
   const historyRpc = options.historyRpc;
+  const modelDiscovery=options.modelDiscovery&&structuredClone(options.modelDiscovery);
+  if(modelDiscovery){
+    assert.ok(publicApi&&modelDiscovery.models.length>0&&modelDiscovery.models.length<=32);
+    assert.match(modelDiscovery.profileSha256,/^[0-9a-f]{64}$/);
+    const u=new URL(modelDiscovery.profileUrl);assert.ok(u.protocol==='https:'&&!u.username&&!u.password&&!u.search&&!u.hash);
+  }
   const provider = options.provider ? {...options.provider, public: structuredClone(options.provider.public)} : undefined;
   const uuidPattern = '[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}';
   const uuid = new RegExp('^' + uuidPattern + '$');
@@ -296,7 +304,7 @@ export async function startUiHost(options: HostOptions) {
     const notePath = /^\/zkapi\/v1\/tree\/notes\/(0|[1-9][0-9]{0,9})\/(?:path|zero-path)$/.exec(path);
     if (['/rpc','/zkapi/v1/quotes','/zkapi/v1/sessions','/zkapi/v1/withdraw/clearance'].includes(path)
       || new RegExp(`^/zkapi/v1/sessions/${uuidPattern}/close$`).test(path)) return 'POST';
-    if (['/relay-status','/zkapi/v1/readiness','/provider-budget','/zkapi/v1/config','/zkapi/v1/catalog','/zkapi/v1/attestation'].includes(path)
+    if (['/relay-status','/zkapi/v1/readiness','/provider-budget','/zkapi/v1/config','/zkapi/v1/catalog','/zkapi/v1/attestation',...(modelDiscovery?['/zkapi/v1/models','/zkapi/v1/client-profile']:[])].includes(path)
       || /^\/zkapi\/v1\/tariffs\/[0-9a-f]{64}$/.test(path)
       || /^\/zkapi\/v1\/tree\/(root|snapshot|snapshots\/[0-9a-f]{64}\.json)$/.test(path)
       || notePath && Number(notePath[1]) <= 0xffffffff
@@ -361,6 +369,13 @@ export async function startUiHost(options: HostOptions) {
         if (request.headers.origin) assert.equal(request.headers.origin, origin);
       }
       if (request.method === 'GET' && assets.has(path)) { const asset = assets.get(path)!; response.setHeader('content-type', asset.mime); response.end(asset.bytes); return; }
+      if(publicApi&&modelDiscovery&&request.method==='GET'&&['/control/zkapi/v1/models','/control/zkapi/v1/client-profile'].includes(path)){
+        for(const name of ['authorization','transfer-encoding'])assert.equal(request.headers[name],undefined);
+        assert.ok(request.headers['content-length']===undefined||request.headers['content-length']==='0');
+        const data=path==='/control/zkapi/v1/models'?{object:'list',data:modelDiscovery.models.map(m=>({id:m.id,object:'model',owned_by:m.id.split('/')[0]}))}:
+          {schema:2,chain:'solana:devnet',label:'Public Devnet — configured models',profileUrl:modelDiscovery.profileUrl,profileSha256:modelDiscovery.profileSha256};
+        response.setHeader('content-type','application/json');response.end(JSON.stringify(data));return;
+      }
       if (publicApi && request.method === 'GET' && path === '/control/zkapi/v1/readiness') {
         for (const name of ['authorization','cookie','proxy-authorization','x-api-key','transfer-encoding']) assert.equal(request.headers[name],undefined);
         assert.ok(request.headers['content-length']===undefined||request.headers['content-length']==='0');

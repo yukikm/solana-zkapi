@@ -10,7 +10,8 @@ import {promisify} from 'node:util';
 import {randomUUID} from 'node:crypto';
 import {publicProfileFixture} from '../packages/sdk/test/public-profile-fixture.ts';
 import {jcsBytes,sha256Hex,manifestDigest} from '../packages/sdk/src/trust.ts';
-import {loadGatewayPublicProfile,validateGatewayProfile,loadSupplementalGatewayBudget,type PublicDevnetGatewayConfig,type SupplementalGatewayBudget,type DetachedGatewayBudget} from './public_devnet_gateway.ts';
+import {loadGatewayPublicProfile,validateGatewayProfile,gatewayModelDiscovery,loadSupplementalGatewayBudget,type PublicDevnetGatewayConfig,type SupplementalGatewayBudget,type DetachedGatewayBudget} from './public_devnet_gateway.ts';
+import {createPublicModelProfile} from './public_model_profile.ts';
 import {startUiHost,type HostOptions} from './devnet-browser-relay/host.ts';
 import {localForwarder} from './browser_chat_devnet_host.ts';
 import {preflightPublicDeployment} from '../packages/sdk/src/public-profile.ts';
@@ -58,6 +59,38 @@ test('public gateway loads pinned profile and bundle offline without UI, budget,
   assert.throws(()=>validateGatewayProfile({...config,publicOrigin:'https://wrong.example.com'},loaded));
   assert.throws(()=>validateGatewayProfile(config,{...loaded}));
   await assert.rejects(loadGatewayPublicProfile({...config,rpcUrl:'http://rpc.example.com/'}));
+});
+
+test('model expansion is independently pinned and does not replace the grant profile',async t=>{
+  const {config,f,directory}=await installedFixture(t),loaded=await loadGatewayPublicProfile(config);
+  const original=structuredClone(config);
+  const expanded=createPublicModelProfile(f.profile,{data:[{id:'openai/gpt-5.6-sol',name:'GPT 5.6 Sol',architecture:{input_modalities:['text'],output_modalities:['text']},supported_parameters:['tools']}]});
+  const raw=jcsBytes(expanded),path=join(directory,'models.json');await writeFile(path,raw);
+  config.modelProfile={url:publicOrigin+'/releases/models.json',path,sha256:await sha256Hex(raw)};
+  const found=await gatewayModelDiscovery(config,loaded);
+  assert.deepEqual(found.models.map(m=>m.id),['openai/gpt-5.6-sol']);
+  assert.equal(found.profileSha256,config.modelProfile.sha256);
+  assert.equal(config.profileSha256,original.profileSha256);assert.deepEqual(config.budget,original.budget);
+  assert.equal(validateGatewayProfile(config,loaded).model.id,f.profile.models[0].id);
+  await assert.rejects(gatewayModelDiscovery({...config,modelProfile:{...config.modelProfile,sha256:'0'.repeat(64)}},loaded));
+  expanded.models[0].id='openai/gpt-5.5';const bad=jcsBytes(expanded);await writeFile(path,bad);
+  await assert.rejects(gatewayModelDiscovery({...config,modelProfile:{...config.modelProfile,sha256:await sha256Hex(bad)}},loaded));
+});
+
+test('public model and profile discovery support CORS without forwarding or financial activity',async t=>{
+  let forwarded=0;
+  const discovery={profileUrl:publicOrigin+'/releases/models.json',profileSha256:'a'.repeat(64),models:[{id:'anthropic/claude-opus-5',label:'Claude Opus 5',capabilities:{streaming:true,tools:true}}]};
+  const h=await host(t,{allowedBrowserOrigins:['*'],modelDiscovery:discovery,controlRelay:async()=>{forwarded++;throw Error('unexpected forward');}});
+  const models=await call(h.base,'/zkapi/v1/models','GET',{origin:'http://localhost:5173'});
+  assert.equal(models.status,200);assert.equal(models.headers['access-control-allow-origin'],'*');assert.deepEqual(JSON.parse(models.body).data,[{id:'anthropic/claude-opus-5',object:'model',owned_by:'anthropic'}]);
+  const profile=await call(h.base,'/zkapi/v1/client-profile');assert.equal(profile.status,200);assert.equal(JSON.parse(profile.body).profileSha256,discovery.profileSha256);
+  for(const path of ['/zkapi/v1/models','/zkapi/v1/client-profile']){
+    assert.equal((await call(h.base,path,'OPTIONS',{origin:'https://example.com','access-control-request-method':'GET'})).status,204);
+    assert.equal((await call(h.base,path,'POST',{'content-type':'application/json'},'{}')).status,400);
+    assert.equal((await call(h.base,path,'GET',{authorization:'Bearer secret'})).status,400);
+    assert.equal((await call(h.base,path+'?extra=1')).status,400);
+  }
+  assert.equal(forwarded,0);
 });
 
 test('gateway refuses altered bundle and origin/model modes before opening budget or listener',async t=>{

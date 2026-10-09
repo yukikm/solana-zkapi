@@ -1,5 +1,7 @@
 # Solana zkAPI
 
+The [requested GPT 5.6+ / Claude 5+ model expansion](docs/evidence/PD-model-expansion-20261009.md) is deployed with 21 OpenRouter Chat models and a [revision-3 consumer profile](docs/sdk/public-models.md). SDK/native remain `.3`. Existing seven request reservations are exhausted; this configuration change adds no provider budget. Old custody/profile bindings remain unchanged.
+
 Build AI applications with USDC-funded private usage credits on Solana.
 
 Solana zkAPI handles funding, local zero-knowledge proofs, API authorization,

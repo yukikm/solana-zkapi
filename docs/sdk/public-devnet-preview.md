@@ -1,5 +1,7 @@
 # Public Devnet preview deployment
 
+Model expansion — 2026-10-09: the [revision-3 model profile](public-models.md) selects 21 OpenRouter Chat models covering GPT 5.6+ and Claude 5+. SDK/native stay `.3`; consumers install the new profile URL and digest. Existing custody retains its original inputs. The existing seven request reservations are exhausted; this model change does not add spending capacity.
+
 The [v0.2.0-devnet.5 API source release](https://github.com/yukikm/solana-zkapi/releases/tag/v0.2.0-devnet.5)
 publishes the deployed CORS opening. SDK/native artifacts remain `0.2.0-devnet.3`;
 no client upgrade is required. [Publication evidence](../evidence/PD-cors-release-20261009.md).
@@ -15,12 +17,12 @@ Readiness checkpoint — 2026-10-08 15:16 UTC: [the public readiness endpoint is
 
 Native closure checkpoint — 2026-10-08 14:27 UTC: [N-04 interrupted-stream recovery and mutual withdrawal](../evidence/PD-native-public-N04.md) are complete: one deliberate process-group kill, same-journal .3 restart, one explicit recovery, four independently verified signed settlements totaling **20 micro-USDC**, and return of **4,999,980 micro-USDC**. Six finalized exact-wire transactions establish the closed note and Vault zero; wallet equals treasury owner, so its restored balance does not erase charges. The final operator cut retains four full-cap reservations (4M micro-USDC exposure), four settled sessions and all 25 checkpoint rows. [OpenClaw text/read-tool continuation](../evidence/PD-native-public-N02-N03.md) passed in its separate scope; [external provider-cost reconciliation](../evidence/PD-openrouter-management-usage-limit.md) remains unresolved. [SDK .3 source CI](../evidence/PD-hosted-ci-e2ee932.md) passed all nine implementation jobs at exact source `e2ee9320…`, separate from live acceptance. Subsequent [independent backup verification](../evidence/PD-N01-backup-independent-verify.md) completed exact-version download, streamed archive checks and isolated PG16 logical restoration of the original one-session N01 cut; it does not restore the later four-session state or physical services. Funded browser cases, the separate zero-AUTH emergency exercise and deployed aggregate readiness remain unfinished. Preserve the interrupted response, all failed preparations/observations, immutable releases and original journals; no inference replay or chat-history restoration is implied.
 
-New consumers should use the published **SDK/native `v0.2.0-devnet.3`**, its revision-2 profile, and the [independent browser app](https://d30nr98svcwdoe.cloudfront.net/releases/public-devnet-20261008-a/chat-en-sdk3/index-r2.html). [Release verification](../evidence/PD-sdk3-publication.md) records anonymous downloads and installed-file hashes; [browser publication](../evidence/PD-browser-sdk3-publication.md) records exact static bytes and Chrome page/settings rendering. Existing funded custody keeps its original profile, journal and recovery inputs. There is no automatic profile or custody migration.
+New API consumers should use the published **SDK/native `v0.2.0-devnet.3`** with the [revision-3 model profile](public-models.md). The [independent browser app](https://d30nr98svcwdoe.cloudfront.net/releases/public-devnet-20261008-a/chat-en-sdk3/index-r2.html) retains its earlier profile and separate release. [Release verification](../evidence/PD-sdk3-publication.md) records anonymous downloads and installed-file hashes; [browser publication](../evidence/PD-browser-sdk3-publication.md) records exact static bytes and Chrome page/settings rendering. Existing funded custody keeps its original profile, journal and recovery inputs. There is no automatic profile or custody migration.
 
-Native N-01 completed Chat settlement and service recovery. [OpenClaw N-02/N-03](../evidence/PD-native-public-N02-N03.md) completed ordinary text and read-tool continuation; [N-04](../evidence/PD-native-public-N04.md) completed interrupted-stream recovery and mutual withdrawal. The installed [Ethereum-style accounting policy](../evidence/PD-openrouter-ethereum-parity.md) accepts delayed provider accounting as the operator's risk. The [historical response-cost discrepancy](../evidence/PD-openrouter-management-usage-limit.md) and signed zero charges remain preserved without repricing. This invitation-only preview does not establish invoice-finality, funded browser acceptance or full release gates.
+Native N-01 completed Chat settlement and service recovery. [OpenClaw N-02/N-03](../evidence/PD-native-public-N02-N03.md) completed ordinary text and read-tool continuation; [N-04](../evidence/PD-native-public-N04.md) completed interrupted-stream recovery and mutual withdrawal. The installed [Ethereum-style accounting policy](../evidence/PD-openrouter-ethereum-parity.md) accepts delayed provider accounting as the operator's risk. The [historical response-cost discrepancy](../evidence/PD-openrouter-management-usage-limit.md) and signed zero charges remain preserved without repricing. This Devnet preview does not establish invoice-finality, funded browser acceptance or full release gates.
 
 The operator uses the AWS account selected by the repository maintainer. This is
-a single-model Devnet preview with one operator host and a finite provider budget. It has
+a Devnet preview with one operator host and a finite provider budget. It has
 no production availability commitment. The current hosting target is roughly
 USD50/month; the current fixed illustration is USD43.169 for 730 hours, before
 variable charges and actual taxes, after the [same-volume expansion to 80 GiB](../evidence/PD-preview-capacity-80g.md)
@@ -44,7 +46,8 @@ uses its separate HTTPS origin and explicit new custody namespace
 
 | Input | SHA-256 |
 |---|---|
-| [Revision-2 profile for SDK .3](https://d366buuvadnp3.cloudfront.net/releases/public-devnet-20261008-a/profile-sdk-0.2.0-devnet.3.json) | `449657cc3fe90f12878236b83d68ada8077e3c56e67ccb8268c5f301e69e02e5` |
+| [Revision-3 model profile for SDK .3](https://d366buuvadnp3.cloudfront.net/releases/public-devnet-20261008-a/profile-models-gpt56-claude5-r3.json) | `210bda7eb98fe902bf00194096355f5e3ac2ae79421477d4a9d2678b9faa1f6a` |
+| [Preserved revision-2 profile for SDK .3](https://d366buuvadnp3.cloudfront.net/releases/public-devnet-20261008-a/profile-sdk-0.2.0-devnet.3.json) | `449657cc3fe90f12878236b83d68ada8077e3c56e67ccb8268c5f301e69e02e5` |
 | Complete bundle descriptor | `10a85725034a18bfa3e07913af9cdf89bd10ca05c4ce50aefe5f766a2431c9c8` |
 | [SDK .3 tarball](https://github.com/yukikm/solana-zkapi/releases/download/v0.2.0-devnet.3/zkapi-solana-sdk-0.2.0-devnet.3.tgz) | `5dfa1d9edf58e6a8b3359cc16d29e55657b6c205e948b7ca1b7b40018e452887` |
 | [macOS ARM64 native .3 archive](https://github.com/yukikm/solana-zkapi/releases/download/v0.2.0-devnet.3/zkapi-clientd-0.2.0-devnet.3-darwin-arm64.tar.gz) | `e122202b6d6f58430baf818889edd7f7d9d46eee7dfee338996f8811e78f9762` |
@@ -91,9 +94,10 @@ control catalog and tree snapshot. It creates no custody, AUTH, inference or
 transaction. A `snapshot` error means the selected chain snapshot could not be
 verified; it is not evidence of insufficient wallet balance.
 
-The reviewed configuration selects direct OpenRouter Chat with
+The original acceptance configuration selected direct OpenRouter Chat with
 `openai/gpt-4o-mini`, a maximum of 128 output tokens and a one-USDC authorization
-cap. Prompts go directly to OpenRouter. Native OpenClaw text, streaming and read-tool continuation have their own
+cap. The [revision-3 profile](public-models.md) adds the requested GPT/Claude
+model selection using the same authenticated wildcard tariff and session cap. Prompts go directly to OpenRouter. Native OpenClaw text, streaming and read-tool continuation have their own
 [recorded scope](../evidence/PD-native-public-N02-N03.md); funded browser acceptance
 and external provider-cost reconciliation remain unverified. Ordinary consumers do
 not supply an OpenRouter management key.

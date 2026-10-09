@@ -246,7 +246,7 @@ jobs:
         run: PATH="/usr/lib/postgresql/16/bin:$PATH" python3 scripts/run_i10_acceptance.py
       - name: I10 offline provider preparation, financial relay and shutdown regression
         run: |
-          node --test scripts/provider_acceptance_client.test.ts scripts/i10_devnet_provider_config.test.ts scripts/i10_devnet_transport.test.ts scripts/devnet-browser-relay/*.test.ts scripts/browser_chat_devnet_host.test.ts scripts/public_devnet_gateway.test.ts scripts/public_devnet_readiness.test.ts scripts/public_openclaw_settlement_gate.test.mjs
+          node --test scripts/provider_acceptance_client.test.ts scripts/i10_devnet_provider_config.test.ts scripts/i10_devnet_transport.test.ts scripts/devnet-browser-relay/*.test.ts scripts/browser_chat_devnet_host.test.ts scripts/public_devnet_gateway.test.ts scripts/public_model_profile.test.ts scripts/public_devnet_readiness.test.ts scripts/public_openclaw_settlement_gate.test.mjs
           python3 scripts/test_provider_acceptance.py
           PATH="/usr/lib/postgresql/16/bin:$PATH" python3 scripts/test_i10_provider_backend.py
           python3 scripts/test_i10_challenger_shutdown.py
