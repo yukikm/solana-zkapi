@@ -179,7 +179,7 @@ const handler = async (req:IncomingMessage,res:ServerResponse) => {
       if(req.method==='PATCH'){assert.equal(b.disabled,true);count('openrouter_disable');routerKey.disabled=true;reply(res,{data:routerKey});return;}
       assert.equal(routerKey.disabled,true);
       if(req.method==='GET'){count('openrouter_usage');reply(res,{data:{...routerKey,usage:0.000001234,byok_usage:0.0000000011}});return;}
-      if(req.method==='DELETE'){assert.equal(counts.openrouter_usage,2);count('openrouter_delete');reply(res,{deleted:true});return;}
+      if(req.method==='DELETE'){assert.equal(counts.openrouter_usage,1);count('openrouter_delete');reply(res,{deleted:true});return;}
     }
     if(path==='/api/zkapi/request_key') {
       assert.equal(req.headers.authorization,'Bearer i10-provider-secret');count('oa_create');
@@ -387,7 +387,7 @@ try {
   assert.equal((await journal.read('note'))!.value.history.length,5);
   assert.equal(sharedSnapshotReads,5);assert.equal(sharedSnapshotDownloads,5);
   const retainedSnapshot=[...sharedSnapshotFiles.entries()][0];assert.ok(retainedSnapshot);
-  assert.deepEqual(counts,{inference_openai:12,inference_anthropic:8,inference_openrouter:6,oa_create:1,oa_verify:2,inference_oa:1,oa_retire_usage:1,openrouter_create:1,inference_direct_openrouter:1,openrouter_disable:1,openrouter_usage:2,openrouter_delete:1});
+  assert.deepEqual(counts,{inference_openai:12,inference_anthropic:8,inference_openrouter:6,oa_create:1,oa_verify:2,inference_oa:1,oa_retire_usage:1,openrouter_create:1,inference_direct_openrouter:1,openrouter_disable:1,openrouter_usage:1,openrouter_delete:1});
   assert.equal(fixtureOaEvidenceMappings,1,'one fixture-only OA verifier metadata mapping');
   assert.equal(cases.length,28);assert.equal(cases.filter(c=>c.disconnect_before_final_usage).length,4);
   // An adversarial stale client can retain the pre-authorization witness even

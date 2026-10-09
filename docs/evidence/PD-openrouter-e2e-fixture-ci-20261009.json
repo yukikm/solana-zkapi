@@ -1,0 +1,182 @@
+{
+  "schema": 1,
+  "recorded_at_utc": "2026-10-09T01:38:10.094968+00:00",
+  "scope": "Two test-only OpenRouter usage-count expectations aligned with existing Ethereum-style one-sample retirement; focused local lifecycle verification, not provider/public-chain or complete hosted CI acceptance.",
+  "status": "local_correction_verified_source_publication_pending",
+  "baseline_source": "77004930a5eb4a2ab991b35441d211a43602eab5",
+  "source_change": {
+    "path": "packages/sdk/test/i10-e2e.ts",
+    "before_sha256": "7ae05506e56bc4c73b3f2385eff1b1d298748b8488dfafcf7dee6785bcdfbd10",
+    "after_sha256": "12ba6e4d2e492bb2dd2524910851d3a1b053a704162d51b92c0740cd2d4d307e",
+    "changed_assertions": 2,
+    "behavior": "DELETE requires one successful post-grace usage read; final counters require exactly one read and one deletion. Disabled-key, inference, receipts and balance guards are unchanged.",
+    "production_behavior_changed": false,
+    "diff_receipt": {
+      "sha256": "d761c1d7ba8bdc663e26ac856f64e55ed0aa582ace8e12e89114c77549d4eedd",
+      "bytes": 1922
+    }
+  },
+  "hosted_original_failure": {
+    "source_revision": "77004930a5eb4a2ab991b35441d211a43602eab5",
+    "workflow_id": 37865537882,
+    "job_id": 113611252562,
+    "url": "https://github.com/yukikm/solana-zkapi/actions/runs/37865537882/job/113611252562",
+    "original_workflow_metadata": {
+      "sha256": "65fb29395bce1a1e0f79a0017051a1233ff8ab62fb82a38bbc9d1ba4cfe6a917",
+      "bytes": 17770
+    },
+    "corrected_rust_fault_fixture_passed": true,
+    "failed_stage": "i10_e2e",
+    "elapsed_seconds": 67.42,
+    "error": "1 !== 2 at provider DELETE fixture; synthetic HTTP 500 prevents direct OpenRouter retirement; Node lifecycle failed before report",
+    "log_receipt": {
+      "sha256": "de984fb9a316d0d15a8b0a80a7a831a5a54d1b9744bd3fa123f8f73d52f0e6ed",
+      "bytes": 81713
+    },
+    "full_workflow_pass": false
+  },
+  "local_original_reproduction": {
+    "source_unchanged": true,
+    "same_error": true,
+    "elapsed_seconds": 39.13,
+    "result_receipt": {
+      "sha256": "7396462a7ea1a9611a986a2804c2f954629cb3cfdf3a2fc886705b54511d2601",
+      "bytes": 5074
+    },
+    "log_receipt": {
+      "sha256": "8ddf0ca64817474cf3b04eea89eb1f5090dae0643dabc3ad23b2df24a418c263",
+      "bytes": 88504
+    },
+    "validation_receipt": {
+      "sha256": "70bfff84409435f89b0b9f5ee631ce08b7cbc51c9a3e742bf8132f67b708f7ec",
+      "bytes": 1249
+    }
+  },
+  "first_corrected_startup_failure": {
+    "source_sha256": "12ba6e4d2e492bb2dd2524910851d3a1b053a704162d51b92c0740cd2d4d307e",
+    "typecheck_passed": true,
+    "error": "signer readiness timeout",
+    "test_elapsed_seconds": 2.98,
+    "before_mode_lifecycle": true,
+    "result_receipt": {
+      "sha256": "ffac222d7a78a5e3d249996fc4a8a57067d2bef2685e696008ed51d361ec29e9",
+      "bytes": 5074
+    },
+    "log_receipt": {
+      "sha256": "22b2d0ae1ea9c3d069e2289fd3df627cb285c8b939983ef9e5d3335c522b9820",
+      "bytes": 504
+    },
+    "read_only_audit_receipt": {
+      "sha256": "850062fe8fbff2bb0c33e82fec8995d332e9021ca8100c0cee4c7f79857bbdb0",
+      "bytes": 2809
+    },
+    "cause_proven": false,
+    "existing_readiness_window_seconds_approximately": 2,
+    "child_final_exit_and_pid_captured": false,
+    "ephemeral_signer_and_pg_server_state_retained": false,
+    "no_matching_test_processes_remained_at_audit": true,
+    "no_timeout_or_harness_behavior_change": true
+  },
+  "explicit_unchanged_local_retry": {
+    "completed_at_utc": "2026-10-09T01:35:08.688122+00:00",
+    "test_passed": 1,
+    "test_failed": 0,
+    "test_ignored": 0,
+    "test_elapsed_seconds": 40.04,
+    "typecheck_passed": true,
+    "fixture_sha256": "12ba6e4d2e492bb2dd2524910851d3a1b053a704162d51b92c0740cd2d4d307e",
+    "source_or_timeout_changed_from_first_corrected_run": false,
+    "original_report_bytes_restored": true,
+    "guarded_inputs_unchanged": true,
+    "result_receipt": {
+      "sha256": "18a0e4de98b2adc518c5f7af17dd9bcf3729bdbbd280ec5b2149c43f9ba44e3c",
+      "bytes": 5062
+    },
+    "log_receipt": {
+      "sha256": "ad65d78fc1d55f8523a10061beee0562d7c3796f2b2c5398a010b3d82a2f1f46",
+      "bytes": 3940
+    },
+    "e2e_report_receipt": {
+      "sha256": "6736ba7996612d281f974b12b52a2e47abd1ffaf8fda4d4813518aea5c351a27",
+      "bytes": 45034
+    },
+    "vault_report_receipt": {
+      "sha256": "8a9ab7123ec1ba978920a5d0b42595f30afbd2c82330d0c8348c80351d217f3b",
+      "bytes": 19233
+    }
+  },
+  "verified_local_lifecycle": {
+    "api_cases": 28,
+    "disconnect_cases": 4,
+    "mode_provider_pairs": 5,
+    "provider_fixture_counts": {
+      "inference_anthropic": 8,
+      "inference_direct_openrouter": 1,
+      "inference_oa": 1,
+      "inference_openai": 12,
+      "inference_openrouter": 6,
+      "oa_create": 1,
+      "oa_retire_usage": 1,
+      "oa_verify": 2,
+      "openrouter_create": 1,
+      "openrouter_delete": 1,
+      "openrouter_disable": 1,
+      "openrouter_usage": 1
+    },
+    "ledger": {
+      "all_case_operation_states_verified": true,
+      "dispatcher_claims": 28,
+      "finished_dispatch_attempts": 28,
+      "permanent_auth_nullifiers": 6,
+      "prompt_response_runtime_keys_absent": true,
+      "settled_sessions": 6,
+      "signed_clearances": 1,
+      "signed_receipts": 29,
+      "signed_settlements": 6,
+      "total_charge_micro_usdc": "8",
+      "zero_charge_unknown_waivers": 5
+    },
+    "actual_sbf_transactions": 19,
+    "max_cu": 434334,
+    "max_transaction_bytes": 1232,
+    "deposit_micro_usdc": "5000000",
+    "charge_micro_usdc": "8",
+    "withdrawal_micro_usdc": "4999992",
+    "balance_conservation": true,
+    "same_note_all_modes": true,
+    "encrypted_journal": true,
+    "lost_finalized_send_recovered": true,
+    "automatic_inference_replays": 0,
+    "escape_challenge_actual_sbf": true,
+    "challenger_daemon_joined": false
+  },
+  "environment": {
+    "node": "v24.19.0",
+    "postgres": "18.6 (Homebrew)",
+    "postgres_durability": "fsync, full_page_writes, synchronous_commit enabled; private Unix socket only",
+    "hosted_postgres_major": 16,
+    "proofs": "Actual native prover/verifier and retained Vault SBF; synthetic local provider HTTP/finality RPC",
+    "preexisting_fixture_only_idl_override_sha256": "73b6fa42aeba639589d59d1c2264653c8cda6a4c4ac0ca67a96653a8db9fb594",
+    "canonical_idl_or_manifest_changed": false
+  },
+  "limits": {
+    "new_hosted_corrected_source_result": false,
+    "full_workflow_pass": false,
+    "public_provider_verified": false,
+    "public_rpc_verified": false,
+    "release_gates_passed": [],
+    "public_financial_actions": 0,
+    "service_actions": 0,
+    "sdk_or_native_release_rebuilt": false,
+    "installed_linux_binary_changed": false,
+    "storage_or_financial_history_rewritten": false
+  },
+  "final_local_validation_receipt": {
+    "sha256": "e1c32150d01159531a02081dc4c8dc6c3af4c23e34c589f76cae87a8a8c71423",
+    "bytes": 9113
+  },
+  "independent_source_review_receipt": {
+    "sha256": "a79691987c84fdca51457cf0c6f94fa0f9be8dcaf4adbf683f6aa6ed3fd89703",
+    "exact_two_assertion_diff_review_passed": true
+  }
+}
