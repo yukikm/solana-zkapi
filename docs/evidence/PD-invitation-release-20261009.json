@@ -1,0 +1,835 @@
+{
+  "schema": 1,
+  "scope": "Publication of the requested API invitation update. No SDK/native runtime change or financial action.",
+  "release": {
+    "id": 407445861,
+    "tag": "v0.2.0-devnet.4",
+    "url": "https://github.com/yukikm/solana-zkapi/releases/tag/v0.2.0-devnet.4",
+    "published_at": "2026-10-09T02:51:36Z",
+    "prerelease": true,
+    "immutable": true,
+    "draft": false,
+    "source_commit": "03410028e939c1489af129880ae05b3e7dce3604",
+    "tag_verified_to_source_commit": true
+  },
+  "validation": {
+    "gateway_tests": 48,
+    "passed": 48,
+    "skipped": 0,
+    "node_version": "24.19.0",
+    "npm_version": "11.9.0",
+    "source_archive_verified_git_blobs": 1696,
+    "release_signature_verification": {
+      "command": "gh release verify v0.2.0-devnet.4 --repo yukikm/solana-zkapi --format json",
+      "exit_code": 0,
+      "report_sha256": "b055f7ad7d88c19f1f08f61bbf83f68212bdc95cd3f04723a68d0110b9db8c11"
+    },
+    "anonymous_downloads": [
+      {
+        "name": "gateway-tests.txt",
+        "bytes": 5666,
+        "sha256": "bd5a84613110d10bb8d80c46d88deb4304cb7b6dcd772699bbe7b047a7e46b47",
+        "url": "https://github.com/yukikm/solana-zkapi/releases/download/v0.2.0-devnet.4/gateway-tests.txt",
+        "anonymous": true,
+        "tls_verification": true
+      },
+      {
+        "name": "release-manifest.json",
+        "bytes": 2603,
+        "sha256": "0ad2a0486e91b5235fd67665af0306e4167a732e065fca0406230a8f891eef52",
+        "url": "https://github.com/yukikm/solana-zkapi/releases/download/v0.2.0-devnet.4/release-manifest.json",
+        "anonymous": true,
+        "tls_verification": true
+      },
+      {
+        "name": "SHA256SUMS",
+        "bytes": 280,
+        "sha256": "f7fb99af4e5ffe40b517c9998d849ac1f02d728b454494e9b216678ee7991079",
+        "url": "https://github.com/yukikm/solana-zkapi/releases/download/v0.2.0-devnet.4/SHA256SUMS",
+        "anonymous": true,
+        "tls_verification": true
+      },
+      {
+        "name": "solana-zkapi-0.2.0-devnet.4-source.tar.gz",
+        "bytes": 5418661,
+        "sha256": "eda251a210e55cd5a60636c0b456d5021001b007f342d9d882b268a37e9e94bd",
+        "url": "https://github.com/yukikm/solana-zkapi/releases/download/v0.2.0-devnet.4/solana-zkapi-0.2.0-devnet.4-source.tar.gz",
+        "anonymous": true,
+        "tls_verification": true
+      }
+    ]
+  },
+  "client_distribution": {
+    "sdk_version": "0.2.0-devnet.3",
+    "native_version": "0.2.0-devnet.3",
+    "runtime_changed": false,
+    "sdk_packaged_files_equal": 65,
+    "sdk_content_differences": [],
+    "published_sdk_sha256": "5dfa1d9edf58e6a8b3359cc16d29e55657b6c205e948b7ca1b7b40018e452887",
+    "diagnostic_rebuild_sha256": "550ceaac5b30c53aba99662b9fee51045cd77074f18a15802c9994e92a04c8da",
+    "archive_difference": "60 generated files retain mode 0600 in the published tarball versus 0644 in the fresh diagnostic rebuild; all 65 packaged file contents are identical. The original immutable distribution remains unchanged.",
+    "sdk_release_url": "https://github.com/yukikm/solana-zkapi/releases/tag/v0.2.0-devnet.3",
+    "new_sdk_release_needed": false,
+    "npm_registry_publication": false
+  },
+  "hosted_ci_snapshot": {
+    "conclusion": "",
+    "databaseId": 37876369838,
+    "headSha": "03410028e939c1489af129880ae05b3e7dce3604",
+    "jobs": [
+      {
+        "completedAt": "0001-01-01T00:00:00Z",
+        "conclusion": "",
+        "databaseId": 113645817306,
+        "name": "svm",
+        "startedAt": "2026-10-09T02:49:19Z",
+        "status": "in_progress",
+        "steps": [
+          {
+            "completedAt": "2026-10-09T02:49:20Z",
+            "conclusion": "success",
+            "name": "Set up job",
+            "number": 1,
+            "startedAt": "2026-10-09T02:49:20Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-09T02:49:24Z",
+            "conclusion": "success",
+            "name": "Run actions/checkout@11d5960a326750d5838078e36cf38b85af677262",
+            "number": 2,
+            "startedAt": "2026-10-09T02:49:20Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-09T02:49:24Z",
+            "conclusion": "success",
+            "name": "Check circuit archive reproducibility across checkout permissions",
+            "number": 3,
+            "startedAt": "2026-10-09T02:49:24Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-09T02:51:44Z",
+            "conclusion": "success",
+            "name": "Install fixed host and SBF toolchains",
+            "number": 4,
+            "startedAt": "2026-10-09T02:49:24Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "0001-01-01T00:00:00Z",
+            "conclusion": "",
+            "name": "Build real SBF and reproduce crypto / CU measurements",
+            "number": 5,
+            "startedAt": "2026-10-09T02:51:44Z",
+            "status": "in_progress"
+          },
+          {
+            "completedAt": "0001-01-01T00:00:00Z",
+            "conclusion": "",
+            "name": "Run actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02",
+            "number": 6,
+            "startedAt": "0001-01-01T00:00:00Z",
+            "status": "pending"
+          },
+          {
+            "completedAt": "0001-01-01T00:00:00Z",
+            "conclusion": "",
+            "name": "Post Run actions/checkout@11d5960a326750d5838078e36cf38b85af677262",
+            "number": 12,
+            "startedAt": "0001-01-01T00:00:00Z",
+            "status": "pending"
+          }
+        ],
+        "url": "https://github.com/yukikm/solana-zkapi/actions/runs/37876369838/job/113645817306"
+      },
+      {
+        "completedAt": "0001-01-01T00:00:00Z",
+        "conclusion": "",
+        "databaseId": 113645817450,
+        "name": "vault",
+        "startedAt": "2026-10-09T02:49:19Z",
+        "status": "in_progress",
+        "steps": [
+          {
+            "completedAt": "2026-10-09T02:49:21Z",
+            "conclusion": "success",
+            "name": "Set up job",
+            "number": 1,
+            "startedAt": "2026-10-09T02:49:20Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-09T02:49:24Z",
+            "conclusion": "success",
+            "name": "Run actions/checkout@11d5960a326750d5838078e36cf38b85af677262",
+            "number": 2,
+            "startedAt": "2026-10-09T02:49:21Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-09T02:52:01Z",
+            "conclusion": "success",
+            "name": "Install pinned Vault toolchains",
+            "number": 3,
+            "startedAt": "2026-10-09T02:49:24Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "0001-01-01T00:00:00Z",
+            "conclusion": "",
+            "name": "Reproduce I03 Vault evidence",
+            "number": 4,
+            "startedAt": "2026-10-09T02:52:01Z",
+            "status": "in_progress"
+          },
+          {
+            "completedAt": "0001-01-01T00:00:00Z",
+            "conclusion": "",
+            "name": "Run actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02",
+            "number": 5,
+            "startedAt": "0001-01-01T00:00:00Z",
+            "status": "pending"
+          },
+          {
+            "completedAt": "0001-01-01T00:00:00Z",
+            "conclusion": "",
+            "name": "Post Run actions/checkout@11d5960a326750d5838078e36cf38b85af677262",
+            "number": 10,
+            "startedAt": "0001-01-01T00:00:00Z",
+            "status": "pending"
+          }
+        ],
+        "url": "https://github.com/yukikm/solana-zkapi/actions/runs/37876369838/job/113645817450"
+      },
+      {
+        "completedAt": "0001-01-01T00:00:00Z",
+        "conclusion": "",
+        "databaseId": 113645817452,
+        "name": "control",
+        "startedAt": "2026-10-09T02:49:19Z",
+        "status": "in_progress",
+        "steps": [
+          {
+            "completedAt": "2026-10-09T02:49:20Z",
+            "conclusion": "success",
+            "name": "Set up job",
+            "number": 1,
+            "startedAt": "2026-10-09T02:49:19Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-09T02:49:22Z",
+            "conclusion": "success",
+            "name": "Run actions/checkout@11d5960a326750d5838078e36cf38b85af677262",
+            "number": 2,
+            "startedAt": "2026-10-09T02:49:20Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-09T02:52:04Z",
+            "conclusion": "success",
+            "name": "Install pinned Rust, SBF tools, and PostgreSQL 16",
+            "number": 3,
+            "startedAt": "2026-10-09T02:49:22Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "0001-01-01T00:00:00Z",
+            "conclusion": "",
+            "name": "Validate source pins and build the real test Vault",
+            "number": 4,
+            "startedAt": "2026-10-09T02:52:04Z",
+            "status": "in_progress"
+          },
+          {
+            "completedAt": "0001-01-01T00:00:00Z",
+            "conclusion": "",
+            "name": "Reproduce I05\u2013I07 PostgreSQL, provider HTTP fixtures, recovery, and SBF acceptance",
+            "number": 5,
+            "startedAt": "0001-01-01T00:00:00Z",
+            "status": "pending"
+          },
+          {
+            "completedAt": "0001-01-01T00:00:00Z",
+            "conclusion": "",
+            "name": "Run actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02",
+            "number": 6,
+            "startedAt": "0001-01-01T00:00:00Z",
+            "status": "pending"
+          },
+          {
+            "completedAt": "0001-01-01T00:00:00Z",
+            "conclusion": "",
+            "name": "Post Run actions/checkout@11d5960a326750d5838078e36cf38b85af677262",
+            "number": 12,
+            "startedAt": "0001-01-01T00:00:00Z",
+            "status": "pending"
+          }
+        ],
+        "url": "https://github.com/yukikm/solana-zkapi/actions/runs/37876369838/job/113645817452"
+      },
+      {
+        "completedAt": "2026-10-09T02:49:38Z",
+        "conclusion": "success",
+        "databaseId": 113645817488,
+        "name": "contracts",
+        "startedAt": "2026-10-09T02:49:20Z",
+        "status": "completed",
+        "steps": [
+          {
+            "completedAt": "2026-10-09T02:49:22Z",
+            "conclusion": "success",
+            "name": "Set up job",
+            "number": 1,
+            "startedAt": "2026-10-09T02:49:21Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-09T02:49:23Z",
+            "conclusion": "success",
+            "name": "Run actions/checkout@11d5960a326750d5838078e36cf38b85af677262",
+            "number": 2,
+            "startedAt": "2026-10-09T02:49:22Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-09T02:49:33Z",
+            "conclusion": "success",
+            "name": "Install contract validation tools",
+            "number": 3,
+            "startedAt": "2026-10-09T02:49:23Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-09T02:49:36Z",
+            "conclusion": "success",
+            "name": "Validate schemas and disposable PostgreSQL constraints",
+            "number": 4,
+            "startedAt": "2026-10-09T02:49:33Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-09T02:49:36Z",
+            "conclusion": "success",
+            "name": "Post Run actions/checkout@11d5960a326750d5838078e36cf38b85af677262",
+            "number": 8,
+            "startedAt": "2026-10-09T02:49:36Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-09T02:49:36Z",
+            "conclusion": "success",
+            "name": "Complete job",
+            "number": 9,
+            "startedAt": "2026-10-09T02:49:36Z",
+            "status": "completed"
+          }
+        ],
+        "url": "https://github.com/yukikm/solana-zkapi/actions/runs/37876369838/job/113645817488"
+      },
+      {
+        "completedAt": "0001-01-01T00:00:00Z",
+        "conclusion": "",
+        "databaseId": 113645817517,
+        "name": "rust",
+        "startedAt": "2026-10-09T02:49:19Z",
+        "status": "in_progress",
+        "steps": [
+          {
+            "completedAt": "2026-10-09T02:49:21Z",
+            "conclusion": "success",
+            "name": "Set up job",
+            "number": 1,
+            "startedAt": "2026-10-09T02:49:20Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-09T02:49:24Z",
+            "conclusion": "success",
+            "name": "Run actions/checkout@11d5960a326750d5838078e36cf38b85af677262",
+            "number": 2,
+            "startedAt": "2026-10-09T02:49:21Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-09T02:49:25Z",
+            "conclusion": "success",
+            "name": "Fetch immutable historical evidence source",
+            "number": 3,
+            "startedAt": "2026-10-09T02:49:24Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-09T02:49:26Z",
+            "conclusion": "success",
+            "name": "Check source and design pins",
+            "number": 4,
+            "startedAt": "2026-10-09T02:49:25Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-09T02:49:37Z",
+            "conclusion": "success",
+            "name": "Install pinned Rust",
+            "number": 5,
+            "startedAt": "2026-10-09T02:49:26Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-09T02:52:33Z",
+            "conclusion": "success",
+            "name": "Rust checks and real proof compatibility (host)",
+            "number": 6,
+            "startedAt": "2026-10-09T02:49:37Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "0001-01-01T00:00:00Z",
+            "conclusion": "",
+            "name": "Upstream baseline",
+            "number": 7,
+            "startedAt": "2026-10-09T02:52:33Z",
+            "status": "in_progress"
+          },
+          {
+            "completedAt": "0001-01-01T00:00:00Z",
+            "conclusion": "",
+            "name": "Run actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02",
+            "number": 8,
+            "startedAt": "0001-01-01T00:00:00Z",
+            "status": "pending"
+          },
+          {
+            "completedAt": "0001-01-01T00:00:00Z",
+            "conclusion": "",
+            "name": "Post Run actions/checkout@11d5960a326750d5838078e36cf38b85af677262",
+            "number": 16,
+            "startedAt": "0001-01-01T00:00:00Z",
+            "status": "pending"
+          }
+        ],
+        "url": "https://github.com/yukikm/solana-zkapi/actions/runs/37876369838/job/113645817517"
+      },
+      {
+        "completedAt": "0001-01-01T00:00:00Z",
+        "conclusion": "",
+        "databaseId": 113645817518,
+        "name": "transport",
+        "startedAt": "2026-10-09T02:49:19Z",
+        "status": "in_progress",
+        "steps": [
+          {
+            "completedAt": "2026-10-09T02:49:20Z",
+            "conclusion": "success",
+            "name": "Set up job",
+            "number": 1,
+            "startedAt": "2026-10-09T02:49:20Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-09T02:49:23Z",
+            "conclusion": "success",
+            "name": "Run actions/checkout@11d5960a326750d5838078e36cf38b85af677262",
+            "number": 2,
+            "startedAt": "2026-10-09T02:49:20Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-09T02:49:27Z",
+            "conclusion": "success",
+            "name": "Run actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020",
+            "number": 3,
+            "startedAt": "2026-10-09T02:49:23Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-09T02:52:14Z",
+            "conclusion": "success",
+            "name": "Install pinned tools and SDK dependencies",
+            "number": 4,
+            "startedAt": "2026-10-09T02:49:27Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-09T02:52:15Z",
+            "conclusion": "success",
+            "name": "Require the hosted runner's real Chrome",
+            "number": 5,
+            "startedAt": "2026-10-09T02:52:14Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "0001-01-01T00:00:00Z",
+            "conclusion": "",
+            "name": "Reproduce I04 real transport and indexer evidence",
+            "number": 6,
+            "startedAt": "2026-10-09T02:52:15Z",
+            "status": "in_progress"
+          },
+          {
+            "completedAt": "0001-01-01T00:00:00Z",
+            "conclusion": "",
+            "name": "Compact deposit SDK wire, real Vault and replay regression",
+            "number": 7,
+            "startedAt": "0001-01-01T00:00:00Z",
+            "status": "pending"
+          },
+          {
+            "completedAt": "0001-01-01T00:00:00Z",
+            "conclusion": "",
+            "name": "Run actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02",
+            "number": 8,
+            "startedAt": "0001-01-01T00:00:00Z",
+            "status": "pending"
+          },
+          {
+            "completedAt": "0001-01-01T00:00:00Z",
+            "conclusion": "",
+            "name": "Post Run actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020",
+            "number": 15,
+            "startedAt": "0001-01-01T00:00:00Z",
+            "status": "pending"
+          },
+          {
+            "completedAt": "0001-01-01T00:00:00Z",
+            "conclusion": "",
+            "name": "Post Run actions/checkout@11d5960a326750d5838078e36cf38b85af677262",
+            "number": 16,
+            "startedAt": "0001-01-01T00:00:00Z",
+            "status": "pending"
+          }
+        ],
+        "url": "https://github.com/yukikm/solana-zkapi/actions/runs/37876369838/job/113645817518"
+      },
+      {
+        "completedAt": "2026-10-09T02:51:13Z",
+        "conclusion": "success",
+        "databaseId": 113645817537,
+        "name": "node",
+        "startedAt": "2026-10-09T02:49:19Z",
+        "status": "completed",
+        "steps": [
+          {
+            "completedAt": "2026-10-09T02:49:57Z",
+            "conclusion": "success",
+            "name": "Set up job",
+            "number": 1,
+            "startedAt": "2026-10-09T02:49:56Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-09T02:49:59Z",
+            "conclusion": "success",
+            "name": "Run actions/checkout@11d5960a326750d5838078e36cf38b85af677262",
+            "number": 2,
+            "startedAt": "2026-10-09T02:49:57Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-09T02:50:04Z",
+            "conclusion": "success",
+            "name": "Run actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020",
+            "number": 3,
+            "startedAt": "2026-10-09T02:49:59Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-09T02:50:08Z",
+            "conclusion": "success",
+            "name": "Pinned npm",
+            "number": 4,
+            "startedAt": "2026-10-09T02:50:04Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-09T02:50:11Z",
+            "conclusion": "success",
+            "name": "Run npm ci --ignore-scripts",
+            "number": 5,
+            "startedAt": "2026-10-09T02:50:08Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-09T02:50:11Z",
+            "conclusion": "success",
+            "name": "Require the hosted runner's real Chrome",
+            "number": 6,
+            "startedAt": "2026-10-09T02:50:11Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-09T02:51:06Z",
+            "conclusion": "success",
+            "name": "Run npm run typecheck && npm test",
+            "number": 7,
+            "startedAt": "2026-10-09T02:50:11Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-09T02:51:10Z",
+            "conclusion": "success",
+            "name": "Upstream SDK baseline",
+            "number": 8,
+            "startedAt": "2026-10-09T02:51:06Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-09T02:51:10Z",
+            "conclusion": "success",
+            "name": "Post Run actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020",
+            "number": 15,
+            "startedAt": "2026-10-09T02:51:10Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-09T02:51:11Z",
+            "conclusion": "success",
+            "name": "Post Run actions/checkout@11d5960a326750d5838078e36cf38b85af677262",
+            "number": 16,
+            "startedAt": "2026-10-09T02:51:10Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-09T02:51:11Z",
+            "conclusion": "success",
+            "name": "Complete job",
+            "number": 17,
+            "startedAt": "2026-10-09T02:51:11Z",
+            "status": "completed"
+          }
+        ],
+        "url": "https://github.com/yukikm/solana-zkapi/actions/runs/37876369838/job/113645817537"
+      },
+      {
+        "completedAt": "2026-10-09T02:49:49Z",
+        "conclusion": "success",
+        "databaseId": 113645817628,
+        "name": "go",
+        "startedAt": "2026-10-09T02:49:19Z",
+        "status": "completed",
+        "steps": [
+          {
+            "completedAt": "2026-10-09T02:49:22Z",
+            "conclusion": "success",
+            "name": "Set up job",
+            "number": 1,
+            "startedAt": "2026-10-09T02:49:20Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-09T02:49:26Z",
+            "conclusion": "success",
+            "name": "Run actions/checkout@11d5960a326750d5838078e36cf38b85af677262",
+            "number": 2,
+            "startedAt": "2026-10-09T02:49:22Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-09T02:49:35Z",
+            "conclusion": "success",
+            "name": "Run actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff",
+            "number": 3,
+            "startedAt": "2026-10-09T02:49:26Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-09T02:49:46Z",
+            "conclusion": "success",
+            "name": "Upstream Go baseline",
+            "number": 4,
+            "startedAt": "2026-10-09T02:49:35Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-09T02:49:46Z",
+            "conclusion": "success",
+            "name": "Post Run actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff",
+            "number": 7,
+            "startedAt": "2026-10-09T02:49:46Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-09T02:49:47Z",
+            "conclusion": "success",
+            "name": "Post Run actions/checkout@11d5960a326750d5838078e36cf38b85af677262",
+            "number": 8,
+            "startedAt": "2026-10-09T02:49:46Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-09T02:49:47Z",
+            "conclusion": "success",
+            "name": "Complete job",
+            "number": 9,
+            "startedAt": "2026-10-09T02:49:47Z",
+            "status": "completed"
+          }
+        ],
+        "url": "https://github.com/yukikm/solana-zkapi/actions/runs/37876369838/job/113645817628"
+      },
+      {
+        "completedAt": "0001-01-01T00:00:00Z",
+        "conclusion": "",
+        "databaseId": 113645817665,
+        "name": "client-challenger",
+        "startedAt": "2026-10-09T02:49:19Z",
+        "status": "in_progress",
+        "steps": [
+          {
+            "completedAt": "2026-10-09T02:49:22Z",
+            "conclusion": "success",
+            "name": "Set up job",
+            "number": 1,
+            "startedAt": "2026-10-09T02:49:20Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-09T02:49:25Z",
+            "conclusion": "success",
+            "name": "Run actions/checkout@11d5960a326750d5838078e36cf38b85af677262",
+            "number": 2,
+            "startedAt": "2026-10-09T02:49:22Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-09T02:49:30Z",
+            "conclusion": "success",
+            "name": "Run actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020",
+            "number": 3,
+            "startedAt": "2026-10-09T02:49:25Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-09T02:49:37Z",
+            "conclusion": "success",
+            "name": "Run actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff",
+            "number": 4,
+            "startedAt": "2026-10-09T02:49:30Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-09T02:52:32Z",
+            "conclusion": "success",
+            "name": "Install pinned tools and local runtime dependencies",
+            "number": 5,
+            "startedAt": "2026-10-09T02:49:37Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-09T02:52:35Z",
+            "conclusion": "success",
+            "name": "Require the hosted runner's real Chrome",
+            "number": 6,
+            "startedAt": "2026-10-09T02:52:32Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "0001-01-01T00:00:00Z",
+            "conclusion": "",
+            "name": "Compile SDK and verify isolated package consumption",
+            "number": 7,
+            "startedAt": "2026-10-09T02:52:35Z",
+            "status": "in_progress"
+          },
+          {
+            "completedAt": "0001-01-01T00:00:00Z",
+            "conclusion": "",
+            "name": "Generate actual Vault archive",
+            "number": 8,
+            "startedAt": "0001-01-01T00:00:00Z",
+            "status": "pending"
+          },
+          {
+            "completedAt": "0001-01-01T00:00:00Z",
+            "conclusion": "",
+            "name": "I10 local SDK, WASM, Go, challenger, backend, operations and integration acceptance",
+            "number": 9,
+            "startedAt": "0001-01-01T00:00:00Z",
+            "status": "pending"
+          },
+          {
+            "completedAt": "0001-01-01T00:00:00Z",
+            "conclusion": "",
+            "name": "I10 offline provider preparation, financial relay and shutdown regression",
+            "number": 10,
+            "startedAt": "0001-01-01T00:00:00Z",
+            "status": "pending"
+          },
+          {
+            "completedAt": "0001-01-01T00:00:00Z",
+            "conclusion": "",
+            "name": "Run actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02",
+            "number": 11,
+            "startedAt": "0001-01-01T00:00:00Z",
+            "status": "pending"
+          },
+          {
+            "completedAt": "0001-01-01T00:00:00Z",
+            "conclusion": "",
+            "name": "Post Run actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff",
+            "number": 20,
+            "startedAt": "0001-01-01T00:00:00Z",
+            "status": "pending"
+          },
+          {
+            "completedAt": "0001-01-01T00:00:00Z",
+            "conclusion": "",
+            "name": "Post Run actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020",
+            "number": 21,
+            "startedAt": "0001-01-01T00:00:00Z",
+            "status": "pending"
+          },
+          {
+            "completedAt": "0001-01-01T00:00:00Z",
+            "conclusion": "",
+            "name": "Post Run actions/checkout@11d5960a326750d5838078e36cf38b85af677262",
+            "number": 22,
+            "startedAt": "0001-01-01T00:00:00Z",
+            "status": "pending"
+          }
+        ],
+        "url": "https://github.com/yukikm/solana-zkapi/actions/runs/37876369838/job/113645817665"
+      }
+    ],
+    "status": "in_progress",
+    "url": "https://github.com/yukikm/solana-zkapi/actions/runs/37876369838"
+  },
+  "operational_scope": {
+    "deployment_receipt_sha256": "5303896b3add98b928e04123b4ed9adfcaf2605fdf36b7478d9b780ac8d100ec",
+    "invitation_requirement_removed": true,
+    "remaining_reservation_slots": 3,
+    "new_auth": 0,
+    "new_inference": 0,
+    "new_wallet_transactions": 0,
+    "sdk_native_replacement": false,
+    "chat_application_changed": false,
+    "last_public_capability_http_status": 503,
+    "last_public_capability_body": {
+      "schema": 1,
+      "scope": "read_only_capabilities",
+      "deployment_id": "public-devnet-20261008-a",
+      "manifest_hash": "b97e200769be24448a51999346a28d0ca497892d68212f517b2b9bb4cc1a4643",
+      "started_at": 1791514177,
+      "completed_at": 1791514177,
+      "expires_at": 1791514182,
+      "control": "available",
+      "indexer": "unavailable",
+      "signer": "available",
+      "providers": [
+        {
+          "provider": "openrouter",
+          "mode": "direct_openrouter",
+          "model": "*",
+          "tariff_hash": "ca205b230ac0e68b1fc84383d6948f215b46b604c3dbe8502bce83940af75ff5",
+          "status": "enabled"
+        }
+      ],
+      "provider_credit": "not_checked",
+      "operator_admission": "not_checked"
+    },
+    "availability_recovery_claimed": false
+  },
+  "local_evidence_directory": "target/invitation-removal-20261009"
+}

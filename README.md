@@ -9,6 +9,10 @@ for in integer micro-USDC (1 USDC = 1,000,000 micro-USDC).
 
 ## Current handoff — 2026-10-09 JST
 
+The [v0.2.0-devnet.4 API source release](https://github.com/yukikm/solana-zkapi/releases/tag/v0.2.0-devnet.4)
+is published and verified. SDK/native clients remain `0.2.0-devnet.3`; see the
+[publication record](docs/evidence/PD-invitation-release-20261009.md).
+
 The public API is now configured to accept new AUTH without an invitation, within the existing
 finite provider budget. The [gateway update](docs/evidence/PD-invitation-removal-20261009.md)
 preserves session authentication, proof checks, reservations and recovery. This
