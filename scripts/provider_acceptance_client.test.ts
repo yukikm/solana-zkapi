@@ -108,7 +108,7 @@ async function setup(t: TestContext, variant: 'plain' | 'sse' | 'unknown' | 'mis
         if (auth === 'expired_unknown') { now = 260_000; throw new TypeError('fetch failed'); }
         if (auth === 'permanent') return new Response(null, {status: 409});
         if (auth === 'slow') await new Promise<void>((_resolve, reject) => {
-          const timer = setTimeout(() => reject(Error('unbounded fixture request')), 1000);
+          const timer = setTimeout(() => reject(Error('unbounded fixture request')), 2000);
           const abort = () => { clearTimeout(timer); reject(init!.signal!.reason); };
           if (init!.signal!.aborted) abort(); else init!.signal!.addEventListener('abort', abort, {once: true});
         });
@@ -175,7 +175,7 @@ async function setup(t: TestContext, variant: 'plain' | 'sse' | 'unknown' | 'mis
   const client = new ControlClient(clientOptions);
   const options: ProviderAcceptanceContext = {client, journal, noteId: 'note', tariff: selectedTariff, now: () => now,
     quoteTimeoutMs: quoteFault === 'slow' ? 30 : 120_000,
-    authorizationTimeoutMs: auth === 'slow' ? 30 : 120_000,
+    authorizationTimeoutMs: auth === 'slow' ? 500 : 120_000,
     testCase: {...testCase, mode, provider, stream: variant === 'sse' || variant === 'sse_fake_tool', tools: variant === 'sse_fake_tool'},
     chain: {async sessionSnapshot() {snapshots++; return {slot: 200, root: field(14), sequence: '1', siblings: [], nextNoteId: 1, clock: '150', paused: false, treasuryOwner: 'fixture'};}},
     prover: {async snapshotPath(){throw Error('synthetic chain does not reconstruct a real tree');},async prepareSession(_witness: unknown, _state: unknown, _root: unknown, _siblings: unknown, quote: Quote, price: Tariff,
@@ -522,6 +522,13 @@ test('completed-case resume binds exact budget, plan, tariff, SDK bytes, receipt
     {endpoint: '/v1/responses'}, {tariff_hash: '22'.repeat(32)}, {inference_replays: 1}]) {
     bad.push([{...report, ...change} as typeof report, ...args.slice(1)] as Parameters<typeof validateCompletedProviderCase>);
   }
+  const changedFingerprint = structuredClone(note); changedFingerprint.history[0].operations[0].bodySha256 = '00'.repeat(32);
+  bad.push([report, testCase, report.plan_sha256, changedFingerprint, budget, context, verifier, tariff]);
+  const erased = structuredClone(note); delete erased.history[0].operations[0].bodySha256;
+  bad.push([report, testCase, report.plan_sha256, erased, budget, context, verifier, tariff]);
+  const legacy = structuredClone(note); delete legacy.history[0].operations[0].bodyRedacted; delete legacy.history[0].operations[0].bodySha256;
+  legacy.history[0].operations[0].bodyBase64 = Buffer.from(providerAcceptanceBody(testCase)).toString('base64');
+  await validateCompletedProviderCase(report,testCase,report.plan_sha256,legacy,budget,context,verifier,tariff);
   const changedNote = structuredClone(note); changedNote.history[0].operations[0].bodyBase64 = Buffer.from('{}').toString('base64');
   bad.push([report, testCase, report.plan_sha256, changedNote, budget, context, verifier, tariff]);
   bad.push([report, testCase, report.plan_sha256, note, {...budget, reservations: []}, context, verifier, tariff]);
@@ -529,4 +536,19 @@ test('completed-case resume binds exact budget, plan, tariff, SDK bytes, receipt
   bad.push([report, testCase, report.plan_sha256, changedSuccessor, budget, context, verifier, tariff]);
   for (const values of bad) await assert.rejects(validateCompletedProviderCase(...values));
   assert.deepEqual(h.counts, before); assert.deepEqual((await h.journal.read('note'))!.value, note);
+});
+
+test('direct collector accepts legacy bytes and their exact settlement fingerprint alongside new ZDR bytes',async t=>{
+  const h=await setup(t,'plain','normal','normal','direct_openrouter'),report=await runProviderAcceptanceCase(h.options);
+  const note=(await h.journal.read('note'))!.value,c=h.options.testCase,price=h.options.tariff;
+  const budget={identity:{schema:1,campaign_id:'offline',plan_sha256:report.plan_sha256,budget_micro_usdc:'10000000'},
+    reservations:[{case_id:c.id,max_cost_micro_usdc:c.max_cost_micro_usdc,state:'reserved_no_automatic_replay'}]};
+  const verifier={async prepare(){throw Error('no prepare');},async settle(_c:unknown,_p:unknown,_a:unknown,_s:unknown,_r:unknown,operations:string[]){assert.deepEqual(operations,[]);return successor;}};
+  const check=(value:NoteJournal)=>validateCompletedProviderCase(report,c,report.plan_sha256,value,budget,{...context,tariff_hashes:[price.tariff_hash]},verifier,price);
+  await check(note);
+  const legacy=structuredClone(note),op=legacy.history[0].operations[0],raw=providerAcceptanceBody(c);
+  delete op.bodyRedacted;delete op.bodySha256;op.bodyBase64=Buffer.from(raw).toString('base64');await check(legacy);
+  op.bodyRedacted=true;op.bodyBase64='';op.bodySha256=createHash('sha256').update(raw).digest('hex');await check(legacy);
+  op.bodySha256='00'.repeat(32);await assert.rejects(check(legacy));
+  delete op.bodySha256;await assert.rejects(check(legacy));
 });

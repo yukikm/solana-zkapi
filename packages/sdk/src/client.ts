@@ -4,7 +4,7 @@ import { address, type Rpc, type SolanaRpcApi } from '@solana/kit';
 import { decodeRpcAccount, safeRpcNumber } from './solana-rpc.ts';
 import { ClientDaemon } from './clientd-bridge.ts';
 import { ControlClient, validateNoteJournal, verifiedClientBundle, expiryNotice,
-  PROXY_PRIVACY_NOTICE, type ClientOptions, type Mode, type NoteJournal, type Quote, type Tariff } from './control.ts';
+  PROXY_PRIVACY_NOTICE, DIRECT_OPENROUTER_PRIVACY_NOTICE, DIRECT_PRIVACY_NOTICE, type ClientOptions, type Mode, type NoteJournal, type Quote, type Tariff } from './control.ts';
 import { ProverSessionVerifier } from './control-prover.ts';
 import { EncryptedJournal, type AtomicJournalStore } from './journal.ts';
 import { NoteProver, type ClientProver } from './prover.ts';
@@ -189,7 +189,7 @@ export class ZkApiClient {
       walletOperation: w?.operation ? { kind: w.operation.kind, phase: w.operation.phase, signature: w.operation.current ?? null,
         destinationOwner: w.operation.destinationOwner ?? null } : null,
       expiry, lastSettlement: last ? { chargeMicroUsdc: last.settlement.charge_micro_usdc, operationIds: last.operations.map(o => o.id) } : null,
-      privacyNotice: this.options.mode === 'proxy' ? PROXY_PRIVACY_NOTICE : 'Prompts go to the selected provider. The provider sees content and network metadata.',
+      privacyNotice: this.options.mode === 'proxy' ? PROXY_PRIVACY_NOTICE : this.options.mode === 'direct_openrouter' ? DIRECT_OPENROUTER_PRIVACY_NOTICE : DIRECT_PRIVACY_NOTICE,
     };
   }
 
@@ -354,6 +354,10 @@ export class ZkApiClient {
   settle(): Promise<void> { return this.action(async () => { await this.daemon.management('close'); }); }
   cancelUnsentAuthorization(): Promise<void> { return this.action(async () => { await this.daemon.management('cancel-unsent'); }); }
   reconcileAbsentOperations(): Promise<void> { return this.action(async () => { await this.daemon.management('reconcile'); }); }
+  /** Erase legacy settled request content locally; retain financial/recovery evidence. */
+  purgeSettledRequestBodies(): Promise<{historyOperations:number;emergencyOperations:number}> {
+    return this.action(()=>this.options.control.purgeSettledRequestBodies(this.options.noteId));
+  }
   /** Release observers and volatile provider keys. Does not settle, delete storage or stop a caller-owned prover. */
   dispose(): void {
     if (this.busy) throw new ClientActionError('busy', 'Consume or cancel the current response before disposal.');

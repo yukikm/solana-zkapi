@@ -256,3 +256,29 @@ test('emergency archive rejects fabricated phase, missing exact receipt, modifie
     assert.deepEqual(cancelled.attempts,before.attempts);assert.equal(h.counts().sends,sends);
   });
 });
+
+test('legacy emergency body copies survive active recovery and are erased together after settlement',async t=>{
+  const h=await setup(t);
+  const journal=h.open(),record=(await journal.read('note'))!,op=record.value.pending!.operations[0];
+  delete op.bodyRedacted;op.bodyBase64=Buffer.from('legacy private prompt').toString('base64');
+  await journal.compareAndSwap('note',record.revision,record.value);
+  await h.restart().beginEmergencyEscape('note',h.owner,h.roles);await h.drive();
+  const escaping=await h.open().read('note');
+  assert.deepEqual(await h.control().purgeSettledRequestBodies('note'),{historyOperations:0,emergencyOperations:0});
+  assert.deepEqual(await h.open().read('note'),escaping);
+  h.challenge();await h.restart().reconcileChallengedEscape('note');h.settle();
+  await h.control().recover('note');
+  const closed=(await h.open().read('note'))!.value;
+  assert.equal(closed.history[0].operations[0].bodyRedacted,true);
+  assert.equal(closed.wallet!.emergencyEscapes![0].pending.operations[0].bodyRedacted,true);
+  // Recreate both legacy archived copies to exercise the explicit migration.
+  const saved=(await h.open().read('note'))!;
+  for(const operation of [saved.value.history[0].operations[0],saved.value.wallet!.emergencyEscapes![0].pending.operations[0]]){
+    delete operation.bodyRedacted;operation.bodyBase64=Buffer.from('legacy private prompt').toString('base64');
+  }
+  await h.open().compareAndSwap('note',saved.revision,saved.value);
+  assert.deepEqual(await h.control().purgeSettledRequestBodies('note'),{historyOperations:1,emergencyOperations:1});
+  delete closed.history[0].operations[0].bodySha256;
+  delete closed.wallet!.emergencyEscapes![0].pending.operations[0].bodySha256;
+  assert.deepEqual((await h.open().read('note'))!.value,closed);
+});

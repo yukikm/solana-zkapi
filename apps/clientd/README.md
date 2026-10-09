@@ -146,12 +146,18 @@ All calls require the appropriate `Authorization: Bearer …`. Management and in
 
 Wallet commands specify role public keys and destination. Explicit `escape` switches a blocked mutual-close intent to escape only before any transaction has been signed, preserving the existing nullifier, clearance intent and destination. `advance` performs one durable sign/recover step; `prove` resumes the saved operation. Explicit `retry-rejected` rechecks an exact finalized rejection, cleans up its old buffer and preserves the saved witness/nullifier/destination before reproving; finalize also rechecks the current Pending and deadline. Secret witness and signed bytes are encrypted before sends. Only a finalized receipt plus actual account reconciliation activates a deposit. An unknown execute/close/finalize never gets a replacement signature. Blockhash expiry and confirmed status alone do not establish non-execution.
 
-Inference UUID and exact bytes are durable. A supplied `Idempotency-Key` is preserved; otherwise the daemon creates one and returns `X-Zkapi-Operation-Id`. Neither direct nor proxy inference is replayed automatically. IDs in active or settled history cannot be reused. Restart recovers/closes the previous session before new work. Direct 202/missing-key recovery closes the same authorization, never reissues a key or changes mode. Disconnects before upstream headers abort inference transport as well as delivered streams, retaining uncertain intents and running the shared lifecycle finalizer. Graceful shutdown waits for authorization preparation, active streams and close persistence. Go supervisor death closes its private pipe so the SDK exits and releases the journal lock; restart retains and reconciles unresolved operations.
+Inference UUID and phase are durable. SDK .7 keeps an unsent proxy body only until the atomic send transition; direct bodies never enter the journal. Sent bodies are redacted while IDs and financial evidence remain. A supplied `Idempotency-Key` is preserved; otherwise the daemon creates one and returns `X-Zkapi-Operation-Id`. Neither direct nor proxy inference is replayed automatically. IDs in active or settled history cannot be reused. Restart recovers/closes the previous session before new work. Direct 202/missing-key recovery closes the same authorization, never reissues a key or changes mode. Disconnects before upstream headers abort inference transport as well as delivered streams, retaining uncertain intents and running the shared lifecycle finalizer. Graceful shutdown waits for authorization preparation, active streams and close persistence. Go supervisor death closes its private pipe so the SDK exits and releases the journal lock; restart retains and reconciles unresolved operations.
 
-Direct requests reject top-level `user`, `metadata`, `safety_identifier`,
-`prompt_cache_key`, `extra_headers` and `provider` before authorization. Ethereum's
-clientd removes those fields; this client explicitly rejects them so the saved
-request remains byte-for-byte identical to the submitted inference. Client tool
+Direct requests use API-specific top-level allowlists before AUTH and again at
+the SDK dispatch sink. Unknown fields, identity metadata and arbitrary transport
+preferences are rejected. Direct OpenRouter requests always include
+`provider: {zdr: true, data_collection: "deny"}`; only those fixed preferences
+are accepted from callers. A provider failure causes no retry or relaxed policy.
+This restriction concerns direct OpenRouter, not the proxy service or OA.
+Provider routing is not cryptographic proof of deletion; providers see content
+and network metadata, and OpenRouter permits implicit in-memory caching.
+See [OpenRouter ZDR](https://openrouter.ai/docs/guides/features/zdr).
+Client tool
 parameter schemas can use arbitrary property names, including `type` and
 `image_url`. Direct Chat supports `response_format` text/JSON formats, and direct
 Responses supports their `text.format` equivalents, including JSON Schemas.

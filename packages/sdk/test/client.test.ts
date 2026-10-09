@@ -533,3 +533,15 @@ test('conversation ownership is frozen before asynchronous request preparation',
   await readChatText(await f.client.chat({ ...chat(), sessionId: 'original' }));
   assert.equal(f.counts.auth, 1); assert.equal(f.counts.sends, 2);
 });
+
+test('application erasure API removes only legacy settled content without network or wallet actions',async t=>{
+  const f=await setup(t);await readChatText(await f.client.chat(chat()));
+  const r=(await f.journal.read('note'))!,op=r.value.history[0].operations[0];
+  assert.equal(op.bodyBase64,'');assert.equal(op.bodyRedacted,true);
+  delete op.bodyRedacted;op.bodyBase64=Buffer.from('legacy private prompt').toString('base64');
+  await f.journal.compareAndSwap('note',r.revision,r.value);
+  const counts=structuredClone(f.counts),expected=structuredClone(r.value);
+  assert.deepEqual(await f.client.purgeSettledRequestBodies(),{historyOperations:1,emergencyOperations:0});
+  expected.history[0].operations[0].bodyBase64='';expected.history[0].operations[0].bodyRedacted=true;delete expected.history[0].operations[0].bodySha256;
+  assert.deepEqual((await f.journal.read('note'))!.value,expected);assert.deepEqual(f.counts,counts);
+});

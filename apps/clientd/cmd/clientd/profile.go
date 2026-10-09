@@ -22,7 +22,7 @@ import (
 
 const commandHelp = `usage: clientd setup --profile DIR --distribution /install/release.json --sha256 TRUSTED_SHA256 --runtime-config /reviewed/runtime.json --runtime-sha256 TRUSTED_SHA256 --network-config /reviewed/network.json
        clientd run /absolute/profile (passphrase and optional wallet_seed_base64/initialize_key JSON on stdin)
-       clientd request /absolute/profile status|models|close|recover|reconcile|cancel-unsent|wallet (POST body JSON on stdin for wallet/reconcile)
+       clientd request /absolute/profile status|models|close|recover|reconcile|cancel-unsent|purge-settled-bodies|wallet (POST body JSON on stdin for wallet/reconcile)
        clientd openclaw-config /absolute/profile --model ID --context-window N --max-tokens N
        clientd serve /absolute/config.json (full secrets JSON on stdin)`
 
@@ -301,7 +301,7 @@ func profileRequest(c Config, args []string, input io.Reader, output io.Writer) 
 	if len(args) != 2 {
 		return errors.New(commandHelp)
 	}
-	routes := map[string]string{"status": "/admin/status", "models": "/v1/models", "close": "/admin/close", "recover": "/admin/recover", "reconcile": "/admin/reconcile", "cancel-unsent": "/admin/cancel-unsent", "wallet": "/admin/wallet"}
+	routes := map[string]string{"status": "/admin/status", "models": "/v1/models", "close": "/admin/close", "recover": "/admin/recover", "reconcile": "/admin/reconcile", "cancel-unsent": "/admin/cancel-unsent", "purge-settled-bodies": "/admin/purge-settled-bodies", "wallet": "/admin/wallet"}
 	route, ok := routes[args[1]]
 	if !ok {
 		return errors.New("unsupported local request")
@@ -310,6 +310,8 @@ func profileRequest(c Config, args []string, input io.Reader, output io.Writer) 
 	body := []byte("{}")
 	if args[1] == "status" || args[1] == "models" {
 		method = "GET"
+		body = nil
+	} else if args[1] == "purge-settled-bodies" {
 		body = nil
 	} else if args[1] == "wallet" || args[1] == "reconcile" {
 		var err error

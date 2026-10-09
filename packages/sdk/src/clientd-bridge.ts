@@ -1,7 +1,8 @@
 /** Thin localhost application over the ONE ControlClient state machine.
  * Go forwards authenticated requests here over a private Unix socket. */
-import { ControlClient, createCredentials, expiryNotice, PROXY_PRIVACY_NOTICE, type Mode, type NoteJournal, type PreparedSession } from './control.ts';
+import { ControlClient, createCredentials, expiryNotice, PROXY_PRIVACY_NOTICE, DIRECT_OPENROUTER_PRIVACY_NOTICE, DIRECT_PRIVACY_NOTICE, type Mode, type NoteJournal, type PreparedSession } from './control.ts';
 import { JournalConflictError, JournalIntegrityError, type EncryptedJournal } from './journal.ts';
+import { directRequestBytes } from './direct-request.ts';
 import { parseStrictJson } from './trust.ts';
 import { daemonApiPaths, validateDaemonModelPolicy, validateModelRequestCapabilities, type DaemonModelPolicy } from './clientd-models.ts';
 
@@ -150,21 +151,25 @@ export class ClientDaemon {
   async status(): Promise<unknown> {
     const record = await this.o.journal.read(this.o.noteId);
     if (!record) return { mode:this.o.mode, balance_micro_usdc:'0', phase:'unfunded', in_flight:this.inflight, recovery_required:false,
-      unresolved_operations:[], key_reuse_seconds:this.reuse, journal_head:null, privacy_notice:PROXY_PRIVACY_NOTICE,
+      unresolved_operations:[], key_reuse_seconds:this.reuse, journal_head:null, privacy_notice:this.o.mode === 'proxy' ? PROXY_PRIVACY_NOTICE : this.o.mode === 'direct_openrouter' ? DIRECT_OPENROUTER_PRIVACY_NOTICE : DIRECT_PRIVACY_NOTICE,
       wallet_status:'unfunded', wallet_operation:null, wallet_emergency_escape:null };
     const {value,head} = record;
     const witness = (value as NoteJournal & { witness?: {expiry:string} }).witness;
     const emergency=value.wallet?.emergencyEscapes?.find(e=>e.phase!=='settled'),closed=value.wallet?.status==='closed';
     return { mode:this.o.mode, balance_micro_usdc:value.state.balance_micro_usdc, phase:value.pending?.phase ?? (closed?'closed':emergency?'emergency_escape':'ready'), in_flight:this.inflight, recovery_required:(!closed||!!value.pending)&&(this.recoveryRequired||!!emergency),
       unresolved_operations:value.pending?.operations.filter(o=>o.phase==='send_unknown').map(o=>({id:o.id,response_replayable:false})) ?? [],
-      key_reuse_seconds:this.reuse, journal_head:head, privacy_notice:PROXY_PRIVACY_NOTICE,
+      key_reuse_seconds:this.reuse, journal_head:head, privacy_notice:this.o.mode === 'proxy' ? PROXY_PRIVACY_NOTICE : this.o.mode === 'direct_openrouter' ? DIRECT_OPENROUTER_PRIVACY_NOTICE : DIRECT_PRIVACY_NOTICE,
       wallet_status:value.wallet?.status ?? 'legacy_import', wallet_operation:value.wallet?.operation ? {kind:value.wallet.operation.kind,phase:value.wallet.operation.phase} : null,
       wallet_emergency_escape:emergency?{phase:emergency.phase,funds_withdrawn:closed}:null,
       ...(witness ? {expiry:expiryNotice(BigInt(witness.expiry),this.now())} : {}) };
   }
-  async management(action: 'close' | 'recover' | 'reconcile' | 'cancel-unsent' | 'wallet', body?: unknown): Promise<unknown> {
+  async management(action: 'close' | 'recover' | 'reconcile' | 'cancel-unsent' | 'purge-settled-bodies' | 'wallet', body?: unknown): Promise<unknown> {
     return this.exclusive(async()=>{
       if (this.inflight) throw new DaemonConflict();
+      if (action === 'purge-settled-bodies') {
+        if (body !== undefined) throw new Error('purge-settled-bodies accepts no body');
+        return this.o.client.purgeSettledRequestBodies(this.o.noteId);
+      }
       if (action === 'wallet') { if (!this.o.wallet) throw new Error('wallet adapter unavailable'); return this.o.wallet(body); }
       if ((await this.record()).value.pending) {
         if (action === 'reconcile') await this.o.client.reconcileAbsentOperations(this.o.noteId); else if (action === 'cancel-unsent') await this.o.client.cancelUnsent(this.o.noteId); else if (action === 'recover') await this.o.client.recover(this.o.noteId); else await this.o.client.close(this.o.noteId);
@@ -187,41 +192,7 @@ export class ClientDaemon {
     if (!model) throw new Error('model is not in the pinned allowlist');
     if (typeof model !== 'string' && !model.apis.some(api => daemonApiPaths[api] === path)) throw new Error('model API is not configured');
     if (typeof model !== 'string') validateModelRequestCapabilities(model, body);
-    if (this.o.mode !== 'proxy') {
-      if (path.startsWith('/v1/messages') || this.o.mode === 'direct_openrouter' && path !== '/v1/chat/completions') throw new Error('unsupported direct endpoint');
-      // Upstream clientd strips these identity/transport fields. Reject them
-      // before AUTH here so the durable request retains the caller's exact bytes.
-      if (['user','metadata','safety_identifier','prompt_cache_key','extra_headers','provider'].some(key=>Object.hasOwn(body,key))) throw new Error('unsupported identity or transport metadata');
-      if (path === '/v1/responses' && body.store !== false) throw new Error('direct Responses requires store:false');
-      // Direct adapters are text/client-tool only in this release as well.
-      // Function parameter schemas describe application data. Their property
-      // names/types are not provider request fields or hosted-tool selectors.
-      const schemas = new Set<unknown>();
-      if (Array.isArray(body.tools)) for (const tool of body.tools) {
-        if (!tool || typeof tool !== 'object' || Array.isArray(tool) || tool.type !== 'function') continue;
-        const definition = path === '/v1/chat/completions' ? tool.function : tool;
-        if (definition && typeof definition === 'object' && !Array.isArray(definition) && Object.hasOwn(definition,'parameters')) schemas.add(definition.parameters);
-      }
-      const formats = new Set<unknown>();
-      const format = path === '/v1/chat/completions' ? body.response_format
-        : body.text && typeof body.text === 'object' && !Array.isArray(body.text) ? body.text.format : undefined;
-      if (format && typeof format === 'object' && !Array.isArray(format) && ['text','json_object','json_schema'].includes(String(format.type))) {
-        formats.add(format);
-        if (format.type === 'json_schema') {
-          const definition = path === '/v1/chat/completions' ? format.json_schema : format;
-          if (definition && typeof definition === 'object' && !Array.isArray(definition) && Object.hasOwn(definition,'schema')) schemas.add(definition.schema);
-        }
-      }
-      const check = (v: unknown): void => {
-        if (schemas.has(v)) return;
-        if (Array.isArray(v)) { for (const x of v) check(x); return; }
-        if (!v || typeof v !== 'object') return;
-        const obj = v as Record<string,unknown>;
-        if (['image_url','input_audio','file_id','file_url','audio','web_search_options','previous_response_id','background','conversation'].some(k=>Object.hasOwn(obj,k)) || obj.store === true || obj.type !== undefined && !formats.has(obj) && !(Array.isArray(obj.type) ? obj.type.every(t=>['object','array','string','number','integer','boolean','null'].includes(String(t))) : ['text','input_text','output_text','function','function_call','function_call_output','message','object','array','string','number','integer','boolean','null'].includes(String(obj.type)))) throw new Error('unsupported modality or hosted tool');
-        for (const v of Object.values(obj)) check(v);
-      }; check(body);
-    }
-    const snapshot = new Uint8Array(bytes);
+    const snapshot = this.o.mode === 'proxy' ? new Uint8Array(bytes) : directRequestBytes(this.o.mode,path,bytes);
     let requestId: string | undefined;
     await this.exclusive(async()=>{
       signal?.throwIfAborted();
@@ -322,7 +293,7 @@ export class ClientDaemon {
     try {
       if (method === 'GET' && path === '/v1/models') return json({object:'list',data:this.o.models.map(model=>({id:typeof model === 'string' ? model : model.id,object:'model',owned_by:typeof model === 'string' ? 'configured-provider' : model.provider}))});
       if (method === 'GET' && path === '/admin/status') return json(await this.status());
-      if (method === 'POST' && ['/admin/close','/admin/recover','/admin/reconcile','/admin/cancel-unsent','/admin/wallet'].includes(path)) return json(await this.management(path.slice(7) as 'close'|'recover'|'reconcile'|'cancel-unsent'|'wallet',bytes.length?parseStrictJson(bytes):undefined));
+      if (method === 'POST' && ['/admin/close','/admin/recover','/admin/reconcile','/admin/cancel-unsent','/admin/purge-settled-bodies','/admin/wallet'].includes(path)) return json(await this.management(path.slice(7) as 'close'|'recover'|'reconcile'|'cancel-unsent'|'purge-settled-bodies'|'wallet',bytes.length?parseStrictJson(bytes):undefined));
       if (method === 'POST' && routes.has(path)) return await this.infer(path,bytes,headers.get('Idempotency-Key') ?? undefined,headers.get('anthropic-version') ?? '',signal);
       return json({error:{code:'unsupported_route'}},404);
     } catch(error) { return json({error:{code:error instanceof DaemonConflict ? 'recovery_required' : 'client_request_failed',message:'Inference was not replayed. Inspect local status before retrying.'}},error instanceof DaemonConflict ? 409 : 400); }

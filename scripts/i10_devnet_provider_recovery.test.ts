@@ -260,3 +260,12 @@ test('unstarted guard preserves other consumed cases and also permits a never-us
   budget.reservations=[];budget.reserved_micro_usdc='0';budget.remaining_micro_usdc=input.plan.budget_micro_usdc;
   const emptyBefore=structuredClone(input);assert.equal((await verifyUnstartedProviderCase(input)).budget_reservation_created,false);assert.deepEqual(input,emptyBefore);
 });
+
+test('settled recovery verifies a redacted exact-body fingerprint and rejects erased or wrong evidence',async()=>{
+  const h=fixture(),operation=h.input.note.history[0].operations[0];
+  const raw=Buffer.from(operation.bodyBase64,'base64');
+  operation.bodyBase64='';operation.bodyRedacted=true;operation.bodySha256=createHash('sha256').update(raw).digest('hex');
+  await verifySettledProviderCase(h.input);assert.equal(h.calls(),1);
+  operation.bodySha256='00'.repeat(32);await assert.rejects(verifySettledProviderCase(h.input));assert.equal(h.calls(),1);
+  delete operation.bodySha256;await assert.rejects(verifySettledProviderCase(h.input));assert.equal(h.calls(),1);
+});

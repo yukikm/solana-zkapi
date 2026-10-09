@@ -15,6 +15,7 @@ import { jcsBytes, sha256Hex } from '../src/trust.ts';
 const field = (n: number) => '0x' + n.toString(16).padStart(64, '0');
 const requestId = '12345678-1234-4123-8123-123456789012';
 const operationId = '12345678-1234-4123-8123-123456789013';
+const directBody = new TextEncoder().encode('{"model":"fixture-model","messages":[{"role":"user","content":"private fixture prompt"}]}');
 const initial = (): PrivateState => ({ balance_micro_usdc: '100', balance_blinding: field(3), note_leaf: field(4), commitment: { x: field(5), y: field(6) }, anchor: field(7), state_signature: null });
 const successor = (): PrivateState => ({ ...initial(), balance_micro_usdc: '99', anchor: field(8), state_signature: { r_x: field(9), r_y: field(10), s: field(11) } });
 const settlement = (): Settlement => ({ charge_micro_usdc: '1', next_commitment: successor().commitment, next_anchor: field(8), blind_delta_srv: field(12), next_state_signature: successor().state_signature! });
@@ -56,7 +57,7 @@ async function setup(t: TestContext, schema: 1 | 2 = 1) {
 
 test('explicit absent-operation reconciliation requires terminal settlement and original crypto verification', async t => {
   const h=await setup(t);await h.client.prepare('note',prepared(),field(14));await h.client.submit('note');
-  await h.client.prepareOperation('note',operationId,'/v1/chat/completions',new TextEncoder().encode('{}'));
+  await h.client.prepareOperation('note',operationId,'/v1/chat/completions',new TextEncoder().encode('{"model":"fixture-model","store":false}'));
   h.setHandler(async()=>{throw Error('never reached server');});await assert.rejects(h.client.sendOperation('note',operationId));
   h.setHandler(async()=>response(status()));await assert.rejects(h.client.reconcileAbsentOperations('note'),/terminal/);
   h.setHandler(async call=>call.url.includes('/operations/')?response({error:{code:'not_found'}},404):call.url.endsWith('/receipts')?response({receipts:[],next_cursor:null}):response({...status('proxy','SETTLED'),settlement:settlement()}));
@@ -65,7 +66,7 @@ test('explicit absent-operation reconciliation requires terminal settlement and 
 });
 
 test('absent-operation reconciliation does not persist exclusions when the signed successor fails verification', async t => {
-  const h=await setup(t);await h.client.prepare('note',prepared(),field(14));await h.client.submit('note');await h.client.prepareOperation('note',operationId,'/v1/chat/completions',new TextEncoder().encode('{}'));
+  const h=await setup(t);await h.client.prepare('note',prepared(),field(14));await h.client.submit('note');await h.client.prepareOperation('note',operationId,'/v1/chat/completions',new TextEncoder().encode('{"model":"fixture-model","store":false}'));
   h.setHandler(async()=>{throw Error('not sent');});await assert.rejects(h.client.sendOperation('note',operationId));h.failSettlement();
   h.setHandler(async call=>call.url.includes('/operations/')?response({},404):call.url.endsWith('/receipts')?response({receipts:[],next_cursor:null}):response({...status('proxy','SETTLED'),settlement:settlement()}));
   await assert.rejects(h.client.reconcileAbsentOperations('note'),/signature/);assert.equal((await h.journal.read('note'))!.value.pending!.operations[0].phase,'send_unknown');
@@ -127,7 +128,7 @@ test('close of an unknown create preserves exact authorization recovery and dura
   await h.restart().recover('note');
   assert.equal(h.calls.length - callsBeforeRecovery, 2);
   assert.equal((await h.journal.read('note'))?.value.pending?.phase, 'closing');
-  await assert.rejects(h.client.prepareOperation('note', operationId, '/v1/responses', new TextEncoder().encode('{}')), /proxy session required/);
+  await assert.rejects(h.client.prepareOperation('note', operationId, '/v1/responses', new TextEncoder().encode('{"model":"fixture-model","store":false}')), /proxy session required/);
 });
 
 test('closing an unknown direct create withholds a newly delivered key and resumes close after response loss', async t => {
@@ -181,15 +182,15 @@ test('direct key stays only in the current client and restart closes the same ke
     return response(status('direct_openrouter', call.url.endsWith('/close') ? 'DRAINING' : 'ACTIVE'));
   });
   await h.client.recover('note');
-  await h.client.sendDirectOperation('note', operationId, '/v1/chat/completions', new TextEncoder().encode('{}'));
+  await h.client.sendDirectOperation('note', operationId, '/v1/chat/completions', new TextEncoder().encode('{"model":"fixture-model","store":false}'));
   const restarted = h.restart();
-  await assert.rejects(restarted.sendDirectOperation('note', crypto.randomUUID(), '/v1/chat/completions', new TextEncoder().encode('{}')), /active direct/);
+  await assert.rejects(restarted.sendDirectOperation('note', crypto.randomUUID(), '/v1/chat/completions', new TextEncoder().encode('{"model":"fixture-model","store":false}')), /active direct/);
   await restarted.recover('note');
   assert.equal((await h.journal.read('note'))!.value.pending!.phase, 'closing');
   assert.equal(h.calls.filter(c => c.url.endsWith('/sessions')).length, 1);
   assert.equal(h.calls.filter(c => c.url.endsWith('/close')).length, 1);
   assert.equal(h.calls.filter(c => c.url.endsWith('/chat/completions')).length, 1);
-  await assert.rejects(h.client.sendDirectOperation('note', crypto.randomUUID(), '/v1/chat/completions', new TextEncoder().encode('{}')), /active direct/);
+  await assert.rejects(h.client.sendDirectOperation('note', crypto.randomUUID(), '/v1/chat/completions', new TextEncoder().encode('{"model":"fixture-model","store":false}')), /active direct/);
 });
 
 test('legacy persisted direct keys remain readable but cannot authorize inference after restart', async t => {
@@ -200,7 +201,7 @@ test('legacy persisted direct keys remain readable but cannot authorize inferenc
       oaKeyVerification: { evidence: oaEvidence(), expiresAt: '210' } });
     await h.journal.compareAndSwap('note', r.revision, r.value);
     const before = (await h.journal.read('note'))!, restarted = h.clientWith({ oaVerifier: oaPin });
-    await assert.rejects(restarted.sendDirectOperation('note', operationId, '/v1/chat/completions', new TextEncoder().encode('{}')), /active direct/);
+    await assert.rejects(restarted.sendDirectOperation('note', operationId, '/v1/chat/completions', new TextEncoder().encode('{"model":"fixture-model","store":false}')), /active direct/);
     assert.deepEqual((await h.journal.read('note'))!.head, before.head, 'read does not migrate the existing encrypted journal');
     assert.equal(h.calls.length, 0);
     h.setHandler(async call => {
@@ -228,7 +229,7 @@ test('failed key-delivery persistence cannot leave a usable volatile key or chan
   const pending = (await h.journal.read('note'))!.value.pending!;
   assert.equal(pending.providerKey, undefined); assert.equal(pending.phase, 'send_unknown');
   assert.equal(pending.exactRequest, original); assert.equal(pending.operations.length, 0);
-  await assert.rejects(h.client.sendDirectOperation('note', operationId, '/v1/chat/completions', new TextEncoder().encode('{}')), /active direct/);
+  await assert.rejects(h.client.sendDirectOperation('note', operationId, '/v1/chat/completions', new TextEncoder().encode('{"model":"fixture-model","store":false}')), /active direct/);
   assert.equal(h.calls.length, 1);
 });
 
@@ -242,13 +243,13 @@ test('a volatile direct key cannot hydrate a changed authorization or be replace
     assert.equal(new Headers(call.init.headers).get('Authorization'), 'Bearer original-key');
     return response({ choices: [] });
   });
-  await h.client.sendDirectOperation('note', operationId, '/v1/chat/completions', new TextEncoder().encode('{}'));
+  await h.client.sendDirectOperation('note', operationId, '/v1/chat/completions', new TextEncoder().encode('{"model":"fixture-model","store":false}'));
   r = (await h.journal.read('note'))!;
   assert.equal(r.value.pending!.providerKey, undefined);
   r.value.pending!.prepared.request.authorization.request_id = crypto.randomUUID();
   r.value.pending!.exactRequest = JSON.stringify(r.value.pending!.prepared.request);
   await h.journal.compareAndSwap('note', r.revision, r.value);
-  await assert.rejects(h.client.sendDirectOperation('note', crypto.randomUUID(), '/v1/chat/completions', new TextEncoder().encode('{}')), /active direct/);
+  await assert.rejects(h.client.sendDirectOperation('note', crypto.randomUUID(), '/v1/chat/completions', new TextEncoder().encode('{"model":"fixture-model","store":false}')), /active direct/);
   assert.equal(h.calls.length, 2);
 });
 
@@ -257,7 +258,7 @@ test('forgetting volatile keys does not alter custody and same-session recovery 
   h.setHandler(async () => response({ ...status('direct_openrouter'), provider_key: 'volatile-only', provider_api_origin: context.inference_api_origin }));
   await h.client.submit('note'); const before = (await h.journal.read('note'))!;
   h.client.clearEphemeralKeys(); assert.deepEqual((await h.journal.read('note'))!.head, before.head);
-  await assert.rejects(h.client.sendDirectOperation('note', operationId, '/v1/chat/completions', new TextEncoder().encode('{}')), /active direct/);
+  await assert.rejects(h.client.sendDirectOperation('note', operationId, '/v1/chat/completions', new TextEncoder().encode('{"model":"fixture-model","store":false}')), /active direct/);
   h.setHandler(async call => response(call.url.endsWith('/receipts') ? { receipts: [], next_cursor: null }
     : { ...status('direct_openrouter', 'SETTLED'), settlement: settlement() }));
   await h.client.recover('note');
@@ -278,7 +279,7 @@ test('OA key without independently verifiable evidence is withheld and the same 
   const pending = (await h.journal.read('note'))!.value.pending!;
   assert.equal(pending.providerKey, undefined); assert.equal(pending.phase, 'closing');
   assert.equal(h.calls.length, 2); assert.ok(h.calls[1].url.endsWith(`/sessions/${requestId}/close`));
-  await assert.rejects(h.client.sendDirectOperation('note', operationId, '/v1/responses', new TextEncoder().encode('{}')), /active direct/);
+  await assert.rejects(h.client.sendDirectOperation('note', operationId, '/v1/responses', new TextEncoder().encode('{"model":"fixture-model","store":false}')), /active direct/);
 });
 
 test('OA evidence is checked before volatile key delivery and a restarted SDK cannot revive the key', async t => {
@@ -307,11 +308,11 @@ test('OA evidence is checked before volatile key delivery and a restarted SDK ca
   const saved = (await h.journal.read('note'))!.value.pending!;
   assert.equal(saved.providerKey, undefined);
   assert.deepEqual(saved.oaKeyVerification, { evidence: oaEvidence(), expiresAt: '210' });
-  await client.sendDirectOperation('note', operationId, '/v1/responses', new TextEncoder().encode('{}'));
+  await client.sendDirectOperation('note', operationId, '/v1/responses', new TextEncoder().encode('{"model":"fixture-model","store":false}'));
   assert.equal(verifications, 1);
   const restarted = h.clientWith({ oaVerifier: oaPin });
-  await assert.rejects(restarted.sendDirectOperation('note', crypto.randomUUID(), '/v1/responses', new TextEncoder().encode('{}')), /active direct/);
-  await assert.rejects(client.sendDirectOperation('note', operationId, '/v1/responses', new TextEncoder().encode('{}')), /cannot be replayed/);
+  await assert.rejects(restarted.sendDirectOperation('note', crypto.randomUUID(), '/v1/responses', new TextEncoder().encode('{"model":"fixture-model","store":false}')), /active direct/);
+  await assert.rejects(client.sendDirectOperation('note', operationId, '/v1/responses', new TextEncoder().encode('{"model":"fixture-model","store":false}')), /cannot be replayed/);
   assert.equal(verifications, 1); assert.equal(inference, 1);
 });
 
@@ -409,7 +410,7 @@ test('changed saved OA evidence is independently rechecked against the current i
       if (call.url.endsWith('/submit_key')) { verifications++; return response({ status: 'rejected' }); }
       assert.ok(call.url.endsWith('/close')); return response(status('direct_oa', 'DRAINING'));
     });
-    await assert.rejects(client.sendDirectOperation('note', operationId, '/v1/responses', new TextEncoder().encode('{}')), /OA key verification failed/);
+    await assert.rejects(client.sendDirectOperation('note', operationId, '/v1/responses', new TextEncoder().encode('{"model":"fixture-model","store":false}')), /OA key verification failed/);
     const pending = (await h.journal.read('note'))!.value.pending!;
     assert.equal(pending.providerKey, undefined); assert.equal(pending.phase, 'closing'); assert.equal(pending.operations.length, 0);
     assert.equal(verifications, ['evidence', 'expiry'].includes(change) ? 1 : 0);
@@ -456,14 +457,14 @@ test('duplicate receipt and nonadvancing cursor both block settlement before the
   }
 });
 
-test('inference persists exact bytes before send; response loss and restart cannot auto replay', async t => {
+test('inference redacts persisted bytes before send; response loss and restart cannot auto replay', async t => {
   const h = await setup(t); await h.client.prepare('note', prepared(), field(14)); await h.client.submit('note');
   const body = new TextEncoder().encode('{ "model" : "fixture-model", "messages": [] }');
   await h.client.prepareOperation('note', operationId, '/v1/chat/completions', body);
-  await assert.rejects(h.client.prepareOperation('note', operationId, '/v1/chat/completions', new TextEncoder().encode('{}')), /idempotency conflict/);
+  await assert.rejects(h.client.prepareOperation('note', operationId, '/v1/chat/completions', new TextEncoder().encode('{"model":"fixture-model","store":false}')), /idempotency conflict/);
   h.setHandler(async call => {
     const operation = (await h.journal.read('note'))!.value.pending!.operations[0];
-    assert.equal(operation.phase, 'send_unknown'); assert.deepEqual(call.init.body, body);
+    assert.equal(operation.phase, 'send_unknown'); assert.equal(operation.bodyBase64,''); assert.equal(operation.bodyRedacted,true); assert.equal(operation.bodySha256,await sha256Hex(body)); assert.deepEqual(call.init.body, body);
     assert.equal((call.init.headers as Record<string, string>)['Idempotency-Key'], operationId);
     assert.equal((call.init.headers as Record<string, string>).Authorization, 'Bearer zkp1.fixture-secret');
     throw new Error('stream lost');
@@ -475,7 +476,7 @@ test('inference persists exact bytes before send; response loss and restart cann
 
 test('concurrent senders dispatch one inference and 409 points at status without retrying', async t => {
   const h = await setup(t); await h.client.prepare('note', prepared(), field(14)); await h.client.submit('note');
-  await h.client.prepareOperation('note', operationId, '/v1/responses', new TextEncoder().encode('{}'));
+  await h.client.prepareOperation('note', operationId, '/v1/responses', new TextEncoder().encode('{"model":"fixture-model","store":false}'));
   h.setHandler(async () => response({ code: 'OPERATION_EXISTS' }, 409));
   const results = await Promise.allSettled([h.client.sendOperation('note', operationId), h.restart().sendOperation('note', operationId)]);
   assert.equal(results.filter(v => v.status === 'rejected' && v.reason instanceof ResponseNotReplayable).length, 2);
@@ -657,7 +658,7 @@ test('schema 2 survives every ControlClient authorization, inference, recovery a
   const h=await setup(t,2),check=async()=>assert.equal((await h.journal.read('note'))!.value.schema,2);
   await h.client.prepare('note',prepared(),field(14));await check();
   await h.client.submit('note');await check();
-  await h.client.prepareOperation('note',operationId,'/v1/chat/completions',new TextEncoder().encode('{}'));await check();
+  await h.client.prepareOperation('note',operationId,'/v1/chat/completions',new TextEncoder().encode('{"model":"fixture-model","store":false}'));await check();
   h.setHandler(async()=>response({result:'fixture'}));await h.client.sendOperation('note',operationId);await check();
   h.setHandler(async call=>response(call.url.endsWith('/receipts')?{receipts:[],next_cursor:null}:{...status('proxy','SETTLED'),settlement:settlement()}));
   await h.restart().close('note');await check();
@@ -733,3 +734,89 @@ for(const [label,after] of [['frozen',98n],['backwards',97n],['expired after wai
     assert.deepEqual(timer.delays,[2000]);assert.deepEqual(timer.cleared,[timer.handle]);assert.equal(h.calls.length,1);
   });
 }
+
+test('low-level direct sink rejects metadata and policy bypasses without changing the journal',async t=>{
+  const h=await setup(t);await h.client.prepare('note',prepared('direct_openrouter'),field(14));
+  h.setHandler(async()=>response({...status('direct_openrouter'),provider_key:'fixture-key',provider_api_origin:context.inference_api_origin}));
+  await h.client.submit('note');const before=await h.journal.read('note'),calls=h.calls.length;
+  for(const extra of [
+    {model:'openai/gpt-5.2:online'},{model:'@preset/private-search'},{model:'openai/gpt-5.2@preset/private-search'},
+    {user:'identity'},{client_metadata:{thread_id:'identity'}},{custom_tracking_id:'identity'},
+    {provider:{zdr:false}},{provider:{zdr:true,data_collection:'allow'}},{provider:{zdr:true,order:['tracker']}},
+    {messages:[{role:'user',content:[{type:'image_url',image_url:{url:'https://private.invalid'}}]}]},
+  ])await assert.rejects(h.client.sendDirectOperation('note',crypto.randomUUID(),'/v1/chat/completions',
+    new TextEncoder().encode(JSON.stringify({...JSON.parse(new TextDecoder().decode(directBody)),...extra}))));
+  for(const raw of ['{"model":"fixture-model","model":"other"}','{"model":"fixture-model","\\u0075ser":"identity"}'])
+    await assert.rejects(h.client.sendDirectOperation('note',crypto.randomUUID(),'/v1/chat/completions',new TextEncoder().encode(raw)));
+  assert.equal(h.calls.length,calls);assert.deepEqual(await h.journal.read('note'),before);
+});
+test('direct fixed ZDR, input snapshot, no retained body and no retry after provider rejection',async t=>{
+  const h=await setup(t);await h.client.prepare('note',prepared('direct_openrouter'),field(14));
+  h.setHandler(async()=>response({...status('direct_openrouter'),provider_key:'fixture-key',provider_api_origin:context.inference_api_origin}));
+  await h.client.submit('note');const before=h.calls.length;
+  h.setHandler(async call=>{
+    const op=(await h.journal.read('note'))!.value.pending!.operations[0];
+    assert.equal(op.bodyBase64,'');assert.equal(op.bodyRedacted,true);assert.equal(op.phase,'send_unknown');
+    assert.equal(op.bodySha256,await sha256Hex(call.init.body as Uint8Array));
+    assert.deepEqual(JSON.parse(new TextDecoder().decode(call.init.body as Uint8Array)),
+      {...JSON.parse(new TextDecoder().decode(directBody)),provider:{zdr:true,data_collection:'deny'}});
+    return response({error:'no qualifying endpoint'},503);
+  });
+  const input=new Uint8Array(directBody),sent=h.client.sendDirectOperation('note',operationId,'/v1/chat/completions',input);
+  input.fill(0);assert.equal((await sent).status,503);assert.equal(h.calls.length,before+1);
+  await assert.rejects(h.client.sendDirectOperation('note',operationId,'/v1/chat/completions',directBody),/cannot be replayed/);
+  assert.equal(h.calls.length,before+1);
+});
+test('failed redaction save causes zero direct or proxy sends and preserves the original journal',async t=>{
+  for(const mode of ['proxy','direct_openrouter'] as const){
+    const h=await setup(t);await h.client.prepare('note',prepared(mode),field(14));
+    h.setHandler(async()=>response({...status(mode),...(mode==='proxy'?{}:{provider_key:'fixture-key',provider_api_origin:context.inference_api_origin})}));
+    await h.client.submit('note');
+    if(mode==='proxy')await h.client.prepareOperation('note',operationId,'/v1/chat/completions',directBody);
+    const before=await h.journal.read('note'),calls=h.calls.length;h.failStorage();
+    await assert.rejects(mode==='proxy'?h.client.sendOperation('note',operationId):h.client.sendDirectOperation('note',operationId,'/v1/chat/completions',directBody),/disk full/);
+    assert.equal(h.calls.length,calls);assert.deepEqual(await h.journal.read('note'),before);
+  }
+});
+test('legacy prepared body survives reopen, is sent exactly once and is then redacted',async t=>{
+  const h=await setup(t);await h.client.prepare('note',prepared(),field(14));await h.client.submit('note');
+  await h.client.prepareOperation('note',operationId,'/v1/chat/completions',directBody);
+  const before=await h.journal.read('note');assert.equal(before!.value.pending!.operations[0].bodyBase64,Buffer.from(directBody).toString('base64'));
+  const restarted=h.restart();assert.deepEqual(await h.journal.read('note'),before);
+  h.setHandler(async call=>{assert.deepEqual(call.init.body,directBody);return response({ok:true});});
+  await restarted.sendOperation('note',operationId);
+  const count=h.calls.length;await assert.rejects(restarted.sendOperation('note',operationId),ResponseNotReplayable);
+  await assert.rejects(restarted.prepareOperation('note',operationId,'/v1/chat/completions',directBody),ResponseNotReplayable);
+  assert.equal(h.calls.length,count);
+});
+test('explicit settled erasure preserves active recovery and every financial field; is atomic and idempotent',async t=>{
+  const h=await setup(t);await h.client.prepare('note',prepared(),field(14));await h.client.submit('note');
+  await h.client.prepareOperation('note',operationId,'/v1/chat/completions',directBody);
+  h.setHandler(async call=>response(call.url.endsWith('/receipts')?{receipts:[],next_cursor:null}:{...status('proxy','SETTLED'),settlement:settlement()}));
+  await h.client.close('note');
+  let record=(await h.journal.read('note'))!;
+  // A complete legacy settled record, including an unsent prepared operation.
+  const archived=record.value.history[0].operations[0];delete archived.bodyRedacted;archived.bodyBase64=Buffer.from(directBody).toString('base64');
+  const active=prepared();active.request.authorization.request_id=crypto.randomUUID();
+  record.value.pending={prepared:active,exactRequest:JSON.stringify(active.request),phase:'send_unknown',operations:[
+    {id:crypto.randomUUID(),path:'/v1/chat/completions',anthropicVersion:'',phase:'send_unknown',bodyBase64:archived.bodyBase64}]};
+  await h.journal.compareAndSwap('note',record.revision,record.value);
+  const before=(await h.journal.read('note'))!;assert.deepEqual(await h.journal.read('note'),before);
+  h.failStorage();await assert.rejects(h.client.purgeSettledRequestBodies('note'),/disk full/);assert.deepEqual(await h.journal.read('note'),before);h.failStorage(false);
+  assert.deepEqual(await h.client.purgeSettledRequestBodies('note'),{historyOperations:1,emergencyOperations:0});
+  const expected=structuredClone(before.value);expected.history[0].operations[0].bodyBase64='';expected.history[0].operations[0].bodyRedacted=true;delete expected.history[0].operations[0].bodySha256;
+  assert.deepEqual((await h.journal.read('note'))!.value,expected);
+  const after=await h.journal.read('note');assert.deepEqual(await h.client.purgeSettledRequestBodies('note'),{historyOperations:0,emergencyOperations:0});assert.deepEqual(await h.journal.read('note'),after);
+});
+test('redaction marker shape is checked in active and historical records',async t=>{
+  const h=await setup(t);await h.client.prepare('note',prepared(),field(14));await h.client.submit('note');
+  await h.client.prepareOperation('note',operationId,'/v1/chat/completions',directBody);
+  const note=(await h.journal.read('note'))!.value;
+  for(const marker of [false,null,'true',true])for(const historical of [false,true]){
+    const altered=structuredClone(note),op=altered.pending!.operations[0];(op as any).bodyRedacted=marker;
+    if(historical){altered.history.push({previous:initial(),prepared:prepared(),settlement:settlement(),receipts:[],operations:[op]});altered.pending=null;}
+    await assert.rejects(validateNoteJournal(altered),/redaction/);
+  }
+  const redacted=structuredClone(note);redacted.pending!.operations[0].bodyBase64='';redacted.pending!.operations[0].bodyRedacted=true;
+  await validateNoteJournal(redacted);
+});

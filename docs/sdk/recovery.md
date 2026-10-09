@@ -71,13 +71,19 @@ Avoid generic retry middleware around `chat()` or `request()`.
 
 ## Local request retention
 
-The encrypted note journal saves each canonical inference request body before
-dispatch in both direct and proxy modes. It retains those bytes in session
-history after settlement and in unresolved emergency-escape archives. A request
-can contain the user's prompt, tool data and earlier assistant responses sent as
-conversation context. Returned response bodies are not separately journaled by
-the SDK, but any content included in a later request becomes part of that saved
-request.
+SDK/native .7 never persist new direct inference bodies. For proxy operations,
+only the unsent `prepared` phase retains the exact body needed for explicit
+dispatch after reopen. Before any send, one atomic journal commit records
+`send_unknown` and replaces the body with `bodyBase64: ""`, `bodyRedacted: true`.
+If that commit fails, no request is sent. The transmitted bytes remain in memory. A SHA-256 fingerprint of the exact sent
+bytes remains for independent acceptance checks; identical or guessable content
+can be recognized from that fingerprint by someone who can decrypt the journal.
+Every redacted operation is permanently non-replayable, regardless of phase.
+
+Verified settlement also removes any remaining bodies from that session and its
+matching emergency archive, including unsent proxy operations. IDs, phases, AUTH
+bytes, receipts, signatures, balance and wallet transaction evidence remain.
+The SDK does not separately journal response content.
 
 Newly received direct provider keys stay in the current `ControlClient`'s memory
 and are omitted from journal writes and new emergency-escape archives. Only a
@@ -93,13 +99,21 @@ revocation does not erase old local bytes. Existing backups may retain request
 bodies and credentials. Control/proxy recovery credentials and financial evidence
 remain encrypted in the journal.
 
-Reloading, clearing the visible conversation or disposing the client does not
-erase the journal. There is currently no public API for selective prompt erasure.
-Do not edit operation bytes or delete custody to implement a chat-clear button:
-the journal also carries funds and recovery evidence. Browser encryption does
-not hide retained text from app code running in that origin or from a compromised
-device. Explain this local retention separately from provider/proxy visibility
-and from the UI's choice to keep its displayed transcript only in memory.
+Reading a legacy journal does not migrate it. To remove bodies from existing
+settled history and its settled emergency copies, including their fingerprints, explicitly call
+`await client.purgeSettledRequestBodies()` (application SDK) or
+`await control.purgeSettledRequestBodies(noteId)` (low-level SDK). Native users can
+run `clientd request /absolute/profile purge-settled-bodies`; it requires the
+management token and accepts no request body. Results count history and
+emergency operation copies whose body or fingerprint was erased separately. Repeating the call is harmless.
+
+This operation keeps active pending requests and unresolved emergency archives,
+including an unchallenged escape archive on a closed wallet. It does not erase
+external backups, old ciphertext/filesystem snapshots, app transcripts or provider
+copies. It never clears funds, recovery credentials or financial history.
+Reloading, disposal and clearing displayed chat do not invoke it automatically.
+Browser encryption does not hide data from app code running in the same origin
+or a compromised device.
 
 ## Withdrawals and expiry
 

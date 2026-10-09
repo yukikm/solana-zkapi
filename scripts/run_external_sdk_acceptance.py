@@ -124,7 +124,7 @@ def main() -> None:
             run('declarations', ['node', 'node_modules/typescript/bin/tsc', '-p', 'tsconfig.json'], consumer)
             # Reuse source tests but redirect every runtime library import to the
             # installed package. Fixtures are explicit local copies, not imports.
-            test_names = ['client.test.ts', 'chat.test.ts', 'clientd-models.test.ts', 'trust.test.ts', 'deployment.test.ts', 'public-profile.test.ts', 'public-profile-fixture.ts', 'chain-fixture.ts', 'kit-helpers.ts']
+            test_names = ['control.test.ts', 'clientd.test.ts', 'client.test.ts', 'chat.test.ts', 'clientd-models.test.ts', 'trust.test.ts', 'deployment.test.ts', 'public-profile.test.ts', 'public-profile-fixture.ts', 'chain-fixture.ts', 'kit-helpers.ts']
             if args.real_provers:
                 test_names.append('session-snapshot-runtime.ts')
             for name in test_names:

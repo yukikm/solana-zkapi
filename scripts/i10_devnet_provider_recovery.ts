@@ -1,6 +1,7 @@
 /** Read-only verification before ordinary WalletClient withdrawal of a failed
  * provider case. Signed waiver/settlement is not successful provider acceptance.
  * This module has no journal writer, HTTP client, budget mutation or send path. */
+import {directRequestBytes} from '../packages/sdk/src/direct-request.ts';
 import {createHash} from 'node:crypto';
 import {validateNoteJournal, type NoteJournal, type SessionVerifier, type Tariff,
   type VerificationContext} from '../packages/sdk/src/control.ts';
@@ -134,7 +135,9 @@ export async function verifySettledProviderCase(input:SettledProviderRecoveryInp
     const path={chat_completions:'/v1/chat/completions',responses:'/v1/responses',messages:'/v1/messages'}[c.endpoint];
     requireTrue(operation.path===path&&operation.phase==='send_unknown'
       &&operation.anthropicVersion===(c.provider==='anthropic'?'2023-06-01':'')
-      &&operation.bodyBase64===Buffer.from(body).toString('base64')
+      &&(operation.bodyRedacted===true
+        ? operation.bodyBase64===''&&(operation.bodySha256===sha(body)||c.mode!=='proxy'&&operation.bodySha256===sha(directRequestBytes(c.mode,path,body)))
+        : operation.bodyBase64===Buffer.from(body).toString('base64'))
       &&r.deployment_id===o.context.deployment_id&&r.pool===o.context.pool&&r.request_id===a.request_id
       &&r.operation_id===(c.mode==='proxy'?operation.id:null)&&r.billing_effect==='charge'
       &&r.tariff_hash===tariff.tariff_hash&&/^[0-9a-f]{64}$/.test(receipt.receipt_hash));

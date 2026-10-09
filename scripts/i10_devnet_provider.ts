@@ -14,6 +14,7 @@ import type {EncryptedJournal} from '../packages/sdk/src/journal.ts';
 import type {NoteProver} from '../packages/sdk/src/prover.ts';
 import {jcsBytes, parseStrictJson, type ArtifactBundle, type VerifiedManifest} from '../packages/sdk/src/trust.ts';
 import type {WalletChain} from '../packages/sdk/src/wallet-chain.ts';
+import {directRequestBytes} from '../packages/sdk/src/direct-request.ts';
 import {ProviderAcceptanceFailure, providerAcceptanceBody, runProviderAcceptanceCase,
   type ProviderAcceptanceCase} from './provider_acceptance_client.ts';
 
@@ -263,12 +264,18 @@ export async function validateCompletedProviderCase(report: CaseReport, testCase
     && r.state === 'reserved_no_automatic_replay').length === 1);
   const indexes = note.history.flatMap((history, index) => history.prepared.request.authorization.request_id === report.request_id ? [index] : []);
   requireTrue(indexes.length === 1);
+  // Legacy settlement fingerprints the original bytes; .7 direct OpenRouter
+  // fingerprints its normalized ZDR request. Either exact known representation
+  // is valid historical evidence, never proof of ZDR for the legacy request.
   const index = indexes[0], h = note.history[index], authorization = h.prepared.request.authorization;
   requireTrue(authorization.mode === testCase.mode && h.prepared.tariff.provider === testCase.provider
     && h.prepared.tariff.model === (testCase.mode === 'proxy' ? testCase.model : '*') && same(h.prepared.tariff, tariff)
     && h.operations.length === 1 && h.operations[0].id === report.operation_id
     && h.operations[0].path === report.endpoint && report.endpoint === ({chat_completions: '/v1/chat/completions', responses: '/v1/responses', messages: '/v1/messages'}[testCase.endpoint])
-    && h.operations[0].bodyBase64 === Buffer.from(providerAcceptanceBody(testCase)).toString('base64')
+    && (h.operations[0].bodyRedacted === true
+      ? h.operations[0].bodyBase64 === '' && (h.operations[0].bodySha256 === sha(providerAcceptanceBody(testCase))
+        || testCase.mode !== 'proxy' && h.operations[0].bodySha256 === sha(directRequestBytes(testCase.mode,report.endpoint,providerAcceptanceBody(testCase))))
+      : h.operations[0].bodyBase64 === Buffer.from(providerAcceptanceBody(testCase)).toString('base64'))
     && h.operations[0].phase === 'send_unknown'
     && h.receipts.length === 1 && h.receipts[0].body.receipt_id === report.receipt_id
     && h.receipts[0].receipt_hash === report.receipt_hash

@@ -145,3 +145,11 @@ body. Tool-call deltas need a native SSE consumer instead.
 Both cancel unread data on errors. `ChatResponseError` exposes `code`, HTTP
 `status` and `operationId` without raw provider text. Billing verification stays
 with the signed settlement path, not these parsers.
+
+## Local request-body erasure (.7)
+
+`await client.purgeSettledRequestBodies()` removes inference bodies and fingerprints from
+settled history and settled emergency copies, preserving financial and recovery
+evidence. It returns `{historyOperations, emergencyOperations}` and performs no
+network or wallet action. Active requests and unresolved escape archives remain.
+See [retention and backup limitations](recovery.md#local-request-retention).

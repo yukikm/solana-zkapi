@@ -5,15 +5,15 @@ TypeScript declarations, so your application does not need TypeScript source
 loading or access to the zkAPI repository. Registry publication is disabled with
 `private: true`; no package under this name on npm is endorsed by this project.
 
-Obtain `zkapi-solana-sdk-0.2.0-devnet.6.tgz` and its SHA-256 through a trusted release
+Obtain `zkapi-solana-sdk-0.2.0-devnet.7.tgz` and its SHA-256 through a trusted release
 channel, check the checksum, then install the exact tarball. The release target is
-[`v0.2.0-devnet.6`](https://github.com/yukikm/solana-zkapi/releases/tag/v0.2.0-devnet.6).
+[`v0.2.0-devnet.7`](https://github.com/yukikm/solana-zkapi/releases/tag/v0.2.0-devnet.7).
 Check that the assets and manifest have actually been published; a source version
 or a locally built archive alone does not establish publication:
 
 ```sh
-shasum -a 256 zkapi-solana-sdk-0.2.0-devnet.6.tgz
-npm install --save-exact ./zkapi-solana-sdk-0.2.0-devnet.6.tgz @solana/kit@8.4.0
+shasum -a 256 zkapi-solana-sdk-0.2.0-devnet.7.tgz
+npm install --save-exact ./zkapi-solana-sdk-0.2.0-devnet.7.tgz @solana/kit@8.4.0
 ```
 
 Read the [Kit API migration guide](../../docs/sdk/kit-migration.md) when upgrading
@@ -84,7 +84,7 @@ From the repository root, install the pinned build dependencies and run:
 npm ci
 mkdir -p target/sdk-distribution
 npm pack --workspace @zkapi/solana-sdk --pack-destination target/sdk-distribution
-shasum -a 256 target/sdk-distribution/zkapi-solana-sdk-0.2.0-devnet.6.tgz
+shasum -a 256 target/sdk-distribution/zkapi-solana-sdk-0.2.0-devnet.7.tgz
 python3 scripts/run_external_sdk_acceptance.py
 ```
 

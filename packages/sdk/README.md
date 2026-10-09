@@ -1,3 +1,5 @@
+Current client release: [privacy hardening .7](../../docs/releases/privacy-preview.md).
+
 # Solana zkAPI SDK
 
 An application API for USDC-funded AI usage. It composes the existing wallet,

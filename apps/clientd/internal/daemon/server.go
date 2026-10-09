@@ -101,7 +101,7 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	if management {
-		valid = r.Method == "GET" && r.URL.Path == "/admin/status" || r.Method == "POST" && (r.URL.Path == "/admin/close" || r.URL.Path == "/admin/recover" || r.URL.Path == "/admin/reconcile" || r.URL.Path == "/admin/cancel-unsent" || r.URL.Path == "/admin/wallet")
+		valid = r.Method == "GET" && r.URL.Path == "/admin/status" || r.Method == "POST" && (r.URL.Path == "/admin/close" || r.URL.Path == "/admin/recover" || r.URL.Path == "/admin/reconcile" || r.URL.Path == "/admin/cancel-unsent" || r.URL.Path == "/admin/purge-settled-bodies" || r.URL.Path == "/admin/wallet")
 	}
 	if !valid {
 		failure(w, 404, "unsupported_route")

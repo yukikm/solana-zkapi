@@ -214,6 +214,12 @@ func TestProfileRequestSeparatesCredentialsAndDoesNotFollowRedirect(t *testing.T
 		if r.Header.Get("Authorization") != "Bearer "+want {
 			t.Error("wrong credential")
 		}
+		if r.URL.Path == "/admin/purge-settled-bodies" {
+			body, err := io.ReadAll(r.Body)
+			if err != nil || len(body) != 0 || r.Method != "POST" {
+				t.Error("purge must use empty POST body")
+			}
+		}
 		if r.URL.Path == "/admin/close" {
 			w.Header().Set("Location", "/admin/wallet")
 			w.WriteHeader(307)
@@ -226,7 +232,7 @@ func TestProfileRequestSeparatesCredentialsAndDoesNotFollowRedirect(t *testing.T
 	c, _ := readProfile(profile)
 	c.Listen = strings.TrimPrefix(server.URL, "http://")
 	writePrivate(filepath.Join(profile, "config.json"), c)
-	for _, action := range []string{"status", "models"} {
+	for _, action := range []string{"status", "models", "purge-settled-bodies"} {
 		if err := profileCommand([]string{"request", profile, action}, nil, io.Discard); err != nil {
 			t.Fatal(err)
 		}
@@ -234,7 +240,7 @@ func TestProfileRequestSeparatesCredentialsAndDoesNotFollowRedirect(t *testing.T
 	if err := profileCommand([]string{"request", profile, "close"}, nil, io.Discard); err == nil {
 		t.Fatal("redirect accepted")
 	}
-	if calls != 3 {
+	if calls != 4 {
 		t.Fatal("request replayed")
 	}
 }

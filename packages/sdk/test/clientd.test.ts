@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 /** Lifecycle/IPC fixtures. Native and WASM cryptographic acceptance is separate. */
 import { test, type TestContext } from 'node:test';
 import assert from 'node:assert/strict';
@@ -52,7 +53,8 @@ async function fixture(t:TestContext,mode:Mode='proxy',reuse=60,models:DaemonOpt
       const p=(await journal.read('note'))!.value.pending!;assert.equal(p.providerKey,undefined);assert.deepEqual(p.operations,[]);
       return Response.json({status:oaRejected?'rejected':'verified'});
     }
-    sends++;const p=(await journal.read('note'))!.value.pending!;assert.equal(p.operations.at(-1)!.phase,'send_unknown');
+    sends++;const p=(await journal.read('note'))!.value.pending!;assert.equal(p.operations.at(-1)!.phase,'send_unknown');assert.equal(p.operations.at(-1)!.bodyRedacted,true);assert.equal(p.operations.at(-1)!.bodyBase64,'');
+    assert.equal(p.operations.at(-1)!.bodySha256,createHash('sha256').update(init!.body as Uint8Array).digest('hex'));
     sentRequests.push({id:p.operations.at(-1)!.id,path:u.pathname,body:new TextDecoder().decode(init!.body as Uint8Array)});
     if(mode!=='proxy'){assert.equal((init!.headers as any).Authorization,'Bearer provider-secret');assert.equal(u.origin,'https://direct.invalid');}
     if(loss)throw Error('fixture response loss');
@@ -66,7 +68,7 @@ async function fixture(t:TestContext,mode:Mode='proxy',reuse=60,models:DaemonOpt
     await pendingPreparation?.();
     const p:PreparedSession={request:{authorization:{version:'1',deployment_id:'fixture',pool:'pool',request_id:c.requestId,quote_hash:'00'.repeat(32),mode,control_secret_hash:c.controlHash,proxy_secret_hash:c.proxyHash},quote:{body:{quote_id:crypto.randomUUID(),deployment_id:'fixture',pool:'pool',mode,provider:mode==='direct_oa'?'oa':'openrouter',models:[mode==='proxy'?_model:'*'],tariff_hash:'33'.repeat(32),cap_micro_usdc:'100',issued_at:String(now),expires_at:String(now+120n),session_ttl_seconds:'60',max_concurrency:'4',control_api_origin:context.control_api_origin,inference_api_origin:context.inference_api_origin},quote_hash:'00'.repeat(32),signature:'fixture'},public_inputs:Array(12).fill(field(1)),proof:{backend:'groth16_bn254',proof:'fixture'}},control_token:c.controlToken,proxy_token:c.proxyToken,tariff:{tariff_hash:'33'.repeat(32),version:'1',provider:'openrouter',model:'m',pricing_basis:'fixture',valid_from:'0',valid_until:'1000',rates:[],operator_fee_micro_usdc:'0'},rerandomization:field(2)};return{prepared:p,root:field(2)};}};
   const service=new ClientDaemon(options);await service.start();
-  return{service,journal,dir,sentRequests,beforeClose:(handler:()=>Promise<void>)=>{beforeClose=handler;},closeDraining:(value=true)=>{closeDraining=value;},rejectSettlement:(value=true)=>{settlementRejected=value;},pendingPreparation:(handler:()=>Promise<void>)=>{pendingPreparation=handler;},pendingInference:(handler:(signal:AbortSignal)=>Promise<Response>)=>{pendingInference=handler;},restart:()=>{const recoveredJournal=new EncryptedJournal<NoteJournal>(store,key,{deploymentId:'fixture',pool:'pool'},validateNoteJournal);return new ClientDaemon({...options,journal:recoveredJournal,client:new ControlClient({...clientOptions,journal:recoveredJournal})});},prepareUnsent:async()=>{const p=await options.prepare('m',await createCredentials(mode));await client.prepare('note',p.prepared,p.root);},counts:()=>({creates,closes,sends}),oaVerifications:()=>oaVerifications,rejectOa:()=>{oaRejected=true;},controlRequests:()=>controlRequests,advance:(seconds=61n)=>{now+=seconds;},lose:(value=true)=>{loss=value;},directUnknown:()=>{direct202=true;},missingSettlement:(value=true)=>{missingSettlement=value;},controlUnavailable:(value=true)=>{controlUnavailable=value;}};
+  return{client,service,journal,dir,sentRequests,beforeClose:(handler:()=>Promise<void>)=>{beforeClose=handler;},closeDraining:(value=true)=>{closeDraining=value;},rejectSettlement:(value=true)=>{settlementRejected=value;},pendingPreparation:(handler:()=>Promise<void>)=>{pendingPreparation=handler;},pendingInference:(handler:(signal:AbortSignal)=>Promise<Response>)=>{pendingInference=handler;},restart:()=>{const recoveredJournal=new EncryptedJournal<NoteJournal>(store,key,{deploymentId:'fixture',pool:'pool'},validateNoteJournal);return new ClientDaemon({...options,journal:recoveredJournal,client:new ControlClient({...clientOptions,journal:recoveredJournal})});},prepareUnsent:async()=>{const p=await options.prepare('m',await createCredentials(mode));await client.prepare('note',p.prepared,p.root);},counts:()=>({creates,closes,sends}),oaVerifications:()=>oaVerifications,rejectOa:()=>{oaRejected=true;},controlRequests:()=>controlRequests,advance:(seconds=61n)=>{now+=seconds;},lose:(value=true)=>{loss=value;},directUnknown:()=>{direct202=true;},missingSettlement:(value=true)=>{missingSettlement=value;},controlUnavailable:(value=true)=>{controlUnavailable=value;}};
 }
 const body=new TextEncoder().encode('{"model":"m","stream":true,"store":false}');
 const otherBody=new TextEncoder().encode('{"model":"n","messages":[{"role":"user","content":"original new send"}],"stream":true}');
@@ -147,7 +149,7 @@ test('direct client tools accept arbitrary JSON Schema property names without ad
     const payload={model:'m',...input,tools:[tool],store:false};
     const bytes=new TextEncoder().encode(JSON.stringify(payload));
     await(await f.service.infer(path,bytes)).text();
-    assert.equal(f.sentRequests[0].body,new TextDecoder().decode(bytes));
+    assert.deepEqual(JSON.parse(f.sentRequests[0].body),{...JSON.parse(new TextDecoder().decode(bytes)),...(mode==='direct_openrouter'?{provider:{zdr:true,data_collection:'deny'}}:{})});
     assert.deepEqual(f.counts(),{creates:1,closes:1,sends:1});
     for(const invalid of [
       {...payload,image_url:'https://private.invalid/image'},
@@ -160,7 +162,7 @@ test('direct client tools accept arbitrary JSON Schema property names without ad
 test('direct identity and transport metadata is rejected before AUTH or inference',async t=>{
   for(const [mode,path] of [['direct_openrouter','/v1/chat/completions'],['direct_oa','/v1/responses']] as const){
     const f=await fixture(t,mode);
-    for(const field of ['user','metadata','safety_identifier','prompt_cache_key','extra_headers','provider']){
+    for(const field of ['user','metadata','safety_identifier','prompt_cache_key','extra_headers','provider','client_metadata','custom_tracking_id','session_id','trace_id']){
       const bytes=new TextEncoder().encode(JSON.stringify({model:'m',store:false,[field]:field==='metadata'?{email:'private@example.invalid'}:'private-identity'}));
       await assert.rejects(f.service.infer(path,bytes),/unsupported identity or transport metadata/);
     }
@@ -177,7 +179,7 @@ test('direct structured text formats are supported only at the native API format
       const payload={model:'m',store:false,...(responses?{input:'Return JSON',text:{format}}:{messages:[{role:'user',content:'Return JSON'}],response_format:format})};
       const bytes=new TextEncoder().encode(JSON.stringify(payload));
       await(await f.service.infer(path,bytes)).text();
-      assert.equal(f.sentRequests.at(-1)!.body,new TextDecoder().decode(bytes));
+      assert.deepEqual(JSON.parse(f.sentRequests.at(-1)!.body),{...JSON.parse(new TextDecoder().decode(bytes)),...(mode==='direct_openrouter'?{provider:{zdr:true,data_collection:'deny'}}:{})});
       for(const invalid of [
         {...payload,tools:[{type:'web_search_preview'}]},
         {...payload,...(responses?{text:{format:{type:'input_image',image_url:'https://private.invalid/image'}}}:{response_format:{type:'image_url',image_url:'https://private.invalid/image'}})},
@@ -239,7 +241,7 @@ test('opt-in native wait admits exact new tool continuation once only after veri
   const response=await request;await response.text();
   assert.equal(response.headers.get('X-Zkapi-Operation-Id'),nextId);
   assert.equal(f.counts().creates,2);assert.equal(f.counts().sends,2);
-  assert.deepEqual(f.sentRequests.map(r=>r.id),[firstId,nextId]);assert.equal(f.sentRequests[1].body,exact);
+  assert.deepEqual(f.sentRequests.map(r=>r.id),[firstId,nextId]);assert.deepEqual(JSON.parse(f.sentRequests[1].body),{...JSON.parse(exact),provider:{zdr:true,data_collection:'deny'}});
   assert.equal((await f.journal.read('note'))!.value.pending,null);
   await assert.rejects(f.service.infer('/v1/chat/completions',body,nextId),DaemonConflict);
 });
@@ -491,4 +493,29 @@ test('native lease expires before the configured reuse window and does not rotat
   f.advance(59n); await f.service.maintenance(); assert.equal(f.counts().closes, 0);
   await response.text(); assert.equal(f.counts().closes, 1);
   assert.equal((await f.journal.read('note'))!.value.pending, null);
+});
+
+test('direct ZDR policy accepts only reviewed preferences and rejects duplicates before AUTH',async t=>{
+  const f=await fixture(t,'direct_openrouter',0);
+  for(const provider of [{zdr:false},{zdr:true,data_collection:'allow'},{zdr:true,allow_fallbacks:true},{zdr:true,extra_headers:{user:'identity'}}]){
+    await assert.rejects(f.service.infer('/v1/chat/completions',new TextEncoder().encode(JSON.stringify({model:'m',provider}))));
+  }
+  await assert.rejects(f.service.infer('/v1/chat/completions',new TextEncoder().encode('{"model":"m","provider":{"zdr":true,"zdr":false}}')));
+  assert.deepEqual(f.counts(),{creates:0,closes:0,sends:0});
+  for(const provider of [undefined,{zdr:true},{zdr:true,data_collection:'deny'}]){
+    const payload={model:'m',provider,functions:[{name:'record',parameters:{type:'object',properties:{audio:{type:'string'},metadata:{type:'object'}}}}],function_call:{name:'record'},reasoning:{effort:'low'}};
+    await(await f.service.infer('/v1/chat/completions',new TextEncoder().encode(JSON.stringify(payload)))).text();
+    assert.deepEqual(JSON.parse(f.sentRequests.at(-1)!.body),{...payload,provider:{zdr:true,data_collection:'deny'}});
+  }
+  const count=f.counts();assert.deepEqual(await f.service.management('purge-settled-bodies'),{historyOperations:3,emergencyOperations:0});assert.deepEqual(f.counts(),count);
+  await assert.rejects(f.service.management('purge-settled-bodies',{erasePending:true}),/no body/);
+});
+
+test('direct hosted-tool model aliases and presets are rejected before AUTH even when configured',async t=>{
+  for(const model of ['openai/gpt-5.2:online','@preset/private-search','openai/gpt-5.2@preset/private-search']){
+    const f=await fixture(t,'direct_openrouter',0,[model]);
+    await assert.rejects(f.service.infer('/v1/chat/completions',new TextEncoder().encode(JSON.stringify({model}))),/alias or preset/);
+    assert.deepEqual(f.counts(),{creates:0,closes:0,sends:0});
+    assert.equal((await f.journal.read('note'))!.value.pending,null);
+  }
 });

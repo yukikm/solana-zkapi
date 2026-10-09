@@ -2,6 +2,7 @@
  * no inference is retried, and only the cryptographic verifier advances a note.
  */
 import { Buffer } from 'buffer';
+import { directRequestBytes } from './direct-request.ts';
 import { parseField, parseMicroUsdc, parseScalar } from './encoding.ts';
 import { EncryptedJournal, type JournalRecord } from './journal.ts';
 import { parseStrictJson, jcsBytes, sha256Hex, verifyEd25519, verifyArtifactBundle, verifyPoolConfig,
@@ -85,6 +86,10 @@ export interface SessionVerifier {
 }
 export interface Operation {
   id: string; path: string; anthropicVersion: string; bodyBase64: string;
+  /** Empty body with this marker is permanently non-replayable, even if prepared. */
+  bodyRedacted?: true;
+  /** Exact dispatched-body fingerprint, never sufficient to replay. Explicit purge removes it too. */
+  bodySha256?: string;
   phase: 'prepared' | 'send_unknown' | 'response_received' | 'not_accepted';
 }
 /** OA's signed key evidence. The verifier and station are independently pinned
@@ -133,19 +138,39 @@ function pendingSession(p: PendingSession): void {
   uuid(p.prepared.request.authorization.request_id);
   requireTrue(JSON.stringify(p.prepared.request) === p.exactRequest, 'saved authorization bytes changed');
   requireTrue(typeof p.prepared.control_token === 'string' && (typeof p.prepared.proxy_token === 'string' || p.prepared.proxy_token === null), 'missing credentials');
-  const ids = new Set();
-  for (const o of p.operations) {
-    uuid(o.id); requireTrue(!ids.has(o.id), 'duplicate operation'); ids.add(o.id);
-    requireTrue(routes.has(o.path) && ['prepared', 'send_unknown', 'response_received', 'not_accepted'].includes(o.phase), 'invalid operation');
-    const raw = Buffer.from(o.bodyBase64, 'base64');
-    requireTrue(raw.toString('base64') === o.bodyBase64 && raw.length <= 1024 * 1024, 'invalid operation bytes');
+  validateOperations(p.operations);
+}
+function validateOperations(operations: Operation[]): void {
+  requireTrue(Array.isArray(operations),'invalid operations');
+  const ids = new Set<string>();
+  for (const o of operations) {
+    object(o); uuid(o.id); requireTrue(!ids.has(o.id), 'duplicate operation'); ids.add(o.id);
+    requireTrue(routes.has(o.path) && typeof o.anthropicVersion === 'string'
+      && ['prepared','send_unknown','response_received','not_accepted'].includes(o.phase), 'invalid operation');
+    requireTrue(typeof o.bodyBase64 === 'string', 'invalid operation bytes');
+    const raw = Buffer.from(o.bodyBase64,'base64');
+    requireTrue(raw.toString('base64') === o.bodyBase64 && raw.length <= 1024*1024, 'invalid operation bytes');
+    requireTrue(o.bodySha256 === undefined || typeof o.bodySha256 === 'string' && /^[0-9a-f]{64}$/.test(o.bodySha256), 'invalid body fingerprint');
+    requireTrue(o.bodyRedacted === undefined || o.bodyRedacted === true && o.bodyBase64 === '', 'invalid body redaction');
   }
 }
+async function redactOperations(operations: Operation[], eraseFingerprints = false): Promise<number> {
+  let count = 0;
+  for (const o of operations) {
+    if (!o.bodyRedacted || eraseFingerprints && o.bodySha256 !== undefined) count++;
+    if (!o.bodyRedacted && !eraseFingerprints) o.bodySha256 = await sha256Hex(Buffer.from(o.bodyBase64,'base64'));
+    if (eraseFingerprints) delete o.bodySha256;
+    o.bodyBase64 = ''; o.bodyRedacted = true;
+  }
+  return count;
+}
+
 export async function validateNoteJournal(input: unknown): Promise<void> {
   // PDA derivation is asynchronous. Validate a detached value across every await.
   const value: unknown = structuredClone(input);
   object(value); requireTrue((value.schema === 1 || value.schema === 2) && Array.isArray(value.history), 'invalid note journal');
   if(value.schema===2)allowedFields(value,['schema','state','pending','witness','wallet','history']);
+  for (const h of value.history) { object(h); validateOperations(h.operations as Operation[]); }
   privateState(value.state as PrivateState);
   if (value.witness !== undefined) validateWitness(value.witness);
   if (value.wallet !== undefined) {
@@ -643,6 +668,10 @@ export class ControlClient {
           'settlement conflicts with permanent clearance');
         delete r.value.wallet!.clearance;
       }
+      // Financial verification above needs IDs, never inference content. Clear
+      // both copies only after verifying a terminal successor.
+      await redactOperations(p.operations);
+      if (emergency) await redactOperations(emergency.pending.operations);
       r.value.history.push({ previous: r.value.state, prepared: p.prepared, settlement: status.settlement, receipts, operations: p.operations });
       r.value.state = next; r.value.pending = null; if(emergency)emergency.phase='settled'; await this.save(noteId, r);
       this.verifiedOaKeys.delete(p.prepared.request.authorization.request_id);
@@ -686,7 +715,7 @@ export class ControlClient {
       requireTrue(!r.value.wallet?.emergencyEscapes?.some(e=>e.phase!=='settled'),'emergency escape fences inference');
       requireTrue(p && p.phase === 'active' && p.serverState === 'ACTIVE' && p.prepared.request.authorization.mode === 'proxy', 'proxy session required');
       const old = p.operations.find(o => o.id === operationId);
-      if (old) { requireTrue(old.path === path && old.bodyBase64 === bodyBase64 && old.anthropicVersion === anthropicVersion, 'idempotency conflict'); return; }
+      if (old) { if (old.bodyRedacted) throw new ResponseNotReplayable(operationId,this.path(p) + `/operations/${operationId}`); requireTrue(old.path === path && old.bodyBase64 === bodyBase64 && old.anthropicVersion === anthropicVersion, 'idempotency conflict'); return; }
       p.operations.push({ id: operationId, path, bodyBase64, anthropicVersion, phase: 'prepared' }); await this.save(noteId, r);
     });
   }
@@ -698,14 +727,15 @@ export class ControlClient {
       requireTrue(!r.value.wallet?.emergencyEscapes?.some(e=>e.phase!=='settled'),'emergency escape fences inference');
       requireTrue(p && p.phase === 'active' && p.serverState === 'ACTIVE' && p.prepared.proxy_token, 'active proxy session required');
       const operation = p.operations.find(o => o.id === operationId); requireTrue(operation, 'operation must be saved before sending');
-      if (operation.phase !== 'prepared') throw new ResponseNotReplayable(operationId, this.path(p) + `/operations/${operationId}`);
-      operation.phase = 'send_unknown'; await this.save(noteId, r);
-      return { operation: structuredClone(operation), token: p.prepared.proxy_token, statusPath: this.path(p) + `/operations/${operationId}` };
+      if (operation.phase !== 'prepared' || operation.bodyRedacted) throw new ResponseNotReplayable(operationId, this.path(p) + `/operations/${operationId}`);
+      const bytes = new Uint8Array(Buffer.from(operation.bodyBase64,'base64'));
+      operation.phase = 'send_unknown'; await redactOperations([operation]); await this.save(noteId, r);
+      return { operation: structuredClone(operation), bytes, token: p.prepared.proxy_token, statusPath: this.path(p) + `/operations/${operationId}` };
     });
     const response = await (this.options.fetch ?? globalThis.fetch)(this.config.inference_api_origin + dispatch.operation.path, {
       method: 'POST', headers: { Authorization: `Bearer ${dispatch.token}`, 'Content-Type': 'application/json', 'Idempotency-Key': operationId,
         ...(dispatch.operation.anthropicVersion ? { 'anthropic-version': dispatch.operation.anthropicVersion } : {}) },
-      body: new Uint8Array(Buffer.from(dispatch.operation.bodyBase64, 'base64')), redirect: 'error', credentials: 'omit', cache: 'no-store', signal: signal ? AbortSignal.any([signal, AbortSignal.timeout(600_000)]) : AbortSignal.timeout(600_000),
+      body: dispatch.bytes, redirect: 'error', credentials: 'omit', cache: 'no-store', signal: signal ? AbortSignal.any([signal, AbortSignal.timeout(600_000)]) : AbortSignal.timeout(600_000),
     });
     if (response.status === 409) { await response.body?.cancel(); throw new ResponseNotReplayable(operationId, dispatch.statusPath); }
     // The response stream is passed through once. Usage comes from signed receipts.
@@ -718,7 +748,7 @@ export class ControlClient {
     uuid(operationId);
     requireTrue(['/v1/chat/completions', '/v1/responses'].includes(path) && body.length <= 1024 * 1024, 'unsupported direct route');
     new TextDecoder('utf-8', { fatal: true }).decode(body);
-    const bytes = new Uint8Array(body);
+    const snapshot = new Uint8Array(body);
     const dispatch = await this.options.journal.withNoteLock(noteId, async () => {
       const r = await this.record(noteId); const p = r.value.pending;
       requireTrue(!r.value.wallet?.emergencyEscapes?.some(e=>e.phase!=='settled'),'emergency escape fences inference');
@@ -726,6 +756,7 @@ export class ControlClient {
       const mode = p.prepared.request.authorization.mode;
       requireTrue(mode === 'direct_oa' || mode === 'direct_openrouter', 'explicit direct mode required');
       requireTrue(mode !== 'direct_openrouter' || path === '/v1/chat/completions', 'unsupported direct route');
+      const bytes = directRequestBytes(mode,path,snapshot);
       const base = this.options.directProviderBases?.[mode]; requireTrue(base, 'pinned direct provider required');
       requireTrue(!p.operations.some(o => o.id === operationId) && !r.value.history.some(h => h.operations.some(o => o.id === operationId)), 'direct inference cannot be replayed');
       if (mode === 'direct_oa') {
@@ -737,13 +768,27 @@ export class ControlClient {
         }
       }
       signal?.throwIfAborted();
-      p.operations.push({ id: operationId, path, anthropicVersion: '', bodyBase64: Buffer.from(bytes).toString('base64'), phase: 'send_unknown' });
+      p.operations.push({ id: operationId, path, anthropicVersion: '', bodyBase64: '', bodyRedacted: true, bodySha256: await sha256Hex(bytes), phase: 'send_unknown' });
       await this.save(noteId, r);
-      return { base, key: p.providerKey };
+      return { base, key: p.providerKey, bytes };
     });
     return (this.options.fetch ?? globalThis.fetch)(dispatch.base.replace(/\/$/, '') + path.slice(3), {
-      method: 'POST', headers: { Authorization: `Bearer ${dispatch.key}`, 'Content-Type': 'application/json' }, body: bytes,
+      method: 'POST', headers: { Authorization: `Bearer ${dispatch.key}`, 'Content-Type': 'application/json' }, body: dispatch.bytes,
       redirect: 'error', credentials: 'omit', cache: 'no-store', signal: signal ? AbortSignal.any([signal, AbortSignal.timeout(600_000)]) : AbortSignal.timeout(600_000),
+    });
+  }
+  /** Explicit local erasure of legacy settled inference bodies. Does not erase
+   * receipts/AUTH, active recovery records, external backups or old ciphertext.
+   * No reads, startup or installation automatically rewrite legacy journals. */
+  async purgeSettledRequestBodies(noteId: string): Promise<{ historyOperations: number; emergencyOperations: number }> {
+    return this.options.journal.withNoteLock(noteId,async()=>{
+      const r = await this.record(noteId);
+      let historyOperations = 0, emergencyOperations = 0;
+      for (const h of r.value.history) historyOperations += await redactOperations(h.operations,true);
+      for (const e of r.value.wallet?.emergencyEscapes ?? [])
+        if (e.phase === 'settled') emergencyOperations += await redactOperations(e.pending.operations,true);
+      if (historyOperations || emergencyOperations) await this.save(noteId,r);
+      return {historyOperations,emergencyOperations};
     });
   }
   /** Explicit reconciliation after terminal settlement only. A 404 while ACTIVE
@@ -788,4 +833,6 @@ export function expiryNotice(expiry: bigint, now: bigint): { severity: 'expired'
   return { severity: left <= 0n ? 'expired' : left <= 86_400n ? 'one_day' : left <= 604_800n ? 'seven_days' : 'normal',
     message: `Note expiry: ${expiry} (Unix seconds). After expiry, the entire principal of an Active note can be transferred to the treasury.` };
 }
+export const DIRECT_OPENROUTER_PRIVACY_NOTICE = 'Prompts go to OpenRouter and its selected provider. Every direct request requires ZDR and denied data collection. Providers still see content and network metadata; routing policy is not proof of deletion.';
+export const DIRECT_PRIVACY_NOTICE = 'Prompts go to the selected provider. The provider sees content and network metadata.';
 export const PROXY_PRIVACY_NOTICE = 'The proxy operator can read your prompts and responses. Direct and proxy modes are selected explicitly.';
