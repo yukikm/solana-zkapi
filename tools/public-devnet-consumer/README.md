@@ -65,7 +65,7 @@ must not log private headers. The adapter removes any supplied invitation
 header from other requests and adds `x-zkapi-admission` only to the exact
 authenticated control-origin `POST /zkapi/v1/sessions` route. Public profile,
 asset, preflight, RPC and provider requests never receive it. The gateway
-requires a valid invitation before reserving subsidy for a new AUTH, while
+requires a valid invitation when its invitation gate is enabled before reserving subsidy for a new AUTH, while
 the exact previously reserved AUTH and applicable recovery remain usable
 without it. An invitation is access permission, not provider credit or a
 promise of availability; obtain it through the operator's documented access

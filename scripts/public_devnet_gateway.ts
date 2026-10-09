@@ -35,6 +35,8 @@ export interface PublicDevnetGatewayConfig {
   allowNativeRequests:boolean;
   allowTransactions:boolean;
   allowNewAdmissions:boolean;
+  /** Defaults to true. Explicit false permits new AUTH without an invitation, within the existing budget. */
+  requireInvitation?:boolean;
   admissionTokenSha256?:string;
   profileUrl:string;
   profilePath:string;
@@ -53,13 +55,14 @@ function fields(value:any,required:string[],optional:string[]=[]){
 }
 function validateConfig(config:PublicDevnetGatewayConfig){
   fields(config,['port','publicOrigin','allowedBrowserOrigins','allowNativeRequests','allowTransactions','allowNewAdmissions',
-    'profileUrl','profilePath','profileSha256','bundleDescriptorPath','rpcUrl','indexerUrl','controlUrl','budget'],['historyRpcUrl','localCaPath','admissionTokenSha256']);
+    'profileUrl','profilePath','profileSha256','bundleDescriptorPath','rpcUrl','indexerUrl','controlUrl','budget'],['historyRpcUrl','localCaPath','admissionTokenSha256','requireInvitation']);
   assert.ok(Number.isInteger(config.port)&&config.port>=0&&config.port<=65535);
   const origin=new URL(config.publicOrigin);assert.ok(origin.protocol==='https:'&&origin.origin===config.publicOrigin&&!origin.username&&!origin.password);
   assert.ok(Array.isArray(config.allowedBrowserOrigins)&&config.allowedBrowserOrigins.length<=32&&new Set(config.allowedBrowserOrigins).size===config.allowedBrowserOrigins.length);
   for(const input of config.allowedBrowserOrigins){const u=new URL(input);assert.ok(u.protocol==='https:'&&u.origin===input&&!u.username&&!u.password);}
   for(const name of ['allowNativeRequests','allowTransactions','allowNewAdmissions'] as const)assert.equal(typeof config[name],'boolean');
-  if(config.allowNewAdmissions||config.admissionTokenSha256!==undefined)assert.match(config.admissionTokenSha256??'',/^[0-9a-f]{64}$/, 'public admission invitation digest required');
+  assert.ok(config.requireInvitation===undefined||typeof config.requireInvitation==='boolean');
+  if(((config.requireInvitation??true)&&config.allowNewAdmissions)||config.admissionTokenSha256!==undefined)assert.match(config.admissionTokenSha256??'',/^[0-9a-f]{64}$/, 'public admission invitation digest required');
   assert.match(config.profileSha256,/^[0-9a-f]{64}$/);
   for(const input of [config.rpcUrl,...(config.historyRpcUrl?[config.historyRpcUrl]:[])]){
     const u=new URL(input);assert.ok(u.protocol==='https:'&&!u.username&&!u.password&&!u.hash);
@@ -200,7 +203,7 @@ export async function configuredPublicDevnetGateway(config:PublicDevnetGatewayCo
       {...headers,host:new URL(manifest.control_api_origin).host},65536,signal)});
   const options:HostOptions={port:config.port,application:'public-api',publicOrigin:config.publicOrigin,
     allowedBrowserOrigins:[...config.allowedBrowserOrigins],allowNativeRequests:config.allowNativeRequests,
-    allowTransactions:config.allowTransactions,allowNewAdmissions:config.allowNewAdmissions,admissionTokenSha256:config.admissionTokenSha256,manifest,
+    allowTransactions:config.allowTransactions,allowNewAdmissions:config.allowNewAdmissions,requireInvitation:config.requireInvitation,admissionTokenSha256:config.admissionTokenSha256,manifest,
     preparationCommitment:profile.preparationCommitment,controlRelay:control,directBudget:budget.status,
     readiness:signal=>publicReadiness(bound=>forward(config.controlUrl+'/zkapi/v1/readiness','GET',undefined,{},8192,bound),
       {deploymentId:manifest.deployment_id,manifestHash:manifest.manifest_hash,tariffHash:model.tariff.tariff_hash},signal),

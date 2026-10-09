@@ -179,6 +179,8 @@ export interface HostOptions {
   application?: 'browser-chat' | 'public-api';
   allowedBrowserOrigins?: readonly string[];
   allowNativeRequests?: boolean;
+  /** Public API invitation gate. Defaults to true; false explicitly opens bounded admission. */
+  requireInvitation?: boolean;
   /** SHA-256 of canonical 43-character base64url invitation text; operator-private. */
   admissionTokenSha256?: string;
   /** Exact HTTPS origin behind a TLS reverse proxy on this loopback listener. */
@@ -209,12 +211,14 @@ export async function startUiHost(options: HostOptions) {
   const browserOrigins = new Set(options.allowedBrowserOrigins ?? []);
   const nativeRequests = options.allowNativeRequests === true;
   const admissionTokenSha256 = options.admissionTokenSha256;
+  assert.ok(options.requireInvitation === undefined || typeof options.requireInvitation === 'boolean');
+  const requireInvitation = options.requireInvitation ?? true;
   if (publicApi) {
     assert.ok(publicOrigin && Array.isArray(options.allowedBrowserOrigins) && browserOrigins.size === options.allowedBrowserOrigins.length
       && browserOrigins.size <= 32 && typeof options.allowNativeRequests === 'boolean' && !options.provider && !options.assets);
-    if (allowNewAdmissions || admissionTokenSha256 !== undefined) assert.match(admissionTokenSha256 ?? '', /^[0-9a-f]{64}$/, 'public admission invitation digest required');
+    if ((requireInvitation && allowNewAdmissions) || admissionTokenSha256 !== undefined) assert.match(admissionTokenSha256 ?? '', /^[0-9a-f]{64}$/, 'public admission invitation digest required');
     for (const value of browserOrigins) { const u = new URL(value); assert.ok(u.protocol === 'https:' && u.origin === value && !u.username && !u.password); }
-  } else assert.ok(options.allowedBrowserOrigins === undefined && options.allowNativeRequests === undefined && admissionTokenSha256 === undefined);
+  } else assert.ok(options.allowedBrowserOrigins === undefined && options.allowNativeRequests === undefined && admissionTokenSha256 === undefined && options.requireInvitation === undefined);
   if (publicOrigin !== undefined) {
     const url = new URL(publicOrigin);
     assert.ok((options.application === 'browser-chat' || publicApi) && publicOrigin === url.origin && url.protocol === 'https:'
@@ -297,13 +301,13 @@ export async function startUiHost(options: HostOptions) {
     response.setHeader('content-security-policy', `default-src 'none'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self'; connect-src 'self'${directProviderOrigin ? ' ' + directProviderOrigin : ''}; worker-src 'self'; img-src 'self' data:; frame-ancestors 'none'; base-uri 'none'; form-action 'none'`);
     try {
       assert.equal(request.headers.host, new URL(origin).host); assert.ok(['127.0.0.1', '::ffff:127.0.0.1'].includes(request.socket.remoteAddress ?? ''));
-      let path = request.url ?? '', newAdmissionAuthorized = !publicApi;
+      let path = request.url ?? '', newAdmissionAuthorized = !publicApi || !requireInvitation;
       if (publicApi) {
         for (const name of ['cookie','proxy-authorization','x-api-key','anthropic-version','idempotency-key','x-forwarded-host','x-forwarded-for','x-forwarded-proto']) assert.equal(request.headers[name], undefined);
         for (const name of ['host','origin','authorization','content-type','x-zkapi-admission']) assert.ok(request.rawHeaders.filter((v,i) => i % 2 === 0 && v.toLowerCase() === name).length <= 1);
         const invitation = request.headers['x-zkapi-admission'];
         if (invitation !== undefined) assert.ok(path === '/zkapi/v1/sessions' && request.method === 'POST', 'invitation is only accepted on AUTH');
-        if (typeof invitation === 'string' && /^[A-Za-z0-9_-]{43}$/.test(invitation) && admissionTokenSha256 !== undefined) {
+        if (requireInvitation && typeof invitation === 'string' && /^[A-Za-z0-9_-]{43}$/.test(invitation) && admissionTokenSha256 !== undefined) {
           const bytes = Buffer.from(invitation,'base64url');
           if (bytes.length === 32 && bytes.toString('base64url') === invitation)
             newAdmissionAuthorized = timingSafeEqual(createHash('sha256').update(invitation,'utf8').digest(),Buffer.from(admissionTokenSha256,'hex'));
@@ -359,6 +363,7 @@ export async function startUiHost(options: HostOptions) {
         response.setHeader('content-type', 'application/json');
         response.end(JSON.stringify({schema: 1, scope: 'relay_configuration_only', readiness: 'not_checked',
           admission: options.allowTransactions && allowNewAdmissions ? 'enabled' : 'suspended',
+          ...(publicApi ? {invitation_required: requireInvitation} : {}),
           recovery: options.allowTransactions ? 'enabled' : 'disabled',
           routes: {rpc: options.rpc ? 'configured' : 'missing', indexer: options.indexer ? 'configured' : 'missing',
             control: controlRelay || provider ? 'configured' : 'missing'},

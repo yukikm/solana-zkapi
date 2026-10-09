@@ -89,7 +89,8 @@ The strict configuration fields are:
 | `allowedBrowserOrigins` | Explicit HTTPS application origins; no wildcard/reflection |
 | `allowNativeRequests` | Explicitly allow clients without Origin and either no Fetch Metadata or only Node fetch's `Sec-Fetch-Mode: cors` |
 | `allowTransactions`, `allowNewAdmissions` | Global write and separate new-admission policy |
-| `admissionTokenSha256` | Operator-private SHA-256 of canonical invitation text; required when new admission is enabled |
+| `requireInvitation` | Optional access policy; defaults to `true`. Set explicitly to `false` to accept new AUTH without an invitation, within the existing durable budget |
+| `admissionTokenSha256` | Operator-private SHA-256 of canonical invitation text; required when invitation-gated new admission is enabled |
 | `profileUrl`, `profilePath`, `profileSha256` | Public canonical URL, locally installed profile bytes and independently authenticated exact digest |
 | `bundleDescriptorPath` | Locally installed descriptor; every referenced flat public asset is beside it |
 | `rpcUrl`, optional `historyRpcUrl` | Private HTTPS upstream RPCs; never included in public responses |
@@ -97,8 +98,19 @@ The strict configuration fields are:
 | optional `localCaPath` | Existing local service CA; never disables verification or changes public TLS trust |
 | `budget` | Selected AWS `supplemental-detached-v2` authority and snapshot pins; see [the exact configuration](detached-budget.md#gateway-and-service-confinement). Legacy `planPath`/`stateDir`/`caseId` and local `supplemental-v1` selections remain supported for their own authorities. |
 
-All booleans are explicit. Public new AUTH requires an invitation in addition to
-the normal protocol checks and durable budget. Generate 32 cryptographically
+Set `requireInvitation: false` to remove the invitation requirement. Keep
+`allowTransactions: true` and `allowNewAdmissions: true` to accept new sessions.
+This changes only the invitation check: protocol credentials, proof verification,
+exact AUTH recovery, durable reservations and budget limits still apply. A
+public caller can consume the finite reservation budget even if downstream
+proof validation fails; this mode does not promise authenticated access or
+unlimited availability. It never initializes, replenishes or resets a grant.
+`GET /relay-status` reports `invitation_required` as configuration only.
+The optional invitation header from older clients remains stripped upstream.
+
+Omitting `requireInvitation` preserves invitation-gated behavior. In that mode,
+public new AUTH requires an invitation in addition to the normal protocol checks
+and durable budget. Generate 32 cryptographically
 random bytes and encode them as unpadded base64url (exactly 43 characters). Set
 `admissionTokenSha256` to the lowercase SHA-256 of that UTF-8 token text, not the
 decoded random bytes. Keep the token out of public profiles, static assets, URLs,
@@ -143,11 +155,11 @@ enabled and when Fetch Metadata is absent or consists solely of Node fetch's
 header excludes that native branch. The [focused public verification](../../docs/evidence/PD-gateway-node-fetch.md)
 records the actual Node compatibility fix and retained browser-origin guards. Cookie, API-key,
 proxy-authorization and forwarded-origin overrides are rejected. Origin checking is a browser transport policy, not protection against clients
-that can send arbitrary headers. The separate invitation, durable budget and
-normal session credentials remain mandatory. Configure operational rate limits
-and accountable invitation distribution before exposing the service.
+that can send arbitrary headers. The durable budget and normal session
+credentials remain mandatory. The separate invitation applies only when
+`requireInvitation` is enabled.
 
-This candidate supports invited browser requests and native egress configured
+The gateway supports browser requests and native egress configured
 with `admission: {origin, token_file}`. The native helper derives the origin from
 the authenticated manifest; Go loads the canonical owner-only token file once
 and injects it only for exact session AUTH POSTs. Incoming SDK headers cannot

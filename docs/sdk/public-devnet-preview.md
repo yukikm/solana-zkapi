@@ -1,5 +1,10 @@
 # Public Devnet preview deployment
 
+Access update — 2026-10-09: the [public API invitation requirement was removed](../evidence/PD-invitation-removal-20261009.md).
+The installed gateway reports `invitation_required: false`; SDK/native consumers
+can omit the invitation. Authentication, proofs, finite provider budget and
+recovery remain enforced. Independent application releases are separate.
+
 Current completion checkpoint — 2026-10-09 JST: [public restoration](../evidence/PD-public-restoration-20261009.md) completed the guarded gateway start after fresh finalized reconciliation. Installed `.3` preflight passed ten checks at 00:55:26 UTC with all 7,257 files unchanged and no AUTH, inference or wallet action. [E01 emergency withdrawal](../evidence/PD-E01-emergency-withdrawal-20261009.md) then completed from the original deposit/journal: seven exact-wire finalized transactions, one micro-USDC returned, Note closed and `Pending.exists=false`, with zero AUTH in its journal and the complete operator financial cut unchanged. The [core completion record](../evidence/PD-core-completion-20261009.md) records fresh public HTTP 200 at 01:43:23 UTC and separately enabled admission/recovery. This follows the installed [Ethereum OpenRouter capture policy](../evidence/PD-openrouter-ethereum-parity.md), [verified warm restart](../evidence/PD-warm-restart-20261009.md) and [writer throughput successor](../evidence/PD-replay-writer-deployment-20261009.md). Final evidence is linked and versioned in this documentation update. The `.3` inputs below stay current; run fresh preflight before use. Earlier dated checkpoints remain historical observations, not continuous-availability guarantees.
 
 Readiness checkpoint — 2026-10-08 15:16 UTC: [the public readiness endpoint is deployed and admission resumed](../evidence/PD-public-readiness-deployment.md). It reports control/indexer/signer capabilities with a five-second expiry; provider credit and admission are explicitly `not_checked`, with admission reported separately by relay configuration. The first indexer-unavailable HTTP503 and later successful samples remain distinct; continuous availability and final provider-cost accuracy are not established. Funded browser cases, E01 and planned 80 GiB expansion remain outside this checkpoint.
@@ -11,7 +16,7 @@ New consumers should use the published **SDK/native `v0.2.0-devnet.3`**, its rev
 Native N-01 completed Chat settlement and service recovery. [OpenClaw N-02/N-03](../evidence/PD-native-public-N02-N03.md) completed ordinary text and read-tool continuation; [N-04](../evidence/PD-native-public-N04.md) completed interrupted-stream recovery and mutual withdrawal. The installed [Ethereum-style accounting policy](../evidence/PD-openrouter-ethereum-parity.md) accepts delayed provider accounting as the operator's risk. The [historical response-cost discrepancy](../evidence/PD-openrouter-management-usage-limit.md) and signed zero charges remain preserved without repricing. This invitation-only preview does not establish invoice-finality, funded browser acceptance or full release gates.
 
 The operator uses the AWS account selected by the repository maintainer. This is
-an invitation-only, single-model Devnet preview with one operator host. It has
+a single-model Devnet preview with one operator host and a finite provider budget. It has
 no production availability commitment. The current hosting target is roughly
 USD50/month; the current fixed illustration is USD43.169 for 730 hours, before
 variable charges and actual taxes, after the [same-volume expansion to 80 GiB](../evidence/PD-preview-capacity-80g.md)
@@ -82,10 +87,16 @@ cap. Prompts go directly to OpenRouter. Native OpenClaw text, streaming and read
 and external provider-cost reconciliation remain unverified. Ordinary consumers do
 not supply an OpenRouter management key.
 
-Ask the deployment operator for an invitation through a private channel. New
-AUTH requires it. The browser keeps it only in connection memory; native setup
-reads an owner-only file and injects it only into the exact control AUTH route.
-Do not publish invitations, add them to URLs, or store them in shared examples.
+The API can accept new AUTH without an invitation when the operator explicitly
+sets `requireInvitation: false`. `GET /relay-status` reports
+`invitation_required`; this is configuration, not proof of provider credit or
+successful AUTH. In this mode omit the native `--admission-token-file` option
+and the consumer adapter's `admissionToken`. The same proof, session credential
+and finite subsidy budget checks apply.
+
+For an operator that retains the invitation gate, obtain a token privately.
+Native setup reads an owner-only file and injects it only into the exact control
+AUTH route. Do not put tokens in public profiles, URLs or shared examples.
 An invitation does not override suspended admission or create subsidy capacity.
 Existing exact reserved AUTH, settlement, recovery and withdrawal retain their
 original identity when new admission is suspended.

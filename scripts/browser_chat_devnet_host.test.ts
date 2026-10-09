@@ -118,6 +118,40 @@ test('public AUTH requires invitation for a new reservation and preserves exact 
     allowTransactions:true,allowNewAdmissions:true,controlRelay:relay}),/invitation digest/);
 });
 
+test('invitation-free public AUTH retains exact recovery, budget exhaustion, suspension and credential checks',async t=>{
+  const f=await fixture(), reservations=new Map<string,string>(), forwarded:string[]=[], permissions:boolean[]=[];
+  const relay=directControlRelay({...f,budget:{async reserve(requestId,digest,allowNew){
+    permissions.push(allowNew!);
+    const previous=reservations.get(requestId);
+    if(previous!==undefined)assert.equal(previous,digest);
+    else {assert.equal(allowNew,true);assert.equal(reservations.size,0,'fixture budget exhausted');reservations.set(requestId,digest);}
+  }},async forward(path){forwarded.push(path);return{status:200,bytes:Buffer.from('{}')};}});
+  const publicOrigin='https://operator.example.com',browserOrigin='https://chat.example.com';
+  const headers={host:new URL(publicOrigin).host,origin:browserOrigin,authorization:f.authorization};
+  const data=Buffer.from(jcsBytes(f.auth)),nextId='12345678-1234-4123-8123-123456789013';
+  const next=structuredClone(f.auth);next.authorization.request_id=nextId;
+  const nextHeaders={...headers,authorization:f.authorization.replace(id,nextId)};
+  for(const [allowTransactions,allowNewAdmissions] of [[true,true],[true,false],[false,false]]){
+    const host=await startUiHost({port:0,application:'public-api',publicOrigin,allowedBrowserOrigins:[browserOrigin],allowNativeRequests:true,
+      allowTransactions,allowNewAdmissions,requireInvitation:false,admissionTokenSha256:'dd'.repeat(32),controlRelay:relay});t.after(()=>host.close());
+    const address=host.server.address();assert.ok(address&&typeof address==='object');const base='http://127.0.0.1:'+address.port;
+    const before=forwarded.length;
+    const permissionsBefore=permissions.length;
+    assert.equal((await post(base,'/zkapi/v1/sessions',data,{...headers,authorization:'Bearer invalid'})).status,400);
+    assert.equal(forwarded.length,before);
+    assert.equal((await post(base,'/zkapi/v1/sessions',data,headers)).status,allowTransactions?200:400);
+    assert.equal((await post(base,'/zkapi/v1/sessions',data,{...headers,'x-zkapi-admission':'obsolete-token'})).status,allowTransactions?200:400);
+    assert.equal(reservations.size,1);
+    const afterRecovery=forwarded.length;
+    assert.equal((await post(base,'/zkapi/v1/sessions',Buffer.from(jcsBytes(next)),nextHeaders)).status,400);
+    assert.equal((await post(base,'/zkapi/v1/sessions',Buffer.from(JSON.stringify(f.auth,null,2)),headers)).status,400);
+    assert.equal(forwarded.length,afterRecovery);assert.equal(reservations.size,1);
+    assert.deepEqual(permissions.slice(permissionsBefore),allowTransactions?[allowNewAdmissions,allowNewAdmissions,allowNewAdmissions,allowNewAdmissions]:[]);
+    assert.equal((await post(base,'/zkapi/v1/sessions/'+id+'/close',Buffer.alloc(0),headers)).status,allowTransactions?200:400);
+  }
+  assert.equal(forwarded.length,6);
+});
+
 test('public HTTPS origin is explicit and same-origin only behind the loopback listener',async t=>{
   const path=await output(t), publicOrigin='https://chat.example';let calls=0;
   const host=await startUiHost({port:0,output:path,application:'browser-chat',publicOrigin,allowTransactions:true,allowNewAdmissions:false,

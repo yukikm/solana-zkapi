@@ -9,6 +9,11 @@ for in integer micro-USDC (1 USDC = 1,000,000 micro-USDC).
 
 ## Current handoff — 2026-10-09 JST
 
+The public API is now configured to accept new AUTH without an invitation, within the existing
+finite provider budget. The [gateway update](docs/evidence/PD-invitation-removal-20261009.md)
+preserves session authentication, proof checks, reservations and recovery. This
+is an API-only change; independent chat applications retain their own releases.
+
 The core SDK/API, Ethereum-style history restart and OpenRouter accounting are
 installed and verified in the selected Devnet preview scope. The
 [completion record](docs/evidence/PD-core-completion-20261009.md) joins their

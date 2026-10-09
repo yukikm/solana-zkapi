@@ -67,6 +67,17 @@ test('gateway refuses altered bundle and origin/model modes before opening budge
   await assert.rejects(loadGatewayPublicProfile({...config,allowNewAdmissions:true}),/invitation digest/);
 });
 
+test('invitation-free gateway configuration requires an explicit boolean opt-out and retains all profile pins',async t=>{
+  const {config}=await installedFixture(t);
+  const open={...config,allowNewAdmissions:true,requireInvitation:false};
+  const loaded=await loadGatewayPublicProfile(open);
+  assert.equal(validateGatewayProfile(open,loaded).manifest.control_api_origin,publicOrigin);
+  await assert.rejects(loadGatewayPublicProfile({...config,allowNewAdmissions:true}),/invitation digest/);
+  await assert.rejects(loadGatewayPublicProfile({...open,requireInvitation:'false'} as any));
+  await assert.rejects(loadGatewayPublicProfile({...open,admissionTokenSha256:'invalid'}));
+  await assert.rejects(loadGatewayPublicProfile({...open,profileSha256:'00'.repeat(32)}));
+});
+
 test('independent SDK preflight completes through canonical gateway with only read-only upstream fixture calls',async t=>{
   const {config,f}=await installedFixture(t),loaded=await loadGatewayPublicProfile(config);
   const upstream=async(url:string,method='GET',body?:string)=>{
@@ -201,6 +212,15 @@ test('SDK wallet deposit snapshot authenticates canonical zero path through publ
   assert.equal(snapshot.siblings.length,32);assert.equal(snapshot.note,undefined);
   assert.equal(rpcCalls.filter(v=>v==='getMultipleAccounts').length,1);
   assert.equal(rpcCalls.filter(v=>v==='getBlock').length,2);
+});
+
+test('invitation-free status exposes the selected access policy without loading budget or sending AUTH',async t=>{
+  const h=await host(t,{allowNewAdmissions:true,requireInvitation:false});
+  const status=await call(h.base,'/relay-status');
+  assert.equal(status.status,200);
+  assert.equal(JSON.parse(status.body).invitation_required,false);
+  assert.equal(JSON.parse(status.body).admission,'enabled');
+  assert.equal(JSON.parse(status.body).recovery,'enabled');
 });
 
 test('CORS explicitly allows reviewed browser origin, methods and headers without credentials or financial work',async t=>{
