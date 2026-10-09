@@ -1,0 +1,511 @@
+{
+  "schema": 1,
+  "status": "writer_successor_installed_catch_up_measured_public_readiness_not_yet_observed",
+  "recorded_at_utc": "2026-10-09T00:15:31.844437+00:00",
+  "scope": "One writer-only installation after verified same-binary warm restart; local offline build, published source join, exact transfer cleanup and three read-only runtime observations. No public gateway startup or financial action.",
+  "published_source": {
+    "completed": true,
+    "source_commit": "8423687b0a4f441d376ddc685f5d573a4a3c1684",
+    "upstream_commit": "045b444ea1b52538d1b40273c7cb6ed09468a052",
+    "source_files": 194,
+    "source_manifest_sha256": "1157da5aadafd5d8c8fb8882d8e5600b49f0a046b1548ffde0d2fddd242fb750",
+    "all_frozen_input_bytes_equal_published_source": true,
+    "git_mutations": false
+  },
+  "local_build": {
+    "verification_sha256": "798d349d420f9c2c4517309b0aae2f1f66b9915833259fbff0095623353a0391",
+    "source_manifest_sha256": "1157da5aadafd5d8c8fb8882d8e5600b49f0a046b1548ffde0d2fddd242fb750",
+    "source_files": 194,
+    "builder_image_id": "sha256:2e53d59089ed994846885a662478b56647506887568373c98412d51a09da613b",
+    "binary": {
+      "sha256": "8ebeef106feee63a3f231584b4eff2d7df7ce2d164694e8cddfe8fc46ce89274",
+      "bytes": 13309056,
+      "maximum_glibc": "2.34",
+      "elf": "x86_64_linux",
+      "no_configuration_exit_status": 2
+    },
+    "all_frozen_and_current_source_checks_passed": true,
+    "changes_from_prior_installed_build": [
+      {
+        "path": "apps/clientd/prover/src/lib.rs",
+        "old_sha256": "89e4684e737d6f1aacb9a35ae937e00b53f7708b21960ef74eb6d6b50667ba8a",
+        "sha256": "9bba46d458d059fbfc8ef415c0be1f540cdb2e0d04262c5577c2e049fe9b9ab0"
+      },
+      {
+        "path": "apps/clientd/prover/src/snapshot.rs",
+        "old_sha256": "4b3b862e09174f61ae0788e6caf424dc1e7a63ecf8eba6dd5527928f4ed98dcd",
+        "sha256": "7c585601321694ea4f74a340ac43fb9dcc351d851189c910f5ae9f7399c0f305"
+      },
+      {
+        "path": "crates/zkapi-tree-prover/examples/verify_public_bundle.rs",
+        "old_sha256": "bbc39295b49fdfcd99af5b4d2145cc68119f2278f41e7b902043f6e6f95d9aec",
+        "sha256": "d2c4c4a96d234087a7a4df20b60a0be6953229a96519b388846aad10ff2cf616"
+      },
+      {
+        "path": "services/challenger/src/runtime.rs",
+        "old_sha256": "c3011445f997b23a402fb8ce925e23bd4e1a686d5f019d02375542b8cd39ee1f",
+        "sha256": "b4d1c14094f71f30c701b69621a1a391f28ad96d8238363f0b2d32017423e2e3"
+      },
+      {
+        "path": "services/challenger/src/scan.rs",
+        "old_sha256": "56c2a49d51d55d5ce2148ef490887270762b7493619fd1fecf1331b95009d9b4",
+        "sha256": "74a6babb0847234a04fbac58ada183b8ce3e51d748399684fc8c7a76582c2d5b"
+      },
+      {
+        "path": "services/challenger/src/tests.rs",
+        "old_sha256": "83657758d6becbc8d9a48bbf074b6812d645c1609dde571ff79dc4920a7dbee0",
+        "sha256": "8e747a2297eb6d3dac0e6c6a72cfb2d83a0f06f344f92f29ff7351166b424082"
+      },
+      {
+        "path": "services/challenger/src/tests/runtime_catch_up.rs",
+        "old_sha256": null,
+        "sha256": "d45b245e5dfa0ccf7cb7e3677dfc526d2afe268ac831d173c09817b71bce02ea"
+      },
+      {
+        "path": "services/control/tests/devnet_config.rs",
+        "old_sha256": "b30c479ce7e364b831f72976738c440590e6d7707ba393b652e64f0b93a5df1d",
+        "sha256": "022f80242ca8f2ea09a2dfb842095706623af7b15ed02dd6f3bada25e4505e47"
+      },
+      {
+        "path": "services/control/tests/direct_adapters.rs",
+        "old_sha256": "3906a6bee225153c77c6708a418a1193e5f3a55eadb394a3fd8b3cd3314ba03e",
+        "sha256": "815323d4977697b17ad3cc5c63d68a3f4bbf574511d62e92086dc193b8de1b53"
+      },
+      {
+        "path": "services/control/tests/ledger_runtime.rs",
+        "old_sha256": "84bf9c917c10daf170e950e02ace5f4549768e675e88dd1fcfaabc431c9e70a7",
+        "sha256": "d37ac341eb007d1fdd0b6c34d432258f1eec7ef32c8bd9d1c07f5d55fbdff7a8"
+      },
+      {
+        "path": "services/control/tests/provider_http_runtime.rs",
+        "old_sha256": "0f47832b674193f869c8ff1d09654d47e99b2cfe87057b397c7a250d865cb053",
+        "sha256": "857e9073c83cc9cf6d03b87f9d1b499dc5b81bac0fb49c9f5aa1ef72512999be"
+      }
+    ],
+    "published_input_join_sha256": "d5f7ea5e236da1ff8b0c8ce5e2a182d95e583679086a06b151bf0c3e85dfd78b",
+    "first_verifier_failure": {
+      "record_sha256": "e8fba16e7b88c013ce936ab789726641881650bf822a5a82636cb1d801a85b94",
+      "failed_helper_sha256": "7bbbdfca9b547b00d05fde24be868d107e353cfd8e6491afbc247b2e41dd13fd",
+      "corrected_helper_sha256": "57670e8671d49d3ff94787d65aa42929414cc758c8684b5d331b9530256e01a5",
+      "cause": "Evidence helper included atime in stat comparison; corrected to retain identity/ownership/size/mtime/ctime checks while excluding read-induced atime changes",
+      "build_and_smoke_both_passed_before_helper_correction": true,
+      "runtime_source_changed_by_helper_correction": false
+    }
+  },
+  "installation": {
+    "command_id": "65ab4a59-165a-4bcf-8ba6-6de4587c5662",
+    "started_at": "2026-10-09T00:02:45.457Z",
+    "finished_at": "2026-10-09T00:03:33.457Z",
+    "invocation_sha256": "9ecc7e43f38a42c34377c0b14c55ed0a40e01c78f436175bacd4f0d93c4eee88",
+    "full_result_sha256": "d9c800a9b4f0251b01c8538ffa1e6cf7a3692e4874c7609b7d74ce9e270b1a2b",
+    "full_result_bytes": 68349,
+    "full_receipt_independently_downloaded_and_rehashed": true,
+    "predecessor_warm_receipt_sha256": "e6d05884e36fc678d35611a49b7cce1ced7115430d7bc459d304cbfd60909f95",
+    "replaced_paths": [
+      "/opt/zkapi/bin/challengerd"
+    ],
+    "old_binary_sha256": "0037eca87a656aeae06f8c01fa4102d90f15dbacee4bf1074caf2292ed7c8f49",
+    "new_binary_sha256": "8ebeef106feee63a3f231584b4eff2d7df7ce2d164694e8cddfe8fc46ce89274",
+    "writer_pid": 112032,
+    "follower_pid": 110868,
+    "follower_binary_sha256": "0037eca87a656aeae06f8c01fa4102d90f15dbacee4bf1074caf2292ed7c8f49",
+    "follower_process_unchanged": true,
+    "database_raw_sha256": "49c3b1387f2916e8fe94c4672ebb848f22b73b98787f99e2483bfb9c06260f16",
+    "reservations_sha256": "29be8a5b46f7efc666b8ad623093ab83a133365ef42cee036ea533453c337706",
+    "stopped_archive_metadata_sha256": "e5c610c64725e3d71750795f7221f1a03cc48df97aa3d4b426f6af59182f953b",
+    "stopped_archive_entries": 19354,
+    "stopped_archive_blocks": 441001,
+    "stopped_tail_slot": 508964667,
+    "stopped_archive_unchanged_through_binary_replacement": true,
+    "native_writer_exit_metadata": {
+      "state": {
+        "MainPID": "0",
+        "Result": "success",
+        "ExecMainStatus": "0",
+        "ControlGroup": "",
+        "ActiveState": "inactive",
+        "InvocationID": ""
+      },
+      "native_exec_main_code": null,
+      "native_exit_status": null,
+      "native_signal": null,
+      "exit_zero": null,
+      "clean_shutdown": null,
+      "explicit_follower_sigkill": false,
+      "reason_if_unavailable": "systemd exit metadata unavailable; no zero-exit inference"
+    },
+    "configuration_changes": 0,
+    "financial_actions": 0,
+    "gateway_remains_stopped": true,
+    "readiness_claimed": false
+  },
+  "transfer_and_cleanup": {
+    "stage_receipt_sha256": "afbe8ba92cb7b1756392919aa27879687d4308aada204b385cc80f095acb7afd",
+    "candidate_exact_hash_and_size_verified": true,
+    "stage_six_services_and_financial_state_unchanged": true,
+    "upload_request_sha256": "9fd3c49fe005cfa72c745a0725b6fef914da38eaf627e0b9b093f26e239b1483",
+    "upload_response_sha256": "c98fd56df29ebe6c5bca7e718f959996163cf631fb1b2539e24c141cfba9467e",
+    "temporary_policy_sha256": "39d783d37bffa4bf255fe0d6e980312092aef970cf81678e549eb387f9f4690a",
+    "policy_scoped_to_exact_object_version": true,
+    "policy_before_sha256": "f2928923f62806009f8b2dd9bf09218e1b73a839572a53a77e84ff70a999e349",
+    "policy_after_sha256": "f2928923f62806009f8b2dd9bf09218e1b73a839572a53a77e84ff70a999e349",
+    "temporary_owned_policy_removed_unrelated_policies_unchanged": true,
+    "exact_uploaded_version_delete_request_sha256": "586e8c625d6b57cdd6b9ef49099f40a2eeb8857765606e3ed3c2e028f25d9363",
+    "exact_uploaded_version_delete_response_sha256": "36f2b2b8b192ad69f90f4cc560e334408148af53767513cc36a727677190537b",
+    "deleted_version_head_returned_404": true,
+    "deleted_version_readback_stderr_sha256": "6b4ced3a96731d6fa121bee840a1ff6909200bfe3cd115aaef2c7f75aee03bef",
+    "local_and_installed_binaries_preserved": true
+  },
+  "observer_receipts": [
+    {
+      "label": "01",
+      "command_id": "fd9496b3-f96d-4058-8ba7-fc33362e53da",
+      "invocation_sha256": "b0419658e7c4479ec1716d86621a3c2de871e559c48821854ecc331d4bc73220",
+      "stdout_sha256": "349ef497a5c1b9dac99f1f1f53717e564e95e68f849aa776e03c0476f7931f4d"
+    },
+    {
+      "label": "02",
+      "command_id": "4528e1ef-30c1-4a24-a040-51bb34b1799d",
+      "invocation_sha256": "f2bcb63b91aa1da06cf5a092261fe64b0d8d98e41769285095199d5c3fda0693",
+      "stdout_sha256": "aa1e6b064afe5224139900e5cc705e7a749b1c2c24261cc16be345a10bbb7968"
+    },
+    {
+      "label": "03",
+      "command_id": "cf1004b7-8ce9-4ff2-8a57-bf5eb687f241",
+      "invocation_sha256": "b1f820a0ac9f25eafc1e75ab61fc27e6b2601b1b7929df89e4557ca7f465e3a4",
+      "stdout_sha256": "8bc74f54d36306e41d550d01daad454d49d8d4536e5edb77b985a8c41dc455a8"
+    }
+  ],
+  "runtime_observations": [
+    {
+      "observed_at_unix": 1791504298.4929566,
+      "observed_at_utc": "2026-10-09T00:04:58.492957+00:00",
+      "completed_at_unix": 1791504306.13763,
+      "archive": {
+        "blocks": 442757,
+        "chunks": 19355,
+        "tail_slot": 508966443,
+        "journal_sha256": "f7a1650b4a9313f88db5dfcac892c858be485b63b338af4665293abb93bfc3b9",
+        "jobs": 0,
+        "transport_records": 0
+      },
+      "finalized_rpc_slot": 508991835,
+      "archive_lag_slots": 25392,
+      "health_age_seconds": 112.49295663833618,
+      "health_observed_at": 1791504186,
+      "health_ready": false,
+      "processes": {
+        "zka-challenger.service": {
+          "unit": {
+            "MainPID": "112032",
+            "ActiveState": "active",
+            "InvocationID": "306d4fe862a54f78b06a260cbc97b608"
+          },
+          "rchar": 143631527,
+          "read_bytes": 385024,
+          "cpu_seconds": 17.95,
+          "rss_bytes": 104628224
+        },
+        "zka-indexer.service": {
+          "unit": {
+            "MainPID": "110868",
+            "ActiveState": "active",
+            "InvocationID": "388c35b7b52b4e68bbbeac98a358dc27"
+          },
+          "rchar": 2805499523,
+          "read_bytes": 917504,
+          "cpu_seconds": 213.04,
+          "rss_bytes": 239214592
+        }
+      },
+      "cache_anchors": {
+        "zka-challenger.service": {
+          "anchor_slot": 508966443,
+          "anchor_blocks": 442757,
+          "metadata_only_not_full_checksum_verification": true
+        },
+        "zka-indexer.service": {
+          "anchor_slot": 508964667,
+          "anchor_blocks": 441001,
+          "metadata_only_not_full_checksum_verification": true
+        }
+      },
+      "available_bytes": 32788254720,
+      "service_actions": 0,
+      "financial_actions": 0
+    },
+    {
+      "observed_at_unix": 1791504474.1831992,
+      "observed_at_utc": "2026-10-09T00:07:54.183199+00:00",
+      "completed_at_unix": 1791504480.2529516,
+      "archive": {
+        "blocks": 446456,
+        "chunks": 19370,
+        "tail_slot": 508970179,
+        "journal_sha256": "8e53344e72742a7b13a0f9983fc88871a183f31e6a285d2afc8cddc309edf122",
+        "jobs": 0,
+        "transport_records": 0
+      },
+      "finalized_rpc_slot": 508992575,
+      "archive_lag_slots": 22396,
+      "health_age_seconds": 288.1831991672516,
+      "health_observed_at": 1791504186,
+      "health_ready": false,
+      "processes": {
+        "zka-challenger.service": {
+          "unit": {
+            "MainPID": "112032",
+            "ActiveState": "active",
+            "InvocationID": "306d4fe862a54f78b06a260cbc97b608"
+          },
+          "rchar": 253443520,
+          "read_bytes": 385024,
+          "cpu_seconds": 51.06,
+          "rss_bytes": 109010944
+        },
+        "zka-indexer.service": {
+          "unit": {
+            "MainPID": "110868",
+            "ActiveState": "active",
+            "InvocationID": "388c35b7b52b4e68bbbeac98a358dc27"
+          },
+          "rchar": 3697516619,
+          "read_bytes": 7397376,
+          "cpu_seconds": 254.95,
+          "rss_bytes": 204713984
+        }
+      },
+      "cache_anchors": {
+        "zka-challenger.service": {
+          "anchor_slot": 508969186,
+          "anchor_blocks": 445469,
+          "metadata_only_not_full_checksum_verification": true
+        },
+        "zka-indexer.service": {
+          "anchor_slot": 508969186,
+          "anchor_blocks": 445469,
+          "metadata_only_not_full_checksum_verification": true
+        }
+      },
+      "available_bytes": 32400195584,
+      "service_actions": 0,
+      "financial_actions": 0
+    },
+    {
+      "observed_at_unix": 1791504870.5856984,
+      "observed_at_utc": "2026-10-09T00:14:30.585698+00:00",
+      "completed_at_unix": 1791504877.292892,
+      "archive": {
+        "blocks": 456157,
+        "chunks": 19409,
+        "tail_slot": 508979923,
+        "journal_sha256": "6b933a595b90dadd3275924c63e61dd94444ea152ad959890dadd53813865e12",
+        "jobs": 0,
+        "transport_records": 0
+      },
+      "finalized_rpc_slot": 508994233,
+      "archive_lag_slots": 14310,
+      "health_age_seconds": 684.5856983661652,
+      "health_observed_at": 1791504186,
+      "health_ready": false,
+      "processes": {
+        "zka-challenger.service": {
+          "unit": {
+            "MainPID": "112032",
+            "ActiveState": "active",
+            "InvocationID": "306d4fe862a54f78b06a260cbc97b608"
+          },
+          "rchar": 591324503,
+          "read_bytes": 385024,
+          "cpu_seconds": 124.79,
+          "rss_bytes": 186744832
+        },
+        "zka-indexer.service": {
+          "unit": {
+            "MainPID": "110868",
+            "ActiveState": "active",
+            "InvocationID": "388c35b7b52b4e68bbbeac98a358dc27"
+          },
+          "rchar": 5607467469,
+          "read_bytes": 7397376,
+          "cpu_seconds": 350.97,
+          "rss_bytes": 206057472
+        }
+      },
+      "cache_anchors": {
+        "zka-challenger.service": {
+          "anchor_slot": 508978179,
+          "anchor_blocks": 454417,
+          "metadata_only_not_full_checksum_verification": true
+        },
+        "zka-indexer.service": {
+          "anchor_slot": 508978435,
+          "anchor_blocks": 454673,
+          "metadata_only_not_full_checksum_verification": true
+        }
+      },
+      "available_bytes": 31570726912,
+      "service_actions": 0,
+      "financial_actions": 0
+    }
+  ],
+  "descriptive_interval": {
+    "seconds": 175.6902425289154,
+    "durable_archived_blocks_added": 3699,
+    "durable_tail_slots_advanced": 3736,
+    "archived_blocks_per_second": 21.054100368671367,
+    "tail_slots_per_second": 21.26469829071539,
+    "finalized_rpc_slots_advanced": 740,
+    "archive_lag_slots_before": 25392,
+    "archive_lag_slots_after": 22396,
+    "archive_lag_slots_reduced": 2996,
+    "gap_shrink_slots_per_second": 17.052739849834936,
+    "controlled_before_after_speedup_claimed": false,
+    "catch_up_completion_or_eta_guarantee": false
+  },
+  "hosted_ci_observed_cut": [
+    {
+      "run_id": "37860649898",
+      "source_commit": "ec640fa77ad7253b8f7bb4b4975434bba80063f9",
+      "url": "https://github.com/yukikm/solana-zkapi/actions/runs/37860649898",
+      "status": "in_progress",
+      "conclusion": "",
+      "jobs": [
+        {
+          "name": "contracts",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "vault",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "transport",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "rust",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "go",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "control",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "svm",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "node",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "client-challenger",
+          "status": "in_progress",
+          "conclusion": ""
+        }
+      ],
+      "saved_metadata_sha256": "bdfb49bce977bf53606e97b8110133bad3137d9ccb436486a9c7f5d92d5bcd9f"
+    },
+    {
+      "run_id": "37862686638",
+      "source_commit": "8423687b0a4f441d376ddc685f5d573a4a3c1684",
+      "url": "https://github.com/yukikm/solana-zkapi/actions/runs/37862686638",
+      "status": "in_progress",
+      "conclusion": "",
+      "jobs": [
+        {
+          "name": "rust",
+          "status": "in_progress",
+          "conclusion": ""
+        },
+        {
+          "name": "svm",
+          "status": "in_progress",
+          "conclusion": ""
+        },
+        {
+          "name": "control",
+          "status": "in_progress",
+          "conclusion": ""
+        },
+        {
+          "name": "contracts",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "vault",
+          "status": "in_progress",
+          "conclusion": ""
+        },
+        {
+          "name": "node",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "go",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "client-challenger",
+          "status": "in_progress",
+          "conclusion": ""
+        },
+        {
+          "name": "transport",
+          "status": "in_progress",
+          "conclusion": ""
+        }
+      ],
+      "saved_metadata_sha256": "75d1abb2bc2bfbad56868cd507793207a9c74e6811ab2d82bc172ad335c0f5c0"
+    }
+  ],
+  "limits": [
+    "All three health observations retain the startup snapshot; this is not fresh readiness or public availability.",
+    "The independent journal-head observations establish progress in their measured intervals, not sustained throughput or a controlled old/new speedup.",
+    "Cache metadata observers did not reread and authenticate full checkpoint checksums; earlier warm-restart proof has its own full verification.",
+    "Historical signed charges, reservations, journals and immutable client releases are unchanged.",
+    "No inference, AUTH, new reservation, deposit, withdrawal or E01 action is established by this deployment record."
+  ],
+  "later_descriptive_intervals": [
+    {
+      "from_observation": "02",
+      "to_observation": "03",
+      "seconds": 396.4024991989136,
+      "durable_archived_blocks_added": 9701,
+      "durable_tail_slots_advanced": 9744,
+      "archived_blocks_per_second": 24.472600499756354,
+      "tail_slots_per_second": 24.5810761024251,
+      "finalized_rpc_slots_advanced": 1658,
+      "archive_lag_slots_before": 22396,
+      "archive_lag_slots_after": 14310,
+      "archive_lag_slots_reduced": 8086,
+      "gap_shrink_slots_per_second": 20.398458678592917,
+      "controlled_before_after_speedup_claimed": false,
+      "catch_up_completion_or_eta_guarantee": false
+    }
+  ],
+  "later_ci_followup": {
+    "evidence": "PD-openrouter-retirement-fixture-ci-20261009.json",
+    "prior_run_completed_failure": true,
+    "cause": "Stale I10 fault fixture expectation after published one-sample OpenRouter retirement policy",
+    "local_fixture_correction_verified_separately": true,
+    "original_ci_cuts_retained": true,
+    "installed_artifact_changed_by_fixture_correction": false
+  }
+}

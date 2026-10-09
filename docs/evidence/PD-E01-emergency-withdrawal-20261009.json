@@ -1,0 +1,933 @@
+{
+  "schema": 1,
+  "completion_claimed": true,
+  "recorded_date_jst": "2026-10-09",
+  "scope": "E01: original one-micro-USDC Devnet deposit recovery and zero-AUTH emergency withdrawal through the installed .3 native wallet; no new implementation or provider inference.",
+  "evidence_cutoff_utc": "2026-10-09T01:43:55.103Z",
+  "identity": {
+    "release_version": "0.2.0-devnet.3",
+    "release_sha256": "e066122897cfe694fd9b2541a95a6341d2ab6734be1ab34626470ba3ec01d20f",
+    "runtime_sha256": "b3f9c84ee5e94795d1b1483e4390c24df14e55c5f754d8e0b0f3b4535ecd041c",
+    "pool": "Cx8DbA49UCuASoc3goLCU9ro25eWVtcGMbvfPPJsSQzV",
+    "program_id": "2sXbYtY2NbyGm1GeCETkkjAa5LxWCA8v8aj2ePW3yVDH",
+    "mint": "4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU",
+    "note": {
+      "note_id": 1,
+      "address": "GqzbFcCrL1X51QcoZoSjpvy5j2nTworBQs4BhMpunSHy",
+      "bump": 255,
+      "registration_commitment": "0x0e95af7abca488bdf043332241d6e5cd7ef8b1b528ba60ea72bfe84e8a339032",
+      "deposit_micro_usdc": "1",
+      "expiry": "1791590400"
+    },
+    "pending_account": {
+      "address": "FLQsr3Soa6L76a2GYWW7xJDDQsKAsfNZCtJpHymjr3gm",
+      "bump": 253
+    },
+    "same_original_journal_and_custody": true,
+    "journal_reinitialized": false
+  },
+  "original_deposit": {
+    "amount_micro_usdc": "1",
+    "signature": "639MZrhc3UL1d8PwmrpkQgNst9J69QEg68YjV1Sbx7ghnLwydGr5HG1Bk1ib6qBJBMp5moCZ4p7xrfi5C64VYbPC",
+    "wire_sha256": "0a09cef5537fc9f488a1f15edcf8166290d574b77fdd827dd403c8f2eae9f6eb",
+    "wire_bytes": 995,
+    "finalized_slot": 508866751,
+    "initial_journal_head": {
+      "revision": 3,
+      "digest": "a5f4dfe1b73904e4040d258dad08c5ce49fae19110b1d36d575c5f350b6bbd30"
+    },
+    "initial_journal_wallet_status": "unfunded",
+    "original_journal_projection": {
+      "label": "deposit-journal-observation-01",
+      "receipt": {
+        "artifact": "deposit-journal-observation-01/result.json",
+        "sha256": "3922c73cd3ea776452a5fb7b2c2ca5cac18e00a1c0da0700ad16ba5616b9966f",
+        "bytes": 1347
+      }
+    },
+    "historical_rpc_evidence": {
+      "label": "deposit-rpc-diagnostic-01",
+      "receipt": {
+        "artifact": "deposit-rpc-diagnostic-01/result.json",
+        "sha256": "c8f55520851eff905116606947a20e23ed90b6229135aa34a693ab3df4b8d804",
+        "bytes": 1368
+      }
+    },
+    "historical_rpc_summary": [
+      {
+        "label": "public-status",
+        "http": 429,
+        "slot": null,
+        "meta_err": null,
+        "response_sha256": "6abacef1a8d11333636df8db517449fbced9e085ea0b7584bcf83afbc3535548"
+      },
+      {
+        "label": "public-receipt",
+        "http": 200,
+        "slot": 508866751,
+        "meta_err": null,
+        "response_sha256": "1177ecfcefe09b0ba7fb6afecbb00f39c2228aaee78d0443cd9278305ecb3e95"
+      },
+      {
+        "label": "direct-status",
+        "http": 200,
+        "slot": null,
+        "meta_err": null,
+        "response_sha256": "3f3d4a77cb05955892d2a3cb6598d4eedb5ba03f38a0ba292269cd949db7bc6d"
+      },
+      {
+        "label": "direct-receipt",
+        "http": 200,
+        "slot": 508866751,
+        "meta_err": null,
+        "response_sha256": "17108b190829bf4c65163171c48440b900a647a3ec170fa79895d4942bb24f8f"
+      }
+    ]
+  },
+  "deposit_resume": {
+    "completed_at_utc": "2026-10-09T00:56:12.257128+00:00",
+    "command": "explicit saved wallet advance",
+    "returned_state": "complete",
+    "receipt": {
+      "label": "resume-deposit-observe-20261009-01",
+      "receipt": {
+        "artifact": "resume-deposit-observe-20261009-01/result.json",
+        "sha256": "ee4635599606650ba8f7b2a280f3370a6d07b14d22d5565fdc3e85d3ed894918",
+        "bytes": 89
+      },
+      "private_stdout": {
+        "artifact": "resume-deposit-observe-20261009-01/stdout.private.json",
+        "sha256": "7ee99af235fe9c8fce7b7ceb1d155a58ab6bfbc8d4904b2850586151d633a7fc",
+        "bytes": 20
+      }
+    },
+    "active_status_observed_at_utc": "2026-10-09T00:56:22.591486+00:00",
+    "active_status": {
+      "label": "resume-active-status-20261009-01",
+      "receipt": {
+        "artifact": "resume-active-status-20261009-01/result.json",
+        "sha256": "9da91c4895a7ff90e0554cf2ffe003243f47a414b46ae9d1c545e8a0b314d1fb",
+        "bytes": 88
+      },
+      "private_stdout": {
+        "artifact": "resume-active-status-20261009-01/stdout.private.json",
+        "sha256": "977de07c20f4115a0d1e06b37e0d5d4344c4b6cb5e7ef8124acc169fa0977857",
+        "bytes": 640
+      }
+    },
+    "journal_head": {
+      "revision": 4,
+      "digest": "3e45cffb1a670f2d237d2a82feac27c55a79842d28788d0bcd9b64bd59d32d3a"
+    },
+    "wallet_status": "active",
+    "wallet_operation": null,
+    "balance_micro_usdc": "1",
+    "deposit_repeated": false,
+    "saved_deposit_resend": false,
+    "no_resend_basis": "Root operator execution record plus installed .3 wallet.advance recovery of an existing inline attempt with freshInline=false; current final chain observations alone do not measure network dispatch count."
+  },
+  "escape_preparation": {
+    "completed_at_utc": "2026-10-09T00:56:50.950010+00:00",
+    "receipt": {
+      "label": "resume-escape-prepare-20261009-01",
+      "receipt": {
+        "artifact": "resume-escape-prepare-20261009-01/result.json",
+        "sha256": "15ac93c14e310342bb48e5b9b4206daf68b247c20b084f5cbaecbece32619500",
+        "bytes": 88
+      },
+      "private_stdout": {
+        "artifact": "resume-escape-prepare-20261009-01/stdout.private.json",
+        "sha256": "82a210beacaa01c555bf2a7ee6f4390ebb4f3879a8e8625b19f954db24d678d6",
+        "bytes": 14
+      }
+    },
+    "path": "beginWithdrawal(initiate_escape) from active note with no pending session",
+    "unresolved_session_emergency_recovery_test": false
+  },
+  "individually_verified_escape_steps": [
+    {
+      "passed": true,
+      "observed_at": "2026-10-09T01:04:44.429185+00:00",
+      "source_sha256": "751c8b17c66faa1a08ae719f243f42375c554730c817b03d8eb603aee54cc4b4",
+      "signature": "3tACJ73KdVhiJZuNXt2MMvjRaP3w3qPapNJZEmRGhNftzUZJonfuFHx6Jfpwd6VpKp4nJaesqPWqegHF37czFLFJ",
+      "kind": "create",
+      "finalized_slot": 509004960,
+      "wire_sha256": "1cb8efe88b9029537e77bddda753f7c5bd8155b0482aaa94f762925ff4006163",
+      "wire_bytes": 397,
+      "rpc_requests": 3,
+      "transaction_sends": 0,
+      "automatic_retries": 0,
+      "receipt": {
+        "artifact": "e01-current-finality-step01-corrected/result.json",
+        "sha256": "bfe65614c4ffded679556f09a9aeb14239391b8ac4734eb637493444137055cc",
+        "bytes": 498
+      },
+      "saved_rpc_responses": [
+        {
+          "artifact": "e01-current-finality-step01-corrected/getGenesisHash.response",
+          "sha256": "e4f828b126ebdae928f692905f3f86aafca67f0533f1e9619d6c8ccc08f72b55",
+          "bytes": 99
+        },
+        {
+          "artifact": "e01-current-finality-step01-corrected/getSignatureStatuses.response",
+          "sha256": "051e65e0f83f7f8cd88ea85e76c39b1c7f4a81083d02660d78fb7f5558a09cb8",
+          "bytes": 232
+        },
+        {
+          "artifact": "e01-current-finality-step01-corrected/getTransaction.response",
+          "sha256": "33f61b0fa5aef4e5168b62fbbddca06c3c10e6747133aab0f71501e00d07ed1b",
+          "bytes": 1695
+        }
+      ]
+    },
+    {
+      "passed": true,
+      "observed_at": "2026-10-09T01:06:38.349832+00:00",
+      "source_sha256": "2b22f77cb27d8f5ddaa200d2ddda0c340ab63fcc9a746811e2a2c8f6ab819acf",
+      "signature": "4yrqH9aUXp2JQWecbSmNi1FmPN5Ttmw532fCCh31mxCUnCoN176FdSVQZC3hUvdiTujiV9nGsRg1up21tQ4xoWvm",
+      "kind": "append",
+      "finalized_slot": 509007126,
+      "wire_sha256": "fa7214c3e8e5eb872eb57e35c2ddaa2bad9c5ff8aceb91bc7f0c4a63fa460aa0",
+      "wire_bytes": 1232,
+      "rpc_requests": 3,
+      "transaction_sends": 0,
+      "automatic_retries": 0,
+      "receipt": {
+        "artifact": "e01-current-finality-step02/result.json",
+        "sha256": "e9fbc5382d2f4949021776b9e1bdedb8fb5a604e54ff5a16c1a9e78904c78d25",
+        "bytes": 499
+      },
+      "saved_rpc_responses": [
+        {
+          "artifact": "e01-current-finality-step02/getGenesisHash.response",
+          "sha256": "e4f828b126ebdae928f692905f3f86aafca67f0533f1e9619d6c8ccc08f72b55",
+          "bytes": 99
+        },
+        {
+          "artifact": "e01-current-finality-step02/getSignatureStatuses.response",
+          "sha256": "05309e6c2a1954a0b1795f247f2d3a9033567544c7630b1c360374e8f9314268",
+          "bytes": 232
+        },
+        {
+          "artifact": "e01-current-finality-step02/getTransaction.response",
+          "sha256": "f088dfc7c20d09bf75f93c2122be779a85472c25ca1e6aa1b1c189b3eaf907e7",
+          "bytes": 2543
+        }
+      ]
+    },
+    {
+      "passed": true,
+      "observed_at": "2026-10-09T01:07:45.219259+00:00",
+      "source_sha256": "fd77cb75a807af6692a316ef736e9d38da6f179870944ea01e90ec825b4cc333",
+      "signature": "HLdxSAsZzvQ39nrQYzx9i9Kz2GATwrFbx6csZRn3uyLCt6Mm1W4M7TP5DM6VxM2n1Sa1nnJY3sgg7XiKedWc9NX",
+      "kind": "append",
+      "finalized_slot": 509007458,
+      "wire_sha256": "ada4e7157307af200fa1bf951c37a6ee437a01b2cafa912e4f944ff928d803e3",
+      "wire_bytes": 670,
+      "rpc_requests": 3,
+      "transaction_sends": 0,
+      "automatic_retries": 0,
+      "receipt": {
+        "artifact": "e01-current-finality-step03/result.json",
+        "sha256": "4ff5b004f04bb807d60d0933f1d55e9876edefba1ea5b555849d295ee478bf34",
+        "bytes": 497
+      },
+      "saved_rpc_responses": [
+        {
+          "artifact": "e01-current-finality-step03/getGenesisHash.response",
+          "sha256": "e4f828b126ebdae928f692905f3f86aafca67f0533f1e9619d6c8ccc08f72b55",
+          "bytes": 99
+        },
+        {
+          "artifact": "e01-current-finality-step03/getSignatureStatuses.response",
+          "sha256": "f81e8a334dbf3488c391db4d2b988f381a5fe8a6c8c24edecaaa29ba5b2577ad",
+          "bytes": 232
+        },
+        {
+          "artifact": "e01-current-finality-step03/getTransaction.response",
+          "sha256": "c0b1ee84e76e089d50e791ab1a5a73ff4742374839374138043fee9e9d7af8d6",
+          "bytes": 1795
+        }
+      ]
+    },
+    {
+      "passed": true,
+      "observed_at": "2026-10-09T01:09:03.546834+00:00",
+      "source_sha256": "a0d38a1713d2cdd0e6b6c73b98610d0e7d886cfe74090e8889537521d25d7b13",
+      "signature": "66rry67Bk9hBwh2RzYKvm2fQKUdbNTDJmKPHJXf6Lk2Z5RSM1a6a4dSUu1mLiFZRFvocN2metLniTXNa65ebdUpp",
+      "kind": "seal",
+      "finalized_slot": 509007774,
+      "wire_sha256": "e65693bcc631c12851a0499cb2ef9a603db9f29521369cc82ca19769a99cb271",
+      "wire_bytes": 286,
+      "rpc_requests": 3,
+      "transaction_sends": 0,
+      "automatic_retries": 0,
+      "receipt": {
+        "artifact": "e01-current-finality-step04/result.json",
+        "sha256": "47b7acca9a62f7cc0fb122befefa7ebfb2a13a35d83f52023b12c1209b4840eb",
+        "bytes": 496
+      },
+      "saved_rpc_responses": [
+        {
+          "artifact": "e01-current-finality-step04/getGenesisHash.response",
+          "sha256": "e4f828b126ebdae928f692905f3f86aafca67f0533f1e9619d6c8ccc08f72b55",
+          "bytes": 99
+        },
+        {
+          "artifact": "e01-current-finality-step04/getSignatureStatuses.response",
+          "sha256": "a0b914613b7e7c8c665599365c49d327b6a22bd0ca9a6f6ead1c14d88efd16f1",
+          "bytes": 232
+        },
+        {
+          "artifact": "e01-current-finality-step04/getTransaction.response",
+          "sha256": "90c1a1f1e9ff054ae504656a50af961af987967031e9da868f5db5431209e9d5",
+          "bytes": 1281
+        }
+      ]
+    },
+    {
+      "passed": true,
+      "observed_at": "2026-10-09T01:10:19.720245+00:00",
+      "source_sha256": "d0e4c39b7d1a68c30c8767d1422792d7b51fc244ba251f8db7acc0377abd6e48",
+      "signature": "5RU9yiMgiGcQcbPxoNT8We9Di1i2y9dWB6TucncoJHtSkDmzsE4qSdnDdigWCUe5JbTNmYzGR8wiycm61NEKDTPB",
+      "kind": "execute",
+      "finalized_slot": 509008109,
+      "wire_sha256": "f1acaa55e1dfc3a10853148bf72f39ddd94609c77f3dd6bde21a1abe5a7c84eb",
+      "wire_bytes": 656,
+      "rpc_requests": 3,
+      "transaction_sends": 0,
+      "automatic_retries": 0,
+      "receipt": {
+        "artifact": "e01-current-finality-step05/result.json",
+        "sha256": "da7bd55dfbf516ddcb4a9db617f26a35f4df7e29ab41140cf4e6f7970cb4f5ec",
+        "bytes": 499
+      },
+      "saved_rpc_responses": [
+        {
+          "artifact": "e01-current-finality-step05/getGenesisHash.response",
+          "sha256": "e4f828b126ebdae928f692905f3f86aafca67f0533f1e9619d6c8ccc08f72b55",
+          "bytes": 99
+        },
+        {
+          "artifact": "e01-current-finality-step05/getSignatureStatuses.response",
+          "sha256": "e7e3f4be9167affd4d923a070e1d89bd4ba970ef30c397c5d212c01fe3e723ca",
+          "bytes": 232
+        },
+        {
+          "artifact": "e01-current-finality-step05/getTransaction.response",
+          "sha256": "853891aaa72be1015b46fa7448cefff152c77967106bd0b6e4f51c2bbd546875",
+          "bytes": 3328
+        }
+      ]
+    }
+  ],
+  "escape_execution": {
+    "all_five_steps_independently_finalized": true,
+    "execute_signature": "5RU9yiMgiGcQcbPxoNT8We9Di1i2y9dWB6TucncoJHtSkDmzsE4qSdnDdigWCUe5JbTNmYzGR8wiycm61NEKDTPB",
+    "execute_slot": 509008109,
+    "execute_rpc_block_time": 1791508190,
+    "wallet_advance_complete_at_utc": "2026-10-09T01:10:38.715832+00:00",
+    "wallet_advance": {
+      "label": "resume-escape-advance-20261009-10",
+      "receipt": {
+        "artifact": "resume-escape-advance-20261009-10/result.json",
+        "sha256": "2f033f59f44d46f30c3107a591ff7ca8c64733f13f44c550eabf06e4c2ba17c9",
+        "bytes": 89
+      },
+      "private_stdout": {
+        "artifact": "resume-escape-advance-20261009-10/stdout.private.json",
+        "sha256": "7ee99af235fe9c8fce7b7ceb1d155a58ab6bfbc8d4904b2850586151d633a7fc",
+        "bytes": 20
+      }
+    },
+    "finalized_snapshot": {
+      "receipt": {
+        "artifact": "snapshot-escape-finalized-01/result.json",
+        "sha256": "06b0e0e59d0b0223d345f7ea55f6addec890acb9203ba78b1352f3a38d8939f9",
+        "bytes": 3637
+      },
+      "minimum_slot": 509008109,
+      "account_slot": 509008371,
+      "sequence": "4",
+      "note": {
+        "note_id": 1,
+        "registration_commitment": "0x0e95af7abca488bdf043332241d6e5cd7ef8b1b528ba60ea72bfe84e8a339032",
+        "deposit_micro_usdc": "1",
+        "expiry": "1791590400",
+        "status": "pending_escape"
+      },
+      "pending": {
+        "nullifier": "0x01632463e7b3675e5b5ebda674f3ebf79d5b5aec93f5eb8e58f73fceb7b5308e",
+        "balance_micro_usdc": "1",
+        "destinationOwner": "nHSjCbSd3XD3UwGy5uAAUqEfDf4kBDYaJZ4eF82nCDZ",
+        "deadline": "1791509990"
+      },
+      "clock": "1791508252",
+      "snapshot_completed_at_utc": "2026-10-09T01:10:52.968Z",
+      "requests": 5,
+      "auth_requests": 0,
+      "transaction_sends": 0,
+      "journal_reads": 0,
+      "journal_writes": 0,
+      "raw_response_hashes": [
+        "8045c11e8c400310f510f1f83c03a3975926d80f42750d13351483faf9df4bc9",
+        "7c0129c412ca92db9799c6faebe425d53694b9a25c42c212774340776846b787",
+        "bb1f099ba93f108d12fa335ffd304a680e7473d69f99672d5507dd09057c3403",
+        "529513ada7874ccd5956afcd2809a5628cddfe3b110b654b55a49dc1ce141d65",
+        "2e83995b0284b61168f6d766d96ef7d651068f6149420fa3ca43ffb1a0185d64"
+      ]
+    },
+    "deadline_unix": "1791509990",
+    "deadline_utc": "2026-10-09T01:39:50+00:00",
+    "seconds_remaining_at_observed_chain_clock": 1738,
+    "challenge_period_elapsed_at_snapshot": false,
+    "deadline_minus_execute_rpc_block_time_seconds": 1800,
+    "timing_scope": "Stored Pending deadline and Clock are authenticated together by released WalletChain. The RPC transaction blockTime comparison is corroborative; local wall time alone never authorizes finalization."
+  },
+  "deadline_gate": {
+    "earlier_observation": {
+      "receipt": {
+        "artifact": "snapshot-escape-deadline-01/result.json",
+        "sha256": "3ee0e006380774209662ad674f799238a9591f6fcb3f3917553539901f02d639",
+        "bytes": 3630
+      },
+      "completed_at_utc": "2026-10-09T01:35:53.227Z",
+      "minimum_slot": 509008109,
+      "account_slot": 509014658,
+      "clock": "1791509752",
+      "deadline": "1791509990",
+      "remaining_seconds": 238,
+      "note_status": "pending_escape",
+      "requests": 5,
+      "auth_requests": 0,
+      "transaction_sends": 0,
+      "journal_reads": 0,
+      "journal_writes": 0,
+      "raw_response_hashes": [
+        "6b4a8fd47fb8f5ece2c78cd07c4e58bcfbef46c16e599976605a977e4491ad17",
+        "7c0129c412ca92db9799c6faebe425d53694b9a25c42c212774340776846b787",
+        "986c6bcdf545134a5559aa8f9de8ebfb0147468d0b77bc9a082ab3160053642e",
+        "45e03348f627b1faf739e7d5acf1ba49c28039a8c437a1cdca9269069d486447",
+        "273d41d3f275d0236d0e7fd7d3ff989fd48a69250afdb1bee9e0e6b360d8641f"
+      ]
+    },
+    "eligible_observation": {
+      "receipt": {
+        "artifact": "snapshot-escape-deadline-02/result.json",
+        "sha256": "8a1e34bb7fd891d586901321ede612d79115d0cdc3288c7187978ed0065045f4",
+        "bytes": 3639
+      },
+      "completed_at_utc": "2026-10-09T01:40:08.045Z",
+      "minimum_slot": 509008109,
+      "account_slot": 509015721,
+      "clock": "1791510006",
+      "deadline": "1791509990",
+      "remaining_seconds": -16,
+      "note_status": "pending_escape",
+      "requests": 5,
+      "auth_requests": 0,
+      "transaction_sends": 0,
+      "journal_reads": 0,
+      "journal_writes": 0,
+      "raw_response_hashes": [
+        "999a86154bb0878eb5c7dde713c388f44c9ccff2da44556bc5ed662b49f1321e",
+        "7c0129c412ca92db9799c6faebe425d53694b9a25c42c212774340776846b787",
+        "0a1c418a7184e849aa355dc854e78b4af3ae3363cc77e26c2cbb64346f494768",
+        "03b295378f3d571d2c4975a576d8fa32cb5d83a5088cf6d29afe34a06b154d0a",
+        "e427ddbd612edda6ccd3df365bdb3b7569ee8fb4a09224eb0f2b381b2d4f1688"
+      ]
+    },
+    "rule": "Actual authenticated chain Clock >= stored Pending deadline; local wall time is not the authorization gate.",
+    "finalize_preparation_followed_eligible_snapshot": true
+  },
+  "finalization": {
+    "prepare": {
+      "label": "resume-finalize-prepare-20261009-01",
+      "completed_at_utc": "2026-10-09T01:40:27.172550+00:00",
+      "receipt": {
+        "artifact": "resume-finalize-prepare-20261009-01/result.json",
+        "sha256": "3c3e3b9dd862fa4a0650be2bf6bbb24d90972f5a31ad48b17890c09b365ff907",
+        "bytes": 90
+      },
+      "stdout_receipt": {
+        "artifact": "resume-finalize-prepare-20261009-01/stdout.private.json",
+        "sha256": "82a210beacaa01c555bf2a7ee6f4390ebb4f3879a8e8625b19f954db24d678d6",
+        "bytes": 14
+      }
+    },
+    "first_advance": {
+      "label": "resume-finalize-advance-20261009-01",
+      "completed_at_utc": "2026-10-09T01:40:45.465230+00:00",
+      "receipt": {
+        "artifact": "resume-finalize-advance-20261009-01/result.json",
+        "sha256": "573b3bb509084f08905c337d23240dc3e95d18af4dc803816f8ab4eed1aaa62f",
+        "bytes": 89
+      },
+      "stdout_receipt": {
+        "artifact": "resume-finalize-advance-20261009-01/stdout.private.json",
+        "sha256": "e08ff4aec917544328b4ca2be4a23ce025a53e3083cb259f6aa696c0c5b616c1",
+        "bytes": 19
+      },
+      "state": "pending"
+    },
+    "independent_finality": {
+      "receipt": {
+        "artifact": "e01-current-finality-finalize/result.json",
+        "sha256": "6b3d1d801b109b24dd96db2d44113e2d7e8557401f644bc42bd1cb2529a2b48a",
+        "bytes": 500
+      },
+      "observed_at": "2026-10-09T01:41:17.837813+00:00",
+      "signature": "3KVZ97C6wxA7jZ82hmmXazdGL6uk72ir1YRxZrfhNcd7ALXqPZR9iufsVX9aYYHiwSrfGistp3QY9NnTcMDpsSk1",
+      "finalized_slot": 509015884,
+      "wire_sha256": "296d822399f2953ebc246c0206d13273c1bdbe4d9396beeda80edec63d92b5bf",
+      "wire_bytes": 593,
+      "rpc_requests": 3,
+      "transaction_sends": 0,
+      "automatic_retries": 0
+    },
+    "observation_advance": {
+      "label": "resume-finalize-advance-20261009-02",
+      "completed_at_utc": "2026-10-09T01:42:07.534566+00:00",
+      "receipt": {
+        "artifact": "resume-finalize-advance-20261009-02/result.json",
+        "sha256": "2125757b46dd672ad6cd8f1f6a5a374d4715e90978698d92a39d308d77a38997",
+        "bytes": 89
+      },
+      "stdout_receipt": {
+        "artifact": "resume-finalize-advance-20261009-02/stdout.private.json",
+        "sha256": "7ee99af235fe9c8fce7b7ceb1d155a58ab6bfbc8d4904b2850586151d633a7fc",
+        "bytes": 20
+      },
+      "state": "complete"
+    }
+  },
+  "closed_journal": {
+    "receipt": {
+      "artifact": "financial-journal-final/result.json",
+      "sha256": "52d8515ded130c05b046f78474508f2765a73913e0e2eb58e1c5fa77254a1be7",
+      "bytes": 14121
+    },
+    "observed_at_utc": "2026-10-09T01:42:16.155Z",
+    "journal_head": {
+      "revision": 19,
+      "digest": "09318a607128051690f5636b82df26a5b3634a1682750d4238f5ded67aaf0415"
+    },
+    "wallet_status": "closed",
+    "retained_journal_balance_micro_usdc": "1",
+    "retained_balance_is_spendable": false,
+    "expected_return_micro_usdc": "1",
+    "auth_history": 0,
+    "settled_sessions": 0,
+    "pending_session": null,
+    "saved_attempts": 7,
+    "completed_operations": [
+      {
+        "kind": "deposit",
+        "phase": "ready",
+        "transport": "v0_inline_deposit_v1",
+        "saved_attempts": 1
+      },
+      {
+        "kind": "initiate_escape",
+        "phase": "ready",
+        "transport": "v0_buffer",
+        "saved_attempts": 5
+      },
+      {
+        "kind": "finalize_escape",
+        "phase": "ready",
+        "transport": "v0_buffer",
+        "saved_attempts": 1
+      }
+    ],
+    "signed_bytes_validated": true,
+    "journal_bytes_unchanged": true,
+    "journal_writes": 0,
+    "network_requests": 0,
+    "transaction_sends": 0,
+    "scope": "Read-only decrypted financial journal and signed-byte projection. Saved finalized slots are journal observations, not an independent chain/finality/account proof."
+  },
+  "independent_final_chain": {
+    "receipt": {
+      "artifact": "final-chain-01/result.json",
+      "sha256": "208951ccc21c3266a2ba425384f3dc827b75e4b4176f964f453357a85544209c",
+      "bytes": 8893
+    },
+    "observed_at_utc": "2026-10-09T01:42:37.119Z",
+    "journal_source_sha256": "52d8515ded130c05b046f78474508f2765a73913e0e2eb58e1c5fa77254a1be7",
+    "transactions": [
+      {
+        "signature": "639MZrhc3UL1d8PwmrpkQgNst9J69QEg68YjV1Sbx7ghnLwydGr5HG1Bk1ib6qBJBMp5moCZ4p7xrfi5C64VYbPC",
+        "slot": 508866751,
+        "kind": "deposit",
+        "instruction": "deposit_compact_v1",
+        "block_time": 1791474443,
+        "wire_sha256": "0a09cef5537fc9f488a1f15edcf8166290d574b77fdd827dd403c8f2eae9f6eb",
+        "message_sha256": "9e57c40ed68777e04a9aaf7951644d883a06bdb151ad6828ded8bf56e1f6efa2",
+        "wire_bytes": 995,
+        "compute_units": 184421,
+        "exact_recorded_wire_matches": true,
+        "signatures_verified": true
+      },
+      {
+        "signature": "3tACJ73KdVhiJZuNXt2MMvjRaP3w3qPapNJZEmRGhNftzUZJonfuFHx6Jfpwd6VpKp4nJaesqPWqegHF37czFLFJ",
+        "slot": 509004960,
+        "kind": "initiate_escape",
+        "instruction": "create_payload",
+        "block_time": 1791507439,
+        "wire_sha256": "1cb8efe88b9029537e77bddda753f7c5bd8155b0482aaa94f762925ff4006163",
+        "message_sha256": "775a32625ae98e42480ddb564744549c87ce6eacc812236aa67b3f001e20b377",
+        "wire_bytes": 397,
+        "compute_units": 17333,
+        "exact_recorded_wire_matches": true,
+        "signatures_verified": true
+      },
+      {
+        "signature": "4yrqH9aUXp2JQWecbSmNi1FmPN5Ttmw532fCCh31mxCUnCoN176FdSVQZC3hUvdiTujiV9nGsRg1up21tQ4xoWvm",
+        "slot": 509007126,
+        "kind": "initiate_escape",
+        "instruction": "append_payload",
+        "block_time": 1791507956,
+        "wire_sha256": "fa7214c3e8e5eb872eb57e35c2ddaa2bad9c5ff8aceb91bc7f0c4a63fa460aa0",
+        "message_sha256": "0f3f23099ad5a53ee793ade88bb0655dfaccc4f345e6db32c7a7124f0e53a896",
+        "wire_bytes": 1232,
+        "compute_units": 14756,
+        "exact_recorded_wire_matches": true,
+        "signatures_verified": true
+      },
+      {
+        "signature": "HLdxSAsZzvQ39nrQYzx9i9Kz2GATwrFbx6csZRn3uyLCt6Mm1W4M7TP5DM6VxM2n1Sa1nnJY3sgg7XiKedWc9NX",
+        "slot": 509007458,
+        "kind": "initiate_escape",
+        "instruction": "append_payload",
+        "block_time": 1791508035,
+        "wire_sha256": "ada4e7157307af200fa1bf951c37a6ee437a01b2cafa912e4f944ff928d803e3",
+        "message_sha256": "d0e8d0ef5e9a7f4d038ef8b8bb0e9396d36bb862850978d885686badee6dc929",
+        "wire_bytes": 670,
+        "compute_units": 14756,
+        "exact_recorded_wire_matches": true,
+        "signatures_verified": true
+      },
+      {
+        "signature": "66rry67Bk9hBwh2RzYKvm2fQKUdbNTDJmKPHJXf6Lk2Z5RSM1a6a4dSUu1mLiFZRFvocN2metLniTXNa65ebdUpp",
+        "slot": 509007774,
+        "kind": "initiate_escape",
+        "instruction": "seal_payload",
+        "block_time": 1791508110,
+        "wire_sha256": "e65693bcc631c12851a0499cb2ef9a603db9f29521369cc82ca19769a99cb271",
+        "message_sha256": "d81ba2ebff8759c9af4c1c9a21a84fd8f19dc3c149c98a93097296cff30eda0f",
+        "wire_bytes": 286,
+        "compute_units": 15320,
+        "exact_recorded_wire_matches": true,
+        "signatures_verified": true
+      },
+      {
+        "signature": "5RU9yiMgiGcQcbPxoNT8We9Di1i2y9dWB6TucncoJHtSkDmzsE4qSdnDdigWCUe5JbTNmYzGR8wiycm61NEKDTPB",
+        "slot": 509008109,
+        "kind": "initiate_escape",
+        "instruction": "execute_payload",
+        "block_time": 1791508190,
+        "wire_sha256": "f1acaa55e1dfc3a10853148bf72f39ddd94609c77f3dd6bde21a1abe5a7c84eb",
+        "message_sha256": "f3bf936e941a3cb220ad95e63a976b3d74a5c3fd58aaec7766a5720e265e0c8a",
+        "wire_bytes": 656,
+        "compute_units": 348704,
+        "exact_recorded_wire_matches": true,
+        "signatures_verified": true
+      },
+      {
+        "signature": "3KVZ97C6wxA7jZ82hmmXazdGL6uk72ir1YRxZrfhNcd7ALXqPZR9iufsVX9aYYHiwSrfGistp3QY9NnTcMDpsSk1",
+        "slot": 509015884,
+        "kind": "finalize_escape",
+        "instruction": "finalize_escape",
+        "block_time": 1791510045,
+        "wire_sha256": "296d822399f2953ebc246c0206d13273c1bdbe4d9396beeda80edec63d92b5bf",
+        "message_sha256": "1af4d586070b3690f9187c60821a02373f386ff8ffde73877903b8406fdcca51",
+        "wire_bytes": 593,
+        "compute_units": 48607,
+        "exact_recorded_wire_matches": true,
+        "signatures_verified": true
+      }
+    ],
+    "finalized_count": 7,
+    "max_wire_bytes": 1232,
+    "max_compute_units": 348704,
+    "token_movement": {
+      "instruction_amounts_match_token_deltas": true,
+      "wallet_before_deposit_micro_usdc": "56010000",
+      "wallet_after_withdrawal_micro_usdc": "56010000",
+      "combined_destination_and_treasury": true
+    },
+    "deposit_micro_usdc": "1",
+    "return_micro_usdc": "1",
+    "auth_history": 0,
+    "escape_payload_sha256": "c199f0641a2a891456c66acd9583a6355e9aff3aa49343b90210c50881bf2b64",
+    "finalized_account_cut": {
+      "slot": 509016348,
+      "note_status": "closed",
+      "pending_exists": false,
+      "pending_account_retained": true,
+      "pending_deadline": "1791509990",
+      "clock": "1791510156",
+      "wallet_micro_usdc": "56010000",
+      "vault_micro_usdc": "0"
+    },
+    "rpc_requests": 10,
+    "transaction_sends": 0,
+    "automatic_retries": 0,
+    "scope": "Independent finalized RPC and exact signed-byte/instruction/token checks. Finality is RPC evidence, not a cryptographic consensus proof. Vault may include other notes; no global Vault-zero or provider-packet claim."
+  },
+  "operator_financial_cut": {
+    "receipt": {
+      "artifact": "e01-operator-receipt-01/result.json",
+      "sha256": "b64c689c0fe4f5f7f1819f3201e4eb277781e680fa06b5494edaf9dfa70796da",
+      "bytes": 5470
+    },
+    "collector": {
+      "command_id": "27b3794e-718b-4ce2-9fa1-5fdf77d37ed5",
+      "started_at_utc": "2026-10-09T01:43:03.770Z",
+      "completed_at_utc": "2026-10-09T01:43:08.770Z",
+      "receipt": {
+        "artifact": "e01-operator-after-finalize-01/invocation-01.json",
+        "sha256": "72362cd6fc91555493c6f5e3e0548aa0dc02cbae4c27788f1d97f35ad46f5488",
+        "bytes": 1405
+      }
+    },
+    "safe_fetch": {
+      "command_id": "ce9f2113-3e18-4503-b496-976b27ca8752",
+      "started_at_utc": "2026-10-09T01:43:54.103Z",
+      "completed_at_utc": "2026-10-09T01:43:55.103Z",
+      "receipt": {
+        "artifact": "e01-operator-receipt-01/invocation-01.json",
+        "sha256": "13506e6496fdca3449e0d146a9d47d6a2277d3b822928277594a69d92fc16ecd",
+        "bytes": 3367
+      }
+    },
+    "observed_at_utc": "2026-10-09T01:43:08+00:00",
+    "writer_install_receipt_sha256": "d9c800a9b4f0251b01c8538ffa1e6cf7a3692e4874c7609b7d74ce9e270b1a2b",
+    "database_raw_sha256": "49c3b1387f2916e8fe94c4672ebb848f22b73b98787f99e2483bfb9c06260f16",
+    "reservations_sha256": "29be8a5b46f7efc666b8ad623093ab83a133365ef42cee036ea533453c337706",
+    "database_counts": {
+      "sessions": 4,
+      "operations": 0,
+      "dispatch_attempts": 4,
+      "settlements": 4,
+      "receipts": 4,
+      "outbox": 25,
+      "nullifier_reservations": 5,
+      "clearances": 1,
+      "provider_evidence": 0,
+      "chain_transactions": 0
+    },
+    "complete_private_table_rows": {
+      "sessions": true,
+      "operations": true,
+      "dispatch_attempts": true,
+      "settlements": true,
+      "receipts": true,
+      "outbox": true,
+      "nullifier_reservations": true,
+      "clearances": true,
+      "provider_evidence": true,
+      "chain_transactions": true
+    },
+    "settled_sessions": 4,
+    "reserved_requests": 4,
+    "retained_direct_recovery_checkpoint_rows": 25,
+    "new_persisted_auth_sessions": 0,
+    "new_reservations": 0,
+    "active_operations": 0,
+    "database_before_after_exactly_equal": true,
+    "reservations_identity_unchanged": true,
+    "service_identities_unchanged": true,
+    "budget_validated": true,
+    "collector_state_writes": 0,
+    "collector_service_actions": 0,
+    "collector_financial_actions": 0,
+    "collector_provider_requests": 0,
+    "collector_transaction_sends": 0,
+    "auth_http_request_count_proven": false,
+    "provider_packet_count_proven": false,
+    "scope": "Exact complete financial table rows and all four retained reservations equal the writer-install baseline after the separately executed E01 lifecycle. This collector does not itself establish E01 chain finality or provider packet counts."
+  },
+  "preserved_failures_and_nonfinal_observations": [
+    {
+      "kind": "initial_deposit_pending",
+      "receipt": {
+        "label": "deposit-advance-01",
+        "receipt": {
+          "artifact": "deposit-advance-01/result.json",
+          "sha256": "efd9b617558a953b75781d873fe5dfa0bcec3e94547309b1d6b858e098f4d832",
+          "bytes": 89
+        },
+        "private_stdout": {
+          "artifact": "deposit-advance-01/stdout.private.json",
+          "sha256": "e08ff4aec917544328b4ca2be4a23ce025a53e3083cb259f6aa696c0c5b616c1",
+          "bytes": 19
+        }
+      },
+      "returned_state": "pending",
+      "not_a_failed_chain_transaction": true
+    },
+    {
+      "kind": "original_observation_unknown",
+      "receipts": [
+        {
+          "label": "deposit-observe-01",
+          "receipt": {
+            "artifact": "deposit-observe-01/result.json",
+            "sha256": "780b3bd233f99e497cfddb993c47708bc12bf41e31ab8aa4ec4f6e46bd89a786",
+            "bytes": 89
+          },
+          "private_stdout": {
+            "artifact": "deposit-observe-01/stdout.private.json",
+            "sha256": "f541413ebb09af03bdff97175eb38a6287051010326377c031b16ff6ed29a999",
+            "bytes": 19
+          }
+        },
+        {
+          "label": "deposit-observe-02",
+          "receipt": {
+            "artifact": "deposit-observe-02/result.json",
+            "sha256": "c32426d098599b2c46e3a65bdd738ae829a08247558194f9cdc89be71b0e48df",
+            "bytes": 89
+          },
+          "private_stdout": {
+            "artifact": "deposit-observe-02/stdout.private.json",
+            "sha256": "f541413ebb09af03bdff97175eb38a6287051010326377c031b16ff6ed29a999",
+            "bytes": 19
+          }
+        }
+      ],
+      "returned_state": "unknown",
+      "not_permission_to_redeposit_or_blindly_resend": true
+    },
+    {
+      "kind": "saved_deposit_observation_after_gateway_fix_failed",
+      "receipt": {
+        "label": "deposit-observe-after-gateway-fix-01",
+        "receipt": {
+          "artifact": "deposit-observe-after-gateway-fix-01/result.json",
+          "sha256": "705ebbbe2876210564ce91a9184503b9ed5fedf934e5c856ae51a5cd14bcc8f3",
+          "bytes": 89
+        },
+        "private_stdout": {
+          "artifact": "deposit-observe-after-gateway-fix-01/stdout.private.json",
+          "sha256": "4493bf6b952b7535f151f626543c5d29fb39687340d1f4e5c85b08904d21f1d4",
+          "bytes": 120
+        }
+      },
+      "error_code": "client_request_failed",
+      "message": "Inference was not replayed. Inspect local status before retrying.",
+      "not_a_new_deposit_attempt": true
+    },
+    {
+      "kind": "public_signature_status_http429",
+      "receipt": {
+        "label": "deposit-rpc-diagnostic-01",
+        "receipt": {
+          "artifact": "deposit-rpc-diagnostic-01/result.json",
+          "sha256": "c8f55520851eff905116606947a20e23ed90b6229135aa34a693ab3df4b8d804",
+          "bytes": 1368
+        }
+      },
+      "other_independent_status_and_receipt_confirmed_original_deposit": true
+    },
+    {
+      "kind": "released_wallet_snapshot_unavailable",
+      "receipt": {
+        "label": "wallet-snapshot-diagnostic-01",
+        "receipt": {
+          "artifact": "wallet-snapshot-diagnostic-01/result.json",
+          "sha256": "76bb829ca93b14c259dad07fb4b0978544a8f92313591b28bc2a6cbb2d41fbeb",
+          "bytes": 1035
+        }
+      },
+      "category": "finalized indexer unavailable",
+      "requests": 1,
+      "transaction_sends": 0
+    },
+    {
+      "kind": "local_python_urllib_profile_CA_failure",
+      "source": "Root task tool output and direct root report only; no filesystem failure receipt exists.",
+      "filesystem_receipt": null,
+      "cause": "Local Python certificate-authority validation failure during read-only profile lookup",
+      "recovery": "Separate curl lookup used standard TLS verification; no TLS bypass.",
+      "financial_mutation": false
+    },
+    {
+      "kind": "current_finality_wrong_genesis_guard",
+      "failure_receipt": {
+        "artifact": "e01-current-finality-step01/failure.json",
+        "sha256": "4111fdde70a21855619441abae50ac079dbef2089c4a39f38c376411c065780e",
+        "bytes": 148
+      },
+      "retained_response": {
+        "artifact": "e01-current-finality-step01/getGenesisHash.response",
+        "sha256": "e4f828b126ebdae928f692905f3f86aafca67f0533f1e9619d6c8ccc08f72b55",
+        "bytes": 99
+      },
+      "failure_class": "AssertionError",
+      "rpc_requests_before_guard_failure": 1,
+      "rpc_method": "getGenesisHash",
+      "cause": "Hardcoded truncated genesis differed from actual pinned manifest genesis.",
+      "correct_genesis": "EtWTRABZaYq6iMfeYKouRu166VU2xqa1wcaWoxPkrZBG",
+      "separate_corrected_result": {
+        "artifact": "e01-current-finality-step01-corrected/result.json",
+        "sha256": "bfe65614c4ffded679556f09a9aeb14239391b8ac4734eb637493444137055cc",
+        "bytes": 498
+      },
+      "transaction_sends": 0,
+      "automatic_retries": 0,
+      "financial_mutation": false
+    }
+  ],
+  "operator_pre_dispatch_correction": {
+    "predecessor_source_freeze": {
+      "artifact": "e01-operator-cut-prepared-01/source-freeze.json",
+      "sha256": "b667e79c7520bac05000221e7ec4bd4a5efba3115b8f92ca63dd5260f49e659e",
+      "bytes": 990
+    },
+    "successor_source_freeze": {
+      "artifact": "e01-operator-cut-prepared-02/source-freeze.json",
+      "sha256": "b58ccac9abe1032936458af36b3109a6b1e294743d04f1284dcc3c76240f8bab",
+      "bytes": 1209
+    },
+    "correction": "Root local inspection shortened Comment from 114 to 95 characters before render/dispatch. Collector and fetch execution source bodies remained unchanged.",
+    "original_prepared_01_dispatched": false,
+    "aws_validation_failure_occurred": false,
+    "scope": "Preparation correction, not a failed AWS or financial action."
+  },
+  "earlier_drafts": {
+    "draft_01": {
+      "artifact": "e01-evidence-draft-01/draft-manifest.json",
+      "sha256": "47ba1b51e932db72db7a9a2c8f56c1660f50b1617b3821b34ac9d79d2c768036",
+      "bytes": 652
+    },
+    "draft_02": {
+      "artifact": "e01-evidence-draft-02/draft-manifest.json",
+      "sha256": "f8a9d8f28847fa96ed52beb21e8baf135adc037cec45b66481473685f66afe55",
+      "bytes": 707
+    },
+    "preserved_unchanged": true
+  },
+  "limits": {
+    "finality_is_rpc_evidence_not_consensus_proof": true,
+    "auth_http_request_count_proven": false,
+    "provider_packet_count_proven": false,
+    "unresolved_session_emergency_recovery_exercised": false,
+    "operator_challenge_exercised": false,
+    "funded_browser_acceptance": false,
+    "external_provider_cost_gap_resolved": false,
+    "continuous_readiness_claimed": false,
+    "full_release_gates_claimed": false,
+    "global_vault_zero_claimed": false,
+    "custody_or_rpc_url_published": false
+  },
+  "documentation_actions": {
+    "rpc_requests": 0,
+    "financial_commands": 0,
+    "host_or_cloud_actions": 0,
+    "git_commit_or_push": false,
+    "readme_updated_by_this_evidence_writer": false
+  }
+}

@@ -8,6 +8,19 @@ package does not contain these APIs. Use the
 [current public deployment guide](../../docs/sdk/public-devnet-preview.md) for
 the authenticated profile, exact downloads, access policy and service status.
 
+The [2026-10-09 public restoration](../../docs/evidence/PD-public-restoration-20261009.md)
+records public HTTP 200 at 00:54:37 UTC and all ten installed `.3` preflight
+checks passing at 00:55:26, with all 7,257 installed files unchanged. Separate
+relay status reported admission/recovery enabled. No AUTH, inference or wallet
+action ran in this check; run fresh preflight before use. The separate
+[E01 emergency withdrawal](../../docs/evidence/PD-E01-emergency-withdrawal-20261009.md)
+completed from its original journal, returning one micro-USDC with zero AUTH
+history. The [core completion record](../../docs/evidence/PD-core-completion-20261009.md)
+adds fresh public readiness at 01:43:23 UTC and the unchanged operator financial
+cut. Final evidence is linked and versioned in this documentation update. The operator's
+[retained 80 GiB capacity](../../docs/evidence/PD-capacity-retained-20261009.md)
+has measured headroom; no storage rollback or long-term qualification is claimed.
+
 ## Install and diagnose
 
 Use Node 24.19.0. Verify the tarball digest through the release's
@@ -84,7 +97,7 @@ assets, trust and finalized chain checks still run when opening the client.
 
 ## Derive native setup files
 
-Candidate native distributions include this directory and the compiled SDK.
+The published `.3` native distribution includes this directory and the compiled SDK.
 Use `/absolute/install/bin/node /absolute/install/tools/public-devnet-consumer/cli.mjs`
 in place of `node cli.mjs`; no source checkout or additional npm install is
 needed. Verify the installation manifest before executing its contents.
@@ -99,14 +112,18 @@ If the operator requires an invitation, save the received token in a private,
 owner-only regular file outside the installation and public artifact directory.
 Pass `--admission-token-file /absolute/private/invitation` to the command below.
 The helper records the path and authenticated control origin in `network.json`;
-it never reads, copies or prints the token. The `.2` native relay checks the
+it never reads, copies or prints the token. The `.3` native relay checks the
 file's owner, permissions, canonical path and token encoding at startup, then
 adds it only to that origin's exact `POST /zkapi/v1/sessions` request. It never
 sends it to RPC, indexer, provider or other control routes. The file contains
 only the 43-character base64url invitation (optionally one trailing newline),
 not a provider key or local clientd management token. Keep it out of backups
-intended for public distribution. Earlier immutable releases lack this support;
-current public native lifecycle acceptance remains PD-09.
+intended for public distribution. This capability was introduced in `.2` and is
+retained in `.3`; earlier immutable releases do not gain it retroactively.
+[Native N-01](../../docs/evidence/PD-native-public-N01.md),
+[OpenClaw N-02/N-03](../../docs/evidence/PD-native-public-N02-N03.md) and
+[N-04 recovery/withdrawal](../../docs/evidence/PD-native-public-N04.md) record
+actual public acceptance in their dated scopes.
 
 ```sh
 node cli.mjs install-native --profile-url REVIEWED_HTTPS_PROFILE_URL \
@@ -122,8 +139,9 @@ counts and hashes (an empty map for legacy bundles). The receipt records exact
 local hashes, including the notice index. Existing or partial
 directories are never overwritten. No token, wallet key, journal, custody or
 provider credential is created. Preserve this directory while the profile uses
-its absolute paths. Use the `.2` native release containing the same capability-aware
-SDK; the historical release does not gain these changes retroactively.
+its absolute paths. New consumers use the `.3` native release and matching
+authenticated profile from the deployment guide. Existing custody keeps its
+original profile and recovery inputs.
 
 Pass the output paths and `runtimeSha256` to the existing `clientd setup` command
 in the [native quickstart](../../docs/sdk/clientd-quickstart.md). The native
@@ -140,8 +158,12 @@ Only existing status/close/receipt operations are polled. This accommodates the
 provider's settlement grace without replaying an inference. A canceled or
 unknown response, process restart, failed verification, deadline or disconnect
 blocks admission and retains explicit recovery. The client must permit that
-response-header wait and consume the previous response to its end; actual
-OpenClaw/public-provider acceptance is still required.
+response-header wait and consume the previous response to its end.
+[Actual OpenClaw N-02/N-03 acceptance](../../docs/evidence/PD-native-public-N02-N03.md)
+verified text and read-tool continuation using the explicit
+[settlement scheduling adapter](../../docs/integrations/openclaw-settlement-adapter.md).
+That dated result does not establish arbitrary AI-client compatibility or current
+service availability; consult the current deployment guide and run preflight.
 
 Reopening an existing installation requires its original profile digest with
 `--installed-profile-sha256`; do not install a new profile over unresolved

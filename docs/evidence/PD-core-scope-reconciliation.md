@@ -1,5 +1,9 @@
 # Core preview scope and existing acceptance evidence
 
+Current follow-up — 2026-10-09 JST: the [OpenRouter capture policy](PD-openrouter-ethereum-parity.md) is installed, the [warm restart](PD-warm-restart-20261009.md) verified both caches, and the [writer throughput successor](PD-replay-writer-deployment-20261009.md) is installed. [Public restoration](PD-public-restoration-20261009.md) completed the guarded gateway start and ten installed `.3` preflight checks with all 7,257 files unchanged. [E01 escape/finalize](PD-E01-emergency-withdrawal-20261009.md) subsequently verified seven exact-wire finalized transactions, returned the original one micro-USDC and closed the Note with `Pending.exists=false`. The saved journal has zero AUTH; the complete operator database, four reservations and all 25 recovery checkpoints were preserved. The [core completion record](PD-core-completion-20261009.md) adds fresh public HTTP 200 at 01:43:23 UTC and separately enabled admission/recovery. These receipts supersede the earlier candidate-only, readiness-pending and E01-incomplete statements below; the final evidence is linked and versioned in this documentation update. [Retained capacity](PD-capacity-retained-20261009.md) records 80 GiB data/20 GiB root, unchanged Standard credits and 30,190,022,656 bytes available at 00:25:35 UTC. Retained archive data already exceeds 40 GiB; no migration, rollback or new storage approval is claimed. The original reconciliation and its JSON remain historical evidence, including their then-open items.
+
+## Earlier reconciliation (preserved)
+
 Scope reconciliation, 2026-10-09 JST. The user directed work to finish ZKAPI
 core and stop demo/chat UI work. Funded browser/Phantom cases B-01–B-03 and
 PD-08 are deferred, not completed and not gates for this core preview. Existing

@@ -1,0 +1,308 @@
+{
+  "schema": 1,
+  "recorded_date_jst": "2026-10-09",
+  "scope": "Read-only existing AWS configuration and saved runtime-observation headroom; retained 80 GiB data volume, no resource change or migration",
+  "aws_configuration_readback": {
+    "observed_at_unix": 1791504955.763262,
+    "observed_at_utc": "2026-10-09T00:15:55.763262+00:00",
+    "result_sha256": "23bf59f8b8653fbd4efd3f5c059a6903998836950642a5d19e506acdd252629d",
+    "read_only": true,
+    "resource_mutations": 0,
+    "instance_type": "t3a.medium",
+    "instance_state": "running",
+    "cpu_credit_mode": "standard",
+    "volumes": [
+      {
+        "role": "data",
+        "size_gib": 80,
+        "type": "gp3",
+        "encrypted": true,
+        "state": "in-use"
+      },
+      {
+        "role": "root",
+        "size_gib": 20,
+        "type": "gp3",
+        "encrypted": true,
+        "state": "in-use"
+      }
+    ],
+    "public_record_redactions": [
+      "AWS instance and volume identifiers",
+      "attachment-specific identifiers"
+    ]
+  },
+  "runtime_observations": [
+    {
+      "label": "01",
+      "command_id": "fd9496b3-f96d-4058-8ba7-fc33362e53da",
+      "invocation_status": "Success",
+      "response_code": 0,
+      "execution_started_at_utc": "2026-10-09T00:04:57.297Z",
+      "execution_completed_at_utc": "2026-10-09T00:05:06.297Z",
+      "observed_at_unix": 1791504298.4929566,
+      "observed_at_utc": "2026-10-09T00:04:58.492957+00:00",
+      "completed_at_unix": 1791504306.13763,
+      "completed_at_utc": "2026-10-09T00:05:06.137630+00:00",
+      "available_data_filesystem_bytes": 32788254720,
+      "archive": {
+        "blocks": 442757,
+        "chunks": 19355,
+        "tail_slot": 508966443,
+        "journal_sha256": "f7a1650b4a9313f88db5dfcac892c858be485b63b338af4665293abb93bfc3b9",
+        "jobs": 0,
+        "transport_records": 0
+      },
+      "finalized_rpc_slot": 508991835,
+      "archive_lag_slots": 25392,
+      "health_observed_at_unix": 1791504186,
+      "health_age_seconds": 112.49295663833618,
+      "health_ready": false,
+      "health_is_fresh_readiness": false,
+      "service_actions": 0,
+      "financial_actions": 0
+    },
+    {
+      "label": "02",
+      "command_id": "4528e1ef-30c1-4a24-a040-51bb34b1799d",
+      "invocation_status": "Success",
+      "response_code": 0,
+      "execution_started_at_utc": "2026-10-09T00:07:53.782Z",
+      "execution_completed_at_utc": "2026-10-09T00:07:59.782Z",
+      "observed_at_unix": 1791504474.1831992,
+      "observed_at_utc": "2026-10-09T00:07:54.183199+00:00",
+      "completed_at_unix": 1791504480.2529516,
+      "completed_at_utc": "2026-10-09T00:08:00.252952+00:00",
+      "available_data_filesystem_bytes": 32400195584,
+      "archive": {
+        "blocks": 446456,
+        "chunks": 19370,
+        "tail_slot": 508970179,
+        "journal_sha256": "8e53344e72742a7b13a0f9983fc88871a183f31e6a285d2afc8cddc309edf122",
+        "jobs": 0,
+        "transport_records": 0
+      },
+      "finalized_rpc_slot": 508992575,
+      "archive_lag_slots": 22396,
+      "health_observed_at_unix": 1791504186,
+      "health_age_seconds": 288.1831991672516,
+      "health_ready": false,
+      "health_is_fresh_readiness": false,
+      "service_actions": 0,
+      "financial_actions": 0
+    },
+    {
+      "label": "03",
+      "command_id": "cf1004b7-8ce9-4ff2-8a57-bf5eb687f241",
+      "invocation_status": "Success",
+      "response_code": 0,
+      "execution_started_at_utc": "2026-10-09T00:14:29.374Z",
+      "execution_completed_at_utc": "2026-10-09T00:14:37.374Z",
+      "observed_at_unix": 1791504870.5856984,
+      "observed_at_utc": "2026-10-09T00:14:30.585698+00:00",
+      "completed_at_unix": 1791504877.292892,
+      "completed_at_utc": "2026-10-09T00:14:37.292892+00:00",
+      "available_data_filesystem_bytes": 31570726912,
+      "archive": {
+        "blocks": 456157,
+        "chunks": 19409,
+        "tail_slot": 508979923,
+        "journal_sha256": "6b933a595b90dadd3275924c63e61dd94444ea152ad959890dadd53813865e12",
+        "jobs": 0,
+        "transport_records": 0
+      },
+      "finalized_rpc_slot": 508994233,
+      "archive_lag_slots": 14310,
+      "health_observed_at_unix": 1791504186,
+      "health_age_seconds": 684.5856983661652,
+      "health_ready": false,
+      "health_is_fresh_readiness": false,
+      "service_actions": 0,
+      "financial_actions": 0
+    },
+    {
+      "label": "04",
+      "command_id": "f84268b3-3df0-4127-8082-8eb19103d8f6",
+      "invocation_status": "Success",
+      "response_code": 0,
+      "execution_started_at_utc": "2026-10-09T00:18:17.385Z",
+      "execution_completed_at_utc": "2026-10-09T00:18:23.385Z",
+      "observed_at_unix": 1791505098.1803775,
+      "observed_at_utc": "2026-10-09T00:18:18.180377+00:00",
+      "completed_at_unix": 1791505103.7731683,
+      "completed_at_utc": "2026-10-09T00:18:23.773168+00:00",
+      "available_data_filesystem_bytes": 31094652928,
+      "archive": {
+        "blocks": 461617,
+        "chunks": 19431,
+        "tail_slot": 508985439,
+        "journal_sha256": "519ccb7b26531a2257242724ed4ccf02c4ee4c313ea3625c041a0a15a4643abb",
+        "jobs": 0,
+        "transport_records": 0
+      },
+      "finalized_rpc_slot": 508995185,
+      "archive_lag_slots": 9746,
+      "health_observed_at_unix": 1791504186,
+      "health_age_seconds": 912.1803774833679,
+      "health_ready": false,
+      "health_is_fresh_readiness": false,
+      "service_actions": 0,
+      "financial_actions": 0
+    },
+    {
+      "label": "05",
+      "command_id": "b05c1f95-3d5e-4404-a194-595d0b3a83ad",
+      "invocation_status": "Success",
+      "response_code": 0,
+      "execution_started_at_utc": "2026-10-09T00:22:08.824Z",
+      "execution_completed_at_utc": "2026-10-09T00:22:16.824Z",
+      "observed_at_unix": 1791505329.4652002,
+      "observed_at_utc": "2026-10-09T00:22:09.465200+00:00",
+      "completed_at_unix": 1791505336.444838,
+      "completed_at_utc": "2026-10-09T00:22:16.444838+00:00",
+      "available_data_filesystem_bytes": 30613213184,
+      "archive": {
+        "blocks": 466829,
+        "chunks": 19452,
+        "tail_slot": 508990667,
+        "journal_sha256": "6ea36ec4558aba4aa6c9d18467ee29c56c8e51f779a11ab936ecc65b6ef6bedc",
+        "jobs": 0,
+        "transport_records": 0
+      },
+      "finalized_rpc_slot": 508996160,
+      "archive_lag_slots": 5493,
+      "health_observed_at_unix": 1791504186,
+      "health_age_seconds": 1143.4652001857758,
+      "health_ready": false,
+      "health_is_fresh_readiness": false,
+      "service_actions": 0,
+      "financial_actions": 0
+    },
+    {
+      "label": "06",
+      "command_id": "42c1cd92-4bb2-46b7-9310-4ed905afe1bb",
+      "invocation_status": "Success",
+      "response_code": 0,
+      "execution_started_at_utc": "2026-10-09T00:25:34.498Z",
+      "execution_completed_at_utc": "2026-10-09T00:25:41.498Z",
+      "observed_at_unix": 1791505535.7822828,
+      "observed_at_utc": "2026-10-09T00:25:35.782283+00:00",
+      "completed_at_unix": 1791505541.4530537,
+      "completed_at_utc": "2026-10-09T00:25:41.453054+00:00",
+      "available_data_filesystem_bytes": 30190022656,
+      "archive": {
+        "blocks": 471616,
+        "chunks": 19472,
+        "tail_slot": 508995497,
+        "journal_sha256": "f3979b2eb9838d3115b63daf535225b24790e5237b7867e208454dfb63f26db9",
+        "jobs": 0,
+        "transport_records": 0
+      },
+      "finalized_rpc_slot": 508997017,
+      "archive_lag_slots": 1520,
+      "health_observed_at_unix": 1791504186,
+      "health_age_seconds": 1349.7822828292847,
+      "health_ready": false,
+      "health_is_fresh_readiness": false,
+      "service_actions": 0,
+      "financial_actions": 0
+    }
+  ],
+  "runtime_context": {
+    "writer_binary_sha256": "8ebeef106feee63a3f231584b4eff2d7df7ce2d164694e8cddfe8fc46ce89274",
+    "follower_binary_sha256": "0037eca87a656aeae06f8c01fa4102d90f15dbacee4bf1074caf2292ed7c8f49",
+    "writer_install_result_sha256": "d9c800a9b4f0251b01c8538ffa1e6cf7a3692e4874c7609b7d74ce9e270b1a2b",
+    "source_of_binary_binding": "docs/evidence/PD-replay-writer-deployment-20261009.json",
+    "binary_rehash_performed_by_capacity_observers": false,
+    "writer_and_follower_unit_identities_equal_across_all_six_observations": true,
+    "cache_metadata_is_not_full_checkpoint_verification": true
+  },
+  "retained_history_and_migration": {
+    "prior_warm_restart_receipt_sha256": "e6d05884e36fc678d35611a49b7cce1ced7115430d7bc459d304cbfd60909f95",
+    "prior_writer_committed_archive_payload_bytes": 46673163486,
+    "prior_payload_evidence": "docs/evidence/PD-warm-restart-20261009.json",
+    "forty_gib_bytes": 42949672960,
+    "prior_committed_payload_already_exceeds_forty_gib": true,
+    "payload_measurement_is_total_filesystem_usage": false,
+    "latest_total_archive_payload_remeasured_by_this_record": false,
+    "volume_retained_gib": 80,
+    "migration_performed": false,
+    "history_pruned_by_this_work": false,
+    "storage_rollback_performed": false,
+    "safe_forty_gib_rollback_inferred": false
+  },
+  "storage_choice_status": {
+    "current_state": "Existing 80 GiB data volume retained",
+    "temporary_operating_assumption_communicated": "Keep existing 80 GiB volume while completing core; preserve full history",
+    "explicit_user_response_to_storage_question_recorded": false,
+    "new_migration_decision_claimed": false,
+    "new_explicit_user_approval_claimed": false,
+    "migration_followup": "Return to 40 GiB remains deferred pending a verified plan and user decision; no migration or history deletion has occurred"
+  },
+  "capacity_limits": {
+    "latest_observation_label": "06",
+    "latest_available_bytes": 30190022656,
+    "continued_chain_archive_growth_expected": true,
+    "catch_up_growth_extrapolated_as_steady_ingestion_rate": false,
+    "thirty_day_capacity_qualification": false,
+    "growth_forecast_or_exhaustion_date_claimed": false,
+    "continuous_availability_claimed": false,
+    "readiness_claimed": false,
+    "actual_cost_rollback_claimed": false
+  },
+  "related_evidence": [
+    "docs/evidence/PD-preview-capacity-80g.md",
+    "docs/evidence/PD-warm-restart-20261009.md",
+    "docs/evidence/PD-replay-writer-deployment-20261009.md"
+  ],
+  "private_input_hashes": [
+    {
+      "path": "target/public-devnet-resume-20261009/capacity-configuration-01/result.json",
+      "sha256": "23bf59f8b8653fbd4efd3f5c059a6903998836950642a5d19e506acdd252629d",
+      "bytes": 1407
+    },
+    {
+      "path": "target/public-devnet-resume-20261009/runtime-observation-01/invocation-01.json",
+      "sha256": "b0419658e7c4479ec1716d86621a3c2de871e559c48821854ecc331d4bc73220",
+      "bytes": 3326,
+      "stdout_sha256": "349ef497a5c1b9dac99f1f1f53717e564e95e68f849aa776e03c0476f7931f4d"
+    },
+    {
+      "path": "target/public-devnet-resume-20261009/runtime-observation-02/invocation-01.json",
+      "sha256": "f2bcb63b91aa1da06cf5a092261fe64b0d8d98e41769285095199d5c3fda0693",
+      "bytes": 3325,
+      "stdout_sha256": "aa1e6b064afe5224139900e5cc705e7a749b1c2c24261cc16be345a10bbb7968"
+    },
+    {
+      "path": "target/public-devnet-resume-20261009/runtime-observation-03/invocation-01.json",
+      "sha256": "b1f820a0ac9f25eafc1e75ab61fc27e6b2601b1b7929df89e4557ca7f465e3a4",
+      "bytes": 3328,
+      "stdout_sha256": "8bc74f54d36306e41d550d01daad454d49d8d4536e5edb77b985a8c41dc455a8"
+    },
+    {
+      "path": "target/public-devnet-resume-20261009/runtime-observation-04/invocation-01.json",
+      "sha256": "ff32747a14a3f10fd05186046881e07c388e2553480bbe1b5bbe8f4f322c6b61",
+      "bytes": 3328,
+      "stdout_sha256": "454221e0a6b540e471fc0e6e7c9ff42fc38b1a018993621812a8104bae5ff179"
+    },
+    {
+      "path": "target/public-devnet-resume-20261009/runtime-observation-05/invocation-01.json",
+      "sha256": "87713051aa8b5346c2936558f4e6f3d340deee14a934397f3168ae69eaba885a",
+      "bytes": 3334,
+      "stdout_sha256": "8b5ac0b9bdd3fcfe8b35b7bef85b9e4bde49f14976514b864526bb5e16ba657c"
+    },
+    {
+      "path": "target/public-devnet-resume-20261009/runtime-observation-06/invocation-01.json",
+      "sha256": "f621348bc2e3300b31af086784f4b4704dfc51138dbc6923c370e793d27c25c0",
+      "bytes": 3334,
+      "stdout_sha256": "c91fde56fdc4abd450744f2a04ece30354c6b75d93182e5b85544aba76d83cda"
+    }
+  ],
+  "document_authoring_actions": {
+    "aws_or_remote_calls": 0,
+    "resource_changes": 0,
+    "service_actions": 0,
+    "financial_actions": 0,
+    "only_local_evidence_files_created": true
+  }
+}

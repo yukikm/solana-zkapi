@@ -2,25 +2,39 @@
 
 Current core scope — 2026-10-09 JST: **finish ZKAPI core; stop demo/chat UI work**.
 Funded browser/Phantom PD-08 is deferred, not completed and not a core gate.
-The [evidence reconciliation](evidence/PD-core-scope-reconciliation.md) verifies
-fresh same-host public-input `.3` install/setup and existing production-handler
-rejection alongside the completed native lifecycle. The concrete remaining core
-requirements are E-01 escape/finalize and the selected
-[OpenRouter Ethereum-parity candidate and deployment evidence](evidence/PD-openrouter-ethereum-parity.md),
-followed by the final handoff. The user selected captured management USD after
-disable/grace, with operator accounting-delay risk and no repricing. An additional
-final-invoice/completeness gate was stronger than that upstream contract and is
-removed. The [observed cost discrepancy](evidence/PD-openrouter-management-usage-limit.md)
-remains disclosed. No reconciliation service, new paid matrix, UI work,
-pristine-OS/platform expansion or long-term qualification is added. Dated
-observations below remain historical; their old pending statements do not undo
-later receipts.
+The [scope reconciliation](evidence/PD-core-scope-reconciliation.md) credits
+same-host public-input `.3` installation, 385 local SDK checks and the recorded
+native N-01–N-04/OpenClaw lifecycle and mutual closure.
 
-The checklist now credits public-input installation, deployed capability reporting,
-streaming and price/cap guards in their recorded live or fixture scopes. Current
-service availability is separate: the latest retained 16:27 UTC cut found primary
-RPC HTTP429 and indexer HTTP503; [transport recovery](evidence/PD-public-signature-status-route.md)
-is underway. E-01 and actual parity deployment are not yet marked complete.
+The [Ethereum OpenRouter capture policy](evidence/PD-openrouter-ethereum-parity.md)
+is installed. It captures management usage after disable/grace, persists it,
+confirms deletion and retains capped immutable settlements. Delayed accounting
+remains the operator's risk; the historical response-cost discrepancy stays
+disclosed without a new invoice-finality gate or retroactive repricing.
+[Warm restart](evidence/PD-warm-restart-20261009.md) verified populated caches
+and bounded reads. The [writer throughput successor](evidence/PD-replay-writer-deployment-20261009.md)
+is installed, with the follower and financial cut preserved.
+
+[Public restoration](evidence/PD-public-restoration-20261009.md) completed the
+guarded gateway start after fresh finalized reconciliation. Separate public
+HTTP 200 at 00:54:37 UTC reported all capabilities available and relay status
+reported admission/recovery enabled; installed `.3` preflight passed ten checks
+at 00:55:26 with all 7,257 files unchanged and no AUTH or wallet action.
+The complete financial cut and four reservations were preserved. Earlier
+failed starts remain recorded; this is not continuous-availability evidence.
+[E01 escape/finalize](evidence/PD-E01-emergency-withdrawal-20261009.md) subsequently
+completed from the original deposit/journal: seven exact-wire finalized
+transactions, one micro-USDC returned, Note closed and `Pending.exists=false`.
+Its journal contains zero AUTH; the complete operator database and four
+reservations remain unchanged. The [core completion record](evidence/PD-core-completion-20261009.md)
+adds fresh public readiness and enabled relay admission/recovery at 01:43:23 UTC.
+Final evidence and the updated handoff are linked and versioned in this documentation update. The [80 GiB data volume remains retained](evidence/PD-capacity-retained-20261009.md),
+with 30,190,022,656 bytes available at 00:25:35 UTC and retained archive data
+already exceeding 40 GiB. Returning to 40 GiB requires a verified migration;
+none occurred, and no new storage approval is claimed. No UI work, new paid
+matrix, pristine-OS expansion or long-term qualification is added.
+Dated observations below remain historical; their old pending statements do
+not undo later receipts.
 
 ## Historical checkpoints
 
@@ -562,7 +576,7 @@ Acceptance:
   from public instructions, including any access gate.
 - [x] The operator has an explicit accountable provider-spend policy; a test
   token balance is never represented as real provider credit.
-- [ ] Funding/access/budget errors do not strand a note or trigger a replay.
+- [x] Funding/access/budget errors do not strand a note or trigger a replay.
 
 The [funding guide](sdk/devnet-funding.md),
 [detached authority policy](../deploy/public-devnet/detached-budget.md), and
@@ -575,9 +589,13 @@ retains four nonreclaimable caps, 20 micro-USDC of signed charges and a closed
 note after return of 4,999,980 test micro-USDC. That does not close every
 funding/access/budget failure path. The funding guide gives the exact mint,
 Devnet faucets, SOL/rent, cap headroom and private invitation procedure, supported
-by actual native deposits. The error/recovery item remains open while E-01's
-finalized deposit is still unconfirmed in its SDK operation after the RPC/indexer
-outage. Existing state remains preserved; no new failure matrix is required. The
+by actual native deposits. [E01 recovery](evidence/PD-E01-emergency-withdrawal-20261009.md)
+continued the original deposit and saved journal after the RPC/indexer outage,
+then completed escape/finalize and returned its one micro-USDC. Its zero-AUTH
+journal and unchanged complete operator cut join the native recovery evidence
+to close this scoped error/recovery item; this does not claim live injection of
+every failure branch. Existing state remains preserved; no new failure matrix
+is required. The
 [provider-cost discrepancy](evidence/PD-openrouter-management-usage-limit.md)
 remains disclosed under the selected operator-risk policy.
 
@@ -738,11 +756,11 @@ Reuse: [OpenClaw integration](integrations/openclaw.md),
 
 ## PD-10 — Publish the evidence and retain a recoverable service
 
-**Remaining core scope:** E-01 escape/finalize, the selected OpenRouter parity
-candidate/deployment evidence, and the final evidence handoff remain incomplete. Published
-inputs, native lifecycle, actual readiness deployment and historical backup
-restoration have scoped evidence. Funded browser acceptance is deferred. None of
-the dated service observations is a continuous-availability guarantee.
+**Selected core scope complete:** final evidence is linked and versioned in this documentation update. Published
+inputs, native lifecycle, E01 emergency escape/finalize, installed OpenRouter
+parity, warm restart, writer successor, public restoration and historical backup
+restoration have scoped evidence. Funded browser acceptance is deferred. None
+of the dated service observations is a continuous-availability guarantee.
 
 Work:
 
@@ -782,7 +800,7 @@ Acceptance:
 - [x] Current preview memory/disk headroom and restart/recovery are measured on
   the selected host. Long-term capacity qualification is deferred by the user
   on 2026-10-08 JST and is not a completion gate for this preview.
-- [ ] All P0 evidence is linked, versioned and redacted; no production/mainnet,
+- [x] All P0 evidence is linked, versioned and redacted; no production/mainnet,
   ceremony, audit or full I10/G1-G4 claim is inferred from a Devnet preview.
 
 The [N-01 service recovery](evidence/PD-N01-service-recovery.md) retained the
@@ -795,10 +813,18 @@ one-session logical database in isolated PG16. This is not restoration of the
 later four-session state, physical services or signer state. These checked
 items concern the measured preview scope. Published `.3` releases/profile,
 isolated public-input setup and the N-01–N-04 evidence identify the exact supported
-macOS/native/OpenClaw combination and its limitations. The emergency escape/finalize path,
-OpenRouter parity candidate/deployment evidence and final core handoff remain open. Funded browser evidence
-is deferred. [Readiness deployment and explicit admission resume](evidence/PD-public-readiness-deployment.md)
-are now recorded separately, preserving the earlier failed observation.
+macOS/native/OpenClaw combination and its limitations. [E01 emergency escape/finalize](evidence/PD-E01-emergency-withdrawal-20261009.md)
+now closes the original one-micro-USDC note with independently verified finalized
+transactions and unchanged operator financial state. The [core completion record](evidence/PD-core-completion-20261009.md)
+joins the final public readiness observation and evidence handoff in this documentation update.
+Funded browser evidence is deferred.
+The installed [OpenRouter policy](evidence/PD-openrouter-ethereum-parity.md),
+[warm restart](evidence/PD-warm-restart-20261009.md),
+[writer successor](evidence/PD-replay-writer-deployment-20261009.md), and
+[public restoration/preflight](evidence/PD-public-restoration-20261009.md) now
+have separate receipts preserving all failed observations and financial state.
+[Current capacity](evidence/PD-capacity-retained-20261009.md) records the retained
+80 GiB volume and measured headroom without a migration or long-term claim.
 
 ## PD-11 — Keep broader follow-ups explicit
 
@@ -829,10 +855,10 @@ These are separate from proving the first public Chat integration:
    funding policy (PD-03 through PD-06).
 3. Retain the completed isolated public-input onboarding and read-only validation
    (PD-07), with its same-host rather than pristine-OS scope explicit.
-4. Retain completed N-01–N-04 native evidence (PD-09). Complete the separately
-   started E-01 escape/finalize path and record the selected OpenRouter parity
-   implementation/deployment; do not replay historical inference. PD-08 is deferred.
-5. Finish the core operations/evidence handoff (PD-10); schedule PD-11 separately.
+4. Retain completed N-01–N-04 native evidence (PD-09), E01 escape/finalize,
+   the installed OpenRouter policy and public restoration. Do not replay
+   historical inference or completed wallet operations. PD-08 is deferred.
+5. Retain the completed core operations/evidence handoff (PD-10); schedule PD-11 separately.
 
 For every task, append or link an evidence record under `docs/evidence/`
 containing: task ID, owner, source/release/profile hashes, commands, environment,

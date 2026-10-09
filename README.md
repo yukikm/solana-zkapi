@@ -9,18 +9,20 @@ for in integer micro-USDC (1 USDC = 1,000,000 micro-USDC).
 
 ## Current handoff — 2026-10-09 JST
 
-The current scope is the core SDK/API, Ethereum-style history restart and
-OpenRouter accounting. Demo UI work and long-term qualification are deferred.
+The core SDK/API, Ethereum-style history restart and OpenRouter accounting are
+installed and verified in the selected Devnet preview scope. The
+[completion record](docs/evidence/PD-core-completion-20261009.md) joins their
+evidence. Demo UI work and long-term qualification are deferred.
 
-- **Accounting:** the [Ethereum-parity implementation](docs/evidence/PD-openrouter-ethereum-parity.md) disables the managed key, waits five seconds, captures one valid usage observation, persists it, and confirms deletion before capped settlement. Captured amounts survive recovery; signed charges are never repriced. Delayed provider accounting remains the operator's risk, not a promise of final-invoice accuracy.
-- **History:** [durable checkpoints](docs/evidence/PD-restart-checkpoints.md) retain complete replay state and cursor, authenticate the suffix on normal restart, and fall back to full replay for a missing or invalid cache. Local checks passed 79 serial challenger tests (12 ignored), four Indexer tests and one explicitly enabled saved-SBF Pending restoration test; these scopes overlap. Binary `0037eca8…7c8f49` is installed (receipt `af13e3dd…5c7dc`). Initial cache creation and a measured warm restart remain unverified; the public gateway is stopped.
+- **Accounting:** the installed [Ethereum-parity implementation](docs/evidence/PD-openrouter-ethereum-parity.md) disables the managed key, waits five seconds, captures one valid management `usage + byok_usage` observation, persists it, and confirms deletion before capped settlement. Captured amounts survive recovery; signed charges are never repriced. Delayed provider accounting remains the operator's risk, without a final-invoice accuracy claim.
+- **History:** [durable checkpoints](docs/evidence/PD-restart-checkpoints.md) retain complete replay state and cursor, authenticate the suffix on normal restart, and fall back to full replay for a missing or invalid cache. The [actual warm restart](docs/evidence/PD-warm-restart-20261009.md) verified both caches and bounded process reads with binary `0037eca8…7c8f49`. The observed 57.85/54.71-second intervals are upper bounds to the cache measurement, not precise cache-load times.
+- **Writer and public API:** the [throughput correction](docs/evidence/PD-replay-writer-deployment-20261009.md) is installed as `8ebeef10…89274`; the follower remains `0037eca8…7c8f49`. Its 194 build inputs match published source `8423687b…`. [Public restoration](docs/evidence/PD-public-restoration-20261009.md) completed at 00:54 UTC, followed by fresh public HTTP 200 and all ten installed `.3` preflight checks. The complete financial database and four existing reservations remained unchanged.
 
-**Remaining for the next session:**
+**Core completion checks:**
 
-- [ ] Confirm initial checkpoint creation and measure a normal restart from it. Require fresh finalized account reconciliation before declaring the public API ready or restarting its gateway.
-- [ ] Complete the separate E01 emergency withdrawal lifecycle only when resuming acceptance. Its existing one-micro-USDC deposit and saved journal must be continued; never repeat that deposit or blindly resend a transaction. Escape/finalize is still unverified.
-- [x] Include the selected core source/documentation changes and this handoff in the publication commit. Unrelated working-tree changes and the existing Git index are preserved.
-- [ ] Resolve the remaining 80 GiB storage increase. The previous 40 GiB volume was nearly full; returning to it requires a verified data migration, not an in-place size change or deletion of retained history.
+- [x] Fresh finalized reconciliation, guarded gateway start against the installed cut, public readiness and installed SDK preflight are [recorded](docs/evidence/PD-public-restoration-20261009.md). Admission/recovery were separately observed enabled; provider credit and continuous availability are not established by these checks.
+- [x] [E01 emergency withdrawal](docs/evidence/PD-E01-emergency-withdrawal-20261009.md) completed from its original deposit and journal: seven exact-wire finalized transactions, one micro-USDC returned, the Note closed and `Pending.exists=false`. The saved journal has zero AUTH; the four-session/four-reservation operator cut is unchanged. Public readiness was freshly verified again at 01:43:23 UTC.
+- [x] Final readiness, E01 outcomes and the updated handoff are linked and versioned in this documentation update. [Source publication and CI](docs/evidence/PD-hosted-ci-7700493.md) retain their exact recorded scopes; latest-source hosted CI is still in progress.
 
 Browser work and additional lifecycle/recovery acceptance are deferred. See the
 [core scope](docs/evidence/PD-core-scope-reconciliation.md) and
@@ -28,12 +30,18 @@ Browser work and additional lifecycle/recovery acceptance are deferred. See the
 boundaries. Preserve existing journals, signed attempts, reservations, immutable
 releases and failed observations.
 
-**AWS cost status:** the temporary Unlimited CPU setting was restored to
-Standard and verified on 2026-10-08 at 18:21:52 UTC. The instance type remains
-the original `t3a.medium`. The data volume is still 80 GiB; its additional 40 GiB has an illustrative
-cost of USD 3.20/month. Storage restoration remains undecided at this handoff;
-it has not been reported as complete. See the [capacity record](docs/evidence/PD-preview-capacity-80g.md)
-and [AWS's restriction on shrinking volumes](https://docs.aws.amazon.com/ebs/latest/userguide/ebs-modify-volume.html).
+**AWS cost status:** read-only AWS inspection at 2026-10-09 00:15:55 UTC
+confirmed `t3a.medium`, Standard CPU credits, an 80 GiB gp3 data volume and a
+20 GiB gp3 root volume. This inspection changed no resources. The 80 GiB data
+volume remains retained; its additional 40 GiB has an illustrative cost of
+USD 3.20/month. Returning to 40 GiB is an unresolved storage follow-up requiring
+a verified migration, not a completed rollback or deletion of retained history.
+The [retained-capacity record](docs/evidence/PD-capacity-retained-20261009.md)
+measured 30,190,022,656 bytes available at 00:25:35 UTC; retained archive data
+already exceeds 40 GiB. No migration or new storage decision is implied, and
+continued chain growth leaves long-term capacity qualification deferred.
+See the [earlier expansion record](docs/evidence/PD-preview-capacity-80g.md) and
+[AWS's restriction on shrinking volumes](https://docs.aws.amazon.com/ebs/latest/userguide/ebs-modify-volume.html).
 
 **Development preview.** Local protocol tests and selected Devnet/provider demos
 have passed. Independent SDK installation and selected devnet/provider lifecycles
@@ -44,19 +52,21 @@ provides an SDK tarball and a macOS ARM64 clientd distribution.
 There is no published npm release or ready-to-use production deployment bundle.
 See [supported features and evidence](docs/sdk/status.md).
 
-For the remaining work to offer a public Devnet deployment that independent
-apps can use from published inputs, see the [public Devnet readiness backlog](docs/public-devnet-readiness-backlog.md).
-It distinguishes existing implementation/live evidence from missing hosted
-services, complete artifacts, onboarding and current-release acceptance.
+The [public Devnet readiness backlog](docs/public-devnet-readiness-backlog.md)
+separates completed public inputs, services, native acceptance and E01 emergency
+withdrawal and the published evidence handoff from deferred broader work.
 The published `0.2.0-devnet.3` preview provides an
 [authenticated public profile and read-only preflight](docs/sdk/public-profile.md),
 an [independent consumer example](tools/public-devnet-consumer/README.md),
 and [funding instructions](docs/sdk/devnet-funding.md).
 See the [implementation record](docs/public-devnet-implementation.md) for the
-remaining operator readiness and funded-acceptance requirements. The
+original design and acceptance boundaries. The
 [public deployment guide](docs/sdk/public-devnet-preview.md) supplies the actual
-profile and verified downloads. New admission remains suspended during operator
-catch-up and funded acceptance; downloading a client is not service readiness.
+profile and verified downloads. The [restoration record](docs/evidence/PD-public-restoration-20261009.md)
+includes successful installed preflight at 00:55:26 UTC on 2026-10-09. The
+[completion record](docs/evidence/PD-core-completion-20261009.md) adds fresh public
+readiness at 01:43:23 UTC after E01. Run fresh preflight before use; these observations
+do not guarantee continuous availability.
 
 [Kit migration](docs/sdk/kit-migration.md) · [SDK quickstart](docs/sdk/quickstart.md) · [SDK tarball](docs/sdk/distribution.md) · [Local clientd](docs/sdk/clientd-quickstart.md)
 

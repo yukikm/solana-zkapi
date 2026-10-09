@@ -1,40 +1,60 @@
 # Support and verification status
 
-Updated 2026-10-08 JST. “Implemented,” “locally tested” and “publicly verified”
-describe different boundaries. Evidence is tied to the source/configuration
-tested at the time; adding a wrapper does not reverify an older deployment.
+Updated 2026-10-09 JST. The current public client release is
+**`0.2.0-devnet.3`**. [Public API restoration](../evidence/PD-public-restoration-20261009.md)
+completed, and installed preflight passed ten checks at 00:55:26 UTC.
+[E01 emergency withdrawal](../evidence/PD-E01-emergency-withdrawal-20261009.md)
+also completed, followed by fresh public HTTP 200 at 01:43:23 UTC in the
+[core completion record](../evidence/PD-core-completion-20261009.md). Final
+evidence is linked and versioned in this documentation update.
+Evidence below applies to its recorded source and deployment, not automatically
+to later working-tree changes or continuous availability.
 
 | Capability | Current evidence / limit |
 |---|---|
-| Public profile preview | Published `0.2.0-devnet.2`: authenticated profiles, read-only preflight, explicit capabilities, invitation-gated gateway, browser/native onboarding and bounded native settlement waiting. [Publication verification](../evidence/PD-public-client-publication.md) passed release/asset attestations, anonymous downloads and 7,257 native installed-file hashes. [Focused hosted CI](../evidence/PD-public-client-hosted-ci.md) passed 377 SDK and 75 installed-package fixtures plus consumer and Go checks in separate scopes. The complete public bundle produced six actual native/WASM proofs with 18 negative checks. Current operator catch-up and funded browser/native/OpenClaw acceptance remain in progress. |
-| Kit migration | Current source uses Kit 8.4.0 directly; breaking native types and async validation are documented in [the migration guide](kit-migration.md). Historical live/provider reports below predate this client migration and do not establish a new live acceptance pass. |
-| Application SDK and response helpers | 315 local SDK tests with zero skips and actual Chrome custody; independent SDK Chat text/tools/SSE consumption, settlement and devnet withdrawal verified in selected cases. OpenRouter terminal-usage parsing corrected; [integration evidence](../evidence/I10-external-integration.md), [parser correction](../evidence/I10-sdk-sse-parser.md) |
-| Standalone browser chat | Arbitrary text/history, configured model/API selection, SSE/cancel and recovery UI; actual Chrome with synthetic services plus a pinned local build wired to the fresh public devnet profile; existing user Chrome blocks localhost, so actual standalone Phantom remains unverified; [evidence](../evidence/I10-parity-review-browser.md) |
-| Private authorization reads | Common snapshot and shared-account reads with local native/WASM path reconstruction; selected-note financial recovery remains separate |
-| Fresh public devnet setup | Fresh OS-random profile deployed with finalized artifact pins; two actual native direct-provider lifecycles passed. Single-party tree setup and upgrade authority remain; [evidence](../evidence/I10-parity-review-live-components/results.json) |
-| Encrypted browser storage | Actual headless Chrome/IndexedDB/Web Locks tests; not portable backup or OS-keychain acceptance |
-| OpenRouter proxy Chat tools | One real case, `openai/gpt-4o-mini`, HTTP 200, 18 micro-USDC, verified successor; [report](../evidence/I10-openrouter-tools-case-results.json) |
-| Browser OpenAI demo | Actual Chrome/Phantom funding, fixed text response and SDK-verified 4-micro-USDC settlement; [observation](../evidence/I10-phantom-openai-success-observation.json), [runtime](../evidence/I10-phantom-openai-success-runtime.json) |
-| That demo's withdrawal | Independent finalized transaction collection; [report](../evidence/I10-repeat-demo-withdrawal-finalized.json) |
-| Second funded demo | One new actual response on a separate 2-USDC note; [observation](../evidence/I10-repeat-demo-api-observation.json). Not repeated live conversation on that note |
-| Streaming | One actual OpenRouter direct Chat SSE case passed, HTTP 200, 4 micro-USDC and signed successor; [report](../evidence/I10-parity-review-live-components/direct-sse-case.json). This does not supersede the earlier proxy SSE quote failure or establish standalone Phantom streaming |
-| Multiple models/direct modes | OpenRouter direct Chat JSON and SSE passed on `openai/gpt-4o-mini`, including runtime management-checkpoint corroboration and withdrawal; [aggregate](../evidence/I10-parity-review-live-components/results.json). Other direct providers/APIs, live model switching and the full matrix remain unverified |
-| Compact one-signature deposit | Two actual public devnet native SDK compact deposits and mutual closes passed, six finalized transactions per lifecycle; [runtime](../evidence/I10-parity-review-live-components/direct-plain-runtime.json). The 995-byte public wire and 1,007-byte local priority-fee relay test are separate; actual compact Phantom UX remains unverified |
-| SDK distribution | Compiled ES modules/types, real independent npm installation, 59 installed fixture tests and real native/WASM/artifact checks; see [distribution](distribution.md). Registry publication, deployment availability and production release are separate |
-| Native installation and existing agents | Private setup/run/request commands, generated OpenClaw configuration, 43 Go race tests, installed native Vault SBF and ten actual OpenClaw CLI fixture checks. Separate actual OpenClaw text/tool continuation, signed settlement, settled restart and devnet withdrawal passed through the bounded acceptance relay; [integration evidence](../evidence/I10-external-integration.md), [native local evidence](../evidence/I10-clientd-external.md) |
-| Claude Code and Codex configuration | Isolated CLI probes and configuration guides; current request validation still blocks these clients. No live-provider or funded acceptance. See [application compatibility](../integrations/README.md) |
-| Production | Full I10/G3 and G1–G4 gates incomplete |
+| Public profile and distribution | [SDK .3 publication](../evidence/PD-sdk3-publication.md) verifies release/asset attestations, anonymous downloads and all 7,257 native installed-file hashes. The authenticated profile supplies the deployment, proof assets, capabilities and public transports. Distribution is SDK tarball and macOS ARM64 clientd; npm publication and other platforms remain separate. |
+| Public service readiness | [Restoration and installed preflight](../evidence/PD-public-restoration-20261009.md) verified public control/indexer/signer availability and ten `.3` preflight checks with all 7,257 installed files unchanged. Admission/recovery were separately observed enabled. No AUTH, inference or wallet action ran; provider credit and continuous availability are outside these observations. Run fresh preflight before use. |
+| Independent onboarding | Public-input installation and released `clientd setup` succeeded outside the checkout with isolated consumer directories. This is a same-host installation, not a pristine-OS test. [Scope and receipts](../evidence/PD-core-scope-reconciliation.md) |
+| SDK lifecycle and response handling | The `.3` SDK validation passed **385/385 local tests**, with 75 guarded inputs unchanged, covering request rejection before AUTH, tariff/cap binding, terminal usage, cancellation and durable recovery without inference replay. These overlap earlier focused tests and are not new provider calls. [Core scope](../evidence/PD-core-scope-reconciliation.md) |
+| Native public lifecycle | [N-01](../evidence/PD-native-public-N01.md) completed compact deposit, Chat and verified settlement. The subsequent `.3` [OpenClaw N-02/N-03](../evidence/PD-native-public-N02-N03.md) completed text/read-tool continuation using the explicit settlement scheduling adapter. [N-04](../evidence/PD-native-public-N04.md) completed interrupted-stream recovery and mutual withdrawal: four signed charges total **20 micro-USDC**, with **4,999,980 micro-USDC** returned and the note closed. These dated results do not establish current service readiness. |
+| OpenRouter accounting | The installed [Ethereum-parity policy](../evidence/PD-openrouter-ethereum-parity.md) disables the key, waits five seconds, durably captures one valid management `usage + byok_usage` observation, confirms deletion and signs the capped charge. Delayed accounting is the operator's risk; signed charges are immutable. The historical N-02/N-03 response-cost discrepancy remains preserved, without retroactive repricing or an invoice-finality claim. |
+| History and service restart | Complete private checkpoints preserve replay state and financial journal authority. [Actual warm restart](../evidence/PD-warm-restart-20261009.md) verified cache population and bounded process reads for binary `0037eca8…`. The [writer-only throughput successor](../evidence/PD-replay-writer-deployment-20261009.md) is installed. The later [public restoration](../evidence/PD-public-restoration-20261009.md) passed fresh finalized reconciliation and gateway readiness while preserving the complete database and four reservations. |
+| Preview capacity | [Read-only capacity evidence](../evidence/PD-capacity-retained-20261009.md) confirms `t3a.medium` Standard, 80 GiB data/20 GiB root, and 30,190,022,656 available bytes at 00:25:35 UTC. Retained archive data exceeds 40 GiB; no migration, rollback or new storage approval is claimed. Continued chain growth leaves long-term qualification deferred. |
+| Funding and withdrawals | Compact deposits and ordinary mutual closure have public native evidence above. [E01 emergency withdrawal](../evidence/PD-E01-emergency-withdrawal-20261009.md) continued the original deposit/journal and independently verified seven exact-wire finalized transactions, one micro-USDC returned, Note closed and `Pending.exists=false`. Its journal has zero AUTH; the complete operator database and four reservations remain unchanged. [Funding guide](devnet-funding.md) |
+| Browser SDK and custody | Browser factory, local proof worker, encrypted IndexedDB journal and shared snapshot/path validation are implemented. Headless Chrome custody and separate-origin preflight have scoped evidence; current funded browser/Phantom cases are deferred. Application conversation history and presentation remain the consuming app's responsibility. [Readiness backlog](../public-devnet-readiness-backlog.md) |
+| Kit and hosted CI | The SDK/native client uses Solana Kit 8.4.0 directly; see the [breaking API migration](kit-migration.md). All nine implementation jobs passed at exact `.3` source `e2ee9320…` ([historical CI](../evidence/PD-hosted-ci-e2ee932.md)). Latest test-only source `6f796c1…` is published; its hosted workflow remains in progress at this checkpoint. The corrected local E2E passed 19 real SBF transactions. These are separate scopes, not a new all-nine-job pass or runtime-artifact authentication. [Completion record](../evidence/PD-core-completion-20261009.md) |
+| Other AI clients and production | Claude Code/Codex configuration probes remain blocked by request validation; no funded compatibility is claimed. [Compatibility guide](../integrations/README.md). Full I10/G3, G1–G4, production qualification, audit and mainnet remain incomplete. |
 
-The historical funded browser demo sends a fixed prompt. The standalone
-[browser chat application](https://github.com/yukikm/solana-zkapi-client) is separate;
-its services, manifest pins, reservations and journals were not migrated.
+Earlier I10 results remain historical evidence:
+
+- The **2026-10-05** Chrome/Phantom fixed-prompt demo recorded a verified
+  four-micro-USDC settlement and a separately collected finalized withdrawal.
+  The later response on a separate two-USDC note is also retained.
+  [Response observation](../evidence/I10-phantom-openai-success-observation.json),
+  [runtime](../evidence/I10-phantom-openai-success-runtime.json),
+  [withdrawal](../evidence/I10-repeat-demo-withdrawal-finalized.json),
+  [second response](../evidence/I10-repeat-demo-api-observation.json).
+- The **2026-10-07** standalone browser build and synthetic-service checks did
+  not establish actual Phantom use; the recorded Chrome localhost blocker
+  remains preserved. [Browser evidence](../evidence/I10-parity-review-browser.md).
+- Earlier direct OpenRouter JSON/SSE lifecycles and compact deposits/withdrawals,
+  plus one proxy Chat-tools case charging 18 micro-USDC, retain their original
+  model and deployment limits. They do not establish other providers, a full
+  model matrix or current browser acceptance.
+  [Direct cases](../evidence/I10-parity-review-live-components/results.json),
+  [SSE case](../evidence/I10-parity-review-live-components/direct-sse-case.json),
+  [compact native case](../evidence/I10-parity-review-live-components/direct-plain-runtime.json),
+  [proxy tools](../evidence/I10-openrouter-tools-case-results.json).
+- The **2026-10-07** independent SDK/native integration records preserve their
+  package-installation, proof, synthetic OpenClaw and selected provider scopes.
+  Their older test counts are not added to the `.3` SDK count.
+  [Integration](../evidence/I10-external-integration.md),
+  [native installation](../evidence/I10-clientd-external.md),
+  [SSE parser correction](../evidence/I10-sdk-sse-parser.md).
 
 Initial APIs cover text and client-executed tools. Images/documents, audio,
 Realtime, hosted tools, arbitrary HTTP proxying, persisted provider conversation
 storage, Ollama and native SOL billing are outside the initial release scope.
-
-For source-specific local results of this addition, see the
-[application SDK evidence](../evidence/I10-app-sdk.md) and the newer
-[parity review and actual direct cases](../evidence/I10-parity-review.md). Historical failures,
-waivers and reservations remain authoritative; no failed case is upgraded to a
-pass by a later example or documentation change.
+The [standalone application](https://github.com/yukikm/solana-zkapi-client) is
+maintained separately. Historical failures, signed receipts, journals and
+reservations remain authoritative; later work does not relabel failed cases.
