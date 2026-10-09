@@ -1,5 +1,14 @@
 # Solana zkAPI
 
+[Privacy and recovery usability `.8` is published](docs/evidence/PD-sdk8-publication-20261010.md):
+read-only upgrade plans, explicit ZDR model checks and structured privacy status.
+Both client CI jobs, 543 source tests, 224 installed-package tests and all six
+asset attestations/downloads passed. See the [`.8` guide](docs/releases/usability-preview.md)
+for the new revision-6 profile and safe handling of older installations.
+**Public preflight is currently blocked:** the operator catalog returned an empty
+model list on both `.7` and `.8`. New ZDR metadata checks passed separately; this
+does not establish public inference readiness. The evidence preserves both results.
+
 [Privacy release verified](docs/evidence/PD-sdk7-publication-20261010.md): SDK/native
 **`0.2.0-devnet.7`** adds direct-request filtering, direct OpenRouter ZDR policy and
 request-journal minimization. See the [release guide](docs/releases/privacy-preview.md)

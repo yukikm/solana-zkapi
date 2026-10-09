@@ -113,4 +113,6 @@ npm install --save-exact /absolute/downloads/zkapi-solana-sdk-0.2.0-devnet.8.tgz
 
 No program authority, proof setup, grant or financial state changes are part of
 this release. The [remaining trust differences](privacy-preview.md#trust-comparison-with-ethereum)
-remain. Publication evidence is recorded separately after verification.
+remain. [Publication, signatures and downloads are verified](../evidence/PD-sdk8-publication-20261010.md).
+The public operator's empty catalog currently blocks ordinary preflight on both
+`.7` and `.8`; the metadata helper's successful read is a separate observation.
