@@ -867,13 +867,9 @@ async fn repeated_dispatcher_and_direct_faults_recover_without_replay_or_double_
                 .is_err(),
             "usage outage accepted"
         );
-        ensure!(
-            h.direct()
-                .reconcile(&h.ledger, direct.request_id)
-                .await?
-                .is_none(),
-            "first usage sample treated as final"
-        );
+        // The first successful post-grace sample is durably selected before
+        // deletion. This call reaches the deliberately lost DELETE response;
+        // recovery must reuse that sample, not require another usage read.
         ensure!(
             h.direct()
                 .reconcile(&h.ledger, direct.request_id)
@@ -887,11 +883,29 @@ async fn repeated_dispatcher_and_direct_faults_recover_without_replay_or_double_
             .await?
             .unwrap();
         ensure!(
-            retained["usage"]["observed_nano"] == "20000" && retained["deleted"] == false,
-            "final usage not durable before delete"
+            retained["usage"]["observed_nano"] == "20000"
+                && retained["observation"].is_null()
+                && retained["deleted"] == false,
+            "selected usage not durable before delete"
         );
+        {
+            let d = provider.direct.lock().await;
+            ensure!(
+                (d.creates, d.lists, d.disables, d.reads, d.deletes) == (1, 2, 2, 2, 1)
+                    && d.deleted,
+                "first successful usage sample did not reach the uncertain deletion"
+            );
+        }
         h.restart_writer().await?;
         backend_losses += 1;
+        ensure!(
+            h.ledger
+                .direct_checkpoint(direct.request_id)
+                .await?
+                .as_ref()
+                == Some(&retained),
+            "direct retirement checkpoint changed across writer restart"
+        );
         // The healthy completion committed before this backend loss. Treat its
         // acknowledgement as lost and retry the exact outcome/receipt through
         // the reopened writer: terminal state and accounting must be durable.
@@ -999,7 +1013,7 @@ async fn repeated_dispatcher_and_direct_faults_recover_without_replay_or_double_
         );
         let d = provider.direct.lock().await;
         ensure!(
-            (d.creates, d.lists, d.disables, d.reads, d.deletes) == (1, 2, 2, 3, 2),
+            (d.creates, d.lists, d.disables, d.reads, d.deletes) == (1, 2, 2, 2, 2),
             "direct recovery unexpectedly reissued/read deleted usage/redeleted"
         );
         cases.push(json!({"cycle":cycle,"boundary":"direct_issue_disable_usage_delete_uncertainty","creates":d.creates,"recovery_list_pages":d.lists,"disable_requests":d.disables,"usage_reads":d.reads,"delete_requests":d.deletes,"charged_nano_usdc":"10000","operator_loss_nano_usdc":"10000","usage_retained_across_writer_restart":true}));
