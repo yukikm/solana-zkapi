@@ -10,7 +10,7 @@ import {promisify} from 'node:util';
 import {loadPublicDeploymentProfile, publicProfileClientOptions, type LoadedPublicDeploymentProfile} from '../packages/sdk/src/public-profile.ts';
 import {parseStrictJson,sha256Hex,jcsBytes} from '../packages/sdk/src/trust.ts';
 import {directControlRelay,loadBrowserChatBudget,localForwarder,type BrowserChatDevnetHostConfig,type DirectDemoBudget} from './browser_chat_devnet_host.ts';
-import {startUiHost,type HostOptions,type UiDirectProviderBudget} from './devnet-browser-relay/host.ts';
+import {startUiHost,validatePublicBrowserOrigins,type HostOptions,type UiDirectProviderBudget} from './devnet-browser-relay/host.ts';
 import {publicReadiness} from './public_devnet_readiness.ts';
 
 export interface SupplementalGatewayBudget {
@@ -31,6 +31,7 @@ export type BudgetCommandRunner=(file:string,args:readonly string[],options:{cwd
 export interface PublicDevnetGatewayConfig {
   port:number;
   publicOrigin:string;
+  /** Exact HTTPS origins, or ['*'] for a public API usable from any origin without cookies. */
   allowedBrowserOrigins:readonly string[];
   allowNativeRequests:boolean;
   allowTransactions:boolean;
@@ -58,8 +59,7 @@ function validateConfig(config:PublicDevnetGatewayConfig){
     'profileUrl','profilePath','profileSha256','bundleDescriptorPath','rpcUrl','indexerUrl','controlUrl','budget'],['historyRpcUrl','localCaPath','admissionTokenSha256','requireInvitation']);
   assert.ok(Number.isInteger(config.port)&&config.port>=0&&config.port<=65535);
   const origin=new URL(config.publicOrigin);assert.ok(origin.protocol==='https:'&&origin.origin===config.publicOrigin&&!origin.username&&!origin.password);
-  assert.ok(Array.isArray(config.allowedBrowserOrigins)&&config.allowedBrowserOrigins.length<=32&&new Set(config.allowedBrowserOrigins).size===config.allowedBrowserOrigins.length);
-  for(const input of config.allowedBrowserOrigins){const u=new URL(input);assert.ok(u.protocol==='https:'&&u.origin===input&&!u.username&&!u.password);}
+  validatePublicBrowserOrigins(config.allowedBrowserOrigins);
   for(const name of ['allowNativeRequests','allowTransactions','allowNewAdmissions'] as const)assert.equal(typeof config[name],'boolean');
   assert.ok(config.requireInvitation===undefined||typeof config.requireInvitation==='boolean');
   if(((config.requireInvitation??true)&&config.allowNewAdmissions)||config.admissionTokenSha256!==undefined)assert.match(config.admissionTokenSha256??'',/^[0-9a-f]{64}$/, 'public admission invitation digest required');

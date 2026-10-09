@@ -63,7 +63,7 @@ test('public gateway loads pinned profile and bundle offline without UI, budget,
 test('gateway refuses altered bundle and origin/model modes before opening budget or listener',async t=>{
   const{config}=await installedFixture(t);await writeFile(config.bundleDescriptorPath,'{}');
   await assert.rejects(loadGatewayPublicProfile(config));
-  await assert.rejects(loadGatewayPublicProfile({...config,allowedBrowserOrigins:['*']}));
+  await assert.rejects(loadGatewayPublicProfile({...config,allowedBrowserOrigins:['*',browserOrigin]}));
   await assert.rejects(loadGatewayPublicProfile({...config,allowNewAdmissions:true}),/invitation digest/);
 });
 
@@ -76,6 +76,59 @@ test('invitation-free gateway configuration requires an explicit boolean opt-out
   await assert.rejects(loadGatewayPublicProfile({...open,requireInvitation:'false'} as any));
   await assert.rejects(loadGatewayPublicProfile({...open,admissionTokenSha256:'invalid'}));
   await assert.rejects(loadGatewayPublicProfile({...open,profileSha256:'00'.repeat(32)}));
+});
+
+test('public CORS opt-in accepts only a lone wildcard and preserves exact origin configuration',async t=>{
+  const {config}=await installedFixture(t);
+  await loadGatewayPublicProfile({...config,allowedBrowserOrigins:['*']});
+  await loadGatewayPublicProfile({...config,allowedBrowserOrigins:[]});
+  for(const origins of [['*',browserOrigin],['*','*'],['http://localhost:5173'],['null'],[browserOrigin+'/'],[browserOrigin,browserOrigin]]) {
+    await assert.rejects(loadGatewayPublicProfile({...config,allowedBrowserOrigins:origins}));
+    await assert.rejects(host(t,{allowedBrowserOrigins:origins}));
+  }
+});
+
+test('wildcard CORS permits independent HTTPS, localhost and opaque origins without ambient credentials',async t=>{
+  let forwards=0;
+  const h=await host(t,{allowedBrowserOrigins:['*'],allowNativeRequests:false,
+    controlRelay:async()=>{forwards++;return{status:200,bytes:Buffer.from('{}')};}});
+  for(const origin of ['https://unregistered-app.example.com','http://localhost:5173','http://127.0.0.1:3000','http://[::1]:8080','null']){
+    for(const [path,method] of [['/zkapi/v1/config','GET'],['/zkapi/v1/tree/snapshot','GET'],['/zkapi/v1/tree/notes/0/zero-path','GET'],['/rpc','POST'],['/zkapi/v1/quotes','POST'],['/zkapi/v1/sessions','POST']]){
+      const preflight=await call(h.base,path,'OPTIONS',{origin,'access-control-request-method':method,
+        'access-control-request-headers':path==='/zkapi/v1/sessions'?'Authorization, Content-Type, X-Zkapi-Admission':'Content-Type'});
+      assert.equal(preflight.status,204);
+      assert.equal(preflight.headers['access-control-allow-origin'],'*');
+      assert.equal(preflight.headers['access-control-allow-methods'],method);
+      assert.equal(preflight.headers['access-control-allow-credentials'],undefined);
+    }
+    const before=forwards;
+    const response=await call(h.base,'/zkapi/v1/config','GET',{origin,'sec-fetch-site':'cross-site'});
+    assert.equal(response.status,200);assert.equal(forwards,before+1);
+    assert.equal(response.headers['access-control-allow-origin'],'*');
+    assert.equal(response.headers['access-control-allow-credentials'],undefined);
+    assert.equal(response.headers['access-control-expose-headers'],'x-zkapi-error-code');
+    const error=await call(h.base,'/not-an-api-route','GET',{origin});
+    assert.equal(error.status,400);assert.equal(error.headers['access-control-allow-origin'],'*');
+    for(const headers of [{cookie:'ambient=private'},{'proxy-authorization':'secret'},{'x-api-key':'secret'}])
+      assert.equal((await call(h.base,'/zkapi/v1/config','GET',{origin,...headers})).status,400);
+    assert.equal(forwards,before+1);
+  }
+  assert.equal(forwards,5);
+  assert.equal((await call(h.base,'/zkapi/v1/config')).status,400);
+  assert.equal((await call(h.base,'/zkapi/v1/config','GET',{'sec-fetch-site':'same-origin','sec-fetch-mode':'cors'})).status,200);
+});
+
+test('wildcard CORS retains preflight route/header guards and invitation authorization',async t=>{
+  let authForwarded=false;
+  const h=await host(t,{allowedBrowserOrigins:['*'],allowNewAdmissions:true,admissionTokenSha256:'aa'.repeat(32),
+    controlRelay:async input=>{assert.equal(input.newAdmissionAuthorized,false);authForwarded=true;return{status:403,bytes:Buffer.from('{}')};}});
+  const origin='http://localhost:5173',headers={origin,'access-control-request-method':'POST'};
+  for(const extra of [{'access-control-request-method':'DELETE'},{'access-control-request-headers':'cookie'},
+    {'access-control-request-headers':'authorization, authorization'},{authorization:'Bearer private'}])
+    assert.equal((await call(h.base,'/zkapi/v1/sessions','OPTIONS',{...headers,...extra})).status,400);
+  assert.equal(authForwarded,false);
+  const denied=await call(h.base,'/zkapi/v1/sessions','POST',{origin,'content-type':'application/json'},'{}');
+  assert.equal(denied.status,403);assert.equal(denied.headers['access-control-allow-origin'],'*');assert.equal(authForwarded,true);
 });
 
 test('independent SDK preflight completes through canonical gateway with only read-only upstream fixture calls',async t=>{

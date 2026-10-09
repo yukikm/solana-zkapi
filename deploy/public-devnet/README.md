@@ -86,7 +86,7 @@ The strict configuration fields are:
 | Field | Purpose |
 |---|---|
 | `port`, `publicOrigin` | Loopback listener and exact operator-owned HTTPS origin |
-| `allowedBrowserOrigins` | Explicit HTTPS application origins; no wildcard/reflection |
+| `allowedBrowserOrigins` | Exact HTTPS application origins, or `["*"]` to allow any browser origin without cookies, including HTTP localhost |
 | `allowNativeRequests` | Explicitly allow clients without Origin and either no Fetch Metadata or only Node fetch's `Sec-Fetch-Mode: cors` |
 | `allowTransactions`, `allowNewAdmissions` | Global write and separate new-admission policy |
 | `requireInvitation` | Optional access policy; defaults to `true`. Set explicitly to `false` to accept new AUTH without an invitation, within the existing durable budget |
@@ -144,11 +144,25 @@ The independent application serves its own worker and static files. Publish the
 profile and complete bundle on a separately reviewed immutable static host whose
 CORS permits the intended app origins; the gateway never serves private files.
 
-Browser requests require an explicitly allowed Origin. OPTIONS checks the exact
+Set `allowedBrowserOrigins: ["*"]` for an open public API that applications can
+connect to without registering an origin. Responses to requests with Origin use
+`Access-Control-Allow-Origin: *`. This includes HTTPS applications, HTTP localhost
+development, and opaque (`null`) origins. Do not combine `"*"` with other entries.
+An explicit HTTPS list retains the existing restrictive behavior; omission is
+invalid. CORS does not grant access to local wallets or remove secure-context,
+application CSP, browser-extension or provider restrictions.
+
+Use `credentials: "omit"` in browser fetches; `credentials: "include"` is
+incompatible with wildcard CORS. Session authorization is an explicit
+`Authorization` header, which preflight continues to permit, rather than a
+cookie. The SDK already uses `credentials: "omit"`. Keep
+`allowNativeRequests: true` for server, CLI and native clients without Origin.
+
+Browser requests follow the configured origin policy. OPTIONS checks the exact
 route/method and allows Authorization and Content-Type request headers.
 CORS never permits cookies or ambient credentials. The extra
 `x-zkapi-admission` request header is allowed only for session AUTH preflight. Same-origin browser fetches that omit
-Origin require the gateway origin in the allowlist and matching same-origin
+Origin require wildcard mode or the gateway origin in the allowlist and matching same-origin
 Fetch Metadata. A native request without Origin is accepted only when explicitly
 enabled and when Fetch Metadata is absent or consists solely of Node fetch's
 `Sec-Fetch-Mode: cors`. Any site, destination, user or additional Fetch Metadata

@@ -30,7 +30,14 @@ exposure, not measured provider charges.
 
 ## Current inputs for new consumers
 
-The public API origin is `https://d366buuvadnp3.cloudfront.net`. The independent
+The public API origin is `https://d366buuvadnp3.cloudfront.net`.
+The [deployed CORS update](../evidence/PD-public-cors-20261009.md) permits any
+browser origin, including HTTP localhost, without registration. Use
+`credentials: "omit"`; SDK `.3` already does this. Browser config and read-only
+RPC calls passed from independent HTTPS and localhost origins. Tree-root
+HTTP503 observations remain a separate upstream issue, not a CORS denial.
+
+The independent
 [SDK .3 app](https://d30nr98svcwdoe.cloudfront.net/releases/public-devnet-20261008-a/chat-en-sdk3/index-r2.html)
 uses its separate HTTPS origin and explicit new custody namespace
 `zkchat-sdk-0.2.0-devnet.3`. Opening it does not migrate existing browser custody.

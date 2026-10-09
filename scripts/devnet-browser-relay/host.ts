@@ -177,6 +177,7 @@ export interface HostOptions {
   port: number; output?: string; assets?: Map<string, {bytes: Buffer; mime: string}>; manifest?: VerifiedManifest; allowTransactions?: boolean;
   /** Explicit standalone application integration; defaults preserve the wallet host. */
   application?: 'browser-chat' | 'public-api';
+  /** Exact HTTPS origins, or ['*'] for a public API usable from any origin without cookies. */
   allowedBrowserOrigins?: readonly string[];
   allowNativeRequests?: boolean;
   /** Public API invitation gate. Defaults to true; false explicitly opens bounded admission. */
@@ -203,12 +204,21 @@ export interface HostOptions {
     control(path: string, method: string, headers: Record<string,string>, data?: Buffer): Promise<UpstreamReply>;
     inference(headers: Record<string,string>, data: Buffer): Promise<UpstreamReply>};
 }
+export function validatePublicBrowserOrigins(origins: readonly string[]): void {
+  assert.ok(Array.isArray(origins) && origins.length <= 32 && new Set(origins).size === origins.length);
+  if (origins.length === 1 && origins[0] === '*') return;
+  for (const value of origins) {
+    const u = new URL(value);
+    assert.ok(u.protocol === 'https:' && u.origin === value && !u.username && !u.password);
+  }
+}
 export async function startUiHost(options: HostOptions) {
   const preparationCommitment = resolvePreparationCommitment(options.preparationCommitment);
   assert.ok(options.allowNewAdmissions === undefined || typeof options.allowNewAdmissions === 'boolean');
   const allowNewAdmissions = options.allowNewAdmissions ?? options.allowTransactions === true;
   const publicOrigin = options.publicOrigin, publicApi = options.application === 'public-api';
   const browserOrigins = new Set(options.allowedBrowserOrigins ?? []);
+  const anyBrowserOrigin = browserOrigins.has('*');
   const nativeRequests = options.allowNativeRequests === true;
   const admissionTokenSha256 = options.admissionTokenSha256;
   assert.ok(options.requireInvitation === undefined || typeof options.requireInvitation === 'boolean');
@@ -217,7 +227,7 @@ export async function startUiHost(options: HostOptions) {
     assert.ok(publicOrigin && Array.isArray(options.allowedBrowserOrigins) && browserOrigins.size === options.allowedBrowserOrigins.length
       && browserOrigins.size <= 32 && typeof options.allowNativeRequests === 'boolean' && !options.provider && !options.assets);
     if ((requireInvitation && allowNewAdmissions) || admissionTokenSha256 !== undefined) assert.match(admissionTokenSha256 ?? '', /^[0-9a-f]{64}$/, 'public admission invitation digest required');
-    for (const value of browserOrigins) { const u = new URL(value); assert.ok(u.protocol === 'https:' && u.origin === value && !u.username && !u.password); }
+    validatePublicBrowserOrigins(options.allowedBrowserOrigins!);
   } else assert.ok(options.allowedBrowserOrigins === undefined && options.allowNativeRequests === undefined && admissionTokenSha256 === undefined && options.requireInvitation === undefined);
   if (publicOrigin !== undefined) {
     const url = new URL(publicOrigin);
@@ -314,13 +324,13 @@ export async function startUiHost(options: HostOptions) {
         }
         const browserOrigin = request.headers.origin;
         if (browserOrigin !== undefined) {
-          assert.ok(browserOrigins.has(browserOrigin));
-          response.setHeader('access-control-allow-origin', browserOrigin); response.setHeader('vary','Origin');
+          assert.ok(anyBrowserOrigin || browserOrigins.has(browserOrigin));
+          response.setHeader('access-control-allow-origin', anyBrowserOrigin ? '*' : browserOrigin); response.setHeader('vary','Origin');
           response.setHeader('access-control-expose-headers','x-zkapi-error-code');
         } else {
           // Same-origin browser GETs omit Origin. Fetch Metadata is supplied by
-          // the browser and this path is enabled only for the reviewed origin.
-          const sameOriginBrowser = browserOrigins.has(origin) && request.headers['sec-fetch-site'] === 'same-origin'
+          // the browser and this path follows the configured browser policy.
+          const sameOriginBrowser = (anyBrowserOrigin || browserOrigins.has(origin)) && request.headers['sec-fetch-site'] === 'same-origin'
             && ['cors','same-origin'].includes(String(request.headers['sec-fetch-mode']))
             && (!request.headers['sec-fetch-dest'] || request.headers['sec-fetch-dest'] === 'empty');
           // Node's standard fetch sends a lone Sec-Fetch-Mode: cors even when

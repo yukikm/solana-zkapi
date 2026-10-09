@@ -9,6 +9,8 @@ for in integer micro-USDC (1 USDC = 1,000,000 micro-USDC).
 
 ## Current handoff — 2026-10-09 JST
 
+The public API now [allows any browser origin](docs/evidence/PD-public-cors-20261009.md), including HTTP localhost, without origin registration. The ZKAPI-only gateway change is deployed; actual Chromium config and read-only RPC calls passed from independent HTTPS and localhost origins. Use `credentials: "omit"` (already used by SDK `.3`). Separate tree-root HTTP503 responses were observed and remain unresolved; CORS now allows applications to read those errors.
+
 The [Indexer incident repair](docs/evidence/PD-indexer-recovery-20261009.md) is installed as `b88226ba…77284`. Public readiness returned HTTP 200 at **03:20:08 UTC**, and all ten installed SDK `.3` preflight checks passed. The mutable-head read race is reproduced and fixed; the original low-level failure was not retained by the old logs. Only the Indexer restarted, once; writer, financial state and reservations were preserved.
 
 The [v0.2.0-devnet.4 API source release](https://github.com/yukikm/solana-zkapi/releases/tag/v0.2.0-devnet.4)
