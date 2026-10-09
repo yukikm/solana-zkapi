@@ -1,0 +1,310 @@
+{
+  "schema": 1,
+  "recordedAt": "2026-10-09T09:04:48.923745+00:00",
+  "scope": "SDK/native .6 release publication, immutable public profile, and local/public read-only validation",
+  "release": {
+    "verifiedAt": "2026-10-09T09:04:01.779320+00:00",
+    "releaseUrl": "https://github.com/yukikm/solana-zkapi/releases/tag/v0.2.0-devnet.6",
+    "releaseId": 407725465,
+    "tag": "v0.2.0-devnet.6",
+    "sourceCommit": "ac2c9be39084c78375122bbfaa12b5ccf454f563",
+    "publishedAt": "2026-10-09T09:02:13Z",
+    "immutable": true,
+    "releaseAttestationVerified": true,
+    "assets": [
+      {
+        "name": "profile-sdk-0.2.0-devnet.6-r4.json",
+        "url": "https://github.com/yukikm/solana-zkapi/releases/download/v0.2.0-devnet.6/profile-sdk-0.2.0-devnet.6-r4.json",
+        "sha256": "3f8af848ea882f478d5b00c30d677fa5147a5b45d2bf1aceaa4f645a62d50179",
+        "bytes": 13868,
+        "anonymousDownloadMatched": true,
+        "attestationVerified": true
+      },
+      {
+        "name": "release-manifest.json",
+        "url": "https://github.com/yukikm/solana-zkapi/releases/download/v0.2.0-devnet.6/release-manifest.json",
+        "sha256": "2e43d5d0547df67d87be9baac83f14a7439c507be7e2e1834d4154242b244d17",
+        "bytes": 8538,
+        "anonymousDownloadMatched": true,
+        "attestationVerified": true
+      },
+      {
+        "name": "SHA256SUMS",
+        "url": "https://github.com/yukikm/solana-zkapi/releases/download/v0.2.0-devnet.6/SHA256SUMS",
+        "sha256": "8126ec58498be346f7201b60ff4f5ef01a642b63252f8280f9355eabb870fbd4",
+        "bytes": 514,
+        "anonymousDownloadMatched": true,
+        "attestationVerified": true
+      },
+      {
+        "name": "solana-zkapi-0.2.0-devnet.6-source.tar.gz",
+        "url": "https://github.com/yukikm/solana-zkapi/releases/download/v0.2.0-devnet.6/solana-zkapi-0.2.0-devnet.6-source.tar.gz",
+        "sha256": "a0eb7b1d17dfdd80d070c9d9474d81f3a7146375929d6d7ef09427ee758fbc68",
+        "bytes": 5462859,
+        "anonymousDownloadMatched": true,
+        "attestationVerified": true
+      },
+      {
+        "name": "zkapi-clientd-0.2.0-devnet.6-darwin-arm64.tar.gz",
+        "url": "https://github.com/yukikm/solana-zkapi/releases/download/v0.2.0-devnet.6/zkapi-clientd-0.2.0-devnet.6-darwin-arm64.tar.gz",
+        "sha256": "b4418217b7364bfaabeaa4e42c13bd56c5cee88707301779b13209e164db85a0",
+        "bytes": 71252711,
+        "anonymousDownloadMatched": true,
+        "attestationVerified": true
+      },
+      {
+        "name": "zkapi-solana-sdk-0.2.0-devnet.6.tgz",
+        "url": "https://github.com/yukikm/solana-zkapi/releases/download/v0.2.0-devnet.6/zkapi-solana-sdk-0.2.0-devnet.6.tgz",
+        "sha256": "4c36a3cff38efcd33978a0896b605c986bc4bb0a8b88be00e485681a5ed10002",
+        "bytes": 123926,
+        "anonymousDownloadMatched": true,
+        "attestationVerified": true
+      }
+    ],
+    "nativeArchiveFilesVerified": 7257,
+    "nativeManifestSha256": "99cf5fe8c1691bc0125ed63d52dc3835dfa4c8e3678696667b047f7bc292a94d",
+    "oldSdk3ReleaseUnchanged": true,
+    "retainedFirstAttempt": "All six downloads, seven attestation commands and native archive verification passed before the final old-release metadata GET returned HTTP502. The separate retry succeeded; this continuation reused and rehashed the saved exact downloads."
+  },
+  "releaseManifestSha256": "2e43d5d0547df67d87be9baac83f14a7439c507be7e2e1834d4154242b244d17",
+  "native": {
+    "platform": "darwin-arm64",
+    "minimumMacOS": "13.5",
+    "releaseJsonSha256": "99cf5fe8c1691bc0125ed63d52dc3835dfa4c8e3678696667b047f7bc292a94d",
+    "files": 7257,
+    "sourceInputsVerified": 577,
+    "productionSignedOrNotarized": false
+  },
+  "publicProfile": {
+    "profileUrl": "https://d366buuvadnp3.cloudfront.net/releases/public-devnet-20261008-a/profile-sdk-0.2.0-devnet.6-r4.json",
+    "profileSha256": "3f8af848ea882f478d5b00c30d677fa5147a5b45d2bf1aceaa4f645a62d50179",
+    "oldProfileSha256": "210bda7eb98fe902bf00194096355f5e3ac2ae79421477d4a9d2678b9faa1f6a",
+    "models": 21,
+    "revision": 4,
+    "sdkVersions": [
+      "0.2.0-devnet.6"
+    ]
+  },
+  "verification": {
+    "sdk": {
+      "sdkTests": {
+        "tests": 397,
+        "pass": 397,
+        "fail": 0,
+        "cancelled": 0,
+        "skipped": 0,
+        "todo": 0
+      },
+      "installedTests": {
+        "tests": 84,
+        "pass": 84,
+        "fail": 0,
+        "cancelled": 0,
+        "skipped": 0,
+        "todo": 0
+      },
+      "hostedAndLocalSdkArchiveIdentical": true,
+      "sdkSha256": "4c36a3cff38efcd33978a0896b605c986bc4bb0a8b88be00e485681a5ed10002"
+    },
+    "publicReadOnlyPreflight": {
+      "installationTransport": "direct_https",
+      "preflight": {
+        "profileId": "zkapi-public-devnet-20261008-a",
+        "profileSha256": "3f8af848ea882f478d5b00c30d677fa5147a5b45d2bf1aceaa4f645a62d50179",
+        "deploymentId": "public-devnet-20261008-a",
+        "pool": "Cx8DbA49UCuASoc3goLCU9ro25eWVtcGMbvfPPJsSQzV",
+        "manifestHash": "b97e200769be24448a51999346a28d0ca497892d68212f517b2b9bb4cc1a4643",
+        "slot": "509122601",
+        "paused": false,
+        "chainAllowsNewOperations": true,
+        "operatorAdmission": "unverified",
+        "models": [
+          "anthropic/claude-fable-5",
+          "anthropic/claude-fable-5.1",
+          "anthropic/claude-haiku-5.5",
+          "anthropic/claude-opus-5",
+          "anthropic/claude-opus-5.5",
+          "anthropic/claude-sonnet-5",
+          "anthropic/claude-sonnet-5.5",
+          "openai/gpt-5.6-luna",
+          "openai/gpt-5.6-luna-pro",
+          "openai/gpt-5.6-sol",
+          "openai/gpt-5.6-sol-pro",
+          "openai/gpt-5.6-terra",
+          "openai/gpt-5.6-terra-pro",
+          "openai/gpt-6-astra",
+          "openai/gpt-6-astra-pro",
+          "openai/gpt-6-luna",
+          "openai/gpt-6-luna-pro",
+          "openai/gpt-6-sol",
+          "openai/gpt-6-sol-pro",
+          "openai/gpt-6.1-sol",
+          "openai/gpt-6.1-sol-pro"
+        ],
+        "snapshot": {
+          "root": "0x0ac76984a05bd7c1ee404efbe0df91c36a1b2fd0da6489d46d36c82d62b2dd74",
+          "slot": 509122601,
+          "sequence": "8",
+          "nextNoteId": 4,
+          "clock": "1791535524",
+          "paused": false,
+          "sourceSlot": 509122559,
+          "pendingCount": 0,
+          "activeCount": 1
+        },
+        "checks": [
+          "profile",
+          "assets",
+          "manifest",
+          "tariffs",
+          "genesis",
+          "finalized_pool",
+          "control_config",
+          "catalog",
+          "shared_snapshot",
+          "chain_clock"
+        ]
+      }
+    },
+    "nativeInputGeneration": {
+      "publicInputInstallationPassed": true,
+      "keyReuseSeconds": 60,
+      "settlementWaitMs": 120000,
+      "modelCount": 21,
+      "preflightChecks": 10,
+      "nativeFilesUnchanged": 7257,
+      "runtimeSha256": "e04cddaca1ee662e501fd88b1b1da3d6135bdbb998a08734b57036edfc4ccb57",
+      "financialActions": 0,
+      "custodyCreated": false,
+      "daemonStarted": false
+    },
+    "sourceArchive": {
+      "sourceCommit": "ac2c9be39084c78375122bbfaa12b5ccf454f563",
+      "archive": "solana-zkapi-0.2.0-devnet.6-source.tar.gz",
+      "sha256": "a0eb7b1d17dfdd80d070c9d9474d81f3a7146375929d6d7ef09427ee758fbc68",
+      "filesVerifiedAgainstGit": 1714,
+      "upstreamSubmodule": "045b444ea1b52538d1b40273c7cb6ed09468a052",
+      "submoduleContentsIncluded": false
+    },
+    "hostedCI": [
+      {
+        "name": "implementation",
+        "url": "https://github.com/yukikm/solana-zkapi/actions/runs/37906874764",
+        "sourceCommit": "ac2c9be39084c78375122bbfaa12b5ccf454f563",
+        "status": "in_progress",
+        "conclusion": "",
+        "jobs": [
+          {
+            "name": "rust",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "client-challenger",
+            "status": "in_progress",
+            "conclusion": ""
+          },
+          {
+            "name": "transport",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "svm",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "contracts",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "control",
+            "status": "in_progress",
+            "conclusion": ""
+          },
+          {
+            "name": "node",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "go",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "vault",
+            "status": "completed",
+            "conclusion": "success"
+          }
+        ]
+      },
+      {
+        "name": "preview",
+        "url": "https://github.com/yukikm/solana-zkapi/actions/runs/37906874782",
+        "sourceCommit": "ac2c9be39084c78375122bbfaa12b5ccf454f563",
+        "status": "completed",
+        "conclusion": "success",
+        "jobs": [
+          {
+            "name": "SDK fixtures, real Chrome custody, isolated tarball",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "clientd Go race and synthetic secret-helper tests",
+            "status": "completed",
+            "conclusion": "success"
+          }
+        ]
+      }
+    ],
+    "oldProfilesUnchanged": true
+  },
+  "preservation": {
+    "at": "2026-10-09T08:47:02.088524+00:00",
+    "profiles": [
+      {
+        "url": "https://d366buuvadnp3.cloudfront.net/releases/public-devnet-20261008-a/profile-models-gpt56-claude5-r3.json",
+        "sha256": "210bda7eb98fe902bf00194096355f5e3ac2ae79421477d4a9d2678b9faa1f6a",
+        "unchanged": true
+      },
+      {
+        "url": "https://d366buuvadnp3.cloudfront.net/releases/public-devnet-20261008-a/profile-sdk-0.2.0-devnet.3.json",
+        "sha256": "449657cc3fe90f12878236b83d68ada8077e3c56e67ccb8268c5f301e69e02e5",
+        "unchanged": true
+      },
+      {
+        "url": "https://d366buuvadnp3.cloudfront.net/releases/public-devnet-20261008-a/profile.json",
+        "sha256": "5e868f8e57ef06961b73ba8cb755635e81d4bb168dd6ad498152496ac1b02d14",
+        "unchanged": true
+      }
+    ],
+    "gatewayDiscoveryStillSdk3": true,
+    "financialActions": 0
+  },
+  "actions": {
+    "directBrowserLeaseSeconds": 300,
+    "directBrowserRenewalMarginSeconds": 90,
+    "nativeDefaultReuseSeconds": 60,
+    "nativeSettlementWaitMilliseconds": 120000,
+    "liveAuthSubmissions": 0,
+    "paidInferences": 0,
+    "walletTransactions": 0,
+    "grantChanges": 0,
+    "serviceRestarts": 0,
+    "existingCustodyMigrations": 0,
+    "independentChatChanges": 0,
+    "newPaidSessionReuseAcceptance": false
+  },
+  "retainedFailures": [
+    "Initial offline profile verifier failed on a relative import path before loading data; corrected verifier passed.",
+    "Initial native/source join rejected the first source commit because package-lock.json had not been staged; successor source commit includes the exact already-built lock bytes.",
+    "The draft release tag lookup returned HTTP404; listing the existing draft verified the same release and its assets.",
+    "All six downloads, seven attestation commands and native archive verification passed before the final old-release metadata GET returned HTTP502. The separate retry succeeded; this continuation reused and rehashed the saved exact downloads."
+  ],
+  "sourceFollowup": "PD-session-reuse-20261009.md",
+  "historicalRecordPolicy": "Earlier local failures, dated live service/financial checkpoints, immutable SDK .2/.3 artifacts and original custody/journals remain preserved. No funded .6 provider acceptance is claimed."
+}

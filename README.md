@@ -1,5 +1,9 @@
 # Solana zkAPI
 
+[Publication verified](docs/evidence/PD-sdk6-publication-20261009.md): SDK/native `.6`, both client-preview CI jobs,
+six anonymous asset downloads and all release/asset attestations passed. Full
+implementation CI was still running at the recorded release cut.
+
 New SDK/native **`0.2.0-devnet.6`** consumers: see the [session reuse release guide](docs/releases/session-reuse-preview.md)
 for exact downloads and the compatible immutable revision-4 profile. Existing
 `.3` installations retain their original profile and recovery inputs.

@@ -1,5 +1,9 @@
 # Session reuse preview — SDK and clientd 0.2.0-devnet.6
 
+[Publication verified](../evidence/PD-sdk6-publication-20261009.md): SDK/native `.6`, both client-preview CI jobs,
+six anonymous asset downloads and all release/asset attestations passed. Full
+implementation CI was still running at the recorded release cut.
+
 [GitHub release](https://github.com/yukikm/solana-zkapi/releases/tag/v0.2.0-devnet.6)
 contains the SDK tarball, macOS ARM64 native archive, immutable public profile,
 source archive, release manifest and SHA-256 checksums. Download assets from that
