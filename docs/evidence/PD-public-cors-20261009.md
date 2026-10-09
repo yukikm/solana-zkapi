@@ -66,3 +66,7 @@ read-only inspection succeeded before deployment. Original journals, earlier
 failures, E01 closure, financial history and immutable releases remain preserved.
 SDK/native `.3` remain unchanged. No new source release, hosted CI pass, funded
 browser lifecycle or continuous-availability claim is made.
+
+Publication follow-up: the requested commit and push completed, and
+[v0.2.0-devnet.5 was published and verified](PD-cors-release-20261009.md) at
+04:27:07 UTC. The operational checkpoint above is preserved unchanged.

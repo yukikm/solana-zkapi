@@ -1,8 +1,8 @@
 # Public Devnet preview deployment
 
-The [v0.2.0-devnet.4 API source release](https://github.com/yukikm/solana-zkapi/releases/tag/v0.2.0-devnet.4)
-is published. SDK/native artifacts remain `0.2.0-devnet.3`; no client upgrade is
-required for this gateway setting. [Publication evidence](../evidence/PD-invitation-release-20261009.md).
+The [v0.2.0-devnet.5 API source release](https://github.com/yukikm/solana-zkapi/releases/tag/v0.2.0-devnet.5)
+publishes the deployed CORS opening. SDK/native artifacts remain `0.2.0-devnet.3`;
+no client upgrade is required. [Publication evidence](../evidence/PD-cors-release-20261009.md).
 
 Access update — 2026-10-09: the [public API invitation requirement was removed](../evidence/PD-invitation-removal-20261009.md).
 The installed gateway reports `invitation_required: false`; SDK/native consumers
