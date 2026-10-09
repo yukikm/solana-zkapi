@@ -21,6 +21,9 @@ test('new native profile reports unfunded status without creating a note or cont
   const service=new ClientDaemon({client:{} as ControlClient,journal,noteId:'new-note',mode:'proxy',models:['m'],prepare:async()=>{throw Error('must not authorize');}});
   const status=await service.status() as any;
   assert.equal(status.phase,'unfunded');assert.equal(status.wallet_status,'unfunded');assert.equal(status.balance_micro_usdc,'0');
+  assert.equal(status.privacy.routingPolicy.zeroDataRetentionRequired,false);
+  const plan=await (await service.handle('GET','/admin/upgrade-plan',new Uint8Array(),new Headers())).json();
+  assert.equal(plan.assessment,'ready_for_separate_installation');assert.equal(plan.inPlaceMigrationSupported,false);
   assert.equal(status.journal_head,null);assert.equal(status.recovery_required,false);assert.deepEqual(status.unresolved_operations,[]);
   assert.equal(await journal.read('new-note'),null);assert.deepEqual(await readdir(dir),[]);
 });
@@ -518,4 +521,17 @@ test('direct hosted-tool model aliases and presets are rejected before AUTH even
     assert.deepEqual(f.counts(),{creates:0,closes:0,sends:0});
     assert.equal((await f.journal.read('note'))!.value.pending,null);
   }
+});
+
+
+test('native model availability uses explicit management route and existing transport without inference',async t=>{
+  const dir=await mkdtemp(join(tmpdir(),'zkapi-metadata-'));t.after(()=>rm(dir,{recursive:true,force:true}));
+  const store=await NativeJournalStore.open(dir),key=await importJournalKey(new Uint8Array(32).fill(4));
+  const journal=new EncryptedJournal<NoteJournal>(store,key,{deploymentId:'fixture',pool:'pool'},validateNoteJournal);
+  let calls=0;
+  const client={checkModelAvailability:async(mode:Mode,models:string[])=>{calls++;assert.equal(mode,'direct_openrouter');assert.deepEqual(models,['m']);return {basis:'public_zdr_catalog'};}} as unknown as ControlClient;
+  const service=new ClientDaemon({client,journal,noteId:'new',mode:'direct_openrouter',models:['m'],prepare:async()=>{throw Error('no AUTH');}});
+  await service.status();await service.handle('GET','/v1/models',new Uint8Array(),new Headers());assert.equal(calls,0);
+  const r=await service.handle('GET','/admin/model-availability',new Uint8Array(),new Headers());
+  assert.equal((await r.json()).basis,'public_zdr_catalog');assert.equal(calls,1);assert.equal(await journal.read('new'),null);
 });

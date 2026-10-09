@@ -151,3 +151,11 @@ advanced journal API requires separately retained custody and trusted checkpoint
 see [SDK internals](../../packages/sdk/INTERNALS.md). Do not clear site data or
 switch origins while a note remains funded. A full-device deletion cannot be
 detected by a new empty browser profile.
+
+## Upgrade guidance
+
+Use `await client.upgradePlan()` for local guidance, or the new offline helper to
+inspect status exported by the original runtime. The plan never changes a
+profile/custody binding, signs, withdraws or sends inference. Keep the original
+installation until its pending operations and note are closed. Missing older
+status fields remain unknown. See the [`.8` upgrade guide](../releases/usability-preview.md#existing-installations).

@@ -3,6 +3,7 @@
 import { ControlClient, createCredentials, expiryNotice, PROXY_PRIVACY_NOTICE, DIRECT_OPENROUTER_PRIVACY_NOTICE, DIRECT_PRIVACY_NOTICE, type Mode, type NoteJournal, type PreparedSession } from './control.ts';
 import { JournalConflictError, JournalIntegrityError, type EncryptedJournal } from './journal.ts';
 import { directRequestBytes } from './direct-request.ts';
+import { privacyProfile, planClientUpgrade } from './client-guidance.ts';
 import { parseStrictJson } from './trust.ts';
 import { daemonApiPaths, validateDaemonModelPolicy, validateModelRequestCapabilities, type DaemonModelPolicy } from './clientd-models.ts';
 
@@ -150,16 +151,17 @@ export class ClientDaemon {
   }
   async status(): Promise<unknown> {
     const record = await this.o.journal.read(this.o.noteId);
+    const privacy = privacyProfile(this.o.mode,this.reuse);
     if (!record) return { mode:this.o.mode, balance_micro_usdc:'0', phase:'unfunded', in_flight:this.inflight, recovery_required:false,
       unresolved_operations:[], key_reuse_seconds:this.reuse, journal_head:null, privacy_notice:this.o.mode === 'proxy' ? PROXY_PRIVACY_NOTICE : this.o.mode === 'direct_openrouter' ? DIRECT_OPENROUTER_PRIVACY_NOTICE : DIRECT_PRIVACY_NOTICE,
-      wallet_status:'unfunded', wallet_operation:null, wallet_emergency_escape:null };
+      privacy, wallet_status:'unfunded', wallet_operation:null, wallet_emergency_escape:null };
     const {value,head} = record;
     const witness = (value as NoteJournal & { witness?: {expiry:string} }).witness;
     const emergency=value.wallet?.emergencyEscapes?.find(e=>e.phase!=='settled'),closed=value.wallet?.status==='closed';
     return { mode:this.o.mode, balance_micro_usdc:value.state.balance_micro_usdc, phase:value.pending?.phase ?? (closed?'closed':emergency?'emergency_escape':'ready'), in_flight:this.inflight, recovery_required:(!closed||!!value.pending)&&(this.recoveryRequired||!!emergency),
       unresolved_operations:value.pending?.operations.filter(o=>o.phase==='send_unknown').map(o=>({id:o.id,response_replayable:false})) ?? [],
       key_reuse_seconds:this.reuse, journal_head:head, privacy_notice:this.o.mode === 'proxy' ? PROXY_PRIVACY_NOTICE : this.o.mode === 'direct_openrouter' ? DIRECT_OPENROUTER_PRIVACY_NOTICE : DIRECT_PRIVACY_NOTICE,
-      wallet_status:value.wallet?.status ?? 'legacy_import', wallet_operation:value.wallet?.operation ? {kind:value.wallet.operation.kind,phase:value.wallet.operation.phase} : null,
+      privacy, wallet_status:value.wallet?.status ?? 'legacy_import', wallet_operation:value.wallet?.operation ? {kind:value.wallet.operation.kind,phase:value.wallet.operation.phase} : null,
       wallet_emergency_escape:emergency?{phase:emergency.phase,funds_withdrawn:closed}:null,
       ...(witness ? {expiry:expiryNotice(BigInt(witness.expiry),this.now())} : {}) };
   }
@@ -264,7 +266,7 @@ export class ClientDaemon {
       // An upstream response must not set cookies, enable CORS or attach an
       // arbitrary correlation identifier to the local application origin.
       const headers = new Headers();
-      for (const name of ['Content-Type','Retry-After',...(this.o.mode === 'proxy' ? ['X-Zkapi-Status-Url','X-Zkapi-Error-Code'] : [])]) {
+      for (const name of ['Content-Type','Retry-After',...(this.o.mode === 'proxy' ? ['X-Zkapi-Status-Url','X-Zkapi-Error-Code'] : this.o.mode === 'direct_openrouter' && !response.ok ? ['X-Zkapi-Error-Code'] : [])]) {
         const value = response.headers.get(name); if (value !== null) headers.set(name,value);
       }
       headers.set('X-Zkapi-Operation-Id',operationId); headers.set('Cache-Control','no-store');
@@ -293,6 +295,8 @@ export class ClientDaemon {
     try {
       if (method === 'GET' && path === '/v1/models') return json({object:'list',data:this.o.models.map(model=>({id:typeof model === 'string' ? model : model.id,object:'model',owned_by:typeof model === 'string' ? 'configured-provider' : model.provider}))});
       if (method === 'GET' && path === '/admin/status') return json(await this.status());
+      if (method === 'GET' && path === '/admin/upgrade-plan') return json(planClientUpgrade(await this.status()));
+      if (method === 'GET' && path === '/admin/model-availability') return json(await this.o.client.checkModelAvailability(this.o.mode,this.o.models.map(m=>typeof m === 'string'?m:m.id),signal));
       if (method === 'POST' && ['/admin/close','/admin/recover','/admin/reconcile','/admin/cancel-unsent','/admin/purge-settled-bodies','/admin/wallet'].includes(path)) return json(await this.management(path.slice(7) as 'close'|'recover'|'reconcile'|'cancel-unsent'|'purge-settled-bodies'|'wallet',bytes.length?parseStrictJson(bytes):undefined));
       if (method === 'POST' && routes.has(path)) return await this.infer(path,bytes,headers.get('Idempotency-Key') ?? undefined,headers.get('anthropic-version') ?? '',signal);
       return json({error:{code:'unsupported_route'}},404);

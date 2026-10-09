@@ -1,6 +1,6 @@
 {
   "name": "@zkapi/solana-sdk",
-  "version": "0.2.0-devnet.7",
+  "version": "0.2.0-devnet.8",
   "private": true,
   "type": "module",
   "exports": {
@@ -115,6 +115,14 @@
     "./public-profile": {
       "types": "./dist/public-profile.d.ts",
       "import": "./dist/public-profile.js"
+    },
+    "./client-guidance": {
+      "types": "./dist/client-guidance.d.ts",
+      "import": "./dist/client-guidance.js"
+    },
+    "./provider-status": {
+      "types": "./dist/provider-status.d.ts",
+      "import": "./dist/provider-status.js"
     }
   },
   "dependencies": {

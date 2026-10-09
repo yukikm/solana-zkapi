@@ -41,7 +41,7 @@ async function setup(t: TestContext, mode: Mode = 'proxy', keyReuseSeconds?: num
   await journal.create('note', { schema: 1, state, witness: { secret: field(2), note_id: 1, deposit_micro_usdc: '200', expiry: '9999999999' },
     wallet: { status: 'active', history: [] }, pending: null, history: [] });
   const counts = { quote: 0, proof: 0, auth: 0, sends: 0, closes: 0, settles: 0, wallet: 0, clearance: 0, clearanceVerifications: 0 };
-  const behavior = { lose: false, closeUnavailable: false, closeDraining: false, httpStatus: 200, failVerifier: false, authUnknown: false, stream: false, rejectQuote: false,
+  const behavior = { lose: false, closeUnavailable: false, closeDraining: false, httpStatus: 200, providerError: '', failVerifier: false, authUnknown: false, stream: false, rejectQuote: false,
     streamFailure: false, streamWaiting: false, clearanceUnavailable: false, invalidClearance: false,
     beforeClearance: undefined as (() => Promise<void>) | undefined, beforeClose: undefined as (() => Promise<void>) | undefined };
   const clearanceSignature = { r_x: field(2), r_y: field(3), s: field(4) };
@@ -53,8 +53,10 @@ async function setup(t: TestContext, mode: Mode = 'proxy', keyReuseSeconds?: num
       expires_at: String(BigInt(p.prepared.request.quote.body.issued_at) + BigInt(p.prepared.request.quote.body.session_ttl_seconds)),
       ...(settled ? { settlement: { charge_micro_usdc: '1', next_commitment: state.commitment, next_anchor: field(8), blind_delta_srv: field(9), next_state_signature: { r_x: field(2), r_y: field(3), s: field(4) } } } : {}) };
   };
+  const metadataReads: string[] = [];
   const http: typeof fetch = async (input, init) => {
     const url = new URL(String(input));
+    if (url.pathname === '/v1/models') { metadataReads.push(url.href); assert.equal(new Headers(init?.headers).get('Authorization'),null); return Response.json({data:[{id:'first'}]}); }
     if (url.pathname.endsWith('/quotes')) {
       counts.quote++; order.push('quote'); if (behavior.rejectQuote) return new Response(null, { status: 503 });
       const wanted = JSON.parse(String(init!.body)), now = BigInt(Math.floor(Date.now() / 1000));
@@ -85,6 +87,7 @@ async function setup(t: TestContext, mode: Mode = 'proxy', keyReuseSeconds?: num
     assert.equal(url.origin, mode === 'proxy' ? context.inference_api_origin : 'https://direct.invalid');
     bodies.push(JSON.parse(new TextDecoder().decode(init!.body as Uint8Array)));
     if (behavior.lose) throw Error('response lost');
+    if (behavior.providerError) return Response.json({error:{message:behavior.providerError}}, {status:behavior.httpStatus});
     if (behavior.streamWaiting) return new Response(new ReadableStream<Uint8Array>(), { headers: { 'Content-Type': 'text/event-stream' } });
     if (behavior.streamFailure) return new Response(new ReadableStream({ start(c) { c.error(new Error('private upstream error')); } }), { headers: { 'Content-Type': 'application/json' } });
     if (behavior.stream) return new Response('data: {"choices":[{"index":0,"delta":{"content":"Hello"},"finish_reason":"stop"}]}\n\ndata: [DONE]\n\n', { headers: { 'Content-Type': 'text/event-stream' } });
@@ -118,7 +121,7 @@ async function setup(t: TestContext, mode: Mode = 'proxy', keyReuseSeconds?: num
         rpc: {} as any, wallets: [{ publicKey: walletAddress, supportedTransactionVersions: new Set([0]), async signTransaction() { counts.wallet++; throw Error('unexpected wallet signature'); } }] } };
     const client = new ZkApiClient(components); t.after(() => client.dispose()); return client;
   };
-  return { client: make(), restart: make, counts, behavior, journal, order, bodies, models };
+  return { client: make(), restart: make, counts, behavior, journal, order, bodies, models, metadataReads };
 }
 
 test('one chat call quotes, proves, authorizes, sends once and verifies settlement; model switch uses its tariff', async t => {
@@ -544,4 +547,24 @@ test('application erasure API removes only legacy settled content without networ
   assert.deepEqual(await f.client.purgeSettledRequestBodies(),{historyOperations:1,emergencyOperations:0});
   expected.history[0].operations[0].bodyBase64='';expected.history[0].operations[0].bodyRedacted=true;delete expected.history[0].operations[0].bodySha256;
   assert.deepEqual((await f.journal.read('note'))!.value,expected);assert.deepEqual(f.counts,counts);
+});
+
+
+test('privacy and upgrade guidance are local; explicit model check sends one keyless GET without changing custody',async t=>{
+  const f=await setup(t,'direct_openrouter',60), before=await f.journal.read('note'), counts={...f.counts};
+  assert.equal((await f.client.status()).privacy.routingPolicy.zeroDataRetentionRequired,true);
+  assert.equal((await f.client.upgradePlan()).assessment,'needs_attention');
+  assert.equal(f.metadataReads.length,0);
+  const availability=await f.client.checkModelAvailability();
+  assert.deepEqual(availability.models,[{id:'first',status:'zdr_endpoint_listed'},{id:'second',status:'not_listed'}]);
+  assert.equal(f.metadataReads.length,1);assert.deepEqual(f.counts,counts);assert.deepEqual(await f.journal.read('note'),before);
+});
+test('application ZDR rejection has actionable error code, retires its key and never retries inference',async t=>{
+  const f=await setup(t,'direct_openrouter',60);f.behavior.httpStatus=404;
+  f.behavior.providerError='No endpoints found matching your data policy. PRIVATE_TEXT';
+  const response=await f.client.chat(chat());
+  assert.equal(response.headers.get('X-Zkapi-Error-Code'),'zdr_endpoint_unavailable');
+  assert.equal((await response.json()).error.privacyPolicyRelaxed,false);
+  assert.equal(f.counts.sends,1);assert.equal(f.counts.closes,1);assert.equal((await f.client.status()).session,null);
+  assert.equal(f.metadataReads.length,0);
 });

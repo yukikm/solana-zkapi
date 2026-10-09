@@ -43,6 +43,8 @@ included in SDK `.6`; published `.3` artifacts retain their original behavior.
 |---|---|
 | `listModels()` | Detached configured IDs/labels/providers/APIs; not live discovery |
 | `status()` | Local redacted wallet/session/balance/expiry read; no network mutation |
+| `upgradePlan()` | Local guidance for a separate installation; blocks pending recovery and unclosed notes |
+| `checkModelAvailability(signal?)` | Explicit keyless ZDR metadata check through the installed transport; no inference |
 | `subscribe(listener)` | Initial status and local action-boundary updates; returns unsubscribe |
 | `chat({operationId, sessionId?, model, messages, maxOutputTokens, stream?, signal?})` | Text Chat Completions; returns one-use `Response` |
 | `request({operationId, sessionId?, model, api, body, anthropicVersion?, signal?})` | Native request; `api`: `chat`, `responses`, `messages` |

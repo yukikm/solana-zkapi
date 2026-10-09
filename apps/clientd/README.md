@@ -138,6 +138,8 @@ All calls require the appropriate `Authorization: Bearer …`. Management and in
 | `GET /v1/models` | Pinned model allowlist |
 | `POST /v1/chat/completions`, `/v1/responses` | Supported explicit proxy/direct mode |
 | `POST /v1/messages`, `/v1/messages/count_tokens` | Anthropic proxy mode |
+| `GET /admin/upgrade-plan` | Local separate-installation guidance; no custody migration |
+| `GET /admin/model-availability` | Explicit keyless ZDR catalog GET through the configured transport |
 | `GET /admin/status` | Balance, wallet/session phase, startup `recovery_required` flag, expiry, unresolved IDs and journal head; no credentials/witness |
 | `POST /admin/close`, `/admin/recover` | Existing SDK close/recovery |
 | `POST /admin/reconcile` | Explicit missing-operation reconciliation after terminal settlement, authenticated 404 and cryptographic successor/receipt verification |
@@ -191,3 +193,9 @@ Proxy operators can read prompts and responses. Status includes expiry, seven-da
 Pinned upstream is `ethereum/zkapi@045b444ea1b52538d1b40273c7cb6ed09468a052`. SOCKS5 code/tests adapt `zkapi-clientd/internal/relay`, with the MIT license retained at `vendor/ethereum-zkapi/zkapi-clientd/LICENSE`. The local auth/reuse/streaming contract follows upstream; Ethereum wire, plaintext wallet files and ETH billing are replaced with Solana v0, integer USDC and the shared encrypted journal. Rust reuses the original request/withdrawal/Poseidon and successor verification. Vendor/license files are unchanged.
 
 See `docs/evidence/I08.md` for exact results. Production setup, real provider billing, public wallet/RPC, live Tor, hosted CI, other OS packages and production signatures remain separate release evidence.
+
+SDK/native `.8` status also includes structured `privacy` information. CLI commands
+`upgrade-plan` and `model-availability` use the management credential and empty
+GETs. Existing `.3`/`.6`/`.7` installations can export their original status for
+the new offline upgrade helper; never replace an old profile binding. See the
+[consumer guide](../../docs/releases/usability-preview.md).

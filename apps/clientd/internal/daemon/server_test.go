@@ -24,6 +24,11 @@ func TestLoopbackCredentialsAndRoutes(t *testing.T) {
 	}{
 		{"inference", "127.0.0.1:5", "127.0.0.1:8787", "", "i", "/v1/chat/completions", "POST", 204},
 		{"management", "[::1]:5", "localhost:8787", "http://localhost:8787", "m", "/admin/status", "GET", 204},
+		{"upgrade plan", "127.0.0.1:5", "localhost:8787", "", "m", "/admin/upgrade-plan", "GET", 204},
+		{"model availability", "127.0.0.1:5", "localhost:8787", "", "m", "/admin/model-availability", "GET", 204},
+		{"upgrade requires management", "127.0.0.1:5", "localhost:8787", "", "i", "/admin/upgrade-plan", "GET", 401},
+		{"metadata requires management", "127.0.0.1:5", "localhost:8787", "", "i", "/admin/model-availability", "GET", 401},
+		{"metadata rejects POST", "127.0.0.1:5", "localhost:8787", "", "m", "/admin/model-availability", "POST", 404},
 		{"purge settled", "127.0.0.1:5", "localhost:8787", "", "m", "/admin/purge-settled-bodies", "POST", 204},
 		{"purge requires management", "127.0.0.1:5", "localhost:8787", "", "i", "/admin/purge-settled-bodies", "POST", 401},
 		{"cancel unsent", "127.0.0.1:5", "localhost:8787", "", "m", "/admin/cancel-unsent", "POST", 204},
@@ -55,7 +60,7 @@ func TestLoopbackCredentialsAndRoutes(t *testing.T) {
 			}
 		})
 	}
-	if calls != 4 {
+	if calls != 6 {
 		t.Fatalf("unauthorized calls: %d", calls)
 	}
 }

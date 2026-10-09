@@ -168,3 +168,14 @@ service availability; consult the current deployment guide and run preflight.
 Reopening an existing installation requires its original profile digest with
 `--installed-profile-sha256`; do not install a new profile over unresolved
 state. A successful file generation is not public native transport acceptance.
+
+## Privacy and upgrade guidance (.8)
+
+`node cli.mjs upgrade-plan --status-file original-status.json` is offline and
+reads only a bounded regular status file exported by the original runtime.
+`model-availability --profile-url ... --profile-sha256 ...` loads the pinned
+profile and reads the public ZDR catalog via direct HTTPS. It sends no prompt
+or credentials and does not establish account access or credit. The installed
+native management command uses its configured direct/Tor transport instead.
+See the [`.8` guide](../../docs/releases/usability-preview.md) for safe upgrade
+steps, structured privacy fields and provider error codes.

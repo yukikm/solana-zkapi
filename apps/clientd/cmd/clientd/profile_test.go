@@ -214,6 +214,12 @@ func TestProfileRequestSeparatesCredentialsAndDoesNotFollowRedirect(t *testing.T
 		if r.Header.Get("Authorization") != "Bearer "+want {
 			t.Error("wrong credential")
 		}
+		if r.URL.Path == "/admin/upgrade-plan" || r.URL.Path == "/admin/model-availability" {
+			body, err := io.ReadAll(r.Body)
+			if err != nil || len(body) != 0 || r.Method != "GET" {
+				t.Error("guidance must use empty GET")
+			}
+		}
 		if r.URL.Path == "/admin/purge-settled-bodies" {
 			body, err := io.ReadAll(r.Body)
 			if err != nil || len(body) != 0 || r.Method != "POST" {
@@ -232,7 +238,7 @@ func TestProfileRequestSeparatesCredentialsAndDoesNotFollowRedirect(t *testing.T
 	c, _ := readProfile(profile)
 	c.Listen = strings.TrimPrefix(server.URL, "http://")
 	writePrivate(filepath.Join(profile, "config.json"), c)
-	for _, action := range []string{"status", "models", "purge-settled-bodies"} {
+	for _, action := range []string{"status", "models", "upgrade-plan", "model-availability", "purge-settled-bodies"} {
 		if err := profileCommand([]string{"request", profile, action}, nil, io.Discard); err != nil {
 			t.Fatal(err)
 		}
@@ -240,7 +246,7 @@ func TestProfileRequestSeparatesCredentialsAndDoesNotFollowRedirect(t *testing.T
 	if err := profileCommand([]string{"request", profile, "close"}, nil, io.Discard); err == nil {
 		t.Fatal("redirect accepted")
 	}
-	if calls != 4 {
+	if calls != 6 {
 		t.Fatal("request replayed")
 	}
 }

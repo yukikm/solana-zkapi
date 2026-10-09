@@ -3,6 +3,7 @@
  */
 import { Buffer } from 'buffer';
 import { directRequestBytes } from './direct-request.ts';
+import { checkModelAvailability, describeProviderError } from './provider-status.ts';
 import { parseField, parseMicroUsdc, parseScalar } from './encoding.ts';
 import { EncryptedJournal, type JournalRecord } from './journal.ts';
 import { parseStrictJson, jcsBytes, sha256Hex, verifyEd25519, verifyArtifactBundle, verifyPoolConfig,
@@ -770,12 +771,17 @@ export class ControlClient {
       signal?.throwIfAborted();
       p.operations.push({ id: operationId, path, anthropicVersion: '', bodyBase64: '', bodyRedacted: true, bodySha256: await sha256Hex(bytes), phase: 'send_unknown' });
       await this.save(noteId, r);
-      return { base, key: p.providerKey, bytes };
+      return { base, key: p.providerKey, bytes, mode };
     });
-    return (this.options.fetch ?? globalThis.fetch)(dispatch.base.replace(/\/$/, '') + path.slice(3), {
+    const response = await (this.options.fetch ?? globalThis.fetch)(dispatch.base.replace(/\/$/, '') + path.slice(3), {
       method: 'POST', headers: { Authorization: `Bearer ${dispatch.key}`, 'Content-Type': 'application/json' }, body: dispatch.bytes,
       redirect: 'error', credentials: 'omit', cache: 'no-store', signal: signal ? AbortSignal.any([signal, AbortSignal.timeout(600_000)]) : AbortSignal.timeout(600_000),
     });
+    return describeProviderError(response, dispatch.mode, signal);
+  }
+  /** Metadata only, through the same installed transport. Never uses session keys. */
+  checkModelAvailability(mode: Mode, models: readonly string[], signal?: AbortSignal) {
+    return checkModelAvailability(mode, models, {base:this.options.directProviderBases?.direct_openrouter, fetch:this.options.fetch, signal});
   }
   /** Explicit local erasure of legacy settled inference bodies. Does not erase
    * receipts/AUTH, active recovery records, external backups or old ciphertext.

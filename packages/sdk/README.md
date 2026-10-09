@@ -1,4 +1,4 @@
-Current client release: [privacy hardening .7](../../docs/releases/privacy-preview.md).
+Current client release: [privacy and recovery guidance .8](../../docs/releases/usability-preview.md).
 
 # Solana zkAPI SDK
 

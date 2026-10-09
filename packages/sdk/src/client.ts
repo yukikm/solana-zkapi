@@ -14,6 +14,9 @@ import { WalletClient, type WalletOptions } from './wallet.ts';
 import { SolanaWalletChain } from './wallet-chain.ts';
 import { authorizationSnapshot } from './session-snapshot.ts';
 import { validateDaemonModelPolicy, validateModelRequestCapabilities } from './clientd-models.ts';
+import { privacyProfile, planClientUpgrade, type PrivacyProfile } from './client-guidance.ts';
+export { privacyProfile, planClientUpgrade, type PrivacyProfile, type UpgradePlan } from './client-guidance.ts';
+export type { ModelAvailability } from './provider-status.ts';
 
 export type { Mode, Tariff, ManifestTrustPolicy, ArtifactBundle, V0Wallet, ClientProver };
 export type InferenceApi = 'chat' | 'responses' | 'messages';
@@ -77,6 +80,7 @@ export interface ClientStatus {
   expiry: ReturnType<typeof expiryNotice> | null;
   lastSettlement: { chargeMicroUsdc: string; operationIds: string[] } | null;
   privacyNotice: string;
+  privacy: PrivacyProfile;
 }
 export class ClientActionError extends Error {
   readonly code: 'busy' | 'not_ready' | 'invalid_request' | 'closed';
@@ -161,7 +165,7 @@ export class ZkApiClient {
     const r = await this.options.wallet.journal.read(this.options.noteId), v = r?.value, w = v?.wallet, p = v?.pending;
     const expiry = v?.witness ? expiryNotice(BigInt(v.witness.expiry), BigInt(Math.floor(Date.now() / 1000))) : null;
     const last = v?.history.at(-1);
-    const emergency = w?.emergencyEscapes?.at(-1), unresolvedEscape = w?.emergencyEscapes?.some(e => e.phase !== 'settled');
+    const emergency = w?.emergencyEscapes?.find(e => e.phase !== 'settled') ?? w?.emergencyEscapes?.at(-1), unresolvedEscape = w?.emergencyEscapes?.some(e => e.phase !== 'settled');
     const escapeOperation = emergency
       ? w?.operation?.id === emergency.operationId ? w.operation : w?.history.find(o => o.id === emergency.operationId)
       : undefined;
@@ -190,7 +194,16 @@ export class ZkApiClient {
         destinationOwner: w.operation.destinationOwner ?? null } : null,
       expiry, lastSettlement: last ? { chargeMicroUsdc: last.settlement.charge_micro_usdc, operationIds: last.operations.map(o => o.id) } : null,
       privacyNotice: this.options.mode === 'proxy' ? PROXY_PRIVACY_NOTICE : this.options.mode === 'direct_openrouter' ? DIRECT_OPENROUTER_PRIVACY_NOTICE : DIRECT_PRIVACY_NOTICE,
+      privacy: privacyProfile(this.options.mode, this.options.keyReuseSeconds ?? (this.options.mode === 'proxy' ? 0 : 300)),
     };
+  }
+
+  /** Read-only local guidance; never changes a custody/profile binding. */
+  async upgradePlan() { return planClientUpgrade(await this.status()); }
+  /** Explicit public metadata check. Model listing and status never contact a provider. */
+  checkModelAvailability(signal?: AbortSignal) {
+    if (this.disposed) throw new ClientActionError('closed', 'Client disposed; reopen the original installation.');
+    return this.options.control.checkModelAvailability(this.options.mode, this.models.map(m=>m.id), signal);
   }
 
   /** Notifications are local projections, not a background network poller. */

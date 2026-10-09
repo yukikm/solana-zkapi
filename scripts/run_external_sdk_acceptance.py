@@ -50,7 +50,7 @@ def main() -> None:
     started = time.monotonic()
     source_paths = [*sorted((ROOT / 'packages/sdk/src').glob('*.ts')),
                     *[ROOT / 'packages/sdk' / name for name in ['package.json', 'build.mjs', 'tsconfig.json', 'tsconfig.build.json', 'README.md', 'DISTRIBUTION.md', 'INTERNALS.md', 'LICENSE']],
-                    *[ROOT / 'packages/sdk/test' / name for name in ['client.test.ts', 'chat.test.ts', 'clientd-models.test.ts', 'trust.test.ts', 'deployment.test.ts', 'public-profile.test.ts', 'public-profile-fixture.ts', 'chain-fixture.ts', 'session-snapshot-runtime.ts', 'kit-helpers.ts']],
+                    *[ROOT / 'packages/sdk/test' / name for name in ['client-guidance.test.ts', 'client.test.ts', 'chat.test.ts', 'clientd-models.test.ts', 'trust.test.ts', 'deployment.test.ts', 'public-profile.test.ts', 'public-profile-fixture.ts', 'chain-fixture.ts', 'session-snapshot-runtime.ts', 'kit-helpers.ts']],
                     *sorted((ROOT / 'tools/public-devnet-consumer').glob('*.*')),
                     Path(__file__).resolve()]
     source_inputs = {str(path.relative_to(ROOT)): sha(path) for path in source_paths}
@@ -124,7 +124,7 @@ def main() -> None:
             run('declarations', ['node', 'node_modules/typescript/bin/tsc', '-p', 'tsconfig.json'], consumer)
             # Reuse source tests but redirect every runtime library import to the
             # installed package. Fixtures are explicit local copies, not imports.
-            test_names = ['control.test.ts', 'clientd.test.ts', 'client.test.ts', 'chat.test.ts', 'clientd-models.test.ts', 'trust.test.ts', 'deployment.test.ts', 'public-profile.test.ts', 'public-profile-fixture.ts', 'chain-fixture.ts', 'kit-helpers.ts']
+            test_names = ['client-guidance.test.ts', 'control.test.ts', 'clientd.test.ts', 'client.test.ts', 'chat.test.ts', 'clientd-models.test.ts', 'trust.test.ts', 'deployment.test.ts', 'public-profile.test.ts', 'public-profile-fixture.ts', 'chain-fixture.ts', 'kit-helpers.ts']
             if args.real_provers:
                 test_names.append('session-snapshot-runtime.ts')
             for name in test_names:
@@ -147,6 +147,7 @@ def main() -> None:
             for source in sorted((ROOT / 'tools/public-devnet-consumer').glob('*.*')):
                 shutil.copyfile(source, example / source.name)
             run('public-consumer-help', ['node', 'public-consumer/cli.mjs', '--help'], consumer)
+            run('public-consumer-upgrade-cli', ['node', '--test', 'public-consumer/cli.test.mjs'], consumer)
             run('public-consumer-network', ['node', '--test', 'public-consumer/native-inputs.test.mjs'], consumer)
             run('public-consumer-browser-adapter', ['node', '--experimental-test-module-mocks', '--test',
                 'public-consumer/browser.test.mjs'], consumer)
