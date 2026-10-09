@@ -462,11 +462,11 @@ impl Runtime {
                             self.commit_archive_prefix(&mut pending, &checked)?;
                             pending_bytes = 0;
                         }
-                        // An invalid block may latch its Scanner closed. Keep
-                        // the last successful prefix separate for error flush.
-                        let mut candidate = checked.clone();
-                        candidate.apply_finalized(&block)?;
-                        checked = candidate;
+                        // Stage directly: cloning a Scanner also copies its
+                        // complete accepted-block digest history. The durable
+                        // Scanner and successful pending blocks can reconstruct
+                        // this candidate if a later block latches it closed.
+                        checked.apply_finalized(&block)?;
                         pending.push(block);
                         pending_bytes = pending_bytes.saturating_add(bytes);
                         // A single oversized block is committed alone: batching
@@ -480,6 +480,16 @@ impl Runtime {
                 Ok(())
             }
             .await;
+            if result.is_err() {
+                // apply_finalized can latch the staged Scanner closed. Never
+                // flush that object: rebuild only the successful suffix from
+                // the last durable Scanner. Failed blocks are never pending.
+                // A failed journal commit remains poisoned and is not retried.
+                checked = self.scanner.clone();
+                for block in &pending {
+                    checked.apply_finalized(block)?;
+                }
+            }
             // Fetch/decode/replay errors retain the same successful durable
             // prefix as before batching. A crash re-fetches the uncommitted
             // read-only suffix; no view, proof or send observes that suffix.
@@ -961,6 +971,10 @@ impl Runtime {
         Ok(count)
     }
 }
+
+#[cfg(test)]
+#[path = "tests/runtime_catch_up.rs"]
+mod catch_up_tests;
 fn signed_attempt(value: &Value, payload_digest: Hash, buffer: Hash) -> Result<Attempt> {
     let stage = match value["kind"].as_str() {
         Some("execute") => Stage::Execute,

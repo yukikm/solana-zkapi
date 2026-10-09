@@ -1,0 +1,316 @@
+{
+  "schema": 1,
+  "recorded_date_jst": "2026-10-09",
+  "scope": "Actual private checkpoint population and one same-binary writer/follower warm restart; public readiness remains unverified",
+  "historical_source_binding": {
+    "binary_sha256": "0037eca87a656aeae06f8c01fa4102d90f15dbacee4bf1074caf2292ed7c8f49",
+    "build_source_manifest_sha256": "7a5d7c8cfb68d455f2b20dc840a7319a34789b3ab6248ddf0249694ec7a7891c",
+    "build_source_inputs": 193,
+    "installation_result_sha256": "af13e3ddac373622e58014b8a95d21a9f89eef7145c323d232bf192c8e75c7dc",
+    "prior_openrouter_parity_completion_sha256": "a161ad3985841c6850e74e3b63dd8ea44e5f45b23318d939f9eb299925c3d319",
+    "live_binary_changed_by_restart": false,
+    "configuration_changed_by_restart": false,
+    "scope_precedes_throughput_successor": true,
+    "current_worktree_equivalence_claimed": false,
+    "prior_evidence": "docs/evidence/PD-restart-checkpoints.json"
+  },
+  "initial_cache_observation": {
+    "observed_at_unix": 1791502996,
+    "observed_at_utc": "2026-10-08T23:43:16+00:00",
+    "both_caches_present": true,
+    "both_processes_match_installed_binary": true,
+    "caches": {
+      "zka-challenger.service": {
+        "bytes": 42482318,
+        "sha256": "62458b3066fcf64160676892d9aa7d00158918d5124e2f5801ed019679aa9e8e",
+        "metadata_bytes": 8462644,
+        "runtime_bytes": 34019598,
+        "anchor_slot": 508954204,
+        "anchor_block_time": 1791495323,
+        "anchor_age_seconds_at_observation": 7673
+      },
+      "zka-indexer.service": {
+        "bytes": 42482014,
+        "sha256": "6843d6eaa1abcf602ff5eabc50945fc2e0cbc29d364ad57e425ee9d6a85d3d38",
+        "metadata_bytes": 8462646,
+        "runtime_bytes": 34019292,
+        "anchor_slot": 508954204,
+        "anchor_block_time": 1791495323,
+        "anchor_age_seconds_at_observation": 7673
+      }
+    },
+    "journal_jobs": 0,
+    "journal_transport_records": 0,
+    "gateway_state": "inactive",
+    "readiness_claimed": false
+  },
+  "warm_restart": {
+    "completed": true,
+    "observed_at_unix": 1791503236,
+    "observed_at_utc": "2026-10-08T23:47:16+00:00",
+    "receipt_sha256": "e6d05884e36fc678d35611a49b7cce1ced7115430d7bc459d304cbfd60909f95",
+    "receipt_independently_downloaded": true,
+    "downloaded_bytes_equal_successful_remote_receipt": true,
+    "downloaded_remote_failure_absent": true,
+    "cache_fast_resume_observed": true,
+    "cache_measurement_meaning": "Both new processes replaced their private cache, preserved or advanced the authenticated anchor, and had total rchar below one prior committed archive payload. Elapsed values are observation upper bounds, not isolated cache-load times.",
+    "per_file_kernel_read_audit": false,
+    "service_stops_each": 1,
+    "service_starts_each": 1,
+    "services": {
+      "zka-challenger.service": {
+        "prior_pid": 99030,
+        "new_pid": 110847,
+        "new_invocation_id": "496edc1e79f645b68ad99d2691081744",
+        "binary_sha256": "0037eca87a656aeae06f8c01fa4102d90f15dbacee4bf1074caf2292ed7c8f49",
+        "cache_rewritten": true,
+        "elapsed_to_observation_upper_bound_seconds": 57.845842936003464,
+        "elapsed_is_precise_cache_load_time": false,
+        "new_process_read": {
+          "observed_at_unix": 1791503230.3373833,
+          "rchar": 83033296,
+          "read_bytes": 655360,
+          "cpu_seconds": 8.9,
+          "rss_bytes": 110845952
+        },
+        "prior_committed_payload_bytes": 46673163486,
+        "read_less_than_one_full_archive_payload": true,
+        "before_cache": {
+          "bytes": 42587652,
+          "mode_octal": "0600",
+          "sha256": "be1128c167b78f162f7e1cd83172b36456d1af072cfa7c28e8a91be966fedce8",
+          "anchor_slot": 508955516,
+          "anchor_block_time": 1791495637,
+          "anchor_blocks": 431907
+        },
+        "after_cache": {
+          "bytes": 42587652,
+          "mode_octal": "0600",
+          "sha256": "be1128c167b78f162f7e1cd83172b36456d1af072cfa7c28e8a91be966fedce8",
+          "anchor_slot": 508955516,
+          "anchor_block_time": 1791495637,
+          "anchor_blocks": 431907
+        },
+        "stopped_receipt": {
+          "state": {
+            "MainPID": "0",
+            "Result": "success",
+            "ExecMainStatus": "0",
+            "ControlGroup": "",
+            "ActiveState": "inactive",
+            "InvocationID": ""
+          },
+          "native_exec_main_code": null,
+          "native_exit_status": null,
+          "native_signal": null,
+          "exit_zero": null,
+          "clean_shutdown": null,
+          "explicit_follower_sigkill": false,
+          "reason_if_unavailable": "systemd exit metadata unavailable; no zero-exit inference"
+        }
+      },
+      "zka-indexer.service": {
+        "prior_pid": 99043,
+        "new_pid": 110868,
+        "new_invocation_id": "388c35b7b52b4e68bbbeac98a358dc27",
+        "binary_sha256": "0037eca87a656aeae06f8c01fa4102d90f15dbacee4bf1074caf2292ed7c8f49",
+        "cache_rewritten": true,
+        "elapsed_to_observation_upper_bound_seconds": 54.708974460998434,
+        "elapsed_is_precise_cache_load_time": false,
+        "new_process_read": {
+          "observed_at_unix": 1791503230.3375914,
+          "rchar": 141732945,
+          "read_bytes": 458752,
+          "cpu_seconds": 8.8,
+          "rss_bytes": 115507200
+        },
+        "prior_committed_payload_bytes": 46641714386,
+        "read_less_than_one_full_archive_payload": true,
+        "before_cache": {
+          "bytes": 42562165,
+          "mode_octal": "0600",
+          "sha256": "4b8a7780a4aa5518093696d2e9aed08356573caf88b5304cefa4d3131a6024f7",
+          "anchor_slot": 508955208,
+          "anchor_block_time": 1791495563,
+          "anchor_blocks": 431599
+        },
+        "after_cache": {
+          "bytes": 42587348,
+          "mode_octal": "0600",
+          "sha256": "16b3a8979cc6054b9448e5dc6b6d67675e3b204893ff4c95a604942d53e3b4f6",
+          "anchor_slot": 508955516,
+          "anchor_block_time": 1791495637,
+          "anchor_blocks": 431907
+        },
+        "stopped_receipt": {
+          "state": {
+            "MainPID": "0",
+            "Result": "success",
+            "ExecMainStatus": "0",
+            "ControlGroup": "",
+            "ActiveState": "inactive",
+            "InvocationID": "6b04eb928bce48a294edd9d39154f19a"
+          },
+          "native_exec_main_code": 1,
+          "native_exit_status": 0,
+          "native_signal": null,
+          "exit_zero": true,
+          "clean_shutdown": true,
+          "explicit_follower_sigkill": false,
+          "reason_if_unavailable": null
+        }
+      }
+    },
+    "other_three_active_service_processes_unchanged": true,
+    "gateway_remains_stopped": true,
+    "automatic_retry": false,
+    "configuration_changes": 0,
+    "financial_actions": 0,
+    "historical_archive_payload_reads_by_helper": 0,
+    "readiness_claimed": false
+  },
+  "preserved_financial_cut": {
+    "database_raw_sha256": "49c3b1387f2916e8fe94c4672ebb848f22b73b98787f99e2483bfb9c06260f16",
+    "reservations_sha256": "29be8a5b46f7efc666b8ad623093ab83a133365ef42cee036ea533453c337706",
+    "settled_sessions": 4,
+    "reserved_requests": 4,
+    "reservation_state_written": false,
+    "original_capacity_transferred": 0,
+    "stopped_and_final_journal_equal": true,
+    "journal_sha256": "61f3b217f5af850d5085cff490a1f40352a6de2e1336e3a4589b6a11c90b5acc",
+    "state_without_cursor_sha256": "86eec1d590c28356b013be8a5b63fe2b16f6c6a67a04506016e1b7c45e2ad4ea",
+    "journal_jobs": 0,
+    "journal_transport_records": 0,
+    "archive_head_blocks": 431907,
+    "archive_head_chunks": 19311,
+    "archive_tail_slot": 508955516,
+    "new_auth_inference_or_transaction_requested_by_helper": false,
+    "retained_history_pruned": false
+  },
+  "separate_pre_restart_readiness_and_capacity": {
+    "observed_at_unix": 1791503048,
+    "observed_at_utc": "2026-10-08T23:44:08+00:00",
+    "control_http_status": 503,
+    "control_capabilities": {
+      "schema": 1,
+      "scope": "read_only_capabilities",
+      "deployment_id": "public-devnet-20261008-a",
+      "manifest_hash": "b97e200769be24448a51999346a28d0ca497892d68212f517b2b9bb4cc1a4643",
+      "started_at": 1791503048,
+      "completed_at": 1791503071,
+      "expires_at": 1791503076,
+      "control": "available",
+      "indexer": "unavailable",
+      "signer": "available",
+      "providers": [
+        {
+          "provider": "openrouter",
+          "mode": "direct_openrouter",
+          "model": "*",
+          "tariff_hash": "ca205b230ac0e68b1fc84383d6948f215b46b604c3dbe8502bce83940af75ff5",
+          "status": "enabled"
+        }
+      ],
+      "provider_credit": "not_checked",
+      "operator_admission": "not_checked"
+    },
+    "stored_writer_health_observed_at": 1791483534,
+    "stored_writer_health_age_seconds": 19514,
+    "stored_writer_health_ready": false,
+    "stored_writer_health_is_fresh": false,
+    "stored_writer_health_lag_seconds": 7942,
+    "stored_writer_health_lag_is_current_measurement": false,
+    "disk": {
+      "capacity_bytes": 84358758400,
+      "available_bytes": 33854193664
+    },
+    "memory": {
+      "MemTotal": "        3940256 kB",
+      "MemAvailable": "    2879920 kB",
+      "SwapTotal": "             0 kB",
+      "SwapFree": "              0 kB"
+    },
+    "loadavg": "1.93 2.03 2.01 2/165 110572",
+    "post_restart_readiness_check_included": false
+  },
+  "limitations": [
+    "The live gateway remains stopped; HTTP 503 is the separately observed local control readiness response.",
+    "The initial private caches were already thousands of seconds behind chain time; cache restart does not establish catch-up throughput.",
+    "The stored writer health predates the observation; its lag value is not a fresh estimate of the later archive tail.",
+    "Writer native exit metadata was unavailable. The follower had native exit code 0; neither received the helper explicit follower SIGKILL.",
+    "This is a dated source-0037 checkpoint and does not establish successor performance, E01 escape/finalize, public API readiness, or continuous availability.",
+    "Existing failed installation preparations and earlier no-cache observations remain preserved in prior evidence."
+  ],
+  "artifacts": [
+    {
+      "local_retained_path": "target/public-devnet-resume-20261009/cache-observation-01/invocation-01.json",
+      "sha256": "4efce6cc3f2586718c350864cc658dde43b5861c33f974de560a2780c7b743bd",
+      "bytes": 10187,
+      "command_id": "16aced06-99a5-4c2e-84a5-717b74df188f",
+      "status": "Success",
+      "response_code": 0,
+      "started_at_utc": "2026-10-08T23:43:02.025Z",
+      "finished_at_utc": "2026-10-08T23:43:17.025Z"
+    },
+    {
+      "local_retained_path": "target/public-devnet-resume-20261009/health-capacity-01/invocation-01.json",
+      "sha256": "fa9cc17a6ac6a995766d67aac390c47d73cd566df8c965d4adee22cc557b046c",
+      "bytes": 2537,
+      "command_id": "804816b6-0069-46c7-9cf8-b2e4ba3481d6",
+      "status": "Success",
+      "response_code": 0,
+      "started_at_utc": "2026-10-08T23:44:07.535Z",
+      "finished_at_utc": "2026-10-08T23:44:31.535Z"
+    },
+    {
+      "local_retained_path": "target/public-devnet-resume-20261009/warm-restart-01/invocation-03.json",
+      "sha256": "86cc3aec83dafe6537693b5bba7cc9fa0e1eb976aa8faaa2168e29c67713013a",
+      "bytes": 1079,
+      "command_id": "92267ac1-8bee-4ac7-9a83-7ac99f969e65",
+      "status": "Success",
+      "response_code": 0,
+      "started_at_utc": "2026-10-08T23:45:21.694Z",
+      "finished_at_utc": "2026-10-08T23:47:16.694Z"
+    },
+    {
+      "local_retained_path": "target/public-devnet-resume-20261009/warm-restart-01/source.py",
+      "sha256": "eb930dc24a962045df697b72c8722125458539a6b2d0b95ebc5c3c9877246535",
+      "bytes": 21926
+    },
+    {
+      "local_retained_path": "target/public-devnet-resume-20261009/warm-restart-01/preparation.json",
+      "sha256": "14d1a072bb9b4abbb315322f6971298fa08b228ffd43fc504d48423dddc9796f",
+      "bytes": 541
+    },
+    {
+      "local_retained_path": "target/public-devnet-resume-20261009/warm-restart-receipt-01/invocation-01.json",
+      "sha256": "000a09b7ffc0beb7d6c51f737161b3e00cf0397a16dee3710f93201032c4f003",
+      "bytes": 20298,
+      "command_id": "f20825fb-2921-43a0-ab65-038f1664d4d8",
+      "status": "Success",
+      "response_code": 0,
+      "started_at_utc": "2026-10-08T23:48:08.818Z",
+      "finished_at_utc": "2026-10-08T23:48:08.818Z"
+    },
+    {
+      "local_retained_path": "target/public-devnet-resume-20261009/warm-restart-receipt-01/result.json",
+      "sha256": "e6d05884e36fc678d35611a49b7cce1ced7115430d7bc459d304cbfd60909f95",
+      "bytes": 91658
+    },
+    {
+      "local_retained_path": "target/public-devnet-resume-20261009/warm-restart-receipt-01/attempt.json",
+      "sha256": "ad701285be2c444be560a1e52c1521b0e91acdd09c0a528b5f263d6f1a1e69f4",
+      "bytes": 227
+    },
+    {
+      "local_retained_path": "target/public-devnet-resume-20261009/warm-restart-receipt-01/zka-challenger.service.stopped.json",
+      "sha256": "052d7b5685756bc3a659ed79ae2734923a3bc044fe205b62ec6a60146a8e58df",
+      "bytes": 432
+    },
+    {
+      "local_retained_path": "target/public-devnet-resume-20261009/warm-restart-receipt-01/zka-indexer.service.stopped.json",
+      "sha256": "93ab2fb3320e86248de8b5052e6adc010aa5c8c3a6fbb240e0083dc8280d6600",
+      "bytes": 403
+    }
+  ]
+}

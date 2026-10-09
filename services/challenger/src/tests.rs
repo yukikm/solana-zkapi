@@ -38,7 +38,7 @@ fn f(v: &Value) -> FieldElement {
 fn b58(v: &Value) -> String {
     zkapi_indexer::snapshot::key(h(v))
 }
-fn trust_and_manifest() -> (Trust, Value) {
+pub(crate) fn trust_and_manifest() -> (Trust, Value) {
     let a = fixture("a");
     let p = &a["auth"]["request"]["public_inputs"];
     let mut m: Value =

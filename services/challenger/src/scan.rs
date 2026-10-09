@@ -10,12 +10,28 @@ use serde_json::Value;
 use std::collections::BTreeMap;
 use zkapi_indexer::{tree::Tree, ChainState, FinalizedBlock, Indexer};
 
-#[derive(Clone)]
+#[cfg_attr(not(test), derive(Clone))]
 pub struct Scanner {
     trust: Trust,
     index: Indexer,
     generations: BTreeMap<u32, Checkpoint>,
     now: u64,
+}
+#[cfg(test)]
+thread_local! {
+    pub(crate) static CLONE_COUNT: std::cell::Cell<usize> = const { std::cell::Cell::new(0) };
+}
+#[cfg(test)]
+impl Clone for Scanner {
+    fn clone(&self) -> Self {
+        CLONE_COUNT.with(|count| count.set(count.get() + 1));
+        Self {
+            trust: self.trust.clone(),
+            index: self.index.clone(),
+            generations: self.generations.clone(),
+            now: self.now,
+        }
+    }
 }
 const CHECKPOINT_MAGIC: &[u8; 8] = b"ZKSCAN01";
 const MAX_CHECKPOINT_BYTES: usize = 256 * 1024 * 1024;
