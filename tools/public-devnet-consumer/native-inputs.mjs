@@ -81,7 +81,7 @@ export async function installNativeInputs(loaded, destination, networkOptions) {
       capabilities: model.capabilities, tariff: await write(`tariff-${i}.json`, json(model.tariff)) });
   }
   const runtime = { manifest, policy: options.deployment.trust, artifacts, mode: options.mode,
-    models, rpc: profile.rpcUrl, indexer: profile.indexerOrigin, key_reuse_seconds: 0,
+    models, rpc: profile.rpcUrl, indexer: profile.indexerOrigin, key_reuse_seconds: 60,
     ...(options.mode === 'direct_openrouter' ? { settlement_wait_ms: 120_000 } : {}),
     ...(profile.preparationCommitment ? { preparation_commitment: profile.preparationCommitment } : {}),
     ...(options.directProviderBases ? { direct_provider_bases: options.directProviderBases } : {}),

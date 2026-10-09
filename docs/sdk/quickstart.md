@@ -124,16 +124,28 @@ for await (const delta of readChatDeltas(response)) appendText(delta);
 ```
 
 These are alternatives: consume the response once. Always consume or cancel
-its body. Breaking the iterator cancels it. The SDK attempts settlement after
-consumption/cancellation; close or verification failure stays pending in
-`status.session`. Use explicit `recover()` before another send. An answer on
+its body. Breaking the iterator cancels it. Direct mode retains a successfully
+consumed session for subsequent requests; cancellation retires the key. A close
+or verification failure stays pending in `status.session`; use `recover()` if
+`status.canRequest` is false. An answer on
 screen alone does not establish verified billing. Live streaming compatibility
 is provider-specific; see [status](status.md).
 
 The app owns history. For the next turn, pass prior messages, the assistant
 answer and the new user message. There is no server-side chat history API.
-Session finalization can take time between turns. This initial application API
-closes each request's session; it does not reuse a runtime key.
+Direct mode requests a 300-second lease and reuses it within the same client and
+conversation. Pass a stable `sessionId` in `chat()` or `request()` (default:
+`default`); call `settle()` before switching conversations with an active lease.
+A follow-up with 90 seconds or less remaining retires the old lease and waits up
+to 45 seconds for its verified successor before authorizing the new request.
+Idle expiry also triggers settlement while the client is alive, and never while
+a response is still being consumed. Reloaded clients require explicit recovery.
+`keyReuseSeconds: 0` preserves per-request settlement; values 1–300 select a fixed
+window instead. Proxy mode defaults to per-request settlement.
+
+This policy is included in SDK/native `.6`. Published `.3` files and existing
+custody bindings are unchanged. The `.6` native-input helper selects 60-second
+reuse with a 120-second settlement wait; use it with the `.6` native runtime.
 
 `chat()` handles text Chat Completions on configured OpenAI/OpenRouter/OA routes.
 For native Responses, Anthropic Messages or client-side tool calls, use

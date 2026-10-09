@@ -2,9 +2,9 @@
 
 The public-profile API is included in the **`0.2.0-devnet.2` release**, with
 verified downloads for the [public Devnet deployment](public-devnet-preview.md).
-The immutable GitHub `0.2.0-devnet.1` release does not contain it. Operator startup
-and separately budgeted funded acceptance are still in progress; published
-assets do not establish public service readiness.
+The immutable GitHub `0.2.0-devnet.1` release does not contain it. New SDK `.6` consumers use the [revision-4 profile](../releases/session-reuse-preview.md).
+Dated service and funded lifecycle results remain in the deployment guide;
+published assets alone do not establish current service readiness or capacity.
 
 An application maintainer installs one profile URL and its exact SHA-256 from
 an independently authenticated release. The profile binds a complete artifact
@@ -132,7 +132,7 @@ The exact supported top-level fields are:
 |---|---|
 | `schema` | Integer `1` |
 | `id`, `revision` | Lowercase stable profile identifier and positive integer revision |
-| `sdkVersions` | Explicit exact supported SDK versions, including `0.2.0-devnet.2` for this preview |
+| `sdkVersions` | Explicit exact supported SDK versions, including `0.2.0-devnet.6` for this release |
 | `protocolLayoutVersion` | Integer `2` |
 | `bundle` | `{url, sha256}` of the existing immutable `bundle.json` format |
 | `rpcUrl`, `indexerOrigin` | Reviewed browser-safe HTTPS RPC URL and canonical HTTPS indexer origin |

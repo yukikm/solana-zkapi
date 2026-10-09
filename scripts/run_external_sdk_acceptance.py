@@ -176,7 +176,7 @@ for (const schema of [1,2]) test('native schema '+schema+' files retain authenti
   assert.equal(f.calls.length,before); assert.equal(receipt.custodyInitialized,false); assert.equal(receipt.funded,false);
   const runtimeBytes=await readFile(receipt.runtime), runtime=JSON.parse(runtimeBytes);
   assert.equal(await sha256Hex(runtimeBytes),receipt.runtimeSha256);
-  assert.equal(runtime.key_reuse_seconds,0); assert.deepEqual(runtime.models[0].capabilities,{streaming:true,tools:false});
+  assert.equal(runtime.key_reuse_seconds,60); assert.deepEqual(runtime.models[0].capabilities,{streaming:true,tools:false});
   assert.equal(runtime.settlement_wait_ms,120000);
   assert.equal(runtime.models[0].tariff,join(destination,'tariff-0.json'));
   assert.equal(runtime.rpc,f.profile.rpcUrl); assert.equal(runtime.indexer,f.profile.indexerOrigin);

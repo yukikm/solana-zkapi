@@ -66,7 +66,7 @@ async function fixture(t:TestContext,mode:Mode='proxy',reuse=60,models:DaemonOpt
     await pendingPreparation?.();
     const p:PreparedSession={request:{authorization:{version:'1',deployment_id:'fixture',pool:'pool',request_id:c.requestId,quote_hash:'00'.repeat(32),mode,control_secret_hash:c.controlHash,proxy_secret_hash:c.proxyHash},quote:{body:{quote_id:crypto.randomUUID(),deployment_id:'fixture',pool:'pool',mode,provider:mode==='direct_oa'?'oa':'openrouter',models:[mode==='proxy'?_model:'*'],tariff_hash:'33'.repeat(32),cap_micro_usdc:'100',issued_at:String(now),expires_at:String(now+120n),session_ttl_seconds:'60',max_concurrency:'4',control_api_origin:context.control_api_origin,inference_api_origin:context.inference_api_origin},quote_hash:'00'.repeat(32),signature:'fixture'},public_inputs:Array(12).fill(field(1)),proof:{backend:'groth16_bn254',proof:'fixture'}},control_token:c.controlToken,proxy_token:c.proxyToken,tariff:{tariff_hash:'33'.repeat(32),version:'1',provider:'openrouter',model:'m',pricing_basis:'fixture',valid_from:'0',valid_until:'1000',rates:[],operator_fee_micro_usdc:'0'},rerandomization:field(2)};return{prepared:p,root:field(2)};}};
   const service=new ClientDaemon(options);await service.start();
-  return{service,journal,dir,sentRequests,beforeClose:(handler:()=>Promise<void>)=>{beforeClose=handler;},closeDraining:(value=true)=>{closeDraining=value;},rejectSettlement:(value=true)=>{settlementRejected=value;},pendingPreparation:(handler:()=>Promise<void>)=>{pendingPreparation=handler;},pendingInference:(handler:(signal:AbortSignal)=>Promise<Response>)=>{pendingInference=handler;},restart:()=>{const recoveredJournal=new EncryptedJournal<NoteJournal>(store,key,{deploymentId:'fixture',pool:'pool'},validateNoteJournal);return new ClientDaemon({...options,journal:recoveredJournal,client:new ControlClient({...clientOptions,journal:recoveredJournal})});},prepareUnsent:async()=>{const p=await options.prepare('m',await createCredentials(mode));await client.prepare('note',p.prepared,p.root);},counts:()=>({creates,closes,sends}),oaVerifications:()=>oaVerifications,rejectOa:()=>{oaRejected=true;},controlRequests:()=>controlRequests,advance:()=>{now+=61n;},lose:(value=true)=>{loss=value;},directUnknown:()=>{direct202=true;},missingSettlement:(value=true)=>{missingSettlement=value;},controlUnavailable:(value=true)=>{controlUnavailable=value;}};
+  return{service,journal,dir,sentRequests,beforeClose:(handler:()=>Promise<void>)=>{beforeClose=handler;},closeDraining:(value=true)=>{closeDraining=value;},rejectSettlement:(value=true)=>{settlementRejected=value;},pendingPreparation:(handler:()=>Promise<void>)=>{pendingPreparation=handler;},pendingInference:(handler:(signal:AbortSignal)=>Promise<Response>)=>{pendingInference=handler;},restart:()=>{const recoveredJournal=new EncryptedJournal<NoteJournal>(store,key,{deploymentId:'fixture',pool:'pool'},validateNoteJournal);return new ClientDaemon({...options,journal:recoveredJournal,client:new ControlClient({...clientOptions,journal:recoveredJournal})});},prepareUnsent:async()=>{const p=await options.prepare('m',await createCredentials(mode));await client.prepare('note',p.prepared,p.root);},counts:()=>({creates,closes,sends}),oaVerifications:()=>oaVerifications,rejectOa:()=>{oaRejected=true;},controlRequests:()=>controlRequests,advance:(seconds=61n)=>{now+=seconds;},lose:(value=true)=>{loss=value;},directUnknown:()=>{direct202=true;},missingSettlement:(value=true)=>{missingSettlement=value;},controlUnavailable:(value=true)=>{controlUnavailable=value;}};
 }
 const body=new TextEncoder().encode('{"model":"m","stream":true,"store":false}');
 const otherBody=new TextEncoder().encode('{"model":"n","messages":[{"role":"user","content":"original new send"}],"stream":true}');
@@ -294,8 +294,8 @@ test('native wait does not authorize after unknown response, cancellation, resta
     if(boundary!=='default')assert.equal(f.controlRequests(),calls);
   }
 });
-test('settlement-wait policy rejects incompatible modes, reuse and invalid bounds before AUTH',async t=>{
-  for(const [mode,reuse,settlementWaitMs] of [['proxy',0,1],['direct_oa',0,1],['direct_openrouter',60,1],
+test('settlement-wait policy rejects proxy mode and invalid bounds before AUTH',async t=>{
+  for(const [mode,reuse,settlementWaitMs] of [['proxy',0,1],
     ['direct_openrouter',0,-1],['direct_openrouter',0,180001],['direct_openrouter',0,1.5]] as const)
     await assert.rejects(fixture(t,mode,reuse,['m'],{settlementWaitMs}),/settlement wait requires/);
 });
@@ -310,7 +310,9 @@ test('disconnect during native new-operation preparation prevents its AUTH and i
 });
 test('uncertain direct inference is never replayed after restart; volatile key, same mode',async t=>{
   const f=await fixture(t,'direct_openrouter'),id=crypto.randomUUID();f.lose();await assert.rejects(f.service.infer('/v1/chat/completions',body,id));
-  assert.equal((await f.journal.read('note'))!.value.pending!.providerKey,undefined);const resumed=f.restart();await resumed.start();
+  const saved=(await f.journal.read('note'))!.value;
+  assert.equal(saved.pending,null);assert.equal(saved.history[0].operations[0].id,id);
+  const resumed=f.restart();await resumed.start();
   assert.deepEqual(f.counts(),{creates:1,closes:1,sends:1});await assert.rejects(resumed.infer('/v1/chat/completions',body,id),DaemonConflict);
 });
 test('restart keeps admin reachable for explicit absent-operation reconciliation without inference replay',async t=>{
@@ -451,4 +453,42 @@ test('native reviewed streaming and tool restrictions fail before AUTH and prese
     await assert.rejects(f.service.infer('/v1/chat/completions',new TextEncoder().encode(JSON.stringify({model:'m',...extra}))),/capability is not configured/);
   }
   assert.deepEqual(f.counts(),{creates:0,closes:0,sends:0});assert.equal((await f.journal.read('note'))!.value.pending,null);
+});
+
+test('native direct default waits for a multi-request lease settlement before sending the next operation', async t => {
+  const f = await fixture(t, 'direct_openrouter');
+  const ids = [crypto.randomUUID(), crypto.randomUUID(), crypto.randomUUID()];
+  await (await f.service.infer('/v1/chat/completions', body, ids[0])).text();
+  f.advance(30n);
+  await (await f.service.infer('/v1/chat/completions', body, ids[1])).text();
+  assert.deepEqual(f.counts(), { creates: 1, closes: 0, sends: 2 });
+  f.advance(30n); f.closeDraining();
+  f.beforeClose(async () => {
+    assert.equal(f.counts().sends, 2); assert.equal(f.counts().creates, 1);
+    if (f.counts().closes === 2) f.closeDraining(false);
+  });
+  await (await f.service.infer('/v1/chat/completions', body, ids[2])).text();
+  assert.deepEqual(f.sentRequests.map(r => r.id), ids);
+  assert.equal((await f.journal.read('note'))!.value.history[0].operations.length, 2);
+  assert.deepEqual(f.counts(), { creates: 2, closes: 2, sends: 3 });
+});
+
+test('native reuse cannot continue after an interrupted group when retirement is still pending', async t => {
+  const f = await fixture(t, 'direct_openrouter');
+  await (await f.service.infer('/v1/chat/completions', body)).text();
+  f.closeDraining(); f.lose();
+  await assert.rejects(f.service.infer('/v1/chat/completions', body));
+  const calls = f.controlRequests();
+  await assert.rejects(f.service.infer('/v1/chat/completions', body), DaemonConflict);
+  assert.equal(f.controlRequests(), calls); assert.equal(f.counts().creates, 1); assert.equal(f.counts().sends, 2);
+  f.lose(false); f.closeDraining(false); await f.service.management('recover');
+  assert.equal((await f.journal.read('note'))!.value.pending, null);
+});
+
+test('native lease expires before the configured reuse window and does not rotate during streaming', async t => {
+  const f = await fixture(t, 'direct_openrouter', 300);
+  const response = await f.service.infer('/v1/chat/completions', body);
+  f.advance(59n); await f.service.maintenance(); assert.equal(f.counts().closes, 0);
+  await response.text(); assert.equal(f.counts().closes, 1);
+  assert.equal((await f.journal.read('note'))!.value.pending, null);
 });

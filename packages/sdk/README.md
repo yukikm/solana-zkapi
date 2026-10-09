@@ -40,13 +40,19 @@ recover a pending AUTH or send inference. Model tariffs must match the pinned
 deployment; model configuration is not proof of live provider compatibility.
 
 Use one stable local note ID and the same browser origin/storage. Consume or
-cancel every response. New inference is blocked while a session, wallet
-operation or permanent clearance remains unresolved. Explicit recovery uses
+cancel every response. New inference is blocked while recovery, a wallet
+operation or permanent clearance remains unresolved. An active direct lease can
+serve further explicit requests in its owning client and conversation. Recovery uses
 saved authorization and journal state; inference is never automatically replayed.
 
-The application API closes each inference session after response consumption or
-cancellation. Close can remain pending, so inspect `status()` and use `recover()`.
-The advanced clientd interface retains its configurable key reuse policy.
+The source application API reuses direct leases (300-second TTL, renewal when
+90 seconds or less remain), matching the Ethereum browser SDK. Set `sessionId`
+on each request to scope reuse to a conversation; omission means `default`.
+Successful response consumption releases the request without closing the key.
+Expiry, explicit `settle()`, cancellation or failure retires it. Set
+`keyReuseSeconds: 0` to retain per-request settlement. Proxy defaults to that
+per-request policy. The advanced clientd default remains a fixed 60-second window.
+This policy is included in SDK `.6`; immutable `.3` artifacts retain their original behavior.
 
 A signature-verified quote issued up to five seconds ahead of the local clock
 can wait once for that clock to catch up. The original time and expiry checks

@@ -1,5 +1,9 @@
 # Public Devnet model selection
 
+New SDK/native **`0.2.0-devnet.6`** consumers: see the [session reuse release guide](../releases/session-reuse-preview.md)
+for exact downloads and the compatible immutable revision-4 profile. Existing
+`.3` installations retain their original profile and recovery inputs.
+
 The revision-3 consumer profile lists all 21 regular text Chat models in the
 2026-10-09 OpenRouter catalog matching **OpenAI GPT 5.6 or later** or
 **Anthropic Claude 5 or later**. Both families use `direct_openrouter` and the

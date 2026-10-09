@@ -22,7 +22,7 @@ import type { Attempt, PlanRecord } from '../src/transport.ts';
 
 const field = (n: number) => '0x' + n.toString(16).padStart(64, '0');
 const chat = (model = 'first') => ({ operationId: crypto.randomUUID(), model, messages: [{ role: 'user' as const, content: 'Hello' }], maxOutputTokens: 32 });
-async function setup(t: TestContext, mode: Mode = 'proxy') {
+async function setup(t: TestContext, mode: Mode = 'proxy', keyReuseSeconds?: number) {
   const dir = await mkdtemp(join(tmpdir(), 'zkapi-app-')); t.after(() => rm(dir, { recursive: true, force: true }));
   const store = await NativeJournalStore.open(dir), key = await importJournalKey(new Uint8Array(32).fill(17));
   const makeJournal = () => new EncryptedJournal<NoteJournal>(store, key, { deploymentId: 'app-fixture', pool: 'pool' }, validateNoteJournal);
@@ -41,7 +41,7 @@ async function setup(t: TestContext, mode: Mode = 'proxy') {
   await journal.create('note', { schema: 1, state, witness: { secret: field(2), note_id: 1, deposit_micro_usdc: '200', expiry: '9999999999' },
     wallet: { status: 'active', history: [] }, pending: null, history: [] });
   const counts = { quote: 0, proof: 0, auth: 0, sends: 0, closes: 0, settles: 0, wallet: 0, clearance: 0, clearanceVerifications: 0 };
-  const behavior = { lose: false, closeUnavailable: false, failVerifier: false, authUnknown: false, stream: false, rejectQuote: false,
+  const behavior = { lose: false, closeUnavailable: false, closeDraining: false, httpStatus: 200, failVerifier: false, authUnknown: false, stream: false, rejectQuote: false,
     streamFailure: false, streamWaiting: false, clearanceUnavailable: false, invalidClearance: false,
     beforeClearance: undefined as (() => Promise<void>) | undefined, beforeClose: undefined as (() => Promise<void>) | undefined };
   const clearanceSignature = { r_x: field(2), r_y: field(3), s: field(4) };
@@ -49,6 +49,8 @@ async function setup(t: TestContext, mode: Mode = 'proxy') {
   const status = async (settled = false) => {
     const p = (await journal.read('note'))!.value.pending!;
     return { request_id: p.prepared.request.authorization.request_id, mode, state: settled ? 'SETTLED' : 'ACTIVE', cap_micro_usdc: '100',
+      issued_at: p.prepared.request.quote.body.issued_at,
+      expires_at: String(BigInt(p.prepared.request.quote.body.issued_at) + BigInt(p.prepared.request.quote.body.session_ttl_seconds)),
       ...(settled ? { settlement: { charge_micro_usdc: '1', next_commitment: state.commitment, next_anchor: field(8), blind_delta_srv: field(9), next_state_signature: { r_x: field(2), r_y: field(3), s: field(4) } } } : {}) };
   };
   const http: typeof fetch = async (input, init) => {
@@ -58,7 +60,7 @@ async function setup(t: TestContext, mode: Mode = 'proxy') {
       const wanted = JSON.parse(String(init!.body)), now = BigInt(Math.floor(Date.now() / 1000));
       const selected = models.find(m => mode === 'proxy' ? m.id === wanted.models[0] : true)!;
       const body: Quote['body'] = { quote_id: crypto.randomUUID(), deployment_id: context.deployment_id, pool: context.pool, mode, provider,
-        models: wanted.models, tariff_hash: selected.tariff.tariff_hash, cap_micro_usdc: '100', issued_at: String(now), expires_at: String(now + 120n), session_ttl_seconds: '60',
+        models: wanted.models, tariff_hash: selected.tariff.tariff_hash, cap_micro_usdc: '100', issued_at: String(now), expires_at: String(now + 120n), session_ttl_seconds: wanted.session_ttl_seconds,
         max_concurrency: '4', control_api_origin: context.control_api_origin, inference_api_origin: context.inference_api_origin };
       const hash = await sha256Hex(jcsBytes(body));
       return Response.json({ body, quote_hash: hash, signature: sign(null, Buffer.from(hash, 'hex'), signer.privateKey).toString('base64') });
@@ -74,7 +76,7 @@ async function setup(t: TestContext, mode: Mode = 'proxy') {
       if (behavior.clearanceUnavailable) return new Response(null, { status: 503 });
       return Response.json({ nullifier: field(1), signature: { ...clearanceSignature, ...(behavior.invalidClearance ? { s: field(9) } : {}) } });
     }
-    if (url.pathname.endsWith('/close')) { counts.closes++; await behavior.beforeClose?.(); if (behavior.closeUnavailable) return new Response(null, { status: 503 }); return Response.json(await status(true)); }
+    if (url.pathname.endsWith('/close')) { counts.closes++; await behavior.beforeClose?.(); if (behavior.closeUnavailable) return new Response(null, { status: 503 }); return Response.json(behavior.closeDraining ? { ...await status(), state: 'DRAINING' } : await status(true)); }
     if (url.pathname.endsWith('/receipts')) return Response.json({ receipts: [], next_cursor: null });
     if (url.pathname.startsWith('/zkapi/v1/sessions/')) return Response.json(await status());
     counts.sends++; order.push('inference');
@@ -86,7 +88,7 @@ async function setup(t: TestContext, mode: Mode = 'proxy') {
     if (behavior.streamWaiting) return new Response(new ReadableStream<Uint8Array>(), { headers: { 'Content-Type': 'text/event-stream' } });
     if (behavior.streamFailure) return new Response(new ReadableStream({ start(c) { c.error(new Error('private upstream error')); } }), { headers: { 'Content-Type': 'application/json' } });
     if (behavior.stream) return new Response('data: {"choices":[{"index":0,"delta":{"content":"Hello"},"finish_reason":"stop"}]}\n\ndata: [DONE]\n\n', { headers: { 'Content-Type': 'text/event-stream' } });
-    return Response.json({ choices: [{ message: { content: 'Hello' }, finish_reason: 'stop' }] });
+    return Response.json({ choices: [{ message: { content: 'Hello' }, finish_reason: 'stop' }] }, { status: behavior.httpStatus });
   };
   const verifier: SessionVerifier = { async prepare() {}, async settle(_c, previous) {
     counts.settles++; if (behavior.failVerifier) throw Error('invalid signed successor');
@@ -106,7 +108,7 @@ async function setup(t: TestContext, mode: Mode = 'proxy') {
   const walletAddress = (await fixtureSigner(new Uint8Array(32).fill(1))).address;
   const make = () => {
     const journal = makeJournal();
-    const components: ClientComponents = { store, noteId: 'note', mode, models,
+    const components: ClientComponents = { store, noteId: 'note', mode, models, keyReuseSeconds,
       control: new ControlClient({ context, journal, verifier, fetch: http, directProviderBases: { direct_openrouter: 'https://direct.invalid/v1' } }),
       wallet: { manifest: { deployment_id: context.deployment_id, pool: context.pool, cap_micro_usdc: '100',
         control_api_origin: context.control_api_origin, inference_api_origin: context.inference_api_origin } as unknown as VerifiedManifest, journal, prover, fetch: http,
@@ -114,7 +116,7 @@ async function setup(t: TestContext, mode: Mode = 'proxy') {
           async sessionSnapshot() { return { root: field(1), siblings: Array(32).fill(field(0)), slot: 1, sequence: '1', nextNoteId: 2, clock: '100', paused: false }; },
           async blockhash() { throw Error('unexpected wallet work'); }, async buffer() { return null; } },
         rpc: {} as any, wallets: [{ publicKey: walletAddress, supportedTransactionVersions: new Set([0]), async signTransaction() { counts.wallet++; throw Error('unexpected wallet signature'); } }] } };
-    return new ZkApiClient(components);
+    const client = new ZkApiClient(components); t.after(() => client.dispose()); return client;
   };
   return { client: make(), restart: make, counts, behavior, journal, order, bodies, models };
 }
@@ -414,4 +416,120 @@ test('reviewed model restrictions reject streaming and tools before quote, proof
   await assert.rejects(client.request({ operationId: crypto.randomUUID(), model: 'first', api: 'chat', body: { tools: [] } }), /capability is not configured/);
   assert.deepEqual(f.order, []); assert.equal((await f.journal.read('note'))!.value.pending, null);
   await readChatText(await client.chat(chat())); assert.equal(f.counts.sends, 1);
+});
+
+test('direct application reuses a conversation lease across models and settles all operations once', async t => {
+  const f = await setup(t, 'direct_openrouter'), first = { ...chat(), sessionId: 'conversation-one' };
+  await readChatText(await f.client.chat(first));
+  await readChatText(await f.client.chat({ ...chat('second'), sessionId: first.sessionId }));
+  const status = await f.client.status();
+  assert.equal(status.canRequest, true); assert.equal(status.settledBalanceMicroUsdc, '200');
+  assert.equal(status.session!.operations.length, 2);
+  assert.equal(f.counts.auth, 1); assert.equal(f.counts.proof, 1); assert.equal(f.counts.closes, 0);
+  assert.equal((await f.journal.read('note'))!.value.pending!.providerKey, undefined);
+  await assert.rejects(f.client.chat(first));
+  await assert.rejects(f.client.chat({ ...chat(), sessionId: 'conversation-two' }), /previous conversation/);
+  assert.equal(f.counts.sends, 2);
+  await f.client.settle();
+  assert.equal((await f.client.status()).session, null); assert.equal(f.counts.settles, 1);
+  assert.equal((await f.journal.read('note'))!.value.history[0].operations.length, 2);
+  assert.equal(f.counts.wallet, 0);
+});
+
+test('browser lease renews at the 90-second margin without sliding its expiry', async t => {
+  t.mock.timers.enable({ apis: ['Date'], now: Date.now() });
+  const f = await setup(t, 'direct_openrouter');
+  await readChatText(await f.client.chat(chat()));
+  t.mock.timers.tick(209_000);
+  await readChatText(await f.client.chat(chat('second')));
+  assert.equal(f.counts.auth, 1); assert.equal(f.counts.closes, 0);
+  t.mock.timers.tick(1_000);
+  await readChatText(await f.client.chat(chat()));
+  assert.equal(f.counts.auth, 2); assert.equal(f.counts.closes, 1); assert.equal(f.counts.sends, 3);
+  assert.equal((await f.journal.read('note'))!.value.history[0].operations.length, 2);
+});
+
+test('idle browser lease settles automatically, but never while a response is held', async t => {
+  t.mock.timers.enable({ apis: ['Date'], now: Date.now() });
+  const f = await setup(t, 'direct_openrouter');
+  await readChatText(await f.client.chat(chat()));
+  const response = await f.client.chat(chat());
+  t.mock.timers.tick(301_000);
+  await new Promise(resolve => setTimeout(resolve, 1_100));
+  assert.equal(f.counts.closes, 0);
+  await readChatText(response);
+  assert.equal(f.counts.closes, 1); assert.equal((await f.client.status()).session, null);
+  await readChatText(await f.client.chat(chat()));
+  t.mock.timers.tick(301_000);
+  for (let i = 0; i < 30 && (await f.client.status()).session; i++) await new Promise(resolve => setTimeout(resolve, 100));
+  assert.equal((await f.client.status()).session, null); assert.equal(f.counts.closes, 2);
+  assert.equal(f.counts.sends, 3);
+});
+
+test('browser direct renewal waits for the group successor before admitting a new send', async t => {
+  t.mock.timers.enable({ apis: ['Date'], now: Date.now() });
+  const f = await setup(t, 'direct_openrouter');
+  await readChatText(await f.client.chat(chat())); await readChatText(await f.client.chat(chat()));
+  f.behavior.closeDraining = true;
+  f.behavior.beforeClose = async () => {
+    assert.equal(f.counts.auth, 1); assert.equal(f.counts.sends, 2);
+    if (f.counts.closes === 2) f.behavior.closeDraining = false;
+  };
+  t.mock.timers.tick(210_000);
+  await readChatText(await f.client.chat(chat()));
+  assert.equal(f.counts.settles, 1); assert.equal(f.counts.auth, 2); assert.equal(f.counts.sends, 3);
+});
+
+test('browser renewal signature failure blocks new work until explicit same-note recovery', async t => {
+  t.mock.timers.enable({ apis: ['Date'], now: Date.now() });
+  const f = await setup(t, 'direct_openrouter');
+  await readChatText(await f.client.chat(chat())); t.mock.timers.tick(210_000);
+  f.behavior.failVerifier = true;
+  await assert.rejects(f.client.chat(chat()));
+  assert.equal((await f.client.status()).canRequest, false);
+  await assert.rejects(f.client.chat(chat())); assert.equal(f.counts.sends, 1); assert.equal(f.counts.auth, 1);
+  f.behavior.failVerifier = false; await f.client.recover();
+  assert.equal((await f.client.status()).session, null); assert.equal(f.counts.sends, 1);
+});
+
+test('reopened direct application cannot borrow another instance lease and never replays inference', async t => {
+  const f = await setup(t, 'direct_openrouter');
+  const request = chat(); await readChatText(await f.client.chat(request));
+  const before = { ...f.counts }, next = f.restart();
+  assert.equal((await next.status()).canRequest, false); assert.deepEqual(f.counts, before);
+  await assert.rejects(next.chat(chat()), /recover/); assert.deepEqual(f.counts, before);
+  await next.recover(); assert.equal(f.counts.sends, 1); assert.equal(f.counts.closes, 1);
+  await assert.rejects(next.chat(request)); assert.equal(f.counts.sends, 1);
+});
+
+test('direct response cancellation, errors and non-success status retire the reusable key', async t => {
+  for (const failure of ['cancel', 'stream', 'http', 'transport']) {
+    const f = await setup(t, 'direct_openrouter');
+    await readChatText(await f.client.chat(chat()));
+    if (failure === 'cancel') {
+      f.behavior.streamWaiting = true; const response = await f.client.chat(chat()); await response.body!.cancel();
+    } else if (failure === 'stream') {
+      f.behavior.streamFailure = true; await assert.rejects(readChatText(await f.client.chat(chat())));
+    } else if (failure === 'http') {
+      f.behavior.httpStatus = 429; const response = await f.client.chat(chat()); assert.equal(response.status, 429); await response.text();
+    } else { f.behavior.lose = true; await assert.rejects(f.client.chat(chat())); }
+    assert.equal(f.counts.auth, 1); assert.equal(f.counts.sends, 2); assert.equal(f.counts.closes, 1);
+    assert.equal((await f.client.status()).session, null);
+  }
+});
+
+test('explicit zero reuse preserves per-request direct settlement', async t => {
+  const f = await setup(t, 'direct_openrouter', 0);
+  await readChatText(await f.client.chat(chat())); await readChatText(await f.client.chat(chat()));
+  assert.equal(f.counts.auth, 2); assert.equal(f.counts.closes, 2); assert.equal(f.counts.sends, 2);
+});
+
+test('conversation ownership is frozen before asynchronous request preparation', async t => {
+  const f = await setup(t, 'direct_openrouter');
+  const request = { operationId: crypto.randomUUID(), sessionId: 'original', model: 'first', api: 'chat' as const,
+    body: { messages: [{ role: 'user', content: 'Hello' }], max_completion_tokens: 32 } };
+  const response = f.client.request(request); request.sessionId = 'changed';
+  await readChatText(await response);
+  await readChatText(await f.client.chat({ ...chat(), sessionId: 'original' }));
+  assert.equal(f.counts.auth, 1); assert.equal(f.counts.sends, 2);
 });

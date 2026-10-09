@@ -1,0 +1,507 @@
+{
+  "bundle": {
+    "sha256": "10a85725034a18bfa3e07913af9cdf89bd10ca05c4ce50aefe5f766a2431c9c8",
+    "url": "https://d366buuvadnp3.cloudfront.net/releases/public-devnet-20261008-a/assets/bundle.json"
+  },
+  "directProviderBases": {
+    "direct_openrouter": "https://openrouter.ai/api/v1"
+  },
+  "id": "zkapi-public-devnet-20261008-a",
+  "indexerOrigin": "https://d366buuvadnp3.cloudfront.net",
+  "mode": "direct_openrouter",
+  "modelCapabilities": {
+    "anthropic/claude-fable-5": {
+      "streaming": true,
+      "tools": true
+    },
+    "anthropic/claude-fable-5.1": {
+      "streaming": true,
+      "tools": true
+    },
+    "anthropic/claude-haiku-5.5": {
+      "streaming": true,
+      "tools": true
+    },
+    "anthropic/claude-opus-5": {
+      "streaming": true,
+      "tools": true
+    },
+    "anthropic/claude-opus-5.5": {
+      "streaming": true,
+      "tools": true
+    },
+    "anthropic/claude-sonnet-5": {
+      "streaming": true,
+      "tools": true
+    },
+    "anthropic/claude-sonnet-5.5": {
+      "streaming": true,
+      "tools": true
+    },
+    "openai/gpt-5.6-luna": {
+      "streaming": true,
+      "tools": true
+    },
+    "openai/gpt-5.6-luna-pro": {
+      "streaming": true,
+      "tools": true
+    },
+    "openai/gpt-5.6-sol": {
+      "streaming": true,
+      "tools": true
+    },
+    "openai/gpt-5.6-sol-pro": {
+      "streaming": true,
+      "tools": true
+    },
+    "openai/gpt-5.6-terra": {
+      "streaming": true,
+      "tools": true
+    },
+    "openai/gpt-5.6-terra-pro": {
+      "streaming": true,
+      "tools": true
+    },
+    "openai/gpt-6-astra": {
+      "streaming": true,
+      "tools": true
+    },
+    "openai/gpt-6-astra-pro": {
+      "streaming": true,
+      "tools": true
+    },
+    "openai/gpt-6-luna": {
+      "streaming": true,
+      "tools": true
+    },
+    "openai/gpt-6-luna-pro": {
+      "streaming": true,
+      "tools": true
+    },
+    "openai/gpt-6-sol": {
+      "streaming": true,
+      "tools": true
+    },
+    "openai/gpt-6-sol-pro": {
+      "streaming": true,
+      "tools": true
+    },
+    "openai/gpt-6.1-sol": {
+      "streaming": true,
+      "tools": true
+    },
+    "openai/gpt-6.1-sol-pro": {
+      "streaming": true,
+      "tools": true
+    }
+  },
+  "models": [
+    {
+      "apis": [
+        "chat"
+      ],
+      "id": "anthropic/claude-fable-5",
+      "label": "Anthropic: Claude Fable 5",
+      "provider": "openrouter",
+      "tariff": {
+        "model": "*",
+        "operator_fee_micro_usdc": "0",
+        "pricing_basis": "provider_reported_usd",
+        "provider": "openrouter",
+        "rates": [],
+        "tariff_hash": "ca205b230ac0e68b1fc84383d6948f215b46b604c3dbe8502bce83940af75ff5",
+        "valid_from": "1791388971",
+        "valid_until": "1793980971",
+        "version": "1"
+      }
+    },
+    {
+      "apis": [
+        "chat"
+      ],
+      "id": "anthropic/claude-fable-5.1",
+      "label": "Anthropic: Claude Fable 5.1",
+      "provider": "openrouter",
+      "tariff": {
+        "model": "*",
+        "operator_fee_micro_usdc": "0",
+        "pricing_basis": "provider_reported_usd",
+        "provider": "openrouter",
+        "rates": [],
+        "tariff_hash": "ca205b230ac0e68b1fc84383d6948f215b46b604c3dbe8502bce83940af75ff5",
+        "valid_from": "1791388971",
+        "valid_until": "1793980971",
+        "version": "1"
+      }
+    },
+    {
+      "apis": [
+        "chat"
+      ],
+      "id": "anthropic/claude-haiku-5.5",
+      "label": "Anthropic: Claude Haiku 5.5",
+      "provider": "openrouter",
+      "tariff": {
+        "model": "*",
+        "operator_fee_micro_usdc": "0",
+        "pricing_basis": "provider_reported_usd",
+        "provider": "openrouter",
+        "rates": [],
+        "tariff_hash": "ca205b230ac0e68b1fc84383d6948f215b46b604c3dbe8502bce83940af75ff5",
+        "valid_from": "1791388971",
+        "valid_until": "1793980971",
+        "version": "1"
+      }
+    },
+    {
+      "apis": [
+        "chat"
+      ],
+      "id": "anthropic/claude-opus-5",
+      "label": "Anthropic: Claude Opus 5",
+      "provider": "openrouter",
+      "tariff": {
+        "model": "*",
+        "operator_fee_micro_usdc": "0",
+        "pricing_basis": "provider_reported_usd",
+        "provider": "openrouter",
+        "rates": [],
+        "tariff_hash": "ca205b230ac0e68b1fc84383d6948f215b46b604c3dbe8502bce83940af75ff5",
+        "valid_from": "1791388971",
+        "valid_until": "1793980971",
+        "version": "1"
+      }
+    },
+    {
+      "apis": [
+        "chat"
+      ],
+      "id": "anthropic/claude-opus-5.5",
+      "label": "Anthropic: Claude Opus 5.5",
+      "provider": "openrouter",
+      "tariff": {
+        "model": "*",
+        "operator_fee_micro_usdc": "0",
+        "pricing_basis": "provider_reported_usd",
+        "provider": "openrouter",
+        "rates": [],
+        "tariff_hash": "ca205b230ac0e68b1fc84383d6948f215b46b604c3dbe8502bce83940af75ff5",
+        "valid_from": "1791388971",
+        "valid_until": "1793980971",
+        "version": "1"
+      }
+    },
+    {
+      "apis": [
+        "chat"
+      ],
+      "id": "anthropic/claude-sonnet-5",
+      "label": "Anthropic: Claude Sonnet 5",
+      "provider": "openrouter",
+      "tariff": {
+        "model": "*",
+        "operator_fee_micro_usdc": "0",
+        "pricing_basis": "provider_reported_usd",
+        "provider": "openrouter",
+        "rates": [],
+        "tariff_hash": "ca205b230ac0e68b1fc84383d6948f215b46b604c3dbe8502bce83940af75ff5",
+        "valid_from": "1791388971",
+        "valid_until": "1793980971",
+        "version": "1"
+      }
+    },
+    {
+      "apis": [
+        "chat"
+      ],
+      "id": "anthropic/claude-sonnet-5.5",
+      "label": "Anthropic: Claude Sonnet 5.5",
+      "provider": "openrouter",
+      "tariff": {
+        "model": "*",
+        "operator_fee_micro_usdc": "0",
+        "pricing_basis": "provider_reported_usd",
+        "provider": "openrouter",
+        "rates": [],
+        "tariff_hash": "ca205b230ac0e68b1fc84383d6948f215b46b604c3dbe8502bce83940af75ff5",
+        "valid_from": "1791388971",
+        "valid_until": "1793980971",
+        "version": "1"
+      }
+    },
+    {
+      "apis": [
+        "chat"
+      ],
+      "id": "openai/gpt-5.6-luna",
+      "label": "OpenAI: GPT-5.6 Luna",
+      "provider": "openrouter",
+      "tariff": {
+        "model": "*",
+        "operator_fee_micro_usdc": "0",
+        "pricing_basis": "provider_reported_usd",
+        "provider": "openrouter",
+        "rates": [],
+        "tariff_hash": "ca205b230ac0e68b1fc84383d6948f215b46b604c3dbe8502bce83940af75ff5",
+        "valid_from": "1791388971",
+        "valid_until": "1793980971",
+        "version": "1"
+      }
+    },
+    {
+      "apis": [
+        "chat"
+      ],
+      "id": "openai/gpt-5.6-luna-pro",
+      "label": "OpenAI: GPT-5.6 Luna Pro",
+      "provider": "openrouter",
+      "tariff": {
+        "model": "*",
+        "operator_fee_micro_usdc": "0",
+        "pricing_basis": "provider_reported_usd",
+        "provider": "openrouter",
+        "rates": [],
+        "tariff_hash": "ca205b230ac0e68b1fc84383d6948f215b46b604c3dbe8502bce83940af75ff5",
+        "valid_from": "1791388971",
+        "valid_until": "1793980971",
+        "version": "1"
+      }
+    },
+    {
+      "apis": [
+        "chat"
+      ],
+      "id": "openai/gpt-5.6-sol",
+      "label": "OpenAI: GPT-5.6 Sol",
+      "provider": "openrouter",
+      "tariff": {
+        "model": "*",
+        "operator_fee_micro_usdc": "0",
+        "pricing_basis": "provider_reported_usd",
+        "provider": "openrouter",
+        "rates": [],
+        "tariff_hash": "ca205b230ac0e68b1fc84383d6948f215b46b604c3dbe8502bce83940af75ff5",
+        "valid_from": "1791388971",
+        "valid_until": "1793980971",
+        "version": "1"
+      }
+    },
+    {
+      "apis": [
+        "chat"
+      ],
+      "id": "openai/gpt-5.6-sol-pro",
+      "label": "OpenAI: GPT-5.6 Sol Pro",
+      "provider": "openrouter",
+      "tariff": {
+        "model": "*",
+        "operator_fee_micro_usdc": "0",
+        "pricing_basis": "provider_reported_usd",
+        "provider": "openrouter",
+        "rates": [],
+        "tariff_hash": "ca205b230ac0e68b1fc84383d6948f215b46b604c3dbe8502bce83940af75ff5",
+        "valid_from": "1791388971",
+        "valid_until": "1793980971",
+        "version": "1"
+      }
+    },
+    {
+      "apis": [
+        "chat"
+      ],
+      "id": "openai/gpt-5.6-terra",
+      "label": "OpenAI: GPT-5.6 Terra",
+      "provider": "openrouter",
+      "tariff": {
+        "model": "*",
+        "operator_fee_micro_usdc": "0",
+        "pricing_basis": "provider_reported_usd",
+        "provider": "openrouter",
+        "rates": [],
+        "tariff_hash": "ca205b230ac0e68b1fc84383d6948f215b46b604c3dbe8502bce83940af75ff5",
+        "valid_from": "1791388971",
+        "valid_until": "1793980971",
+        "version": "1"
+      }
+    },
+    {
+      "apis": [
+        "chat"
+      ],
+      "id": "openai/gpt-5.6-terra-pro",
+      "label": "OpenAI: GPT-5.6 Terra Pro",
+      "provider": "openrouter",
+      "tariff": {
+        "model": "*",
+        "operator_fee_micro_usdc": "0",
+        "pricing_basis": "provider_reported_usd",
+        "provider": "openrouter",
+        "rates": [],
+        "tariff_hash": "ca205b230ac0e68b1fc84383d6948f215b46b604c3dbe8502bce83940af75ff5",
+        "valid_from": "1791388971",
+        "valid_until": "1793980971",
+        "version": "1"
+      }
+    },
+    {
+      "apis": [
+        "chat"
+      ],
+      "id": "openai/gpt-6-astra",
+      "label": "OpenAI: GPT-6 Astra",
+      "provider": "openrouter",
+      "tariff": {
+        "model": "*",
+        "operator_fee_micro_usdc": "0",
+        "pricing_basis": "provider_reported_usd",
+        "provider": "openrouter",
+        "rates": [],
+        "tariff_hash": "ca205b230ac0e68b1fc84383d6948f215b46b604c3dbe8502bce83940af75ff5",
+        "valid_from": "1791388971",
+        "valid_until": "1793980971",
+        "version": "1"
+      }
+    },
+    {
+      "apis": [
+        "chat"
+      ],
+      "id": "openai/gpt-6-astra-pro",
+      "label": "OpenAI: GPT-6 Astra Pro",
+      "provider": "openrouter",
+      "tariff": {
+        "model": "*",
+        "operator_fee_micro_usdc": "0",
+        "pricing_basis": "provider_reported_usd",
+        "provider": "openrouter",
+        "rates": [],
+        "tariff_hash": "ca205b230ac0e68b1fc84383d6948f215b46b604c3dbe8502bce83940af75ff5",
+        "valid_from": "1791388971",
+        "valid_until": "1793980971",
+        "version": "1"
+      }
+    },
+    {
+      "apis": [
+        "chat"
+      ],
+      "id": "openai/gpt-6-luna",
+      "label": "OpenAI: GPT-6 Luna",
+      "provider": "openrouter",
+      "tariff": {
+        "model": "*",
+        "operator_fee_micro_usdc": "0",
+        "pricing_basis": "provider_reported_usd",
+        "provider": "openrouter",
+        "rates": [],
+        "tariff_hash": "ca205b230ac0e68b1fc84383d6948f215b46b604c3dbe8502bce83940af75ff5",
+        "valid_from": "1791388971",
+        "valid_until": "1793980971",
+        "version": "1"
+      }
+    },
+    {
+      "apis": [
+        "chat"
+      ],
+      "id": "openai/gpt-6-luna-pro",
+      "label": "OpenAI: GPT-6 Luna Pro",
+      "provider": "openrouter",
+      "tariff": {
+        "model": "*",
+        "operator_fee_micro_usdc": "0",
+        "pricing_basis": "provider_reported_usd",
+        "provider": "openrouter",
+        "rates": [],
+        "tariff_hash": "ca205b230ac0e68b1fc84383d6948f215b46b604c3dbe8502bce83940af75ff5",
+        "valid_from": "1791388971",
+        "valid_until": "1793980971",
+        "version": "1"
+      }
+    },
+    {
+      "apis": [
+        "chat"
+      ],
+      "id": "openai/gpt-6-sol",
+      "label": "OpenAI: GPT-6 Sol",
+      "provider": "openrouter",
+      "tariff": {
+        "model": "*",
+        "operator_fee_micro_usdc": "0",
+        "pricing_basis": "provider_reported_usd",
+        "provider": "openrouter",
+        "rates": [],
+        "tariff_hash": "ca205b230ac0e68b1fc84383d6948f215b46b604c3dbe8502bce83940af75ff5",
+        "valid_from": "1791388971",
+        "valid_until": "1793980971",
+        "version": "1"
+      }
+    },
+    {
+      "apis": [
+        "chat"
+      ],
+      "id": "openai/gpt-6-sol-pro",
+      "label": "OpenAI: GPT-6 Sol Pro",
+      "provider": "openrouter",
+      "tariff": {
+        "model": "*",
+        "operator_fee_micro_usdc": "0",
+        "pricing_basis": "provider_reported_usd",
+        "provider": "openrouter",
+        "rates": [],
+        "tariff_hash": "ca205b230ac0e68b1fc84383d6948f215b46b604c3dbe8502bce83940af75ff5",
+        "valid_from": "1791388971",
+        "valid_until": "1793980971",
+        "version": "1"
+      }
+    },
+    {
+      "apis": [
+        "chat"
+      ],
+      "id": "openai/gpt-6.1-sol",
+      "label": "OpenAI: GPT-6.1 Sol",
+      "provider": "openrouter",
+      "tariff": {
+        "model": "*",
+        "operator_fee_micro_usdc": "0",
+        "pricing_basis": "provider_reported_usd",
+        "provider": "openrouter",
+        "rates": [],
+        "tariff_hash": "ca205b230ac0e68b1fc84383d6948f215b46b604c3dbe8502bce83940af75ff5",
+        "valid_from": "1791388971",
+        "valid_until": "1793980971",
+        "version": "1"
+      }
+    },
+    {
+      "apis": [
+        "chat"
+      ],
+      "id": "openai/gpt-6.1-sol-pro",
+      "label": "OpenAI: GPT-6.1 Sol Pro",
+      "provider": "openrouter",
+      "tariff": {
+        "model": "*",
+        "operator_fee_micro_usdc": "0",
+        "pricing_basis": "provider_reported_usd",
+        "provider": "openrouter",
+        "rates": [],
+        "tariff_hash": "ca205b230ac0e68b1fc84383d6948f215b46b604c3dbe8502bce83940af75ff5",
+        "valid_from": "1791388971",
+        "valid_until": "1793980971",
+        "version": "1"
+      }
+    }
+  ],
+  "preparationCommitment": "finalized",
+  "protocolLayoutVersion": 2,
+  "revision": 4,
+  "rpcUrl": "https://d366buuvadnp3.cloudfront.net/rpc",
+  "schema": 1,
+  "sdkVersions": [
+    "0.2.0-devnet.6"
+  ]
+}

@@ -8,8 +8,10 @@ import { daemonApiPaths, validateDaemonModelPolicy, validateModelRequestCapabili
 export interface DaemonOptions {
   client: ControlClient; journal: EncryptedJournal<NoteJournal>; noteId: string; mode: Mode;
   models: readonly (string | DaemonModelPolicy)[]; keyReuseSeconds?: number; now?: () => bigint;
-  /** Opt-in wait for a completed same-process direct response to settle before
-   * the next explicit operation. Default 0; no response or inference replay. */
+  /** Browser lease policy: rotate before a long request could cross expiry. */
+  minimumLeaseRemainingSeconds?: number;
+  /** Wait for completed same-process direct responses to settle before a new
+   * lease. Default 120000 with direct reuse, otherwise 0. No inference replay. */
   settlementWaitMs?: number;
   prepare(model: string, credentials: Awaited<ReturnType<typeof createCredentials>>): Promise<{ prepared: PreparedSession; root: string }>;
   wallet?(command: unknown): Promise<unknown>;
@@ -21,15 +23,19 @@ export class DaemonConflict extends Error { constructor() { super('Unresolved se
 export class ClientDaemon {
   private readonly o: DaemonOptions; private readonly reuse: number; private readonly settlementWait: number;
   private readonly stoppingController = new AbortController();
-  private completedDirectResponse?: { requestId: string; operationId: string };
+  private completedDirectResponse?: { requestId: string; operationIds: Set<string> };
+  private lease?: { requestId: string; until: bigint; expiresAt: bigint };
+  private invalidated = false;
   private serial: Promise<unknown> = Promise.resolve(); private inflight = 0; private stopping = false; private started = false; private recoveryRequired = false; private idleWaiters: (()=>void)[] = [];
   constructor(options: DaemonOptions) {
     this.o = {...options,models:structuredClone(options.models)}; this.reuse = options.keyReuseSeconds ?? 60;
-    this.settlementWait = options.settlementWaitMs ?? 0;
+    this.settlementWait = options.settlementWaitMs ?? (options.mode !== 'proxy' && this.reuse > 0 ? 120_000 : 0);
     const ids = this.o.models.map(model => typeof model === 'string' ? model : model.id);
     if (!['proxy','direct_oa','direct_openrouter'].includes(options.mode) || !Number.isInteger(this.reuse) || this.reuse < 0 || this.reuse > 300 || !ids.length || ids.some(id=>typeof id !== 'string' || !/^[\x21-\x7e]{1,200}$/.test(id) || id === '*') || new Set(ids).size !== ids.length) throw new Error('explicit mode, unique pinned models and key reuse 0–300 required');
     if (!Number.isSafeInteger(this.settlementWait) || this.settlementWait < 0 || this.settlementWait > 180_000
-      || this.settlementWait > 0 && (options.mode !== 'direct_openrouter' || this.reuse !== 0)) throw new Error('settlement wait requires zero-reuse direct OpenRouter and 0–180000 milliseconds');
+      || this.settlementWait > 0 && options.mode === 'proxy') throw new Error('settlement wait requires direct mode and 0–180000 milliseconds');
+    if (!Number.isSafeInteger(options.minimumLeaseRemainingSeconds ?? 1) || (options.minimumLeaseRemainingSeconds ?? 1) < 1
+      || (options.minimumLeaseRemainingSeconds ?? 1) > 300) throw new Error('minimum lease remaining must be 1–300 seconds');
     for (const model of this.o.models) if (typeof model !== 'string') validateDaemonModelPolicy(options.mode, model);
   }
   private now(): bigint { return this.o.now?.() ?? BigInt(Math.floor(Date.now()/1000)); }
@@ -37,13 +43,29 @@ export class ClientDaemon {
     const task = this.serial.then(fn,fn); this.serial = task.catch(()=>{}); return task;
   }
   private async record() { const r = await this.o.journal.read(this.o.noteId); if (!r) throw new Error('finalized note required'); return r; }
+  /** Local ownership only; never revives a persisted key after restart. An
+   * expired owned lease may rotate before the caller's new explicit send. */
+  canContinue(p: NonNullable<NoteJournal['pending']>): boolean {
+    return this.started && !this.stopping && !this.recoveryRequired && !this.invalidated
+      && !!this.lease && this.lease.requestId === p.prepared.request.authorization.request_id
+      && (p.phase === 'active' && p.serverState === 'ACTIVE' && !p.closeRequested || this.canWaitForSettlement(p));
+  }
+  private expired(p: NonNullable<NoteJournal['pending']>, forRequest = false): boolean {
+    if (this.reuse === 0) return true;
+    if (this.lease?.requestId !== p.prepared.request.authorization.request_id) return true;
+    return this.now() >= this.lease.until
+      || forRequest && this.now() + BigInt(this.o.minimumLeaseRemainingSeconds ?? 1) >= this.lease.expiresAt;
+  }
+  maintenanceDue(p: NonNullable<NoteJournal['pending']>): boolean {
+    return p.phase === 'closing' || !!p.closeRequested || this.stopping || this.invalidated || this.expired(p);
+  }
   private canWaitForSettlement(p: NonNullable<NoteJournal['pending']>): boolean {
     const completed = this.completedDirectResponse;
-    return !!completed && p.phase === 'closing' && p.closeRequested === true
-      && p.prepared.request.authorization.mode === 'direct_openrouter'
+    return this.settlementWait > 0 && !!completed && p.phase === 'closing' && p.closeRequested === true
+      && !this.invalidated && p.prepared.request.authorization.mode !== 'proxy'
       && p.prepared.request.authorization.request_id === completed.requestId
       && ['ACTIVE','DRAINING','RECONCILING','SIGN_PENDING'].includes(p.serverState ?? '')
-      && p.operations.length === 1 && p.operations[0].id === completed.operationId && p.operations[0].phase === 'send_unknown';
+      && p.operations.length > 0 && p.operations.every(o => completed.operationIds.has(o.id) && o.phase === 'send_unknown');
   }
   private async waitForSettlement(p: NonNullable<NoteJournal['pending']>, caller?: AbortSignal): Promise<void> {
     // This marker only survives a fully consumed successful response in this
@@ -82,6 +104,7 @@ export class ClientDaemon {
       // An unknown create may need its exact authorization POST, never inference.
       this.started = false;
       this.completedDirectResponse = undefined;
+      this.lease = undefined; this.invalidated = false;
       const r = await this.record();
       const recover = async(action:()=>Promise<unknown>):Promise<boolean>=>{
         try { await action(); return true; }
@@ -107,9 +130,11 @@ export class ClientDaemon {
       if (this.inflight || this.recoveryRequired) return;
       const p = (await this.record()).value.pending;
       if (!p) return;
-      if (p.phase === 'closing' || p.closeRequested || this.stopping || this.reuse === 0 || this.now() >= BigInt(p.prepared.request.quote.body.issued_at)+BigInt(this.reuse)) {
-        if (p.phase === 'prepared' || p.phase === 'send_unknown') await this.o.client.recover(this.o.noteId);
-        if ((await this.record()).value.pending) await this.o.client.close(this.o.noteId);
+      if (this.maintenanceDue(p)) {
+        try {
+          if (p.phase === 'prepared' || p.phase === 'send_unknown') await this.o.client.recover(this.o.noteId);
+          if ((await this.record()).value.pending) await this.o.client.close(this.o.noteId);
+        } catch (error) { this.completedDirectResponse = undefined; throw error; }
       }
     });
   }
@@ -205,18 +230,26 @@ export class ClientDaemon {
       if(r.value.wallet?.emergencyEscapes?.some(e=>e.phase!=='settled'))throw new DaemonConflict();
       if (r.value.history.some(h=>h.operations.some(o=>o.id===operationId)) || r.value.pending?.operations.some(o=>o.id===operationId)) throw new DaemonConflict();
       let p = r.value.pending;
-      if (p && (p.phase !== 'active' || p.closeRequested || this.now() >= BigInt(p.prepared.request.quote.body.issued_at)+BigInt(this.reuse) || p.prepared.request.authorization.mode !== this.o.mode || this.o.mode === 'proxy' && p.prepared.request.quote.body.models[0] !== body.model)) {
+      if (p && this.invalidated) throw new DaemonConflict();
+      const tariffChanged = p && typeof model !== 'string' && 'tariff' in model
+        && (model.tariff as { tariff_hash: string }).tariff_hash !== p.prepared.tariff.tariff_hash;
+      if (p && (p.phase !== 'active' || p.closeRequested || this.expired(p,true) || tariffChanged || p.prepared.request.authorization.mode !== this.o.mode || this.o.mode === 'proxy' && p.prepared.request.quote.body.models[0] !== body.model)) {
         // This new operation has not been dispatched. Preserve its exact intent
         // while closing an incompatible/expired session; never replay an old one.
         if (this.inflight) throw new DaemonConflict();
-        if (this.settlementWait > 0) await this.waitForSettlement(p,signal);
-        else await this.o.client.close(this.o.noteId);
+        // Retire an active owned lease once before polling its signed successor.
+        try {
+          if (p.phase !== 'closing' || this.settlementWait === 0) await this.o.client.close(this.o.noteId);
+          const closing = (await this.record()).value.pending;
+          if (closing && this.settlementWait > 0) await this.waitForSettlement(closing,signal);
+        } catch (error) { this.completedDirectResponse = undefined; throw error; }
         r = await this.record(); p = r.value.pending;
         if (p) throw new DaemonConflict();
         signal?.throwIfAborted();
         if (this.stopping) throw new DaemonConflict();
       }
       if (!p) {
+        this.lease = undefined; this.invalidated = false; this.completedDirectResponse = undefined;
         const credentials = await createCredentials(this.o.mode);
         signal?.throwIfAborted();
         const prepared = await this.o.prepare(body.model as string,credentials);
@@ -224,19 +257,34 @@ export class ClientDaemon {
         if (prepared.prepared.request.authorization.mode !== this.o.mode) throw new Error('mode changed during preparation');
         await this.o.client.prepare(this.o.noteId,prepared.prepared,prepared.root);
         signal?.throwIfAborted();
-        await this.o.client.submit(this.o.noteId,signal);
+        const status = await this.o.client.submit(this.o.noteId,signal);
         r = await this.record(); p = r.value.pending;
+        if (p?.phase === 'active' && p.serverState === 'ACTIVE') {
+          // Fall back to the signed quote's earlier TTL boundary for legacy
+          // endpoints without timing fields; never extend an advertised expiry.
+          const q = p.prepared.request.quote.body;
+          const fallback = BigInt(q.issued_at) + BigInt(q.session_ttl_seconds);
+          const expiresAt = typeof status.expires_at === 'string' && /^(0|[1-9][0-9]{0,19})$/.test(status.expires_at)
+            ? BigInt(status.expires_at) : fallback;
+          const until = this.now() + BigInt(this.reuse);
+          const retireAt = expiresAt - ((this.o.minimumLeaseRemainingSeconds ?? 1) > 1 ? 0n : 1n);
+          this.lease = { requestId: p.prepared.request.authorization.request_id, expiresAt, until: until < retireAt ? until : retireAt };
+        }
       }
       if (!p || p.phase !== 'active' || p.serverState !== 'ACTIVE') throw new DaemonConflict();
+      if (this.lease && this.now() + BigInt(this.o.minimumLeaseRemainingSeconds ?? 1) >= this.lease.expiresAt) {
+        await this.o.client.close(this.o.noteId); throw new DaemonConflict();
+      }
       requestId = p.prepared.request.authorization.request_id;
-      this.completedDirectResponse = undefined;
       if (this.o.mode === 'proxy') await this.o.client.prepareOperation(this.o.noteId,operationId,path,snapshot,anthropicVersion);
       this.inflight++;
     });
     let finishing: Promise<void> | undefined;
     const finish = (complete = false) => finishing ??= (async() => {
-      if (complete && this.settlementWait > 0 && requestId && !signal?.aborted)
-        this.completedDirectResponse = {requestId,operationId};
+      if (complete && requestId && !signal?.aborted && !this.invalidated) {
+        if (this.completedDirectResponse?.requestId !== requestId) this.completedDirectResponse = {requestId,operationIds:new Set()};
+        this.completedDirectResponse.operationIds.add(operationId);
+      } else { this.invalidated = this.o.mode !== 'proxy'; this.completedDirectResponse = undefined; }
       this.inflight--; if(this.inflight===0)for(const resolve of this.idleWaiters.splice(0))resolve();
       await this.maintenance().catch(()=>{ this.completedDirectResponse = undefined; });
     })();
@@ -250,7 +298,7 @@ export class ClientDaemon {
       }
       headers.set('X-Zkapi-Operation-Id',operationId); headers.set('Cache-Control','no-store');
       const reader = response.body?.getReader();
-      if (!reader) { await finish(); return new Response(null,{status:response.status,headers}); }
+      if (!reader) { await finish(response.ok); return new Response(null,{status:response.status,headers}); }
       let canceling = false;
       const body = new ReadableStream<Uint8Array>({
         async pull(controller) {

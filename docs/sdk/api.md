@@ -31,6 +31,12 @@ verified components. It is not a trust-checking factory: control, wallet,
 store, prover and journal **must belong to the same deployment and note**.
 Use the factory for new apps. No additional financial journal is created.
 
+`keyReuseSeconds` is optional: direct mode defaults to a 300-second lease with
+90 seconds reserved for renewal; explicit 1–300 selects a fixed window and 0
+closes each request. Proxy mode defaults to 0. Reuse never extends the original
+expiry and never restores a provider key from storage. This source policy is
+included in SDK `.6`; published `.3` artifacts retain their original behavior.
+
 ## Core methods
 
 | Method | Behavior |
@@ -38,8 +44,8 @@ Use the factory for new apps. No additional financial journal is created.
 | `listModels()` | Detached configured IDs/labels/providers/APIs; not live discovery |
 | `status()` | Local redacted wallet/session/balance/expiry read; no network mutation |
 | `subscribe(listener)` | Initial status and local action-boundary updates; returns unsubscribe |
-| `chat({operationId, model, messages, maxOutputTokens, stream?, signal?})` | Text Chat Completions; returns one-use `Response` |
-| `request({operationId, model, api, body, anthropicVersion?, signal?})` | Native request; `api`: `chat`, `responses`, `messages` |
+| `chat({operationId, sessionId?, model, messages, maxOutputTokens, stream?, signal?})` | Text Chat Completions; returns one-use `Response` |
+| `request({operationId, sessionId?, model, api, body, anthropicVersion?, signal?})` | Native request; `api`: `chat`, `responses`, `messages` |
 | `settle()` | Ask saved session to close; inspect status afterward |
 | `recover()` | Reconcile/close saved AUTH; never replay inference |
 | `cancelUnsentAuthorization()` | Cancel an AUTH proven locally never sent |
@@ -52,6 +58,17 @@ Duplicate recorded IDs are refused, including after settlement/restart. A new
 ID is a new billable operation and must follow an explicit user action.
 The response carries `X-Zkapi-Operation-Id`. Raw responses can have non-2xx
 status; inspect `response.ok` or use the helpers. Do not log raw provider errors.
+
+`sessionId` scopes a direct lease to a local conversation (1–160 characters;
+default `default`). Another conversation must settle the current lease first.
+Model switches can reuse a lease only with the same tariff; a changed tariff
+requires settlement and fresh authorization. Successful responses keep the key
+until its fixed expiry; cancellation, stream errors and non-2xx responses retire
+it. A renewal may wait for verified settlement before the new operation is sent.
+It never resubmits an old inference. Idle settlement runs only for a session
+owned by the current client and stops on disposal; initialization/status remain
+read-only. Call `settle()` and inspect status before disposal if immediate
+retirement is required.
 
 Native `body` omits `model`, selected separately. Supply `anthropicVersion` only
 for Messages. The protocol supports text and client-executed tools, not arbitrary
@@ -81,11 +98,14 @@ rules. No wallet recovery action sends inference.
 
 ## Status and errors
 
-`settledBalanceMicroUsdc` is the last verified balance, not spendable capacity
-during a session. `canRequest` also checks wallet state, pending work, clearance,
+`settledBalanceMicroUsdc` is the last verified balance; active usage is deducted
+at settlement. `canRequest` allows a current-client reusable direct session or
+its verified renewal path, and checks wallet state, pending work, clearance,
 expiry and the cap. It does not guarantee availability or that a request fits
 its cap. `lastSettlement.chargeMicroUsdc` is verified; do not bill from response
 token counts or an answer on screen.
+An active `status.session` alone is not a recovery condition; use `canRequest`
+for the Send control and show settlement separately from response completion.
 
 `canReconcileUnacceptedAuthorization` enables the explicit clearance action only
 for an active note with an uncertain AUTH, no observed acceptance or inference,

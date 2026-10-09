@@ -20,7 +20,7 @@ export function createPublicModelProfile(base:PublicDeploymentProfile,catalog:un
   const template=base.models[0];assert.equal(template.provider,'openrouter');assert.equal(template.tariff.model,'*');
   const rows=(catalog as any).data.filter((m:any)=>requestedPublicModel(m?.id));
   const eligible=rows.filter((m:any)=>m.architecture?.input_modalities?.includes('text')&&m.architecture?.output_modalities?.includes('text'));
-  assert.ok(eligible.length>0&&eligible.length<=32,'SDK .3 supports at most 32 configured models');
+  assert.ok(eligible.length>0&&eligible.length<=32,'SDK supports at most 32 configured models');
   assert.equal(new Set(eligible.map((m:any)=>m.id)).size,eligible.length,'duplicate catalog model');
   eligible.sort((a:any,b:any)=>a.id.localeCompare(b.id,'en'));
   const profile=structuredClone(base);profile.revision++;
@@ -35,7 +35,7 @@ export function validatePublicModelExpansion(base:PublicDeploymentProfile,expand
   // Preserve deployment, provider origin, bundle, chain, and compatibility pins.
   const strip=({revision,models,modelCapabilities,sdkVersions,...rest}:PublicDeploymentProfile)=>rest;
   assert.deepEqual(jcsBytes(strip(expanded)),jcsBytes(strip(base)));
-  assert.deepEqual(expanded.sdkVersions,['0.2.0-devnet.3']);
+  assert.deepEqual(expanded.sdkVersions,base.sdkVersions);
   validateModelConfigurations(expanded.mode,expanded.models);
   for(const model of expanded.models){
     assert.ok(requestedPublicModel(model.id),'model outside requested version range');

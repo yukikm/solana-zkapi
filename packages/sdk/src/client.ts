@@ -50,6 +50,9 @@ export interface CreateClientOptions {
   noteId: string;
   mode: Mode;
   models: readonly ModelConfiguration[];
+  /** Direct default: reuse the 300-second lease, renewing with 90 seconds left.
+   * Set 0 for per-request settlement or 1–300 for a fixed reuse window. */
+  keyReuseSeconds?: number;
   directProviderBases?: ClientOptions['directProviderBases'];
   oaVerifier?: ClientOptions['oaVerifier'];
   priorityFeeMicroLamports?: bigint;
@@ -58,7 +61,7 @@ export interface ClientStatus {
   noteId: string;
   mode: Mode;
   wallet: 'empty' | 'unfunded' | 'active' | 'pending_escape' | 'closed';
-  /** Last cryptographically accepted balance; not spendable while a session is pending. */
+  /** Last verified balance; active usage is deducted when its lease settles. */
   settledBalanceMicroUsdc: string;
   authorizationCapMicroUsdc: string;
   canRequest: boolean;
@@ -84,6 +87,8 @@ export class ClientActionError extends Error {
 export interface InferenceRequest {
   /** One UUID per explicit user send. Reuse this ID when checking an uncertain send. */
   operationId: string;
+  /** Local conversation scope for direct key reuse. Defaults to "default". */
+  sessionId?: string;
   model: string;
   api: InferenceApi;
   /** Provider-native JSON fields, excluding model (selected above). */
@@ -93,6 +98,7 @@ export interface InferenceRequest {
 }
 export interface ChatRequest {
   operationId: string;
+  sessionId?: string;
   model: string;
   messages: readonly { role: 'system' | 'user' | 'assistant'; content: string }[];
   maxOutputTokens: number;
@@ -109,6 +115,7 @@ export interface ClientComponents {
   noteId: string;
   mode: Mode;
   models: readonly ModelConfiguration[];
+  keyReuseSeconds?: number;
 }
 
 export class ZkApiClient {
@@ -118,6 +125,8 @@ export class ZkApiClient {
   private readonly models: ModelConfiguration[];
   private busy = false;
   private disposed = false;
+  private activeSessionId?: string;
+  private maintenanceTimer?: ReturnType<typeof setTimeout>;
   private readonly listeners = new Set<(status: ClientStatus) => void>();
 
   constructor(options: ClientComponents) {
@@ -126,14 +135,17 @@ export class ZkApiClient {
     validateModelConfigurations(options.mode, this.models);
     this.options = { ...options, wallet: { ...options.wallet, wallets: [...options.wallet.wallets] } };
     this.walletClient = new WalletClient(this.options.wallet);
+    const reuse = options.keyReuseSeconds ?? (options.mode === 'proxy' ? 0 : 300);
     this.daemon = new ClientDaemon({ client: options.control, journal: options.wallet.journal,
-      noteId: options.noteId, mode: options.mode, models: this.models, keyReuseSeconds: 0,
+      noteId: options.noteId, mode: options.mode, models: this.models, keyReuseSeconds: reuse,
+      minimumLeaseRemainingSeconds: options.keyReuseSeconds === undefined && options.mode !== 'proxy' ? 90 : 1,
+      settlementWaitMs: options.mode === 'proxy' ? 0 : 45_000,
       prepare: async (id, credentials) => {
         const model = this.models.find(m => m.id === id)!;
         const record = await this.options.wallet.journal.read(this.options.noteId);
         if (!record?.value.witness) throw new Error('funded note witness required');
         const quote = await this.options.control.quote({ mode: this.options.mode, provider: model.provider,
-          models: [this.options.mode === 'proxy' ? model.id : '*'], session_ttl_seconds: '60' }, model.tariff);
+          models: [this.options.mode === 'proxy' ? model.id : '*'], session_ttl_seconds: String(reuse || 60) }, model.tariff);
         const snapshot = await authorizationSnapshot(this.options.wallet.chain, record.value.witness.note_id, this.options.wallet.prover);
         const prepared = await this.options.wallet.prover.prepareSession(record.value.witness, record.value.state,
           snapshot.root, snapshot.siblings, quote, model.tariff, credentials);
@@ -156,7 +168,7 @@ export class ZkApiClient {
     const escapeAttempt = escapeOperation?.attempts.find(a => a.signature === (escapeOperation.current ?? emergency?.escape?.signature));
     return { noteId: this.options.noteId, mode: this.options.mode, wallet: w?.status ?? 'empty',
       settledBalanceMicroUsdc: v?.state.balance_micro_usdc ?? '0', authorizationCapMicroUsdc: this.options.wallet.manifest.cap_micro_usdc,
-      canRequest: !this.disposed && !this.busy && w?.status === 'active' && !w.operation && !w.clearance && !p && !unresolvedEscape
+      canRequest: !this.disposed && !this.busy && w?.status === 'active' && !w.operation && !w.clearance && (!p || this.daemon.canContinue(p)) && !unresolvedEscape
         && expiry !== null && expiry.severity !== 'expired' && BigInt(v!.state.balance_micro_usdc) >= BigInt(this.options.wallet.manifest.cap_micro_usdc),
       canReconcileUnacceptedAuthorization: !this.disposed && !this.busy && w?.status === 'active' && !w.operation
         && p?.phase === 'send_unknown' && p.operations.length === 0 && p.providerKey === undefined && p.serverState === undefined,
@@ -195,6 +207,7 @@ export class ZkApiClient {
   private async action<T>(fn: () => Promise<T>): Promise<T> {
     if (this.disposed) throw new ClientActionError('closed', 'Client disposed; reopen the same storage and note ID.');
     if (this.busy) throw new ClientActionError('busy', 'Consume or cancel the current response before another action.');
+    clearTimeout(this.maintenanceTimer); this.maintenanceTimer = undefined;
     this.busy = true;
     try {
       // Separate from NoteJournal's inner operation lock. Hold through stream consumption.
@@ -202,7 +215,28 @@ export class ZkApiClient {
       return await this.options.store.withLock(JSON.stringify(['zkapi-app-client-v1', m.deployment_id, m.pool, this.options.noteId]), async () => {
         await this.publish(); return fn();
       });
-    } finally { this.busy = false; await this.publish(); }
+    } finally { this.busy = false; await this.publish(); await this.scheduleMaintenance(); }
+  }
+  private async scheduleMaintenance(): Promise<void> {
+    if (this.disposed || this.busy || this.maintenanceTimer) return;
+    try {
+      const p = (await this.options.wallet.journal.read(this.options.noteId))?.value.pending;
+      if (!p || !this.daemon.canContinue(p) || this.disposed || this.busy || this.maintenanceTimer) return;
+      this.maintenanceTimer = setTimeout(() => {
+        this.maintenanceTimer = undefined;
+        void this.maintainOwnedLease().catch(() => {});
+      }, 1_000);
+      // Browser timers are numbers; Node timers should not keep a host alive.
+      if (typeof this.maintenanceTimer === 'object') this.maintenanceTimer.unref();
+    } catch { /* Explicit status/recovery reports storage failures. */ }
+  }
+  private async maintainOwnedLease(): Promise<void> {
+    if (this.disposed || this.busy) return;
+    const p = (await this.options.wallet.journal.read(this.options.noteId))?.value.pending;
+    if (!p || !this.daemon.canContinue(p) || this.disposed || this.busy) return;
+    // Idle checks do not emit a busy state or touch control before retirement.
+    if (this.daemon.maintenanceDue(p)) await this.action(() => this.daemon.maintenance());
+    else await this.scheduleMaintenance();
   }
 
   /** Prepare the saved deposit. advanceWallet() requests the next wallet signature. */
@@ -210,7 +244,10 @@ export class ZkApiClient {
     return this.action(() => this.walletClient.beginDeposit(this.options.noteId, amountMicroUsdc, this.roles()));
   }
   prepareWithdrawal(destinationOwner: string, mode: 'mutual_close' | 'initiate_escape' = 'mutual_close'): Promise<void> {
-    return this.action(() => this.walletClient.beginWithdrawal(this.options.noteId, mode, destinationOwner, this.roles()));
+    return this.action(async () => {
+      if (mode === 'mutual_close' && this.options.mode !== 'proxy') await this.daemon.management('close');
+      await this.walletClient.beginWithdrawal(this.options.noteId, mode, destinationOwner, this.roles());
+    });
   }
   /** Preserve an unresolved session and prepare an explicit challengeable escape. */
   prepareEmergencyEscape(destinationOwner: string): Promise<void> {
@@ -243,18 +280,19 @@ export class ZkApiClient {
       || request.stream !== undefined && typeof request.stream !== 'boolean') {
       return Promise.reject(new ClientActionError('invalid_request', 'Text messages and a positive integer maxOutputTokens are required.'));
     }
-    return this.request({ operationId: request.operationId, model: request.model, api: 'chat', signal: request.signal,
+    return this.request({ operationId: request.operationId, sessionId: request.sessionId, model: request.model, api: 'chat', signal: request.signal,
       body: { messages: request.messages.map(m => ({ role: m.role, content: m.content })), max_completion_tokens: request.maxOutputTokens, stream: request.stream ?? false } });
   }
 
   /** Response bytes are delivered once. Always consume or cancel the body.
-   * Body completion/cancellation asks the shared lifecycle to close and settle.
+   * Successful direct responses retain their bounded key. Cancellation retires it.
    * A pending settlement stays visible in status(); it is never treated as paid. */
   request(request: InferenceRequest): Promise<Response> {
     let body: Uint8Array;
     try {
       const model = this.models.find(m => m.id === request.model);
       if (!model?.apis.includes(request.api) || !/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/.test(request.operationId)
+        || request.sessionId !== undefined && (typeof request.sessionId !== 'string' || !request.sessionId.length || request.sessionId.length > 160)
         || !request.body || Array.isArray(request.body) || Object.hasOwn(request.body, 'model')
         || (request.api === 'messages' ? !/^[\x20-\x7e]+$/.test(request.anthropicVersion ?? '') : request.anthropicVersion !== undefined)) {
         throw new ClientActionError('invalid_request', 'Choose a configured model/API and a stable operation UUID; model belongs outside body. Messages requires anthropicVersion.');
@@ -263,19 +301,23 @@ export class ZkApiClient {
       body = jcsBytes({ ...request.body, model: request.model });
       if (body.length > 1024 * 1024) throw new ClientActionError('invalid_request', 'Request exceeds 1 MiB.');
     } catch (error) { return Promise.reject(error); }
-    const operationId = request.operationId, path = paths[request.api], version = request.anthropicVersion ?? '', signal = request.signal;
+    const operationId = request.operationId, sessionId = request.sessionId ?? 'default', path = paths[request.api], version = request.anthropicVersion ?? '', signal = request.signal;
     return new Promise<Response>((resolve, reject) => {
       const completed = this.action(async () => {
         signal?.throwIfAborted();
         const s = await this.status();
         // action() sets busy, so inspect durable fields directly here.
         const r = await this.options.wallet.journal.read(this.options.noteId);
-        if (s.wallet !== 'active' || s.session || s.walletOperation || r?.value.wallet?.clearance
+        const pending = r?.value.pending;
+        if (s.wallet !== 'active' || pending && !this.daemon.canContinue(pending) || s.walletOperation || r?.value.wallet?.clearance
           || r?.value.wallet?.emergencyEscapes?.some(e => e.phase !== 'settled') || !s.expiry || s.expiry.severity === 'expired'
           || BigInt(s.settledBalanceMicroUsdc) < BigInt(s.authorizationCapMicroUsdc)) {
           throw new ClientActionError('not_ready', 'Fund the note or recover its saved operation before a new request.');
         }
+        if (pending && this.options.mode !== 'proxy' && this.activeSessionId !== sessionId)
+          throw new ClientActionError('not_ready', 'Settle the previous conversation before using its balance in another conversation.');
         await this.daemon.startIfNeeded();
+        this.activeSessionId = sessionId;
         const response = await this.daemon.infer(path, body, operationId, version, signal);
         if (!response.body) { void completed.then(() => resolve(response), reject); return; }
         const reader = response.body.getReader();
@@ -316,6 +358,7 @@ export class ZkApiClient {
   dispose(): void {
     if (this.busy) throw new ClientActionError('busy', 'Consume or cancel the current response before disposal.');
     this.disposed = true; this.listeners.clear(); this.options.control.clearEphemeralKeys();
+    clearTimeout(this.maintenanceTimer); this.maintenanceTimer = undefined;
   }
 }
 
@@ -336,7 +379,7 @@ export function validateModelConfigurations(mode: Mode, models: readonly ModelCo
 export async function createZkApiClient(options: CreateClientOptions): Promise<ZkApiClient> {
   const d = options.deployment;
   const manifestBytes = new Uint8Array(d.manifest), trust = structuredClone(d.trust), artifacts = structuredClone(d.artifacts);
-  const models = structuredClone([...options.models]), mode = options.mode, noteId = options.noteId;
+  const models = structuredClone([...options.models]), mode = options.mode, noteId = options.noteId, keyReuseSeconds = options.keyReuseSeconds;
   const wallet = options.wallet, storage = { ...options.storage }, engine = options.prover;
   const connection = d.connection, fetcher = d.fetch, indexerOrigin = d.indexerOrigin, preparationCommitment = d.preparationCommitment;
   const directProviderBases = structuredClone(options.directProviderBases), oaVerifier = structuredClone(options.oaVerifier), priorityFeeMicroLamports = options.priorityFeeMicroLamports;
@@ -361,7 +404,8 @@ export async function createZkApiClient(options: CreateClientOptions): Promise<Z
   const control = new ControlClient({ context: bundle.context, journal, verifier: new ProverSessionVerifier(engine), fetch: fetcher, allowLoopbackHttp, directProviderBases, oaVerifier });
   const chain = new SolanaWalletChain(connection, manifest, indexerOrigin, { fetch: fetcher, allowLoopbackHttp, preparationCommitment });
   const client = new ZkApiClient({ wallet: { manifest, prover, journal, chain, rpc: connectionTransport(connection, { preparationCommitment }),
-    wallets: [wallet], fetch: fetcher, priorityFeeMicroLamports }, control, store: storage.store, noteId, mode, models });
+    wallets: [wallet], fetch: fetcher, priorityFeeMicroLamports }, control, store: storage.store, noteId, mode, models,
+    keyReuseSeconds });
   await client.status(); // Fail on corrupt or incompatible storage before returning.
   return client;
 }

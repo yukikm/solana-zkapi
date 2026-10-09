@@ -1,5 +1,9 @@
 # Solana zkAPI
 
+New SDK/native **`0.2.0-devnet.6`** consumers: see the [session reuse release guide](docs/releases/session-reuse-preview.md)
+for exact downloads and the compatible immutable revision-4 profile. Existing
+`.3` installations retain their original profile and recovery inputs.
+
 The [requested GPT 5.6+ / Claude 5+ model expansion](docs/evidence/PD-model-expansion-20261009.md) is deployed with 21 OpenRouter Chat models and a [revision-3 consumer profile](docs/sdk/public-models.md). SDK/native remain `.3`. Existing seven request reservations are exhausted; this configuration change adds no provider budget. Old custody/profile bindings remain unchanged.
 
 Build AI applications with USDC-funded private usage credits on Solana.
@@ -94,6 +98,9 @@ immutable `v0.1.0-devnet.1` release remains historical.
 [`v0.2.0-devnet.3`](https://github.com/yukikm/solana-zkapi/releases/tag/v0.2.0-devnet.3)
 is published; [signature and anonymous-download verification](docs/evidence/PD-sdk3-publication.json)
 identify the exact released files.
+
+The [Ethereum lease-reuse follow-up](docs/evidence/PD-session-reuse-20261009.md)
+updates the application SDK to reuse direct sessions and settle groups of requests.
 
 ## Build an application
 

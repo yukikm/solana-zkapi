@@ -97,7 +97,7 @@ assets, trust and finalized chain checks still run when opening the client.
 
 ## Derive native setup files
 
-The published `.3` native distribution includes this directory and the compiled SDK.
+The `.6` native distribution includes this directory and the compiled SDK.
 Use `/absolute/install/bin/node /absolute/install/tools/public-devnet-consumer/cli.mjs`
 in place of `node cli.mjs`; no source checkout or additional npm install is
 needed. Verify the installation manifest before executing its contents.
@@ -112,14 +112,14 @@ If the operator requires an invitation, save the received token in a private,
 owner-only regular file outside the installation and public artifact directory.
 Pass `--admission-token-file /absolute/private/invitation` to the command below.
 The helper records the path and authenticated control origin in `network.json`;
-it never reads, copies or prints the token. The `.3` native relay checks the
+it never reads, copies or prints the token. The native relay checks the
 file's owner, permissions, canonical path and token encoding at startup, then
 adds it only to that origin's exact `POST /zkapi/v1/sessions` request. It never
 sends it to RPC, indexer, provider or other control routes. The file contains
 only the 43-character base64url invitation (optionally one trailing newline),
 not a provider key or local clientd management token. Keep it out of backups
 intended for public distribution. This capability was introduced in `.2` and is
-retained in `.3`; earlier immutable releases do not gain it retroactively.
+retained in `.6`; earlier immutable releases do not gain it retroactively.
 [Native N-01](../../docs/evidence/PD-native-public-N01.md),
 [OpenClaw N-02/N-03](../../docs/evidence/PD-native-public-N02-N03.md) and
 [N-04 recovery/withdrawal](../../docs/evidence/PD-native-public-N04.md) record
@@ -139,8 +139,8 @@ counts and hashes (an empty map for legacy bundles). The receipt records exact
 local hashes, including the notice index. Existing or partial
 directories are never overwritten. No token, wallet key, journal, custody or
 provider credential is created. Preserve this directory while the profile uses
-its absolute paths. New consumers use the `.3` native release and matching
-authenticated profile from the deployment guide. Existing custody keeps its
+its absolute paths. New consumers use the `.6` native release and matching
+[revision-4 profile](../../docs/releases/session-reuse-preview.md). Existing custody keeps its
 original profile and recovery inputs.
 
 Pass the output paths and `runtimeSha256` to the existing `clientd setup` command
@@ -150,8 +150,8 @@ binds prover executables and creates local tokens; run performs its own full
 chain/trust checks. An external AI client receives only the local inference
 token. Keep automatic retries and model fallbacks disabled.
 
-For direct OpenRouter, generated runtime inputs use zero key reuse and opt in
-to `settlement_wait_ms: 120000`. After a successful response is fully consumed
+For direct OpenRouter, `.6` generated runtime inputs use 60-second key reuse and opt in
+to `settlement_wait_ms: 120000`. After the reuse window ends and its successful responses are fully consumed
 in the same process, the next explicit request may wait up to two minutes for
 the old session's verified settlement before its own first AUTH/inference.
 Only existing status/close/receipt operations are polled. This accommodates the

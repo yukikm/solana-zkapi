@@ -15,7 +15,7 @@ test('expansion retains exact deployment and tariff, selecting only supported te
   const expanded=createPublicModelProfile(base,catalog);
   assert.deepEqual(expanded.models.map(m=>m.id),['anthropic/claude-opus-5','openai/gpt-5.6-sol']);
   assert.equal(expanded.modelCapabilities['anthropic/claude-opus-5'].tools,false);
-  for(const change of [(p:any)=>p.bundle.sha256='a'.repeat(64),(p:any)=>p.directProviderBases.direct_openrouter='https://evil.example',(p:any)=>p.models[0].tariff.operator_fee_micro_usdc='1',(p:any)=>p.models[0].id='openai/gpt-5.5',(p:any)=>p.revision=base.revision,(p:any)=>p.modelCapabilities.extra={streaming:true,tools:true}]){
+  for(const change of [(p:any)=>p.bundle.sha256='a'.repeat(64),(p:any)=>p.directProviderBases.direct_openrouter='https://evil.example',(p:any)=>p.models[0].tariff.operator_fee_micro_usdc='1',(p:any)=>p.models[0].id='openai/gpt-5.5',(p:any)=>p.revision=base.revision,(p:any)=>p.sdkVersions=['unsupported'],(p:any)=>p.modelCapabilities.extra={streaming:true,tools:true}]){
     const changed=structuredClone(expanded);change(changed);assert.throws(()=>validatePublicModelExpansion(base,changed));
   }
   assert.throws(()=>createPublicModelProfile(base,{data:[catalog.data[0],catalog.data[0]]}));

@@ -1,5 +1,9 @@
 # Public Devnet preview deployment
 
+New SDK/native **`0.2.0-devnet.6`** consumers: see the [session reuse release guide](../releases/session-reuse-preview.md)
+for exact downloads and the compatible immutable revision-4 profile. Existing
+`.3` installations retain their original profile and recovery inputs.
+
 Model expansion — 2026-10-09: the [revision-3 model profile](public-models.md) selects 21 OpenRouter Chat models covering GPT 5.6+ and Claude 5+. SDK/native stay `.3`; consumers install the new profile URL and digest. Existing custody retains its original inputs. The existing seven request reservations are exhausted; this model change does not add spending capacity.
 
 The [v0.2.0-devnet.5 API source release](https://github.com/yukikm/solana-zkapi/releases/tag/v0.2.0-devnet.5)

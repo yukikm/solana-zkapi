@@ -10,7 +10,7 @@ There are two separate deliverables:
 
 | Deliverable | Contents | Application integration |
 |---|---|---|
-| `zkapi-solana-sdk-0.2.0-devnet.2.tgz` | SDK ES modules and declarations with explicit exports | Install with npm; use `createZkApiClient` or `createBrowserClient` |
+| `zkapi-solana-sdk-0.2.0-devnet.6.tgz` | SDK ES modules and declarations with explicit exports | Install with npm; use `createZkApiClient` or `createBrowserClient` |
 | Public deployment bundle | Independently reviewed trust policy, signed manifest, complete proof/IDL artifacts and pinned WASM | Host as static files and call `loadDeploymentAssets` with an independently installed descriptor SHA-256 |
 
 A native application additionally installs the pinned native prover for its
