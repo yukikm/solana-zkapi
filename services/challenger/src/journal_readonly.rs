@@ -208,7 +208,12 @@ impl ReadOnlyArchive {
     pub(super) fn read_head(directory: &Path, pool: Hash) -> Result<Head> {
         // Both the bounded probe and the existing strict decoder read one open
         // inode. An atomic newer head cannot be mixed into this captured cut.
-        let mut file = regular(&directory.join("journal.json"))?;
+        // Unlike immutable chunks, the head is atomically replaced by the live
+        // writer. Capture whichever regular inode open() observes; comparing it
+        // with an earlier pathname stat mistakes a normal commit for corruption.
+        // The descriptor stamps, checksum and authenticated prefix checks below
+        // still reject in-place mutation, invalid heads and rollback/rewrite.
+        let mut file = open_regular(&directory.join("journal.json"))?;
         let before = FileStamp::of(&file.metadata()?)?;
         let HeadProbe {
             state:

@@ -9,6 +9,8 @@ for in integer micro-USDC (1 USDC = 1,000,000 micro-USDC).
 
 ## Current handoff — 2026-10-09 JST
 
+The [Indexer incident repair](docs/evidence/PD-indexer-recovery-20261009.md) is installed as `b88226ba…77284`. Public readiness returned HTTP 200 at **03:20:08 UTC**, and all ten installed SDK `.3` preflight checks passed. The mutable-head read race is reproduced and fixed; the original low-level failure was not retained by the old logs. Only the Indexer restarted, once; writer, financial state and reservations were preserved.
+
 The [v0.2.0-devnet.4 API source release](https://github.com/yukikm/solana-zkapi/releases/tag/v0.2.0-devnet.4)
 is published and verified. SDK/native clients remain `0.2.0-devnet.3`; see the
 [publication record](docs/evidence/PD-invitation-release-20261009.md).
@@ -25,7 +27,7 @@ evidence. Demo UI work and long-term qualification are deferred.
 
 - **Accounting:** the installed [Ethereum-parity implementation](docs/evidence/PD-openrouter-ethereum-parity.md) disables the managed key, waits five seconds, captures one valid management `usage + byok_usage` observation, persists it, and confirms deletion before capped settlement. Captured amounts survive recovery; signed charges are never repriced. Delayed provider accounting remains the operator's risk, without a final-invoice accuracy claim.
 - **History:** [durable checkpoints](docs/evidence/PD-restart-checkpoints.md) retain complete replay state and cursor, authenticate the suffix on normal restart, and fall back to full replay for a missing or invalid cache. The [actual warm restart](docs/evidence/PD-warm-restart-20261009.md) verified both caches and bounded process reads with binary `0037eca8…7c8f49`. The observed 57.85/54.71-second intervals are upper bounds to the cache measurement, not precise cache-load times.
-- **Writer and public API:** the [throughput correction](docs/evidence/PD-replay-writer-deployment-20261009.md) is installed as `8ebeef10…89274`; the follower remains `0037eca8…7c8f49`. Its 194 build inputs match published source `8423687b…`. [Public restoration](docs/evidence/PD-public-restoration-20261009.md) completed at 00:54 UTC, followed by fresh public HTTP 200 and all ten installed `.3` preflight checks. The complete financial database and four existing reservations remained unchanged.
+- **Writer and public API:** the [throughput correction](docs/evidence/PD-replay-writer-deployment-20261009.md) is installed as `8ebeef10…89274`; the follower was `0037eca8…7c8f49` at that checkpoint and is now superseded by the [Indexer repair](docs/evidence/PD-indexer-recovery-20261009.md). Its 194 build inputs match published source `8423687b…`. [Public restoration](docs/evidence/PD-public-restoration-20261009.md) completed at 00:54 UTC, followed by fresh public HTTP 200 and all ten installed `.3` preflight checks. The complete financial database and four existing reservations remained unchanged.
 
 **Core completion checks:**
 

@@ -88,6 +88,61 @@ fn replace_head(root: &Path, state: &State, head: &Head) {
 }
 
 #[test]
+fn readonly_archive_head_open_accepts_concurrent_writer_commit() {
+    let (root, mut writer) = fixture(3);
+    let mut reader = ReadOnlyArchive::open(root.path(), POOL).unwrap();
+    // Commit exactly between pathname inspection and open, without timing or
+    // threads. The writer atomically replaces only the mutable journal head.
+    BEFORE_REGULAR_OPEN.with(|hook| {
+        *hook.borrow_mut() = Some(Box::new(move || {
+            writer.append_archive_batch(vec![block(4)]).unwrap();
+        }));
+    });
+    assert!(reader.refresh().unwrap());
+    assert_eq!(reader.archive_tail(), Some(ArchiveTail::from(&block(4))));
+    assert_eq!(
+        collect(&reader, 1, 4),
+        (1..=4).map(block).collect::<Vec<_>>()
+    );
+}
+
+#[test]
+fn readonly_archive_immutable_open_still_rejects_concurrent_replacement() {
+    let root = tempfile::tempdir().unwrap();
+    let path = root.path().join("immutable.json");
+    fs::write(&path, b"original").unwrap();
+    let replace = path.clone();
+    BEFORE_REGULAR_OPEN.with(|hook| {
+        *hook.borrow_mut() = Some(Box::new(move || {
+            let next = replace.with_extension("next");
+            fs::write(&next, b"original").unwrap();
+            fs::rename(next, replace).unwrap();
+        }));
+    });
+    assert!(matches!(
+        regular(&path),
+        Err(Error::Conflict("archive file changed during open"))
+    ));
+}
+
+#[cfg(unix)]
+#[test]
+fn readonly_archive_head_open_rejects_concurrent_symlink() {
+    let (root, _writer) = fixture(3);
+    let mut reader = ReadOnlyArchive::open(root.path(), POOL).unwrap();
+    let path = root.path().join("journal.json");
+    BEFORE_REGULAR_OPEN.with(|hook| {
+        *hook.borrow_mut() = Some(Box::new(move || {
+            let saved = path.with_extension("saved");
+            fs::rename(&path, &saved).unwrap();
+            std::os::unix::fs::symlink(saved, path).unwrap();
+        }));
+    });
+    assert!(reader.refresh().is_err());
+    assert_eq!(reader.archive_tail(), Some(ArchiveTail::from(&block(3))));
+}
+
+#[test]
 fn readonly_archive_coexists_with_writer_and_streams_exact_bounded_ranges_without_writes() {
     let (root, mut writer) = fixture(514);
     let before = files(root.path());

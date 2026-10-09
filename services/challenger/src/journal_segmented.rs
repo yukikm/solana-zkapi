@@ -96,6 +96,27 @@ fn regular(path: &Path) -> Result<File> {
     if !before.file_type().is_file() {
         return Err(Error::Conflict("archive file type"));
     }
+    let file = open_regular(path)?;
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::MetadataExt;
+        let after = file.metadata()?;
+        if before.dev() != after.dev() || before.ino() != after.ino() {
+            return Err(Error::Conflict("archive file changed during open"));
+        }
+    }
+    Ok(file)
+}
+
+#[cfg(test)]
+thread_local! {
+    static BEFORE_REGULAR_OPEN: std::cell::RefCell<Option<Box<dyn FnOnce()>>> =
+        const { std::cell::RefCell::new(None) };
+}
+
+// Capture one regular inode without following symlinks or blocking on a FIFO.
+// Immutable callers additionally require pathname identity in regular().
+fn open_regular(path: &Path) -> Result<File> {
     let mut options = OpenOptions::new();
     options.read(true);
     #[cfg(unix)]
@@ -103,17 +124,17 @@ fn regular(path: &Path) -> Result<File> {
         use std::os::unix::fs::OpenOptionsExt;
         options.custom_flags(libc::O_NOFOLLOW | libc::O_NONBLOCK);
     }
+    #[cfg(test)]
+    {
+        let hook = BEFORE_REGULAR_OPEN.with(|hook| hook.borrow_mut().take());
+        if let Some(hook) = hook {
+            hook();
+        }
+    }
     let file = options.open(path)?;
     let after = file.metadata()?;
     if !after.is_file() {
         return Err(Error::Conflict("archive file type"));
-    }
-    #[cfg(unix)]
-    {
-        use std::os::unix::fs::MetadataExt;
-        if before.dev() != after.dev() || before.ino() != after.ino() {
-            return Err(Error::Conflict("archive file changed during open"));
-        }
     }
     Ok(file)
 }

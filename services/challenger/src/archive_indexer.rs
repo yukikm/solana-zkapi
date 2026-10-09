@@ -37,6 +37,18 @@ struct Source {
     binding: Hash,
     cached: Option<ArchiveCheckpointState>,
 }
+fn source_failure(error: &crate::Error) -> serde_json::Value {
+    // Error's evidence/conflict reasons are compile-time strings. Never format
+    // the underlying I/O/JSON/database error, which may include private data.
+    let (kind, reason, os_code) = match error {
+        crate::Error::Conflict(reason) => ("conflict", *reason, None),
+        crate::Error::Evidence(reason) => ("evidence", *reason, None),
+        crate::Error::Io(error) => ("io", "archive storage unavailable", error.raw_os_error()),
+        crate::Error::Json(_) => ("json", "archive encoding invalid", None),
+        _ => ("other", "archive validation failed", None),
+    };
+    serde_json::json!({"event":"archive_source_failure","kind":kind,"reason":reason,"os_code":os_code})
+}
 fn checkpoint_binding(config: &runtime::Config) -> Hash {
     sha(&serde_json::to_vec(&serde_json::json!({
         "domain": "zkapi-archive-indexer-replay-v1",
@@ -138,10 +150,10 @@ impl FinalizedArchiveSource for Source {
         Ok(())
     }
     fn refresh(&mut self) -> ArchiveSourceResult<()> {
-        self.archive
-            .refresh()
-            .map(|_| ())
-            .map_err(|_| "local archive validation failed".into())
+        self.archive.refresh().map(|_| ()).map_err(|error| {
+            eprintln!("{}", source_failure(&error));
+            "local archive validation failed".into()
+        })
     }
     fn first(&self) -> Option<(u64, u64)> {
         self.archive.archive_first()
@@ -205,6 +217,21 @@ pub async fn run(path: &Path) -> Result<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn archive_source_diagnostic_retains_static_reason_and_redacts_private_errors() {
+        let conflict = source_failure(&crate::Error::Conflict("archive file changed during open"));
+        assert_eq!(conflict["reason"], "archive file changed during open");
+        let private = crate::Error::Io(std::io::Error::other(
+            "/private/SECRET https://rpc/?key=SECRET",
+        ));
+        let diagnostic = source_failure(&private);
+        assert_eq!(diagnostic["kind"], "io");
+        assert!(!diagnostic.to_string().contains("SECRET"));
+        assert_eq!(
+            source_failure(&crate::Error::Io(std::io::Error::from_raw_os_error(5)))["os_code"],
+            5
+        );
+    }
     fn config(archive_directory: PathBuf, snapshots_directory: PathBuf) -> Config {
         Config {
             archive_directory,

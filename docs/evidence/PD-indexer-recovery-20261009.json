@@ -1,0 +1,512 @@
+{
+  "schema": 1,
+  "scope": "Actual Indexer-only repair of the public Devnet preview, retained-state restart, and independent read-only verification; no financial or client release actions",
+  "diagnosis": {
+    "initial_failure_utc": "2026-10-09T02:21:22.271269Z",
+    "initial_failure_jst": "2026-10-09T11:21:22.271269+09:00",
+    "proven_direct_cause": "Archive source refresh returned an error and latched source_halted=true; subsequent polls did not re-read history.",
+    "last_accepted_archive_tail_slot": 509026064,
+    "initial_lower_level_error_retained": false,
+    "deterministic_regression": "An atomic writer head replacement between lstat and open makes the old reader return Conflict(\"archive file changed during open\").",
+    "historical_race_attribution": "Plausible cause, not retrospectively proven: old source adapter discarded the original error.",
+    "cached_chunk_file_stamps_checked": 22862,
+    "immutable_stamp_mismatches": [],
+    "immutable_contents_full_rehash_claimed": false
+  },
+  "fix": {
+    "runtime_paths": [
+      "services/challenger/src/journal_segmented.rs",
+      "services/challenger/src/journal_readonly.rs",
+      "services/challenger/src/archive_indexer.rs"
+    ],
+    "behavior": "Capture the mutable head with one O_NOFOLLOW/O_NONBLOCK open and regular-inode check. Preserve descriptor stamps, checksums, immutable-file identity, exact-prefix extension, rollback rejection and finalized reconciliation. Log only typed static source-validation reasons and numeric OS error.",
+    "fail_closed_preserved": true
+  },
+  "local_validation": {
+    "regression_before_fix_failed": true,
+    "initial_exact_filter_ran_zero_tests": true,
+    "challenger_lib_passed": 85,
+    "challenger_lib_ignored": 12,
+    "challenger_lib_failed": 0,
+    "clippy_all_targets_warnings_denied_passed": true,
+    "linux_build": {
+      "path": "/Users/yukikimura/work/solana-zkapi/target/indexer-recovery-20261009/linux-build/build-01/output/challengerd",
+      "sha256": "b88226baccfff2ff53cfe982ed3958c1ea6f0de6e6d75b005ff16ecde9177284",
+      "bytes": 13295728,
+      "maximum_glibc": "2.34",
+      "elf": "x86_64_linux",
+      "no_configuration_exit_status": 2
+    },
+    "source_files": 194,
+    "source_manifest_sha256": "68804d22849c0c4114c592b010d3ad0a14f118b7faf145584c0856a6344f3aa3",
+    "verification_sha256": "a14cda512e5fe6f1c3346ecc48a2cd68f7b05e0ec533c9cf774c200bd393f12f",
+    "published_input_baseline": {
+      "base": "cf830c3957b7e117134d354fffcb0a4311d96fae",
+      "build_inputs": 194,
+      "only_differing_inputs": [
+        "services/challenger/src/archive_indexer.rs",
+        "services/challenger/src/journal_readonly.rs",
+        "services/challenger/src/journal_readonly_tests.rs",
+        "services/challenger/src/journal_segmented.rs"
+      ],
+      "vendor_gitlink": "045b444ea1b52538d1b40273c7cb6ed09468a052"
+    }
+  },
+  "deployment": {
+    "ssm_command_id": "d36798a8-10ab-4f5f-91d8-f2330deb40f8",
+    "started_at": "2026-10-09T03:15:44.111Z",
+    "ended_at": "2026-10-09T03:15:48.111Z",
+    "initial_dispatch_status": "Failed",
+    "initial_start_guard_failure": {
+      "completed": false,
+      "stage": "start",
+      "exception_class": "ValueError",
+      "frames": [
+        {
+          "function": "<module>",
+          "line": 176
+        },
+        {
+          "function": "need",
+          "line": 18
+        }
+      ],
+      "stops_attempted": 1,
+      "starts_attempted": 1,
+      "automatic_retry": false
+    },
+    "initial_failed_predicate_values_not_saved": true,
+    "post_start_process_independently_verified": true,
+    "new_indexer_pid": "120172",
+    "old_indexer_sha256": "0037eca87a656aeae06f8c01fa4102d90f15dbacee4bf1074caf2292ed7c8f49",
+    "new_indexer_sha256": "b88226baccfff2ff53cfe982ed3958c1ea6f0de6e6d75b005ff16ecde9177284",
+    "writer_pid_unchanged": "112032",
+    "writer_sha256_unchanged": "8ebeef106feee63a3f231584b4eff2d7df7ce2d164694e8cddfe8fc46ce89274",
+    "stops": 1,
+    "starts": 1,
+    "old_indexer_native_exit": 0,
+    "old_binary_and_cache_preserved": true,
+    "protected_file_count": 107,
+    "only_changed_protected_file": "/opt/zkapi/bin/archive-indexerd",
+    "other_five_processes_unchanged": true,
+    "unit_policies_unchanged": true,
+    "verification_receipt_sha256": "5a1253e7b2e614c9586d41728f9c0830947980861089cb36628f4aecdc65d09b",
+    "independent_receipt_fetch_sha256": "5a1253e7b2e614c9586d41728f9c0830947980861089cb36628f4aecdc65d09b",
+    "temporary_upload_exact_version_deleted": true,
+    "version_bound_head_after_delete": 404,
+    "iam_policy_changes": 0
+  },
+  "preserved_financial_cut": {
+    "database_raw_sha256": "49c3b1387f2916e8fe94c4672ebb848f22b73b98787f99e2483bfb9c06260f16",
+    "reservations_sha256": "29be8a5b46f7efc666b8ad623093ab83a133365ef42cee036ea533453c337706",
+    "database_counts": {
+      "sessions": 4,
+      "operations": 0,
+      "dispatch_attempts": 4,
+      "settlements": 4,
+      "receipts": 4,
+      "outbox": 25,
+      "nullifier_reservations": 5,
+      "clearances": 1,
+      "provider_evidence": 0,
+      "chain_transactions": 0
+    },
+    "budget": {
+      "validated": true,
+      "reserved_requests": 4,
+      "state_sha256": "29be8a5b46f7efc666b8ad623093ab83a133365ef42cee036ea533453c337706",
+      "authorization_sha256": "e4c09a7e3cf9de33296893b7bc1922f26fe980cf63e64d6199ad8bb4c4f740f7",
+      "original_capacity_transferred": 0,
+      "state_written": false
+    }
+  },
+  "public_observations": {
+    "before": {
+      "started_at": "2026-10-09T03:08:11.905478+00:00",
+      "read_only": true,
+      "auth_requests": 0,
+      "transaction_sends": 0,
+      "automatic_retry": false,
+      "observations": {
+        "readiness": {
+          "started_at_unix": 1791515291.905601,
+          "completed_at_unix": 1791515292.3488262,
+          "curl_exit_code": 0,
+          "http_status": 503,
+          "body_sha256": "0f78c3bc9d69b16db6a93d33204f302aa2f5edc5cc84b8ee99302b72c9ae7626",
+          "body": {
+            "schema": 1,
+            "scope": "read_only_capabilities",
+            "deployment_id": "public-devnet-20261008-a",
+            "manifest_hash": "b97e200769be24448a51999346a28d0ca497892d68212f517b2b9bb4cc1a4643",
+            "started_at": 1791515292,
+            "completed_at": 1791515292,
+            "expires_at": 1791515297,
+            "control": "available",
+            "indexer": "unavailable",
+            "signer": "available",
+            "providers": [
+              {
+                "provider": "openrouter",
+                "mode": "direct_openrouter",
+                "model": "*",
+                "tariff_hash": "ca205b230ac0e68b1fc84383d6948f215b46b604c3dbe8502bce83940af75ff5",
+                "status": "enabled"
+              }
+            ],
+            "provider_credit": "not_checked",
+            "operator_admission": "not_checked"
+          },
+          "fresh_available_at_observation": false
+        },
+        "relay-status": {
+          "started_at_unix": 1791515292.34993,
+          "completed_at_unix": 1791515292.594103,
+          "curl_exit_code": 0,
+          "http_status": 200,
+          "body_sha256": "cce5367d89a2a38fd7c85512993de2504445d914ab9278738f8b884f93074be6",
+          "body": {
+            "schema": 1,
+            "scope": "relay_configuration_only",
+            "readiness": "not_checked",
+            "admission": "enabled",
+            "invitation_required": false,
+            "recovery": "enabled",
+            "routes": {
+              "rpc": "configured",
+              "indexer": "configured",
+              "control": "configured"
+            },
+            "signer": "not_checked",
+            "provider_credit": "not_checked",
+            "finalized_pool": "not_checked"
+          }
+        }
+      },
+      "completed_at": "2026-10-09T03:08:12.594838+00:00"
+    },
+    "first_recovered": {
+      "started_at": "2026-10-09T03:16:40.568585+00:00",
+      "read_only": true,
+      "auth_requests": 0,
+      "transaction_sends": 0,
+      "automatic_retry": false,
+      "observations": {
+        "readiness": {
+          "started_at_unix": 1791515800.5687318,
+          "completed_at_unix": 1791515810.67362,
+          "curl_exit_code": 0,
+          "http_status": 200,
+          "body_sha256": "550737a1d51cd5bd31c6d81c078a3d08be903643a81fcb4b0bf0280c140cfc47",
+          "body": {
+            "schema": 1,
+            "scope": "read_only_capabilities",
+            "deployment_id": "public-devnet-20261008-a",
+            "manifest_hash": "b97e200769be24448a51999346a28d0ca497892d68212f517b2b9bb4cc1a4643",
+            "started_at": 1791515801,
+            "completed_at": 1791515810,
+            "expires_at": 1791515815,
+            "control": "available",
+            "indexer": "available",
+            "signer": "available",
+            "providers": [
+              {
+                "provider": "openrouter",
+                "mode": "direct_openrouter",
+                "model": "*",
+                "tariff_hash": "ca205b230ac0e68b1fc84383d6948f215b46b604c3dbe8502bce83940af75ff5",
+                "status": "enabled"
+              }
+            ],
+            "provider_credit": "not_checked",
+            "operator_admission": "not_checked"
+          },
+          "fresh_available_at_observation": true
+        },
+        "relay-status": {
+          "started_at_unix": 1791515810.67507,
+          "completed_at_unix": 1791515810.920866,
+          "curl_exit_code": 0,
+          "http_status": 200,
+          "body_sha256": "cce5367d89a2a38fd7c85512993de2504445d914ab9278738f8b884f93074be6",
+          "body": {
+            "schema": 1,
+            "scope": "relay_configuration_only",
+            "readiness": "not_checked",
+            "admission": "enabled",
+            "invitation_required": false,
+            "recovery": "enabled",
+            "routes": {
+              "rpc": "configured",
+              "indexer": "configured",
+              "control": "configured"
+            },
+            "signer": "not_checked",
+            "provider_credit": "not_checked",
+            "finalized_pool": "not_checked"
+          }
+        }
+      },
+      "completed_at": "2026-10-09T03:16:50.921379+00:00"
+    },
+    "later_recovered": {
+      "started_at": "2026-10-09T03:20:01.668282+00:00",
+      "read_only": true,
+      "auth_requests": 0,
+      "transaction_sends": 0,
+      "automatic_retry": false,
+      "observations": {
+        "readiness": {
+          "started_at_unix": 1791516001.668455,
+          "completed_at_unix": 1791516008.532773,
+          "curl_exit_code": 0,
+          "http_status": 200,
+          "body_sha256": "03babdd9b426843ec8b4a209cf16263878f8575b048d2ef6549da8f6d3c970ae",
+          "body": {
+            "schema": 1,
+            "scope": "read_only_capabilities",
+            "deployment_id": "public-devnet-20261008-a",
+            "manifest_hash": "b97e200769be24448a51999346a28d0ca497892d68212f517b2b9bb4cc1a4643",
+            "started_at": 1791516002,
+            "completed_at": 1791516008,
+            "expires_at": 1791516013,
+            "control": "available",
+            "indexer": "available",
+            "signer": "available",
+            "providers": [
+              {
+                "provider": "openrouter",
+                "mode": "direct_openrouter",
+                "model": "*",
+                "tariff_hash": "ca205b230ac0e68b1fc84383d6948f215b46b604c3dbe8502bce83940af75ff5",
+                "status": "enabled"
+              }
+            ],
+            "provider_credit": "not_checked",
+            "operator_admission": "not_checked"
+          },
+          "fresh_available_at_observation": true
+        },
+        "relay-status": {
+          "started_at_unix": 1791516008.533673,
+          "completed_at_unix": 1791516008.7647722,
+          "curl_exit_code": 0,
+          "http_status": 200,
+          "body_sha256": "cce5367d89a2a38fd7c85512993de2504445d914ab9278738f8b884f93074be6",
+          "body": {
+            "schema": 1,
+            "scope": "relay_configuration_only",
+            "readiness": "not_checked",
+            "admission": "enabled",
+            "invitation_required": false,
+            "recovery": "enabled",
+            "routes": {
+              "rpc": "configured",
+              "indexer": "configured",
+              "control": "configured"
+            },
+            "signer": "not_checked",
+            "provider_credit": "not_checked",
+            "finalized_pool": "not_checked"
+          }
+        }
+      },
+      "completed_at": "2026-10-09T03:20:08.765163+00:00"
+    }
+  },
+  "installed_sdk_preflight": {
+    "result": {
+      "started_at": "2026-10-09T03:17:08.164312+00:00",
+      "completed_at": "2026-10-09T03:17:18.629940+00:00",
+      "exit_code": 0,
+      "release_sha256": "e066122897cfe694fd9b2541a95a6341d2ab6734be1ab34626470ba3ec01d20f",
+      "installed_files_before": 7257,
+      "installed_files_after": 7257,
+      "inputs_unchanged": true,
+      "stdout_sha256": "e9a887b97f7a1108146542727e7e3a4913e9752724e08a4e9a0406c0883c3010",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "automatic_retry": false,
+      "wallet_actions": 0,
+      "auth_requests": 0
+    },
+    "checks": [
+      "profile",
+      "assets",
+      "manifest",
+      "tariffs",
+      "genesis",
+      "finalized_pool",
+      "control_config",
+      "catalog",
+      "shared_snapshot",
+      "chain_clock"
+    ],
+    "sdk_version": "0.2.0-devnet.3"
+  },
+  "later_host_observation": {
+    "observed_at_unix": 1791515958.773004,
+    "indexer_root": {
+      "started_at_unix": 1791515958.933695,
+      "status": 200,
+      "body_bytes": 243,
+      "body_sha256": "4191dd084110cda496fe6b997a35d84fc858de9ac6cbf9ecc63a93159ab65659",
+      "body": {
+        "pool": "Cx8DbA49UCuASoc3goLCU9ro25eWVtcGMbvfPPJsSQzV",
+        "root": "0x2bb43759c24665d98a33afa8d5094817d359d5e4c72a45b45a2a563176d37933",
+        "slot": "509040644",
+        "blockhash": "68UBQLFLj8r3QYsvWMuW241qGLH14dkdvaDNVxsVQwAv",
+        "sequence": "5",
+        "next_note_id": "2"
+      },
+      "body_schema_recognized": true,
+      "completed_at_unix": 1791515964.80008,
+      "elapsed_seconds": 5.866387240996119
+    },
+    "control_readiness": {
+      "started_at_unix": 1791515958.9385011,
+      "status": 200,
+      "body_bytes": 556,
+      "body_sha256": "32891a419b3c4fd93be9926c3fedb83f4e6dd2d169986bb3bc2524ff4978b336",
+      "body": {
+        "schema": 1,
+        "scope": "read_only_capabilities",
+        "deployment_id": "public-devnet-20261008-a",
+        "manifest_hash": "b97e200769be24448a51999346a28d0ca497892d68212f517b2b9bb4cc1a4643",
+        "started_at": 1791515958,
+        "completed_at": 1791515964,
+        "expires_at": 1791515969,
+        "control": "available",
+        "indexer": "available",
+        "signer": "available",
+        "providers": [
+          {
+            "provider": "openrouter",
+            "mode": "direct_openrouter",
+            "model": "*",
+            "tariff_hash": "ca205b230ac0e68b1fc84383d6948f215b46b604c3dbe8502bce83940af75ff5",
+            "status": "enabled"
+          }
+        ],
+        "provider_credit": "not_checked",
+        "operator_admission": "not_checked"
+      },
+      "body_schema_recognized": true,
+      "completed_at_unix": 1791515964.9535851,
+      "elapsed_seconds": 6.015086696002982
+    },
+    "post_install_recognized_indexer_log_categories": {
+      "local archive incomplete": 23
+    },
+    "post_install_recognized_source_halted_records": 0,
+    "old_pre_stop_halted_records_retained": 4,
+    "writer_recognized_categories": {
+      "challenger rejected evidence: RPC finalized tail missing": 6
+    },
+    "raw_log_disclosure": false
+  },
+  "no_actions": {
+    "new_auth": 0,
+    "inference": 0,
+    "wallet_transactions": 0,
+    "new_reservations": 0,
+    "grant_initializations": 0,
+    "history_pruning": 0,
+    "configuration_changes": 0,
+    "sdk_native_release_replacements": 0,
+    "additional_restarts": 0
+  },
+  "limitations": [
+    "Original low-level failure is unavailable; deterministic race reproduction does not prove the historical interleaving.",
+    "Dated HTTP200 and preflight checks, not a long-term availability or provider-credit guarantee.",
+    "Normal incomplete archive waits and six separately observed writer RPC finalized-tail-missing messages remain recorded; this patch does not alter RPC behavior.",
+    "An initial read-only collector failed on an optional transport field, corrected in a new attempt. An initial test filter selected zero tests, followed by the retained real failing regression. A local install preparation read the still-empty in-flight upload response and did not dispatch; an early HEAD returned404 before upload completed.",
+    "Initial installation failed its immediate post-start predicate after exactly one start. Its precise transient values were not saved; separate post-start and complete verification succeeded without another restart.",
+    "All prior releases, errors, journals, E01 closure and four settled sessions remain preserved."
+  ],
+  "private_artifacts": [
+    {
+      "path": "target/indexer-recovery-20261009/source-baseline.json",
+      "sha256": "afa51b099b27f2f8f74aef7e90beddfdc353f9d35a72d214fabb84ac6f0a5574"
+    },
+    {
+      "path": "target/indexer-recovery-20261009/published-input-baseline.json",
+      "sha256": "439c0f7b93abf4ae751375e5b58111d9ca42d77a2fd0f9cdc915aa5b98fa111a"
+    },
+    {
+      "path": "target/indexer-recovery-20261009/reproducer-initial.log",
+      "sha256": "61bd8f3ff8f04d7280f6cf57a1daf5f57e252dbdb75103d031fd6f85a98ced79"
+    },
+    {
+      "path": "target/indexer-recovery-20261009/reproducer-before-fix.log",
+      "sha256": "d54eedf3baf72a8d710906b0e30ebf6cd453a9042489aac59dff0923f8d6474c"
+    },
+    {
+      "path": "target/indexer-recovery-20261009/challenger-tests.log",
+      "sha256": "c23310402979d0c503090212c85ada69a015d565e80508b6de49983ad77900b2"
+    },
+    {
+      "path": "target/indexer-recovery-20261009/clippy.log",
+      "sha256": "7acf4df92971a07faece1d29022590301817ceb1e0a68ae592dc0b3cae841de4"
+    },
+    {
+      "path": "target/indexer-recovery-20261009/inspection-01/invocation-01.json",
+      "sha256": "bfdc33a8d85d68d638654d09020c39185a4eaf68bfa11a3873489cc30bfdfd64"
+    },
+    {
+      "path": "target/indexer-recovery-20261009/inspection-02/result.json",
+      "sha256": "ba8fedf63648bba41a1baab85f4bb0b844e8ded9db580a5a54b16104e9af2bb5"
+    },
+    {
+      "path": "target/indexer-recovery-20261009/inspection-03/result.json",
+      "sha256": "f745f990236940e74c26dc8f2e01efe385a7efb5dbd718097903ba77335267c9"
+    },
+    {
+      "path": "target/indexer-recovery-20261009/install-01/invocation-01.json",
+      "sha256": "3ca5400f520c5c09ad2dbfce0fb2aabbb65be46a3eaabce8d8ba5b7289f7e8f7"
+    },
+    {
+      "path": "target/indexer-recovery-20261009/post-start-01/result.json",
+      "sha256": "e9a5e95ae3970882a431007eea0cd2c46ff655f4667d9c91d898ae28ca2a75f5"
+    },
+    {
+      "path": "target/indexer-recovery-20261009/verify-install-01/result.json",
+      "sha256": "5a1253e7b2e614c9586d41728f9c0830947980861089cb36628f4aecdc65d09b"
+    },
+    {
+      "path": "target/indexer-recovery-20261009/final-diagnostic-01/result.json",
+      "sha256": "3b87f10e7fdbbb7458fb87a2984d0689446dd89a05ffb847c5c7e88360b0df03"
+    },
+    {
+      "path": "target/indexer-recovery-20261009/linux-build/verification-01.json",
+      "sha256": "a14cda512e5fe6f1c3346ecc48a2cd68f7b05e0ec533c9cf774c200bd393f12f"
+    },
+    {
+      "path": "target/indexer-recovery-20261009/linux-build/source-manifest.json",
+      "sha256": "68804d22849c0c4114c592b010d3ad0a14f118b7faf145584c0856a6344f3aa3"
+    },
+    {
+      "path": "target/indexer-recovery-20261009/public-installed-preflight-01/result.json",
+      "sha256": "b9bfc5b031a1f733b2eb511faec64b7ac0d4e8e4e7d160ad93bd6dc85d5836af"
+    },
+    {
+      "path": "target/indexer-recovery-20261009/public-installed-preflight-01/stdout.json",
+      "sha256": "e9a887b97f7a1108146542727e7e3a4913e9752724e08a4e9a0406c0883c3010"
+    },
+    {
+      "path": "target/indexer-recovery-20261009/transfer-01/upload-response.json",
+      "sha256": "db8e045c766ea69cbfd1a78bb54d07a6f6a1114400f51bba6b3cd22dde4f049e"
+    },
+    {
+      "path": "target/indexer-recovery-20261009/transfer-01/upload-presence.stderr.private",
+      "sha256": "6b4ced3a96731d6fa121bee840a1ff6909200bfe3cd115aaef2c7f75aee03bef"
+    },
+    {
+      "path": "target/indexer-recovery-20261009/transfer-01/delete-exact-version-response.json",
+      "sha256": "51447dac26ca1732aa83e643152b90dc76b48c1b9ead1a5bea2c69033b7cc5c4"
+    },
+    {
+      "path": "target/indexer-recovery-20261009/transfer-01/deleted-version-readback.stderr.private",
+      "sha256": "6b4ced3a96731d6fa121bee840a1ff6909200bfe3cd115aaef2c7f75aee03bef"
+    }
+  ]
+}
