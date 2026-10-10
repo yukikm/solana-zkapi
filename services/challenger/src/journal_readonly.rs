@@ -88,8 +88,17 @@ impl FileStamp {
         }
     }
     pub(super) fn at(path: &Path) -> Result<Self> {
-        let file = regular(path)?;
-        Self::of(&file.metadata()?)
+        // Continuity checks inspect metadata only. Reopening every already
+        // authenticated chunk adds several syscalls per file, per check, and
+        // can exhaust the HTTP wait budget on a growing archive. lstat captures
+        // the same complete stamp without following a final-component symlink.
+        // Payload reads still use regular(), validate the opened descriptor,
+        // and hash the bytes; this never grants trust to a new/replaced inode.
+        let metadata = fs::symlink_metadata(path)?;
+        if !metadata.is_file() {
+            return Err(Error::Conflict("archive file type"));
+        }
+        Self::of(&metadata)
     }
     fn same_captured_head(&self, after: &Self) -> bool {
         self == after

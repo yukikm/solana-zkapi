@@ -127,6 +127,60 @@ fn readonly_archive_immutable_open_still_rejects_concurrent_replacement() {
 
 #[cfg(unix)]
 #[test]
+fn readonly_archive_metadata_checks_reject_nonfiles_and_changed_custody() {
+    use std::os::unix::fs::{symlink, PermissionsExt};
+    for change in ["symlink", "directory", "fifo", "permissions", "hardlink"] {
+        let (root, _writer) = fixture(3);
+        let mut reader = ReadOnlyArchive::open(root.path(), POOL).unwrap();
+        let path = chunk_path(
+            &root.path().join(ARCHIVE_DIR),
+            reader.archive.head.tail.as_ref().unwrap(),
+        );
+        let original = FileStamp::at(&path).unwrap();
+        assert_eq!(
+            original,
+            FileStamp::of(&regular(&path).unwrap().metadata().unwrap()).unwrap()
+        );
+        let saved = root.path().join("saved.json");
+        match change {
+            "permissions" => fs::set_permissions(&path, fs::Permissions::from_mode(0o400)).unwrap(),
+            "hardlink" => fs::hard_link(&path, &saved).unwrap(),
+            _ => {
+                fs::rename(&path, &saved).unwrap();
+                match change {
+                    "symlink" => symlink(&saved, &path).unwrap(),
+                    "directory" => fs::create_dir(&path).unwrap(),
+                    "fifo" => {
+                        use std::os::unix::ffi::OsStrExt;
+                        let name = std::ffi::CString::new(path.as_os_str().as_bytes()).unwrap();
+                        assert_eq!(unsafe { libc::mkfifo(name.as_ptr(), 0o600) }, 0);
+                    }
+                    _ => unreachable!(),
+                }
+                assert!(matches!(
+                    FileStamp::at(&path),
+                    Err(Error::Conflict("archive file type"))
+                ));
+            }
+        }
+        assert!(reader.refresh().is_err(), "{change}");
+        let mut delivered = 0;
+        assert!(
+            reader
+                .replay_range(1, 3, |_| {
+                    delivered += 1;
+                    Ok(())
+                })
+                .is_err(),
+            "{change}"
+        );
+        assert_eq!(delivered, 0, "{change}");
+        assert_eq!(reader.archive_len(), 3);
+    }
+}
+
+#[cfg(unix)]
+#[test]
 fn readonly_archive_head_open_rejects_concurrent_symlink() {
     let (root, _writer) = fixture(3);
     let mut reader = ReadOnlyArchive::open(root.path(), POOL).unwrap();
