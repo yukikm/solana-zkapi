@@ -1,75 +1,70 @@
-# Public Devnet operator status and incidents
+# Public Devnet operations and incidents
 
-The repository maintainer coordinates this invitation-only preview and its
-operator account. Operation is manual: there is no staffed support schedule,
-uptime commitment or long-term service-level objective. Ask the operator through
-the maintainer's existing private communication channel for access, an operating
-window or an incident update. No public invitation code or response-time promise
-is offered.
+The repository maintainer operates the preview manually. There is no staffed
+support schedule or uptime commitment. Contact the maintainer through the
+existing private channel for operating windows or incident updates.
 
-The hosting target is approximately **USD50/month**, not a billing hard cap.
-The [AWS cost guide](../../deploy/public-devnet/aws-budget-host.md) separates
-fixed estimates from variable usage and taxes. Provider credit has a separate
-authorized seven-USDC acceptance ceiling, described in the
-[funding guide](devnet-funding.md). A hosting target does not renew that allowance.
+## Recorded status
 
-## Dated operational checkpoints
+As of the **2026-10-10 JST** evidence:
 
-These observations do not establish availability at the time of reading:
+- The API [no longer requires invitations](../evidence/PD-invitation-removal-20261009.md).
+  All seven provider request slots were consumed at the
+  [model-profile deployment](../evidence/PD-model-expansion-20261009.md).
+  Additional capacity needs separate operator authorization.
+- The [latest public preflight](../evidence/PD-sdk8-publication-20261010.md) failed
+  on an empty operator catalog with both `.7` and `.8`. Its cause is unproven;
+  the separate successful ZDR metadata read does not establish service readiness.
+- Native recovery and withdrawal, E01 emergency withdrawal and service restart
+  have [scoped evidence](status.md). These are completed historical operations,
+  not instructions to replay them.
 
-| UTC checkpoint on 2026-10-08 | Established scope |
-|---|---|
-| 06:54 | [Native N-01](../evidence/PD-native-public-N01.md) completed a finalized Devnet deposit, one Chat response and SDK-verified settlement. Its note remained active with 4,999,994 micro-USDC. |
-| 07:43 | The [read-only operator join](../evidence/PD-N01-operator-join.md) matched the exact AUTH, retained reservation and signed charge. The following local draft assembly failed; that report did not approve a suspension. |
-| 07:58 | A later approved suspension changed only `allowNewAdmissions` to false and retained the one reservation. A public status read at 07:58:49 UTC returned HTTP200, `admission: suspended` and `recovery: enabled`. |
+The hosting target is approximately USD50/month, not a billing cap. See the
+[AWS cost guide](../../deploy/public-devnet/aws-budget-host.md) and
+[retained-capacity record](../evidence/PD-capacity-retained-20261009.md). The
+80 GiB data volume remains retained and chain history continues to grow;
+returning to 40 GiB requires a verified migration. Hosting costs and provider
+spending are separate.
 
-The retained suspension result has SHA-256
-`b745ae3a4d10512861252603990390b01082616754e561f88d22b0241f2cf7e4`;
-the public status observation has SHA-256
-`3bb8f592c3dad676ed23c0d0adee1a4cc6ae2fbb39127733c01de3dc20ffb196`.
-Maintenance followed this checkpoint. Its first capture attempt stopped at a
-file-inventory check after services were stopped; a successful encrypted backup,
-restart or admission resumption is not established here. Keep the active note
-and its original custody. A prior HTTP200 is not a current health check.
+Earlier checkpoints, including the failed backup preparation and suspension,
+are preserved in the [documentation archive](../evidence/PD-documentation-cleanup-20261010.md)
+and [service-recovery record](../evidence/PD-N01-service-recovery.md).
 
 ## Admission and recovery are separate
 
-Use the independently pinned [deployment profile](public-devnet-preview.md), then
-run read-only preflight and inspect the public
-[`/relay-status`](https://d366buuvadnp3.cloudfront.net/relay-status) response.
-Preflight verifies deployment and chain inputs; it does not reserve a provider
-slot or prove that your invitation will be accepted.
+Use the pinned [deployment profile](public-devnet-preview.md), run fresh
+read-only preflight and inspect these endpoints on the public API origin:
 
-`admission: suspended` prevents new AUTH. It preserves existing exact reserved
-AUTH and settlement identities; it does not authorize a fresh request UUID.
-`recovery: enabled` describes the gateway policy for existing work. Recovery,
-settlement and withdrawal still depend on their required services and chain
-state. Maintenance may stop those services temporarily, even though their state
-is retained. A timeout or HTTP503 never authorizes inference replay.
+| Check | What it tells you |
+|---|---|
+| Preflight/readiness | Deployment and service checks; no provider-slot reservation |
+| `/relay-status` | Configured admission, invitation and recovery policy |
+| `/provider-budget` | Remaining provider request capacity |
+
+`admission: suspended` blocks new AUTH while retaining existing reserved AUTH
+and settlement identities. `recovery: enabled` describes policy; recovery,
+settlement and withdrawal still need their services and chain state available.
+Maintenance can interrupt those dependencies. A timeout or HTTP503 must not
+trigger inference replay.
 
 ## Incident and maintenance procedure
 
-1. **Consumer: stop new work and preserve evidence.** Keep the original wallet,
-   note, encrypted journal, profile and pending operation. Save the UTC time,
-   redacted error category and public deployment identity. Share an operation ID
-   privately if the operator needs it; never send an invitation, token, seed,
-   decrypted journal or provider response in a public issue.
-2. **Operator: publish a dated scope.** State whether new admission is suspended,
-   which recovery dependencies are unavailable, and the next manual update when
-   known. Distinguish observed HTTP/chain results from an expected recovery time.
-   A successful single response does not establish an availability window.
-3. **Operator: retain the same authority.** Follow the
-   [same-state maintenance runbook](../../deploy/public-devnet/same-state-restart.md).
-   Preserve all reservations, custody, database, signer and journal history;
-   inspect failed or uncertain steps before a separately reviewed continuation.
-   Do not initialize replacement state, discard failed evidence or automatically
-   repeat a financial action.
-4. **Consumer and operator: resume deliberately.** After the required services
-   have returned and fresh profile/chain checks pass, use the original journal's
-   explicit [recovery procedure](recovery.md). Recovery must not replay inference.
-   New work requires a separate admission reopening, valid invitation and remaining
-   authorized capacity; withdrawal must be verified as finalized.
+1. **Stop new work and preserve the original state.** Keep the wallet, note,
+   encrypted journal, profile and pending operation. Save the UTC time and
+   redacted error. Share operation IDs privately; never post tokens, seeds,
+   decrypted journals or provider responses.
+2. **Publish a dated incident update.** The operator should state which services
+   and recovery paths are unavailable, whether new admission is suspended and
+   when another update is expected, if known.
+3. **Retain the same authority.** Follow the
+   [maintenance runbook](../../deploy/public-devnet/same-state-restart.md).
+   Preserve reservations, custody, database, signer and journal history. Review
+   failed or uncertain steps before continuing; do not initialize replacement
+   state or repeat financial actions automatically.
+4. **Recover before resuming.** Once services and fresh profile/chain checks
+   pass, use the original journal's [recovery procedure](recovery.md). New usage
+   also requires open admission and available provider capacity. Confirm
+   withdrawals as finalized.
 
-The [readiness backlog](../public-devnet-readiness-backlog.md) keeps full lifecycle,
-backup/restart and required fault-injection acceptance separate. This procedure
-does not certify those checks, or claim continuous operation for a month.
+The [readiness backlog](../public-devnet-readiness-backlog.md) records outstanding
+acceptance and long-term operating work.

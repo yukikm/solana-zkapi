@@ -2,7 +2,8 @@
 
 Import `createZkApiClient` and types from `@zkapi/solana-sdk`. Browser apps normally
 use `createBrowserClient` from `@zkapi/solana-sdk/browser`.
-The [source types](../../packages/sdk/src/client.ts) are the exact contract.
+This reference describes SDK `.8`; the [source types](../../packages/sdk/src/client.ts)
+are the exact contract. Older clients retain their release-specific behavior.
 
 `ClientDeployment.connection` is a native Kit `Rpc<SolanaRpcApi>`. `V0Wallet`
 keeps the `publicKey` property name but its value is a Kit `Address` string;
@@ -31,12 +32,6 @@ verified components. It is not a trust-checking factory: control, wallet,
 store, prover and journal **must belong to the same deployment and note**.
 Use the factory for new apps. No additional financial journal is created.
 
-`keyReuseSeconds` is optional: direct mode defaults to a 300-second lease with
-90 seconds reserved for renewal; explicit 1–300 selects a fixed window and 0
-closes each request. Proxy mode defaults to 0. Reuse never extends the original
-expiry and never restores a provider key from storage. This source policy is
-included in SDK `.6`; published `.3` artifacts retain their original behavior.
-
 ## Core methods
 
 | Method | Behavior |
@@ -61,21 +56,31 @@ ID is a new billable operation and must follow an explicit user action.
 The response carries `X-Zkapi-Operation-Id`. Raw responses can have non-2xx
 status; inspect `response.ok` or use the helpers. Do not log raw provider errors.
 
+Native `body` omits `model`, selected separately. Supply `anthropicVersion` only
+for Messages. The protocol supports text and client-executed tools, not arbitrary
+media, hosted tools or persisted Responses. Shape validation remains with the
+established adapters. There is no cross-provider conversion or mode fallback.
+
+## Direct-session reuse
+
+`keyReuseSeconds` is optional: direct mode defaults to a 300-second lease with
+90 seconds reserved for renewal; explicit 1–300 selects a fixed window and 0
+closes each request. Proxy mode defaults to 0. Reuse never extends the original
+expiry and never restores a provider key from storage. This policy has been
+included since `.6`; `.3` retains per-request settlement.
+
 `sessionId` scopes a direct lease to a local conversation (1–160 characters;
 default `default`). Another conversation must settle the current lease first.
 Model switches can reuse a lease only with the same tariff; a changed tariff
 requires settlement and fresh authorization. Successful responses keep the key
 until its fixed expiry; cancellation, stream errors and non-2xx responses retire
-it. A renewal may wait for verified settlement before the new operation is sent.
+it. Renewal waits up to 45 seconds for verified settlement before sending the
+new operation.
 It never resubmits an old inference. Idle settlement runs only for a session
-owned by the current client and stops on disposal; initialization/status remain
+owned by the current client, waits for active responses and stops on disposal.
+Reopened clients require explicit recovery. Initialization/status remain
 read-only. Call `settle()` and inspect status before disposal if immediate
 retirement is required.
-
-Native `body` omits `model`, selected separately. Supply `anthropicVersion` only
-for Messages. The protocol supports text and client-executed tools, not arbitrary
-media, hosted tools or persisted Responses. Shape validation remains with the
-established adapters. There is no cross-provider conversion or mode fallback.
 
 ## Wallet methods
 

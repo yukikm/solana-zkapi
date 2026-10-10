@@ -1,17 +1,19 @@
 # Build your first integration
 
-This guide targets a browser app with a Wallet Standard wallet. It is a
-development preview: you need an operator-supplied, reviewed deployment bundle.
-No supported public production bundle or npm release is advertised yet.
+This guide uses the published `.8` SDK and a Wallet Standard browser wallet.
+You need a reviewed deployment bundle. The [public Devnet preview](public-devnet-preview.md)
+has downloads and profiles, but its recorded provider allowance is exhausted.
+The latest recorded public preflight also failed on an empty operator catalog.
+Check [funding and access](devnet-funding.md) before depositing for new requests.
 
 ## 1. Install the SDK in your own repository
 
-Obtain an independently reviewed `zkapi-solana-sdk-0.2.0-devnet.2.tgz` and verify its
+Obtain an independently reviewed `zkapi-solana-sdk-0.2.0-devnet.8.tgz` and verify its
 published SHA256 through your trusted distribution channel. Then install it in
 your application with Node 24.19.0/npm 11.9.0:
 
 ```sh
-npm install --save-exact /absolute/path/zkapi-solana-sdk-0.2.0-devnet.2.tgz @solana/kit@8.4.0
+npm install --save-exact /absolute/path/zkapi-solana-sdk-0.2.0-devnet.8.tgz @solana/kit@8.4.0
 ```
 
 The package contains compiled ES modules and TypeScript declarations. No source
@@ -28,7 +30,7 @@ operator; the browser does not need the operator's API key.
 
 ## 2. Configure the deployment once
 
-The released `0.2.0-devnet.2` preview offers a
+The released `0.2.0-devnet.8` preview offers a
 [public-profile loader and read-only preflight](public-profile.md) that supplies
 these inputs from one authenticated profile. The
 [independent consumer](../../tools/public-devnet-consumer/README.md) shows durable
@@ -38,7 +40,7 @@ profile and availability status. Explicit deployment inputs are described below
 for application maintainers and self-hosted operators.
 
 Your app supplies a `ClientDeployment`: raw manifest bytes, an independently
-installed trust policy, public proof/IDL artifacts, an Kit `Rpc<SolanaRpcApi>` and an
+installed trust policy, public proof/IDL artifacts, a Kit `Rpc<SolanaRpcApi>` and an
 indexer origin. The [deployment guide](deployment.md) explains every input and
 the example loader. End users do not enter these pins.
 
@@ -123,29 +125,18 @@ For streaming, supply `stream: true` to `client.chat()` and consume with:
 for await (const delta of readChatDeltas(response)) appendText(delta);
 ```
 
-These are alternatives: consume the response once. Always consume or cancel
-its body. Breaking the iterator cancels it. Direct mode retains a successfully
-consumed session for subsequent requests; cancellation retires the key. A close
-or verification failure stays pending in `status.session`; use `recover()` if
-`status.canRequest` is false. An answer on
-screen alone does not establish verified billing. Live streaming compatibility
-is provider-specific; see [status](status.md).
+Consume the response once, using either helper, and always consume or cancel
+its body. Breaking the iterator cancels it. Direct mode keeps a successfully
+consumed session available for reuse; cancellation retires it. Use
+`status.canRequest` for the Send control and inspect pending settlement before
+recovering. A displayed answer does not establish verified billing.
 
-The app owns history. For the next turn, pass prior messages, the assistant
-answer and the new user message. There is no server-side chat history API.
-Direct mode requests a 300-second lease and reuses it within the same client and
-conversation. Pass a stable `sessionId` in `chat()` or `request()` (default:
-`default`); call `settle()` before switching conversations with an active lease.
-A follow-up with 90 seconds or less remaining retires the old lease and waits up
-to 45 seconds for its verified successor before authorizing the new request.
-Idle expiry also triggers settlement while the client is alive, and never while
-a response is still being consumed. Reloaded clients require explicit recovery.
-`keyReuseSeconds: 0` preserves per-request settlement; values 1–300 select a fixed
-window instead. Proxy mode defaults to per-request settlement.
-
-This policy is included in SDK/native `.6`. Published `.3` files and existing
-custody bindings are unchanged. The `.6` native-input helper selects 60-second
-reuse with a 120-second settlement wait; use it with the `.6` native runtime.
+The app owns history. Pass prior messages, the assistant answer and the new user
+message in the next request. The SDK does not provide a chat-history API.
+Use a stable `sessionId` for each conversation and call `settle()` before
+switching conversations with an active lease. See [session reuse](api.md#direct-session-reuse)
+for lease timing, expiry and recovery. Older `.3` installations retain their
+original per-request behavior and custody bindings.
 
 `chat()` handles text Chat Completions on configured OpenAI/OpenRouter/OA routes.
 For native Responses, Anthropic Messages or client-side tool calls, use

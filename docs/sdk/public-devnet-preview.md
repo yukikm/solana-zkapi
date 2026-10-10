@@ -1,52 +1,49 @@
 # Public Devnet preview deployment
 
-New SDK/native **`0.2.0-devnet.6`** consumers: see the [session reuse release guide](../releases/session-reuse-preview.md)
-for exact downloads and the compatible immutable revision-4 profile. Existing
-`.3` installations retain their original profile and recovery inputs.
+Use the published **SDK/native `0.2.0-devnet.8`** with the revision-6 profile for
+new installations. See the [release guide](../releases/usability-preview.md) for
+upgrade guidance. Existing notes must keep their original installation, profile,
+custody and journal until recovery and closure are complete.
 
-Model expansion — 2026-10-09: the [revision-3 model profile](public-models.md) selects 21 OpenRouter Chat models covering GPT 5.6+ and Claude 5+. SDK/native stay `.3`; consumers install the new profile URL and digest. Existing custody retains its original inputs. The existing seven request reservations are exhausted; this model change does not add spending capacity.
+**Public preflight was blocked at the latest recorded check (2026-10-10 JST):**
+the operator returned an empty catalog with both `.7` and `.8` clients. The cause
+remains unproven. A separate successful ZDR metadata check does not establish
+inference readiness. [Recorded observations](../evidence/PD-sdk8-publication-20261010.md).
 
-The [v0.2.0-devnet.5 API source release](https://github.com/yukikm/solana-zkapi/releases/tag/v0.2.0-devnet.5)
-publishes the deployed CORS opening. SDK/native artifacts remain `0.2.0-devnet.3`;
-no client upgrade is required. [Publication evidence](../evidence/PD-cors-release-20261009.md).
+The gateway permits any browser origin and does not require invitations, but
+**all seven authorized request slots were consumed**. Preflight or model
+listing does not provide additional capacity. Check `/provider-budget` before
+funding for new requests; additional usage requires operator authorization.
 
-Access update — 2026-10-09: the [public API invitation requirement was removed](../evidence/PD-invitation-removal-20261009.md).
-The installed gateway reports `invitation_required: false`; SDK/native consumers
-can omit the invitation. Authentication, proofs, finite provider budget and
-recovery remain enforced. Independent application releases are separate.
-
-Current completion checkpoint — 2026-10-09 JST: [public restoration](../evidence/PD-public-restoration-20261009.md) completed the guarded gateway start after fresh finalized reconciliation. Installed `.3` preflight passed ten checks at 00:55:26 UTC with all 7,257 files unchanged and no AUTH, inference or wallet action. [E01 emergency withdrawal](../evidence/PD-E01-emergency-withdrawal-20261009.md) then completed from the original deposit/journal: seven exact-wire finalized transactions, one micro-USDC returned, Note closed and `Pending.exists=false`, with zero AUTH in its journal and the complete operator financial cut unchanged. The [core completion record](../evidence/PD-core-completion-20261009.md) records fresh public HTTP 200 at 01:43:23 UTC and separately enabled admission/recovery. This follows the installed [Ethereum OpenRouter capture policy](../evidence/PD-openrouter-ethereum-parity.md), [verified warm restart](../evidence/PD-warm-restart-20261009.md) and [writer throughput successor](../evidence/PD-replay-writer-deployment-20261009.md). Final evidence is linked and versioned in this documentation update. The `.3` inputs below stay current; run fresh preflight before use. Earlier dated checkpoints remain historical observations, not continuous-availability guarantees.
-
-Readiness checkpoint — 2026-10-08 15:16 UTC: [the public readiness endpoint is deployed and admission resumed](../evidence/PD-public-readiness-deployment.md). It reports control/indexer/signer capabilities with a five-second expiry; provider credit and admission are explicitly `not_checked`, with admission reported separately by relay configuration. The first indexer-unavailable HTTP503 and later successful samples remain distinct; continuous availability and final provider-cost accuracy are not established. Funded browser cases, E01 and planned 80 GiB expansion remain outside this checkpoint.
-
-Native closure checkpoint — 2026-10-08 14:27 UTC: [N-04 interrupted-stream recovery and mutual withdrawal](../evidence/PD-native-public-N04.md) are complete: one deliberate process-group kill, same-journal .3 restart, one explicit recovery, four independently verified signed settlements totaling **20 micro-USDC**, and return of **4,999,980 micro-USDC**. Six finalized exact-wire transactions establish the closed note and Vault zero; wallet equals treasury owner, so its restored balance does not erase charges. The final operator cut retains four full-cap reservations (4M micro-USDC exposure), four settled sessions and all 25 checkpoint rows. [OpenClaw text/read-tool continuation](../evidence/PD-native-public-N02-N03.md) passed in its separate scope; [external provider-cost reconciliation](../evidence/PD-openrouter-management-usage-limit.md) remains unresolved. [SDK .3 source CI](../evidence/PD-hosted-ci-e2ee932.md) passed all nine implementation jobs at exact source `e2ee9320…`, separate from live acceptance. Subsequent [independent backup verification](../evidence/PD-N01-backup-independent-verify.md) completed exact-version download, streamed archive checks and isolated PG16 logical restoration of the original one-session N01 cut; it does not restore the later four-session state or physical services. Funded browser cases, the separate zero-AUTH emergency exercise and deployed aggregate readiness remain unfinished. Preserve the interrupted response, all failed preparations/observations, immutable releases and original journals; no inference replay or chat-history restoration is implied.
-
-New API consumers should use the published **SDK/native `v0.2.0-devnet.3`** with the [revision-3 model profile](public-models.md). The [independent browser app](https://d30nr98svcwdoe.cloudfront.net/releases/public-devnet-20261008-a/chat-en-sdk3/index-r2.html) retains its earlier profile and separate release. [Release verification](../evidence/PD-sdk3-publication.md) records anonymous downloads and installed-file hashes; [browser publication](../evidence/PD-browser-sdk3-publication.md) records exact static bytes and Chrome page/settings rendering. Existing funded custody keeps its original profile, journal and recovery inputs. There is no automatic profile or custody migration.
-
-Native N-01 completed Chat settlement and service recovery. [OpenClaw N-02/N-03](../evidence/PD-native-public-N02-N03.md) completed ordinary text and read-tool continuation; [N-04](../evidence/PD-native-public-N04.md) completed interrupted-stream recovery and mutual withdrawal. The installed [Ethereum-style accounting policy](../evidence/PD-openrouter-ethereum-parity.md) accepts delayed provider accounting as the operator's risk. The [historical response-cost discrepancy](../evidence/PD-openrouter-management-usage-limit.md) and signed zero charges remain preserved without repricing. This Devnet preview does not establish invoice-finality, funded browser acceptance or full release gates.
-
-The operator uses the AWS account selected by the repository maintainer. This is
-a Devnet preview with one operator host and a finite provider budget. It has
-no production availability commitment. The current hosting target is roughly
-USD50/month; the current fixed illustration is USD43.169 for 730 hours, before
-variable charges and actual taxes, after the [same-volume expansion to 80 GiB](../evidence/PD-preview-capacity-80g.md)
-of durable data. That target is separate from the seven-USDC maximum provider
-exposure authorized for the acceptance campaign. Reservations are maximum
-exposure, not measured provider charges.
+This preview has no uptime commitment. See [verification status](status.md) and
+the [operator guide](public-devnet-operations.md) for limits and incident handling.
 
 ## Current inputs for new consumers
 
 The public API origin is `https://d366buuvadnp3.cloudfront.net`.
 The [deployed CORS update](../evidence/PD-public-cors-20261009.md) permits any
 browser origin, including HTTP localhost, without registration. Use
-`credentials: "omit"`; SDK `.3` already does this. Browser config and read-only
-RPC calls passed from independent HTTPS and localhost origins. Tree-root
-HTTP503 observations remain a separate upstream issue, not a CORS denial.
+`credentials: "omit"`; SDK `.3` already does this. CORS permits browser
+access to responses, including errors; it does not establish service readiness.
 
-The independent
-[SDK .3 app](https://d30nr98svcwdoe.cloudfront.net/releases/public-devnet-20261008-a/chat-en-sdk3/index-r2.html)
-uses its separate HTTPS origin and explicit new custody namespace
-`zkchat-sdk-0.2.0-devnet.3`. Opening it does not migrate existing browser custody.
+Current `.8` downloads and pins are recorded in the
+[publication receipt](../evidence/PD-sdk8-publication-20261010.md):
+
+| Input | SHA-256 |
+|---|---|
+| [Revision-6 profile](https://d366buuvadnp3.cloudfront.net/releases/public-devnet-20261008-a/profile-sdk-0.2.0-devnet.8-r6.json) | `ec10c1ab41bb5105222d3e25c7e1eba6b96b1b397abd0f854657030269992a77` |
+| [SDK `.8` tarball](https://github.com/yukikm/solana-zkapi/releases/download/v0.2.0-devnet.8/zkapi-solana-sdk-0.2.0-devnet.8.tgz) | `cd9226f4526c0b3561a557e4c7beb4f495dcbad6c995c624f4c442b6621414da` |
+| [macOS ARM64 `.8` archive](https://github.com/yukikm/solana-zkapi/releases/download/v0.2.0-devnet.8/zkapi-clientd-0.2.0-devnet.8-darwin-arm64.tar.gz) | `14154d038bc0e79347076b9983754eeca2fbde78159be21e5ca7b0cddca632ac` |
+| Extracted native `.8` `release.json` | `20c194668cbb9b13fecf8170c709fb03dd055bbd1b67b93b6e652dcfe7d118be` |
+
+Verify downloads against independently obtained pins. Native support is macOS
+ARM64, macOS 13.5+, without Apple notarization. Gateway discovery still returns
+an older profile; select the revision-6 input explicitly for a new `.8` installation.
+
+## Preserved .3 inputs for existing custody
+
+Keep these inputs with existing `.3` custody. Their model list and release are
+unchanged; they are not the new `.8` installation inputs.
 
 | Input | SHA-256 |
 |---|---|
@@ -90,162 +87,43 @@ remain available; do not initialize replacement custody to recover existing fund
 
 ## Connection and access
 
-Follow the [public-profile guide](public-profile.md) for browser integration or
-the [independent consumer instructions](../../tools/public-devnet-consumer/README.md)
-for native input installation. New consumers use the .3 profile URL and digest above; existing custody retains its original inputs.
-Read-only preflight downloads and verifies assets, genesis, finalized Pool,
-control catalog and tree snapshot. It creates no custody, AUTH, inference or
-transaction. A `snapshot` error means the selected chain snapshot could not be
-verified; it is not evidence of insufficient wallet balance.
+1. Obtain the profile and download pins above through a trusted channel.
+2. Follow the [public-profile guide](public-profile.md) for a browser app or
+   [independent consumer guide](../../tools/public-devnet-consumer/README.md) for
+   native setup files.
+3. Run read-only preflight. It verifies deployment assets, genesis, the finalized
+   Pool, control catalog and tree snapshot without creating custody, AUTH,
+   inference or transactions.
+4. Check `/relay-status` for admission policy and `/provider-budget` for remaining
+   capacity. Preflight does not reserve a request slot.
+5. Follow the [funding guide](devnet-funding.md) once new usage is available.
 
-The original acceptance configuration selected direct OpenRouter Chat with
-`openai/gpt-4o-mini`, a maximum of 128 output tokens and a one-USDC authorization
-cap. The [revision-3 profile](public-models.md) adds the requested GPT/Claude
-model selection using the same authenticated wildcard tariff and session cap. Prompts go directly to OpenRouter. Native OpenClaw text, streaming and read-tool continuation have their own
-[recorded scope](../evidence/PD-native-public-N02-N03.md); funded browser acceptance
-and external provider-cost reconciliation remain unverified. Ordinary consumers do
-not supply an OpenRouter management key.
+A `snapshot` error means the chain snapshot could not be verified; it does not
+indicate insufficient wallet balance. Keep the same profile and journal when
+recovering an interrupted operation.
 
-The API can accept new AUTH without an invitation when the operator explicitly
-sets `requireInvitation: false`. `GET /relay-status` reports
-`invitation_required`; this is configuration, not proof of provider credit or
-successful AUTH. In this mode omit the native `--admission-token-file` option
-and the consumer adapter's `admissionToken`. The same proof, session credential
-and finite subsidy budget checks apply.
+The profile uses direct OpenRouter Chat, a one-USDC session cap and at most
+128 output tokens. Prompts go directly to OpenRouter; consumers do not supply
+an OpenRouter management key. The configured model list is an immutable catalog
+snapshot. [Selected OpenClaw cases](../evidence/PD-native-public-N02-N03.md) have
+live evidence; the expanded list has not been verified model by model.
 
-For an operator that retains the invitation gate, obtain a token privately.
-Native setup reads an owner-only file and injects it only into the exact control
-AUTH route. Do not put tokens in public profiles, URLs or shared examples.
-An invitation does not override suspended admission or create subsidy capacity.
-Existing exact reserved AUTH, settlement, recovery and withdrawal retain their
-original identity when new admission is suspended.
+When `/relay-status` reports `invitation_required: false`, omit native
+`--admission-token-file` and browser `admissionToken`. Other deployments can
+require an invitation; obtain it privately and keep it out of URLs, public
+profiles and logs. Invitation policy does not override suspended admission or
+provider limits.
 
-Funding requires the selected Circle **Devnet** USDC mint and Devnet SOL for
-network fees. Read the [funding guide](devnet-funding.md). Test tokens do not pay
-the operator's real provider bill. Keep the original note, journal, profile and
-wallet during recovery; never resend inference automatically after uncertainty.
+The separate [browser app](https://d30nr98svcwdoe.cloudfront.net/releases/public-devnet-20261008-a/chat-en-sdk3/index-r2.html)
+retains its earlier profile and release. Its page rendering has been checked;
+current funded browser acceptance remains deferred. Its custody namespace is
+`zkchat-sdk-0.2.0-devnet.3`; it does not migrate existing custody or profiles.
 
-## Verified scope so far
+## Verification and history
 
-The [2026-10-09 restoration](../evidence/PD-public-restoration-20261009.md)
-records the later public readiness and installed `.3` preflight against these
-inputs. It preserves three earlier pre-start failures and the complete financial
-cut. The [retained-capacity record](../evidence/PD-capacity-retained-20261009.md)
-confirms 80 GiB data/20 GiB root and unchanged `t3a.medium` Standard credits,
-with 30,190,022,656 available bytes at 00:25:35 UTC. Retained archive data exceeds
-40 GiB; no migration or rollback occurred, and long-term qualification is deferred.
-
-The current release/profile and independent app have separate download, installed-file
-and page-rendering evidence. Earlier [unfunded initialization](../evidence/PD-consumer-unfunded-startup.md),
-[public proof checks](../evidence/PD-public-bundle-download-proofs.md) and
-[independent-origin preflight](../evidence/PD-public-runtime-origin-followup.md)
-retain their original source/profile scope; the new .3 page rendering does not
-repeat those checks or establish funded browser acceptance.
-
-[Native N-01](../evidence/PD-native-public-N01.md) established its deposit, one Chat
-response and signed six-micro-USDC charge. [Service recovery](../evidence/PD-N01-service-recovery.md)
-records encrypted capture, same-state restart and later admission resume.
-[Independent backup verification](../evidence/PD-N01-backup-independent-verify.md)
-subsequently verified the exact uploaded version and isolated PostgreSQL logical
-restoration of the original one-session N-01 cut. It does not restore the later
-four-session financial cut or physical services. The later N-02/N-03/N-04
-results and accounting limitation retain their separate scopes above.
-
-## Historical checkpoints
-
-The following dated text is preserved verbatim from earlier handoffs. It records
-what was known at each checkpoint and is superseded by the current selection and
-scoped results above.
-
-Resume checkpoint — 2026-10-08 11:45 UTC: **admission resume completed**, followed by public HTTP 200 reporting admission and recovery enabled. The [service-recovery record](../evidence/PD-N01-service-recovery.md) joins the successful run06 to fresh installed-native preflight and two unchanged full local readiness checks; public `/relay-status` remains configuration-only. The pre-resume financial cut retained one N-01 full-cap reservation, the verified six-micro-USDC charge and active signed balance of 4,999,994 micro-USDC. Earlier attempts01–05 and all capture/restart/decoder failures remain preserved. This is a dated checkpoint, not a current balance or continuous-availability claim. Root launched N-02/N-03 around 11:48 UTC; their outcomes and any later reservations or charges are not included here. N-04, funded browser acceptance, withdrawal and independent backup restoration remain unverified. The readiness control candidate is still undeployed.
-
-Latest handoff — 2026-10-08 10:55 UTC: **the writer correction is deployed; fresh readiness and admission resume remain unverified**. The [application-log correction](../evidence/PD-rpc-program-log.md) records the actual writer-only installation/start of binary `23bbb73fe88fcb111a1ca090cabe9cb0233693e09c9e2fc0d70b790f3b83b372`. Its start receipt records cold validation/replay in progress. The earlier executable, archive, configuration, other five processes and financial rows were preserved. Admission is false. N-01 retains one full-cap reservation, its verified six-micro-USDC charge and active signed balance of 4,999,994 micro-USDC; N-02–N-04, funded browser acceptance and withdrawal remain pending.
-
-[Hosted implementation CI at `27ef2a4`](../evidence/PD-hosted-ci-27ef2.md) passed all nine jobs. At the latest root-saved cut, successor `e36cfbcd…` had eight successful jobs and client/challenger pending; no full successor CI success is claimed. The Linux readiness candidate remains undeployed. Earlier dated observations below retain their original scope and are not current availability guarantees.
-
-Latest observed status — 2026-10-08 09:40:40 UTC: **cold replay ended, but new
-admission is still suspended because the writer is blocked on archive decoding**.
-The [recovery record](../evidence/PD-N01-service-recovery.md) retains the successful
-encrypted capture and same-state restart. A later fresh health cut is non-ready
-at durable tail `508763135`, with repeated `RPC archive encoding` errors. The
-actual next block response and frozen old native reproduction identify application
-`Program log: ` text containing ` failed:` being mistaken for runtime completion.
-A narrow namespace correction is under local verification, with no deployed
-correction claimed. N-01 remains settled with its active note and the
-same one reservation, six-micro-USDC charge and signed 4,999,994-micro-USDC balance.
-No additional paid case, funded browser acceptance or withdrawal has run.
-
-At the root-saved CI cut around 10:05 UTC, successor run `37755041914` at `27ef2a4c…`
-had eight successful jobs and client/challenger still running. The completed
-nine-job success remains scoped to [source `1a25289`](../evidence/PD-hosted-ci-1a252.md).
-The Linux readiness candidate remains built but undeployed. Earlier checkpoints
-below describe their recorded times rather than current availability.
-
-Current checkpoint — 2026-10-08 09:22 UTC: **encrypted capture and the guarded
-same-state restart completed; fresh readiness and new admission remain pending**.
-The [recovery record](../evidence/PD-N01-service-recovery.md) preserves the original
-capture failure, explicit continuation and exact receipts. At 09:01, all six
-services were active with zero automatic restarts and the original archive
-follower unchanged. The writer was still replaying its journal with stale,
-non-ready health. New admission is false. N-01 remains one reservation and a
-verified six-micro-USDC charge; the active note's signed balance is 4,999,994
-micro-USDC. N-02–N-04, funded browser acceptance and withdrawal remain pending.
-The encrypted upload was confirmed by its response checksum and version;
-independent download, decryption and restore have not been tested.
-
-The [readiness candidate](../evidence/PD-public-readiness-candidate.md) and
-[OpenClaw settlement adapter](../evidence/PD-openclaw-settlement-adapter.md) are
-published in the 24-path source follow-up at
-[`27ef2a4c842927240e0fae776a5017a46b6c141d`](https://github.com/yukikm/solana-zkapi/commit/27ef2a4c842927240e0fae776a5017a46b6c141d).
-The Linux control candidate (`505b7e65…20c36a7`) is built but not deployed; the
-adapter has local fixture evidence, not funded OpenClaw acceptance.
-[Implementation CI at `1a25289`](../evidence/PD-hosted-ci-1a252.md) passed all nine
-jobs. Successor [run 37755041914](https://github.com/yukikm/solana-zkapi/actions/runs/37755041914)
-was still running with four of nine jobs successful at 09:21 UTC. That is not a
-success claim for the new source. Original releases, ledger, custody and archive
-anchors remain preserved. Earlier dated checkpoints follow.
-
-Checkpoint through 2026-10-08 06:54:45 UTC: **public responses,
-independent-origin Chrome preflight/worker execution and installed-native
-preflight passed. Native N-01 completed a deposit, Chat response and signed
-settlement; the full funded lifecycle remains unfinished**. The supplied Helius
-Devnet RPC is configured. The [runtime follow-up](../evidence/PD-public-runtime-origin-followup.md)
-records the later successful responses after the earlier
-[decoder correction](../evidence/PD-rpc-log-truncation.md) and follower replay.
-The [admission recovery checkpoint](../evidence/PD-public-admission-recovery.md)
-records the preserved failed policy check and the successful explicit continuation
-at 06:20 UTC. Public status then reported admission and recovery enabled with
-zero reservations. The first native deposit preparation failed before funding
-because its wallet read route was blocked. The subsequent
-[route correction](../evidence/PD-public-wallet-route-fix.md) and
-[N-01 acceptance](../evidence/PD-native-public-N01.md) establish the later
-successful deposit and six-micro-USDC metered charge. The note remains active;
-service recovery, additional conversations, withdrawal and funded browser
-acceptance are unfinished. The
-[migration/storage checkpoint](../evidence/PD-rpc-migration-startup.md) records
-the actual configuration change, retained history and 20-to-40-GiB data expansion.
-The [earlier quota and free-endpoint failures](../evidence/PD-public-rpc-quota-blocker.md)
-remain preserved. Earlier download or preflight success is not current availability.
-See the [implementation record](../public-devnet-implementation.md) for other scopes.
-
-### Earlier verified-scope text
-
-Anonymous public downloads, complete installed native/WASM proof checks and
-actual Chrome/native startup observations are recorded separately. The earlier
-unavailable-snapshot diagnostic is preserved; later installed preflight and
-Chrome connection checks passed. New browser storage and native custody were
-initialized with zero balance and no AUTH, inference or wallet transaction.
-Operator admission remained unverified by those preflight observations. See
-[unfunded initialization](../evidence/PD-consumer-unfunded-startup.md),
-[asset verification](../evidence/PD-public-assets.md),
-[proof verification](../evidence/PD-public-bundle-download-proofs.md), and
-[application publication](../evidence/PD-zkchat-english-publication.md).
-
-The later [native N-01 result](../evidence/PD-native-public-N01.md) used the
-immutable installed release and stock supervisor/Go egress through the public
-HTTPS service. Its five-USDC Devnet deposit finalized in one 995-byte
-transaction. One Chat response completed, and the SDK verified a signed
-six-micro-USDC charge and remaining balance of 4,999,994 micro-USDC. This
-establishes that case only. The note is still active, and ordinary withdrawal,
-service restart, interrupted-session recovery, OpenClaw tool continuation and
-funded browser acceptance are pending.
+[Client release verification](../evidence/PD-sdk8-publication-20261010.md),
+[model-profile deployment](../evidence/PD-model-expansion-20261009.md) and
+[API release verification](../evidence/PD-cors-release-20261009.md) identify the
+published inputs. Native lifecycle, recovery and withdrawal results are
+summarized in [status](status.md). Earlier operational checkpoints are retained
+in the [documentation archive](../evidence/PD-documentation-cleanup-20261010.md).

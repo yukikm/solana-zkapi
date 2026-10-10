@@ -17,7 +17,7 @@ provider charges. SDK settlement and withdrawal remain necessary.
 ## Install the current-platform package
 
 Download and verify the prebuilt macOS ARM64 archive from the
-[SDK and native `.6` release guide](../releases/session-reuse-preview.md), then extract it into a
+[`.8` release guide](../releases/usability-preview.md), then extract it into a
 new directory. Obtain the archive and installed `release.json` hashes from the
 authenticated release manifest. The following build command is for maintainers.
 
@@ -58,23 +58,22 @@ authenticated profile's `sdkVersions`, as listed in the
 [current public profile](public-devnet-preview.md). Releases before
 `0.2.0-devnet.2` do not include profile/capability support.
 
-The current public gateway does not require an invitation. An operator that
-enables its invitation gate may supply a private admission token.
-The native client supports a private admission token file through
-`network.json`'s optional `admission: {origin, token_file}` configuration; the
-consumer helper accepts its path with `--admission-token-file`. Keep that file
-owner-only and separate from public profiles, runtime artifacts and logs. The
-egress adapter sends the invitation only to the exact configured gateway
-session-creation POST. The dated native public lifecycle evidence is linked from the deployment
-guide; it does not establish current provider capacity.
+The public gateway no longer requires an invitation. Check `/relay-status`
+and `/provider-budget` before new usage: the 2026-10-09 record shows all seven
+request slots consumed. See [funding and access](devnet-funding.md).
 
-For direct OpenRouter, the `.6` helper's 60-second-reuse runtime also sets
+For deployments that still require invitations, the helper accepts
+`--admission-token-file`, using `network.json`'s optional
+`admission: {origin, token_file}`. Keep the file owner-only; the egress adapter sends it
+only to the configured gateway's session-creation route.
+
+For direct OpenRouter, the current helper selects 60-second key reuse and
 `settlement_wait_ms: 120000`. A new explicit request can wait for signed
 settlement of fully consumed same-process responses before its first AUTH.
-Unknown or canceled responses and restarts still require explicit recovery.
-The `.6` direct-reuse default is 120 seconds; existing runtime files are not modified. It does not change
-historical profiles or retry inference. Configure the external application's
-response-header timeout to accommodate the wait and proof preparation.
+Unknown or canceled responses and restarts require explicit recovery. Existing
+runtime files and custody are not migrated; `.3` helper inputs retain zero reuse.
+Configure the application's response-header timeout to accommodate settlement
+and proof preparation. Inference is never automatically replayed.
 
 Obtain from the deployment maintainer:
 

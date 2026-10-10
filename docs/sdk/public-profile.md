@@ -1,18 +1,14 @@
 # Authenticated public Devnet profiles
 
-The public-profile API is included in the **`0.2.0-devnet.2` release**, with
-verified downloads for the [public Devnet deployment](public-devnet-preview.md).
-The immutable GitHub `0.2.0-devnet.1` release does not contain it. New SDK `.6` consumers use the [revision-4 profile](../releases/session-reuse-preview.md).
-Dated service and funded lifecycle results remain in the deployment guide;
-published assets alone do not establish current service readiness or capacity.
+A public profile binds the deployment bundle, RPC/indexer routes, mode, models,
+tariffs and request limits. Install its URL and exact SHA-256 from an
+independently authenticated release; a checksum served only beside an untrusted
+file does not authenticate it.
 
-An application maintainer installs one profile URL and its exact SHA-256 from
-an independently authenticated release. The profile binds a complete artifact
-bundle, RPC/indexer routes, explicit privacy mode, allowed models and tariffs,
-and streaming/tool restrictions. The bundle's existing `ManifestTrustPolicy`
-remains the deployment contract; this format adds no second financial state
-machine or alternate manifest. A profile hash downloaded solely from the same
-untrusted endpoint cannot authenticate that endpoint.
+The API has been available since `.2`. New consumers should use the
+[published `.8` clients and revision-6 profile](../releases/usability-preview.md).
+Existing custody keeps its original profile binding. Profile verification does
+not establish service availability or provider capacity; see [status](status.md).
 
 ## Load and inspect before opening custody
 
@@ -132,7 +128,7 @@ The exact supported top-level fields are:
 |---|---|
 | `schema` | Integer `1` |
 | `id`, `revision` | Lowercase stable profile identifier and positive integer revision |
-| `sdkVersions` | Explicit exact supported SDK versions, including `0.2.0-devnet.6` for this release |
+| `sdkVersions` | Exact compatible SDK versions; the new-consumer profile selects `0.2.0-devnet.8` |
 | `protocolLayoutVersion` | Integer `2` |
 | `bundle` | `{url, sha256}` of the existing immutable `bundle.json` format |
 | `rpcUrl`, `indexerOrigin` | Reviewed browser-safe HTTPS RPC URL and canonical HTTPS indexer origin |

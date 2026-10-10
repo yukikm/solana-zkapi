@@ -6,11 +6,11 @@ custody passphrase outside the application. Choose a model/API and mode from the
 reviewed deployment configuration; changing an application's URL does not add a
 provider, tariff or model to that deployment.
 
-| Application | Guide | Current boundary |
+| Application | Guide | Recorded compatibility |
 |---|---|---|
-| OpenClaw | [Setup and recovery](openclaw.md) | Actual CLI text, streaming and read-tool continuation passed locally and in a selected devnet/provider lifecycle. See the guide for the bounded relay and package scope. |
-| Claude Code | [Gateway configuration and compatibility](claude-code.md) | Configuration is documented. The tested CLI still sends a query and request fields rejected by the current clientd/proxy. Not ready for funded use. |
-| Codex CLI | [Responses provider configuration and compatibility](codex.md) | Configuration is documented. The tested CLI still sends request fields/tools rejected by current direct Responses validation. Not ready for funded use. |
+| OpenClaw | [Setup and recovery](openclaw.md) | Selected public OpenRouter text, streaming and read-tool cases passed with the [settlement adapter](openclaw-settlement-adapter.md). [Public evidence](../evidence/PD-native-public-N02-N03.md). |
+| Claude Code | [Gateway configuration and compatibility](claude-code.md) | Configuration is documented. The tested CLI sends a query and request fields rejected by clientd/proxy. Not ready for funded use. |
+| Codex CLI | [Responses provider configuration and compatibility](codex.md) | Configuration is documented. The tested CLI sends fields/tools rejected by direct Responses validation. Not ready for funded use. |
 
 An API route existing is not a client compatibility result. Actual client
 versions, automatic retries, tool continuations and failure handling must be

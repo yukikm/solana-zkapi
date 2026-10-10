@@ -5,11 +5,10 @@ TypeScript declarations, so your application does not need TypeScript source
 loading or access to the zkAPI repository. Registry publication is disabled with
 `private: true`; no package under this name on npm is endorsed by this project.
 
-Obtain `zkapi-solana-sdk-0.2.0-devnet.8.tgz` and its SHA-256 through a trusted release
-channel, check the checksum, then install the exact tarball. The release target is
-[`v0.2.0-devnet.8`](https://github.com/yukikm/solana-zkapi/releases/tag/v0.2.0-devnet.8).
-Check that the assets and manifest have actually been published; a source version
-or a locally built archive alone does not establish publication:
+Download `zkapi-solana-sdk-0.2.0-devnet.8.tgz` from the
+[published release](https://github.com/yukikm/solana-zkapi/releases/tag/v0.2.0-devnet.8).
+Verify it against the independently obtained SHA-256 in the
+[public deployment guide](../../docs/sdk/public-devnet-preview.md), then install:
 
 ```sh
 shasum -a 256 zkapi-solana-sdk-0.2.0-devnet.8.tgz
@@ -99,6 +98,20 @@ acceptance. Newly authored SDK code is covered by the included MIT LICENSE;
 dependencies retain their own notices. Public preview distribution does not
 establish production release acceptance.
 
+To include native/WASM artifact checks, build the provers and prepare a public
+bundle, then run:
+
+```sh
+python3 scripts/run_external_sdk_acceptance.py \
+  --output target/sdk-distribution-artifact-check \
+  --real-provers \
+  --asset-bundle /absolute/path/to/public-assets \
+  --asset-bundle-sha256 <independently-retained-bundle-json-sha256>
+```
+
+These checks verify artifact hashes and snapshot reconstruction through an
+independent installation. They do not contact RPC or provider services.
+
 ## Loading a distributable public artifact bundle
 
 An operator can package the authenticated public assets once with the offline
@@ -123,16 +136,15 @@ is bounded to 1 MiB and its combined public assets to 512 MiB. Nothing is upload
 by the packager. Program deployment, service endpoints and model tariffs remain
 operator configuration.
 
-The `0.2.0-devnet.2` candidate adds descriptor **schema 2** when `notices` is
+Descriptor **schema 2** (supported since `.2`) is used when `notices` is
 present. Its `notices` object maps labels to files, and the ordinary `files`
 table authenticates every notice's size and SHA-256. Both labels and filenames
 must match `[a-zA-Z0-9][a-zA-Z0-9.-]{0,127}`, exclude `bundle.json`, and filenames
 must not collide with any manifest, proof artifact or WASM file. There must be
 1–32 notices, each nonempty and at most 1 MiB, with at most 4 MiB combined.
 The packager uses each configured output filename as its label. Without
-`notices`, it retains the exact schema 1 format. Earlier released SDKs do not
-support schema 2; use a separately authenticated compatible SDK candidate or
-release. This source feature does not imply that a new release is published.
+`notices`, it retains the exact schema 1 format. SDK releases before `.2` cannot
+read schema 2.
 
 For the four unchanged upstream request/withdrawal setup files, include the
 five documents in [upstream-notices](../../deploy/public-devnet/upstream-notices/PROVENANCE.md).
