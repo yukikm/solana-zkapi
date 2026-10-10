@@ -9,12 +9,11 @@ and writes a durable initialization marker before creating a database or journal
 An interrupted initialization requires inspection of the exact retained state.
 There is no reset, replacement-ledger or replacement-journal path.
 
-The bootstrap does not initialize the seven-cap provider grant, open public
+The bootstrap does not configure provider-spend policy, open public
 admission, issue a provider key or send a chain transaction. It installs units
 but initially starts only PostgreSQL. Start the signer and indexer, verify signer
 reconciliation and finalized indexer catch-up, then start control and challenger.
-Enable the gateway only after the separately reviewed single budget authority and
-exact public profile have been installed. The units are not enabled at boot by
+Enable the gateway only after the reviewed budget policy and exact public profile have been installed. The units are not enabled at boot by
 the initializer; enable them only after actual start/restart acceptance.
 
 The database uses Unix sockets with SCRAM authentication for writer, signer,
@@ -35,5 +34,5 @@ An exact daemon restart is not permission to replay uncertain inference.
 
 These files require target-host `systemd-analyze verify`, actual permissions and
 role checks, reconciled startup and same-state recovery verification. Static unit
-files or a successful syntax check alone are not live acceptance. Long-term
-archive capacity remains outside the currently approved preview qualification.
+files or a successful syntax check alone are not live acceptance. Monitor [archive capacity](../../../docs/getting-started/archive-storage.md)
+throughout operation.

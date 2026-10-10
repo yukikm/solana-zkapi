@@ -1,15 +1,18 @@
 # Contributing
 
-Start with the [project README](README.md). For application integration, use the
-[SDK guide](docs/sdk/README.md); for protocol changes, read
-[implementation-ready.md](docs/implementation-ready.md) and `AGENTS.md`.
+Read the [README](README.md), [architecture](docs/architecture.md),
+[support scope](docs/support.md) and the relevant component README.
+Public documentation and examples are English.
 
 ## Local checks
 
-Use the exact Node/npm versions in `package.json` and initialize the pinned
-upstream submodule. After `npm ci --ignore-scripts`:
+Use the versions pinned in `package.json` and `rust-toolchain.toml`:
+Node 24.19.0, npm 11.9.0 and Rust 1.90.0.
 
 ```sh
+git submodule update --init --recursive
+python3 scripts/check_upstream.py
+npm ci --ignore-scripts
 npm run typecheck
 npm run build:sdk
 npm run test:sdk-distribution
@@ -17,37 +20,27 @@ npm test
 python3 scripts/check_design.py
 ```
 
-The browser storage test uses Chromium; set `ZKAPI_TEST_CHROME` if it cannot find
-your installation. A skipped browser check is not a pass for browser custody.
-Synthetic chain/provider/prover fixtures are labelled as such in their tests.
+See [testing](docs/testing.md) for component and real-proof/SBF checks.
+The [reference app](https://github.com/yukikm/solana-zkapi-client) has its own tests.
 
-For SDK/compact transport changes, `python3 scripts/run_single_deposit_acceptance.py`
-runs the existing isolated local matrix with pinned toolchains. It has additional
-local Rust/SBF/proof-artifact prerequisites; see its [evidence](https://github.com/yukikm/solana-zkapi/blob/ea4cb0ac005832abae6e703eb177914c0c9aa193/docs/evidence/I10-single-deposit-review.md).
-No provider keys or public-chain sends are needed for ordinary SDK tests.
+## Change rules
 
-The demonstration UI is maintained and tested in the separate
-[client repository](https://github.com/yukikm/solana-zkapi-client). Core checks do
-not require that checkout.
+- Reuse `ControlClient`, `WalletClient`, `ClientDaemon`, the encrypted journal
+  and the shared ledger. Keep integer financial units and exact signed bytes.
+- Do not replay uncertain inference or transactions, switch direct users to
+  proxy, replace custody, reset journals or reuse historical spending approval.
+- Preserve upstream source pins and licenses. Document intentional changes to
+  the protocol, circuits, trust model or deployment requirements.
+- Put local logs, reports and operational handoffs in ignored `target/`.
+  Keep reproducible tests, fixtures, specifications, release notes and guides tracked.
+- Never commit secrets, private RPC URLs, mutable financial state or raw private logs.
+- Label synthetic tests, real proof/SBF checks, public Devnet observations and
+  CI separately. A past successful run does not establish current availability.
+- Published releases are immutable. Compare runtime inputs before creating a new release.
 
-## Change boundaries
+New user or operator procedures belong in [docs/getting-started/](docs/getting-started/README.md).
+API and configuration details belong in [docs/sdk/](docs/sdk/README.md);
+protocol contracts belong in `docs/specs/` and `docs/contracts/`.
+Do not add implementation diaries, progress checklists or task backlogs.
 
-- Keep the existing `ControlClient`, `WalletClient` and encrypted journal as the
-  sole owners of authorization, accounting and recovery state.
-- Never automatically replay uncertain inference, replace uncertain financial
-  transactions or switch direct users to proxy.
-- Use integer micro-USDC strings for balances/caps and retain exact signed bytes.
-- Do not update a funded deployment's pins, reset journals or reset test budgets
-  as a side effect of development work.
-- Keep commands, outputs, source hashes and limitations under `docs/evidence/`
-  or `target/`; both are local, ignored output directories. Do not force-add
-  reports or logs. Commit reproducible tests, intentional fixtures, release
-  notes and user/developer documentation instead. See [verification records](docs/verification.md)
-  for the historical archive and CI artifact policy.
-- Keep public-facing examples typechecked and label deployment prerequisites,
-  synthetic tests and live acceptance separately. Never include `.env`, keys,
-  RPC secrets, note secrets or raw private logs in commits.
-
-Newly authored work uses the [MIT license](LICENSE). Preserve upstream license
-notices and source pins; see [provenance](vendor/README.md) and
-[third-party notices](THIRD_PARTY_NOTICES.md).
+New work uses [MIT](LICENSE). Preserve [third-party notices](THIRD_PARTY_NOTICES.md).

@@ -1,5 +1,8 @@
 # Devnet Preview 0.1.0-devnet.1
 
+These notes describe this version. For a new installation, use
+[Getting started](../getting-started/README.md).
+
 This preview distributes the application SDK and local clientd. It is intended
 for developers integrating with a reviewed Solana zkAPI devnet operator.
 It does not provide a default public operator, a mainnet deployment, a security
@@ -31,7 +34,7 @@ npm install ./zkapi-solana-sdk-0.1.0-devnet.1.tgz
 
 Use Node 24.19.0 for the validated native SDK environment. Browser consumers
 bundle the browser and worker entry points. Follow the
-[SDK quickstart](../sdk/quickstart.md) and
+[SDK quickstart](../getting-started/sdk.md) and
 [artifact installation guide](../../packages/sdk/DISTRIBUTION.md).
 
 ## Install clientd
@@ -45,12 +48,12 @@ tar -xzf zkapi-clientd-0.1.0-devnet.1-darwin-arm64.tar.gz
 ./zkapi-clientd-0.1.0-devnet.1-darwin-arm64/bin/clientd --help
 ```
 
-Follow [private setup, funding and recovery](../sdk/clientd-quickstart.md).
+Follow [private setup, funding and recovery](../getting-started/clientd.md).
 The release manifest records the installed `release.json` digest required by
 `clientd setup`. Keep the installation immutable and the private profile outside
 it. Give an AI application only the local inference token.
 
-The [OpenClaw guide](../integrations/openclaw.md) uses a dedicated configuration,
+The [OpenClaw guide](../getting-started/openclaw.md) uses a dedicated configuration,
 disabled retries and explicit Chat-capable model policies. Legacy string-only
 model entries are rejected by the generator. Claude Code and Codex remain
 blocked by their current production request formats; their diagnostic guides
@@ -69,16 +72,8 @@ See [third-party notices](../../THIRD_PARTY_NOTICES.md). Existing local and fund
 deployment artifacts remain unchanged. Do not substitute new keys or manifests
 for an existing note.
 
-## Verification boundary
+## Scope
 
-Credential-free tests exercise SDK lifecycle fixtures, browser custody,
-independent package installation, Go race checks and installed local clientd
-behavior. Historical public devnet SDK and OpenClaw lifecycles remain separately
-recorded in [integration evidence](https://github.com/yukikm/solana-zkapi/blob/ea4cb0ac005832abae6e703eb177914c0c9aa193/docs/evidence/I10-external-integration.md).
-The OpenClaw live run used a bounded custom devnet relay; it did not establish
-public transport acceptance for the stock supervisor. Historical provider
-failures, reservations and recovery records remain preserved.
-
-The focused client preview CI does not replace the historical full implementation
-matrix. Its old evidence snapshot checker is known to disagree with later
-source revisions. No full I10, G1–G4, mainnet or audit pass is claimed.
+Local tests cover SDK lifecycle fixtures, browser custody, package installation
+and native client behavior. This version does not establish production, mainnet,
+full client/provider compatibility or a security audit.

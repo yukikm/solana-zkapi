@@ -1,133 +1,268 @@
-# API・proxy・精算仕様
+# API, proxy and settlement contract
 
-初回productionにはdirect OA-org、direct OpenRouter、proxyの3経路を含む。制御APIは新規 `/zkapi/v1`、モデルAPIは `/v1`。元のEthereumエンドポイントとバイト互換とは主張しない。型・path一覧は [OpenAPI](../contracts/openapi.json)、永続状態は [ledger.sql](../contracts/ledger.sql)。
+Control APIs use `/zkapi/v1`; inference APIs use `/v1`. Supported designs are
+`direct_oa`, `direct_openrouter` and provider-specific proxy sessions. See
+[OpenAPI](../contracts/openapi.json) for types/routes,
+[ledger.sql](../contracts/ledger.sql) for durable state and
+[support status](../support.md) for verified deployment scope.
 
-## 1. クライアントから見た処理
+## Client lifecycle and credentials
 
-1. 最新root/next ID/expiryに対するtree証明を生成し、walletからv0 buffer経路でUSDCを入金。finalizedのrootとnote pathを取得。
-2. provider、mode、モデル集合、料金表を指定してquoteを取得。
-3. request ID、control secret、proxy secretを端末CSPRNGで生成しjournalへ保存。proxy secretはproxy modeのみ。
-4. quoteとcredential hashに結合したrequest proofを生成。秘密noteやwalletアドレスを制御APIへ送らない。
-5. `POST /zkapi/v1/sessions` で認可。directならその初回応答だけでupstream keyを受け取る。proxyなら自分で生成したproxy tokenを使う。
-6. 上限内で推論。expireまたはcloseで新規受付を止め、使用料を確定。
-7. GET sessionでcharge、next commitment/anchor、blind delta、state signatureを受け取り、端末で検証してjournalを更新。
-8. 次の認可またはwithdrawal。1 noteの状態を同時に2つ進めない。
+1. Deposit USDC using a locally generated tree proof and authenticated transport;
+   obtain the finalized root and note path.
+2. Request a quote for provider, mode, models and tariff.
+3. Generate request UUID, control secret and, for proxy mode, proxy secret with
+   the device CSPRNG; durably journal them.
+4. Generate a request proof bound to the quote and credential hashes. Do not send
+   the secret note or wallet address to the control API.
+5. Authorize with `POST /zkapi/v1/sessions`. Direct keys are delivered only in the
+   first creation response; proxy uses the client's own token.
+6. Run inference within the cap. Expiry/close stops new admission and starts settlement.
+7. Retrieve and verify charge, successor commitment/anchor, blind delta and state
+   signature before updating the journal.
+8. Start the next authorization or withdraw. Never advance one note twice concurrently.
 
-### Credential
+Control and proxy secrets are independent random 32-byte values, encoded as
+43-character unpadded base64url. Hash raw bytes with SHA-256 and compare in
+constant time.
 
-control secretとproxy secretはそれぞれ32 random bytes。base64url no-padding（43文字）で表す。hashはSHA256(raw32)、constant-time比較。
+| Token | Purpose |
+|---|---|
+| `zkc1.<request_uuid>.<secret43>` | Session creation, status, close, recovery and operation status |
+| `zkp1.<request_uuid>.<secret43>` | Inference only |
 
-- control token：`zkc1.<request_uuid>.<secret43>`。session作成、GET/close/session recovery/operation status専用。
-- proxy token：`zkp1.<request_uuid>.<secret43>`。推論専用。control endpointには使えない。
-- request bodyにはhashのみ。token全体をAuthorizationヘッダーで使い、URL/query/cookieへ入れない。
-- proxyはOpenAI形式ならBearer、Anthropic形式ならx-api-keyのどちらも受理できるが、両方の指定は拒否。上流へ転送せず、adapterが運営側credentialへ置換する。
-- control/proxy hash、mode、request UUIDをproofに結合。盗聴したproofだけでキー再発行や精算情報を取得できない。
-- credentialsを失った場合にwallet署名を要求して通常認可と入金を関連付ける復旧は提供しない。端末の暗号化backupが必要。
+Bodies contain credential hashes only. Put full tokens in authentication headers,
+never URL/query/cookies. Proxy accepts OpenAI Bearer or Anthropic x-api-key,
+rejecting simultaneous headers. It substitutes operator credentials upstream;
+client tokens are never forwarded. Proofs bind mode, UUID and both credential
+hashes so an intercepted proof alone cannot recover keys or settlement details.
+Lost credentials require the client's encrypted backup; wallet-signature recovery
+must not link ordinary authorization to deposits.
 
-## 2. Quoteと認可のcanonical bytes
+## Quotes and canonical authorization
 
-quoteはJSON objectとして返す。金額・時刻・version整数は10進文字列。RFC 8785 JCSでUTF-8 canonical JSONにし、署名とquote_hashを除いたQuoteBodyをSHA256してquote_hashとする。配列の順番は意味を持ち、modelsはASCII昇順・重複なし。JSONの重複key、不正UTF-8、未知fieldを拒否。JSで金額をNumber化しない。
+QuoteBody is UTF-8 RFC 8785 JCS; SHA-256 excludes quote_hash and signature. Amounts,
+times and integer versions use decimal strings, never JavaScript Number.
+Reject duplicate keys, invalid UTF-8 and unknown fields. Array order is meaningful;
+models are ASCII-sorted and unique.
 
-QuoteBody：`quote_id, deployment_id, pool, mode, provider, models[], tariff_hash, cap_micro_usdc, issued_at, expires_at, session_ttl_seconds, max_concurrency, control_api_origin, inference_api_origin`。proxyはmodelsに1つだけ指定する。directは `models=["*"]` とし、providerが許すmodelを利用可能。上流キーにないmodel制限をzkAPI側だけで強制できるとは仮定しない。
+```text
+QuoteBody:
+quote_id, deployment_id, pool, mode, provider, models[], tariff_hash,
+cap_micro_usdc, issued_at, expires_at, session_ttl_seconds, max_concurrency,
+control_api_origin, inference_api_origin
 
-mode/providerの組はdirect_oa/oa、direct_openrouter/openrouter、proxy/{openai,anthropic,openrouter}だけを許可し、catalogのendpoint/model対応と照合する。directはmodels=["*"]、proxyは単一の具体model IDを要求する。料金表のhash・計算規則は8節、署名明細は9節を正本とする。
+AuthorizationBody:
+version:"1", deployment_id, pool, request_id, quote_hash, mode,
+control_secret_hash, proxy_secret_hash
+```
 
-quoteはサーバーDBへ保存し、manifestにpinされた別のEd25519 quote keyでraw quote_hash32へ署名する。これはBaby-JubJubのstate/clearance keyとは別。SDKは署名・origin・pool・料金表を検証してからproveする。quote寿命120秒、session受付は既定60秒・設定1〜300秒、proxy並列上限4が初期profile。clientdのkey reuse=0は1リクエスト後にcloseする指定で、有効期間0秒のキーを発行する意味ではない。solvency_boundはpool capと等しく、初期profileは1,000,000 micro-USDC。固定cap未満の残高は出金対象となる。
+Allowed pairs are direct_oa/oa, direct_openrouter/openrouter and
+proxy/{openai,anthropic,openrouter}. Check catalog endpoint/model support.
+Direct uses `models=["*"]` and provider-enforced permissions; zkAPI cannot enforce
+restrictions absent from the upstream key. Proxy quotes bind one concrete model.
+Direct proxy_secret_hash is null. JCS AuthorizationBody supplies authorization_bytes
+for H2F; it contains neither prompt nor prompt hash.
 
-AuthorizationBody：`version:"1", deployment_id, pool, request_id, quote_hash, mode, control_secret_hash, proxy_secret_hash`。directのproxy_secret_hashはnull。これをJCS化したbytesがprotocol仕様のauthorization_bytes。promptやそのhashはこのオブジェクトに含めない。
+Persist quotes. The manifest-pinned Ed25519 quote key signs raw quote_hash32,
+separately from Baby-JubJub state/clearance keys. SDKs verify signature, origins,
+pool and tariff before proving. Initial profile: quote lifetime 120 seconds,
+session admission 60 seconds configurable within 1–300, proxy concurrency 4,
+solvency_bound=pool cap=1,000,000 micro-USDC. A balance below the fixed cap can be
+withdrawn. clientd key reuse=0 closes after one request, not a zero-lifetime key.
 
-受理順序：
+Authorization order:
 
-1. サイズ上限16 KiB・構文・control tokenの一致・deployment・quote署名/保存値・auth tag・public inputの固定fieldを検査。
-2. `(pool,N)` と `(pool,request_id)` の既存予約を照会。同一body/proof/public inputs digestなら保存済み結果を返す。異なるdigestは409。受理済み再送ではquote期限/root鮮度を再適用しない。
-3. 新規のみ：quote未使用・期限内、RP.request_time=quote.issued_at、pool cap一致、RP.active_root=現在のfinalized root、state key一致、実proof検証。serverはroot不明なら503。stale rootは409で新quote/proofを作り直す。
-4. primary/secondary RPCでExitNullifierを確認。存在・未確定escape観測なら拒否、状態不明なら503。commitment差の扱いはoperations仕様。
-5. writerのDB transactionで既存予約を再照会し、新規のみ、ロック取得後の`clock_timestamp()`でquote期限（等号は期限切れ）、pool受付状態、quote未使用を再検査する。proof検証/RPC/ロック待ち中に期限を超えた要求を予約しない。finalized rootの観測が更新/失効していれば再照合し、不明なら503。NをAUTHとして一度だけ予約し、request transcriptとquoteの消費を同一transactionで保存。quote IDも一回だけ受理。同時処理が勝ったら2へ戻る。
-6. upstream発行またはproxy有効化の直前にexitを再確認。upstream keyを返す直前にも確認。escapeが見えたら新規使用を止め、challenge workerへ予約済み証拠を渡す。
+1. Check <=16 KiB size, syntax, control token, deployment, saved/signed quote,
+   authorization tag and fixed public inputs.
+2. Look up `(pool,N)` and `(pool,request_id)`. An identical body/proof/input digest
+   returns the saved result; a different digest returns 409. Do not reapply quote
+   expiry or root freshness to already accepted requests.
+3. For new requests, require unused/unexpired quote, RP.request_time=quote.issued_at,
+   correct cap/state key, current finalized root and valid proof. Unknown root
+   gives 503; stale root gives 409 and requires a new quote/proof.
+4. Check ExitNullifier through primary and secondary RPC. An exit or observed
+   unfinalized escape blocks admission; unknown state gives 503.
+5. Under the writer transaction, recheck reservations. After locking, use
+   `clock_timestamp()` to recheck quote expiry (equality is expired), pool admission
+   and unused quote. Revalidate changed/expired root observations; unknown gives
+   503. Atomically reserve N as AUTH, save transcript and consume quote once.
+   If another request won, return to step 2.
+6. Recheck exits immediately before key issuance/proxy activation and before
+   returning a direct key. An observed escape stops new usage and hands saved
+   authorization evidence to the challenger.
 
-digestはSHA256(JCS(SessionCreate))。再送は全フィールドとproofを完全一致させる。受理前の再proveには新request ID/credential/quoteを使い、同じNの受理状態を先に確認する。
+Digest is SHA256(JCS(SessionCreate)); retries retain every field and exact proof.
+Before replacing an unaccepted proof, check N's acceptance state, then use a new
+request ID, credentials and quote.
 
-## 3. セッションと署名の状態機械
+## Session state and signing
 
 ```text
 RESERVED -> ISSUING -> ACTIVE -> DRAINING -> RECONCILING -> SIGN_PENDING -> SETTLED
-              |         |                          |
-              +-> ISSUANCE_UNKNOWN                 +-> provider-recovery（direct）
+              |
+              +-> ISSUANCE_UNKNOWN
 ```
 
-proxyはISSUINGを省略してACTIVEにできる。期限は最初のACTIVE開始時に固定。expire/closeはclose_requested=trueを永続化する冪等操作。ACTIVEならDRAININGへ進め、発行中なら発行結果を確認後にキーを返さず無効化・精算する。現在の推論結果を自動再実行しない。DRAINING後は新規operation受付不可。SETTLEDは不変。
+Proxy may skip ISSUING. Fix expiry at the first ACTIVE transition. Close/expiry
+persist close_requested=true idempotently. Close during issuance waits for its
+outcome, then disables and settles without returning a key. DRAINING accepts no
+new operations; SETTLED is immutable. Never replay inference automatically.
 
-| 遷移 | 条件 |
+| Transition | Required condition |
 |---|---|
-| RESERVED→ACTIVE | proxy、close未要求、exit再確認済み |
-| RESERVED→ISSUING | direct、close未要求、発行intentを永続化 |
-| RESERVED→RECONCILING | close要求・受付停止などで上流未発行が確定、charge=0 |
-| ISSUING→ACTIVE | 上流key IDを保存、close未要求、exit再確認済み |
-| ISSUING→ISSUANCE_UNKNOWN | 発行timeout/応答喪失、存在を確認できない |
-| ISSUING/ISSUANCE_UNKNOWN→DRAINING | 上流key存在を確定し失効・usage確認へ。UNKNOWNから新keyを発行しない |
-| ISSUING/ISSUANCE_UNKNOWN→RECONCILING | 上流の未発行が確定、charge=0 |
-| ACTIVE→DRAINING | close、期限、exit観測、provider停止 |
-| DRAINING→RECONCILING | 新規受付不可、direct keyの停止確認またはproxy全operationの終了/UNKNOWN |
-| RECONCILING→SIGN_PENDING | usage/waiver確定、全予約解除、全operation終端、全dispatch attemptの終了/fencing確認、chargeを一意決定 |
-| SIGN_PENDING→SETTLED | 保存済み対象への署名を検証・保存 |
+| RESERVED→ACTIVE | Proxy, no close request, exit rechecked |
+| RESERVED→ISSUING | Direct, no close request, issuance intent durable |
+| RESERVED→RECONCILING | Confirmed no issuance after close/admission stop; charge=0 |
+| ISSUING→ACTIVE | Key ID saved, no close request, exit rechecked |
+| ISSUING→ISSUANCE_UNKNOWN | Timeout/lost response with unknown key existence |
+| ISSUING/ISSUANCE_UNKNOWN→DRAINING | Key existence confirmed; disable and inspect usage; never issue a replacement |
+| ISSUING/ISSUANCE_UNKNOWN→RECONCILING | Nonissuance confirmed; charge=0 |
+| ACTIVE→DRAINING | Close, expiry, exit observation or provider stop |
+| DRAINING→RECONCILING | Admission stopped; direct key disabled or proxy operations terminal/unknown |
+| RECONCILING→SIGN_PENDING | Usage/waiver fixed, reservations zero, operations terminal, attempts finished/fenced, unique charge chosen |
+| SIGN_PENDING→SETTLED | Signature for saved target verified and stored |
 
-これ以外の逆戻りを禁止し、SQL更新は旧stateを条件にしたcompare-and-setとrow lockで行う。運用停止の間も状態を消さず、同じ段階から復旧する。
+Use row locks and compare-and-set against the prior state; no other backward
+transitions. Preserve state across outages. Never release N reservations, even
+when issuance is confirmed absent: sign one zero-charge successor and advance
+anchor. Unknown issuance is not absence. Direct adapters confirm disablement,
+provider-specific usage capture and deletion before settlement.
 
-DB上のN予約は解放しない。発行されなかったと確定した場合もcharge=0の後継状態を一度だけ発行し、利用者は次anchorへ進む。ISSUANCE_UNKNOWNでキーが存在しないと推測して消さない。directはupstream adapterで無効化・最終usage・削除を確認してから精算する。初回応答を失った場合、direct keyは再送しない。direct作成HTTPは初回key返却まで保持する。keyを含む初回応答完了前の接続終了、HTTP応答deadline、または202を返す場合はclose_requested=trueを永続化し、遅延発行成功はキーを返さずDRAININGへ送る。初回応答送信後のcrashで受信有無を判定できない場合も再配信しない。SDK recoverはjournalにkeyがない既存direct sessionに冪等closeを送って精算を待つ。通常のGET statusは副作用を持たない。proxyの202はACTIVEへのpollが可能。
+Hold a direct creation HTTP response until its initial key delivery. Connection
+loss, response deadline or a 202 before that delivery persists close_requested;
+late successful issuance drains without returning the key. After a crash that
+cannot establish delivery, never redeliver. Recovery of a direct session whose
+client journal lacks the key sends idempotent close and waits for settlement.
+GET status remains read-only. Proxy 202 responses may be polled for activation.
 
-writerはpoolごとのPostgreSQL advisory lockを専用connectionで保持。すべての変異操作はwriterへ集約し、DB transactionでsession行を `FOR UPDATE` する。DB connection/lockを失ったwriterは直ちに認可と署名を停止する。read replicaや復元途中DBから署名しない。
+### Single writer and signer journal
 
-初版では財務transactionもそのadvisory lockを保持するconnectionで実行する。別のpool connectionからの書込みを許可して、lock接続の死活監視だけで排他を保証しない。lock取得後にwriter_epochを増やし、pool受付再開前に復旧照合する。quote/session/operation/settlement/clearance/明細の更新はこのwriter経由とし、signerやdispatcherが独自に財務行を書き換えない。外部送信の停止は別途operations仕様のfencingで検証する。
+A dedicated PostgreSQL connection holds the per-pool advisory lock and executes
+all financial transactions. Route mutations through that writer and lock session
+rows `FOR UPDATE`. Losing the connection/lock immediately stops authorization
+and signing. Read replicas and databases under restore cannot authorize signing.
+Do not rely on monitoring a lock connection while separate connections write.
 
-RECONCILING行をロックしたtransactionでsettlementsへINSERTし、その後同じtransaction内でSIGN_PENDINGへCASする。charge、fresh anchor、blind delta、E_nextと署名対象bytesを一度だけ保存する。state signerは別サービスで、署名対象をprimary DBから読み、同じrequestに異なるmessageを拒否する永続journalを持つ。署名者も全operation終端・予約0・dispatch attempt終了/fencingをprimaryで再確認する。署名応答はDB保存後に公開。署名直後のcrashでも同じmessageだけを再署名・取得する。署名鍵を持った複数workerを無制御に起動しない。
+Increment writer_epoch after acquiring the lock; reconcile recovery before
+admission. Quotes, sessions, operations, settlements, clearance and receipts all
+use this writer. Signer/dispatcher do not mutate financial rows independently.
+External-send fencing follows [operations](operations.md).
 
-signer journalはledgerのrestoreと独立して保持し、`(pool,N)`を一意キーとしてAUTH/CLEARANCEの役割、AUTHのrequest ID、役割別公開鍵、署名対象bytes/digestを署名前に永続化する。request IDだけで一意化すると、古いDBへのrestore後に同じNを別request IDで二重署名できるため不可。同じキーの役割・request・message変更は拒否し、署名を保存してから返す。journalに対応するledger対象がない/異なる、または署名済みledgerにjournalがない場合は受付/署名を停止して照合する。未署名の準備済み対象にjournalがまだないことは正常で、初回intentを原子的に記録できる。既存intentに署名がなければ同じ対象だけを再署名し、journalに保存済みの署名はledgerへ回復する。消失したjournalを空で自動再作成しない。clearanceにも同じ手順を適用する。
+While holding a RECONCILING row lock, insert settlement and CAS to SIGN_PENDING
+in one transaction. Persist charge, fresh anchor, blind delta, E_next and exact
+signing bytes once. The isolated signer reads the primary ledger, rechecks
+terminal operations, zero reservations and finished/fenced attempts, and rejects
+a different message for an existing authorization. Publish signatures only after
+saving them. Recovery may retrieve/sign only the same saved message; do not run
+uncontrolled workers holding the signing key.
 
-clearance：`POST /zkapi/v1/withdraw/clearance {nullifier}`。同じ `(pool,N)` のロックでAUTHとCLEARANCEを排他化する。AUTH存在時は409、CLEARANCE済みなら同じ署名を返す。未使用NをCLEARANCEとして永久予約してから元のclearance_messageへ署名する。nullifierは秘密から導出される能力として扱い、wallet identityを要求しない。rate limitし、nullifierをアクセスログへ残さない。これは元の方式を維持するもので、別の「無条件返金」方式ではない。
+The signer journal is independent of ledger restore. Before signing, atomically
+persist unique `(pool,N)`, AUTH/CLEARANCE role, AUTH request ID, role-specific key
+and exact message/digest. Request ID alone is insufficient after database rollback.
+Reject changed role, request or message; save signature before returning it.
+Missing/different ledger targets or signed ledger records without journal entries
+stop admission/signing for reconciliation. An unsigned prepared target may have
+no journal yet; an existing unsigned intent may be signed only for that same
+target. Recover saved journal signatures into the ledger. Never recreate a lost
+journal as empty. These rules also apply to clearance.
 
-## 4. Proxy operationの予約・実行・課金
+`POST /zkapi/v1/withdraw/clearance {nullifier}` shares the `(pool,N)` lock with
+AUTH. Existing AUTH returns 409; existing CLEARANCE returns the same signature.
+Permanently reserve unused N as CLEARANCE before signing the original
+clearance_message. Treat N as a secret-derived capability without wallet identity;
+rate-limit and exclude it from access logs. This is the original clearance rule,
+not an unconditional refund operation.
 
-推論の必須header：`Idempotency-Key: UUIDv4`。local clientdが既存アプリの代わりに生成・保持する。SDKも同様。session IDとoperation IDの組を一意にする。body hashはHMAC-SHA256(key, frame("solana-zkapi-operation-v1", [method_ascii, path_ascii, anthropic_version_ascii_or_empty, raw_body_bytes]))で、frameはprotocol仕様と同じ、key=SHA256(ASCII("zkapi-proxy-body-v1") || proxy_secret_raw32)とする。methodはPOST、pathはqueryなしの固定route、anthropic-versionはMessages/count_tokensだけで使い他は空。本文はidentity encodingのUTF-8 bytesとし、同一IDでendpoint/versionだけが変わっても競合にする。単純なprompt hashを保存しない。同じidでbyteの異なる本文は、意味が同じJSONでも競合扱い。上流credential・prompt/response本文はDBに保存しない。
+## Proxy operations and reservations
+
+Require `Idempotency-Key: UUIDv4`; clientd/SDK generate and retain it. Session plus
+operation ID is unique. Body digest is:
+
+```text
+key = SHA256(ASCII("zkapi-proxy-body-v1") || proxy_secret_raw32)
+body_hash = HMAC-SHA256(key, frame("solana-zkapi-operation-v1", [
+  method_ascii, path_ascii, anthropic_version_ascii_or_empty, raw_body_bytes
+]))
+```
+
+Use protocol framing, POST, fixed query-free route and identity-encoded UTF-8
+body. Anthropic version applies only to Messages/count_tokens. Changed endpoint,
+version or bytes conflict, even for semantically equivalent JSON. Never persist
+plain prompt hashes, provider credentials or request/response bodies.
 
 ```text
 RESERVED -> DISPATCHING -> STREAMING -> METERED -> DONE
-                    \-> USAGE_UNKNOWN -> METERED または WAIVED_OPERATOR_LOSS
+                    \-> USAGE_UNKNOWN -> METERED or WAIVED_OPERATOR_LOSS
 ```
 
-新規operationの受付はsession行ロック下でACTIVE、close_requested=false、row lock取得後のextract(epoch from clock_timestamp()) < expires_at、quoteのprovider/model/endpoint、並列枠と予算を同時検査する。期限timerの遅延に依存しない。now()/CURRENT_TIMESTAMPはtransaction開始時刻なのでこの判定には使わない。DISPATCHINGへのCAS直前にも停止条件を検査し、close/期限後の未送信RESERVEDは0課金DONEへ進める。期限後もcontrol tokenによる既存操作の照会は可能。
+Under the session lock, new admission checks ACTIVE, no close request,
+`extract(epoch from clock_timestamp()) < expires_at` after locking, provider/model/
+endpoint, concurrency and budget. Do not use transaction-start `now()` or rely on
+expiry timers. Recheck stop conditions immediately before dispatch CAS; unsent
+RESERVED operations after close/expiry finish with zero charge. Control-token
+status remains available after expiry.
 
-非stream応答はDISPATCHING→METEREDを許可する。STREAMINGを含む送信後のusage不明はUSAGE_UNKNOWNへ進める。送信前にDBへDISPATCHINGとdispatch_attemptsを同一transactionでcommitする。送信した可能性がある状態からは、同じupstream実行の照会以外の自動retryをしない。status endpointはJSON metadataだけを返し、推論本文は復元しない。同じid/bodyの再送はrunningなら409 `operation_in_progress`、完了なら409 `response_not_replayable` とstatus URL、異なるbodyなら409 `idempotency_conflict`。既存bodyを返せないことをSDKに明示し、勝手に新IDで再実行しない。
+Nonstream responses may move DISPATCHING→METERED. Post-send uncertainty, including
+streaming, becomes USAGE_UNKNOWN. Persist DISPATCHING and dispatch_attempts together
+before sending. Once a send is possible, only inspect that same upstream execution;
+never automatically retry inference. Status returns metadata, not response bodies.
+Same-ID/body repeats return 409 `operation_in_progress` while running or
+`response_not_replayable` with status URL after completion. Changed bodies return
+409 `idempotency_conflict`. Do not silently choose a new ID.
 
-RESERVEDのままworkerを失いDISPATCHINGが一度も保存されていないoperationは、送信されていないと確定できるため予約を解除し、charge=0のDONEへ進める。署名済みstateに関係しない監査metadataとして `not_dispatched` を残す。DISPATCHING以降の不確実性と区別する。
+If a lost worker's operation remained RESERVED and never committed DISPATCHING,
+nonexecution is established: release the reservation, finish with charge=0 and
+retain `not_dispatched` audit metadata. This differs from post-dispatch uncertainty.
 
-### 上限予約
+### Cost bounds
 
-directはOpenRouterが提供する複数modelのusage合算を維持し、tariffのpricing_basis=`provider_reported_usd`、rates=[]、model="*"とする。固定するのは1 USD=1 USDCの換算とcapで、上流事業者のtoken価格を固定する保証ではない。proxyの初版quoteは1 provider・1 model、pricing_basis=`fixed_usage_rates`とし、1つのtariff_hashで料金を一意にする。モデルを変えるときはsessionを精算して新quoteを取る。将来multi-model proxyを追加する場合はmodel→tariff hashの集合をquoteへ結合する別versionとする。
+Direct tariffs use `pricing_basis=provider_reported_usd`, rates=[] and model="*".
+They aggregate provider usage across models and fix conversion at 1 USD=1 USDC
+plus cap; they do not freeze provider token prices. Proxy binds one provider/model
+and `fixed_usage_rates` tariff hash. Changing models requires settlement and a
+new quote; multi-model proxy would require a separately versioned tariff binding.
 
-1. adapterはリクエストの入力上限、max output tokens、許可tool、料金表から最大請求額Rを求める。証明可能な上限がないパラメータは400 `unsupported_metering`。
-2. session行をロックし `charged_nano + reserved_nano + R_nano <= cap_micro * 1000` を検査。額はnano-USDC（10^-9 USDC）整数で内部累積し、u128/NUMERIC(38,0)を使う。
-3. Rとoperationを保存してから上流へ送る。推論完了後、実usageからCを計算し予約Rを解除。通常はC<=R。超過は利用者へ転嫁せずoperator lossに記録する。
-4. 複数operationのCを合算してsession精算時に一度だけ `ceil(sum_nano / 1000)` micro-USDCへ丸める。operationごとの切上げを重ねない。合計charge<=capを再検査。
+1. Adapter derives maximum cost R from input bound, output limit, allowed tools
+   and tariff. Inputs without a provable bound return 400 `unsupported_metering`.
+2. Under the session lock require
+   `charged_nano + reserved_nano + R_nano <= cap_micro * 1000`.
+   Accumulate integer nano-USDC using u128/NUMERIC(38,0).
+3. Save reservation and operation before dispatch. On completion calculate C,
+   release R and absorb any C>R as operator loss.
+4. Sum charged nano across the session and round once with
+   `ceil(sum_nano/1000)` to micro-USDC. Never round each operation to micro first;
+   recheck charge<=cap.
 
-入力token count APIを使う場合は、課金対象か・使用量の上限をadapterで検証する。未検証のtokenizer推定だけで利用者へ上限超過請求しない。provider公表最大contextによる保守的予約も可能だが、その額がcapを超えたら送信前に拒否する。金額計算は料金表の整数比を使い、nanoより細かい計算結果はoperation単位でnanoへ切上げる。
+Validate token-count API costs and bounds; an unverified tokenizer estimate cannot
+justify exceeding a cap. Conservative provider-context bounds are allowed but
+must fit the cap before dispatch. Use exact tariff ratios and round finer values
+up to nano once per operation. Supported rates cover input/output/cache-read/
+cache-write. Avoid double-counting inclusive usage; hide models with unsupported
+fees, dynamic prices or hosted-tool charges. Version and time-bound tariffs,
+keeping accepted sessions on their original tariff.
 
-初期adapterの料金項目はinput/output/cache-read/cache-write token。請求する項目がusageにない場合、通常inputとcache分を重複加算しない。未対応項目、動的価格、hosted tool feeがあるmodelはcatalogに公開しない。料金表は明示versionと有効期間を持ち、受理済みsessionでは固定する。価格変更は新quoteにだけ反映する。
+### Streams and unknown usage
 
-### Streaming・切断・曖昧なusage
+Relay SSE and read through final usage even after client disconnect. Do not log
+bodies. Keep provider request IDs for usage lookup; cancellation is best effort
+and does not guarantee zero cost. Each operation has a 600-second hard deadline,
+then USAGE_UNKNOWN. Ending session admission does not settle unfinished work.
 
-- SSEを中継し、最終usage frameまでサーバー側で読む。推論本文をログへ保存しない。
-- 利用者切断は利用料0の根拠ではない。上流request IDを保持し、読取/照会でusageを確定する。キャンセルはbest effortで、請求停止を保証しない。
-- 1 operationのhard deadlineは600秒、timeout後はUSAGE_UNKNOWNへ。proxyのsession受付が60秒で終わっても、既存operationは完了まで精算を待つ。
-- DRAINING後、各operationは自身のDISPATCHING commit時刻から900秒以内の確定を目標とする。先に送信ownerの終了またはegress fencingを確認する。確定usageが得られないものは、operatorが失敗コストを負担する `WAIVED_OPERATOR_LOSS` としてcharge=0に固定する。未実行と判定したことにはしない。
-- 失効tokenによる新規受付とoperationの再dispatchを拒否し、旧ownerの送信能力を終了/fenceした上で、後継残高を一度だけ発行する。遅れてusageが判明しても利用者の精算を変更せずoperator lossを追記する。
-- fencingを確認できない場合はRECONCILINGに留めて新規受付を停止し、後継署名を保留して警告する。この場合900秒を保証しない。DBフラグの変更だけで外部送信を止めたと扱わない。
-- このwaiverはproxy独自の可用性方針。上流keyを利用者に渡すdirectには自動適用しない。unknown率・lossが閾値を超えたproviderは新規受付を止める。
+Target resolution within 900 seconds of each DISPATCHING commit. First confirm
+the sending owner finished or was fenced. If usage remains unavailable, fix
+`WAIVED_OPERATOR_LOSS` at charge=0; this does not assert nonexecution. Reject
+new use of expired tokens and redispatch. Sign the successor once, and append
+late operator-loss observations without changing signed charges.
 
-正常なchargeにはprovider_request_id、usage units、tariff hash、計算結果を付けて利用者が再計算できる。proxy署名は記録の改ざん検知用で、providerが実際に行った処理のZK証明ではない。
+Without confirmed fencing, hold RECONCILING, stop admission and alert; the
+900-second target no longer applies. A database flag alone cannot stop sends.
+This proxy waiver does not automatically apply to direct sessions whose key was
+given to a user. Excessive unknown usage/loss stops that provider's new admission.
+Normal charges expose request ID, usage, tariff hash and arithmetic. A proxy
+signature authenticates the operator's record, not provider computation in ZK.
 
-## 5. Provider adapterと互換表
-
-Rust traitの責務を次に固定する。
+## Provider adapters and API scope
 
 ```text
 validate(request, catalog) -> normalized_request | unsupported
@@ -139,92 +274,172 @@ cancel(provider_request_id) -> confirmed | unknown | unsupported
 calculate_charge(usage, tariff) -> nano_usdc
 ```
 
-direct専用traitはcreate_restricted_key/disable/read_usage/delete/verify_receipt。OA-orgの署名明細とOpenRouterの管理usageを同じ証拠レベルとして扱わない。元adapterの認証・issuer/verifier pinningを移植し、実権限で受入試験をする。
+Direct adapters provide create_restricted_key/disable/read_usage/delete/
+verify_receipt. OA issuer-signed receipts and OpenRouter management observations
+have different evidence classes. Preserve authentication and issuer/verifier pins;
+verify advertised paths with real permissions.
 
-| 入口 | 上流 | 初版の対応 |
+| Endpoint | Upstream | Contract |
 |---|---|---|
-| GET /v1/models | manifest/catalog | 有効なモデルのみ、料金・対応modeはcontrol catalogで提供 |
-| POST /v1/chat/completions | OpenAI / OpenRouter | text、client function calling、非stream/SSE。usageを内部で必須取得 |
-| POST /v1/responses | OpenAI | text、client function calling、非stream/SSE。store=false、previous_response_id/background拒否 |
-| POST /v1/messages | Anthropic | text、client tool_use/tool_result、非stream/SSE、usage/cache分類 |
-| POST /v1/messages/count_tokens | Anthropic | adapterが安全な見積もりを提供できるcatalogのみ。推論同様に認証・rate limit |
+| GET /v1/models | Manifest/catalog | Enabled models; rates/modes available through control catalog |
+| POST /v1/chat/completions | OpenAI/OpenRouter | Text, client function calls, nonstream/SSE; internally required usage |
+| POST /v1/responses | OpenAI | Text, client function calls, nonstream/SSE; store=false; reject previous_response_id/background |
+| POST /v1/messages | Anthropic | Text, client tool_use/tool_result, nonstream/SSE, usage/cache categories |
+| POST /v1/messages/count_tokens | Anthropic | Only supported safe-estimate catalog entries; authenticated and rate-limited |
 
-count_tokensの初期利用者料金は0、予約額も0とし、呼出回数の制限を設ける。上流側に費用が生じる場合は運営負担。そこで得たtoken数を推論利用量として課金しない。
+count_tokens initially charges/reserves zero for users, with invocation limits;
+operators pay any upstream cost. Its result is not billable inference usage.
 
-異なるprovider形式へ自動変換する万能adapterにはしない。OpenAI形式からClaudeモデルを使う経路はOpenRouter adapterで別model IDを公開する。Anthropic形式はAnthropicへnative転送する。署名ヘッダー・管理キー・cookies・転送元IP・任意upstream headersは送らない。allowlistの必要headerだけを構築する。Origin/Host検査、本文サイズ1 MiB、DNS/redirect先の固定とSSRF防止を実装する。
+Do not automatically translate arbitrary provider formats. OpenRouter may expose
+Claude models under its own IDs; Anthropic format uses the native Anthropic
+adapter. Construct only allowlisted upstream headers, excluding client tokens,
+management keys, cookies, forwarding IPs and arbitrary headers. Check Origin/Host,
+limit bodies to 1 MiB and pin DNS/redirect destinations against SSRF.
+Rate-limit by anonymous session, cap and short-lived salted IP keys; do not build
+an IP-to-wallet mapping. Timing/body/network correlation remains possible.
 
-rate limitは匿名session/cap/IP単位。IPは短期のsalted rate-limit keyにだけ使用し、入金walletとの照合DBは作らない。IP・本文・時刻による相関可能性は残る。
+## SDK, clientd and indexer
 
-## 6. SDK・clientd・Indexer
+[Tree transition](tree-transition.md) defines local prepare/prove/verify/encode.
+SessionCreate never gains tree proofs or note IDs. Only chain tree updates require
+tree proofs; finalize does not. Manifest pins layout, backend, tag policy, profile
+and all three circuit artifacts. Verify signed manifest, PK/VK hashes and actual
+PoolConfig before use. `v0_buffer` is mandatory; additional authenticated formats
+follow their contracts, including [compact deposit](compact-deposit.md). Match the
+[machine wire contract](../contracts/tree-transition.json).
 
-layout 2のtree更新契約は[tree-transition仕様](tree-transition.md)を正本とする。SDKはprepare/prove/verify/encodeのローカルAPIを提供し、通常のSessionCreate/request proofへtree proofやnote IDを追加しない。tree proof生成は入金・合意出金・escape開始・challenge・expiryのchain操作だけ。finalizeには不要。
+Native proving is required; measure browser-worker latency/memory and validate
+all remote-worker outputs locally against fixed VK/expected inputs. Workers need
+no secret note or authorization session data. Do not make a central proving
+service an exit dependency. Proving does not reserve state; journal conflicts
+and unknown sends under the tree contract.
 
-config Manifestはlayout/backend/tag policy/profileと3回路のartifactを固定する。署名manifest、PK/VK hash、PoolConfig.circuit_profile_hashを照合してから利用する。必須transaction formatはv0_buffer、v1_inlineは実証済みdeploymentのみ。TreeUpdateのpublic→proof順とbuffer payload（discriminatorなし）はmachine-readableな[wire契約](../contracts/tree-transition.json)とも一致させる。
+- SDK: note creation, deposit/finality, quotes, authorization, proxy/direct
+  sessions, close/recovery and withdrawal/escape/challenge status share the
+  existing clients and encrypted storage. Browser proofs use a worker.
+- clientd: defaults to `127.0.0.1:8787`; inference and wallet administration use
+  separate credentials. Distinguish provider keys from proxy tokens; mode is
+  explicit and direct never silently falls back to proxy.
+- Journal: durably distinguish unsent, unknown, accepted, active, settlement
+  pending and signature-verified states using fsync/transactions. Do not erase
+  old state before saving its successor or add identifying backup metadata.
+- Indexer: replay finalized execution order; snapshots include pool, slot,
+  blockhash, sequence, root and next ID. Reconstruct missing events from history
+  and stop serving paths on disagreement.
+- Paths: support Active membership, next-note zero and Pending restore-zero paths.
+  Public note IDs stay outside ordinary authorization.
+- Tor/SOCKS5: remote DNS and fail-closed routing. Verify direct/proxy/indexer/RPC
+  routes separately; partial routing does not establish anonymity.
 
-native prover/CLIを必須とし、browser workerの時間・メモリーを測る。任意のリモートworkerから受け取ったtree proofもローカルで固定VK/期待inputsを検証する。リモートworkerへ秘密noteや認可session情報を渡す必要はない。初版の必須HTTP endpointを増やして中央proverへの依存を作らない。proof生成中も状態は予約されないため、journal/競合再生成/送信不明の扱いはtree-transition §4に従う。
+`GET /zkapi/v1/nullifiers/{nullifier}` returns only unused/authorized/cleared/
+exit_consumed/unknown, never request ID, charges, proofs or credential hashes.
+Rate-limit it; RPC failure is not unused. Detailed recovery requires a control token.
 
-- SDK：createNote/deposit/awaitFinality/getQuote/authorize/openProxySession/openDirectSession/closeSession/recover/withdraw/escape/challenge-statusを提供。秘密保存は暗号化storage adapter。browser proofはworkerで実行。
-- clientd：既定127.0.0.1:8787、localhost推論API、wallet管理は別credential。upstream API keyとproxy tokenを混同しない。configでmodeを明示し、暗黙にdirectからproxyへ切り替えない。
-- journal：未送信、送信不明、受理、利用中、精算待ち、署名検証済みをfsync/transactionで更新。新stateを保存する前に旧stateを消さない。バックアップに部署/個人を識別するmetadataを付けない。
-- indexer：finalized blockの命令順でroot/sequenceを復元。snapshotにはpool、slot、blockhash、sequence、root、next IDを含める。イベント欠落時は命令/accountから再構築し、root不一致ならpath配信を停止。
-- path：Active note membership、next-note zero path、Pendingの復元用zero pathを提供。API上では公開note IDを扱うが、通常認可にnote IDを転送しない。
-- Tor/SOCKS5はremote DNS・fail closed。direct/proxy/indexer/RPCの経路設定を別々に確認し、HTTPだけTor化して匿名化完了と表示しない。
+Private dashboard routes `/admin/v1/dashboard/summary`, `/recent` and `/events`
+require a separate listener, admin Bearer credential and network ACL. Summary
+contains aggregates, failures, settlement amounts and root/slot lag; recent/events
+contain transitions without bodies, IPs or keys. Monitoring access grants no
+signing or provider-key authority.
 
-`GET /zkapi/v1/nullifiers/{nullifier}` はunused/authorized/cleared/exit_consumed/unknownだけを返す。request ID、料金、proof、credential hashは返さない。rate limitを適用し、RPC失敗をunusedへ変換しない。利用者の詳細復旧はcontrol token付きsession endpointで行う。
+## Errors
 
-運営ダッシュボードは別のprivate listenerで `/admin/v1/dashboard/summary`、`/recent`、`/events` を提供する。管理専用Bearer credentialとnetwork ACLを必須とし、利用者tokenでは認証しない。summaryはaggregateのsession数・失敗率・精算額・root/slot lag、recent/eventsは本文・IP・鍵を含まない状態遷移のみ。監視閲覧権限に署名・provider keyの権限を与えない。
+Control envelope:
+`{error:{code,message,retriable,request_id,retry_after_seconds,latest_root}}`.
+Messages exclude proofs, tokens and payloads. Use 400 invalid/unsupported, 401
+credentials, 402 budget, 409 conflict, 410 expired, 413 size, 429 rate limit and
+503 unavailable. `retriable=true` permits the same operation's safe query/retry,
+not inference with a fresh ID.
 
-## 7. エラー契約
+Inference uses provider-compatible envelopes plus `X-Zkapi-Error-Code`.
+After a stream starts, send its error event and close rather than changing HTTP
+status. Success and accepted-operation 409 responses include
+`X-Zkapi-Operation-Id` and
+`X-Zkapi-Status-Url: /zkapi/v1/sessions/{request_id}/operations/{operation_id}`.
+Sanitize provider errors for credentials and identifying data.
 
-control APIは `{error:{code,message,retriable,request_id,retry_after_seconds,latest_root}}`。messageにproof・token・payloadを含めない。400入力/未対応、401credential、402session budget不足、409状態競合、410期限終了、413size、429rate、503DB/RPC/provider unavailable。errorのretriable=trueは同一操作の照会/再送が可能という意味で、推論を新IDで再実行する許可ではない。
+## Tariffs and exact metering
 
-推論APIは対象providerと互換のerror envelopeを使い、内部codeをheader `X-Zkapi-Error-Code` にも返す。stream開始後は形式に対応するerror eventとclose、HTTP statusを遡って変更しない。`X-Zkapi-Operation-Id` と `X-Zkapi-Status-Url: /zkapi/v1/sessions/{request_id}/operations/{operation_id}` を成功および受理済み操作の409応答に返す。生のupstream errorにcredentialや識別情報がないことを検査する。
+TariffBody excludes only tariff_hash; SHA256(JCS(TariffBody)) defines it and SDKs
+recompute it. Rates are ASCII-sorted by unique unit. Versions, times, numerators
+and denominators are canonical decimal strings. Require denominator>=1 and
+`valid_from <= quote.issued_at < valid_until`; accepted sessions keep the tariff
+after expiry.
 
-## 8. 料金表・usageの決定論的契約
+Units are input_tokens, output_tokens, cache_read_tokens, cache_write_tokens,
+cache_write_5m_tokens and cache_write_1h_tokens. A single cache-write rate cannot
+coexist with 5m/1h rates. Proxy requires input/output and all potentially charged
+cache units; provider/model must match quote. Direct permits oa/openrouter,
+model="*", rates=[]. `operator_fee_micro_usdc="0"`.
 
-Tariffのうちtariff_hashだけを除いたobjectをTariffBodyとし、quoteと同じJCS UTF-8 bytesのSHA256をtariff_hashとする。SDKは取得時に再計算する。ratesはunitのASCII昇順、unit重複禁止。version、日時、分子・分母はcanonical十進整数文字列で、分母は1以上、valid_from <= quote.issued_at < valid_untilを要求する。受理済みsessionでは期限後もその料金表を固定する。
+Counts and rate numerators are 0..2^63−1; denominators 1..2^63−1; at most six rates.
+Use arbitrary-precision rational intermediate arithmetic and verify rounded values
+fit NUMERIC(38,0). Overflow/unknown units mean unknown usage, never estimated
+billing. Reject unbounded reservations before sending.
 
-unitは `input_tokens, output_tokens, cache_read_tokens, cache_write_tokens, cache_write_5m_tokens, cache_write_1h_tokens` のみ。cache_write_tokensは単一価格のproviderにだけ使用し、5m/1hとの併用は禁止。proxyのfixed_usage_ratesはinput/outputを必須とし、課金され得るcache項目をすべて含める。directのprovider_reported_usdはproviderがoa/openrouter、model="*"、rates=[]。proxyはprovider/modelをquoteと完全一致させる。operator_fee_micro_usdcは"0"固定。
+```text
+observed_nano = ceil(sum(count_i * numerator_i / denominator_i))
+charged_nano = min(observed_nano, reservation_nano)
+operator_loss_nano = observed_nano - charged_nano
+session_charge_micro = ceil(sum(charged_nano) / 1000)
+```
 
-各usage count、rate分子・分母は0〜2^63−1（分母は1〜2^63−1）、rate最大6件。中間計算は任意精度整数の有理数で行い、丸めた結果はNUMERIC(38,0)以内か検査する。超過/未知のusage項目は推定請求せずunknownとして処理する。予約上限を計算できない入力は送信前拒否。
+Round the rational sum once per operation, not each rate term. For direct usage,
+parse selected USD strings/JSON numeric lexemes as exact decimal rationals, sum
+models, round USD×10^9 upward once to nano, cap at cap_micro×1000 and round upward
+to micro. Never use binary floating point.
 
-operationの観測費用は `observed_nano = ceil(Σ count_i * numerator_i / denominator_i)`。項目ごとのnano切上げは行わない。利用者負担は `min(observed_nano, reservation_nano)`、差額を運営損失にする。sessionでは利用者負担nanoだけを合算して一度microへ切上げる。For direct metering, convert the selected provider USD strings/JSON numeric lexemes to exact decimal rationals, sum across models, round USD × 10^9 upward once to nano-USDC, cap at cap_micro × 1000, then round upward to micro-USDC. Do not pass through binary floating point.
+Normalized usage is an ASCII-sorted, unique array of unit/count pairs. Missing
+usage is not zero. Subtract cache counts from inclusive OpenAI input; do not add
+Anthropic's separately reported cache units back into billable input. Separate
+5m/1h writes, avoid duplicate reasoning-output charges and do not sum cumulative
+SSE totals across frames. Pin provider/model/API mappings, zero-if-missing fields
+and supported cache classes in fixtures; unverified categories stay out of catalog.
 
-正規化usageは料金unitと同じ名前の整数count配列（ASCII順、重複なし）。usage欠落を0とは解釈しない。OpenAI系のinclusive inputからcache-read/cache-writeを差し引き、Anthropicのexclusive inputにはcache分を足し戻してinputとして再請求しない。5m/1hのwrite内訳は分離する。outputに含まれるreasoning tokenを二重計上しない。SSEの累積値を各frameで足し込まない。正確な写像、欠落が0を意味するfield、利用可能なcache区分はprovider/model/API version別adapter fixtureにpinし、未検証の区分をcatalogへ公開しない。
-一次資料：[OpenAI cache usage](https://developers.openai.com/api/docs/guides/prompt-caching)、[Anthropic cache usage](https://platform.claude.com/docs/en/build-with-claude/prompt-caching)。外部schemaはI07で再確認し、snapshotと正常/欠落/矛盾usageのfixtureを保存する。
+### Direct OpenRouter capture policy
 
-### Direct OpenRouter capture policy — Ethereum parity
+Capture exact management `usage + byok_usage` after confirmed key disablement and
+the configured grace period. Persist that observation before deletion; confirm
+deletion before signing the capped settlement. Missing, malformed or unavailable
+usage is not zero. Ambiguous deletion remains pending and reuses the saved amount;
+never issue a replacement key or replay inference. Never reprice a settled session.
 
-For direct OpenRouter, the selected amount is the exact `usage + byok_usage`
-management observation captured after the key is confirmed disabled and the
-configured grace has elapsed. Capture that observation durably before deletion;
-confirm deletion before signing the capped settlement. Missing, malformed or
-unavailable usage is not zero. A failed/ambiguous deletion remains pending and
-reuses the saved amount; it does not issue a replacement key or replay inference.
-A finalized session is never repriced.
+Grace is an operator assumption about in-flight work and accounting delays, not
+proof of a final invoice. Delayed/unobserved costs remain the operator's risk.
+operator_loss_nano_usdc measures only this observation's excess above the charge.
+Late observations may append operator-only loss records. OA issuer-finalized
+receipts and proxy metering keep their own rules. Upstream default grace/poll
+intervals are five/two seconds; deployed settings are explicit operator choices.
 
-This follows [Ethereum zkAPI at the reviewed immutable revision](https://github.com/ethereum/zkapi/blob/045b444ea1b52538d1b40273c7cb6ed09468a052/docs/note-bound-commitments.md#L58-L62).
-The configured grace is an **operator assumption** about in-flight requests and
-accounting delay. It does not establish an authoritative final provider invoice.
-Delayed or unobserved cost remains the operator's risk and cannot retroactively
-increase the customer's signed charge. `operator_loss_nano_usdc` measures excess
-of this selected observation over the charge, not all eventual external losses.
-A separately obtained late observation may use the existing operator-only
-append contract; a new reconciliation service is not required for this preview.
-OA's issuer-finalized receipt path and proxy metering retain their own rules.
+## Signed receipts
 
-The [parity evidence](https://github.com/yukikm/solana-zkapi/blob/ea4cb0ac005832abae6e703eb177914c0c9aa193/docs/evidence/PD-openrouter-ethereum-parity.md) distinguishes
-this selected contract from the earlier two-sample implementation and records
-whether the successor has actually been deployed. Upstream's default grace and
-settlement-poll intervals are 5 and 2 seconds; deployed configuration remains an
-explicit operator choice, not an accounting guarantee.
+`GET /zkapi/v1/sessions/{request_id}/receipts` requires a control token and returns
+cursor-paginated signed receipts. Terminal OperationStatus requires a receipt,
+distinguishing zero charge and waiver. Direct creates one session receipt with
+operation_id=null. No bodies or raw provider keys are included.
 
-## 9. 署名付き明細
+OpenAPI defines ReceiptBody. `receipt_hash=SHA256(JCS(ReceiptBody))`; the separate
+manifest-pinned Ed25519 receipt key signs raw hash32. Bind request/pool/deployment/
+operation, tariff, reservation, selected USD, provider request ID or null, usage,
+observed/charged/loss nano, reason and evidence class. A proxy signature is the
+operator's statement, not an OA receipt or provider proof. provider_evidence_digest
+is the digest of the original verified/observed record, or null if unavailable.
 
-`GET /zkapi/v1/sessions/{request_id}/receipts` はcontrol token認証、cursor付きの署名明細一覧。OperationStatusも終端時にはreceiptを必須とし、0課金/waiverを区別する。directはoperation_id=nullのsession明細を一件作る。本文や生provider keyは含めない。
+Metered direct receipts use exact selected USD in non-exponential canonical
+provider_reported_usd (no unnecessary leading/trailing zeros, <=128 characters),
+usage=[] and reservation_nano_usdc=cap_micro×1000. OpenRouter's selected USD is the
+management capture above, not final-invoice assurance. Proxy sets USD=null and
+reservation=R. Unissued/unknown direct usage uses USD=null, distinct from observed
+zero. These fields let clients recompute both direct and proxy charges.
 
-ReceiptBodyのfieldはOpenAPIを正本とする。receipt_hash=SHA256(JCS(ReceiptBody))、署名はmanifestにpinした専用Ed25519 receipt_public_keyによるraw hash32への署名。request_id、pool、deployment、operation_id、tariff_hash、reservation_nano_usdc、provider_reported_usd、provider_request_id（未知ならnull）、usage、観測nano、利用者nano、運営損失nano、reasonと証拠区分を結合する。proxy署名は運営者の記録への署名であり、OA署名明細そのものやproviderの証明と混同しない。provider_evidence_digestは元の検証済み/観測した明細のdigestで、未取得ならnull。A metered direct receipt contains the exact selected USD total in provider_reported_usd (non-exponential canonical decimal, no unnecessary leading/trailing zeroes, at most 128 characters), usage=[], and reservation_nano_usdc=cap_micro×1000. For OpenRouter, this is the captured management observation defined below, not a provider invoice-finality assertion.proxyではprovider_reported_usd=null、reservation_nano_usdcは予約R。未発行/unknownはUSD=nullとし、0の実測と区別する。これで利用者はUSD→nano→capまたはusage×rate→Rの計算を再現できる。
+`billing_effect="charge"` is unique and immutable per operation, or per direct
+session. Before SETTLED, sign/save all charge receipts and compare their summed
+charged nano, rounded to micro, with settlement. Unknown receipts have null
+observed/loss amounts and zero user charge. Late usage appends
+`billing_effect="late_loss_observation"`, user charge=0 and the original hash in
+related_receipt_hash; never edit original receipts or successor signatures.
+Cursors follow storage order and are session-scoped. Required verification and
+arithmetic fields cannot be hidden in freeform metadata.
 
-billing_effect="charge"は各operation（directはsession）につき一件で不変。SETTLED前に全charge明細を署名保存し、そのcharged_nano_usdc合計とsettlementのmicro切上げ結果を照合する。unknownは観測額/損失額null、利用者額0の明細を発行する。遅延usageはbilling_effect="late_loss_observation"、利用者額0、元receipt_hashをrelated_receipt_hashへ指定した追記とし、既存明細・後継署名を変更しない。保存順のcursorで取得し、cursorは当該sessionだけで有効。署名検証・集計に必要なfieldを自由形式metadataへ隠さない。
-
-DONE/WAIVEDの公開は署名明細の保存と同じtransactionで行う。未署名の先行明細があれば一覧cursorをその先へ進めず、後から署名された明細を取り逃さない。usageがない場合のusage配列は空で、reason/観測額nullにより実測0と区別する。
+Publish DONE/WAIVED atomically with the signed receipt. A pending unsigned earlier
+receipt blocks cursor advancement past it. Empty usage with null observation and
+reason distinguishes unknown from measured zero.

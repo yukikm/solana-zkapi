@@ -1,18 +1,18 @@
-# I06/I07 provider adapters
+# Provider adapters
 
 `controld serve` now connects direct issuance and the native inference routes to
 one `Ledger` and the existing isolated signer. `RuntimeConfig.providers` defaults
-to empty, so old I05 fixture configurations remain valid. Enabling the synthetic
+to empty, so local fixture configurations remain valid. Enabling the synthetic
 `i05-local-only` adapter does not enable any provider HTTP adapter.
 
 The current Vault keys/setup, listener, PostgreSQL transport and process layout
 remain a **local acceptance profile**, guarded by `local_test_only` and loopback.
-The explicit I10 devnet overlay can enable fixed real-provider egress only after
+The explicit Devnet overlay can enable fixed real-provider egress only after
 manifest/genesis/pool/build validation, a matching connected database deployment
 and manifest identity, and a dedicated read-only Unix PostgreSQL role. It does
 not promote the known test setup to production. Live provider permissions/usage,
 external egress fencing, production secret management, wallet UI and release
-gates remain separate acceptance work. See [provider preparation](../../docs/provider-acceptance.md)
+gates remain separate acceptance work. See [provider preparation](../../docs/testing.md)
 for `.env` credentials, the approved 10 USDC campaign, exact model/price pins,
 and the no-replay reservation journal.
 The provider adapter implementation is exercised with HTTP fixtures, not a claim
@@ -86,7 +86,7 @@ the provider's absolute key deadline after the final chain check and ledger
 wait; an already-expired key drains without activation or delivery.
 Receipt identity/amount/signature encoding
 checks preserve the pinned upstream contract; they do not establish a new
-independent cryptographic receipt verifier. See the I06 evidence for this limit.
+independent cryptographic receipt verifier.
 
 ## Inference and recovery
 
@@ -128,16 +128,13 @@ The grace covers in-flight calls and accounting propagation by operator
 assumption. It is not provider invoice finality: delayed/unobserved cost belongs
 to the operator and cannot increase a settled customer charge. An observed zero
 is valid, but neither zero nor repeated equal samples proves absence of external
-cost. Exact decimal arithmetic and cap/receipt guards remain unchanged. The
-[parity record](https://github.com/yukikm/solana-zkapi/blob/ea4cb0ac005832abae6e703eb177914c0c9aa193/docs/evidence/PD-openrouter-ethereum-parity.md) currently
-labels the local successor as a candidate; it does not relabel the deployed
-historical two-sample implementation. Upstream defaults are grace 5 seconds and
+cost. Exact decimal arithmetic and cap/receipt guards remain unchanged. Defaults are grace 5 seconds and
 settlement polling 2 seconds; configured values are explicit operator choices.
 OA final receipts follow its issuer's separate retirement lifecycle.
 
 Proxy unknown usage is waived only during drain after the owner returned or was
 independently fenced. Old-epoch unquiesced attempts stop admission and settlement;
-restart/timeout alone is never fencing. I09 must provide deployment-specific
+restart/timeout alone is never fencing. Operators must provide deployment-specific
 process/egress fencing. The runtime derives the provider admission breaker from
 durable ledger observations, so restarting cannot clear it. Audited reset requires
 all of that provider's operations to be terminal, and applies to the running process.

@@ -111,9 +111,7 @@ management command for metadata through an installed Tor policy.
 npm install --save-exact /absolute/downloads/zkapi-solana-sdk-0.2.0-devnet.8.tgz @solana/kit@8.4.0
 ```
 
-No program authority, proof setup, grant or financial state changes are part of
-this release. The [remaining trust differences](privacy-preview.md#trust-comparison-with-ethereum)
-remain. [Publication, signatures and downloads are verified](https://github.com/yukikm/solana-zkapi/blob/ea4cb0ac005832abae6e703eb177914c0c9aa193/docs/evidence/PD-sdk8-publication-20261010.md).
-At publication, an empty operator catalog blocked ordinary preflight on both
-`.7` and `.8`. See [current service status](../sdk/status.md) for later server
-repairs and preflight results; public metadata reads remain separate observations.
+No program authority, proof setup or financial state changes are part of this
+release. See [deployment trust](../sdk/deployment.md#hosting-and-custody) and
+[support](../support.md) for its limits. Use [Getting started](../getting-started/README.md)
+for installation.

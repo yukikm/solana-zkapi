@@ -3,23 +3,9 @@
 This small integration imports only published SDK exports. Copy this directory
 to an independent application and install the **reviewed SDK tarball matching the
 authenticated profile's `sdkVersions`** and containing `@zkapi/solana-sdk/public-profile`.
-The immutable `v0.2.0-devnet.1`
-package does not contain these APIs. Use the
-[current public deployment guide](../../docs/sdk/public-devnet-preview.md) for
+Use the
+[current public deployment guide](../../docs/getting-started/devnet.md) for
 the authenticated profile, exact downloads, access policy and service status.
-
-The [2026-10-09 public restoration](https://github.com/yukikm/solana-zkapi/blob/ea4cb0ac005832abae6e703eb177914c0c9aa193/docs/evidence/PD-public-restoration-20261009.md)
-records public HTTP 200 at 00:54:37 UTC and all ten installed `.3` preflight
-checks passing at 00:55:26, with all 7,257 installed files unchanged. Separate
-relay status reported admission/recovery enabled. No AUTH, inference or wallet
-action ran in this check; run fresh preflight before use. The separate
-[E01 emergency withdrawal](https://github.com/yukikm/solana-zkapi/blob/ea4cb0ac005832abae6e703eb177914c0c9aa193/docs/evidence/PD-E01-emergency-withdrawal-20261009.md)
-completed from its original journal, returning one micro-USDC with zero AUTH
-history. The [core completion record](https://github.com/yukikm/solana-zkapi/blob/ea4cb0ac005832abae6e703eb177914c0c9aa193/docs/evidence/PD-core-completion-20261009.md)
-adds fresh public readiness at 01:43:23 UTC and the unchanged operator financial
-cut. Final evidence is linked and versioned in this documentation update. The operator's
-[retained 80 GiB capacity](https://github.com/yukikm/solana-zkapi/blob/ea4cb0ac005832abae6e703eb177914c0c9aa193/docs/evidence/PD-capacity-retained-20261009.md)
-has measured headroom; no storage rollback or long-term qualification is claimed.
 
 ## Install and diagnose
 
@@ -46,8 +32,7 @@ replace a funded lifecycle test.
 Bundle `browser.ts` and `worker.ts` with your application bundler. For example,
 pass `createWorker: () => new Worker(new URL('./worker.ts', import.meta.url),
 { type: 'module' })` to `openChat`. Serve the app over HTTPS with worker/WASM
-and the exact configured service destinations allowed by CSP. See the
-[public transport runbook](../../deploy/public-devnet/README.md).
+and the exact configured service destinations allowed by CSP. See the [gateway reference](../../docs/getting-started/gateway.md).
 
 Your UI explicitly selects a Wallet Standard wallet and account before calling
 `openChat`. Preserve `storageName`, `noteId`, the same browser origin/profile and
@@ -97,7 +82,7 @@ assets, trust and finalized chain checks still run when opening the client.
 
 ## Derive native setup files
 
-The `.6` native distribution includes this directory and the compiled SDK.
+The `.8` native distribution includes this directory and the compiled SDK.
 Use `/absolute/install/bin/node /absolute/install/tools/public-devnet-consumer/cli.mjs`
 in place of `node cli.mjs`; no source checkout or additional npm install is
 needed. Verify the installation manifest before executing its contents.
@@ -119,11 +104,7 @@ sends it to RPC, indexer, provider or other control routes. The file contains
 only the 43-character base64url invitation (optionally one trailing newline),
 not a provider key or local clientd management token. Keep it out of backups
 intended for public distribution. This capability was introduced in `.2` and is
-retained in `.6`; earlier immutable releases do not gain it retroactively.
-[Native N-01](https://github.com/yukikm/solana-zkapi/blob/ea4cb0ac005832abae6e703eb177914c0c9aa193/docs/evidence/PD-native-public-N01.md),
-[OpenClaw N-02/N-03](https://github.com/yukikm/solana-zkapi/blob/ea4cb0ac005832abae6e703eb177914c0c9aa193/docs/evidence/PD-native-public-N02-N03.md) and
-[N-04 recovery/withdrawal](https://github.com/yukikm/solana-zkapi/blob/ea4cb0ac005832abae6e703eb177914c0c9aa193/docs/evidence/PD-native-public-N04.md) record
-actual public acceptance in their dated scopes.
+retained in `.8`; earlier immutable releases do not gain it retroactively.
 
 ```sh
 node cli.mjs install-native --profile-url REVIEWED_HTTPS_PROFILE_URL \
@@ -139,18 +120,18 @@ counts and hashes (an empty map for legacy bundles). The receipt records exact
 local hashes, including the notice index. Existing or partial
 directories are never overwritten. No token, wallet key, journal, custody or
 provider credential is created. Preserve this directory while the profile uses
-its absolute paths. New consumers use the `.6` native release and matching
-[revision-4 profile](../../docs/releases/session-reuse-preview.md). Existing custody keeps its
+its absolute paths. New consumers use the `.8` native release and matching
+[revision-6 profile](../../docs/releases/usability-preview.md). Existing custody keeps its
 original profile and recovery inputs.
 
 Pass the output paths and `runtimeSha256` to the existing `clientd setup` command
-in the [native quickstart](../../docs/sdk/clientd-quickstart.md). The native
+in the [native quickstart](../../docs/getting-started/clientd.md). The native
 installation's `release.json` digest is still independently reviewed. Setup
 binds prover executables and creates local tokens; run performs its own full
 chain/trust checks. An external AI client receives only the local inference
 token. Keep automatic retries and model fallbacks disabled.
 
-For direct OpenRouter, `.6` generated runtime inputs use 60-second key reuse and opt in
+For direct OpenRouter, current generated runtime inputs use 60-second key reuse and opt in
 to `settlement_wait_ms: 120000`. After the reuse window ends and its successful responses are fully consumed
 in the same process, the next explicit request may wait up to two minutes for
 the old session's verified settlement before its own first AUTH/inference.
@@ -159,11 +140,8 @@ provider's settlement grace without replaying an inference. A canceled or
 unknown response, process restart, failed verification, deadline or disconnect
 blocks admission and retains explicit recovery. The client must permit that
 response-header wait and consume the previous response to its end.
-[Actual OpenClaw N-02/N-03 acceptance](https://github.com/yukikm/solana-zkapi/blob/ea4cb0ac005832abae6e703eb177914c0c9aa193/docs/evidence/PD-native-public-N02-N03.md)
-verified text and read-tool continuation using the explicit
-[settlement scheduling adapter](../../docs/integrations/openclaw-settlement-adapter.md).
-That dated result does not establish arbitrary AI-client compatibility or current
-service availability; consult the current deployment guide and run preflight.
+See [OpenClaw setup](../../docs/getting-started/openclaw.md) and
+[current support](../../docs/support.md) before connecting an application.
 
 Reopening an existing installation requires its original profile digest with
 `--installed-profile-sha256`; do not install a new profile over unresolved

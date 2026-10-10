@@ -2,8 +2,7 @@
 
 This configuration is installed once by the application maintainer. Users
 choose a wallet and use the app; they do not assemble cryptographic pins.
-Until reviewed bundles are distributed, an integration requires access to a
-configured operator. This guide does not advertise a public production service.
+Use the [Devnet guide](../getting-started/devnet.md) for published preview inputs.
 
 ## Public bundle
 
@@ -44,7 +43,7 @@ for the offline packager and artifact review.
 
 `ArtifactBundle` and `ManifestTrustPolicy` in [trust.ts](../../packages/sdk/src/trust.ts)
 are the exact contracts. The existing [operator services](../../services/control/README.md)
-and [deployment operations](../../deploy/operations/README.md) produce and run
+and [deployment operations](../getting-started/operations.md) produce and run
 these components. The [operator browser relay](../../scripts/devnet-browser-relay/README.md)
 demonstrates same-origin relays without exposing private RPC credentials.
 
@@ -120,9 +119,9 @@ an independently verified ceremony. Independently review the deployed program
 bytes and upgrade authority as well as client artifact pins. These differences
 from Ethereum native-ETH settlement remain relevant on devnet.
 
-Both direct and proxy request bodies are retained in the encrypted local journal
-for exact operation identity and recovery, including any conversation context
-the app sends. Newly received direct provider keys stay only in the current
+Since `.7`, direct request bodies are not written to the journal. Proxy bodies
+are retained only while unsent; dispatch replaces them with a redaction marker
+and a digest of the exact bytes. Newly received direct provider keys stay only in the current
 `ControlClient`'s memory; restarting closes and settles the saved session without
 recovering or replaying inference. Historical journals/backups from earlier
 versions may still contain encrypted provider keys and are not migrated on read.
@@ -139,5 +138,4 @@ fees/rent remain SOL.
 
 Do not update deployment/IDL/build pins on funded or unresolved journals. A new
 deployment requires an explicit migration procedure, not a configuration refresh.
-Existing I10 demo state stays in its existing origin/profile and schema.
-The new browser factory does not import or migrate that demo's custody namespace.
+Keep existing application state in its original origin, profile and schema.

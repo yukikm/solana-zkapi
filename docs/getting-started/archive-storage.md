@@ -35,8 +35,7 @@ floor. RPC/provider failures remain possible and still fail closed.
    compressed losslessly, read back and compared byte for byte, fsynced, then
    atomically replaced with unchanged permissions and ownership. Incomplete
    staging files remain untouched. The journal/head and legacy backup do not
-   change. Record the conversion output privately under `docs/evidence/` or
-   `target/`.
+   change. Record the conversion output privately under `target/`.
 4. Restart with the new binary and original inputs. Changed chunk metadata
    invalidates the old optional replay cache, causing a full authenticated replay.
    Retain those caches. The explicit revalidation procedure below can preserve

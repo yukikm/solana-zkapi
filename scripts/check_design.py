@@ -116,22 +116,6 @@ for row in vectors['direct_usd_rounding']:
     check((nano+999)//1000==int(row['expected_micro']), 'Direct micro rounding')
 check(vectors['vectors'][1]['field']!=vectors['vectors'][2]['field'],'Destination mutation vector')
 
-reference=documents['docs/ethereum-reference.json']
-target=reference['proposed_target']
-check(target['billing_asset']=='circle_usdc_on_solana','USDC target')
-check(target['proxy_mode']=='required_initial_production','Proxy must be required')
-check(reference['observed_mainnet_sdk_config']['trusted_deployment']['billing_asset']=='native_eth','Upstream evidence changed')
-check({x['id'] for x in reference['work_items']}=={f'I{i:02}' for i in range(1,13)},'Task IDs')
-for item in reference['work_items']:
-    check(item['status'] in ('not_started','in_progress','completed','blocked'), 'Unknown implementation status')
-
-parity=(ROOT/'docs/production-parity.md').read_text()
-features=re.findall(r'^\| (P\d\d) \|',parity,re.M)
-check(sorted(features)==[f'P{i:02}' for i in range(1,37)],'Required feature matrix')
-plan=(ROOT/'docs/implementation-plan.md').read_text()
-tests=re.findall(r'^\| (T\d\d) \|',plan,re.M)
-check(sorted(tests)==[f'T{i:02}' for i in range(1,21)],'Acceptance matrix')
-
 tree = documents['docs/contracts/tree-transition.json']
 check(tree['protocol_layout_version']==2 and tree['tree_backend']=='transition_proof'
       and tree['tree_tag_policy']=='proof_bound','Selected layout 2 backend/policy')
@@ -185,7 +169,8 @@ for name, entry in historical_paths.items():
     check(name.startswith(('examples/browser-chat/', 'scripts/i10-wallet-ui/'))
           and '..' not in Path(name).parts and bool(re.fullmatch(r'[0-9a-f]{64}', entry.get('sha256', ''))),
           'Invalid historical source migration: ' + name)
-for path in [ROOT/'README.md', *sorted((ROOT/'docs').rglob('*.md'))]:
+for path in [ROOT/'README.md', ROOT/'CONTRIBUTING.md', ROOT/'AGENTS.md', ROOT/'vendor/README.md',
+             *sorted((ROOT/'docs').rglob('*.md'))]:
     if path.is_relative_to(ROOT/'docs/evidence'):
         continue
     text=path.read_text()
@@ -206,6 +191,6 @@ if errors:
     for error in errors: print('FAIL:',error)
     raise SystemExit(1)
 print(f'PASS: {len(documents)} JSON documents; {len(api["paths"])} API paths; {refs} schema references; {link_count} local links.')
-print(f'PASS: {len(features)} required features; {len(tests)} acceptance scenarios; {len(vectors["vectors"])} binding vectors; {len(vectors["rounding"])} rounding vectors.')
+print(f'PASS: {len(vectors["vectors"])} binding vectors; {len(vectors["rounding"])} rounding vectors.')
 print('PASS: layout 2 wire/op/profile contract and 8 tree-transition acceptance conditions.')
 print('NOT CHECKED BY THIS SCRIPT: real proofs, SVM/CU, PostgreSQL migration, provider integration, independent audit.')

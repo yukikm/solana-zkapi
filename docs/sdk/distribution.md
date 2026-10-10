@@ -3,7 +3,7 @@
 Install the published **`0.2.0-devnet.8` SDK tarball** in your application.
 It contains compiled JavaScript and TypeScript declarations; it does not require
 the demo UI or source checkout. Downloads and verification hashes are in the
-[public deployment guide](public-devnet-preview.md).
+[public deployment guide](../getting-started/devnet.md).
 
 | Input | Purpose |
 |---|---|
@@ -13,7 +13,7 @@ the demo UI or source checkout. Downloads and verification hashes are in the
 
 Follow the [distribution reference](../../packages/sdk/DISTRIBUTION.md) for
 installation, worker bundling, artifact loading and tarball builds. For an
-existing AI application, use the [clientd quickstart](clientd-quickstart.md).
+existing AI application, use the [clientd quickstart](../getting-started/clientd.md).
 Public proof assets are separate from the SDK package. Provider-management
 credentials remain with the operator.
 

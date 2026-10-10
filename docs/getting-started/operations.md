@@ -1,11 +1,8 @@
-# I09 process and recovery operations
+# Monitoring and recovery
 
-The local executable paths below are implemented and exercised by
-`python3 scripts/run_i09_operations.py`. This is not an approval to deploy the
-known-entropy local circuit artifacts or seed files. `controld`, `dispatcherd`
-and `signerd` still require the explicit local test profile. Production setup,
-independent infrastructure fencing, credentials, platform isolation, on-call
-routing and public-cluster acceptance remain release gates.
+Complete [operator setup](proxy-operator.md) first. These services use the same
+ledger and signer journal. Public Devnet configuration does not establish
+production isolation, cloud KMS or high availability.
 
 ## Provider isolation
 
@@ -66,10 +63,7 @@ and appends an audited evidence digest through the same writer.
 Configure PostgreSQL `fsync=on`, `full_page_writes=on`, physical streaming
 replication and `synchronous_standby_names`. Every financial writer connection
 must use `synchronous_commit=remote_apply` (or a deployment-reviewed synchronous
-flush policy). Without a synchronous replica acknowledgements must block. The
-local drill actually stops the replica, checks a write remains unacknowledged,
-restarts it, terminates the primary, promotes the replica and checks all ACKed
-rows and replicated financial databases. Local timings are not production RTO.
+flush policy). Without a synchronous replica acknowledgements must block. Test blocked acknowledgements, replica recovery and old-primary fencing before relying on failover.
 
 Stop admission before `opsd checkpoint admin.json witness.json`. Retain this
 fsynced digest witness in independent storage with your encrypted base backup,
@@ -114,7 +108,7 @@ matching collector report. Missing/stale/unavailable chain observations return
 503 instead of reporting zero lag. The collector retains budget/unknown/loss/
 unfenced/deadline alerts across restarts; the dashboard never returns raw metadata.
 
-The monitor policy in `monitoring.json` is the acceptance inventory for metrics
+The monitor policy in `deploy/operations/monitoring.json` is the acceptance inventory for metrics
 produced by the indexer, challenger, signer, PostgreSQL and chain fee-payer probes.
 Missing/stale measurements must page as unavailable, not display healthy zero.
 Wire delivery to an independently tested on-call receiver before production.
@@ -152,8 +146,7 @@ policy. Samples contain `observed_at` and a `measurements` mapping of known metr
 names to canonical unsigned integer strings. Stale/missing measurements and
 counter rollback page; output contains metric/severity/reason only. Feed those
 redacted JSON alerts to the deployment's authenticated notification collector.
-The runner also starts the real signer with envelope-only seeds and routes all
-five control/provider integration cases through the actual mutual TLS bridge.
+
 
 Physical restore verification requires the original PostgreSQL system identifier
 and a numerically parsed WAL flush LSN at least as new as the independently
@@ -213,12 +206,3 @@ conflicts as well as other refusals. Challenger deadline, proof failure and root
 reproof counters come from its durable journal-backed health export. Missing,
 stale, malformed or mismatched source data remains missing and pages; no failed
 source can report a healthy zero. Persisted samples also detect counter rollback.
-
-`operations_collector_live_sources_watch_and_failure_alerts` runs actual opsd
-and signerd processes with PostgreSQL, AES-GCM custody and the mutual-TLS bridge.
-Its local RPC fixture uses actual SBF-exported Pool/Tree bytes and controlled
-fee/escrow responses to test healthy reads, low SOL, root lag, escrow deficit,
-wrong genesis, stale challenger, rejected signing requests, signer loss, collector
-locking and private redaction. The separate challenger runner verifies the actual
-health producer. These local observations do not validate public RPC, deployment
-network isolation, cloud KMS or an on-call delivery channel.

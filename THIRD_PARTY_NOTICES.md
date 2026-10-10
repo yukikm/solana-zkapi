@@ -19,14 +19,10 @@ generated third-party material or the separately pinned upstream repository.
   `protocol/setup/v2` are now reviewed under the Apache-2.0 option of their
   original upstream `MIT OR Apache-2.0` declaration. The
   [four-file distribution record](deploy/public-devnet/upstream-setup-distribution.json)
-  pins their unchanged bytes, upstream revisions and required notices; the
-  [review follow-up](https://github.com/yukikm/solana-zkapi/blob/ea4cb0ac005832abae6e703eb177914c0c9aa193/docs/evidence/PD-02-redistribution-followup.md) explains the
-  scope. This decision does not license other upstream directories or establish
-  a new setup ceremony. The immutable `v0.1.0-devnet.1` and `v0.2.0-devnet.1`
-  releases continue to omit the complete deployment bundle. Their assets and
-  existing deployment pins are unchanged.
+  pins their unchanged bytes, upstream revisions and required notices. This
+  decision does not license other upstream directories or establish a new
+  setup ceremony.
 
 The SDK tarball includes its MIT LICENSE. A deployment operator must supply
 reviewed, appropriately licensed proof assets and configuration separately.
-See [source provenance](vendor/README.md) and the
-[Devnet Preview guide](docs/releases/devnet-preview.md).
+See [source provenance](vendor/README.md).

@@ -1,8 +1,7 @@
 # Session reuse preview — SDK and clientd 0.2.0-devnet.6
 
-[Publication verified](https://github.com/yukikm/solana-zkapi/blob/ea4cb0ac005832abae6e703eb177914c0c9aa193/docs/evidence/PD-sdk6-publication-20261009.md): SDK/native `.6`, both client-preview CI jobs,
-six anonymous asset downloads and all release/asset attestations passed. Full
-implementation CI was still running at the recorded release cut.
+These notes describe this version. For a new installation, use
+[Getting started](../getting-started/README.md).
 
 [GitHub release](https://github.com/yukikm/solana-zkapi/releases/tag/v0.2.0-devnet.6)
 contains the SDK tarball, macOS ARM64 native archive, immutable public profile,
@@ -23,8 +22,7 @@ Settlement still occurs on expiry, explicit close, cancellation/error or renewal
 Before a new AUTH, the client verifies the old session's signed settlement. Only
 fully consumed successful responses from the same process allow automatic
 settlement waiting. Interrupted or uncertain operations require explicit recovery;
-inference is never replayed. The [implementation comparison](https://github.com/yukikm/solana-zkapi/blob/ea4cb0ac005832abae6e703eb177914c0c9aa193/docs/evidence/PD-session-reuse-20261009.md)
-records the pinned Ethereum behavior, local tests and retained initial failures.
+inference is never replayed.
 
 ## New-consumer profile
 
@@ -70,14 +68,9 @@ components; no source checkout or npm install is required. Read-only preflight:
   --profile-sha256 3f8af848ea882f478d5b00c30d677fa5147a5b45d2bf1aceaa4f645a62d50179
 ```
 
-Use the [native quickstart](../sdk/clientd-quickstart.md) or
-[browser quickstart](../sdk/quickstart.md) for deliberate setup and integration.
+Use the [native quickstart](../getting-started/clientd.md) or
+[browser quickstart](../getting-started/sdk.md) for deliberate setup and integration.
 The native executable is not Apple signed/notarized; Linux, Windows and Intel
 macOS packages are not included in this release.
 
-The historical seven-request provider grant remains exhausted; the operator
-later removed the fixed trial allowance as a separate server policy. See
-[current access policy](../sdk/devnet-funding.md). Publication and preflight
-do not authorize paid inference, funding or replay of historical lifecycles.
-Release validation uses local fixtures and public read-only checks. Dated funded
-acceptance of `.3` does not establish paid multi-request acceptance of `.6`.
+See [support](../support.md) for compatibility and preview limits.

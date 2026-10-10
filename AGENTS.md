@@ -2,8 +2,8 @@
 
 ## Start here
 
-Read `README.md`, `CONTRIBUTING.md`, `docs/sdk/status.md` and the relevant
-component README. Protocol work also starts with `docs/implementation-ready.md`
+Read `README.md`, `CONTRIBUTING.md`, `docs/support.md` and the relevant
+component README. Protocol work also starts with `docs/architecture.md`
 and its referenced specifications. Public documentation and examples are English.
 
 ## Implementation invariants
@@ -24,11 +24,11 @@ and its referenced specifications. Public documentation and examples are English
 - Use pinned toolchains and run checks appropriate to the change. Distinguish
   synthetic fixtures, real proof/SBF tests, public Devnet observations and CI.
 - Store local reports, logs, receipts and operational handoffs in ignored
-  `docs/evidence/` or `target/`. Never force-add them to Git. Keep reproducible
+  `target/`. Never force-add them to Git. Keep reproducible
   tests, required fixtures, specifications, release notes and public guides tracked.
-- Preserve historical successes and failures locally. Refer to published reports
-  through immutable Git links described in `docs/verification.md`; public guides
-  must not depend on an ignored file being present in a fresh clone.
+- Preserve operational history and custody locally. Public guides must not
+  depend on ignored reports in a fresh clone. Keep procedures in
+  `docs/getting-started/`; do not add progress logs or task backlogs.
 - Do not commit credentials, private RPC URLs, wallet/note secrets, mutable
   financial state or raw private logs. Keep temporary review copies in `target/`.
 - Existing published SDK/native releases are immutable. Check GitHub release

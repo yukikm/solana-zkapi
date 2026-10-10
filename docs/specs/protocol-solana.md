@@ -1,34 +1,61 @@
-# オンチェーン・暗号仕様
+# On-chain and cryptographic protocol
 
-規範語「必須」「拒否」は実装・受入試験の条件。元実装は `ethereum/zkapi@045b444ea1b52538d1b40273c7cb6ed09468a052`。この仕様の資産・binding・transport変更以外は元の状態機械を維持する。初版は[ADR-0001](../adr/0001-proof-bound-tree-transition.md)のtree証明方式（layout 2）を採用し、[tree-transition実装契約](tree-transition.md)を併読する。
+This contract preserves the state machine of
+`ethereum/zkapi@045b444ea1b52538d1b40273c7cb6ed09468a052`, with Solana bindings,
+USDC accounting and transaction transport. Layout 2 uses the proof-based tree
+update in [ADR-0001](../adr/0001-proof-bound-tree-transition.md) and the
+[tree transition contract](tree-transition.md).
 
-## 1. 数値と符号化
+## Values and encoding
 
-- USDC量：内部u64、演算中u128以上、上限 `9_007_199_254_740_991`。HTTPは小数点なしの10進文字列、先頭ゼロなし（0は許容）。
-- note ID：u32、0から単調増加し再使用しない。割当counterのnext_note_idだけはu64で0〜2^32（満杯sentinel）を表す。next_note_id=2^32ならTreeFull、それ以外はu32へchecked変換して割当後に1増やす。最大note ID 2^32−1も一度だけ利用可能。
-- timestamp：非負u64 Unix秒。Solana Clockの負値・加算overflowを拒否。
-- Fr：32 bytes big-endian、`0 <= x < r`。HTTPは `0x` + 64桁小文字hex。外部入力を剰余で正規化しない。
-- Schnorrのsとblind deltaも同じ32-byte hex形式だが、Baby-JubJub scalar fieldの法でcanonical検査する。Frの範囲検査だけで済ませない。Baby-JubJub scalarの法は2736030358979909402780800718157159386076813972158567259200215660948447373041（[固定Arkworks 0.5.0](https://docs.rs/ark-ed-on-bn254/0.5.0/src/ark_ed_on_bn254/fields/fr.rs.html)）。
-- r（BN254 scalar field）：`21888242871839275222246405745257275088548364400416034343698204186575808495617`。
-- Fq（proof座標）の法はFrと異なる。元のcompact decoderとverifier規約でcanonical・曲線・部分群を検査する。
-- Pubkey/hash：32 bytes。HTTPのPubkeyはbase58、SHA-256 digestは64桁小文字hex（0xなし）。UUIDはcanonical小文字UUIDv4。
-- Anchor Borshの整数はlittle-endian。Fr/proofのbyte配列はbig-endian表現のままコピーする。
+- USDC amounts: u64, intermediates at least u128, maximum
+  `9_007_199_254_740_991`. HTTP uses decimal integer strings without leading zeros,
+  except `0` itself.
+- Note IDs: monotonically increasing u32 starting at zero, never reused. Only next_note_id is u64,
+  allowing `2^32` as the full-tree sentinel. At that value reject with TreeFull;
+  otherwise checked-convert to u32, allocate and increment. ID `2^32−1` is usable once.
+- Timestamps: nonnegative u64 Unix seconds. Reject negative Solana Clock values
+  and addition overflow.
+- Fr: 32-byte BE, `0 <= x < r`, HTTP `0x` plus 64 lowercase hex digits. Reject
+  noncanonical inputs rather than reducing them modulo r.
+- BN254 scalar modulus r:
+  `21888242871839275222246405745257275088548364400416034343698204186575808495617`.
+- Schnorr s and blind delta use the same hex format but must be canonical in the
+  Baby-JubJub scalar field, whose modulus is
+  `2736030358979909402780800718157159386076813972158567259200215660948447373041`.
+  An Fr range check alone is insufficient. See the
+  [pinned Arkworks declaration](https://docs.rs/ark-ed-on-bn254/0.5.0/src/ark_ed_on_bn254/fields/fr.rs.html).
+- Proof coordinates use Fq, a different field. The original decoder/verifier
+  checks canonical encoding, curve and subgroup membership.
+- Pubkeys and hashes are 32 bytes. HTTP pubkeys use base58; SHA-256 uses 64
+  lowercase hex digits without `0x`; UUIDs use canonical lowercase UUIDv4.
+- Anchor Borsh integers are little-endian. Fr/proof byte arrays retain BE encoding.
 
-### H2Fを一意に定義する
+### H2F
 
-`frame(label, parts) = u16be(len(UTF8(label))) || UTF8(label) || u16be(parts.len) || concat(u32be(part.len) || part)`。
-`H2F(label, parts) = OS2IP_BE(SHA256(frame(label, parts))) mod r`。すべてのlengthはbyte長、UTF-8に暗黙のUnicode正規化をしない。ラベルは仕様中のASCII文字列だけ。
+```text
+frame(label, parts) = u16be(len(UTF8(label))) || UTF8(label)
+  || u16be(parts.len) || concat(u32be(part.len) || part)
+H2F(label, parts) = OS2IP_BE(SHA256(frame(label, parts))) mod r
+```
 
-- namespace：`0x534f4c`（5459788）。公式chain IDではない。
-- vault_binding：H2F(`solana-zkapi-vault-v1`, `[genesis_hash_raw32, program_id_raw32, pool_pubkey_raw32, token_program_id_raw32, usdc_mint_raw32, [6]]`)。
-- destination_binding：H2F(`solana-zkapi-destination-v1`, `[wallet_owner_raw32]`)。
-- auth request_context：H2F(`solana-zkapi-authorization-v1`, `[authorization_bytes]`)。bytesの構造はAPI仕様。
+Lengths count bytes. Do not normalize Unicode implicitly; labels are the exact
+ASCII strings below.
 
-SDKはRPC genesis hashをmanifestと比較。programは初期化済み固定configからbindingを再計算する。32-byte walletを単純にFrへ剰余変換しない。
+| Value | Definition |
+|---|---|
+| chain_namespace | `0x534f4c` (5459788), a project namespace rather than an official chain ID |
+| vault_binding | `H2F("solana-zkapi-vault-v1", [genesis_hash_raw32, program_id_raw32, pool_pubkey_raw32, token_program_id_raw32, usdc_mint_raw32, [6]])` |
+| destination_binding | `H2F("solana-zkapi-destination-v1", [wallet_owner_raw32])` |
+| request_context | `H2F("solana-zkapi-authorization-v1", [authorization_bytes])` from the [API contract](api-proxy.md) |
 
-## 2. 回路・proof
+SDKs compare RPC genesis hash with the manifest. The program recomputes bindings
+from immutable initialized config. Do not reduce wallet addresses directly to Fr.
 
-元回路の `protocol_version=2` を維持。HTTP versionはこれと独立。request proofのpublic inputは以下の12要素をこの順序でFr化する。
+## Circuits and proofs
+
+Keep circuit `protocol_version=2`, independent of HTTP version. Request proofs
+have these 12 Fr public inputs:
 
 ```text
 [2, chain_namespace, vault_binding, active_root,
@@ -36,7 +63,7 @@ SDKはRPC genesis hashをmanifestと比較。programは初期化済み固定conf
  request_nullifier, authorization_tag, anonymous_commitment.x, anonymous_commitment.y]
 ```
 
-withdrawal proofは14要素。
+Withdrawal proofs have these 14:
 
 ```text
 [2, chain_namespace, vault_binding, active_root,
@@ -45,140 +72,280 @@ withdrawal proofは14要素。
  has_clearance_0_or_1, withdrawal_tag]
 ```
 
-`authorization_tag = H_auth(N, request_context)`、`withdrawal_tag = H_withdraw(N,destination_binding,B,has_clearance)`。ドメインとPoseidon spongeは元実装の `zkapi-core/src/v2.rs` と一致させる。request_contextはprivate witnessだが、受信サーバーがquote等から再計算したtagとpublic inputを比較することで認可内容を固定する。
+`authorization_tag = H_auth(N, request_context)` and
+`withdrawal_tag = H_withdraw(N,destination_binding,B,has_clearance)` use the exact
+original domains and Poseidon sponge in `zkapi-core/src/v2.rs`. Request context
+is a private witness; the server recomputes it from authorization data and checks
+the resulting tag against the public input.
 
-元wireのproofはbase64で表した256 bytes。非圧縮8座標 `A.x,A.y,B.x.c0,B.x.c1,B.y.c0,B.y.c1,C.x,C.y`、各32 bytes BE。コメントにcompressedとあっても実装 `compact.rs::proof_to_wire` が基準。Solana側のG2係数順とAの符号は変換crateだけで調整し、二重反転を拒否するtest vectorを持つ。VKはrequest/withdrawal別、programに埋め込み、manifestにSHA-256を記録。汎用accountから任意VKを受け取らない。
+Proof wire is base64-encoded 256 bytes: eight uncompressed 32-byte BE coordinates
+`A.x,A.y,B.x.c0,B.x.c1,B.y.c0,B.y.c1,C.x,C.y`, as defined by
+`compact.rs::proof_to_wire`. Only the conversion crate adjusts Solana G2 ordering
+and A's sign; vectors must catch double negation. Request and withdrawal VKs are
+separate, embedded in the program and SHA-256 pinned in the manifest. Do not load
+arbitrary VKs from accounts.
 
-残高状態は `E=B·G+r·H+L·J`、`N=H_null(secret,anchor)`。genesisはB=D、anchor=1。再乱数化したEだけを送信し、note ID・元残高・secret・元anchor・署名は通常認可で公開しない。後継は `E_next=E_anon−charge·G+blind_delta·H`。利用者が後継署名・点・整数残高を検証してからjournalを進める。状態署名はBaby-JubJubのまま、walletのEd25519へ置換しない。
+Balance state is `E=B·G+r·H+L·J`, with `N=H_null(secret,anchor)`, genesis B=D and
+anchor=1. Normal authorization sends only rerandomized E, not note ID, original
+balance, secret, anchor or signature. Successor state is
+`E_next=E_anon−charge·G+blind_delta·H`. Clients verify the successor signature,
+points and integer balance before advancing their journals. State signatures
+remain Baby-JubJub, not wallet Ed25519 signatures.
 
-初回G1試験は元のsetup artifactで互換性を確認する。本番artifactの要件はoperations仕様参照。回路制約の変更が必要なら circuit_id/VK/setupを新しくし、移植元とのdiffを保存する。
+Compatibility tests may use the original setup artifacts. Production artifacts
+follow the [operations contract](operations.md). Circuit changes require a new
+circuit ID, VK and setup, with an explicit source/constraint difference record.
 
-## 3. Accountsと権限
+## Accounts and authorities
 
-PDA seedは下表。整数seedは指定サイズのLE。Anchorのaccount discriminatorは型名から生成する8 bytes、各account先頭にlayout_version:u8を持つ。全accountは当該program所有で、USDC token accountだけSPL Token Program所有。
+PDA prefixes are ASCII; integer seeds use the specified LE width. Accounts start
+with an 8-byte Anchor discriminator and `layout_version:u8=2`. Program accounts
+are owned by this program; USDC token accounts are owned by the SPL Token Program.
 
-| 型 | seed（prefixはASCII） | 主要field |
+| Type | Seeds | Main fields |
 |---|---|---|
-| PoolConfig | `["pool", pool_id_32]` | bump, genesis_hash, mint, token_program, decimals=6, vault_binding, admin, treasury_owner, state/clearance pubkey各64B, TTL:u64, challenge:u64, cap:u64, paused:bool, tree_backend:u8=1, tree_tag_policy:u8=1, circuit_profile_hash:32B, pool_id:32B |
+| PoolConfig | `["pool", pool_id_32]` | bump, genesis_hash, mint, token_program, decimals=6, vault_binding, admin, treasury_owner, state/clearance pubkeys (64B each), TTL:u64, challenge:u64, cap:u64, paused:bool, tree_backend:u8=1, tree_tag_policy:u8=1, circuit_profile_hash:32B, pool_id:32B |
 | TreeState | `["tree", pool]` | bump, root:Fr32, next_note_id:u64, sequence:u64, outstanding_deposits:u64 |
-| VaultAuthority | `["vault", pool]` | PDA signerのみ。USDC ATAのauthority |
+| VaultAuthority | `["vault", pool]` | PDA signer and USDC ATA authority |
 | Note | `["note", pool, note_id_u32le]` | bump, note_id:u32, commitment:Fr32, deposit:u64, expiry:u64, status:u8 |
 | PendingWithdrawal | `["pending", pool, note_id_u32le]` | bump, exists:bool, old_root:Fr32, nullifier:Fr32, balance:u64, destination_owner:Pubkey, deadline:u64 |
-| ExitNullifier | `["exit", pool, nullifier_32be]` | bump, consumed:bool。永久tombstone、closeしない |
+| ExitNullifier | `["exit", pool, nullifier_32be]` | bump, consumed:bool; permanent tombstone, never closed |
 | PayloadBuffer | `["payload", pool, uploader, nonce_32]` | bump, uploader, op:u8, payload_len:u32, digest32, next_offset:u32, sealed:bool, expires:u64, rent_payer, payload:Vec<u8>, nonce:32B |
 
-正確なBorsh field順・discriminatorは[生成IDL](../contracts/zkapi_vault.json)と[実Account型](../../programs/zkapi-vault/src/state.rs)で固定する。PoolConfigのpool_idとPayloadBufferのnonceは保存済みseedとして毎回PDA検証に使う。nonceは可変長payloadの**後ろ**にあり、固定header内のfieldではない。詳細なbuffer長は§5を参照する。
+Exact field order and discriminators are fixed by the
+[generated IDL](../contracts/zkapi_vault.json) and
+[account types](../../programs/zkapi-vault/src/state.rs). Validate PDAs using saved
+pool_id and nonce. Buffer nonce follows the variable-length payload; it is not
+in the leading header.
 
-PoolConfigはmint・鍵・TTL等を初期化後変更しない。可変なのはadmin管理下のtreasury_ownerとpaused。admin自体の変更は初版に含めず、外部multisigの構成変更で運用する。Poolの異なるaccount混在、PDA bump/seed不一致、任意program accountへのCPI、token authority/delegateの差し替えを拒否。
+Mint, keys, TTL and profile are immutable after initialization. Only the admin
+can change treasury_owner and paused. Admin rotation is not a protocol operation;
+manage membership through its external multisig. Reject mixed pools, incorrect
+PDA seeds/bumps, arbitrary CPI programs and substituted token authorities/delegates.
 
-layout_version=2。tree backend/tag policy/profile hashは埋込み定数と一致必須、初期化後変更不可。layout 1は研究用の旧形式であり初版poolでは受理しない。Note.statusはActive=1、PendingWithdrawal=2、Closed=3（0は有効Noteに使わない）。initialize_poolはttl>0、challenge>0、0<cap<=MAX、admin/treasuryがdefault Pubkeyでないことを必須とする。初期profileはttl=2,592,000秒、challenge=86,400秒、cap=1,000,000 micro-USDC。
+Reject layout 1 and any backend/tag/profile differing from the embedded constants.
+Note status is Active=1, PendingWithdrawal=2, Closed=3; zero is invalid.
+Initialization requires ttl>0, challenge>0, `0<cap<=MAX` and nondefault
+admin/treasury. Initial profile values are TTL=2,592,000 seconds,
+challenge=86,400 seconds and cap=1,000,000 micro-USDC.
 
-USDC mint：mainnet `EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v`、devnet `4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU`。原SPL Token Programを固定し、Token-2022や転送手数料tokenを初版で受理しない。release前に実mintのowner/decimals/freeze authorityを記録する。
+USDC mints are mainnet `EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v` and
+Devnet `4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU`. Pin the original SPL Token
+Program; Token-2022 and transfer-fee tokens are unsupported. Verify mint owner,
+decimals and freeze authority before release.
 
-USDC vaultはVaultAuthorityのATA、受取先は証明に結合したwallet ownerのUSDC ATA。受取walletの追加署名は不要、payerは任意の支援者でもよい。ATA作成費はpayer負担でdepositから引かない。finalizeはPendingに保存済みownerだけへ送る。treasuryは実行時のPoolConfigを使う（元挙動と同じ）。
+The vault is VaultAuthority's USDC ATA. Destination is the proved wallet owner's
+USDC ATA; that recipient need not sign and a separate payer may fund ATA creation.
+Rent is not deducted from the deposit. Finalize pays only the owner stored in
+Pending. Treasury uses PoolConfig at payment time.
 
-`vault.amount >= outstanding_deposits` を各資金遷移後に確認する。depositで+D、close/finalize/expiryで−D、escape開始/challengeは不変。直接送られた余剰USDCにnoteを発行せず、初版には余剰引出命令を設けない。checked arithmeticを使用する。
+After each financial transition require `vault.amount >= outstanding_deposits`.
+Deposit adds D; close/finalize/expiry subtract D; escape/challenge leave it
+unchanged. Unsolicited USDC does not create notes, and there is no surplus
+withdrawal instruction. Use checked arithmetic.
 
-### ビルドに固定する署名公開鍵
+### Signing keys
 
-[ADR-0002](../adr/0002-build-validated-signing-keys.md)により、初期の単一pool profileはstate/clearance公開鍵をprogram buildへ固定する。build時に元Arkworksでcanonical座標・曲線・部分群・非単位点を検査し、initialize_poolは同じ役割の検証済み公開鍵との完全一致を必須とする。各命令でもPoolConfigの鍵をビルド設定と照合する。任意の別鍵は受理しない。鍵を変える場合は対応buildと新poolが必要で、既存poolの鍵は変更しない。manifestの公開鍵、実PoolConfig、program buildのpinも一致させる。この固定比較はSBFで約1,274万CUを要した2鍵の汎用部分群計算を置き換えるが、accepted keyの暗号条件は維持する。
+[ADR-0002](../adr/0002-build-validated-signing-keys.md) fixes state and clearance
+keys in the build. Build-time Arkworks checks canonical coordinates, curve,
+subgroup and nonidentity. Initialization and every instruction require exact
+role-specific matches. Manifest, actual PoolConfig and build pins must agree.
+Different keys require a corresponding build and new pool, never replacement
+inside an existing pool.
 
-## 4. 命令契約
+## Instructions
 
-Anchor命令discriminatorは `sha256("global:"+snake_case_name)[0..8]`。各命令のargsはBorsh。`F= [u8;32]`, `Proof=[u8;256]`, `TP=[F;11]`, `TreeUpdate={public:TP, proof:Proof}`, `WP=[F;14]`, `RP=[F;12]`。配列長のprefixは付けない。下表のinline argsの順序を固定する。
+Discriminator is `sha256("global:"+snake_case_name)[0..8]`. Borsh arguments use
+`F=[u8;32]`, `Proof=[u8;256]`, `TP=[F;11]`,
+`TreeUpdate={public:TP,proof:Proof}`, `WP=[F;14]`, `RP=[F;12]`, with no array prefixes.
 
-| 命令 / args | signer | writable account | 検査・結果 |
+| Instruction / arguments | Signers | Writable accounts | Checks and effect |
 |---|---|---|---|
-| initialize_pool(pool_id32, genesis32, state_key64, clearance_key64, ttl:u64, challenge:u64, cap:u64, admin, treasury) | deployment authority, admin, payer | pool, tree, vault ATA | build時に固定したdeployment authority署名、固定mint、元hashで検証済みの埋込み空tree root・circuit profile、鍵の曲線/部分群/非単位点、値域。登録済みpoolは拒否 |
-| deposit(expected_id:u32, expected_root:F, expiry:u64, commitment:F, amount:u64, tree:TreeUpdate) | token owner, payer | tree,note,source ATA,vault ATA | !paused、次ID・root一致、0<amount<=MAX、C!=0、expiry=ceil((Clock+TTL)/86400)*86400。zero→L、TransferChecked |
-| mutual_close(public:WP,proof:Proof,tree:TreeUpdate) | payer | tree,note,exit,vault ATA,destination ATA,treasury ATA | !paused、has_clearance=1、current root、固定binding/keys、実proof。Active、B<=D、N未使用。L→0、Closed、N消費、B/D−B転送 |
-| initiate_escape(public:WP,proof:Proof,tree:TreeUpdate) | payer | tree,note,exit,pending | !paused、has_clearance=0、current root、実proof、Active、B<=D、N未使用。L→0、Pending、N消費、deadline=Clock+challenge |
-| challenge_escape(note_id:u32,public:RP,proof:Proof,tree:TreeUpdate) | payer | tree,note,pending | Pending、Clock<deadline、N=保存済みN、固定binding/keys、過去の実request proof。current rootのzero→L、Active。exitは維持 |
-| finalize_escape(note_id:u32) | payer | note,pending,tree,vault ATA,destination ATA,treasury ATA | Pending、Clock>=deadline。root不変、Closed、保存B/D−B転送 |
-| claim_expired(note_id:u32,tree:TreeUpdate) | payer | tree,note,vault ATA,treasury ATA | Active、Clock>=expiry。L→0、Closed、D全額をtreasuryへ |
-| set_treasury(new_owner:Pubkey) | admin | pool | new_owner!=default、既存Pendingにも将来の支払時に適用 |
-| pause() / unpause() | admin | pool | paused変更。challenge/finalize/expiryはpause非対象 |
+| initialize_pool(pool_id32, genesis32, state_key64, clearance_key64, ttl:u64, challenge:u64, cap:u64, admin, treasury) | deployment authority, admin, payer | pool, tree, vault ATA | Pinned deployment authority; fixed mint, empty root/profile and validated keys; valid ranges; reject existing pool |
+| deposit(expected_id:u32, expected_root:F, expiry:u64, commitment:F, amount:u64, tree:TreeUpdate) | token owner, payer | tree, note, source ATA, vault ATA | !paused; next ID/root match; 0<amount<=MAX; C!=0; expiry=ceil((Clock+TTL)/86400)*86400; 0→L; TransferChecked |
+| mutual_close(public:WP,proof:Proof,tree:TreeUpdate) | payer | tree, note, exit, vault ATA, destination ATA, treasury ATA | !paused; clearance=1; current root/binding/keys and valid proof; Active; B<=D; unused N; L→0; Closed; consume N; transfer B and D−B |
+| initiate_escape(public:WP,proof:Proof,tree:TreeUpdate) | payer | tree, note, exit, pending | !paused; clearance=0; current root and valid proof; Active; B<=D; unused N; L→0; Pending; consume N; deadline=Clock+challenge |
+| challenge_escape(note_id:u32,public:RP,proof:Proof,tree:TreeUpdate) | payer | tree, note, pending | Pending; Clock<deadline; saved N; fixed binding/keys; valid historical RP; current 0→L; Active; retain exit tombstone |
+| finalize_escape(note_id:u32) | payer | note, pending, tree, vault ATA, destination ATA, treasury ATA | Pending; Clock>=deadline; unchanged root; Closed; transfer saved B and D−B |
+| claim_expired(note_id:u32,tree:TreeUpdate) | payer | tree, note, vault ATA, treasury ATA | Active; Clock>=expiry; L→0; Closed; transfer all D to treasury |
+| set_treasury(new_owner:Pubkey) | admin | pool | Nondefault new owner; also applies to future payments of existing Pending records |
+| pause() / unpause() | admin | pool | Change paused; challenge/finalize/expiry remain available |
 
-treeの11公開入力とWP/RP/Noteを結合する比較、op対応、固定wireは[tree-transition §2–3](tree-transition.md)を必須とする。leaf/path/tagをprogramで再計算しない。
+[Tree input binding and wire](tree-transition.md) are mandatory; do not recompute
+leaf/path/tag in the program. [Compact deposit](compact-deposit.md) reconstructs
+the canonical deposit and invokes the same handler.
 
-各命令は上表に加えてpool（read-only、管理命令はwritable）、必要なSystem/Token/ATA program、Clockを検証する。close/escapeのdestination_owner accountはWPのbindingと一致必須。Pendingはchallenge/finalize成功後exists=falseとし再利用可能、NoteはClosed tombstoneを残す。nullifierはclearanceとrequestの共通namespace。withdrawalに元実装にないexpiry制約を足さない。
+Validate pool, required System/Token/ATA programs and Clock for each operation.
+Close/escape destination_owner must match WP's binding. Clear Pending.exists
+after successful challenge/finalize so it can be reused; retain Closed Note
+tombstones. Clearance and request share the nullifier namespace. Do not add an
+expiry restriction to withdrawal that the original state machine lacks.
 
-challengeのRP.active_rootをcurrent rootへ書き換えてはいけない。提出されたRPとproofを当時のまま検証し、treeを復元する追加証明のold_rootだけcurrent rootと照合する。RP.active_rootとPending.old_rootの一致も要求しない。API側のquote freshnessやrequest_time鮮度をon-chain challengeへ適用しない。
+Never replace a challenge RP.active_root with the current root or require it to
+equal Pending.old_root. Verify the historical RP unchanged; only the restoration
+tree proof uses the current root. API quote/request-time freshness does not apply.
 
-すべてのtoken transferとtree更新は同じinstruction内で行う。CPI失敗・口座凍結・残高不足・不正proofでは全状態をrollback。tree.sequenceは成功したdeposit/close/escape/challenge/finalize/expiryごとに1増加する。finalizeではroot不変でもsequenceを進める。イベントは後述のVaultTransitionV1を使い、曖昧なamount fieldを設けない。公開イベントにnote secret・prompt・runtime keyを含めない。
+Transfers and tree changes are atomic within one instruction. Failed CPI, frozen
+accounts, insufficient funds or invalid proofs roll back all state.
+Tree.sequence increments on successful deposit/close/escape/challenge/finalize/
+expiry, including unchanged-root finalize. Events never contain secrets, prompts
+or runtime keys.
 
-error名：`Paused`, `InvalidBinding`, `InvalidMint`, `InvalidTokenAccount`, `InvalidField`, `InvalidProof`, `StaleRoot`, `StaleNoteId`, `InvalidExpiry`, `TreeFull`, `InvalidBalance`, `ReplayedNullifier`, `NoteNotActive`, `NotPending`, `ChallengeExpired`, `ChallengeNotExpired`, `NotExpired`, `InvalidBuffer`, `ArithmeticOverflow`。Anchorの6000番台へ順序固定で割当て、IDLに記録。
+Errors have stable Anchor 6000-series assignments in the IDL: `Paused`,
+`InvalidBinding`, `InvalidMint`, `InvalidTokenAccount`, `InvalidField`,
+`InvalidProof`, `StaleRoot`, `StaleNoteId`, `InvalidExpiry`, `TreeFull`,
+`InvalidBalance`, `ReplayedNullifier`, `NoteNotActive`, `NotPending`,
+`ChallengeExpired`, `ChallengeNotExpired`, `NotExpired`, `InvalidBuffer`,
+`ArithmeticOverflow`.
 
-### I04が引き継ぐ実account列
+### Financial account order
 
-I03の`execute_payload`はIDLにある`payload`（writable）、`uploader`（signer）、`rent_payer`（writable）の3 accountに続け、次の`Financial` 18 accountを**この順序でremaining accountsへ追加**する。番号はFinancial内の0始まり。IDLのexecute account列だけでは命令は成立しない。以下の順序と属性は[実context](../../programs/zkapi-vault/src/accounts.rs)、使用例は[実SBF harness](../../tests/svm/src/vault_support.rs)に対応する。
+`execute_payload` takes `payload` (writable), `uploader` (signer) and `rent_payer`
+(writable), followed by exactly these 18 Financial remaining accounts. See the
+[context](../../programs/zkapi-vault/src/accounts.rs) and
+[SBF harness](../../tests/svm/src/vault_support.rs).
 
-| 番号 | account | writable | signer | 実accountが必要な操作 |
+| Index | Account | Writable | Signer | Operations needing the actual account |
 |---|---|---|---|---|
-| 0 | pool | — | — | 全操作 |
-| 1 | tree | 必須 | — | 全操作 |
-| 2 | note | 必須 | — | 全操作 |
-| 3 | pending | 必須 | — | escape、challenge、finalize |
-| 4 | exit | 必須 | — | close、escape |
-| 5 | vault_authority | — | — | 全操作 |
-| 6 | mint | — | — | 全操作 |
-| 7 | source | 必須 | — | deposit |
-| 8 | vault | 必須 | — | 全操作 |
-| 9 | destination_owner | — | — | close、escape、finalize |
-| 10 | destination | 必須 | — | close、finalize |
-| 11 | treasury_owner | — | — | close、finalize、expiry |
-| 12 | treasury | 必須 | — | close、finalize、expiry |
-| 13 | token_owner | — | deposit時必須 | deposit |
-| 14 | payer | 必須 | 必須 | 全操作 |
-| 15 | token_program | — | — | 全操作 |
-| 16 | associated_token_program | — | — | 全操作 |
-| 17 | system_program | — | — | 全操作 |
+| 0 | pool | No | No | All |
+| 1 | tree | Yes | No | All |
+| 2 | note | Yes | No | All |
+| 3 | pending | Yes | No | Escape, challenge, finalize |
+| 4 | exit | Yes | No | Close, escape |
+| 5 | vault_authority | No | No | All |
+| 6 | mint | No | No | All |
+| 7 | source | Yes | No | Deposit |
+| 8 | vault | Yes | No | All |
+| 9 | destination_owner | No | No | Close, escape, finalize |
+| 10 | destination | Yes | No | Close, finalize |
+| 11 | treasury_owner | No | No | Close, finalize, expiry |
+| 12 | treasury | Yes | No | Close, finalize, expiry |
+| 13 | token_owner | No | Deposit only | Deposit |
+| 14 | payer | Yes | Yes | All |
+| 15 | token_program | No | No | All |
+| 16 | associated_token_program | No | No | All |
+| 17 | system_program | No | No | All |
 
-未使用slotも省略せず、writable payerをplaceholderとして指定する。contextのwritable検査は未使用slotにも適用されるため、System Program等の実行可能accountをplaceholderにしない。Clockは`Clock::get()`で取得し、account列に追加しない。executeは余分なremaining accountも拒否する。
+Keep unused slots and use the writable payer as their placeholder. Writable checks
+also apply to unused slots, so executable programs are unsuitable placeholders.
+Clock comes from `Clock::get()`; do not append it. Extra remaining accounts fail.
 
-共通contextの`token_owner`はIDL上UncheckedAccountだが、depositのhandlerは署名を必須とする。buffer depositではslot 13の`isSigner=true`をSDKが設定し、そのownerの署名を集める。uploader・payer・token ownerは同一である必要はない。inline depositはFinancialの後ろにIDLの`token_owner_signer`を追加し、slot 13と同じpubkeyを指定する。buffer executeへこの追加slotを持ち込まない。ほかのinline資金命令はFinancialだけを使い、finalizeはbufferを使わない。上表の18 slotはinstruction account列であり、transaction message内の同一pubkeyの集約とは別である。
+Though token_owner is unchecked in the common IDL context, deposit requires its
+signature. Buffer deposit sets slot 13 `isSigner=true`. Uploader, payer and token
+owner may differ. Inline deposit appends `token_owner_signer`, matching slot 13;
+do not append it for buffer execution. Other inline financial instructions use
+Financial alone; finalize does not use a buffer. These are instruction slots,
+separate from deduplication in the transaction message. Measure signed v0 size/CU
+with each supported signer and rent-payer arrangement.
 
-この列はI03実装の契約であり、I04では独立したuploader/payer/token ownerとrent返却先を含む署名済みv0を実serializeしてサイズ/CUを再測定する。I03の863 bytesという最大値を全wallet構成の保証として使わない。
+### Events and replay
 
-### Indexerが再現するイベントと履歴
+Each successful financial transition emits one `VaultTransitionV1` with Borsh
+fields in this order:
 
-各成功遷移はAnchor event `VaultTransitionV1` を1件emitする。Borsh field順は `event_version:u8=1, pool:Pubkey, sequence:u64, op:u8, note_id:u32, status:u8, old_root:F, new_root:F, commitment:F, deposit:u64, expiry:u64, exit_nullifier:Option<F>, final_balance:Option<u64>, destination_owner:Option<Pubkey>, deadline:Option<u64>`。OptionはBorshの0/1 tag。opはdeposit=0、mutual_close=1、initiate_escape=2、challenge_escape=3、finalize_escape=4、claim_expired=5で、buffer/tree opとは別enum。
+```text
+event_version:u8=1, pool:Pubkey, sequence:u64, op:u8, note_id:u32, status:u8,
+old_root:F, new_root:F, commitment:F, deposit:u64, expiry:u64,
+exit_nullifier:Option<F>, final_balance:Option<u64>,
+destination_owner:Option<Pubkey>, deadline:Option<u64>
+```
 
-deposit/expiryではOptionを全てNone。mutual_closeはN/B/ownerがSome、deadlineだけNone。initiate_escapeは作成済みPending、challenge/finalizeは消去前のPendingに対応するN/B/owner/deadlineがすべてSome。C/D/expiryは常に元Noteの値。initialize_poolの初期sequenceは0、資金遷移以外の管理・buffer操作はsequenceを増やさない。
+Options use Borsh 0/1 tags. Event operations are deposit=0, mutual_close=1,
+initiate_escape=2, challenge_escape=3, finalize_escape=4, claim_expired=5, distinct
+from buffer/tree enums. Deposit/expiry have no optional values. Mutual close
+includes N/B/owner but no deadline. Escape uses the created Pending; challenge/
+finalize use Pending before clearing it and include all four optional values.
+C/D/expiry always come from the original Note. Initial sequence is zero;
+administration and buffer operations do not increment it.
 
-indexerはfinalizedかつmeta.err=nullの成功transactionだけを、block内transaction順・CPIを含む実行順で適用し、program IDとinvocation stackを検証する。後続処理で失敗したtransactionにもemit済みログは残り得るため、イベントの存在だけで適用しない。I04ではVault成功後に後続instructionが失敗するtransactionのログを除外できることも検査する。
+Indexers apply only finalized transactions with `meta.err=null`, in block
+transaction order and invocation order including CPI. Validate program ID and
+invocation stack. Logs emitted before a later failure do not imply success.
+Reject sequence gaps and inconsistent duplicates; root alone is insufficient to
+deduplicate finalize.
 
-sequenceの欠落・重複内容不一致を拒否する。finalizeはroot不変でもsequenceが増えるため、rootだけで重複排除しない。eventのop=4はfinalize、bufferのop=4はexpiryであり、enum間を直接castしない。ログ欠落時はinline args、またはbufferのcreate/append/seal/execute/closeの成功履歴からpayloadを復元する。この履歴にも同じtransaction・invocation成功条件を適用する。bufferはPDAだけでなく作成transactionとその実行位置を世代識別子にし、digest・offset・executeのexpected_digestを照合する。実行後にcloseされたaccountをRPCで読めるとは仮定しない。archiveが必要履歴を提供できなければpath配信を止める。
+If logs are missing, recover from inline arguments or successful buffer
+create/append/seal/execute/close history, subject to the same transaction and
+invocation checks. Buffer identity includes creation transaction and execution
+position, not just PDA. Check digest, offsets and execute.expected_digest.
+Executed accounts may already be closed. Stop path serving if archive history
+cannot support reconstruction.
 
-## 5. Transactionサイズと一時buffer
+## Transactions and payload buffers
 
-初版の必須・既定経路はv0 transaction＋payload buffer（各送信1232 bytes以内）。ALTなしでも成立させ、walletのv0署名を検証する。全proof・tree更新・転送は最後のexecute一命令で成立させる。inlineは最終IDLで実serializeして収まる場合のみ同じhandlerへ渡す。
+The required baseline is v0 plus payload buffers, with each serialized send
+<=1,232 bytes and no required ALT. Verify wallet v0 signing. All proof verification,
+tree changes and transfers occur in the final execute instruction. Fitting inline
+instructions use the same handler. Compact deposit requires its authenticated
+capability.
 
-v1 inlineは追加能力。対象cluster/RPC/SDK/walletと4096 bytes等の実limitを確認し、I04の実送信が成功したmanifestだけにadvertiseする。v1ではCU/data limitをmessage configへ設定しpriority feeは総lamportsとして扱う。未対応を推測で有効にせずv0_bufferを使用する。indexerのmaxSupportedTransactionVersionは対象deploymentで実証した値（初版は0）とする。[Solana v1資料](https://solana.com/upgrades/larger-transaction-sizes)
+Any future v1 capability requires verified cluster/RPC/SDK/wallet limits before
+advertisement. Its CU/data configuration and total-lamport priority fee semantics
+must be handled explicitly. Use the deployment's verified
+maxSupportedTransactionVersion; baseline is 0.
 
-buffer手順：`create_payload(op,len,digest,nonce,expires)` → `append_payload(offset,bytes)` → `seal_payload()` → `execute_payload(expected_digest:[u8;32])` → `close_payload()`。
+```text
+create_payload(op,len,digest,nonce,expires)
+→ append_payload(offset,bytes)
+→ seal_payload()
+→ execute_payload(expected_digest:[u8;32])
+```
 
-buffer op:u8はdeposit=0、mutual_close=1、initiate_escape=2、challenge_escape=3、claim_expired=4。他の値は拒否（tree-transition回路のopとは別enum）。create argsは順にu8/u32/[u8;32]/[u8;32]/u64、appendはu32 offsetとBorsh Vec<u8>、seal/closeはargsなし。executeはexpected_digest:[u8;32]を署名対象instruction dataに含める。
+Successful execute closes the buffer. `close_payload()` is for cancellation or
+expiry recovery, not a required send after success.
 
-I03のPayloadBufferをそのまま使用する。account先頭をoffset 0とすると、Vecの長さprefixはoffset 124のu32le、payload bytesはoffset 128から、nonceは`128 + payload.len()`から32 bytes。全serialized長は`160 + payload.len()` bytes（8-byte discriminatorを含む）。`HEADER_SPACE=160`はnonceを含めた固定部分の合計で、payloadの開始offsetではない。seal/execute時には`payload.len() == payload_len == next_offset`が必要となる。I04のcreate/appendはこのBorsh配置を維持し、確保する最終account容量を`160 + payload_len`としてrentを計算する。digestはpayload bytesだけのSHA-256で、Vec長prefix・nonce・Anchor命令discriminatorを含めない。
+Buffer op:u8: deposit=0, close=1, escape=2, challenge=3, expiry=4. Reject others.
+Create arguments are u8/u32/[u8;32]/[u8;32]/u64 in that order; append is u32 offset
+and Borsh Vec<u8>; seal/close have no arguments. The signed execute instruction
+contains expected_digest.
 
-I04で固定したaccount list（順序、w=writable、s=signer）：createは `[payload(w), pool, uploader(s), rent_payer(ws), system_program]`、append/sealは `[payload(w), pool, uploader(s)]`、closeは `[payload(w), pool, closer(s), rent_payer(w)]`。executeは前節の3 prefix＋Financialとする。生成IDLで順序・権限・wireを検査する。
+The payload Vec length is u32 LE at account offset 124; bytes start at offset 128;
+32-byte nonce starts at `128+payload.len()`. Total serialized account size is
+`160+payload.len()`, including discriminator. `HEADER_SPACE=160` is total fixed
+space, not payload offset. Seal/execute require
+`payload.len() == payload_len == next_offset`. Rent allocation uses
+`160+payload_len`. SHA-256 covers payload bytes only, excluding Vec length, nonce
+and instruction discriminator.
 
-createでVecを最終payload_lenまでゼロ埋めし、nonce位置を固定する。next_offsetだけが受信済み範囲を表す。空appendはno-opとして受理し、sealはpayloadのlength/hashのみ検査する（proofの構造・有効性はexecuteが検査）。indexerはこれらの成功履歴も受理する。closeは `now >= expires` なら任意の署名者、それより前はuploaderのみ。rentは常に保存済みrent_payerへ返す。
+Account order (`w` writable, `s` signer):
 
-- len<=4096かつ各opの固定payload長、作成時<expires<=作成時+3600秒。opはdeposit/close/escape/challenge/expiryだけ。
-- appendはuploader署名、offset=next_offset、範囲内。既存byteの書換え不可。sealは全byte受領とSHA256一致を確認。
-- executeはuploader署名、expected_digest=buffer.digest、pool・op・seal・期限を検査。payloadはlayout 2の対象inline命令のargsそのもの（discriminatorを除く）、固定長はtree-transition §3どおり。opから命令を一意に選び、旧path形式・余分な末尾byteを拒否。account条件はinlineと同じ。depositでは元token owner署名も必須。
-- 署名はbuffer accountとinstruction data内のexpected_digestに結合する。同じPDAをclose後に再作成して別内容をsealしても、以前のexecute署名はInvalidBufferで拒否する。封印だけでは資金・root・noteを変更しない。
-- execute成功時にbuffer accountをcloseし、rentは保存済みrent_payerへ返す。失敗なら封印状態を保つ。close_payloadはuploaderによる中止または期限後の回収用。成功後に不要なcloseを送らない。account不在だけでexecute成功とは判断せずsignature/状態で確認する。
-- 同じpayloadの別buffer再実行は、note ID/root/status/nullifierで拒否。stale rootは新path/proofで新bufferを作り、古いbufferをcloseする。
+- Create: `[payload(w), pool, uploader(s), rent_payer(ws), system_program]`.
+- Append/seal: `[payload(w), pool, uploader(s)]`.
+- Close: `[payload(w), pool, closer(s), rent_payer(w)]`.
+- Execute: its three-account prefix and Financial order above.
 
-## 6. 採用tree方式とG1計算量判定
+Create zero-fills the final payload length to fix nonce position; next_offset
+tracks received data. Empty append is a valid no-op. Seal checks length/hash;
+execute checks proof structure and validity. Indexers accept these histories.
+At `now>=expires` any signer may close; earlier only uploader may close. Rent
+always returns to the saved rent_payer.
 
-[ADR-0001](../adr/0001-proof-bound-tree-transition.md)により追加tree Groth16証明（`transition_proof`）、`proof_bound` tag検証、layout 2を採用する。元のrequest/withdrawal回路・Poseidon・32段treeは維持する。tree回路がleaf、旧新root、同じpath、op、値域、transition_tagを制約し、programは固定VKで全11公開入力を検証する。programによるtag/leaf/pathのPoseidon再計算は要求しない。実状態・命令・認可proofとの照合は[tree-transition仕様](tree-transition.md)に定義する。
+- Require the operation's exact payload length, len<=4096 and
+  `created_at < expires <= created_at+3600`.
+- Append requires uploader signature, `offset=next_offset` and in-range writes.
+  Existing bytes are immutable. Seal requires all bytes and matching SHA-256.
+- Execute requires uploader signature, matching digest/pool/op, seal and valid
+  expiry. Payload is exactly the canonical arguments without discriminator;
+  reject old path formats and trailing bytes. Inline account checks also apply,
+  including token-owner signature for deposit.
+- Signed execute binds the buffer account and expected digest. Recreating the
+  same PDA with different bytes invalidates the old signature. Sealing alone
+  changes no funds, root or Note.
+- Successful execute closes the buffer and returns rent. Failure leaves it sealed.
+  Account absence alone does not establish success; check signature and state.
+- Replaying the same payload through another buffer fails via ID/root/status/N.
+  After finalized stale rejection, use a new path/proof/buffer and close the old one.
 
-[I02の実測](https://github.com/yukikm/solana-zkapi/blob/ea4cb0ac005832abae6e703eb177914c0c9aa193/docs/evidence/I02.md)ではtag再計算を省く研究用案が365,907〜671,266 CU。その後[I02-B](https://github.com/yukikm/solana-zkapi/blob/ea4cb0ac005832abae6e703eb177914c0c9aa193/docs/evidence/I02B.md)で現仕様へ標準化し、実SBFの257ケース、最大317,443 CUを確認した。[I03](https://github.com/yukikm/solana-zkapi/blob/ea4cb0ac005832abae6e703eb177914c0c9aa193/docs/evidence/I03.md)ではVault account/ATA/PDA/CPI/eventを統合して最大426,765 CUを確認。[I04](https://github.com/yukikm/solana-zkapi/blob/ea4cb0ac005832abae6e703eb177914c0c9aa193/docs/evidence/I04.md)でv0 buffer・SDK署名・indexerをlocal検証し最大426,830 CU / 1,232 bytes。target cluster/walletを含むG1は未合格。元tree直接計算・tag再計算付きfallbackのCU超過は比較用の履歴として保持する。
+## Compute and deployment constraints
 
-release目標は**全命令のworst-case <=1,000,000 CU**、実transactionが採用format内。100万CUはprotocolの余裕を含む設計目標でありSolanaの絶対上限ではない。I03/I04では全PDA/ATA作成、proof binding、status/nullifier、Token CPI、event、buffer処理込みで測る。予算超過時に検査を省いたり目標を無断に引き上げたりしない。
+The tree circuit constrains leaf, old/new roots, common path, operation, ranges
+and transition tag. The program verifies all 11 inputs with a fixed VK and binds
+them to accounts and authorization proofs without on-chain Poseidon recomputation.
+Original request/withdrawal circuits, Poseidon and the 32-level tree are retained.
 
-追加回路のsource/constraints/VK/setupとclient証明生成・root競合の受入条件は固定済み。I03は共通codec/binding/proverを統合し、全Vaultの実SBF 366取引、最大426,765 CU、863 bytesと元EVMの7シナリオ比較を完了した。I04の全upload/buffer経路・SDK v0署名はlocal検証済みだが、実wallet端末・target clusterは未検証でG1は未合格。新poolのみlayout 2を使い、既存poolのVK/backend/署名公開鍵を上書きしない。production setup・全機能同等性の未検証項目も公開gateとして残す。
+The design target is worst-case <=1,000,000 CU per instruction and serialized
+transactions within their selected format. This is a design budget, not Solana's
+absolute limit. Include PDA/ATA creation, proof and state checks, Token CPI,
+events and buffer handling. Do not remove checks or silently raise the target.
+New profiles use new pools and corresponding builds; never overwrite an existing
+pool's VK, backend or signing keys.

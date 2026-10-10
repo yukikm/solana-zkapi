@@ -1,116 +1,209 @@
-# 運用・復旧・公開条件
+# Operations and recovery contract
 
-## 1. 配備単位
+This document defines deployment requirements. It does not establish current
+service availability or production qualification; see [support status](../support.md).
 
-初回は1 deployment / 1 USDC pool / 1認可writer。proxy frontendは水平拡張できるが、operation受付・予算予約・署名対象決定は単一writerとprimary PostgreSQLで直列化する。indexer/challenger/proxy/signerは別process。Redis等を残高・nullifierの正本にしない。
+## Deployment and trust
 
-DBは同期replicaを別障害区画へ置き、認可・clearance・DISPATCHING・署名対象のcommitは同期replicaへの永続化後にackする。primaryだけにackしてRPO=0を名乗らない。promote時は旧writerと旧primaryを停止・fenceしてから新writerを起動。split brain試験を必須にする。
+One deployment has one USDC pool and one authorization writer. Proxy frontends
+may scale horizontally, but the writer and primary PostgreSQL serialize operation
+admission, budget reservations and signing decisions. Indexer, challenger, proxy
+and signer run separately. Caches are never authoritative for balances or nullifiers.
 
-公開設定manifestはdeployment ID、Solana genesis/program/pool/mint/token program、keys、VK/PK hash、回路ID、layout 2、tree backend/tag policy/circuit profile hash、setup profile/transcripts、transaction formats、IDL hash、quote/receipt key、admin/upgrade multisigのauthority・program ID・members・threshold・config hash、HTTPS origins、API対応表、料金表hash、TTL/cap、binary/image digest、DB schema versionを持つ。manifest_hashはmanifest_hashとmanifest_signatureを除いたJCS objectのSHA256、署名はそのraw32 bytesに対する配布用Ed25519署名。clientは配布物にpinされた鍵または信頼済みmanifest hashから起動し、manifest自身の公開鍵だけを信頼の根拠にしない。サーバーが返す別のpoolや鍵を自動承認しない。各provider credentialはsecret managerの参照名だけを配備設定に置く。tree artifact/profileのexact hash契約は[tree-transition §5](tree-transition.md)に従う。manifestのtree transcript hashとsetup_transcript_hashes.treeは一致必須。mainnetはceremony_verifiedのみ。値が揃うだけでtranscript検証完了とは扱わない。
+Use a synchronous replica in a separate failure domain. Acknowledge authorization,
+clearance, DISPATCHING and signing-target commits only after durable replication.
+Before promotion, stop or fence the old primary and writer. Verify split-brain
+behavior; primary-only acknowledgements do not meet RPO=0.
 
+The signed deployment manifest pins:
 
-### 外部送信のfencing
+- Deployment ID, genesis, program, pool, mint and token program.
+- Signing keys, circuit IDs, PK/VK hashes, layout 2, backend, tag policy, circuit
+  profile, setup profile and transcripts.
+- Transaction formats, IDL hash, quote/receipt keys, HTTPS origins, supported APIs,
+  tariff hashes, TTL and cap.
+- Admin and upgrade multisig authorities, program IDs, members, thresholds and
+  configuration hashes; binary/image digests and database schema version.
 
-writerのadvisory lockだけでは停止したproxy processの送信を防げない。provider credentialと外部送信能力を専用dispatcherへ限定し、frontendが直接上流へ接続できないnetwork ACLにする。ISSUING/DISPATCHINGへのCASと同じtransactionで、attempt ID、writer epoch、owner instance、対象session/operationをdispatch_attemptsへ記録する。directキー発行、推論、count_tokensを同じ規則で扱い、不確実なattemptを別ownerへ再割当てしない。
+`manifest_hash=SHA256(JCS(manifest excluding manifest_hash and manifest_signature))`.
+The distribution Ed25519 key signs those raw 32 bytes. Clients bootstrap from an
+independently pinned distribution key or trusted manifest hash, never solely from
+a key inside the manifest. Do not automatically accept replacement pools or keys.
+Deployment configuration references provider credentials through the secret
+manager rather than containing them.
 
-finished_atは元ownerの呼出しが終端して以後送信/再送しない確認、fenced_atは独立したegress遮断またはprocess停止と再起動禁止を確認した時刻。fence_evidence_digestに制御基盤の証拠を結合する。タイムアウトやDBフラグだけをfence完了にしない。failover時は旧writer/DBに加えて旧dispatcherもfenceする。全attemptがfinishedまたはfencedになるまでSIGN_PENDING/後継公開は禁止し、signerも照合する。directはこの条件に加えて発行済みkeyの停止・最終usage・削除の確認が必要。
+[Tree artifact/profile hashing](tree-transition.md) applies.
+`tree_proof_artifacts` and `setup_transcript_hashes.tree` must agree. Mainnet
+requires `ceremony_verified`; populated fields alone do not verify a transcript.
 
-proxyの900秒waiverはfencing成功時の目標。遮断できなければ新規受付停止・精算保留を表示し、運営へ通知する。送信権限の復活を伴う復旧を自動で行わない。T11/T18でcommit直後に停止したownerを精算後に再開するケースを検査する。
+### External-send fencing
 
-## 2. セキュリティ境界
+A database lock cannot stop an old process from sending requests. Restrict provider
+credentials and egress to a dedicated dispatcher; network ACLs prevent direct
+frontend access. In the same transaction as ISSUING/DISPATCHING, record attempt
+ID, writer epoch, owner instance and session/operation in dispatch_attempts.
+Apply this to direct-key issuance, inference and count_tokens. Never reassign an
+uncertain attempt to another owner.
 
-| 事象 | 必須の対策・保証の範囲 |
+`finished_at` means the original call is terminal and cannot send/retry.
+`fenced_at` requires a verified `FenceCertificate` with all three conditions true:
+`process_terminated`, `restart_denied` and `egress_revoked`. Bind the signed
+control-plane record through fence_evidence_digest. Timeouts and database flags
+alone are not fencing.
+Failover fences the old dispatcher as well as writer and database.
+
+Do not enter SIGN_PENDING or publish a successor until every attempt is finished
+or fenced; the signer independently verifies this. Direct sessions also require
+key disablement, captured final usage under their provider policy and confirmed
+deletion. Proxy's 900-second waiver is a target conditional on fencing. If fencing
+fails, stop admission, keep settlement pending and alert the operator. Never
+silently restore an old owner's send capability after settlement. Test this case
+with an owner stopped immediately after dispatch commit.
+
+## Security boundaries
+
+| Risk | Required control and limit |
 |---|---|
-| 同じnoteを複数sessionで使う | pool/N unique、clearanceとの同一ロック、on-chain exit tombstone、challenger |
-| 予算超過・parallel racing | session row lock、最大額予約、整数会計、cap越え運営負担 |
-| proof/quote/cross-pool replay | deployment/asset/mode/request ID/credential binding、canonical parser |
-| token漏えい | 短期・用途分離、ログredaction、失効、TLS。侵害期間内の利用は完全に防げるとしない |
-| signer compromise | 隔離service、鍵の用途分離、署名対象を永続的に一意化、pool移行。既存鍵を同poolで黙って交換しない |
-| proxyの虚偽usage | 計算根拠公開・監査。ZKによる実usage保証とはしない |
-| 上流の不正/遅延請求 | receiptの証拠区分、最終性確認、cap超過吸収、proxy unknown waiver |
-| IP/本文/時刻の相関 | 本文を保存しない、Tor対応、限界を表示。完全匿名とはしない |
-| USDC凍結・相場乖離 | 固定mint検査、運営負担条件、転送失敗時rollback。プロトコルで発行体権限を消せない |
-| 悪意あるserverの署名保留 | 元escape/challenge条件を継承。無条件退出保証と説明しない |
-| 期限切れ | expiry前の明示・警告・出金導線。元仕様ではActive元本全額がtreasuryへ移る |
+| Concurrent sessions for one note | Unique pool/N, shared AUTH/CLEARANCE lock, on-chain exit tombstone, challenger |
+| Parallel budget races | Session row lock, maximum-cost reservations, integer accounting; operator absorbs over-cap cost |
+| Proof/quote/cross-pool replay | Deployment/asset/mode/request/credential bindings and canonical parsing |
+| Token disclosure | Short lifetime, separate purposes, redaction, revocation and TLS; exposure can still permit use |
+| Signer compromise | Isolated service, separate keys, durable unique signing targets and new-pool migration |
+| False proxy usage | Recomputable receipts and audit; no ZK proof of actual provider usage |
+| Incorrect or delayed provider charges | Explicit receipt evidence class, provider-specific capture policy, caps and proxy unknown waiver |
+| IP/body/timing correlation | No body storage, supported Tor routing and clear privacy limits |
+| USDC freeze or price deviation | Fixed mint, operator-loss rules and atomic rollback; issuer powers remain |
+| Withheld server signatures | Original escape/challenge rules; no unconditional-exit claim |
+| Expiry | Visible expiry and withdrawal warnings; all expired Active principal goes to treasury |
 
-Baby-JubJub署名は一般のEd25519用KMS signing APIに差し替えない。初版はisolated Rust signerを使い、鍵seedをKMS envelope encryptionで保管し、起動時に限定メモリーへ展開する。swap/core dump/debug endpointを無効化し、RPCは相互TLS、署名要求はprimary ledgerから再照合する。state/clearance/quote/receipt/program admin/provider keyは別の鍵。
+Use the isolated Rust signer for Baby-JubJub; do not substitute an Ed25519 KMS
+signing API. Store seeds using KMS envelope encryption, decrypt only into limited
+process memory and disable swap, core dumps and debug endpoints. Use mutual TLS
+for signer RPC and recheck requests against the primary ledger. State, clearance,
+quote, receipt, program administration and provider credentials use separate keys.
 
-program upgrade authorityとadminは別の2-of-3 multisigで運用する。実装時に選定したmultisigのprogram IDと構成をmanifestへ固定。任意upgradeが可能である信頼条件を利用者に表示する。既存poolのimmutable鍵/VKをupgradeで差し替える運用は禁止し、新poolへ移行する。
+Program upgrade authority and admin use separate 2-of-3 multisigs, with selected
+programs/configuration pinned in the manifest. Disclose upgrade authority as a
+trust assumption. An upgrade must not replace an existing pool's immutable keys
+or VK; use a new pool with an explicit custody transition.
 
-## 3. Finalityとchallenge
+## Finality and challenge
 
-入金認可と通常rootはfinalizedのみ。新規認可時のexitチェックは独立2 RPCのconfirmed状態も参照し、片方でもtombstone/Pendingを観測すれば新規キー・proxy利用を止める。2 RPCが同じbackendを使っていないことを設定で管理。RPCのcontext slotが最新finalized slotより遅い応答を採用しない。RPCエラー・slot不一致を「未使用」と解釈しない。
+Deposits and normal authorization roots must be finalized. New authorization also
+checks confirmed exits through two independent RPC backends. A tombstone or
+Pending seen by either stops new keys and proxy use. Reject responses whose
+context slot predates the latest finalized slot. RPC errors or inconsistent
+slots never mean unused.
 
-checkとoff-chain発行はchainと原子的にはできない。この競合は保存済みrequest proofとchallengeで処理する。challengerはconfirmedで早期準備し、finalized状態でcanonical evidenceとcurrent zero pathのtree proofを生成・ローカル検証して送る。過去RP/proofのrootは保持し、競合時は現在tree用のproofだけを再生成する。deadlineの残りに応じて再送・priority feeを上げる。24時間challengeに対し5分以内の検出・送信を運用目標とし、遅延60秒で警告、5分で当番通知、deadline残り1時間で緊急扱い。
+Chain checks and off-chain issuance cannot be atomic. Preserve request proofs for
+challenge. The challenger may prepare at confirmed commitment but uses finalized
+canonical state and a locally verified current-zero-path proof for submission.
+Keep the historical RP/root; after a finalized root-conflict rejection regenerate only the
+tree proof. Reconcile any uncertain send before an explicit retry or changed
+priority fee.
 
-checkpointはslot、blockhash、transaction signature、outer instruction indexとCPI実行順index、tree sequence。indexerはarchive RPCから再走査可能。rootをsequence順に再構築し、program TreeStateと照合する。provider receiptはrequest transcriptと結合し、challengeに必要なRP/proofを精算後も保持する。
+For a 24-hour challenge window, target detection-to-send within five minutes:
+warn at 60 seconds, page at five minutes, and treat one hour remaining as urgent.
 
-## 4. 保存期間・復旧
+Checkpoints contain slot, blockhash, transaction signature, outer instruction
+index, CPI execution index and tree sequence. Replay archive history in sequence
+and compare with program TreeState. Bind provider receipts to request transcripts;
+retain challenge RP/proof after settlement.
 
-秘密note・wallet seed・prompt/response・生tokenはサーバーログ/DB/backupに保存しない。request transcript（proof/public inputs/quote/credential hash）とCLEARANCE予約、署名journal、N tombstoneはpool稼働中保持する。匿名requestから個別noteの終了を判定できないため、単にTTL経過で削除しない。全noteがClosedで、pool受付が永久停止し、challengeが終了したことをchainで確認した後にだけ、定めたretentionに従って削除する。
+## Retention and recovery
 
-raw IPはアクセスログに残さず、rate limit用salted keyは24時間で廃棄。provider error本文の無制限保存は禁止。監査ログは状態遷移・deployment・request/operation ID・額・hashを中心にし、権限を限定する。tracingへHTTP bodyやAuthorizationを自動収集しない。
+Never store secret notes, wallet seeds, prompts/responses or raw tokens in server
+logs, databases or backups. Retain authorization transcripts (proof, inputs,
+quote, credential hashes), CLEARANCE reservations, signer journals and nullifier
+tombstones while a pool operates. TTL alone cannot establish that an anonymous
+request's note is closed. Apply retention deletion only after chain verification
+that all notes are Closed, admission is permanently disabled and challenges ended.
 
-| 障害 | 復旧手順 |
+Do not log raw IPs; expire salted rate-limit keys after 24 hours. Do not retain
+unbounded provider error bodies. Restrict audit logs to transitions, deployment,
+request/operation IDs, amounts and hashes. Disable automatic HTTP body and
+Authorization capture in tracing.
+
+| Failure | Recovery |
 |---|---|
-| client応答喪失 | 同じrequest ID/secret/proofで照会。同じNで別認可を作らない |
-| direct発行timeout | ISSUANCE_UNKNOWNを保存。キー存在/usageを照会し、失効・精算。新規キー再発行しない |
-| proxy送信後crash | DISPATCHINGをUNKNOWNへ。再dispatchなし。送信ownerを終了/fence後、usage照会または900秒目標で運営損失。不明なら精算保留 |
-| 署名後DB応答喪失 | signer journalの同一messageを照合・再取得。charge/anchorを再計算しない |
-| DB failover | 旧primary/writer/dispatcherをfence、同期済みLSNを確認、未精算状態とsigner journal照合後再開 |
-| snapshotからの災害復旧 | WALを最後のackまで再生。ack済み予約を復元できない場合は新規認可を再開しない。chainだけでオフチェーンNは復元できない |
-| root競合・blockhash期限 | chain結果を先に照会。未成立ならcurrent root/path/proofで再作成。depositはnext IDも照合 |
-| RPC/indexer不一致 | 新規認可/path配信停止、別RPCで再構築。確実なPending finalize/challengeを優先 |
-| provider障害 | 該当provider新規認可停止。既存精算・出金・他providerは継続 |
-| USDC transfer失敗 | chain状態はrollback。token accountの状態を確認し、同じ宛先/証明条件で再試行 |
+| Lost client response | Query using the same request ID, secret and proof; do not create another authorization for N |
+| Direct issuance timeout | Persist ISSUANCE_UNKNOWN; inspect key existence/usage, disable and settle; no replacement key |
+| Proxy crash after send | Mark usage unknown; no redispatch. Finish/fence sender, inspect usage or apply operator-loss waiver; hold settlement if fencing is uncertain |
+| Lost database response after signing | Recover the identical message/signature from signer journal; do not recompute charge or anchor |
+| Database failover | Fence old primary/writer/dispatcher, verify replicated LSN and reconcile unsettled state with signer journal |
+| Disaster restore | Replay WAL through the last acknowledged commit; no new admission if acknowledged reservations cannot be restored. Chain history cannot reconstruct off-chain N reservations |
+| Root conflict or expired blockhash | Reconcile chain outcome first; rebuild financial attempts only after a finalized rejection. Deposit also checks next ID |
+| RPC/indexer disagreement | Stop admission/path serving, reconstruct through another RPC and prioritize valid finalize/challenge work |
+| Provider outage | Stop that provider's new sessions; continue existing settlement, withdrawals and other providers |
+| USDC transfer failure | State rolls back; inspect token accounts and preserve destination/proof conditions for explicit retry |
 
-暗号化snapshotを毎日、WALを継続保存。月1回、隔離環境でrestoreしnullifier件数・予約・署名journal・未精算operationを照合する。RPOはack済み認可/課金予約に対して0、RTOの初期目標は1時間。実測で満たせなければ達成済みSLOと公表しない。
+Take encrypted daily snapshots and continuously archive WAL. Monthly isolated
+restores compare nullifiers, reservations, signer journals and unsettled operations.
+Targets are RPO=0 for acknowledged financial reservations and RTO=1 hour; do not
+claim an achieved SLO without measurement.
 
-## 5. Setupとビルド
+## Setup, builds and release requirements
 
-移植試験は元のsingle-party setupを使って回路互換性を切り分ける。新しいproduction poolでは、採用したrequest/withdrawal/tree-transitionの3回路について、レビュー済みのGroth16 setup/contribution手順と公開transcript検証をrelease条件にする。運営者以外を含む複数の独立参加者を想定し、少なくとも1参加者が秘密を破棄したという信頼仮定を明記する。単発のローカルsetupをproduction ceremony完了として扱わない。既存artifactをそのまま採用する変更には、その信頼モデルを別ADRで明示する。
+Compatibility tests use the original single-party setup. Production pools require
+reviewed Groth16 setup/contribution procedures and public transcript verification
+for request, withdrawal and tree circuits. Include independent participants and
+state the assumption that at least one participant discarded their secret. A
+single local setup is not a production ceremony. Reusing existing artifacts under
+a different trust model requires an explicit ADR.
 
-Rust/Agave/groth16-solanaはI02の実測lockを開始点とする。I03開始時にAnchorとprogram SDK、I04/I08でtransaction SDKを実際に解決・buildし、exact version/commitとlockを保存する。未buildのAnchor versionを検証済みと記載しない。Arkworksはupstream lockを基準に0.5系列を維持する。初版はv0_bufferを必須とし、追加v1対応のSolana/SDK versionは実cluster/RPC/walletまで確認し、SBF側依存とRPC側依存は別crateに隔離する。「latest」の可変tagでCI/production buildしない。
+Use exact pinned Rust, Agave, Anchor, program/transaction SDK and verifier
+versions and lockfiles; Arkworks remains on upstream's 0.5 series. Keep SBF and
+RPC dependencies in separate crates. Never use mutable `latest` tags for CI or
+production builds. Extra transaction formats require real cluster/RPC/wallet
+verification, while `v0_buffer` remains required.
 
-production build/release検査はsetup_profile=test_only、既知fixtureのPK/VK hash、欠落/不正transcript、profile不一致を拒否する。devnet/localと本番manifestを別に署名し、環境名だけを変えた昇格を禁止する。programのmainnetへのupload自体をこれだけで防げるとは主張せず、配備手順と署名者のrelease検査で強制する。
+Production build/release checks reject `test_only`, known fixture PK/VK hashes,
+missing or invalid transcripts and profile mismatches. Sign local/Devnet and
+production manifests separately. Enforce these checks in release signing and
+deployment; they do not themselves prevent an arbitrary mainnet upload.
 
-全配布物にhashと署名、SBOM、license、upstream commit、circuit/VK/PK manifestを含める。ブラウザproving keyは取得後hash照合。CIはnative/wasm/SBFで同じtest vectorを検証する。
+Distributions include hashes, signatures, SBOM, licenses, upstream commit and
+circuit/PK/VK manifests. Browser proving keys are hash-checked after download.
+Native, WASM and SBF verify the same vectors. Role-specific signing keys follow
+[ADR-0002](../adr/0002-build-validated-signing-keys.md): validated build constants,
+manifest keys and actual PoolConfig must agree.
 
-署名公開鍵は[ADR-0002](../adr/0002-build-validated-signing-keys.md)に従い役割別のビルド設定とする。build時のcurve/subgroup/canonical/非単位点検査、programの固定値、manifestのkeys、実PoolConfigを照合する。別鍵には対応buildと新poolが必要で、既存poolをupgradeで別鍵に変更しない。
+Production verification covers:
 
-## 6. Release gate
+- Real proofs, mutations of all 12/14 public inputs, H2F/Poseidon compatibility,
+  worst-case CU/bytes and supported wallet/buffer paths.
+- Parallel budgets, crash points, client recovery, withdrawal races and database
+  failover without duplicate charge or signing.
+- Real credentials, usage and streaming for each advertised direct/proxy provider;
+  fixtures do not establish provider acceptance.
+- Setup, multisigs, independent review/audit, restore drills, monitoring/on-call
+  procedures and authenticated manifests.
 
-| Gate | 合格条件 | 現在 |
-|---|---|---|
-| G1 暗号・SVM | 元実proof、12/14 public inputsの各改変拒否、H2F/Poseidon一致、worst CU/bytes、wallet/buffer経路 | I02-B〜I04のlocal検証完了。I04はbuffer 161・SDK統合53・I03回帰366取引、最大426,830 CU / 1,232 bytes。実wallet端末・target cluster/RPC・全機能E2Eが未検証のためG1未合格（[I04](https://github.com/yukikm/solana-zkapi/blob/ea4cb0ac005832abae6e703eb177914c0c9aa193/docs/evidence/I04.md)） |
-| G2 会計・復旧 | 並列予算予約、全crash point、client復旧、出金競合、DB failoverで二重署名/課金なし | 未実施 |
-| G3 実provider | OA-org、OpenRouter direct、OpenAI/Anthropic/OpenRouter proxyの実credential・usage・streaming試験 | 未実施 |
-| G4 公開準備 | setup検証、鍵/multisig、第三者review/audit、restore演習、監視当番、正しいmanifest | 未実施 |
+Provide reproducible native prover artifacts and local proving when workers fail.
+Measure challenge detection-to-execute, proof p50/p95, memory and regeneration
+under root conflicts. Monitor proof delays/failures, root/slot lag, challenge time
+remaining, authorization/withdrawal failures, nullifier conflicts, absorbed costs,
+unknown usage, pending settlements, escrow invariant, signer duplicate-message
+rejections, replica lag and SOL fee balance. Pool-wide stop and per-provider
+admission stop are separate controls.
 
-devnet/localでG1/G2を先に満たす。実provider試験は利用料金を発生させるので、実装段階で利用可能なtest account/予算を設定する。現時点では契約・購入・mainnet署名を行わない。OA-org credential等が得られない場合、その経路をmockで合格にせずG3未合格として明記する。
+## Snapshot wire and reconstruction
 
-tree proverはnative/CLIと独立して再現可能なartifactを提供し、worker停止時の利用者ローカル生成を受入条件とする。challengerの検出→proof生成→buffer→executeを含む5分目標、proof生成p50/p95・メモリー・root競合再生成回数をI08/I09で記録する。特定workerの稼働を退出の必須条件にしない。
+TreeSnapshotFile from [OpenAPI](../contracts/openapi.json) is JCS UTF-8 without BOM
+or trailing newline. Verify SHA-256 over all downloaded bytes. Require
+`schema_version="1"`; snapshot is Root. Sort active_notes and pending_withdrawals
+by note_id, reject duplicates and overlap, require every ID<next_note_id and
+next_note_id<=2^32. Omit Closed notes without reusing their IDs.
 
-監視必須項目：tree proof待ち時間/失敗率/競合再生成回数、root/slot lag、challenge残り時間、認可/出金失敗率、nullifier conflict、cap超過吸収額、usage unknown率、session精算待ち時間、USDC escrow不変条件、signer重複message拒否、DB replica lag、SOL fee残高。pool全停止とprovider新規受付停止を別操作にする。
+The snapshot cut is the end of a finalized slot. Verify blockhash and trusted
+chain history for that slot. Rebuild the original 32-level tree from active
+C/D/expiry and compare root. Pending leaves are zero; verify Pending against
+chain history too. Matching the snapshot's own hash does not establish chain
+correctness.
 
-## 7. 一次資料
-
-- [固定Vault](https://github.com/ethereum/zkapi/blob/045b444ea1b52538d1b40273c7cb6ed09468a052/protocol/contracts/src/ZkApiVault.sol)
-- [固定Arkworks回路](https://github.com/ethereum/zkapi/blob/045b444ea1b52538d1b40273c7cb6ed09468a052/protocol/rust/crates/zkapi-proof/src/groth16.rs)
-- [元setup説明](https://github.com/ethereum/zkapi/blob/045b444ea1b52538d1b40273c7cb6ed09468a052/protocol/setup/v2/README.md)
-- [Solana v1](https://solana.com/upgrades/larger-transaction-sizes)、[Token転送](https://solana.com/docs/tokens/basics/transfer-tokens)
-- [Circle mint一覧](https://developers.circle.com/stablecoins/usdc-contract-addresses)
-- [Light Protocol verifier](https://github.com/Lightprotocol/groth16-solana)
-- [OpenAI Chat API](https://developers.openai.com/api/reference/resources/chat)、[Responses API](https://developers.openai.com/api/reference/resources/responses)
-- [Claude API](https://platform.claude.com/docs/en/api/overview)、[SSE](https://platform.claude.com/docs/en/build-with-claude/streaming)
-- [OpenRouter key管理](https://openrouter.ai/docs/guides/overview/auth/management-api-keys)
-
-外部APIのschema/pricingは実装時に再取得してsnapshotを残す。本仕様は対応機能と失敗時の契約を固定するもので、providerの全API schemaを複製していない。
-
-## 8. Snapshot wireと再構築
-
-snapshot downloadはOpenAPIのTreeSnapshotFileをJCS UTF-8（BOM/改行なし）にしたbytes。sha256はその全bytesのdigestで、HTTPS取得後に必ず検査する。schema_version="1"、snapshotはRoot、active_notesとpending_withdrawalsをそれぞれnote_id昇順で格納し、重複・集合間の重なりを禁止。IDはすべてnext_note_id未満、next_note_id<=2^32。Closed noteは省略するがIDを再利用しない。
-
-cutはfinalized slotの末尾。blockhashとそのslotに対応する信頼済みchain履歴を検証し、active_notesのC/D/expiryから元H_leafで32段treeを再構築してrootと照合する。Pendingはzero leafであり、Pending情報もchain履歴と検証する。単にsnapshot自身のsha256一致をchain正当性と扱わない。slotより後の成功transactionをprotocolの順序でreplayし、最新TreeStateのroot/sequence/next IDおよびNote/Pendingと照合してからpath配信する。RPCがhistorical account読取を提供しない場合はinitializeからの履歴replayを使う。
-
-buffer close/reuseやログ欠落はprotocolの履歴復元規則を使う。履歴不足なら配信停止。snapshotにExitNullifier全件を含めないため、nullifierの未使用判定は引き続き独立RPC照合を必須とする。
+Replay later successful transactions in protocol order, then compare current
+root/sequence/next ID and Note/Pending before serving paths. Where historical
+accounts are unavailable, replay from initialization. Follow the protocol's
+buffer close/reuse and missing-log rules; stop serving if history is insufficient.
+Snapshots omit the complete ExitNullifier set, so independent RPC checks remain
+required for unused-nullifier decisions.

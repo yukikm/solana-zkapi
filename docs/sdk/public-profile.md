@@ -8,7 +8,7 @@ file does not authenticate it.
 The API has been available since `.2`. New consumers should use the
 [published `.8` clients and revision-6 profile](../releases/usability-preview.md).
 Existing custody keeps its original profile binding. Profile verification does
-not establish service availability or provider capacity; see [status](status.md).
+not establish service availability or provider capacity; see [status](../support.md).
 
 ## Load and inspect before opening custody
 
@@ -109,7 +109,7 @@ fresh copies so mutations cannot replace the internally authenticated values.
 The application must bundle its own trusted module worker from
 `@zkapi/solana-sdk/prover-worker`. The published WASM is checked during loading
 and again when creating the browser client. Follow the existing
-[quickstart](quickstart.md) for explicit funding, conversation context, response
+[quickstart](../getting-started/sdk.md) for explicit funding, conversation context, response
 consumption, status, recovery and withdrawal. The profile never selects a
 wallet, changes privacy mode, permits automatic inference retries, or supplies
 an operator management credential.

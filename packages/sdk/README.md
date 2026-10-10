@@ -4,10 +4,10 @@ An SDK for USDC-funded AI usage on Solana. It handles wallet operations, local
 proofs, encrypted storage, authorization and signed settlement. Applications own
 their UI, conversation history and provider mode.
 
-Start with the [quickstart](../../docs/sdk/quickstart.md),
+Start with the [quickstart](../../docs/getting-started/sdk.md),
 [API reference](../../docs/sdk/api.md) and [distribution guide](DISTRIBUTION.md).
 The published release is `0.2.0-devnet.8`; see
-[downloads and verification](../../docs/sdk/public-devnet-preview.md).
+[downloads and verification](../../docs/getting-started/devnet.md).
 The package is distributed as a tarball, with `private: true` to disable npm
 registry publication. Node integrations use Node 24.19.0; browser integrations
 bundle the browser entry points.

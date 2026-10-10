@@ -1,105 +1,118 @@
 # Solana clientd
 
-The Go daemon exposes the supported inference routes, count_tokens, SSE and wallet management on **127.0.0.1:8787**. Note, authorization, billing and recovery state belongs to the existing encrypted SDK journal. Go has no second financial state machine. `runtime.ts` connects the journal to the real native prover/verifier, finalized RPC/indexer observations, v0 buffers and authenticated compact deposits.
+For installation, funding and application setup, use
+[getting started](../../docs/getting-started/clientd.md).
+See [support](../../docs/support.md) for verified platforms and client compatibility.
 
-For a new installation, follow the [native quickstart](../../docs/sdk/clientd-quickstart.md).
-`clientd setup` accepts independently pinned installation/deployment inputs and
-creates a private profile with separate random local tokens. `run`, `request`
-and `openclaw-config` use that profile. The [OpenClaw integration](../../docs/integrations/openclaw.md)
-uses a file SecretRef, a dedicated agent and disabled provider retries. Neither
-setup nor configuration generation funds a note or performs inference.
-
-The [application compatibility table](../../docs/integrations/README.md) also
-links Claude Code and Codex settings. Their current CLI request formats still
-hit deliberate validation guards; the settings are not a funded-use recipe.
-
-The management-authenticated `POST /admin/wallet` also exposes explicit recovery
-actions: `clear-unaccepted-auth` obtains signed permanent clearance for an
-unaccepted AUTH; `emergency-escape` takes `destination_owner` and `roles` and
-preserves unresolved session evidence before preparing a challengeable escape;
-`reconcile-challenge` authenticates chain restoration before session recovery.
-Continue saved financial steps with `advance`/`prove` and use `finalize` after the
-chain-verified deadline. `recover-expired-setup` uses the existing exact-history
-and finalized expiry/absence checks before rebuilding an unlanded buffer create.
-None of these actions replays inference. An unresolved
-emergency escape is reported in management status and blocks new inference
-before quote/proof preparation. See [recovery semantics](../../docs/sdk/recovery.md).
-
-New compact deposits are selected by the same `WalletClient` as the browser. The manifest must advertise `v0_inline_deposit_v1`, and the independently installed runtime `policy.build.transactionFormats` must allow it along with `v0_buffer`; IDL and distribution hashes must match the new build. Omission keeps legacy deployments on buffers. Rebuild the distribution with the updated SDK before enabling this capability. Existing journals retain their transport and trust pins, and unknown inline sends remain unresolved until the exact receipt is finalized. See the [SDK contract](../../packages/sdk/README.md#single-signature-deposit).
-
-The browser uses the same `ControlClient`, `WalletClient` and original circuits through a WASM worker. The native prover is an offline stdin/stdout alternative. All three PK/VK pairs and executable hashes are pinned. There is no success-on-unavailable verifier, remote secret prover or implicit proxy fallback.
+The Go frontend serves inference, SSE and wallet management on
+`127.0.0.1:8787`. [`runtime.ts`](runtime.ts) connects it to the SDK's
+`ClientDaemon`, `ControlClient`, `WalletClient` and encrypted journal. Those
+components own authorization, accounting and recovery; Go adds no financial
+state machine. Native prover/verifier processes run offline with pinned binaries
+and the original circuits.
 
 ## Build and verify
 
-Use pinned Node 24.19.0, npm 11.9.0, Go 1.25.0 and Rust 1.90.0. Go has no external module dependencies; Rust binaries have separate locks.
+Use Node 24.19.0, npm 11.9.0, Go 1.25.0 and Rust 1.90.0. From the repository root:
 
 ```sh
-bash scripts/run_i04.sh
-bash scripts/run_i06_i07.sh
-python3 scripts/run_i08.py
-python3 scripts/run_i09_challenger.py
-python3 scripts/run_i08_wallet.py
+npm ci --ignore-scripts
+python3 scripts/build_clientd_distribution.py --output /absolute/new-install
+```
+
+`ZKAPI_GO` and `ZKAPI_NODE` select exact executables. The builder refuses an
+existing output directory. It packages Node, clientd, native proof binaries,
+the compiled SDK, locked npm dependencies and third-party notices. The package
+does not require a checkout or npm at runtime.
+
+For the local acceptance suite, prepare the pinned proof/SBF prerequisites in
+[CONTRIBUTING.md](../../CONTRIBUTING.md), then run:
+
+```sh
 python3 scripts/run_i08_clientd.py
 ```
 
-`ZKAPI_GO` and `ZKAPI_NODE` select exact executables. The clientd runner checks Go races, Host/Origin/auth separation, actual SOCKS5 remote DNS, Tor outage on all network classes, passphrase custody, reuse, uncertain inference, stream cancellation, distribution integrity, and **installed Go → SDK → native proof → actual Vault SBF** deposit/withdrawal with transaction-result loss and restart. JSON-RPC/indexer envelopes and provider lifecycle fixtures are local adapters. These tests do not claim public RPC, live provider or live Tor success.
+The suite checks Go races, authentication, SOCKS5 remote DNS, transport failure,
+custody, session reuse, cancellation, distribution integrity, and installed
+Go → SDK → native proof → Vault SBF deposit/withdrawal. RPC/indexer/provider
+envelopes are local fixtures; this does not test public providers or live Tor.
+The runner rebuilds its generated `target/i08-clientd/distribution`; do not use
+that directory for a funded installation.
 
 ## Distribution and configuration
 
-`python3 scripts/build_clientd_distribution.py` assembles the current OS package under `target/i08-clientd/distribution`; pass `--output /absolute/new-install` to preserve older installations. It includes Node, Go, native binaries, the compiled SDK installed from its tarball, npm dependencies pinned to the repository lock, and upstream license. The package has no workspace-source or demo dependency. A build refuses existing output. The resulting installation is portable on the same OS/architecture; setup binds paths after relocation. `distribution-result.json` supplies these configuration fields:
+`distribution-result.json` beside the built installation provides:
 
-- `distribution`, `distribution_sha256`: whole-install manifest and independent digest pin.
-- `node`, `node_sha256`, `runtime`, `runtime_sha256`: installed runtime paths and hashes.
-- Add `runtime_config`, `listen` (default `127.0.0.1:8787`) and `network`.
+- `distribution`, `distribution_sha256`: the full installation manifest and pin.
+- `node`, `node_sha256`, `runtime`, `runtime_sha256`: runtime paths and pins.
 
-Trust the distribution digest through an independent channel. Startup checks every installed file, rejects unlisted resolution inputs, symlinks and writable-by-others files. Keep the installation immutable while running. A local hash-pinned build does not claim production code signing/notarization or other-OS packaging.
+A low-level daemon config also needs `runtime_config`, `network` and optional
+`listen` (default `127.0.0.1:8787`). Normal users create this through
+`clientd setup` in the installation guide. Startup verifies every installed file
+and rejects unlisted files, symlinks and files writable by other users. Authenticate
+the manifest digest independently and keep the installation immutable. Build and
+verify separately for each OS/architecture.
 
-Example network configuration (placeholder origins, not deployed services):
+### Network policy
+
+Example routes, to replace with the deployment's reviewed origins:
 
 ```json
 {
   "mode": "tor",
   "socks5": "127.0.0.1:9050",
   "routes": [
-    {"origin": "https://control.example", "prefix": "/zkapi/v1"},
-    {"origin": "https://proxy.example", "prefix": "/v1"},
-    {"origin": "https://indexer.example", "prefix": "/zkapi/v1/tree"},
-    {"origin": "https://rpc.example", "prefix": "/"}
+    {"origin":"https://control.example","prefix":"/zkapi/v1"},
+    {"origin":"https://proxy.example","prefix":"/v1"},
+    {"origin":"https://indexer.example","prefix":"/zkapi/v1/tree"},
+    {"origin":"https://rpc.example","prefix":"/"}
   ]
 }
 ```
 
-An operator using a private CA can explicitly add
-`"extra_ca": {"path":"/absolute/reviewed/operator-ca.pem","sha256":"INDEPENDENTLY_REVIEWED_SHA256"}`.
-The bounded regular file must be immutable to other users and match its pin.
-The CA extends system roots; hostname/certificate verification, TLS 1.2 minimum,
-route allowlists and no-redirect behavior stay enabled. Never derive this pin
-from an untrusted server certificate or disable certificate checks.
+`mode` must be `direct` or `tor`. Direct provider sessions need their provider's
+origin/API route. `direct_oa` also needs the independently trusted verifier's
+`/submit_key` route: a verifier base of `https://verifier.example/api` requires
+`{"origin":"https://verifier.example","prefix":"/api/submit_key"}`.
 
-Mode must explicitly be `direct` or `tor`. For direct provider sessions add the independently configured provider origin/API path. For `direct_oa`, also allow the separately trusted verifier's `/submit_key` path: for `oa_verifier.base: "https://verifier.example/api"`, add `{"origin":"https://verifier.example","prefix":"/api/submit_key"}`. Tor uses SOCKS5 domain-name addresses, no direct fallback and no redirect following. **Control, provider, OA verifier, indexer and RPC** use this same private Unix relay. Companion/prover processes are offline and receive secrets through stdin with a cleared environment. This is not a promise of complete anonymity.
+All control, provider, verifier, indexer and RPC traffic uses this relay policy.
+Tor uses SOCKS5 domain-name addresses with no direct fallback. Redirects are
+refused. A private CA requires an explicit
+`extra_ca: {path: "/absolute/operator-ca.pem", sha256: "REVIEWED_SHA256"}`;
+hostname validation and TLS 1.2 minimum remain enabled. The policy does not
+promise complete anonymity.
 
-`runtime.json` follows the `RuntimeConfig` interface in `runtime.ts`:
+### Runtime inputs
 
-- `manifest` file and independently trusted `policy`; exact `artifacts` paths for IDL, all PK/VK files, tree source archive, verifier constants and manifest extras.
-- `prover` and `verifier`, each `{path, sha256}`.
-- Private `journal` directory, `custody` envelope file, local `note_id`.
-- Explicit `mode` (`proxy`, `direct_oa`, `direct_openrouter`), per-model provider/API/tariff configuration, `rpc` URL, `indexer` origin, optional `direct_provider_bases`.
-- For `direct_oa`, independently install `oa_verifier: {"base":"https://verifier.example/api","stationId":"trusted-station"}`. Use the canonical HTTPS base without a trailing slash; do not derive these pins from the control server or key response. The SDK verifies the received key and its signed evidence directly with this verifier before saving or using the key. Missing pins, mismatched evidence or verifier rejection close the same session without inference or mode fallback.
-- Optional `preparation_commitment`: `confirmed` or `finalized` (default). This controls only blockhash acquisition and preflight; note/account/receipt acceptance remains finalized. A reviewed public deployment can use `confirmed` to avoid an already-old finalized blockhash expiring during a proof/sign/send workflow.
-- `key_reuse_seconds`: default 60, range 0–300. A nonzero value also requests that session TTL. Zero requests a 60-second TTL and closes after each request.
-- `settlement_wait_ms`: optional, maximum 180000. Current source defaults to 120000 for reusable direct sessions, otherwise 0. Direct OpenRouter and OA can wait for the verified settlement of all fully consumed successful responses in the same process before renewing. The next operation's exact bytes and UUID remain unsent during that wait. Unknown/canceled responses, restarts, errors, disconnects and deadline expiry retain explicit recovery. Published `.3` only supports opt-in waiting with zero-reuse direct OpenRouter; the public `.3` input helper retains that compatible configuration. The `.6` helper generates 60-second reuse with a 120-second wait and requires the `.6` runtime.
+[`RuntimeConfig`](runtime.ts) defines `runtime.json`:
 
-Native reuse is a fixed window from key acquisition, shortened by the provider's
-expiry. Further requests do not extend it. Successful responses share its one
-authorization and settlement. A canceled, failed or interrupted direct response
-retires the key; it never retries inference. The browser application facade uses
-the separate Ethereum browser policy (300-second lease, 90-second renewal margin).
+| Field | Purpose |
+|---|---|
+| `manifest`, `policy` | Manifest path and independent trust policy |
+| `artifacts` | Absolute paths for IDL, all PK/VK pairs, tree source, verifier constants and manifest extras |
+| `prover`, `verifier` | `{path, sha256}` for each native binary |
+| `journal`, `custody`, `note_id` | Private journal directory, encrypted custody file and local note ID |
+| `mode` | Explicit `proxy`, `direct_oa` or `direct_openrouter` |
+| `models` | Model/provider/API/tariff entries described below |
+| `rpc`, `indexer` | Finalized chain and tree services |
+| `direct_provider_bases` | Optional independently configured direct provider bases |
+| `oa_verifier` | For `direct_oa`: independently trusted `{base, stationId}` |
+| `preparation_commitment` | `confirmed` or `finalized` (default); affects preparation only |
+| `key_reuse_seconds` | Fixed direct-key reuse window, default 60, range 0–300 |
+| `settlement_wait_ms` | Maximum wait before a new request; default 120000 for reusable direct sessions, otherwise 0; maximum 180000 |
 
-The runtime checks actual finalized PoolConfig/genesis/keys/profile/artifact hashes before serving. Custody's parent directory must be mode 0700. Never reset missing/corrupt custody automatically.
+The runtime verifies finalized Pool/genesis, keys and artifact pins before
+serving. `preparation_commitment` never lowers finalized acceptance of notes,
+accounts or receipts. The custody parent must be mode `0700`.
 
-Configure each model with its own tariff file. Every tariff's canonical hash must
-already be pinned by the authenticated manifest. For example, these are
-illustrative model IDs and local file paths, not a supplied deployment:
+For OA, use a canonical HTTPS verifier base without a trailing slash. Do not
+derive its identity from a control response. Received keys and signed evidence
+must pass that verifier before use; failure closes the same session without
+inference or mode fallback.
+
+### Models and tariffs
+
+Each model uses an authenticated tariff file. For example:
 
 ```json
 {
@@ -112,90 +125,121 @@ illustrative model IDs and local file paths, not a supplied deployment:
 }
 ```
 
-`/v1/models` lists those validated IDs and their providers. Unsupported API/model
-pairs are rejected before AUTH. Proxy tariffs must match the exact model ID and
-provider. Direct OA permits `chat`/`responses`, and direct OpenRouter permits
-`chat`; their tariffs use model `"*"` and provider-reported USD pricing. Modes
-remain explicit for the entire daemon configuration; model selection never
-switches between proxy and direct.
+`/v1/models` advertises validated IDs and providers. Unsupported API/model pairs
+are rejected before authorization. Proxy tariffs match the exact provider/model.
+Direct OA supports `chat` and `responses`; direct OpenRouter supports `chat`.
+Direct tariffs use model `"*"` and provider-reported USD pricing. Selecting a
+model never changes the configured mode.
 
-Existing `models: ["model-id"]` plus one top-level `tariff` file remains supported
-when the tariff covers every listed ID. A proxy configuration with several
-different IDs and one tariff now fails startup instead of advertising models
-that cannot be used. Migrate it to the entries above. Direct configurations can
-retain several concrete IDs sharing one wildcard tariff. Do not mix the legacy
-form with per-model entries. These checks do not rewrite configuration, saved
-notes, deployment pins or pending sessions.
+The legacy `models: ["model-id"]` with a top-level `tariff` remains supported
+only when that tariff covers every listed ID. Do not mix it with object entries.
+OpenClaw configuration generation requires object entries with explicit `chat`
+capability. Existing journals and custody are never migrated by configuration.
 
-Run `bin/clientd serve /private/path/config.json`. Supply one JSON line on **stdin** from a password manager or protected pipe, containing distinct `inference_token` and `management_token` (at least 32 characters), `passphrase` (16–4096 UTF-8 bytes), optional `wallet_seed_base64` (32-byte local wallet seed), and `initialize_key: true` only on explicit first initialization. Secrets must not go in command arguments, environment variables, logs or shared files. The random journal key is wrapped using scrypt-32768-8-1 and AES-256-GCM. This is passphrase custody; OS keychain integration is not claimed. External wallet custody is available through the SDK wallet interface.
+Compact deposits require manifest capability `v0_inline_deposit_v1` and an
+independently installed `policy.build.transactionFormats` allowing it and
+`v0_buffer`, with matching IDL/distribution pins. Without this capability,
+deposits use buffers. Saved operations keep their original transport and pins.
+
+### Secret input
+
+The low-level `clientd serve /absolute/config.json` command reads one JSON line
+from a private stdin pipe:
+
+- Distinct `inference_token` and `management_token`, each at least 32 characters.
+- `passphrase`, 16–4096 UTF-8 bytes.
+- Optional `wallet_seed_base64`, a 32-byte wallet seed.
+- `initialize_key: true` only for explicit first custody initialization.
+
+Never put wallet secrets or the data password in arguments, environment
+variables or logs. The journal key uses scrypt-32768-8-1 and AES-256-GCM password
+wrapping. Missing/corrupt custody is not automatically reset. Native helpers use
+private pipes and a cleared environment; OS keychain custody is not implemented.
 
 ## Local API
 
-All calls require the appropriate `Authorization: Bearer …`. Management and inference credentials cannot substitute for each other. Actual peer, Host port, Origin and Sec-Fetch-Site are checked; forwarding headers cannot bypass them. Foreign websites receive no default CORS access.
+All routes require the appropriate Bearer token. Inference and management
+tokens are not interchangeable. Peer, Host, Origin and Sec-Fetch-Site checks
+reject cross-site access; forwarded headers cannot bypass them.
 
 | Route | Purpose |
 |---|---|
-| `GET /v1/models` | Pinned model allowlist |
-| `POST /v1/chat/completions`, `/v1/responses` | Supported explicit proxy/direct mode |
-| `POST /v1/messages`, `/v1/messages/count_tokens` | Anthropic proxy mode |
-| `GET /admin/upgrade-plan` | Local separate-installation guidance; no custody migration |
-| `GET /admin/model-availability` | Explicit keyless ZDR catalog GET through the configured transport |
-| `GET /admin/status` | Balance, wallet/session phase, startup `recovery_required` flag, expiry, unresolved IDs and journal head; no credentials/witness |
-| `POST /admin/close`, `/admin/recover` | Existing SDK close/recovery |
-| `POST /admin/reconcile` | Explicit missing-operation reconciliation after terminal settlement, authenticated 404 and cryptographic successor/receipt verification |
-| `POST /admin/cancel-unsent` | Explicit cancellation of an authorization that was never sent and has no operations, including an expired quote; possibly sent authorizations remain unresolved |
-| `POST /admin/wallet` | `deposit`, `withdraw`, `escape`, `finalize`, `advance`, `prove`, `retry-rejected` through shared WalletClient |
+| `GET /v1/models` | Validated model allowlist |
+| `POST /v1/chat/completions`, `/v1/responses` | Inference in the configured mode |
+| `POST /v1/messages`, `/v1/messages/count_tokens` | Anthropic proxy API |
+| `GET /admin/status` | Redacted financial/recovery state, expiry, unresolved IDs, privacy information and journal head |
+| `GET /admin/upgrade-plan` | Local upgrade guidance without custody migration |
+| `GET /admin/model-availability` | Keyless ZDR catalog read through the configured transport |
+| `POST /admin/close`, `/admin/recover` | Session settlement and explicit recovery |
+| `POST /admin/reconcile` | Missing-operation reconciliation after authenticated terminal settlement |
+| `POST /admin/cancel-unsent` | Cancel an authorization that was never sent and has no operations |
+| `POST /admin/purge-settled-bodies` | Explicit deletion of eligible settled legacy request bodies |
+| `POST /admin/wallet` | Shared WalletClient deposit, withdrawal and recovery actions |
 
-Wallet commands specify role public keys and destination. Explicit `escape` switches a blocked mutual-close intent to escape only before any transaction has been signed, preserving the existing nullifier, clearance intent and destination. `advance` performs one durable sign/recover step; `prove` resumes the saved operation. Explicit `retry-rejected` rechecks an exact finalized rejection, cleans up its old buffer and preserves the saved witness/nullifier/destination before reproving; finalize also rechecks the current Pending and deadline. Secret witness and signed bytes are encrypted before sends. Only a finalized receipt plus actual account reconciliation activates a deposit. An unknown execute/close/finalize never gets a replacement signature. Blockhash expiry and confirmed status alone do not establish non-execution.
+### Wallet actions
 
-Inference UUID and phase are durable. SDK .7 keeps an unsent proxy body only until the atomic send transition; direct bodies never enter the journal. Sent bodies are redacted while IDs and financial evidence remain. A supplied `Idempotency-Key` is preserved; otherwise the daemon creates one and returns `X-Zkapi-Operation-Id`. Neither direct nor proxy inference is replayed automatically. IDs in active or settled history cannot be reused. Restart recovers/closes the previous session before new work. Direct 202/missing-key recovery closes the same authorization, never reissues a key or changes mode. Disconnects before upstream headers abort inference transport as well as delivered streams, retaining uncertain intents and running the shared lifecycle finalizer. Graceful shutdown waits for authorization preparation, active streams and close persistence. Go supervisor death closes its private pipe so the SDK exits and releases the journal lock; restart retains and reconciles unresolved operations.
+`deposit` and `withdraw` take role public keys; withdrawal also takes a mode and
+destination owner. `advance` continues one saved sign/recovery step and `prove`
+resumes its proof. Only finalized receipts and account reconciliation activate
+a deposit. Unknown transactions retain their exact signed bytes; blockhash expiry
+or confirmed status alone does not establish non-execution.
 
-Direct requests use API-specific top-level allowlists before AUTH and again at
-the SDK dispatch sink. Unknown fields, identity metadata and arbitrary transport
-preferences are rejected. Direct OpenRouter requests always include
-`provider: {zdr: true, data_collection: "deny"}`; only those fixed preferences
-are accepted from callers. A provider failure causes no retry or relaxed policy.
-This restriction concerns direct OpenRouter, not the proxy service or OA.
-Provider routing is not cryptographic proof of deletion; providers see content
-and network metadata, and OpenRouter permits implicit in-memory caching.
-See [OpenRouter ZDR](https://openrouter.ai/docs/guides/features/zdr).
-Client tool
-parameter schemas can use arbitrary property names, including `type` and
-`image_url`. Direct Chat supports `response_format` text/JSON formats, and direct
-Responses supports their `text.format` equivalents, including JSON Schemas.
-Those selectors apply only at the named API paths; they do not enable image
-inputs or hosted tools. Responses
-forward only content type, retry timing, and proxy operation status/error headers.
-Upstream cookies, CORS and arbitrary tracking headers are not forwarded. The
-locally assigned operation ID and `no-store` cache policy remain authoritative.
-Canceling a pending stream read retains its admission slot until upstream
-cancellation finishes, then runs the existing settlement maintenance.
+Additional explicit actions are `escape`, `finalize`, `retry-rejected`,
+`recover-expired-setup`, `clear-unaccepted-auth`, `emergency-escape` and
+`reconcile-challenge`. They retain the existing note and financial history.
+An unresolved emergency escape blocks new inference. See the
+[recovery reference](../../docs/sdk/recovery.md) for their preconditions.
 
-Direct Responses requests must explicitly include `"store": false`, for example
-`{"model":"gpt-example","input":"Hello","store":false}`. Missing, null or true
-values are rejected before authorization because that API stores responses by
-default. This disables API application storage; provider logging, retention
-policy and network observations remain provider trust assumptions.
+### Inference and settlement
 
-An explicit new request selecting another proxy model, or arriving after the
-reuse window, closes the old session first. Once the existing receipt/successor
-verification makes that session terminal, the daemon continues the original new
-request with its original operation ID and bytes. An active response, unfinished
-settlement, verification failure, shutdown or canceled request prevents that new
-authorization. Previously dispatched inference is never replayed by this handoff.
+A supplied `Idempotency-Key` becomes the durable operation UUID; otherwise
+clientd creates one and returns `X-Zkapi-Operation-Id`. Used IDs cannot be reused.
+Inference is never automatically replayed. Direct bodies never enter the journal;
+unsent proxy bodies are retained only until the atomic send transition. Financial
+records and IDs remain after sent bodies are redacted.
 
-If startup cannot recover the previous session because control is unavailable or receipts need explicit reconciliation, the management API remains available with `recovery_required: true` and inference returns 409. Status reads and idle maintenance do not clear this hold. Use `recover` or `close` to finish the old session, `reconcile` for terminal absent operations, or `cancel-unsent` for an expired authorization that never left the client. The hold clears only when no pending session remains. Invalid trust/custody/chain configuration, a broken installed verifier pin, and local journal corruption still fail startup.
+Successful direct responses share the fixed key lease, shortened by provider
+expiry. New requests do not extend it. Zero reuse closes after each response.
+A new request may wait for verified settlement of fully consumed same-process
+responses before authorization. Its original bytes and UUID stay unsent during
+that wait. Cancellation, uncertainty, restarts and failed settlement require
+explicit recovery. A model change in proxy mode also closes the old session
+before authorizing the new request.
 
-Proxy operators can read prompts and responses. Status includes expiry, seven-day/one-day warnings, and the rule that an expired Active note's full principal may move to treasury. Encrypted backup restoration requires an independent trusted journal head or authoritative reconciliation: encryption cannot detect whole-device rollback.
+Disconnects cancel transport, retain uncertain intents and run settlement
+maintenance. Graceful shutdown waits for preparation, streams and close
+persistence. Supervisor death releases the runtime and journal lock; restart
+reconciles the original operations. A recovered direct session with a missing
+key is closed without issuing another key.
 
-## Upstream and boundaries
+When startup cannot settle an existing session, management remains available
+with `recovery_required: true` and inference returns HTTP 409. Status reads do
+not clear this hold. Use the explicit recovery action for the saved operation.
+Invalid trust, chain, binary pins or local custody still fail startup.
 
-Pinned upstream is `ethereum/zkapi@045b444ea1b52538d1b40273c7cb6ed09468a052`. SOCKS5 code/tests adapt `zkapi-clientd/internal/relay`, with the MIT license retained at `vendor/ethereum-zkapi/zkapi-clientd/LICENSE`. The local auth/reuse/streaming contract follows upstream; Ethereum wire, plaintext wallet files and ETH billing are replaced with Solana v0, integer USDC and the shared encrypted journal. Rust reuses the original request/withdrawal/Poseidon and successor verification. Vendor/license files are unchanged.
+### Request and privacy limits
 
-See `docs/evidence/I08.md` for exact results. Production setup, real provider billing, public wallet/RPC, live Tor, hosted CI, other OS packages and production signatures remain separate release evidence.
+Direct requests pass API-specific field allowlists before authorization and
+dispatch. Unknown fields, identity metadata and arbitrary transport preferences
+are rejected. Direct OpenRouter fixes
+`provider: {zdr: true, data_collection: "deny"}`; provider failure does not relax
+this policy. Provider routing is not proof of deletion, and the provider sees
+request content and network metadata. Proxy mode additionally exposes content
+to its operator.
 
-SDK/native `.8` status also includes structured `privacy` information. CLI commands
-`upgrade-plan` and `model-availability` use the management credential and empty
-GETs. Existing `.3`/`.6`/`.7` installations can export their original status for
-the new offline upgrade helper; never replace an old profile binding. See the
-[consumer guide](../../docs/releases/usability-preview.md).
+Direct Responses requires `"store": false`. Text/JSON output selectors and
+client-executed tool schemas are supported; images and hosted tools are not.
+Only content type, retry timing and proxy operation status/error headers are
+forwarded. Cookies, CORS and arbitrary upstream tracking headers are dropped;
+local operation ID and `no-store` remain authoritative.
+
+Status warns before note expiry. An expired Active note's full principal may
+move to treasury. Keep encrypted backups plus an independently trusted journal
+head or authoritative reconciliation; encryption alone cannot detect rollback
+of the entire device.
+
+## License
+
+SOCKS5 code adapts the pinned upstream relay; cryptographic helpers reuse its
+proof and successor verification code. Preserve [source provenance](../../vendor/README.md)
+and [third-party notices](../../THIRD_PARTY_NOTICES.md).

@@ -1,9 +1,10 @@
 # Privacy hardening preview — SDK and clientd 0.2.0-devnet.7
 
+These notes describe this version. For a new installation, use
+[Getting started](../getting-started/README.md).
+
 This release contains the SDK tarball, macOS ARM64 native archive, source archive,
 an immutable revision-5 public profile, a release manifest and SHA-256 checksums.
-[Publication and all six release assets are verified](https://github.com/yukikm/solana-zkapi/blob/ea4cb0ac005832abae6e703eb177914c0c9aa193/docs/evidence/PD-sdk7-publication-20261010.md)
-at source `dd9fb409b2f1e52421956262eb88026069ea8c79`.
 
 ## Changes
 
@@ -72,22 +73,3 @@ npm install --save-exact /absolute/downloads/zkapi-solana-sdk-0.2.0-devnet.7.tgz
   --profile-url https://d366buuvadnp3.cloudfront.net/releases/public-devnet-20261008-a/profile-sdk-0.2.0-devnet.7-r5.json \
   --profile-sha256 8c11a03fe09a6fb8c4361d89bfea3fb7a2d831bb5b6f956634bcdd94ad49d703
 ```
-
-## Trust comparison with Ethereum
-
-The pinned Ethereum request/withdrawal proving-key files remain byte-identical
-(`045b444ea1b52538d1b40273c7cb6ed09468a052`, verified by `scripts/check_upstream.py`).
-That establishes source/artifact identity, not identical program reliability.
-Solana additionally verifies a tree-transition proof. The public deployment uses
-an OS-random single-party tree setup marked `test_only`, with no verified ceremony
-transcript. Ethereum's pinned Vault computes tree updates directly and uses native
-ETH; this Solana deployment uses a USDC mint with issuer/freeze authorities.
-
-A fresh finalized public RPC observation on 2026-10-09 at 18:15:31 UTC (slot
-509266027) found program `2sXbYtY2NbyGm1GeCETkkjAa5LxWCA8v8aj2ePW3yVDH`
-still upgradeable by `nHSjCbSd3XD3UwGy5uAAUqEfDf4kBDYaJZ4eF82nCDZ`, matching the
-manifest's single-key declaration. The pinned Ethereum Vault has immutable proof
-adapter/key parameters, though its owner can pause and change the treasury.
-Thus the current trust assumptions differ even without considering mainnet or
-third-party audit status. This client release changes no program, authority,
-proof setup, financial state or provider grant capacity.

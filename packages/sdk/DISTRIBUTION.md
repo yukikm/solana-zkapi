@@ -8,7 +8,7 @@ loading or access to the zkAPI repository. Registry publication is disabled with
 Download `zkapi-solana-sdk-0.2.0-devnet.8.tgz` from the
 [published release](https://github.com/yukikm/solana-zkapi/releases/tag/v0.2.0-devnet.8).
 Verify it against the independently obtained SHA-256 in the
-[public deployment guide](../../docs/sdk/public-devnet-preview.md), then install:
+[public deployment guide](../../docs/getting-started/devnet.md), then install:
 
 ```sh
 shasum -a 256 zkapi-solana-sdk-0.2.0-devnet.8.tgz
@@ -167,10 +167,8 @@ in the same bundle. Every decision must explicitly be `approved`. Unresolved
 or missing entries, altered bytes, extra files and symlinks fail. Keep the
 review outside the upload directory. This validates a review record; it does
 not determine legal sufficiency, authenticate the reviewer's identity, upload
-anything, or replace actual downloadable-byte/proof checks. The
-[upstream redistribution follow-up](https://github.com/yukikm/solana-zkapi/blob/ea4cb0ac005832abae6e703eb177914c0c9aa193/docs/evidence/PD-02-redistribution-followup.md)
-records the original root license declaration that resolved the earlier
-missing-evidence reason for omitting the four unchanged files.
+anything, or replace actual downloadable-byte/proof checks. See the [bundled provenance and notices](../../deploy/public-devnet/upstream-notices/PROVENANCE.md)
+for the four inherited setup files.
 
 Independent browser applications can now load this bundle without importing any
 reference UI code:

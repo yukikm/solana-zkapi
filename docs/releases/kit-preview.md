@@ -1,10 +1,13 @@
 # Kit preview 0.2.0-devnet.1
 
+These notes describe this version. For a new installation, use
+[Getting started](../getting-started/README.md).
+
 This developer preview replaces every active JavaScript Solana client dependency
 with `@solana/kit` **8.4.0**. The SDK, native clientd runtime, external application
 examples, Demo UI and local acceptance tools no longer depend on `@solana/web3.js`
 or its compatibility package, including transitively installed dependencies.
-Historical reports and immutable earlier releases remain available as evidence.
+Earlier published releases remain immutable.
 
 The SDK's low-level TypeScript API changes: addresses are Kit `Address` strings,
 RPC clients are `Rpc<SolanaRpcApi>`, and wallet signing uses Kit `Transaction`.
@@ -25,10 +28,9 @@ provides the compiled SDK archive, the current-platform native daemon archive,
 
 Verify the artifact digest from a trusted release before installation. Install the
 SDK using `npm install ./zkapi-solana-sdk-0.2.0-devnet.1.tgz`. Extract native clientd
-into a new directory and follow the [private profile setup](../sdk/clientd-quickstart.md).
+into a new directory and follow the [private profile setup](../getting-started/clientd.md).
 Retain an existing profile and custody/journal backups during upgrades; do not
-initialize new custody over an existing profile. Review and repin the new
-installation manifest before using it with an existing profile.
+initialize new custody over an existing profile. Use a separate installation; do not repin an existing funded profile.
 
 ## Scope
 
