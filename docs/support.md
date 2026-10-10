@@ -5,8 +5,18 @@ ZKAPI is a **Devnet preview**. Published SDK and native clients are
 This compatibility summary is based on records through **2026-10-10 JST**.
 Run [fresh preflight](getting-started/devnet.md) to check a deployment now.
 
+The payment and proof primitives are shared across API use cases. The source
+tree adds registered, fixed-price JSON operations through the same SDK, clientd
+and ledger. Initial support is proxy POST with bounded JSON requests and
+responses; a signed descriptor binds the operation, destination and billing rule.
+This source capability is separate from the published `.8` clients and the
+existing public deployment. See the [local JSON API tutorial](getting-started/json-api.md),
+[general API integration](getting-started/api-integration.md) and the separate
+[inference tutorials](getting-started/inference.md).
+
 | Area | Supported or observed scope |
 |---|---|
+| General JSON API (source) | Local fixed-price POST JSON integration. No public provider or released client coverage is implied. Other methods, binary bodies, asynchronous jobs and generic streaming need explicit adapters and billing contracts. |
 | Native package | Apple Silicon, macOS 13.5+. No Apple notarization or verified packages for other platforms. |
 | SDK | Tarball distribution; no npm registry release. Browser custody/proof tests are local; funded browser/Phantom acceptance is unverified. |
 | Public profile | Direct OpenRouter Chat Completions. Model names do not enable other API dialects. |
@@ -16,8 +26,8 @@ Run [fresh preflight](getting-started/devnet.md) to check a deployment now.
 | Codex | Responses requests hit unsupported fields and custom tool formats. |
 | Recovery | Selected native interrupted-stream recovery, withdrawal and emergency escape cases succeeded. |
 
-Text and client-executed tools are in scope. Media, Realtime, hosted tools,
-persisted provider conversations, Ollama and native SOL billing are not.
+Within inference, text and client-executed tools are in scope. Media, Realtime,
+hosted tools, persisted provider conversations, Ollama and native SOL billing are not.
 Production, mainnet, security audits, complete provider coverage and long-term
 availability are not established by this preview.
 

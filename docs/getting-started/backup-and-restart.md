@@ -1,7 +1,7 @@
 # Back up and restart an operator
 
-Use this procedure for an existing deployment with the supplied
-[service units](../../deploy/public-devnet/systemd/README.md).
+Use this procedure for an existing **Linux deployment with systemd** and the
+supplied [service units](../../deploy/public-devnet/systemd/README.md).
 Keep its program, Pool, keys, ledger, journals and deployment pins unchanged.
 A backup does not authorize a second financial writer.
 

@@ -1,12 +1,22 @@
 # Solana zkAPI SDK
 
-An SDK for USDC-funded AI usage on Solana. It handles wallet operations, local
+An SDK for USDC-funded API usage on Solana. It handles wallet operations, local
 proofs, encrypted storage, authorization and signed settlement. Applications own
-their UI, conversation history and provider mode.
+their UI, request/response data and provider selection.
 
-Start with the [quickstart](../../docs/getting-started/sdk.md),
-[API reference](../../docs/sdk/api.md) and [distribution guide](DISTRIBUTION.md).
-The published release is `0.2.0-devnet.8`; see
+Start with [General API integration](../../docs/getting-started/api-integration.md)
+for the shared payment lifecycle. The current source supports registered
+fixed-price POST JSON APIs through `requestApi()`; start with the
+[local JSON API tutorial](../../docs/getting-started/json-api.md).
+Inference adapters support Chat Completions, Responses and Messages as enabled
+by a deployment's profile. New methods, billing units and response formats
+still require explicit adapters and contracts.
+
+Use the [inference SDK tutorial](../../docs/getting-started/sdk.md),
+[API reference](../../docs/sdk/api.md) and [distribution guide](DISTRIBUTION.md)
+for the implemented interfaces.
+The published release is `0.2.0-devnet.8` and retains its inference interfaces;
+the registered JSON API addition is source/local only. See
 [downloads and verification](../../docs/getting-started/devnet.md).
 The package is distributed as a tarball, with `private: true` to disable npm
 registry publication. Node integrations use Node 24.19.0; browser integrations
@@ -27,7 +37,12 @@ from the first preview.
 | `./wallet`, `./control` and other documented subpaths | Lower-level integration |
 
 The factory validates deployment pins, artifacts, RPC genesis and finalized
-PoolConfig. Funding, recovery and inference require separate explicit actions.
+PoolConfig. `ControlClient` and `WalletClient` share the encrypted note journal;
+`ClientDaemon` and the application facade reuse their lifecycle. Adding another
+API type beyond the registered JSON adapter requires matching request, tariff and discovery contracts,
+using the existing accounting ledger and recovery rules.
+
+Funding, recovery and API execution require separate explicit actions.
 Use a stable note ID and storage identity, consume or cancel each response, and
 resolve pending work before new inference. Recovery never replays inference.
 

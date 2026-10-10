@@ -1,4 +1,4 @@
-# Configure Claude Desktop
+# Evaluate Claude Desktop inference compatibility
 
 **Claude Desktop is not yet usable with ZKAPI for real Chat requests.** Version
 2.31226.1 accepted gateway settings and a synthetic connection test, but its

@@ -1,12 +1,21 @@
-# Add the SDK to an application
+# Inference API getting started with the SDK
 
-The TypeScript SDK handles funding, authorization, local proofs and settlement.
-Your app supplies the wallet picker, model selection and conversation UI.
-To connect an existing AI client instead, use [clientd](clientd.md).
+The TypeScript SDK provides funding, authorization, local proofs, settlement and
+recovery for API usage. Start with [General API integration](api-integration.md)
+for the shared payment lifecycle and the work required to support a new API type.
+
+This tutorial builds a browser integration for the current public Devnet
+**OpenRouter Chat Completions** profile. Its model selection, conversation UI and
+`chat()` calls are inference-specific. The SDK's current request facade supports
+the documented inference APIs; it is not an arbitrary HTTP request client.
+To connect an existing AI client, see [Inference API getting started](inference.md)
+or use [clientd](clientd.md).
 
 ## 1. Install
 
-Use Node **24.19.0** and npm **11.9.0** in your application directory:
+Use Node **24.19.0** and npm **11.9.0** in your application directory. The download
+example below uses a POSIX shell and `curl` (Linux or macOS), with Node for
+checksum verification.
 
 ```sh
 (
@@ -14,9 +23,14 @@ Use Node **24.19.0** and npm **11.9.0** in your application directory:
   curl --fail --location --proto '=https' --proto-redir '=https' \
     --output zkapi-solana-sdk-0.2.0-devnet.8.tgz \
     https://github.com/yukikm/solana-zkapi/releases/download/v0.2.0-devnet.8/zkapi-solana-sdk-0.2.0-devnet.8.tgz
-  printf '%s  %s\n' \
-    cd9226f4526c0b3561a557e4c7beb4f495dcbad6c995c624f4c442b6621414da \
-    zkapi-solana-sdk-0.2.0-devnet.8.tgz | shasum -a 256 -c -
+  node --input-type=module -e '
+    import { createHash } from "node:crypto";
+    import { readFileSync } from "node:fs";
+    const file = "zkapi-solana-sdk-0.2.0-devnet.8.tgz";
+    const expected = "cd9226f4526c0b3561a557e4c7beb4f495dcbad6c995c624f4c442b6621414da";
+    if (createHash("sha256").update(readFileSync(file)).digest("hex") !== expected)
+      throw new Error("SDK checksum mismatch");
+  '
   npm install --save-exact ./zkapi-solana-sdk-0.2.0-devnet.8.tgz @solana/kit@8.4.0
 )
 ```
@@ -161,7 +175,9 @@ before switching conversations with an active session.
 
 `chat()` handles text Chat Completions. Use `client.request()` for native
 Responses, Anthropic Messages or client-executed tools; see the [API reference](../sdk/api.md).
-The SDK does not execute tools. Direct mode sends prompts to the provider;
+The SDK does not execute tools. These APIs must be enabled by the selected
+deployment's model/profile; the public profile above enables Chat Completions.
+Direct mode sends prompts to the provider;
 proxy mode also exposes them to the operator. Mode comes from the profile.
 
 ## 6. Recover and withdraw

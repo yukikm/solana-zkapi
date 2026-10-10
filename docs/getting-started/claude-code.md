@@ -1,4 +1,4 @@
-# Configure Claude Code
+# Evaluate Claude Code inference compatibility
 
 **Claude Code 2.1.220 cannot currently use ZKAPI through configuration alone.**
 Its actual request reaches clientd but is rejected before financial

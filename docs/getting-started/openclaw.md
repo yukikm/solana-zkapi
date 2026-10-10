@@ -1,8 +1,11 @@
-# Use OpenClaw
+# Get started with OpenClaw inference on macOS
 
-OpenClaw uses clientd as a custom OpenAI Chat Completions provider. First
-[install, start and fund clientd](clientd.md). The steps below use the public
-Devnet `.8` installation and **OpenClaw 2026.9.8**.
+OpenClaw can use clientd as a custom inference endpoint through the Chat
+Completions API. First [install, start and fund clientd on macOS](clientd.md).
+The commands below continue that **Apple Silicon macOS** installation, using
+the public Devnet `.8` OpenRouter profile and **OpenClaw 2026.9.8**.
+The `~/Applications/ZKAPI` paths belong to this macOS example; use your existing
+installation and profile paths if they differ, without moving funded state.
 
 Selected public text and read-tool requests passed with an earlier client and
 a bounded settlement adapter. The `.8` client adds native session reuse and
@@ -40,18 +43,22 @@ ZKAPI_OPENCLAW="$ZKAPI_BASE/openclaw/node_modules/.bin/openclaw"
 "$ZKAPI_INSTALL/bin/clientd" request "$ZKAPI_PROFILE" status
 ```
 
-Choose a listed Chat model with text support and, for tool use, client-tool
-support. The example uses the revision-6 catalog ID `openai/gpt-5.6-luna`, a
-32,000-token context limit and the profile's 128-token output limit. Catalog
-membership does not establish funded acceptance for that model.
+Choose an exact model ID from the `models` response with Chat text support and,
+for tool use, client-tool support. Replace `YOUR_LISTED_CHAT_MODEL` below and
+set `ZKAPI_CONTEXT_WINDOW` to a reviewed context size supported by that model.
+The example advertises 32,000 tokens and uses the public profile's 128-token
+output limit. Neither listing a model nor generating configuration establishes
+funded acceptance for it. There is no required model vendor.
 
 ```sh
+ZKAPI_MODEL='YOUR_LISTED_CHAT_MODEL'
+ZKAPI_CONTEXT_WINDOW=32000
 (
   set -eu
   umask 077
   set -C
   "$ZKAPI_INSTALL/bin/clientd" openclaw-config "$ZKAPI_PROFILE" \
-    --model openai/gpt-5.6-luna --context-window 32000 --max-tokens 128 \
+    --model "$ZKAPI_MODEL" --context-window "$ZKAPI_CONTEXT_WINDOW" --max-tokens 128 \
     > "$ZKAPI_BASE/openclaw-zkapi.json"
 )
 ```
@@ -60,6 +67,11 @@ This creates a separate `zkapi` agent with a file reference to the inference
 token, one concurrent request and no fallback models. Keep
 `$ZKAPI_PROFILE/openclaw-agent/settings.json`: it disables provider retries.
 Neither command changes your normal OpenClaw configuration.
+
+The generated OpenClaw field `api: "openai-completions"` names its Chat
+Completions wire format. It does not select OpenAI as the provider. The model
+and route come from your authenticated ZKAPI deployment; this example uses
+OpenRouter.
 
 The generator requires an explicit model entry with `chat` in its API list.
 If it rejects a model, choose a listed Chat model or ask the operator for a

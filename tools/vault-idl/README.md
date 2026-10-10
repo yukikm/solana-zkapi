@@ -36,7 +36,7 @@ Instruction and account layouts remain shared with the local IDL.
 These commands build artifacts only. Before deployment, independently verify
 the RPC genesis, the selected program keypair's public address, actual ELF and
 IDL hashes, initializer and upgrade authorities, mint, pool configuration and
-the approved devnet budget. The build uses the existing public test setup and
-role keys; `production` still fails compilation. The local and devnet features
-are mutually exclusive. Keep devnet artifacts separate from local acceptance
-artifacts and never label this test setup as a production ceremony.
+your deployment's authorized Devnet budget. The build uses the existing public
+test setup and role keys; `production` still fails compilation. The local and
+devnet features are mutually exclusive. Keep devnet artifacts separate from
+local acceptance artifacts and never label this test setup as a production ceremony.

@@ -4,12 +4,15 @@ For installation, funding and application setup, use
 [getting started](../../docs/getting-started/clientd.md).
 See [support](../../docs/support.md) for verified platforms and client compatibility.
 
-The Go frontend serves inference, SSE and wallet management on
-`127.0.0.1:8787`. [`runtime.ts`](runtime.ts) connects it to the SDK's
+The current source Go frontend serves registered POST JSON APIs, inference APIs, SSE and wallet
+management on `127.0.0.1:8787`. [`runtime.ts`](runtime.ts) connects it to the SDK's
 `ClientDaemon`, `ControlClient`, `WalletClient` and encrypted journal. Those
 components own authorization, accounting and recovery; Go adds no financial
 state machine. Native prover/verifier processes run offline with pinned binaries
-and the original circuits.
+and the original circuits. Registered APIs use signed operation descriptors
+and fixed request prices. See the [local JSON API tutorial](../../docs/getting-started/json-api.md).
+This source addition is not in the published `.8` package. The daemon does not
+forward arbitrary caller-selected URLs.
 
 ## Build and verify
 
@@ -94,6 +97,7 @@ promise complete anonymity.
 | `journal`, `custody`, `note_id` | Private journal directory, encrypted custody file and local note ID |
 | `mode` | Explicit `proxy`, `direct_oa` or `direct_openrouter` |
 | `models` | Model/provider/API/tariff entries described below |
+| `services` | Source addition: registered JSON operation tariff files; use `models: []` for API-only configuration |
 | `rpc`, `indexer` | Finalized chain and tree services |
 | `direct_provider_bases` | Optional independently configured direct provider bases |
 | `oa_verifier` | For `direct_oa`: independently trusted `{base, stationId}` |
@@ -165,6 +169,8 @@ reject cross-site access; forwarded headers cannot bypass them.
 | Route | Purpose |
 |---|---|
 | `GET /v1/models` | Validated model allowlist |
+| `GET /zkapi/v1/apis` | Source addition: locally configured JSON operation descriptors |
+| `POST /zkapi/v1/api/{service}/{operation}` | Source addition: registered fixed-price JSON operation |
 | `POST /v1/chat/completions`, `/v1/responses` | Inference in the configured mode |
 | `POST /v1/messages`, `/v1/messages/count_tokens` | Anthropic proxy API |
 | `GET /admin/status` | Redacted financial/recovery state, expiry, unresolved IDs, privacy information and journal head |

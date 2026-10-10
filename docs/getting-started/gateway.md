@@ -1,4 +1,4 @@
-# Configure the public Devnet gateway
+# Configure the public Devnet gateway for OpenRouter inference
 
 First complete [operator setup](proxy-operator.md). The supplied gateway serves
 control, tree and RPC routes for **direct OpenRouter Chat**. It does not relay

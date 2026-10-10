@@ -1,10 +1,45 @@
 # Solana ZKAPI
 
-Pay for AI API usage with USDC on Solana. ZKAPI provides local zero-knowledge
-proofs, usage authorization, signed billing receipts and withdrawals.
+ZKAPI provides USDC payments and zero-knowledge usage authorization for APIs on
+Solana. Its payment lifecycle combines local proofs, capped authorization,
+signed billing receipts and withdrawals.
 SOL pays network fees; balances use integer micro-USDC.
 
 **Devnet preview.** See [supported clients and limits](docs/support.md).
+
+ZKAPI's payment lifecycle is independent of the API's application domain.
+This source tree includes registered, fixed-price JSON operations and inference
+adapters. Both reuse the same wallet, authorization, accounting and settlement.
+The JSON API integration is a local development capability; published `.8`
+packages and the existing public deployment retain their recorded inference scope.
+
+## Get started
+
+Start with **[API integration and the payment lifecycle](docs/getting-started/api-integration.md)**.
+The [Getting started index](docs/getting-started/README.md) separates general
+integration concepts, inference tutorials and operator procedures.
+
+| I want to… | Guide |
+|---|---|
+| Understand how ZKAPI fits an API | [API integration](docs/getting-started/api-integration.md) |
+| Verify a fixed-price JSON API locally | [JSON API tutorial](docs/getting-started/json-api.md) |
+| Extend ZKAPI to another API | [Integration requirements](docs/getting-started/api-integration.md#integrate-another-kind-of-api) |
+| Use the implemented inference APIs | [Inference API getting started](docs/getting-started/inference.md) |
+| Add inference to an application | [Inference SDK tutorial](docs/getting-started/sdk.md) |
+| Get Devnet funds and connection details | [Devnet](docs/getting-started/devnet.md) |
+| Run authorization and settlement services | [Operator setup](docs/getting-started/proxy-operator.md) |
+
+The [inference guides](docs/getting-started/inference.md) cover clientd,
+OpenClaw, other AI clients and provider adapters. The published native package
+supports Apple Silicon Macs; its installation guide is explicitly for macOS.
+The SDK is distributed as a tarball. The
+[reference chat app](https://github.com/yukikm/solana-zkapi-client) is an inference
+application maintained separately.
+
+In direct mode, requests go to the selected provider. In proxy mode, the
+operator also receives request and response content. ZK proofs do not make
+that content private from its recipients, prove API response correctness or
+provide network anonymity.
 
 ## Public Devnet addresses
 
@@ -21,29 +56,6 @@ Program, Pool and mint are pinned in the [public manifest](https://d366buuvadnp3
 the Vault is the Pool's derived USDC token account. Deposit through
 [clientd](docs/getting-started/clientd.md) or the [SDK](docs/getting-started/sdk.md):
 a direct token transfer to the Vault does not create a ZKAPI note.
-
-## Get started
-
-Start with **[docs/getting-started](docs/getting-started/README.md)**.
-
-| I want to… | Guide |
-|---|---|
-| Install and run clientd | [clientd](docs/getting-started/clientd.md) |
-| Use OpenClaw | [OpenClaw](docs/getting-started/openclaw.md) |
-| Configure Claude Desktop | [Claude Desktop and current limits](docs/getting-started/claude-desktop.md) |
-| Configure Claude Code or Codex | [Claude Code](docs/getting-started/claude-code.md) · [Codex](docs/getting-started/codex.md) |
-| Add ZKAPI to an application | [SDK](docs/getting-started/sdk.md) |
-| Get Devnet funds and connection details | [Devnet](docs/getting-started/devnet.md) |
-| Run a proxy or access service | [Operator setup](docs/getting-started/proxy-operator.md) |
-| Connect an API provider | [Provider setup](docs/getting-started/api-provider.md) |
-
-The native download supports Apple Silicon Macs. The SDK is distributed as a
-tarball. The [reference chat app](https://github.com/yukikm/solana-zkapi-client)
-is maintained separately.
-
-In direct mode, requests go to the selected provider. In proxy mode, the
-operator also receives prompts and responses. ZK proofs do not make the
-provider's inputs private or provide network anonymity.
 
 ## Documentation
 

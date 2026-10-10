@@ -1,6 +1,7 @@
-# Independent public-profile consumer
+# Public Devnet inference consumer
 
-This small integration imports only published SDK exports. Copy this directory
+This example uses the public Devnet inference profile and includes a browser
+chat integration. It imports only published SDK exports. Copy this directory
 to an independent application and install the **reviewed SDK tarball matching the
 authenticated profile's `sdkVersions`** and containing `@zkapi/solana-sdk/public-profile`.
 Use the

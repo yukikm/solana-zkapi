@@ -1,6 +1,10 @@
-# Provider adapters
+# API provider adapters
 
-`controld serve` now connects direct issuance and the native inference routes to
+The source tree supports registered fixed-price JSON operations alongside
+inference adapters. Both use explicit authentication, request validation, usage
+accounting and recovery semantics.
+
+`controld serve` connects direct issuance, JSON operations and inference routes to
 one `Ledger` and the existing isolated signer. `RuntimeConfig.providers` defaults
 to empty, so local fixture configurations remain valid. Enabling the synthetic
 `i05-local-only` adapter does not enable any provider HTTP adapter.
@@ -12,13 +16,52 @@ manifest/genesis/pool/build validation, a matching connected database deployment
 and manifest identity, and a dedicated read-only Unix PostgreSQL role. It does
 not promote the known test setup to production. Live provider permissions/usage,
 external egress fencing, production secret management, wallet UI and release
-gates remain separate acceptance work. See [provider preparation](../../docs/testing.md)
-for `.env` credentials, the approved 10 USDC campaign, exact model/price pins,
-and the no-replay reservation journal.
+gates remain separate acceptance work. See
+[inference provider setup](../../docs/getting-started/api-provider.md) for
+credentials and model/price pins, [operator setup](../../docs/getting-started/proxy-operator.md)
+for deployment, and [testing](../../docs/testing.md) for local verification.
+Live tests require the operator's own explicitly authorized budget.
 The provider adapter implementation is exercised with HTTP fixtures, not a claim
 that those fixtures are provider attestations.
 
-## Configuration
+## Registered JSON operations
+
+`providers.api` is an array of `{ "api": ApiBinding, "credential_file": "/absolute/private/path" }`
+entries. Each descriptor registers one service/operation, upstream origin and
+POST path, request/response byte limits, deadline and `http_2xx_json` billing.
+The complete descriptor must match a version 2 `fixed_request` tariff, with
+one positive integer nano-USDC rate for unit `requests`, denominator `1` and
+zero operator fee. Tariffs are pinned in the deployment manifest and signed
+quote. No model name or token count is needed.
+
+Clients call `POST /zkapi/v1/api/{service}/{operation}` with JSON, the existing
+proxy bearer token and UUIDv4 `Idempotency-Key`. A complete valid 2xx JSON
+response costs one request; a terminal non-2xx response costs zero. A lost,
+oversized or invalid 2xx response remains unknown and uses the existing drain,
+fencing and operator-loss waiver rules. It is never automatically resent.
+An upstream rejection is returned as a bounded 502 JSON error; upstream error
+bodies and response headers are not forwarded.
+
+The dispatcher independently checks the saved quote, frozen tariff, exact
+operation path, reservation and secret-keyed request HMAC before claiming and
+sending the attempt. Only the configured Bearer credential and fixed JSON
+headers go upstream. Destinations are operator-registered, HTTPS with public
+DNS-pinned addresses outside local fixtures; redirects, retries and environment
+proxies are disabled. Local fixtures require numeric loopback HTTP.
+
+The existing manifest field `inference_api_origin` remains the API execution
+origin for compatibility. Existing database/journal versions are preserved:
+generic operation rows have an empty legacy `model` column and use the same
+durable proxy dispatch machinery, while their API scope lives in the frozen
+quote and tariff. A source update does not rewrite any funded manifest or Pool.
+
+Follow the [JSON API tutorial](../../docs/getting-started/json-api.md) for local
+configuration and deposit-to-withdrawal verification. This initial capability
+does not establish public-deployment or published-client support. Other HTTP
+methods, credential schemes, response formats and billing rules need explicit
+extensions to this adapter contract.
+
+## Inference configuration
 
 Add `providers` to the private control configuration:
 

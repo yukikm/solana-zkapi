@@ -1,10 +1,19 @@
-# Install and run clientd
+# Get started with inference on macOS (clientd)
 
-clientd runs a local API for AI applications and manages ZKAPI funding and
-settlement. The ready-built package supports **Apple Silicon, macOS 13.5+**.
+This guide connects AI applications to ZKAPI through clientd's local inference
+API, using the public Devnet OpenRouter deployment. It covers one API integration;
+see the [getting-started index](README.md) for ZKAPI's broader API model.
+
+clientd manages local inference, funding and settlement. These installation
+commands are for **Apple Silicon, macOS 13.5+** and use the ready-built package.
 It includes Node and the proof binaries. You need Terminal and Python 3; no
 repository checkout, npm, Go or Rust is required. The package is not Apple
 signed or notarized.
+
+`~/Applications/ZKAPI` is a directory chosen for this macOS example, not a
+required ZKAPI layout. Other platforms require a separately built and verified
+distribution; see [building clientd](../../apps/clientd/README.md#build-and-verify)
+and the current [platform support](../support.md).
 
 These instructions create a new public Devnet installation. Keep an existing
 funded installation, profile and journal unchanged; see
@@ -184,7 +193,8 @@ For the public Devnet profile:
 
 | Setting | Value |
 |---|---|
-| API | OpenAI Chat Completions |
+| API format | Chat Completions (`POST /v1/chat/completions`) |
+| Provider route | OpenRouter, through the authenticated public profile |
 | Base URL | `http://127.0.0.1:8787/v1` |
 | API key | Contents of `profile-devnet8/inference-token` |
 | Model | An exact ID from the `models` command |

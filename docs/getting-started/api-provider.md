@@ -1,8 +1,13 @@
-# Connect an API provider
+# Connect an inference API provider
 
-An API provider supplies inference and usage accounting. A ZKAPI operator runs
-authorization and settlement. If you are using ZKAPI as a customer, follow
-[clientd](clientd.md) or [SDK setup](sdk.md); you do not need a provider key.
+This guide configures the inference adapters shipped with ZKAPI. The provider
+supplies the API and usage accounting; the ZKAPI operator runs authorization and
+settlement. For the shared payment lifecycle and integration requirements for
+other kinds of API, start with [General API integration](api-integration.md).
+
+If you are using an existing inference deployment as a customer, follow
+[Inference API getting started](inference.md), [clientd](clientd.md) or the
+[inference SDK tutorial](sdk.md); you do not need a provider key.
 
 ## 1. Choose a supported adapter
 
@@ -23,6 +28,9 @@ An arbitrary OpenAI-compatible base URL cannot be registered through configurati
 Proxy targets are fixed in the adapters; `local_test_base` is only for loopback
 test fixtures. Supporting a new provider requires an adapter and its usage,
 settlement and recovery tests. Reuse the existing ledger and dispatcher.
+For a non-inference service, start with the [fixed-price JSON API guide](json-api.md).
+Its registered operations use a separate request-price contract without model
+or token fields. Other API formats need explicit adapters and accounting rules.
 
 ## 2. Prepare credentials
 

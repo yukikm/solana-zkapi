@@ -17,6 +17,7 @@ needed for the changed component. Commands below run from the repository root.
 | Challenger | `python3 scripts/run_i09_challenger.py` |
 | Operations and restore | `python3 scripts/run_i09_operations.py` |
 | Compact deposits | `python3 scripts/run_single_deposit_acceptance.py` |
+| Fixed-price JSON API lifecycle | `python3 scripts/run_general_api.py` |
 
 Rust/SBF suites need pinned tools, proof artifacts and component prerequisites.
 See the [clientd](../apps/clientd/README.md), [control](../services/control/README.md),
@@ -28,6 +29,14 @@ Ordinary checks use local fixtures and do not need provider keys or public-chain
 transactions. Synthetic responses do not establish live provider compatibility.
 Public provider or wallet tests require separate authorization and fresh capacity;
 never replay a historical lifecycle.
+
+The JSON API runner uses a fresh disposable PostgreSQL database, encrypted
+journal, native proof process, independent signer and dispatcher, and the
+current Vault ELF in LiteSVM. Provider responses and RPC finality are fixtures;
+proof verification, settlement signatures and SBF token movements are real
+local execution. Each run retains its own report in
+`target/general-api-local/run-*`. See the [JSON API guide](getting-started/json-api.md)
+for pinned tools and proof-artifact prerequisites.
 
 Generated reports are ignored local outputs; CI may retain them as artifacts.
 Fresh clones must not require old run reports. Stable regression data belongs in

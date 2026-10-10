@@ -5,14 +5,16 @@ session recovery. Provider adapters use the same PostgreSQL ledger. The separate
 signer verifies immutable settlement targets and retains an append-only journal.
 
 For installation and startup, follow [Run a ZKAPI operator](../../docs/getting-started/proxy-operator.md).
-For models and credentials, use [API provider setup](../../docs/getting-started/api-provider.md)
+For models and credentials, use [inference provider setup](../../docs/getting-started/api-provider.md)
 and the [adapter reference](PROVIDERS.md).
+Registered fixed-price JSON operations are described in the
+[local JSON API guide](../../docs/getting-started/json-api.md).
 
 ## Processes
 
 | Binary | Responsibility |
 |---|---|
-| `controld` | Migrations, Pool provisioning, control/inference HTTP and the sole financial writer |
+| `controld` | Migrations, Pool provisioning, control and API HTTP, and the sole financial writer |
 | `signerd` | Settlement and clearance signing, with a separate read-only ledger connection and sign-once journal |
 | `dispatcherd` | Provider calls bound to durable ledger attempts and persistent one-use claims |
 | `opsd` | Private read-only dashboard, monitoring, checkpoints and restore verification |
@@ -44,7 +46,7 @@ automatically replayable.
 | `signer_socket` | Absolute private Unix socket path |
 | `quote_seed_file`, `receipt_seed_file` | Separate owner-only 32-byte Ed25519 seeds matching the manifest |
 | `enable_local_adapter` | Enables only the synthetic local adapter; use `false` for real providers |
-| `providers` | Direct/proxy adapters and optional pinned dispatcher process |
+| `providers` | Direct/proxy inference adapters, registered `api` operations and optional pinned dispatcher process |
 | `tariffs` | Exact signed-quote tariff inputs, with hashes listed in the manifest |
 
 Devnet configuration verifies build, IDL, program and setup bindings. It requires
@@ -64,7 +66,10 @@ before admitting new work.
 `/zkapi/v1` exposes config, catalog, tariffs, quotes, session authorization/status,
 operations, receipts, close, withdrawal clearance and nullifier status. The
 [indexer](../indexer/README.md) serves tree routes. Configured provider adapters
-serve supported `/v1/*` inference routes. See the [OpenAPI contract](../../docs/contracts/openapi.json).
+serve supported `/v1/*` inference routes and registered
+`POST /zkapi/v1/api/{service}/{operation}` JSON operations. Generic operation
+descriptors and version 2 tariffs carry no model or token billing requirement.
+See the [OpenAPI contract](../../docs/contracts/openapi.json).
 
 `GET /zkapi/v1/readiness` samples control, finalized chain, indexer and signer
 state with a 25-second deadline and a five-second cache. Limited transient RPC
@@ -98,9 +103,14 @@ The runners create disposable databases and write local results under `target/`:
 bash scripts/run_i05.sh
 bash scripts/run_i06_i07.sh
 python3 scripts/run_i09_operations.py
+python3 scripts/run_general_api.py
 ```
 
 These cover real local proofs/signatures, Vault SBF, synthetic provider HTTP,
 process interruption, signer transport and database recovery. They do not make
 paid provider calls or establish public-service availability.
 See [testing](../../docs/testing.md) for prerequisites and test scopes.
+The JSON API runner creates a unique `target/general-api-local/run-*` directory
+for each run and verifies actual local proofs and Vault SBF execution with
+synthetic provider HTTP and RPC finality. It does not open funded profiles or
+reuse historical journals.

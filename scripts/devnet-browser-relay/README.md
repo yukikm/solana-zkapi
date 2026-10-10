@@ -36,6 +36,6 @@ custody. Do not initialize replacement state or overwrite a funded journal. The
 existing running host and previously authenticated output can continue running
 while the source moves; restarting requires the new command above.
 
-`prepare_browser_chat_devnet.ts` remains an offline operator helper for the
-existing devnet campaign. Its private configuration is not an SDK distribution
+`prepare_browser_chat_devnet.ts` is an offline operator helper for a
+Devnet chat deployment. Its private configuration is not an SDK distribution
 artifact. New app integration follows the [SDK deployment guide](../../docs/sdk/deployment.md).

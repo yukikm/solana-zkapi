@@ -1,4 +1,4 @@
-# Model selection
+# Inference model selection
 
 The public Devnet profile uses **direct OpenRouter Chat Completions**. Its
 `provider` is `openrouter`, including for Claude model IDs. It does not provide
@@ -19,7 +19,7 @@ availability or successful inference.
 
 The public gateway exposes two read-only endpoints:
 
-- `GET /zkapi/v1/models`: configured model IDs in an OpenAI-style list.
+- `GET /zkapi/v1/models`: configured model IDs in a JSON `data` array.
 - `GET /zkapi/v1/client-profile`: a profile URL and digest.
 
 Discovery performs no authorization, inference or custody initialization.

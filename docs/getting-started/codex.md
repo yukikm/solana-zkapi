@@ -1,4 +1,4 @@
-# Configure Codex
+# Evaluate Codex inference compatibility
 
 **Codex CLI 0.145.0 cannot currently use ZKAPI through configuration alone.**
 Its Responses request is rejected before financial authorization. Desktop
@@ -49,11 +49,14 @@ extra fields and tool forms. Changing the URL, disabling optional features or
 selecting proxy mode does not resolve this.
 
 Do not fund a note for this configuration check or strip fields to force it
-through admission. Contributors can use the repository's synthetic probe:
+through admission. Contributors can run the repository's synthetic probe from
+the repository root with Node 24.19.0 and Go 1.25.0. Replace both executable
+paths with your own installations:
 
 ```sh
 ZKAPI_CODEX=/absolute/path/to/codex \
-  target/i08-toolchain/bin/node scripts/run_codex_clientd_acceptance.ts \
+ZKAPI_GO=/absolute/path/to/go \
+  node scripts/run_codex_clientd_acceptance.ts \
   target/codex-clientd-acceptance
 ```
 

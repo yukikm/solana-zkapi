@@ -2,8 +2,11 @@
 
 Import `createZkApiClient` and types from `@zkapi/solana-sdk`. Browser apps normally
 use `createBrowserClient` from `@zkapi/solana-sdk/browser`.
-This reference describes SDK `.8`; the [source types](../../packages/sdk/src/client.ts)
-are the exact contract. Older clients retain their release-specific behavior.
+The [source types](../../packages/sdk/src/client.ts) are the exact contract.
+Published SDK `.8` retains its inference interfaces. The current source also
+adds registered fixed-price POST JSON APIs, marked below; this addition has
+not changed published packages or existing deployment profiles. All adapters
+use the same wallet, journal, authorization and settlement lifecycle.
 
 `ClientDeployment.connection` is a native Kit `Rpc<SolanaRpcApi>`. `V0Wallet`
 keeps the `publicKey` property name but its value is a Kit `Address` string;
@@ -14,7 +17,9 @@ keeps the `publicKey` property name but its value is a Kit `Address` string;
 
 `createZkApiClient(options): Promise<ZkApiClient>` takes a deployment bundle,
 `{store, key}` custody, an offline `ClientProver`, selected `V0Wallet`, stable
-`noteId`, explicit `mode` and model configurations. It constructs the original
+`noteId`, explicit `mode`, model configurations and optional `services`. Use
+`models: []` for an installation containing only registered API services.
+It constructs the original
 wallet, control, journal and session lifecycle. It validates manifest,
 PoolConfig and artifacts; the prover runs the existing cryptographic verifier.
 The factory provides no caller-supplied “always accept” verifier.
@@ -37,12 +42,14 @@ Use the factory for new apps. No additional financial journal is created.
 | Method | Behavior |
 |---|---|
 | `listModels()` | Detached configured IDs/labels/providers/APIs; not live discovery |
+| `listApis()` | Source addition: detached registered JSON operation descriptors |
 | `status()` | Local redacted wallet/session/balance/expiry read; no network mutation |
 | `upgradePlan()` | Local guidance for a separate installation; blocks pending recovery and unclosed notes |
 | `checkModelAvailability(signal?)` | Explicit keyless ZDR metadata check through the installed transport; no inference |
 | `subscribe(listener)` | Initial status and local action-boundary updates; returns unsubscribe |
 | `chat({operationId, sessionId?, model, messages, maxOutputTokens, stream?, signal?})` | Text Chat Completions; returns one-use `Response` |
 | `request({operationId, sessionId?, model, api, body, anthropicVersion?, signal?})` | Native request; `api`: `chat`, `responses`, `messages` |
+| `requestApi({operationId, service, operation, body, signal?})` | Source addition: registered fixed-price POST JSON operation; returns one-use `Response` |
 | `settle()` | Ask saved session to close; inspect status afterward |
 | `recover()` | Reconcile/close saved AUTH; never replay inference |
 | `cancelUnsentAuthorization()` | Cancel an AUTH proven locally never sent |
@@ -57,9 +64,33 @@ The response carries `X-Zkapi-Operation-Id`. Raw responses can have non-2xx
 status; inspect `response.ok` or use the helpers. Do not log raw provider errors.
 
 Native `body` omits `model`, selected separately. Supply `anthropicVersion` only
-for Messages. The protocol supports text and client-executed tools, not arbitrary
-media, hosted tools or persisted Responses. Shape validation remains with the
-established adapters. There is no cross-provider conversion or mode fallback.
+for Messages. The current inference adapters support text and client-executed
+tools, not arbitrary media, hosted tools or persisted Responses. Shape validation
+remains with the established adapters. There is no cross-provider conversion or
+mode fallback.
+
+## Registered JSON APIs (source addition)
+
+`services` is a list of `{tariff: ApiTariff}`. Each version 2 tariff contains its
+complete `ApiBinding`, `provider: "generic"`, `pricing_basis: "fixed_request"`,
+one `requests` rate and no model. The factory authenticates its hash against
+the manifest. Services require explicit proxy mode and unique
+`service`/`operation` pairs; the application does not supply upstream URLs.
+See [the JSON API tutorial](../getting-started/json-api.md) for configuration and
+the runnable local funding-to-withdrawal check.
+
+`requestApi` accepts any strict JSON value within the descriptor's request
+limit. Its operation ID follows the same durable UUIDv4 and nonreplay rules as
+inference. Consume or cancel its response. Generic sessions close after each
+response even when direct-key reuse is configured. Failed settlement remains
+pending and blocks another authorization. `settle()`, `recover()`, wallet
+methods and status all refer to the same note and history.
+
+Lower-level integrations use `ControlClient.quoteApi(api, tariff, signal?)`
+and the ordinary `NoteProver.prepareSession`, `ControlClient.prepare/submit`
+and `ClientDaemon.requestApi`. Native runtime configuration accepts
+`services: [{tariff: "/absolute/tariff.json"}]` in addition to model entries.
+Existing journals and legacy signed inference objects stay unchanged.
 
 ## Direct-session reuse
 
@@ -155,7 +186,7 @@ with the signed settlement path, not these parsers.
 
 ## Local request-body erasure (.7)
 
-`await client.purgeSettledRequestBodies()` removes inference bodies and fingerprints from
+`await client.purgeSettledRequestBodies()` removes API request bodies and fingerprints from
 settled history and settled emergency copies, preserving financial and recovery
 evidence. It returns `{historyOperations, emergencyOperations}` and performs no
 network or wallet action. Active requests and unresolved escape archives remain.
