@@ -6,7 +6,7 @@ before AUTH or provider dispatch. Keep this integration experimental; the
 configuration below is a connection template, not a supported inference setup.
 Do not fund a note just to reproduce this configuration check.
 
-The [recorded probe](../evidence/I10-codex-configuration-results.json) ran the
+The [recorded probe](https://github.com/yukikm/solana-zkapi/blob/ea4cb0ac005832abae6e703eb177914c0c9aa193/docs/evidence/I10-codex-configuration-results.json) ran the
 installed CLI in temporary home, Codex state and working directories. It changed
 no user settings and used no real provider credentials or funds. The production
 Go frontend and shared SDK rejected one unchanged request. Separately, a

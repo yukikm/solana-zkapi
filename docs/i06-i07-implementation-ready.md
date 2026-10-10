@@ -1,8 +1,8 @@
 # I06/I07 実装引き継ぎ
 
 2026-10-04 JST。I06 direct / I07 proxyのlocal実装・検証を完了した。
-実行結果は[I06](evidence/I06.md)、[I07](evidence/I07.md)、
-[統合結果](evidence/I06-I07-results.json)を正本とする。
+実行結果は[I06](https://github.com/yukikm/solana-zkapi/blob/ea4cb0ac005832abae6e703eb177914c0c9aa193/docs/evidence/I06.md)、[I07](https://github.com/yukikm/solana-zkapi/blob/ea4cb0ac005832abae6e703eb177914c0c9aa193/docs/evidence/I07.md)、
+[統合結果](https://github.com/yukikm/solana-zkapi/blob/ea4cb0ac005832abae6e703eb177914c0c9aa193/docs/evidence/I06-I07-results.json)を正本とする。
 2026-10-04のレビューで7件を修正し、59テスト・実Vault SBF 10取引を再検証した。I08/I09のlocal実装着手Readyとする（実provider/公開gate合格ではない）。
 次はI08 SDK/WASM・clientd、I09 challenger・運用である。具体的な着手順序・接続先・受入条件は[I08/I09実装開始契約](i08-i09-implementation-ready.md)を読む。
 

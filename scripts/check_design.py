@@ -23,6 +23,8 @@ def read_json(path):
 
 documents = {}
 for path in sorted((ROOT/'docs').rglob('*.json')):
+    if path.is_relative_to(ROOT/'docs/evidence'):
+        continue
     try: documents[path.relative_to(ROOT).as_posix()] = read_json(path)
     except Exception as exc: errors.append(f'{path}: {exc}')
 
@@ -122,8 +124,6 @@ check(reference['observed_mainnet_sdk_config']['trusted_deployment']['billing_as
 check({x['id'] for x in reference['work_items']}=={f'I{i:02}' for i in range(1,13)},'Task IDs')
 for item in reference['work_items']:
     check(item['status'] in ('not_started','in_progress','completed','blocked'), 'Unknown implementation status')
-    if item['status']!='not_started':
-        check((ROOT/'docs/evidence'/f'{item["id"]}.md').is_file(), 'Missing implementation evidence '+item['id'])
 
 parity=(ROOT/'docs/production-parity.md').read_text()
 features=re.findall(r'^\| (P\d\d) \|',parity,re.M)
@@ -175,10 +175,8 @@ check(re.findall(r'^\| (TT\d\d) \|',tree_spec,re.M)==[f'TT{i:02}' for i in range
       'Tree transition acceptance matrix')
 
 link_count=0
-# Historical evidence keeps the exact paths tested at that source revision.
-# Presentation source moved to an independent repository; current guides must
-# use current links, while these explicitly inventoried historical links refer
-# to the immutable original Git snapshot recorded in source-migrations.json.
+# Keep the source-migration provenance valid. Historical reports now live outside
+# the current tree; current guides must resolve without local report copies.
 migrations = documents.get('docs/source-migrations.json', {})
 historical_paths = migrations.get('paths', {})
 check(migrations.get('schema') == 1 and bool(re.fullmatch(r'[0-9a-f]{40}', migrations.get('source_revision', ''))),
@@ -188,6 +186,8 @@ for name, entry in historical_paths.items():
           and '..' not in Path(name).parts and bool(re.fullmatch(r'[0-9a-f]{64}', entry.get('sha256', ''))),
           'Invalid historical source migration: ' + name)
 for path in [ROOT/'README.md', *sorted((ROOT/'docs').rglob('*.md'))]:
+    if path.is_relative_to(ROOT/'docs/evidence'):
+        continue
     text=path.read_text()
     check(text.count('```')%2==0,'Unclosed code fence '+str(path))
     for link in re.findall(r'\]\(([^)]+)\)',text):
@@ -196,10 +196,9 @@ for path in [ROOT/'README.md', *sorted((ROOT/'docs').rglob('*.md'))]:
         if not link: continue
         link_count+=1
         target = (path.parent/link).resolve()
-        historical = False
-        if path.is_relative_to(ROOT/'docs/evidence') and target.is_relative_to(ROOT):
-            historical = target.relative_to(ROOT).as_posix() in historical_paths
-        check(target.exists() or historical, f'Broken local link {path.name}: {link}')
+        check(not target.is_relative_to(ROOT/'docs/evidence'),
+              f'Public documentation links to local-only evidence {path.name}: {link}')
+        check(target.exists(), f'Broken local link {path.name}: {link}')
 
 generated=subprocess.run([sys.executable,str(ROOT/'work/design/generate_contracts.py'),'--check'],capture_output=True,text=True)
 check(generated.returncode==0, generated.stdout+generated.stderr)

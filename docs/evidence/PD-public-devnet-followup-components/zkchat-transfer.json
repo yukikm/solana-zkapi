@@ -1,8 +1,0 @@
-{
-  "passed": true,
-  "files": 11,
-  "destination": "/Users/yukikimura/work/zkchat",
-  "manifest_sha256": "31c82d2e7312a0ea6f4cfba2e10e46ee1ed400fbf881f7bd4e2941032e4f2c2d",
-  "public_config_unchanged": true,
-  "e2e_frozen_log_sha256": "801674085ee64a8ef6739bf834b13fa68b5dbf6040bbe8b86dd48b851b0dd977"
-}

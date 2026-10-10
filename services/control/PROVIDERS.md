@@ -129,7 +129,7 @@ assumption. It is not provider invoice finality: delayed/unobserved cost belongs
 to the operator and cannot increase a settled customer charge. An observed zero
 is valid, but neither zero nor repeated equal samples proves absence of external
 cost. Exact decimal arithmetic and cap/receipt guards remain unchanged. The
-[parity record](../../docs/evidence/PD-openrouter-ethereum-parity.md) currently
+[parity record](https://github.com/yukikm/solana-zkapi/blob/ea4cb0ac005832abae6e703eb177914c0c9aa193/docs/evidence/PD-openrouter-ethereum-parity.md) currently
 labels the local successor as a candidate; it does not relabel the deployed
 historical two-sample implementation. Upstream defaults are grace 5 seconds and
 settlement polling 2 seconds; configured values are explicit operator choices.

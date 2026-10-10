@@ -20,8 +20,8 @@ The existing data volume was expanded from 20 to 40 GiB, then to 80 GiB on
 2026-10-08, without replacement. The original 48-GiB / USD 38.369 plan and
 the intermediate 68-GiB / USD 39.969 estimate remain historical. The final
 40-to-80-GiB increase adds USD 3.20 per full month at the retained rate. See the
-[initial storage checkpoint](../../docs/evidence/PD-rpc-migration-startup.md) and
-[80-GiB capacity record](../../docs/evidence/PD-preview-capacity-80g.md).
+[initial storage checkpoint](https://github.com/yukikm/solana-zkapi/blob/ea4cb0ac005832abae6e703eb177914c0c9aa193/docs/evidence/PD-rpc-migration-startup.md) and
+[80-GiB capacity record](https://github.com/yukikm/solana-zkapi/blob/ea4cb0ac005832abae6e703eb177914c0c9aa193/docs/evidence/PD-preview-capacity-80g.md).
 The temporary Unlimited CPU setting was restored to Standard at 18:21:52 UTC.
 Storage migration back to 40 GiB remains undecided in the
 [root handoff](../../README.md#current-handoff--2026-10-09-jst).
@@ -50,7 +50,7 @@ External RPC fees and AI provider consumption are separate. Sources:
 The price fit does **not** establish runtime fit. Inspection found unbounded
 challenger archive retention/rewrite and an indexer block-digest map. A fresh
 Pool alone does not bound ongoing memory, CPU or disk. The
-[capacity review](../../docs/evidence/PD-runtime-capacity-review.md) records the
+[capacity review](https://github.com/yukikm/solana-zkapi/blob/ea4cb0ac005832abae6e703eb177914c0c9aa193/docs/evidence/PD-runtime-capacity-review.md) records the
 required implementation and measured Linux acceptance before a month-long
 deployment can be claimed. Neither 4 GiB nor the earlier 16 GiB has proven
 sustainable operation. The original cost review changed no services, funded state or AWS resources.

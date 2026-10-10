@@ -13,7 +13,7 @@ synthetic control/provider/proof fixtures through the production Go frontend
 and compiled SDK. The separate native Vault test covers the complete installed
 clientd supervisor, process restart and real local SBF.
 
-A separate [actual devnet run](../evidence/I10-openclaw-devnet.md) completed
+A separate [actual devnet run](https://github.com/yukikm/solana-zkapi/blob/ea4cb0ac005832abae6e703eb177914c0c9aa193/docs/evidence/I10-openclaw-devnet.md) completed
 funding, OpenClaw streamed text, one real read tool and its continuation, signed
 settlement, clean settled restart and ordinary withdrawal. It used the installed
 native runtime and production Go HTTP handler with a bounded operator devnet

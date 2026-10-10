@@ -1,6 +1,6 @@
 # Session reuse preview — SDK and clientd 0.2.0-devnet.6
 
-[Publication verified](../evidence/PD-sdk6-publication-20261009.md): SDK/native `.6`, both client-preview CI jobs,
+[Publication verified](https://github.com/yukikm/solana-zkapi/blob/ea4cb0ac005832abae6e703eb177914c0c9aa193/docs/evidence/PD-sdk6-publication-20261009.md): SDK/native `.6`, both client-preview CI jobs,
 six anonymous asset downloads and all release/asset attestations passed. Full
 implementation CI was still running at the recorded release cut.
 
@@ -23,7 +23,7 @@ Settlement still occurs on expiry, explicit close, cancellation/error or renewal
 Before a new AUTH, the client verifies the old session's signed settlement. Only
 fully consumed successful responses from the same process allow automatic
 settlement waiting. Interrupted or uncertain operations require explicit recovery;
-inference is never replayed. The [implementation comparison](../evidence/PD-session-reuse-20261009.md)
+inference is never replayed. The [implementation comparison](https://github.com/yukikm/solana-zkapi/blob/ea4cb0ac005832abae6e703eb177914c0c9aa193/docs/evidence/PD-session-reuse-20261009.md)
 records the pinned Ethereum behavior, local tests and retained initial failures.
 
 ## New-consumer profile

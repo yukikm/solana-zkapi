@@ -6,11 +6,11 @@ original design. The user selected the roughly USD50/month
 [US East budget configuration](aws-budget-host.md): a 4 GiB `t3a.medium` operator,
 separate `t3a.nano` HTTPS NAT instance, initially with 48 GiB total encrypted gp3
 storage. The existing data volume was later expanded from 20 to 40 GiB, then
-to 80 GiB, making the current total 108 GiB. The [initial storage checkpoint](../../docs/evidence/PD-rpc-migration-startup.md)
-and [80-GiB record](../../docs/evidence/PD-preview-capacity-80g.md) preserve these
+to 80 GiB, making the current total 108 GiB. The [initial storage checkpoint](https://github.com/yukikm/solana-zkapi/blob/ea4cb0ac005832abae6e703eb177914c0c9aa193/docs/evidence/PD-rpc-migration-startup.md)
+and [80-GiB record](https://github.com/yukikm/solana-zkapi/blob/ea4cb0ac005832abae6e703eb177914c0c9aa193/docs/evidence/PD-preview-capacity-80g.md) preserve these
 separate changes. CPU credits are back to Standard; the [root handoff](../../README.md)
 records the remaining storage decision. The original design below remains historical.
-The [actual infrastructure record](../../docs/evidence/PD-aws-live-infrastructure.md)
+The [actual infrastructure record](https://github.com/yukikm/solana-zkapi/blob/ea4cb0ac005832abae6e703eb177914c0c9aa193/docs/evidence/PD-aws-live-infrastructure.md)
 and [current public-input guide](../../docs/sdk/public-devnet-preview.md) describe
 the deployed resources and publication checkpoint. Operator catch-up and funded
 acceptance remain in progress. Long-term capacity qualification is excluded
@@ -343,7 +343,7 @@ existing output directory. All request/withdrawal/tree keys, IDL, source bundle,
 verifier constants, extra build artifacts and exact WASM must be present. A
 compiled SDK or native archive alone does not satisfy this dependency. The four unchanged upstream setup-file decisions are now recorded in
 [`upstream-setup-distribution.json`](upstream-setup-distribution.json), with the
-source evidence in [PD-02-redistribution-followup.md](../../docs/evidence/PD-02-redistribution-followup.md).
+source evidence in [PD-02-redistribution-followup.md](https://github.com/yukikm/solana-zkapi/blob/ea4cb0ac005832abae6e703eb177914c0c9aa193/docs/evidence/PD-02-redistribution-followup.md).
 Include their five exact authenticated notices and review the remaining bundle
 components before exposing the complete public asset tree. Publish all exact file sizes/digests and setup limitations, then
 verify anonymous downloads through real TLS and the independent installed SDK.

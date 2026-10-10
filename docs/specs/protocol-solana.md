@@ -177,7 +177,7 @@ createでVecを最終payload_lenまでゼロ埋めし、nonce位置を固定す�
 
 [ADR-0001](../adr/0001-proof-bound-tree-transition.md)により追加tree Groth16証明（`transition_proof`）、`proof_bound` tag検証、layout 2を採用する。元のrequest/withdrawal回路・Poseidon・32段treeは維持する。tree回路がleaf、旧新root、同じpath、op、値域、transition_tagを制約し、programは固定VKで全11公開入力を検証する。programによるtag/leaf/pathのPoseidon再計算は要求しない。実状態・命令・認可proofとの照合は[tree-transition仕様](tree-transition.md)に定義する。
 
-[I02の実測](../evidence/I02.md)ではtag再計算を省く研究用案が365,907〜671,266 CU。その後[I02-B](../evidence/I02B.md)で現仕様へ標準化し、実SBFの257ケース、最大317,443 CUを確認した。[I03](../evidence/I03.md)ではVault account/ATA/PDA/CPI/eventを統合して最大426,765 CUを確認。[I04](../evidence/I04.md)でv0 buffer・SDK署名・indexerをlocal検証し最大426,830 CU / 1,232 bytes。target cluster/walletを含むG1は未合格。元tree直接計算・tag再計算付きfallbackのCU超過は比較用の履歴として保持する。
+[I02の実測](https://github.com/yukikm/solana-zkapi/blob/ea4cb0ac005832abae6e703eb177914c0c9aa193/docs/evidence/I02.md)ではtag再計算を省く研究用案が365,907〜671,266 CU。その後[I02-B](https://github.com/yukikm/solana-zkapi/blob/ea4cb0ac005832abae6e703eb177914c0c9aa193/docs/evidence/I02B.md)で現仕様へ標準化し、実SBFの257ケース、最大317,443 CUを確認した。[I03](https://github.com/yukikm/solana-zkapi/blob/ea4cb0ac005832abae6e703eb177914c0c9aa193/docs/evidence/I03.md)ではVault account/ATA/PDA/CPI/eventを統合して最大426,765 CUを確認。[I04](https://github.com/yukikm/solana-zkapi/blob/ea4cb0ac005832abae6e703eb177914c0c9aa193/docs/evidence/I04.md)でv0 buffer・SDK署名・indexerをlocal検証し最大426,830 CU / 1,232 bytes。target cluster/walletを含むG1は未合格。元tree直接計算・tag再計算付きfallbackのCU超過は比較用の履歴として保持する。
 
 release目標は**全命令のworst-case <=1,000,000 CU**、実transactionが採用format内。100万CUはprotocolの余裕を含む設計目標でありSolanaの絶対上限ではない。I03/I04では全PDA/ATA作成、proof binding、status/nullifier、Token CPI、event、buffer処理込みで測る。予算超過時に検査を省いたり目標を無断に引き上げたりしない。
 

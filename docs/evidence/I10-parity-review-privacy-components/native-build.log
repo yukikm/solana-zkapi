@@ -1,6 +1,0 @@
-   Compiling zkapi-layout2 v0.1.0 (/Users/yukikimura/work/solana-zkapi/crates/zkapi-layout2)
-   Compiling zkapi-solana-types v0.1.0 (/Users/yukikimura/work/solana-zkapi/crates/zkapi-solana-types)
-   Compiling zkapi-solana-crypto v0.1.0 (/Users/yukikimura/work/solana-zkapi/crates/zkapi-solana-crypto)
-   Compiling zkapi-tree-prover v0.1.0 (/Users/yukikimura/work/solana-zkapi/crates/zkapi-tree-prover)
-   Compiling zkapi-client-prover v0.1.0 (/Users/yukikimura/work/solana-zkapi/apps/clientd/prover)
-    Finished `release` profile [optimized] target(s) in 11.74s

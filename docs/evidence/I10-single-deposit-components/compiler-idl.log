@@ -1,5 +1,0 @@
-    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.17s
-     Running `tools/vault-idl/target/debug/zkapi-vault-idl /Users/yukikimura/work/solana-zkapi/target/single-deposit-acceptance/run-xftewd2n/generated-vault.json`
-    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.19s
-     Running unittests src/lib.rs (target/debug/deps/zkapi_vault-63f118c7b1869a80)
-Generated /Users/yukikimura/work/solana-zkapi/target/single-deposit-acceptance/run-xftewd2n/generated-vault.json

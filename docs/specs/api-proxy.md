@@ -213,7 +213,7 @@ A separately obtained late observation may use the existing operator-only
 append contract; a new reconciliation service is not required for this preview.
 OA's issuer-finalized receipt path and proxy metering retain their own rules.
 
-The [parity evidence](../evidence/PD-openrouter-ethereum-parity.md) distinguishes
+The [parity evidence](https://github.com/yukikm/solana-zkapi/blob/ea4cb0ac005832abae6e703eb177914c0c9aa193/docs/evidence/PD-openrouter-ethereum-parity.md) distinguishes
 this selected contract from the earlier two-sample implementation and records
 whether the successor has actually been deployed. Upstream's default grace and
 settlement-poll intervals are 5 and 2 seconds; deployed configuration remains an

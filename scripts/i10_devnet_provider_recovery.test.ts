@@ -137,7 +137,7 @@ test('later explicit demo reservations count globally without replacing acceptan
 });
 
 test('saved provider withdrawal accepts copied historical budget plus a later direct AUTH reservation',async()=>{
-  const saved=JSON.parse(readFileSync(new URL('../docs/evidence/I10-parity-review-live-components/budget-after.json',import.meta.url),'utf8'));
+  const saved=JSON.parse(readFileSync(new URL('../tests/fixtures/provider/historical-budget.json',import.meta.url),'utf8'));
   const historical=structuredClone(saved),request='12345678-1234-4123-8123-123456789033';
   for(const template of ['openrouter-direct-plain','openrouter-direct-sse']){
     const h=fixture(),budget={...structuredClone(saved),reserved_micro_usdc:'3154216',remaining_micro_usdc:'6845784',refunds_supported:false,inference_replays_supported:false};

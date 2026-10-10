@@ -2,7 +2,7 @@
 
 This release contains the SDK tarball, macOS ARM64 native archive, source archive,
 an immutable revision-5 public profile, a release manifest and SHA-256 checksums.
-[Publication and all six release assets are verified](../evidence/PD-sdk7-publication-20261010.md)
+[Publication and all six release assets are verified](https://github.com/yukikm/solana-zkapi/blob/ea4cb0ac005832abae6e703eb177914c0c9aa193/docs/evidence/PD-sdk7-publication-20261010.md)
 at source `dd9fb409b2f1e52421956262eb88026069ea8c79`.
 
 ## Changes

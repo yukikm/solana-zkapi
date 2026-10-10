@@ -181,10 +181,10 @@ class DemoBudgetTests(unittest.TestCase):
         old.atomic(self.directory / 'budget-state.json', old.canonical(saved))
 
     def test_copied_historical_ten_row_budget_remains_readable_and_append_only(self):
-        # Public redacted evidence copied into an isolated owner-only directory.
+        # Frozen regression input copied into an isolated owner-only directory.
         root = Path(__file__).resolve().parents[1]
         plan = old.read_json(root / 'config/provider-acceptance.i10.json')
-        evidence = old.read_json(root / 'docs/evidence/I10-parity-review-live-components/budget-after.json')
+        evidence = old.read_json(root / 'tests/fixtures/provider/historical-budget.json')
         self.assertEqual(len(evidence['reservations']), 10)
         self.assertEqual(sum(int(row['max_cost_micro_usdc']) for row in evidence['reservations']), 2154216)
         directory = self.root / 'historical-copy'

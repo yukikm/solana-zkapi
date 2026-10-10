@@ -23,7 +23,7 @@ Synthetic chain/provider/prover fixtures are labelled as such in their tests.
 
 For SDK/compact transport changes, `python3 scripts/run_single_deposit_acceptance.py`
 runs the existing isolated local matrix with pinned toolchains. It has additional
-local Rust/SBF/proof-artifact prerequisites; see its [evidence](docs/evidence/I10-single-deposit-review.md).
+local Rust/SBF/proof-artifact prerequisites; see its [evidence](https://github.com/yukikm/solana-zkapi/blob/ea4cb0ac005832abae6e703eb177914c0c9aa193/docs/evidence/I10-single-deposit-review.md).
 No provider keys or public-chain sends are needed for ordinary SDK tests.
 
 The demonstration UI is maintained and tested in the separate
@@ -39,8 +39,11 @@ not require that checkout.
 - Use integer micro-USDC strings for balances/caps and retain exact signed bytes.
 - Do not update a funded deployment's pins, reset journals or reset test budgets
   as a side effect of development work.
-- Record commands, outputs, source hashes and limitations under `docs/evidence`.
-  Keep historical reports; a hash inventory does not rerun their tests.
+- Keep commands, outputs, source hashes and limitations under `docs/evidence/`
+  or `target/`; both are local, ignored output directories. Do not force-add
+  reports or logs. Commit reproducible tests, intentional fixtures, release
+  notes and user/developer documentation instead. See [verification records](docs/verification.md)
+  for the historical archive and CI artifact policy.
 - Keep public-facing examples typechecked and label deployment prerequisites,
   synthetic tests and live acceptance separately. Never include `.env`, keys,
   RPC secrets, note secrets or raw private logs in commits.

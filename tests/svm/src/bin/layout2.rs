@@ -808,6 +808,7 @@ fn main() {
         );
     }
     r.rows.extend(wrong.rows);
+    fs::create_dir_all(root.join("docs/evidence")).unwrap();
     let result = json!({"scope":"I02-B; actual SBF v0 and v0 transactions; measurement snapshots, prefilled sealed buffers and existing token accounts; no Vault/PDA/ATA creation or upload lifecycle claim","compute_budget":1_000_000,"packet_limit":1232,"svm":"LiteSVM 0.6.1 / Agave 2.2.0","sbf_arch":"v0","elf_sha256":hash(&elf),"wrong_elf_sha256":hash(&wrong_elf),"profile_hash":hex::encode(profile::PROFILE),"production_eligible":false,"cases":r.rows,"sizes":r.sizes});
     fs::write(
         root.join("docs/evidence/I02B-svm-results.json"),

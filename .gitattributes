@@ -1,2 +1,0 @@
-# Preserve byte-exact captured evidence, including tool-emitted whitespace.
-docs/evidence/**/*.log -whitespace

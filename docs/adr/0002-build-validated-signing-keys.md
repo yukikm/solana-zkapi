@@ -4,7 +4,7 @@
 
 ## 根拠
 
-Arkworks 0.5のcanonical座標・非単位点・on-curve・prime-order subgroup検査をそのままSBF v0で実行すると、1鍵6,369,418 CU、2鍵12,737,948 CUだった。通常の1,000,000 CU予算では失敗する。高予算で得た数値は診断値であり、cluster受理可能性やG1合格を意味しない。[検証記録](../evidence/I03-key-validation.json)にartifact hashと範囲を保存する。
+Arkworks 0.5のcanonical座標・非単位点・on-curve・prime-order subgroup検査をそのままSBF v0で実行すると、1鍵6,369,418 CU、2鍵12,737,948 CUだった。通常の1,000,000 CU予算では失敗する。高予算で得た数値は診断値であり、cluster受理可能性やG1合格を意味しない。[検証記録](https://github.com/yukikm/solana-zkapi/blob/ea4cb0ac005832abae6e703eb177914c0c9aa193/docs/evidence/I03-key-validation.json)にartifact hashと範囲を保存する。
 
 ## 決定と不変条件
 

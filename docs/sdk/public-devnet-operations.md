@@ -8,11 +8,11 @@ existing private channel for operating windows or incident updates.
 
 As of the **2026-10-10 JST** evidence:
 
-- The API [no longer requires invitations](../evidence/PD-invitation-removal-20261009.md).
+- The API [no longer requires invitations](https://github.com/yukikm/solana-zkapi/blob/ea4cb0ac005832abae6e703eb177914c0c9aa193/docs/evidence/PD-invitation-removal-20261009.md).
   All seven provider request slots were consumed at the
-  [model-profile deployment](../evidence/PD-model-expansion-20261009.md).
+  [model-profile deployment](https://github.com/yukikm/solana-zkapi/blob/ea4cb0ac005832abae6e703eb177914c0c9aa193/docs/evidence/PD-model-expansion-20261009.md).
   Additional capacity needs separate operator authorization.
-- The [latest public preflight](../evidence/PD-sdk8-publication-20261010.md) failed
+- The [latest public preflight](https://github.com/yukikm/solana-zkapi/blob/ea4cb0ac005832abae6e703eb177914c0c9aa193/docs/evidence/PD-sdk8-publication-20261010.md) failed
   on an empty operator catalog with both `.7` and `.8`. Its cause is unproven;
   the separate successful ZDR metadata read does not establish service readiness.
 - Native recovery and withdrawal, E01 emergency withdrawal and service restart
@@ -21,14 +21,14 @@ As of the **2026-10-10 JST** evidence:
 
 The hosting target is approximately USD50/month, not a billing cap. See the
 [AWS cost guide](../../deploy/public-devnet/aws-budget-host.md) and
-[retained-capacity record](../evidence/PD-capacity-retained-20261009.md). The
+[retained-capacity record](https://github.com/yukikm/solana-zkapi/blob/ea4cb0ac005832abae6e703eb177914c0c9aa193/docs/evidence/PD-capacity-retained-20261009.md). The
 80 GiB data volume remains retained and chain history continues to grow;
 returning to 40 GiB requires a verified migration. Hosting costs and provider
 spending are separate.
 
 Earlier checkpoints, including the failed backup preparation and suspension,
-are preserved in the [documentation archive](../evidence/PD-documentation-cleanup-20261010.md)
-and [service-recovery record](../evidence/PD-N01-service-recovery.md).
+are preserved in the [documentation archive](https://github.com/yukikm/solana-zkapi/blob/ea4cb0ac005832abae6e703eb177914c0c9aa193/docs/evidence/PD-documentation-cleanup-20261010.md)
+and [service-recovery record](https://github.com/yukikm/solana-zkapi/blob/ea4cb0ac005832abae6e703eb177914c0c9aa193/docs/evidence/PD-N01-service-recovery.md).
 
 ## Admission and recovery are separate
 

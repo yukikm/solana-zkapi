@@ -35,8 +35,8 @@ note principal and SOL fees/rent are distinct quantities.
 Devnet faucet tokens do not purchase provider credit. The operator pays the real
 provider bill separately; consumers do not need provider-management credentials.
 
-The public gateway [removed its invitation requirement](../evidence/PD-invitation-removal-20261009.md)
-on 2026-10-09. At the [model expansion checkpoint](../evidence/PD-model-expansion-20261009.md),
+The public gateway [removed its invitation requirement](https://github.com/yukikm/solana-zkapi/blob/ea4cb0ac005832abae6e703eb177914c0c9aa193/docs/evidence/PD-invitation-removal-20261009.md)
+on 2026-10-09. At the [model expansion checkpoint](https://github.com/yukikm/solana-zkapi/blob/ea4cb0ac005832abae6e703eb177914c0c9aa193/docs/evidence/PD-model-expansion-20261009.md),
 all seven authorized one-USDC request reservations were consumed. **Funding a
 note does not create provider capacity.** Check `/relay-status` and
 `/provider-budget` before depositing for new requests; additional capacity needs
@@ -46,7 +46,7 @@ Reservations cover maximum exposure and remain consumed even when the signed
 charge is smaller. The earlier private campaign and this public allowance stay
 separate; neither is reset by a profile update, withdrawal or retry. Their
 original amounts and access policy are retained in the
-[documentation archive](../evidence/PD-documentation-cleanup-20261010.md).
+[documentation archive](https://github.com/yukikm/solana-zkapi/blob/ea4cb0ac005832abae6e703eb177914c0c9aa193/docs/evidence/PD-documentation-cleanup-20261010.md).
 
 For another deployment that requires an invitation, obtain it privately from
 its operator. Keep it out of URLs, shared configuration and issue reports.

@@ -2,15 +2,15 @@
 
 Current core scope — 2026-10-09 JST: the user directed completion of ZKAPI core
 and stopped demo/chat UI work. PD-08 and funded Phantom cases are deferred, not
-completed and not core gates. The [scope/evidence audit](evidence/PD-core-scope-reconciliation.md)
+completed and not core gates. The [scope/evidence audit](https://github.com/yukikm/solana-zkapi/blob/ea4cb0ac005832abae6e703eb177914c0c9aa193/docs/evidence/PD-core-scope-reconciliation.md)
 joins published `.3` public-input setup, existing production-handler rejection,
 N-01–N-04 native closure, deployed readiness and historical backup restoration.
 The remaining core work is the separate E-01 escape/finalize outcome, the
-[reviewed OpenRouter Ethereum-parity candidate](evidence/PD-openrouter-ethereum-parity.md)
+[reviewed OpenRouter Ethereum-parity candidate](https://github.com/yukikm/solana-zkapi/blob/ea4cb0ac005832abae6e703eb177914c0c9aa193/docs/evidence/PD-openrouter-ethereum-parity.md)
 and its deployment evidence, then the final handoff. The user explicitly selected
 upstream's captured-management-USD contract with operator delay risk and immutable
 charges; provider invoice completeness is not an additional preview gate.
-The observed [response-cost discrepancy](evidence/PD-openrouter-management-usage-limit.md)
+The observed [response-cost discrepancy](https://github.com/yukikm/solana-zkapi/blob/ea4cb0ac005832abae6e703eb177914c0c9aa193/docs/evidence/PD-openrouter-management-usage-limit.md)
 remains disclosed. No UI, reconciliation service, pristine-OS requirement or new
 paid matrix is added; broader G3 and production qualification remain separate.
 The backlog now credits the completed scoped route/readiness, streaming,
@@ -88,7 +88,7 @@ The existing campaign retains 17 reservations and 9,154,216 micro-USDC reserved
 out of 10,000,000. Its 845,784 remaining capacity cannot admit another full
 1,000,000-micro-USDC AUTH. The separately approved seven-USDC grant is implemented
 as one [detached AWS authority](../deploy/public-devnet/detached-budget.md), with
-no transferred old capacity. The [2026-10-08 initialization checkpoint](evidence/PD-detached-budget-initialization.md)
+no transferred old capacity. The [2026-10-08 initialization checkpoint](https://github.com/yukikm/solana-zkapi/blob/ea4cb0ac005832abae6e703eb177914c0c9aa193/docs/evidence/PD-detached-budget-initialization.md)
 records the one selected grant initialized, zero new reservations, and all seven
 slots remaining. New public admission was disabled and available admissions were
 zero at that checkpoint; full consumer readiness remains incomplete. No unlimited
@@ -125,18 +125,18 @@ leaves operator admission unverified. A successful HTTP listener or local fixtur
 cannot substitute for the outstanding service observations above.
 
 Local results and preserved failed attempts are recorded in
-[the initial implementation evidence](evidence/PD-public-devnet-readiness.md) and
-the [completed local follow-up](evidence/PD-public-devnet-followup.md). The latter
+[the initial implementation evidence](https://github.com/yukikm/solana-zkapi/blob/ea4cb0ac005832abae6e703eb177914c0c9aa193/docs/evidence/PD-public-devnet-readiness.md) and
+the [completed local follow-up](https://github.com/yukikm/solana-zkapi/blob/ea4cb0ac005832abae6e703eb177914c0c9aa193/docs/evidence/PD-public-devnet-followup.md). The latter
 records actual independent-app changes, 377 SDK tests, six newly generated
 native/WASM proofs, the complete local bundle and detached budget verification.
 
 The original redistribution omission was an incomplete source investigation: the
 original author’s pinned root README contains the license grant. See the
-[redistribution correction](evidence/PD-02-redistribution-followup.md) and
-[notice implementation](evidence/PD-02-notice-packaging.md). The old release’s
+[redistribution correction](https://github.com/yukikm/solana-zkapi/blob/ea4cb0ac005832abae6e703eb177914c0c9aa193/docs/evidence/PD-02-redistribution-followup.md) and
+[notice implementation](https://github.com/yukikm/solana-zkapi/blob/ea4cb0ac005832abae6e703eb177914c0c9aa193/docs/evidence/PD-02-notice-packaging.md). The old release’s
 omitted assets remain historical; its immutable contents are not replaced.
 
 Terminology correction: the initial evidence’s one installed native/WASM check
 runs the real `snapshot_path` command and rejects path tampering. It does not
-generate a Groth16 proof. [Matching complete-bundle proof generation](evidence/PD-complete-bundle-proofs.md)
+generate a Groth16 proof. [Matching complete-bundle proof generation](https://github.com/yukikm/solana-zkapi/blob/ea4cb0ac005832abae6e703eb177914c0c9aa193/docs/evidence/PD-complete-bundle-proofs.md)
 has now passed separately; the earlier test/log bytes remain unchanged.

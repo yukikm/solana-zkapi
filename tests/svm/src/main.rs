@@ -345,6 +345,7 @@ fn main() {
         }
     }
     let transaction_sizes = sizes::measure(&root);
+    fs::create_dir_all(root.join("docs/evidence")).unwrap();
     fs::write(
         root.join("docs/evidence/I02-transaction-sizes.json"),
         serde_json::to_vec_pretty(&transaction_sizes).unwrap(),

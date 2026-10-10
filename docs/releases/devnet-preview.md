@@ -74,7 +74,7 @@ for an existing note.
 Credential-free tests exercise SDK lifecycle fixtures, browser custody,
 independent package installation, Go race checks and installed local clientd
 behavior. Historical public devnet SDK and OpenClaw lifecycles remain separately
-recorded in [integration evidence](../evidence/I10-external-integration.md).
+recorded in [integration evidence](https://github.com/yukikm/solana-zkapi/blob/ea4cb0ac005832abae6e703eb177914c0c9aa193/docs/evidence/I10-external-integration.md).
 The OpenClaw live run used a bounded custom devnet relay; it did not establish
 public transport acceptance for the stock supervisor. Historical provider
 failures, reservations and recovery records remain preserved.

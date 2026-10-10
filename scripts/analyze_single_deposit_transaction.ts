@@ -4,7 +4,7 @@
  */
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
-import { readFileSync, writeFileSync } from 'node:fs';
+import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import {AccountRole, address, appendTransactionMessageInstructions, blockhash as asBlockhash, compileTransactionMessage, compressTransactionMessageUsingAddressLookupTables, createTransactionMessage, decompileTransactionMessage, getCompiledTransactionMessageEncoder, getTransactionDecoder, getTransactionEncoder, pipe, setTransactionMessageFeePayer, setTransactionMessageLifetimeUsingBlockhash, type AccountMeta, type Address, type AddressesByLookupTableAddress, type CompiledTransactionMessageWithLifetime, type Instruction, type V0CompiledTransactionMessage} from '@solana/kit';
 import {addressBytes, addressFromBytes, SYSTEM_PROGRAM} from '../packages/sdk/src/solana.ts';
@@ -218,6 +218,7 @@ const report = {
   ],
 };
 const output = new URL('docs/evidence/I10-kit-single-deposit-transport-analysis.json', root);
+mkdirSync(new URL('.', output), {recursive: true});
 writeFileSync(output, `${JSON.stringify(report, null, 2)}\n`);
 console.log(JSON.stringify({ output: fileURLToPath(output), status: report.status, cases: cases.length,
   compact_args_bytes: compact.length, canonical_roundtrip: true }));

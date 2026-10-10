@@ -6,7 +6,7 @@ candidate. The original preparation and validation were read-only. On
 2026-10-08 JST, the user authorized the approximately USD50/month short preview
 and a dedicated stack was created in us-east-1. Live execution and its distinct
 application-readiness checks are recorded in
-[the infrastructure evidence](../../docs/evidence/PD-aws-live-infrastructure.md).
+[the infrastructure evidence](https://github.com/yukikm/solana-zkapi/blob/ea4cb0ac005832abae6e703eb177914c0c9aa193/docs/evidence/PD-aws-live-infrastructure.md).
 The target is not an AWS-enforced cap or a claim that the current application
 can operate indefinitely on 4 GiB. Long-term operation qualification is outside the current short-preview scope.
 Current resource headroom and preservation of recovery remain required.
@@ -29,10 +29,10 @@ The 2026-10-08 02:31 UTC operational follow-up expanded only the existing data
 volume from 20 to 40 GiB, preserving its identity and mounted filesystem. The
 source template at that checkpoint was SHA-256 `087453dc26c3359f59562dd49bc8a6cd8154fbcc0bf17d8c8db9906b2a55fd25`;
 the earlier template hashes and 48-GiB validation below remain historical.
-See the [migration and storage checkpoint](../../docs/evidence/PD-rpc-migration-startup.md)
+See the [migration and storage checkpoint](https://github.com/yukikm/solana-zkapi/blob/ea4cb0ac005832abae6e703eb177914c0c9aa193/docs/evidence/PD-rpc-migration-startup.md)
 for the actual change-set and host receipts; storage growth is not service readiness.
 
-The subsequent [independent static-origin update](../../docs/evidence/PD-public-runtime-origin-followup.md)
+The subsequent [independent static-origin update](https://github.com/yukikm/solana-zkapi/blob/ea4cb0ac005832abae6e703eb177914c0c9aa193/docs/evidence/PD-public-runtime-origin-followup.md)
 adds one CloudFront distribution, its bounded S3 policy grant and two outputs,
 without another compute or NAT resource. The current source template is
 `c49a35cb497d653f9035b1e4cb9a9c179c93d4562daee05bc4da30c0f57d4391`;

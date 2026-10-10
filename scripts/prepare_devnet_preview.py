@@ -138,7 +138,7 @@ def main():
         'deployment_bundle_included': False, 'default_public_operator': None,
         'npm_registry_published': False, 'mainnet_ready': False,
         'full_I10_or_G1_G4_passed': False,
-        'validation': 'See docs/evidence/I10-kit-migration.md at source_revision; local fixture and installed runtime scopes are separate from historical live devnet evidence.',
+        'validation': 'See docs/sdk/status.md and docs/verification.md at source_revision; local fixture and installed runtime scopes are separate from historical live devnet evidence.',
         'release_attestation': 'Verify the GitHub immutable release after publication; this local manifest is not itself a signature.'
     }
     (args.output / 'release-manifest.json').write_text(json.dumps(release, indent=2) + '\n')

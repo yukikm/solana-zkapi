@@ -1,9 +1,9 @@
 **/target/
 **/node_modules/
 *.log
-# Reviewed, credential-free test logs referenced by the parity evidence reports.
-!docs/evidence/I10-parity-review-*/**/*.log
-!docs/evidence/I10-devnet-preview-components/**/*.log
+# Local verification reports, captured logs and one-off review work.
+/docs/evidence/
+/work/single-deposit-review/
 __pycache__/
 .env
 .env.*

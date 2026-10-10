@@ -6,7 +6,7 @@ format is rejected before the SDK or any financial authorization runs. Keep
 this integration experimental. The [OpenClaw integration](openclaw.md) records
 the existing tested agent path and its deployment limitations.
 
-The [recorded compatibility probe](../evidence/I10-claude-code-configuration-results.json)
+The [recorded compatibility probe](https://github.com/yukikm/solana-zkapi/blob/ea4cb0ac005832abae6e703eb177914c0c9aa193/docs/evidence/I10-claude-code-configuration-results.json)
 uses the installed Claude Code CLI, synthetic Anthropic responses, and the
 production Go HTTP handler. It does not use Anthropic credentials, an existing
 Claude login, public RPC, funded notes, or a provider. It does not modify user

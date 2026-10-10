@@ -79,7 +79,7 @@ bufferのpayloadは**上表のargsのみ**で、Anchor discriminatorを含めな
 
 これらはinstruction dataの値でありtransaction全体のサイズではない。最終IDLのaccount list・独立payer/owner・ComputeBudget込みで各v0 transaction<=1232 bytesをI04で確認する。appendの最大chunkはserialize結果から決め、測定の900 bytesを無条件に固定しない。versioned transactionにはv0を使い、ALTを必須にしない。全命令はbuffer経路を必須とし、収まるinline命令は同じ検証で許可する。
 
-研究harnessのpayloadはproof→public順で、account/opcodeも異なる。本wireの実SBF検証・CU再測定は[I02-B](../evidence/I02B.md)で完了した。I03では全Vault account処理を含めて再測定する。既存fixtureの`proof_wire_hex`と`public_inputs`はフィールド値として再利用し、harness transactionを本番payloadとして流用しない。
+研究harnessのpayloadはproof→public順で、account/opcodeも異なる。本wireの実SBF検証・CU再測定は[I02-B](https://github.com/yukikm/solana-zkapi/blob/ea4cb0ac005832abae6e703eb177914c0c9aa193/docs/evidence/I02B.md)で完了した。I03では全Vault account処理を含めて再測定する。既存fixtureの`proof_wire_hex`と`public_inputs`はフィールド値として再利用し、harness transactionを本番payloadとして流用しない。
 
 ## 4. Proof生成、競合、公開情報
 
@@ -136,4 +136,4 @@ EVM比較は同じ整数D/B/id/時刻/操作列・元hashを使い、root、leaf
 
 必須trace：入金→署名付き利用/精算→合意出金、escape→deadlineでfinalize、認可A→別入金Bでroot変更→Aのescape→保存した過去RPでchallenge、Activeの期限切れ、pause中のchallenge/finalize/expiry、challenge後の同N再利用拒否。双方でroot等号だけでなく拒否条件を比較する。既存の意図した差分（USDC/H2F、counterだけu64で最大u32 IDを利用可能）を比較レポートへ明記する。
 
-研究harnessの37〜67万CUに続き、採用方式の[I02-B](../evidence/I02B.md)では約15〜32万CUを実測した。いずれも記録したmeasurement account範囲の値。性能目標は全命令100万CUのままで、基準を緩めて設計Readyにしない。native tree prove＋送信がchallengeの5分目標に収まるかをI08/I09で測り、root競合下の再試行も含める。browser性能の実測が不足してもnative経路を隠さず提供し、UIを無限待ちにしない。
+研究harnessの37〜67万CUに続き、採用方式の[I02-B](https://github.com/yukikm/solana-zkapi/blob/ea4cb0ac005832abae6e703eb177914c0c9aa193/docs/evidence/I02B.md)では約15〜32万CUを実測した。いずれも記録したmeasurement account範囲の値。性能目標は全命令100万CUのままで、基準を緩めて設計Readyにしない。native tree prove＋送信がchallengeの5分目標に収まるかをI08/I09で測り、root競合下の再試行も含める。browser性能の実測が不足してもnative経路を隠さず提供し、UIを無限待ちにしない。

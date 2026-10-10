@@ -1,1 +1,0 @@
-{"passed": true, "report": "/Users/yukikimura/work/solana-zkapi/target/app-sdk-acceptance/run-5trb0e7_/external-package/results.json", "tarball_sha256": "fc37358ce00fa7bcb5c43367c8f09b3908c617f9235e8646ae78003a21040c91"}

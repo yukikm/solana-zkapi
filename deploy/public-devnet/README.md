@@ -11,11 +11,11 @@ close PD-01, PD-04, PD-05, PD-06 or PD-10.
 
 The four inherited setup files now have an exact-hash Apache-2.0 redistribution
 review based on the original author’s root README declaration. See the
-[follow-up](../../docs/evidence/PD-02-redistribution-followup.md) and
-[notice packaging](../../docs/evidence/PD-02-notice-packaging.md). The earlier
+[follow-up](https://github.com/yukikm/solana-zkapi/blob/ea4cb0ac005832abae6e703eb177914c0c9aa193/docs/evidence/PD-02-redistribution-followup.md) and
+[notice packaging](https://github.com/yukikm/solana-zkapi/blob/ea4cb0ac005832abae6e703eb177914c0c9aa193/docs/evidence/PD-02-notice-packaging.md). The earlier
 permission uncertainty is resolved for those bytes. A
-[complete bundle with notices](../../docs/evidence/PD-complete-bundle-notices.md)
-and [six fresh matching native/WASM proofs](../../docs/evidence/PD-complete-bundle-proofs.md)
+[complete bundle with notices](https://github.com/yukikm/solana-zkapi/blob/ea4cb0ac005832abae6e703eb177914c0c9aa193/docs/evidence/PD-complete-bundle-notices.md)
+and [six fresh matching native/WASM proofs](https://github.com/yukikm/solana-zkapi/blob/ea4cb0ac005832abae6e703eb177914c0c9aa193/docs/evidence/PD-complete-bundle-proofs.md)
 passed local packaging and independent verification. Anonymous public downloads
 and actual browser/public-service acceptance remain separate checks.
 
@@ -166,7 +166,7 @@ Origin require wildcard mode or the gateway origin in the allowlist and matching
 Fetch Metadata. A native request without Origin is accepted only when explicitly
 enabled and when Fetch Metadata is absent or consists solely of Node fetch's
 `Sec-Fetch-Mode: cors`. Any site, destination, user or additional Fetch Metadata
-header excludes that native branch. The [focused public verification](../../docs/evidence/PD-gateway-node-fetch.md)
+header excludes that native branch. The [focused public verification](https://github.com/yukikm/solana-zkapi/blob/ea4cb0ac005832abae6e703eb177914c0c9aa193/docs/evidence/PD-gateway-node-fetch.md)
 records the actual Node compatibility fix and retained browser-origin guards. Cookie, API-key,
 proxy-authorization and forwarded-origin overrides are rejected. Origin checking is a browser transport policy, not protection against clients
 that can send arbitrary headers. The durable budget and normal session
@@ -186,8 +186,8 @@ For the selected CloudFront deployment,
 private origin configuration. Its initial nginx 1.30.5 syntax check was local;
 the selected configuration has since been installed behind the CloudFront VPC
 origin and checked over actual public HTTPS. See the
-[operator bootstrap](../../docs/evidence/PD-aws-operator-bootstrap.md) and
-[gateway verification](../../docs/evidence/PD-gateway-node-fetch.md).
+[operator bootstrap](https://github.com/yukikm/solana-zkapi/blob/ea4cb0ac005832abae6e703eb177914c0c9aa193/docs/evidence/PD-aws-operator-bootstrap.md) and
+[gateway verification](https://github.com/yukikm/solana-zkapi/blob/ea4cb0ac005832abae6e703eb177914c0c9aa193/docs/evidence/PD-gateway-node-fetch.md).
 Those route checks do not establish a completed funded lifecycle. The alternative
 [nginx.same-origin.conf.example](nginx.same-origin.conf.example) is a
 TLS reverse-proxy template. It preserves canonical routes and Origin, clears

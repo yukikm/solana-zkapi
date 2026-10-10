@@ -667,6 +667,7 @@ fn main() {
     let report = json!({"scope":"I04 real Vault SBF buffer lifecycle; no pre-seeded successful buffer; real tree/auth proofs and token CPI; local test mint/setup only",
         "elf_sha256":hex::encode(Sha256::digest(&elf)),"cases":rows.len(),"successful_transactions":successes,"rejected_transactions":rows.len()-successes,
         "max_cu":max_cu,"max_transaction_bytes":max_bytes,"transport":"v0, no ALT, 1M CU","rows":rows});
+    fs::create_dir_all(root.join("docs/evidence")).unwrap();
     fs::write(
         root.join("docs/evidence/I04-buffer-svm-results.json"),
         serde_json::to_vec_pretty(&report).unwrap(),

@@ -8,7 +8,7 @@ provider, tariff or model to that deployment.
 
 | Application | Guide | Recorded compatibility |
 |---|---|---|
-| OpenClaw | [Setup and recovery](openclaw.md) | Selected public OpenRouter text, streaming and read-tool cases passed with the [settlement adapter](openclaw-settlement-adapter.md). [Public evidence](../evidence/PD-native-public-N02-N03.md). |
+| OpenClaw | [Setup and recovery](openclaw.md) | Selected public OpenRouter text, streaming and read-tool cases passed with the [settlement adapter](openclaw-settlement-adapter.md). [Public evidence](https://github.com/yukikm/solana-zkapi/blob/ea4cb0ac005832abae6e703eb177914c0c9aa193/docs/evidence/PD-native-public-N02-N03.md). |
 | Claude Code | [Gateway configuration and compatibility](claude-code.md) | Configuration is documented. The tested CLI sends a query and request fields rejected by clientd/proxy. Not ready for funded use. |
 | Codex CLI | [Responses provider configuration and compatibility](codex.md) | Configuration is documented. The tested CLI sends fields/tools rejected by direct Responses validation. Not ready for funded use. |
 
@@ -17,7 +17,7 @@ versions, automatic retries, tool continuations and failure handling must be
 tested together. In particular, OpenClaw's OpenRouter Chat result does not verify
 Claude Code's Anthropic Messages or Codex's OpenAI Responses integration.
 
-The [coding-client compatibility evidence](../evidence/I10-coding-client-configuration.md)
+The [coding-client compatibility evidence](https://github.com/yukikm/solana-zkapi/blob/ea4cb0ac005832abae6e703eb177914c0c9aa193/docs/evidence/I10-coding-client-configuration.md)
 records the isolated probes and remaining blockers. These probes use synthetic
 responses and local credentials, with no provider or public-chain activity.
 

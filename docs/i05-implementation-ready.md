@@ -1,8 +1,8 @@
 # I05 — Postgres ledger・quote・signer 実装引き継ぎ
 
-2026-10-04 JST。**I05はlocal実装・検証完了**。[完了記録](evidence/I05.md)に実行コマンド・artifact・制限を記録した。本書はI05の実装契約を保持し、I06 direct・I07 proxyのprovider adaptersへの引き継ぎにも用いる。26テストと実Vault SBF 10取引（最大422,429 CU / 1,091 bytes）が成功し、新signer署名から利用者4,999,998 micro-USDC・treasury 2 micro-USDCの出金まで確認した。実provider・wallet・公開RPC・hosted CI・G1〜G4は未完了。[I04レビュー記録](evidence/I04.md)の修正を前提にする。正本は[API・精算仕様](specs/api-proxy.md)、[運用仕様](specs/operations.md)、[protocol](specs/protocol-solana.md)、[OpenAPI](contracts/openapi.json)、[ledger DDL](contracts/ledger.sql)。以下の着手順序・統合境界・完了条件は受入契約として維持する。実装の現在地と実行結果は完了記録を正本とする。
+2026-10-04 JST。**I05はlocal実装・検証完了**。[完了記録](https://github.com/yukikm/solana-zkapi/blob/ea4cb0ac005832abae6e703eb177914c0c9aa193/docs/evidence/I05.md)に実行コマンド・artifact・制限を記録した。本書はI05の実装契約を保持し、I06 direct・I07 proxyのprovider adaptersへの引き継ぎにも用いる。26テストと実Vault SBF 10取引（最大422,429 CU / 1,091 bytes）が成功し、新signer署名から利用者4,999,998 micro-USDC・treasury 2 micro-USDCの出金まで確認した。実provider・wallet・公開RPC・hosted CI・G1〜G4は未完了。[I04レビュー記録](https://github.com/yukikm/solana-zkapi/blob/ea4cb0ac005832abae6e703eb177914c0c9aa193/docs/evidence/I04.md)の修正を前提にする。正本は[API・精算仕様](specs/api-proxy.md)、[運用仕様](specs/operations.md)、[protocol](specs/protocol-solana.md)、[OpenAPI](contracts/openapi.json)、[ledger DDL](contracts/ledger.sql)。以下の着手順序・統合境界・完了条件は受入契約として維持する。実装の現在地と実行結果は完了記録を正本とする。
 
-2026-10-04のレビューで、最終dispatch claim、direct key管理参照の永続化、signerのquote/料金表結合、journal破損判定、障害中の復旧、RPC origin重複、料金表の有効期間の7件を修正した。[レビュー証跡](evidence/I05.md#2026-10-04-レビューとi06i07への引き継ぎ)の26テストと実Vault SBF再実行を根拠に、**I06/I07実装着手Ready**とする。
+2026-10-04のレビューで、最終dispatch claim、direct key管理参照の永続化、signerのquote/料金表結合、journal破損判定、障害中の復旧、RPC origin重複、料金表の有効期間の7件を修正した。[レビュー証跡](https://github.com/yukikm/solana-zkapi/blob/ea4cb0ac005832abae6e703eb177914c0c9aa193/docs/evidence/I05.md#2026-10-04-レビューとi06i07への引き継ぎ)の26テストと実Vault SBF再実行を根拠に、**I06/I07実装着手Ready**とする。
 
 ## 1. 成果物と範囲
 
@@ -77,4 +77,4 @@ signer RPCへは対象IDを渡し、任意messageを直接署名するAPIを設�
 - 実crypto連結：quote結合RPで認可→使用料確定→署名保存→後継stateを使う次のRPとclearance付きWPを生成・検証し、WPとtree proofを実Vault SBFへ送って整数残高を照合する。既存I03の固定署名fixtureだけで新signer合格にしない。
 - migrationsの適用・再実行・version/checksum不一致・runtime role権限を実Postgresで検証し、起動不能時に新規受付/署名を始めない。
 
-I05のruntime再現コマンドは`bash scripts/run_i05.sh`。実Postgres・独立signer/dispatcher process・実Vault SBFを用いる。local実行手順は[control README](../services/control/README.md)、完了証拠は[I05](evidence/I05.md)を参照。`python3 scripts/check_design.py`と`python3 scripts/check_ledger_contract.py`は仕様/DDL検査でありI05 runtime試験の代替ではない。既存I04回帰は`bash scripts/run_i04.sh`で再現する。I05 CI jobは追加済みだが、hostedで未実行の結果を合格にしない。live provider・wallet/RPC、production setup、hosted CIとG1〜G4はそれぞれ実証されるまで未合格を維持する。
+I05のruntime再現コマンドは`bash scripts/run_i05.sh`。実Postgres・独立signer/dispatcher process・実Vault SBFを用いる。local実行手順は[control README](../services/control/README.md)、完了証拠は[I05](https://github.com/yukikm/solana-zkapi/blob/ea4cb0ac005832abae6e703eb177914c0c9aa193/docs/evidence/I05.md)を参照。`python3 scripts/check_design.py`と`python3 scripts/check_ledger_contract.py`は仕様/DDL検査でありI05 runtime試験の代替ではない。既存I04回帰は`bash scripts/run_i04.sh`で再現する。I05 CI jobは追加済みだが、hostedで未実行の結果を合格にしない。live provider・wallet/RPC、production setup、hosted CIとG1〜G4はそれぞれ実証されるまで未合格を維持する。

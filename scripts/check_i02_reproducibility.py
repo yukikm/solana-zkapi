@@ -76,7 +76,9 @@ def main():
               'archive_sha256': archive_hash, 'profile_hash': profile_hash, 'cases': cases,
               'canonical_headers_verified': True, 'source_change_changes_archive': True,
               'missing_source_rejected': True, 'pinned_profile_matches': True}
-    (ROOT / 'docs/evidence/I02B-reproducibility.json').write_text(json.dumps(result, indent=2) + '\n')
+    output = ROOT / 'docs/evidence/I02B-reproducibility.json'
+    output.parent.mkdir(parents=True, exist_ok=True)
+    output.write_text(json.dumps(result, indent=2) + '\n')
     print('PASS: 3 checkout metadata variants produce identical pinned archive/profile; content changes detected; missing sources fail')
 
 

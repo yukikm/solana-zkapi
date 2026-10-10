@@ -47,7 +47,7 @@ Run fresh preflight and check provider capacity before use. Earlier successful
 checks do not establish current availability. Existing funded notes must retain
 their original profile, custody and journal. Operational details are in the
 [incident guide](docs/sdk/public-devnet-operations.md); earlier handoffs are
-preserved in the [documentation archive](docs/evidence/PD-documentation-cleanup-20261010.md).
+preserved in the [documentation archive](https://github.com/yukikm/solana-zkapi/blob/ea4cb0ac005832abae6e703eb177914c0c9aa193/docs/evidence/PD-documentation-cleanup-20261010.md).
 
 ## Build an application
 
@@ -101,5 +101,5 @@ and Solana transaction transport. Newly authored code and documentation use the
 [MIT license](LICENSE). Vendored components retain their own terms; see
 [source provenance](vendor/README.md) and [third-party notices](THIRD_PARTY_NOTICES.md).
 
-An [earlier README archive](docs/evidence/I10-readme-before-app-sdk.md) preserves
+An [earlier README archive](https://github.com/yukikm/solana-zkapi/blob/ea4cb0ac005832abae6e703eb177914c0c9aa193/docs/evidence/I10-readme-before-app-sdk.md) preserves
 the pre-application-SDK history.

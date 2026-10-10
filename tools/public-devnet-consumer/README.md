@@ -8,17 +8,17 @@ package does not contain these APIs. Use the
 [current public deployment guide](../../docs/sdk/public-devnet-preview.md) for
 the authenticated profile, exact downloads, access policy and service status.
 
-The [2026-10-09 public restoration](../../docs/evidence/PD-public-restoration-20261009.md)
+The [2026-10-09 public restoration](https://github.com/yukikm/solana-zkapi/blob/ea4cb0ac005832abae6e703eb177914c0c9aa193/docs/evidence/PD-public-restoration-20261009.md)
 records public HTTP 200 at 00:54:37 UTC and all ten installed `.3` preflight
 checks passing at 00:55:26, with all 7,257 installed files unchanged. Separate
 relay status reported admission/recovery enabled. No AUTH, inference or wallet
 action ran in this check; run fresh preflight before use. The separate
-[E01 emergency withdrawal](../../docs/evidence/PD-E01-emergency-withdrawal-20261009.md)
+[E01 emergency withdrawal](https://github.com/yukikm/solana-zkapi/blob/ea4cb0ac005832abae6e703eb177914c0c9aa193/docs/evidence/PD-E01-emergency-withdrawal-20261009.md)
 completed from its original journal, returning one micro-USDC with zero AUTH
-history. The [core completion record](../../docs/evidence/PD-core-completion-20261009.md)
+history. The [core completion record](https://github.com/yukikm/solana-zkapi/blob/ea4cb0ac005832abae6e703eb177914c0c9aa193/docs/evidence/PD-core-completion-20261009.md)
 adds fresh public readiness at 01:43:23 UTC and the unchanged operator financial
 cut. Final evidence is linked and versioned in this documentation update. The operator's
-[retained 80 GiB capacity](../../docs/evidence/PD-capacity-retained-20261009.md)
+[retained 80 GiB capacity](https://github.com/yukikm/solana-zkapi/blob/ea4cb0ac005832abae6e703eb177914c0c9aa193/docs/evidence/PD-capacity-retained-20261009.md)
 has measured headroom; no storage rollback or long-term qualification is claimed.
 
 ## Install and diagnose
@@ -120,9 +120,9 @@ only the 43-character base64url invitation (optionally one trailing newline),
 not a provider key or local clientd management token. Keep it out of backups
 intended for public distribution. This capability was introduced in `.2` and is
 retained in `.6`; earlier immutable releases do not gain it retroactively.
-[Native N-01](../../docs/evidence/PD-native-public-N01.md),
-[OpenClaw N-02/N-03](../../docs/evidence/PD-native-public-N02-N03.md) and
-[N-04 recovery/withdrawal](../../docs/evidence/PD-native-public-N04.md) record
+[Native N-01](https://github.com/yukikm/solana-zkapi/blob/ea4cb0ac005832abae6e703eb177914c0c9aa193/docs/evidence/PD-native-public-N01.md),
+[OpenClaw N-02/N-03](https://github.com/yukikm/solana-zkapi/blob/ea4cb0ac005832abae6e703eb177914c0c9aa193/docs/evidence/PD-native-public-N02-N03.md) and
+[N-04 recovery/withdrawal](https://github.com/yukikm/solana-zkapi/blob/ea4cb0ac005832abae6e703eb177914c0c9aa193/docs/evidence/PD-native-public-N04.md) record
 actual public acceptance in their dated scopes.
 
 ```sh
@@ -159,7 +159,7 @@ provider's settlement grace without replaying an inference. A canceled or
 unknown response, process restart, failed verification, deadline or disconnect
 blocks admission and retains explicit recovery. The client must permit that
 response-header wait and consume the previous response to its end.
-[Actual OpenClaw N-02/N-03 acceptance](../../docs/evidence/PD-native-public-N02-N03.md)
+[Actual OpenClaw N-02/N-03 acceptance](https://github.com/yukikm/solana-zkapi/blob/ea4cb0ac005832abae6e703eb177914c0c9aa193/docs/evidence/PD-native-public-N02-N03.md)
 verified text and read-tool continuation using the explicit
 [settlement scheduling adapter](../../docs/integrations/openclaw-settlement-adapter.md).
 That dated result does not establish arbitrary AI-client compatibility or current

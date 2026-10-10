@@ -9,14 +9,11 @@ jobs:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           submodules: recursive
-      - name: Fetch immutable historical evidence source
-        run: git fetch --no-tags --depth=1 origin a9c3364a89990e22b0a3c3d0bddee82493017987
       - name: Check source and design pins
         run: |
           python3 scripts/check_upstream.py
           python3 scripts/check_design.py
           python3 -m unittest discover -s scripts -p 'test_check_evidence.py'
-          python3 scripts/check_evidence.py
       - name: Install pinned Rust
         run: rustup show
       - name: Rust checks and real proof compatibility (host)
@@ -58,7 +55,7 @@ jobs:
           cargo clippy --locked --manifest-path programs/i02-harness/Cargo.toml --all-targets -- -D warnings
           cargo clippy --locked --manifest-path programs/i02-layout2/Cargo.toml --all-targets -- -D warnings
           git diff --exit-code -- crates/zkapi-poseidon/src/constants.rs programs/i02-harness/src/vk.rs programs/i02-harness/src/tree_vk.rs tests/fixtures/tree
-          git diff --exit-code -- programs/i02-layout2/src/profile.rs tests/fixtures/layout2 docs/evidence/I02B-reproducibility.json
+          git diff --exit-code -- programs/i02-layout2/src/profile.rs tests/fixtures/layout2
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: sbf-I02-complete-full-Vault-G1-pending

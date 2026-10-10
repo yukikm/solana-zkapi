@@ -1,9 +1,9 @@
 # I08/I09 実装開始契約
 
-追加実装後のレビュー修正・再検証・次の作業は[local受入後レビュー](evidence/I08-I09-local-review.md)を参照する。I10完了引継ぎReadyは宣言しない。
-**現在の受入は[I08/I09 local実装・受入](evidence/I08-I09-local-acceptance.md)、[I08](evidence/I08.md)、[I09](evidence/I09.md)を参照する。** 本書は実装前・初期レビュー時の契約を保持したもの。下記の「未完成」「再開位置」は当時の状態であり、実装の重複や現行機能の削除を指示しない。I10への完了引継ぎと公開gateは引き続き未承認。
+追加実装後のレビュー修正・再検証・次の作業は[local受入後レビュー](https://github.com/yukikm/solana-zkapi/blob/ea4cb0ac005832abae6e703eb177914c0c9aa193/docs/evidence/I08-I09-local-review.md)を参照する。I10完了引継ぎReadyは宣言しない。
+**現在の受入は[I08/I09 local実装・受入](https://github.com/yukikm/solana-zkapi/blob/ea4cb0ac005832abae6e703eb177914c0c9aa193/docs/evidence/I08-I09-local-acceptance.md)、[I08](https://github.com/yukikm/solana-zkapi/blob/ea4cb0ac005832abae6e703eb177914c0c9aa193/docs/evidence/I08.md)、[I09](https://github.com/yukikm/solana-zkapi/blob/ea4cb0ac005832abae6e703eb177914c0c9aa193/docs/evidence/I09.md)を参照する。** 本書は実装前・初期レビュー時の契約を保持したもの。下記の「未完成」「再開位置」は当時の状態であり、実装の重複や現行機能の削除を指示しない。I10への完了引継ぎと公開gateは引き続き未承認。
 
-2026-10-04 JST。I06/I07の7件のレビュー修正と59テスト・実Vault SBF 10取引の再検証を[I06](evidence/I06.md)・[I07](evidence/I07.md)に記録した。**I08/I09のlocal実装着手Ready**とする。本書は**次工程の実装着手契約**であり、I08/I09の実装完了・本番公開を示さない。正本は[API仕様](specs/api-proxy.md)、[tree-transition](specs/tree-transition.md)、[protocol](specs/protocol-solana.md)、[operations](specs/operations.md)、[OpenAPI](contracts/openapi.json)。[I06/I07引き継ぎ](i06-i07-implementation-ready.md)と[I05の台帳・signer契約](i05-implementation-ready.md)も維持する。
+2026-10-04 JST。I06/I07の7件のレビュー修正と59テスト・実Vault SBF 10取引の再検証を[I06](https://github.com/yukikm/solana-zkapi/blob/ea4cb0ac005832abae6e703eb177914c0c9aa193/docs/evidence/I06.md)・[I07](https://github.com/yukikm/solana-zkapi/blob/ea4cb0ac005832abae6e703eb177914c0c9aa193/docs/evidence/I07.md)に記録した。**I08/I09のlocal実装着手Ready**とする。本書は**次工程の実装着手契約**であり、I08/I09の実装完了・本番公開を示さない。正本は[API仕様](specs/api-proxy.md)、[tree-transition](specs/tree-transition.md)、[protocol](specs/protocol-solana.md)、[operations](specs/operations.md)、[OpenAPI](contracts/openapi.json)。[I06/I07引き継ぎ](i06-i07-implementation-ready.md)と[I05の台帳・signer契約](i05-implementation-ready.md)も維持する。
 
 ## 1. 開始位置と変更範囲
 
@@ -16,11 +16,11 @@
 
 固定upstreamは`ethereum/zkapi@045b444ea1b52538d1b40273c7cb6ed09468a052`。vendor/licenseを保持し、移植したpathとEthereumとの差分を証跡へ記録する。Ethereum wire・RPC・native ETH支払いをSolanaへそのまま接続しない。USDC整数、元request/withdrawal/Poseidon、32段tree、layout 2、transition_proof/proof_bound、v0_buffer、ADR-0002の役割別鍵を再選定しない。
 
-SDKはI04 transaction transportに加え、I08のmanifest信頼検証・暗号化storage・note/session journal・control client・native verifierを実装済み。[I08の証拠](evidence/I08.md)を正本にし、これらを再実装しない。`EncryptedTransportJournal`で`Journal.save`を永続化できるが、実wallet/proverを接続した製品フローは未完成。既存in-memory test callbackを製品storageとして扱わない。hostの`tree-prover`には、I08/I09が独立trust anchorから検証したprofile/artifactだけを渡す。
+SDKはI04 transaction transportに加え、I08のmanifest信頼検証・暗号化storage・note/session journal・control client・native verifierを実装済み。[I08の証拠](https://github.com/yukikm/solana-zkapi/blob/ea4cb0ac005832abae6e703eb177914c0c9aa193/docs/evidence/I08.md)を正本にし、これらを再実装しない。`EncryptedTransportJournal`で`Journal.save`を永続化できるが、実wallet/proverを接続した製品フローは未完成。既存in-memory test callbackを製品storageとして扱わない。hostの`tree-prover`には、I08/I09が独立trust anchorから検証したprofile/artifactだけを渡す。
 
 ### 2026-10-04レビュー後の再開位置
 
-[レビュー記録](evidence/I08-I09-review.md)に修正と再検証を記録した。**I08/I09の継続実装へ着手可、I10全機能E2Eへの完了引継ぎは未達**。次の変更は以下の順で、既存journal・transport・read modelへ接続する。
+[レビュー記録](https://github.com/yukikm/solana-zkapi/blob/ea4cb0ac005832abae6e703eb177914c0c9aa193/docs/evidence/I08-I09-review.md)に修正と再検証を記録した。**I08/I09の継続実装へ着手可、I10全機能E2Eへの完了引継ぎは未達**。次の変更は以下の順で、既存journal・transport・read modelへ接続する。
 
 1. **I08 C/D**：既存暗号journalへprover用note witnessとwallet操作を接続する。現`PrivateState`の残高/署名だけで秘密note全体を保存済みと扱わない。clearance取得/検証、実RP/WP/tree生成、WASM worker失敗時のnative代替、finalized入金・出金・escapeとstale-root再proveを実行する。
 2. **I09 A/B**：RPC scan/restartと永続checkpointを接続し、I04の署名検証済みv0 bytesをchallenger journalへ送信前保存するbroadcasterを作る。今回の新payload SBF検証はproof/wire/chain条件の検査であり、daemonや署名照会/同一bytes再送の完成根拠ではない。未知署名が残る間は別job/payload/signatureを作らない。

@@ -1,1 +1,0 @@
-{"manifestHash":"0e003f5d03109870af469e430eb268d160d0098ea114049eb454c039eaca8b7d","pool":"2aeTCsHthoockF8LC8N3UfP312BZ8uJ6sfuMbA2rot1w","artifactFiles":15,"verification":"real public artifact hashes and WASM initialization; no RPC/AUTH/inference"}

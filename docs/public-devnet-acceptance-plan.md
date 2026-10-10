@@ -3,10 +3,10 @@
 Current scope — 2026-10-09 JST: the user directed completion of ZKAPI core and
 stopped demo/chat UI work. **B-01–B-03 / PD-08 are deferred, not core completion
 gates.** Existing browser state and failures remain preserved. The
-[core evidence audit](evidence/PD-core-scope-reconciliation.md) joins actual
+[core evidence audit](https://github.com/yukikm/solana-zkapi/blob/ea4cb0ac005832abae6e703eb177914c0c9aa193/docs/evidence/PD-core-scope-reconciliation.md) joins actual
 public-input `.3` setup and production-handler rejection to the completed native
 path. E-01 escape/finalize remains underway. The user selected
-[OpenRouter Ethereum parity](evidence/PD-openrouter-ethereum-parity.md): captured
+[OpenRouter Ethereum parity](https://github.com/yukikm/solana-zkapi/blob/ea4cb0ac005832abae6e703eb177914c0c9aa193/docs/evidence/PD-openrouter-ethereum-parity.md): captured
 management USD after disable/grace, persisted before confirmed deletion, capped
 immutable settlement, and operator risk for delayed costs. The runtime successor
 is a candidate until actual deployment evidence exists. Final-invoice completeness
@@ -24,12 +24,12 @@ interrupted-recovery and finalized mutual-withdrawal evidence.** Four signed
 charges total **20 micro-USDC**; the five-USDC Devnet note returned
 **4,999,980 micro-USDC** and is closed. N-02/N-03's signed zero amounts match
 the observed management counters, but their
-[external provider-cost reconciliation remains unresolved](evidence/PD-openrouter-management-usage-limit.md).
+[external provider-cost reconciliation remains unresolved](https://github.com/yukikm/solana-zkapi/blob/ea4cb0ac005832abae6e703eb177914c0c9aa193/docs/evidence/PD-openrouter-management-usage-limit.md).
 This is not full billing acceptance. Funded B-01–B-03 are deferred under the
 current scope; the separate zero-AUTH emergency escape/finalize exercise remains
 incomplete.
 
-The [separate seven-cap grant](evidence/PD-detached-budget-initialization.md)
+The [separate seven-cap grant](https://github.com/yukikm/solana-zkapi/blob/ea4cb0ac005832abae6e703eb177914c0c9aa193/docs/evidence/PD-detached-budget-initialization.md)
 retained four reservations at the final native operator cut: **4,000,000
 micro-USDC maximum exposure**, leaving three unused caps. Withdrawal and low
 actual charges do not refund those reservations. Preserve every original
@@ -50,9 +50,9 @@ provider acceptance.
 
 | Case | Recorded result | Scope boundary |
 |---|---|---|
-| [N-01](evidence/PD-native-public-N01.md) | Stock public transport, compact deposit, nonstreaming Chat and verified six-micro-USDC settlement | Immutable `.2` native client; its earlier active-note checkpoint is preserved |
-| [N-02/N-03](evidence/PD-native-public-N02-N03.md) | Actual OpenClaw streamed read-tool exchange and continuation; two distinct AUTHs and verified metered-zero settlements | Running `.3` with the explicit local settlement scheduling adapter; external billing reconciliation remains open |
-| [N-04 and final closure](evidence/PD-native-public-N04.md) | Process-group kill during an unresolved stream, same-journal `.3` restart, one explicit recovery, 14-micro-USDC settlement and finalized withdrawal | Compatible retained `.2` command/observer tools were separately pinned; upstream packet counts remain unknown |
+| [N-01](https://github.com/yukikm/solana-zkapi/blob/ea4cb0ac005832abae6e703eb177914c0c9aa193/docs/evidence/PD-native-public-N01.md) | Stock public transport, compact deposit, nonstreaming Chat and verified six-micro-USDC settlement | Immutable `.2` native client; its earlier active-note checkpoint is preserved |
+| [N-02/N-03](https://github.com/yukikm/solana-zkapi/blob/ea4cb0ac005832abae6e703eb177914c0c9aa193/docs/evidence/PD-native-public-N02-N03.md) | Actual OpenClaw streamed read-tool exchange and continuation; two distinct AUTHs and verified metered-zero settlements | Running `.3` with the explicit local settlement scheduling adapter; external billing reconciliation remains open |
+| [N-04 and final closure](https://github.com/yukikm/solana-zkapi/blob/ea4cb0ac005832abae6e703eb177914c0c9aa193/docs/evidence/PD-native-public-N04.md) | Process-group kill during an unresolved stream, same-journal `.3` restart, one explicit recovery, 14-micro-USDC settlement and finalized withdrawal | Compatible retained `.2` command/observer tools were separately pinned; upstream packet counts remain unknown |
 
 The final independent chain cut matched all six exact transaction wires and
 signatures, closed the note and found Vault zero. Wallet and treasury share an
@@ -61,9 +61,9 @@ The operator cut retained four settled sessions and all 25 checkpoint rows.
 These observations do not claim another platform, provider/API or funded
 browser path.
 
-[Service suspension, capture, same-state restart and resume](evidence/PD-N01-service-recovery.md)
+[Service suspension, capture, same-state restart and resume](https://github.com/yukikm/solana-zkapi/blob/ea4cb0ac005832abae6e703eb177914c0c9aa193/docs/evidence/PD-N01-service-recovery.md)
 preserved the earlier one-session N-01 cut. Subsequent
-[independent backup verification](evidence/PD-N01-backup-independent-verify.md)
+[independent backup verification](https://github.com/yukikm/solana-zkapi/blob/ea4cb0ac005832abae6e703eb177914c0c9aa193/docs/evidence/PD-N01-backup-independent-verify.md)
 checked the exact downloaded encrypted archive and restored its logical
 PostgreSQL state in an isolated PG16 instance. That backup predates N-02–N-04;
 it is not a physical service or latest-four-session restoration. Current
@@ -119,7 +119,7 @@ funded browser path or current service availability.
    generate real matching WASM/native proofs. The four inherited setup files'
    exact-hash redistribution review is resolved; the complete bundle now retains
    the reviewed notices, and six fresh matching native/WASM proofs passed
-   [local independent verification](evidence/PD-complete-bundle-proofs.md).
+   [local independent verification](https://github.com/yukikm/solana-zkapi/blob/ea4cb0ac005832abae6e703eb177914c0c9aa193/docs/evidence/PD-complete-bundle-proofs.md).
    Verify the actual published bytes and selected deployment joins; those local
    checks do not establish anonymous public downloads or real browser execution.
 2. Operate the selected HTTPS gateway/control/indexer/provider path with durable
@@ -179,8 +179,8 @@ therefore use the explicitly documented
 before the stock native endpoint. It holds the second input until authenticated
 SDK status verifies completion of the first, with no inference retry. Its local
 checks are recorded separately in the
-[adapter evidence](evidence/PD-openclaw-settlement-adapter.md). The
-[actual N-02/N-03 result](evidence/PD-native-public-N02-N03.md) used that adapter
+[adapter evidence](https://github.com/yukikm/solana-zkapi/blob/ea4cb0ac005832abae6e703eb177914c0c9aa193/docs/evidence/PD-openclaw-settlement-adapter.md). The
+[actual N-02/N-03 result](https://github.com/yukikm/solana-zkapi/blob/ea4cb0ac005832abae6e703eb177914c0c9aa193/docs/evidence/PD-native-public-N02-N03.md) used that adapter
 and completed the read-tool exchange; it does not establish immediate
 unmediated continuation to the stock native port. The public egress and
 seven-cap matrix were retained, and the separately authenticated `.3` runtime
@@ -323,14 +323,14 @@ Changed lock/inode identities fail closed; restore requires explicit consumed-
 capacity reconciliation. A new budget never authorizes a second writer for an
 existing funded Pool or cloning its private financial service state.
 
-[Local validation](evidence/PD-detached-budget-local.md) passed 35 provider-budget
+[Local validation](https://github.com/yukikm/solana-zkapi/blob/ea4cb0ac005832abae6e703eb177914c0c9aa193/docs/evidence/PD-detached-budget-local.md) passed 35 provider-budget
 tests, including 14 detached tests, plus four V1/V2 gateway boundary fixtures and
 strict gateway TypeScript checks. The fixtures establish preservation, exact
 recovery rules, count limits, collision rejection, partial-initialization
 refusal, uncertain-fsync behavior and concurrency using synthetic ledgers.
-Later [hosted admission](evidence/PD-public-admission-recovery.md),
-[same-state service recovery](evidence/PD-N01-service-recovery.md), and
-[native interrupted recovery](evidence/PD-native-public-N04.md) provide their
+Later [hosted admission](https://github.com/yukikm/solana-zkapi/blob/ea4cb0ac005832abae6e703eb177914c0c9aa193/docs/evidence/PD-public-admission-recovery.md),
+[same-state service recovery](https://github.com/yukikm/solana-zkapi/blob/ea4cb0ac005832abae6e703eb177914c0c9aa193/docs/evidence/PD-N01-service-recovery.md), and
+[native interrupted recovery](https://github.com/yukikm/solana-zkapi/blob/ea4cb0ac005832abae6e703eb177914c0c9aa193/docs/evidence/PD-native-public-N04.md) provide their
 separate actual scopes. Selected client archive pins and the output limit are
 reviewed acceptance records; AUTH cannot remotely attest the client's binary
 or inspect its private direct-provider body.

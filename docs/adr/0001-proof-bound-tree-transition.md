@@ -8,7 +8,7 @@
 
 固定Ethereum zkAPIのrequest/withdrawal回路、Poseidon、32段treeを維持する。元treeを直接SBFで計算すると約2.18億CU。最初の追加tree証明案にもprogramでのtransition tag再計算が残り、全体で約1,034〜1,065万CUだった。同一ハッシュの演算最適化でもtag単体が約262万CU。標準Poseidon syscallは異なるspongeで出力が一致しない。
 
-[I02実測](../evidence/I02-optimization-results.json)の`research-proof-bound-tag`は、追加tree回路が拘束済みのtagの二重計算を省き、365,907〜671,266 CU。通常の100万CU予算、実SBF、実Token CPIで131ケースを確認した。これは本番Vault全体のworst-case値ではない。
+[I02実測](https://github.com/yukikm/solana-zkapi/blob/ea4cb0ac005832abae6e703eb177914c0c9aa193/docs/evidence/I02-optimization-results.json)の`research-proof-bound-tag`は、追加tree回路が拘束済みのtagの二重計算を省き、365,907〜671,266 CU。通常の100万CU予算、実SBF、実Token CPIで131ケースを確認した。これは本番Vault全体のworst-case値ではない。
 
 ## 決定
 
@@ -53,6 +53,6 @@ tree proofだけでは出金権限・清算承認・二重出金防止は保証�
 
 このADRでbackend選択と「programによるtag再計算」の設計blockerを解消する。旧program再計算要求を本ADRと新仕様で置き換える。研究用featureのコードは証拠として保持し、本番Vaultへそのまま転用しない。
 
-[I02-B](../evidence/I02B.md)で回路・wire・固定VK・共有bindingを標準化し、正常なproof同士の組合せ違いも拒否する257件の実SBF試験を完了した。I03/I04で全命令・account作成・buffer lifecycleを含む100万CU/1232 bytes gateを満たす。I11では3回路のproduction setup、artifact固定、第三者reviewを行う。失敗を予算引上げや検査省略で通さず、設計へフィードバックする。
+[I02-B](https://github.com/yukikm/solana-zkapi/blob/ea4cb0ac005832abae6e703eb177914c0c9aa193/docs/evidence/I02B.md)で回路・wire・固定VK・共有bindingを標準化し、正常なproof同士の組合せ違いも拒否する257件の実SBF試験を完了した。I03/I04で全命令・account作成・buffer lifecycleを含む100万CU/1232 bytes gateを満たす。I11では3回路のproduction setup、artifact固定、第三者reviewを行う。失敗を予算引上げや検査省略で通さず、設計へフィードバックする。
 
 I02完了によりI03へ着手可能。採用harnessは最大約32万CUだが、test-only setupと測定account範囲の結果を全Vaultやproduction合格とは扱わない。

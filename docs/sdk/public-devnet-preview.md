@@ -8,7 +8,7 @@ custody and journal until recovery and closure are complete.
 **Public preflight was blocked at the latest recorded check (2026-10-10 JST):**
 the operator returned an empty catalog with both `.7` and `.8` clients. The cause
 remains unproven. A separate successful ZDR metadata check does not establish
-inference readiness. [Recorded observations](../evidence/PD-sdk8-publication-20261010.md).
+inference readiness. [Recorded observations](https://github.com/yukikm/solana-zkapi/blob/ea4cb0ac005832abae6e703eb177914c0c9aa193/docs/evidence/PD-sdk8-publication-20261010.md).
 
 The gateway permits any browser origin and does not require invitations, but
 **all seven authorized request slots were consumed**. Preflight or model
@@ -21,13 +21,13 @@ the [operator guide](public-devnet-operations.md) for limits and incident handli
 ## Current inputs for new consumers
 
 The public API origin is `https://d366buuvadnp3.cloudfront.net`.
-The [deployed CORS update](../evidence/PD-public-cors-20261009.md) permits any
+The [deployed CORS update](https://github.com/yukikm/solana-zkapi/blob/ea4cb0ac005832abae6e703eb177914c0c9aa193/docs/evidence/PD-public-cors-20261009.md) permits any
 browser origin, including HTTP localhost, without registration. Use
 `credentials: "omit"`; SDK `.3` already does this. CORS permits browser
 access to responses, including errors; it does not establish service readiness.
 
 Current `.8` downloads and pins are recorded in the
-[publication receipt](../evidence/PD-sdk8-publication-20261010.md):
+[publication receipt](https://github.com/yukikm/solana-zkapi/blob/ea4cb0ac005832abae6e703eb177914c0c9aa193/docs/evidence/PD-sdk8-publication-20261010.md):
 
 | Input | SHA-256 |
 |---|---|
@@ -105,7 +105,7 @@ recovering an interrupted operation.
 The profile uses direct OpenRouter Chat, a one-USDC session cap and at most
 128 output tokens. Prompts go directly to OpenRouter; consumers do not supply
 an OpenRouter management key. The configured model list is an immutable catalog
-snapshot. [Selected OpenClaw cases](../evidence/PD-native-public-N02-N03.md) have
+snapshot. [Selected OpenClaw cases](https://github.com/yukikm/solana-zkapi/blob/ea4cb0ac005832abae6e703eb177914c0c9aa193/docs/evidence/PD-native-public-N02-N03.md) have
 live evidence; the expanded list has not been verified model by model.
 
 When `/relay-status` reports `invitation_required: false`, omit native
@@ -121,9 +121,9 @@ current funded browser acceptance remains deferred. Its custody namespace is
 
 ## Verification and history
 
-[Client release verification](../evidence/PD-sdk8-publication-20261010.md),
-[model-profile deployment](../evidence/PD-model-expansion-20261009.md) and
-[API release verification](../evidence/PD-cors-release-20261009.md) identify the
+[Client release verification](https://github.com/yukikm/solana-zkapi/blob/ea4cb0ac005832abae6e703eb177914c0c9aa193/docs/evidence/PD-sdk8-publication-20261010.md),
+[model-profile deployment](https://github.com/yukikm/solana-zkapi/blob/ea4cb0ac005832abae6e703eb177914c0c9aa193/docs/evidence/PD-model-expansion-20261009.md) and
+[API release verification](https://github.com/yukikm/solana-zkapi/blob/ea4cb0ac005832abae6e703eb177914c0c9aa193/docs/evidence/PD-cors-release-20261009.md) identify the
 published inputs. Native lifecycle, recovery and withdrawal results are
 summarized in [status](status.md). Earlier operational checkpoints are retained
-in the [documentation archive](../evidence/PD-documentation-cleanup-20261010.md).
+in the [documentation archive](https://github.com/yukikm/solana-zkapi/blob/ea4cb0ac005832abae6e703eb177914c0c9aa193/docs/evidence/PD-documentation-cleanup-20261010.md).

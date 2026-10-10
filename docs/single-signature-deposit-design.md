@@ -1,6 +1,6 @@
 # 入金を1回の署名で完了するZKAPI本体の設計
 
-2026-10-06 JST更新。状態：**本体・SDK・Indexerの実装とローカル実SBF検証を追加。公開配備・実Phantom受入は未実施。** 最新の実装・試験結果は[実装証跡](evidence/I10-single-deposit-implementation.md)を正本とする。[ADR-0003](adr/0003-single-transaction-deposit.md)と、設計初版時点の[offline計測report](evidence/I10-single-deposit-transport-analysis.json)を併読する。以下の設計初版の数値と受入条件は保持する。
+2026-10-06 JST更新。状態：**本体・SDK・Indexerの実装とローカル実SBF検証を追加。公開配備・実Phantom受入は未実施。** 最新の実装・試験結果は[実装証跡](https://github.com/yukikm/solana-zkapi/blob/ea4cb0ac005832abae6e703eb177914c0c9aa193/docs/evidence/I10-single-deposit-implementation.md)を正本とする。[ADR-0003](adr/0003-single-transaction-deposit.md)と、設計初版時点の[offline計測report](https://github.com/yukikm/solana-zkapi/blob/ea4cb0ac005832abae6e703eb177914c0c9aa193/docs/evidence/I10-single-deposit-transport-analysis.json)を併読する。以下の設計初版の数値と受入条件は保持する。
 
 ## 1. 結論と達成条件
 
@@ -77,7 +77,7 @@ compiler-backed IDLの生成元、length guard、SDK codec、indexerを一緒に
 
 ## 5. 取引サイズと比較
 
-計測は固定web3.jsとSDKのaccount導出を用い、署名領域、CU limit、非ゼロCU price、実際のv0 message/account indicesを含める。数値とsource hashの正本は[offline report](evidence/I10-single-deposit-transport-analysis.json)。
+計測は固定web3.jsとSDKのaccount導出を用い、署名領域、CU limit、非ゼロCU price、実際のv0 message/account indicesを含める。数値とsource hashの正本は[offline report](https://github.com/yukikm/solana-zkapi/blob/ea4cb0ac005832abae6e703eb177914c0c9aa193/docs/evidence/I10-single-deposit-transport-analysis.json)。
 
 | 方式 | 自己負担取引bytes | 判断 |
 |---|---:|---|

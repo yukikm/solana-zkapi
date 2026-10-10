@@ -1,9 +1,0 @@
-{
-  "schema": 1,
-  "before": "target/kit-migration/native-final/distribution/release.json",
-  "after": "target/kit-migration/native-publish/release.json",
-  "changed_files": [
-    "share/zkapi-clientd/build-inputs.json"
-  ],
-  "runtime_files_identical": true
-}

@@ -1,8 +1,0 @@
-
-> build:sdk
-> npm run build --workspace @zkapi/solana-sdk
-
-
-> @zkapi/solana-sdk@0.2.0-devnet.2 build
-> node build.mjs
-

@@ -168,7 +168,7 @@ or missing entries, altered bytes, extra files and symlinks fail. Keep the
 review outside the upload directory. This validates a review record; it does
 not determine legal sufficiency, authenticate the reviewer's identity, upload
 anything, or replace actual downloadable-byte/proof checks. The
-[upstream redistribution follow-up](../../docs/evidence/PD-02-redistribution-followup.md)
+[upstream redistribution follow-up](https://github.com/yukikm/solana-zkapi/blob/ea4cb0ac005832abae6e703eb177914c0c9aa193/docs/evidence/PD-02-redistribution-followup.md)
 records the original root license declaration that resolved the earlier
 missing-evidence reason for omitting the four unchanged files.
 

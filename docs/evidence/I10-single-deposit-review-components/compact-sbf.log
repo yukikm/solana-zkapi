@@ -1,3 +1,0 @@
-    Finished `dev` profile [optimized + debuginfo] target(s) in 0.49s
-     Running `tests/svm/target/debug/compact_deposit /Users/yukikimura/work/solana-zkapi/target/single-deposit-sbf/zkapi_vault.so /Users/yukikimura/work/solana-zkapi/target/single-deposit-acceptance/run-f_5_7aiq/svm-results.json`
-compact deposit: 61 real SBF cases passed; max 179148 CU; report /Users/yukikimura/work/solana-zkapi/target/single-deposit-acceptance/run-f_5_7aiq/svm-results.json
