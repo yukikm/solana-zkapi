@@ -431,6 +431,8 @@ impl RuntimeConfig {
                 ensure!(
                     tariff.provider != other.provider
                         || tariff.model != other.model
+                        || tariff.api.as_ref().map(|a| (&a.service, &a.operation))
+                            != other.api.as_ref().map(|a| (&a.service, &a.operation))
                         || wire::uint(&tariff.valid_from)? >= wire::uint(&other.valid_until)?
                         || wire::uint(&other.valid_from)? >= wire::uint(&tariff.valid_until)?,
                     "overlapping tariffs for provider/model"

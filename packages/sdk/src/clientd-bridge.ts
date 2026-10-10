@@ -1,6 +1,6 @@
 /** Thin localhost application over the ONE ControlClient state machine.
  * Go forwards authenticated requests here over a private Unix socket. */
-import { ControlClient, createCredentials, expiryNotice, PROXY_PRIVACY_NOTICE, DIRECT_OPENROUTER_PRIVACY_NOTICE, DIRECT_PRIVACY_NOTICE, type Mode, type NoteJournal, type PreparedSession } from './control.ts';
+import { ControlClient, createCredentials, expiryNotice, apiOperationPath, isApiOperationPath, validateApiService, PROXY_PRIVACY_NOTICE, DIRECT_OPENROUTER_PRIVACY_NOTICE, DIRECT_PRIVACY_NOTICE, type ApiService, type ApiBinding, type Mode, type NoteJournal, type PreparedSession } from './control.ts';
 import { JournalConflictError, JournalIntegrityError, type EncryptedJournal } from './journal.ts';
 import { directRequestBytes } from './direct-request.ts';
 import { privacyProfile, planClientUpgrade } from './client-guidance.ts';
@@ -10,6 +10,8 @@ import { daemonApiPaths, validateDaemonModelPolicy, validateModelRequestCapabili
 export interface DaemonOptions {
   client: ControlClient; journal: EncryptedJournal<NoteJournal>; noteId: string; mode: Mode;
   models: readonly (string | DaemonModelPolicy)[]; keyReuseSeconds?: number; now?: () => bigint;
+  services?: readonly ApiService[];
+  prepareApi?(api: ApiBinding, credentials: Awaited<ReturnType<typeof createCredentials>>): Promise<{ prepared: PreparedSession; root: string }>;
   /** Browser lease policy: rotate before a long request could cross expiry. */
   minimumLeaseRemainingSeconds?: number;
   /** Wait for completed same-process direct responses to settle before a new
@@ -30,10 +32,13 @@ export class ClientDaemon {
   private invalidated = false;
   private serial: Promise<unknown> = Promise.resolve(); private inflight = 0; private stopping = false; private started = false; private recoveryRequired = false; private idleWaiters: (()=>void)[] = [];
   constructor(options: DaemonOptions) {
-    this.o = {...options,models:structuredClone(options.models)}; this.reuse = options.keyReuseSeconds ?? 60;
+    this.o = {...options,models:structuredClone(options.models),services:structuredClone(options.services ?? [])}; this.reuse = options.keyReuseSeconds ?? 60;
     this.settlementWait = options.settlementWaitMs ?? (options.mode !== 'proxy' && this.reuse > 0 ? 120_000 : 0);
     const ids = this.o.models.map(model => typeof model === 'string' ? model : model.id);
-    if (!['proxy','direct_oa','direct_openrouter'].includes(options.mode) || !Number.isInteger(this.reuse) || this.reuse < 0 || this.reuse > 300 || !ids.length || ids.some(id=>typeof id !== 'string' || !/^[\x21-\x7e]{1,200}$/.test(id) || id === '*') || new Set(ids).size !== ids.length) throw new Error('explicit mode, unique pinned models and key reuse 0–300 required');
+    if (!['proxy','direct_oa','direct_openrouter'].includes(options.mode) || !Number.isInteger(this.reuse) || this.reuse < 0 || this.reuse > 300 || !ids.length && !this.o.services!.length || ids.some(id=>typeof id !== 'string' || !/^[\x21-\x7e]{1,200}$/.test(id) || id === '*') || new Set(ids).size !== ids.length) throw new Error('explicit mode, unique pinned models or services and key reuse 0–300 required');
+    if (this.o.services!.length && (options.mode !== 'proxy' || !options.prepareApi)) throw new Error('registered APIs require proxy and preparation');
+    const servicePaths = new Set<string>();
+    for (const service of this.o.services!) { validateApiService(service); const path = apiOperationPath(service.tariff.api); if (servicePaths.has(path)) throw new Error('duplicate API operation'); servicePaths.add(path); }
     if (!Number.isSafeInteger(this.settlementWait) || this.settlementWait < 0 || this.settlementWait > 180_000
       || this.settlementWait > 0 && options.mode === 'proxy') throw new Error('settlement wait requires direct mode and 0–180000 milliseconds');
     if (!Number.isSafeInteger(options.minimumLeaseRemainingSeconds ?? 1) || (options.minimumLeaseRemainingSeconds ?? 1) < 1
@@ -195,18 +200,36 @@ export class ClientDaemon {
     if (typeof model !== 'string' && !model.apis.some(api => daemonApiPaths[api] === path)) throw new Error('model API is not configured');
     if (typeof model !== 'string') validateModelRequestCapabilities(model, body);
     const snapshot = this.o.mode === 'proxy' ? new Uint8Array(bytes) : directRequestBytes(this.o.mode,path,bytes);
+    return this.dispatchRequest(path,snapshot,operationId,anthropicVersion,signal,{
+      matches: p => 'models' in p.prepared.request.quote.body && (this.o.mode !== 'proxy' || p.prepared.request.quote.body.models[0] === body.model)
+        && !(typeof model !== 'string' && 'tariff' in model && (model.tariff as {tariff_hash:string}).tariff_hash !== p.prepared.tariff.tariff_hash),
+      prepare: credentials => this.o.prepare(body.model as string,credentials), singleRequest:false,
+    });
+  }
+  async requestApi(service: string, operation: string, bytes: Uint8Array, operationId = crypto.randomUUID() as string, signal?: AbortSignal): Promise<Response> {
+    signal?.throwIfAborted();
+    const selected = this.o.services!.find(s => s.tariff.api.service === service && s.tariff.api.operation === operation);
+    if (!selected || this.o.mode !== 'proxy' || !this.o.prepareApi || !uuid.test(operationId) || bytes.length > Number(selected.tariff.api.request_max_bytes)) throw new Error('registered API operation required');
+    const snapshot = new Uint8Array(bytes); parseStrictJson(snapshot);
+    const api = selected.tariff.api;
+    return this.dispatchRequest(apiOperationPath(api),snapshot,operationId,'',signal,{
+      matches: p => 'api' in p.prepared.request.quote.body && apiOperationPath(p.prepared.request.quote.body.api) === apiOperationPath(api)
+        && p.prepared.tariff.tariff_hash === selected.tariff.tariff_hash,
+      prepare: credentials => this.o.prepareApi!(structuredClone(api),credentials), singleRequest:true,
+    });
+  }
+  private async dispatchRequest(path: string, snapshot: Uint8Array, operationId: string, anthropicVersion: string, signal: AbortSignal | undefined,
+    selection: { matches(p:NonNullable<NoteJournal['pending']>):boolean; prepare(credentials:Awaited<ReturnType<typeof createCredentials>>):Promise<{prepared:PreparedSession;root:string}>; singleRequest:boolean }): Promise<Response> {
     let requestId: string | undefined;
     await this.exclusive(async()=>{
       signal?.throwIfAborted();
-      if (!this.started || this.stopping || this.inflight >= (this.reuse === 0 ? 1 : 4)) throw new DaemonConflict();
+      if (!this.started || this.stopping || this.inflight >= (this.reuse === 0 || selection.singleRequest ? 1 : 4)) throw new DaemonConflict();
       let r = await this.record();
       if(r.value.wallet?.emergencyEscapes?.some(e=>e.phase!=='settled'))throw new DaemonConflict();
       if (r.value.history.some(h=>h.operations.some(o=>o.id===operationId)) || r.value.pending?.operations.some(o=>o.id===operationId)) throw new DaemonConflict();
       let p = r.value.pending;
       if (p && this.invalidated) throw new DaemonConflict();
-      const tariffChanged = p && typeof model !== 'string' && 'tariff' in model
-        && (model.tariff as { tariff_hash: string }).tariff_hash !== p.prepared.tariff.tariff_hash;
-      if (p && (p.phase !== 'active' || p.closeRequested || this.expired(p,true) || tariffChanged || p.prepared.request.authorization.mode !== this.o.mode || this.o.mode === 'proxy' && p.prepared.request.quote.body.models[0] !== body.model)) {
+      if (p && (p.phase !== 'active' || p.closeRequested || this.expired(p,true) || p.prepared.request.authorization.mode !== this.o.mode || !selection.matches(p))) {
         // This new operation has not been dispatched. Preserve its exact intent
         // while closing an incompatible/expired session; never replay an old one.
         if (this.inflight) throw new DaemonConflict();
@@ -225,7 +248,7 @@ export class ClientDaemon {
         this.lease = undefined; this.invalidated = false; this.completedDirectResponse = undefined;
         const credentials = await createCredentials(this.o.mode);
         signal?.throwIfAborted();
-        const prepared = await this.o.prepare(body.model as string,credentials);
+        const prepared = await selection.prepare(credentials);
         signal?.throwIfAborted();
         if (prepared.prepared.request.authorization.mode !== this.o.mode) throw new Error('mode changed during preparation');
         await this.o.client.prepare(this.o.noteId,prepared.prepared,prepared.root);
@@ -239,7 +262,7 @@ export class ClientDaemon {
           const fallback = BigInt(q.issued_at) + BigInt(q.session_ttl_seconds);
           const expiresAt = typeof status.expires_at === 'string' && /^(0|[1-9][0-9]{0,19})$/.test(status.expires_at)
             ? BigInt(status.expires_at) : fallback;
-          const until = this.now() + BigInt(this.reuse);
+          const until = this.now() + BigInt(selection.singleRequest ? 0 : this.reuse);
           const retireAt = expiresAt - ((this.o.minimumLeaseRemainingSeconds ?? 1) > 1 ? 0n : 1n);
           this.lease = { requestId: p.prepared.request.authorization.request_id, expiresAt, until: until < retireAt ? until : retireAt };
         }
@@ -294,12 +317,14 @@ export class ClientDaemon {
   async handle(method: string, path: string, bytes: Uint8Array, headers: Headers, signal?: AbortSignal): Promise<Response> {
     try {
       if (method === 'GET' && path === '/v1/models') return json({object:'list',data:this.o.models.map(model=>({id:typeof model === 'string' ? model : model.id,object:'model',owned_by:typeof model === 'string' ? 'configured-provider' : model.provider}))});
+      if (method === 'GET' && path === '/zkapi/v1/apis') return json({apis:this.o.services!.map(s=>s.tariff.api)});
       if (method === 'GET' && path === '/admin/status') return json(await this.status());
       if (method === 'GET' && path === '/admin/upgrade-plan') return json(planClientUpgrade(await this.status()));
       if (method === 'GET' && path === '/admin/model-availability') return json(await this.o.client.checkModelAvailability(this.o.mode,this.o.models.map(m=>typeof m === 'string'?m:m.id),signal));
       if (method === 'POST' && ['/admin/close','/admin/recover','/admin/reconcile','/admin/cancel-unsent','/admin/purge-settled-bodies','/admin/wallet'].includes(path)) return json(await this.management(path.slice(7) as 'close'|'recover'|'reconcile'|'cancel-unsent'|'purge-settled-bodies'|'wallet',bytes.length?parseStrictJson(bytes):undefined));
       if (method === 'POST' && routes.has(path)) return await this.infer(path,bytes,headers.get('Idempotency-Key') ?? undefined,headers.get('anthropic-version') ?? '',signal);
+      if (method === 'POST' && isApiOperationPath(path)) { const parts=path.split('/'); return await this.requestApi(parts[4],parts[5],bytes,headers.get('Idempotency-Key') ?? undefined,signal); }
       return json({error:{code:'unsupported_route'}},404);
-    } catch(error) { return json({error:{code:error instanceof DaemonConflict ? 'recovery_required' : 'client_request_failed',message:'Inference was not replayed. Inspect local status before retrying.'}},error instanceof DaemonConflict ? 409 : 400); }
+    } catch(error) { return json({error:{code:error instanceof DaemonConflict ? 'recovery_required' : 'client_request_failed',message:'Request was not replayed. Inspect local status before retrying.'}},error instanceof DaemonConflict ? 409 : 400); }
   }
 }

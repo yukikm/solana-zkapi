@@ -65,6 +65,7 @@ async fn connect(url: &str) -> Result<Client> {
 }
 fn tariff(direct: bool) -> Tariff {
     let mut value = Tariff {
+        api: None,
         tariff_hash: String::new(),
         version: "1".into(),
         provider: if direct {
@@ -273,6 +274,7 @@ impl Harness {
             pool: identity.pool,
             claims_directory: claims,
             providers: ProviderConfig {
+                api: vec![],
                 dispatcher: None,
                 proxy: vec![ProxyProviderConfig {
                     provider: Provider::Openai,

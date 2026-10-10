@@ -18,6 +18,8 @@ pub struct ProviderConfig {
     pub direct: Vec<DirectConfig>,
     #[serde(default)]
     pub proxy: Vec<ProxyProviderConfig>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub api: Vec<crate::generic::ApiProviderConfig>,
 }
 #[derive(Clone, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -30,6 +32,10 @@ pub struct ProxyProviderConfig {
 }
 impl ProviderConfig {
     pub fn supports_tariff(&self, tariff: &Tariff) -> Result<bool> {
+        if let Some(api) = &tariff.api {
+            crate::quote::validate_tariff(tariff)?;
+            return Ok(self.api.iter().any(|p| &p.api == api));
+        }
         if tariff.pricing_basis == "provider_reported_usd" {
             return Ok(self.direct.iter().any(|d| d.provider() == tariff.provider));
         }
@@ -48,6 +54,21 @@ impl ProviderConfig {
     pub fn validate(&self, tariffs: &[Tariff], local: bool) -> Result<()> {
         if let Some(dispatcher) = &self.dispatcher {
             dispatcher.validate()?;
+        }
+        let mut apis = Vec::new();
+        for config in &self.api {
+            crate::generic::validate_origin(&config.api, local)?;
+            let identity = (&config.api.service, &config.api.operation);
+            ensure!(!apis.contains(&identity), "duplicate API operation");
+            apis.push(identity);
+            ensure!(
+                tariffs.iter().any(|t| t.api.as_ref() == Some(&config.api)),
+                "API tariff missing"
+            );
+            if self.dispatcher.is_none() {
+                crate::egress::private_file(&config.credential_file)?;
+                let _ = read_credential(&config.credential_file)?;
+            }
         }
         let mut seen = Vec::new();
         for direct in &self.direct {
@@ -134,6 +155,7 @@ pub struct ProviderRuntime {
     pub dispatcher: Option<crate::egress::ClientConfig>,
     pub proxy: Vec<(Provider, Arc<crate::proxy::HttpAdapter>)>,
     pub direct: Vec<(Provider, crate::direct::DirectRuntime)>,
+    pub api: Vec<(wire::ApiBinding, Arc<crate::generic::HttpAdapter>)>,
     owner: Uuid,
     // Ephemeral throttles hold no raw IP, credentials, prompt, or response.
     rates: Mutex<BTreeMap<[u8; 32], (u64, u32)>>,
@@ -141,6 +163,13 @@ pub struct ProviderRuntime {
 }
 impl ProviderRuntime {
     pub async fn connect(config: &ProviderConfig, local: bool) -> Result<Self> {
+        let mut api = Vec::new();
+        for p in config.api.iter().filter(|_| config.dispatcher.is_none()) {
+            api.push((
+                p.api.clone(),
+                Arc::new(crate::generic::HttpAdapter::connect(p, local).await?),
+            ));
+        }
         let mut proxy = Vec::new();
         for p in config.proxy.iter().filter(|_| config.dispatcher.is_none()) {
             let credential =
@@ -173,6 +202,7 @@ impl ProviderRuntime {
             dispatcher: config.dispatcher.clone(),
             proxy,
             direct,
+            api,
             owner: Uuid::new_v4(),
             rates: Mutex::new(BTreeMap::new()),
             salt: rand::random(),
@@ -236,6 +266,18 @@ pub(crate) async fn abandoned_owner_exists(ledger: &ledger::Ledger) -> Result<bo
 }
 
 impl App {
+    pub(crate) async fn api_available(&self, binding: &wire::ApiBinding) -> bool {
+        self.config
+            .runtime
+            .providers
+            .api
+            .iter()
+            .any(|p| &p.api == binding)
+            && self
+                .providers
+                .available(&self.ledger, &Provider::Generic)
+                .await
+    }
     pub(crate) async fn adapter_available(
         &self,
         mode: &wire::Mode,
@@ -296,7 +338,7 @@ impl App {
             .transpose()?;
         let charged = observed.unwrap_or(0).min(op.reservation_nano);
         self.sign_provider_receipt(ReceiptBody {
-            version: "1".into(),
+            version: if tariff.api.is_some() { "2" } else { "1" }.into(),
             receipt_id: Uuid::new_v4().to_string(),
             deployment_id: self.config.binding.deployment_id.clone(),
             pool: self.config.binding.pool.clone(),

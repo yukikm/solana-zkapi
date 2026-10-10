@@ -17,6 +17,10 @@ name = "i10_e2e"
 required-features = ["i10-acceptance"]
 
 [[test]]
+name = "general_api_e2e"
+required-features = ["i10-acceptance"]
+
+[[test]]
 name = "i10_load"
 required-features = ["i10-acceptance"]
 

@@ -190,6 +190,7 @@ pub enum Provider {
     Anthropic,
     Openrouter,
     Oa,
+    Generic,
 }
 impl Provider {
     pub fn as_str(&self) -> &'static str {
@@ -198,7 +199,85 @@ impl Provider {
             Self::Anthropic => "anthropic",
             Self::Openrouter => "openrouter",
             Self::Oa => "oa",
+            Self::Generic => "generic",
         }
+    }
+}
+/// Immutable operation terms carried by a generic quote and its tariff. These
+/// terms extend the existing authorization hash without changing the proof.
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(deny_unknown_fields)]
+pub struct ApiBinding {
+    pub version: String,
+    pub service: String,
+    pub operation: String,
+    pub method: String,
+    pub path: String,
+    pub origin: String,
+    pub request_max_bytes: String,
+    pub response_max_bytes: String,
+    pub timeout_seconds: String,
+    pub billing: String,
+}
+pub fn api_identifier(value: &str) -> bool {
+    !value.is_empty()
+        && value.len() <= 64
+        && value.as_bytes()[0].is_ascii_alphanumeric()
+        && value
+            .bytes()
+            .all(|b| b.is_ascii_lowercase() || b.is_ascii_digit() || b == b'_' || b == b'-')
+}
+pub fn api_path(api: &ApiBinding) -> String {
+    format!("/zkapi/v1/api/{}/{}", api.service, api.operation)
+}
+pub fn is_api_path(path: &str) -> bool {
+    let Some(rest) = path.strip_prefix("/zkapi/v1/api/") else {
+        return false;
+    };
+    let Some((service, operation)) = rest.split_once('/') else {
+        return false;
+    };
+    api_identifier(service) && api_identifier(operation)
+}
+pub fn validate_api_binding(api: &ApiBinding) -> Result<()> {
+    origin(&api.origin)?;
+    if api.version != "1"
+        || !api_identifier(&api.service)
+        || !api_identifier(&api.operation)
+        || api.method != "POST"
+        || api.billing != "http_2xx_json"
+        || !api.path.starts_with('/')
+        || api.path.starts_with("//")
+        || api.path.len() > 1024
+        || api
+            .path
+            .bytes()
+            .any(|b| !(b.is_ascii_alphanumeric() || b"/-._~".contains(&b)))
+        || api.path.split('/').any(|s| matches!(s, "." | ".."))
+        || !(1..=1_048_576).contains(&uint(&api.request_max_bytes)?)
+        || !(1..=1_048_576).contains(&uint(&api.response_max_bytes)?)
+        || !(1..=600).contains(&uint(&api.timeout_seconds)?)
+    {
+        return Err(invalid("API binding"));
+    }
+    Ok(())
+}
+pub fn scope_valid(
+    mode: &Mode,
+    provider: &Provider,
+    models: &[String],
+    api: Option<&ApiBinding>,
+) -> Result<()> {
+    if *provider == Provider::Generic {
+        if *mode != Mode::Proxy || !models.is_empty() {
+            return Err(invalid("generic API scope"));
+        }
+        validate_api_binding(api.ok_or(invalid("missing API binding"))?)
+    } else {
+        if api.is_some() {
+            return Err(invalid("unexpected API binding"));
+        }
+        mode_models(mode, provider, models)
     }
 }
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
@@ -206,7 +285,18 @@ impl Provider {
 pub struct QuoteRequest {
     pub mode: Mode,
     pub provider: Provider,
+    #[serde(
+        default,
+        deserialize_with = "nonempty_models",
+        skip_serializing_if = "Vec::is_empty"
+    )]
     pub models: Vec<String>,
+    #[serde(
+        default,
+        deserialize_with = "optional_value_nonnull",
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub api: Option<ApiBinding>,
     #[serde(
         default,
         deserialize_with = "optional_nonnull",
@@ -222,7 +312,18 @@ pub struct QuoteBody {
     pub pool: String,
     pub mode: Mode,
     pub provider: Provider,
+    #[serde(
+        default,
+        deserialize_with = "nonempty_models",
+        skip_serializing_if = "Vec::is_empty"
+    )]
     pub models: Vec<String>,
+    #[serde(
+        default,
+        deserialize_with = "optional_value_nonnull",
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub api: Option<ApiBinding>,
     pub tariff_hash: String,
     pub cap_micro_usdc: MicroUsdc,
     pub issued_at: String,
@@ -292,7 +393,18 @@ pub struct Tariff {
     pub tariff_hash: String,
     pub version: String,
     pub provider: Provider,
+    #[serde(
+        default,
+        deserialize_with = "nonempty_model",
+        skip_serializing_if = "String::is_empty"
+    )]
     pub model: String,
+    #[serde(
+        default,
+        deserialize_with = "optional_value_nonnull",
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub api: Option<ApiBinding>,
     pub pricing_basis: String,
     pub valid_from: String,
     pub valid_until: String,
@@ -432,6 +544,27 @@ fn optional_nonnull<'de, D: Deserializer<'de>>(
 ) -> std::result::Result<Option<String>, D::Error> {
     String::deserialize(d).map(Some)
 }
+fn optional_value_nonnull<'de, D: Deserializer<'de>, T: Deserialize<'de>>(
+    d: D,
+) -> std::result::Result<Option<T>, D::Error> {
+    T::deserialize(d).map(Some)
+}
+// Omission denotes generic API scope; explicit empty legacy fields must not be
+// normalized away before hashing an authenticated quote, tariff or transcript.
+fn nonempty_models<'de, D: Deserializer<'de>>(d: D) -> std::result::Result<Vec<String>, D::Error> {
+    let models = Vec::<String>::deserialize(d)?;
+    if models.is_empty() {
+        return Err(de::Error::custom("models must be nonempty when present"));
+    }
+    Ok(models)
+}
+fn nonempty_model<'de, D: Deserializer<'de>>(d: D) -> std::result::Result<String, D::Error> {
+    let model = String::deserialize(d)?;
+    if model.is_empty() {
+        return Err(de::Error::custom("model must be nonempty when present"));
+    }
+    Ok(model)
+}
 
 /// Prompt-free proxy idempotency binding. Only this keyed digest, never the
 /// secret, raw body or an unkeyed prompt hash, crosses into the ledger.
@@ -444,10 +577,14 @@ pub fn operation_hmac(
 ) -> Result<[u8; 32]> {
     use hmac::{Hmac, Mac};
     if method != "POST"
-        || !matches!(
-            path,
-            "/v1/chat/completions" | "/v1/responses" | "/v1/messages" | "/v1/messages/count_tokens"
-        )
+        || !(is_api_path(path)
+            || matches!(
+                path,
+                "/v1/chat/completions"
+                    | "/v1/responses"
+                    | "/v1/messages"
+                    | "/v1/messages/count_tokens"
+            ))
     {
         return Err(invalid("operation endpoint"));
     }

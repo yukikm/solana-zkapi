@@ -176,6 +176,7 @@ pub fn local_binding() -> BindingConfig {
 }
 pub fn tariff() -> Tariff {
     let mut tariff = Tariff {
+        api: None,
         tariff_hash: "".into(),
         version: "1".into(),
         provider: Provider::Openai,
@@ -203,6 +204,7 @@ pub fn tariff() -> Tariff {
 pub fn signed_quote(now: u64) -> Quote {
     issue_quote(
         &QuoteRequest {
+            api: None,
             mode: Mode::Proxy,
             provider: Provider::Openai,
             models: vec!["local-test".into()],

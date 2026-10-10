@@ -896,8 +896,7 @@ async fn load_settlement(
     let tariff: crate::wire::Tariff = serde_json::from_value(tariff_value)?;
     crate::quote::validate_tariff(&tariff)?;
     ensure!(
-        tariff.provider == checked.quote.body.provider
-            && checked.quote.body.models == [tariff.model.clone()],
+        crate::quote::quote_matches_tariff(&checked.quote.body, &tariff),
         "frozen tariff provider/model mismatch"
     );
     let issued = crate::wire::uint(&checked.quote.body.issued_at)?;
@@ -1028,7 +1027,7 @@ async fn verify_receipts(
                         && operations.insert(id),
                     "receipt operation mismatch"
                 );
-                let op=tx.query_one("SELECT charged_nano::text,reservation_nano::text,state,observed_cost_nano::text,operator_loss_nano::text,model,dispatched_at FROM operations WHERE pool=$1 AND request_id=$2 AND operation_id=$3",&[&&config.pool[..],&request_id,&id]).await?;
+                let op=tx.query_one("SELECT charged_nano::text,reservation_nano::text,state,observed_cost_nano::text,operator_loss_nano::text,model,dispatched_at,endpoint FROM operations WHERE pool=$1 AND request_id=$2 AND operation_id=$3",&[&&config.pool[..],&request_id,&id]).await?;
                 ensure!(
                     op.get::<_, String>(0).parse::<u128>()? == charged
                         && op.get::<_, String>(1).parse::<u128>()?
@@ -1040,6 +1039,12 @@ async fn verify_receipts(
                         && op.get::<_, String>(5) == tariff.model,
                     "operation observation/model mismatch"
                 );
+                if let Some(api) = &tariff.api {
+                    ensure!(
+                        op.get::<_, String>(7) == crate::wire::api_path(api),
+                        "operation API scope mismatch"
+                    );
+                }
                 if let Some(loss) = &typed.operator_loss_nano_usdc {
                     ensure!(&op.get::<_, String>(4) == loss, "operator loss mismatch");
                 }

@@ -68,13 +68,17 @@ check({'provider_reported_usd','reservation_nano_usdc'} <= set(schemas['ReceiptB
 check('allOf' in schemas['OperationStatus'], 'Terminal receipt requirement')
 check({'receipt_public_key','authorities'} <= set(schemas['Manifest']['required']), 'Manifest trust fields')
 check(schemas['TariffRate']['properties']['unit_denominator']['pattern'] == '^[1-9][0-9]*$', 'Rate denominator permits zero')
-check(len(schemas['QuoteRequest']['oneOf']) == 3, 'Mode/provider constraints')
+check(len(schemas['QuoteRequest']['oneOf']) == 4, 'Mode/provider and registered API constraints')
+check(schemas['QuoteRequest']['oneOf'][-1]['required'] == ['api']
+      and schemas['QuoteRequest']['oneOf'][-1]['not'] == {'required':['models']}, 'Generic quote must omit models')
+check(schemas['Tariff']['oneOf'][-1]['required'] == ['api']
+      and schemas['Tariff']['oneOf'][-1]['not'] == {'required':['model']}, 'Generic tariff must omit model')
 check('TreeSnapshotFile' in schemas, 'Snapshot download contract')
 check('/zkapi/v1/sessions/{request_id}/receipts' in api['paths'], 'Receipt recovery path')
 check(schemas['RequestInputs']['minItems']==schemas['RequestInputs']['maxItems']==12,'Request inputs')
 check('provider_key' not in schemas['SessionStatus']['properties'],'Recovery leaks provider key')
 check(schemas['SessionCreate']['additionalProperties'] is False,'Prompt-free authorization must be strict')
-for route in ('/v1/chat/completions','/v1/responses','/v1/messages','/v1/messages/count_tokens'):
+for route in ('/v1/chat/completions','/v1/responses','/v1/messages','/v1/messages/count_tokens','/zkapi/v1/api/{service}/{operation}'):
     params=api['paths'][route]['post']['parameters']
     check(any(p['name']=='Idempotency-Key' and p['required'] for p in params), 'Missing idempotency '+route)
 

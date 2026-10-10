@@ -538,7 +538,7 @@ async function signedQuoteSetup(t: TestContext) {
   const tariff: Tariff = { ...tariffBody, tariff_hash: await sha256Hex(jcsBytes(tariffBody)) };
   const request = { mode: 'proxy' as const, provider: 'openrouter' as const, models: ['fixture-model'] };
   const quoteContext = { ...context, quote_public_key: publicKey, tariff_hashes: [tariff.tariff_hash] };
-  const body: Quote['body'] = { ...prepared().request.quote.body, quote_id: requestId, issued_at: '100', expires_at: '220', tariff_hash: tariff.tariff_hash };
+  const body: Quote['body'] = { ...(prepared().request.quote as Quote).body, quote_id: requestId, issued_at: '100', expires_at: '220', tariff_hash: tariff.tariff_hash };
   const sign = async (body: Quote['body']): Promise<Quote> => {
     const quote_hash = await sha256Hex(jcsBytes(body));
     const signature = Buffer.from(await crypto.subtle.sign('Ed25519', keys.privateKey, new Uint8Array(Buffer.from(quote_hash, 'hex')))).toString('base64');

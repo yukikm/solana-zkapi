@@ -5,8 +5,8 @@ import { createServer } from 'node:http';
 import { createInterface } from 'node:readline';
 import { once } from 'node:events';
 import { address, createKeyPairFromPrivateKeyBytes, getAddressFromPublicKey, getBase64Encoder, partiallySignTransaction } from '@solana/kit';
-import { verifyManifest, parseStrictJson, sha256Hex, type ArtifactBundle, type ManifestTrustPolicy } from '@zkapi/solana-sdk/trust';
-import { ControlClient, verifiedClientBundle, validateNoteJournal, type NoteJournal, type Mode, type Tariff } from '@zkapi/solana-sdk/control';
+import { verifyManifest, parseStrictJson, sha256Hex, jcsBytes, type ArtifactBundle, type ManifestTrustPolicy } from '@zkapi/solana-sdk/trust';
+import { ControlClient, verifiedClientBundle, validateNoteJournal, validateApiService, apiOperationPath, type ApiTariff, type ApiService, type NoteJournal, type Mode, type Tariff } from '@zkapi/solana-sdk/control';
 import { NativeSessionVerifier } from '@zkapi/solana-sdk/control-node';
 import { NativeJournalStore } from '@zkapi/solana-sdk/journal-node';
 import { EncryptedJournal, importJournalKey } from '@zkapi/solana-sdk/journal';
@@ -24,6 +24,7 @@ interface RuntimeConfig {
   manifest: string; policy: ManifestTrustPolicy; artifacts: Record<Exclude<keyof ArtifactBundle,'additional'>,string> & {additional:Record<string,string>};
   verifier:{path:string;sha256:string}; prover:{path:string;sha256:string};
   journal:string; custody:string; note_id:string; mode:Mode; models:(string | DaemonModelSource)[]; tariff?:string; key_reuse_seconds?:number; settlement_wait_ms?:number;
+  services?:{tariff:string}[];
   rpc:string; indexer:string; direct_provider_bases?:Partial<Record<'direct_oa'|'direct_openrouter',string>>;
   preparation_commitment?:TransactionPreparationCommitment;
   oa_verifier?:{base:string;stationId:string};
@@ -44,7 +45,15 @@ async function main(): Promise<void> {
   const raw = secret.initialize_key ? await initializeJournalKey(c.custody,passphrase) : await unlockJournalKey(c.custody,passphrase);passphrase.fill(0);
   const key = await importJournalKey(raw); raw.fill(0);
   const m = await verifyManifest(new Uint8Array(await readFile(c.manifest)),c.policy);
-  const models = await loadDaemonModels(c,m.tariff_hashes,async path => parseStrictJson(new Uint8Array(await readFile(path))) as unknown as Tariff);
+  const models = c.models?.length || !c.services?.length ? await loadDaemonModels(c,m.tariff_hashes,async path => parseStrictJson(new Uint8Array(await readFile(path))) as unknown as Tariff) : [];
+  const services:ApiService[]=[];
+  for(const configured of c.services ?? []){
+    if(!configured || Object.keys(configured).join(',')!=='tariff' || typeof configured.tariff!=='string')throw Error('API tariff file required');
+    const tariff=parseStrictJson(new Uint8Array(await readFile(configured.tariff))) as unknown as ApiTariff;
+    validateApiService({tariff});const{tariff_hash,...body}=tariff;
+    if(!m.tariff_hashes.includes(tariff_hash)||await sha256Hex(jcsBytes(body))!==tariff_hash)throw Error('API tariff is not pinned by deployment');
+    services.push({tariff});
+  }
   const artifacts:any = {additional:{}};
   for (const [name,path] of Object.entries(c.artifacts)) if (name!=='additional') artifacts[name]=new Uint8Array(await readFile(path as string));
   for (const [name,path] of Object.entries(c.artifacts.additional)) artifacts.additional[name]=new Uint8Array(await readFile(path));
@@ -72,12 +81,19 @@ async function main(): Promise<void> {
   }
   const rpc=connectionTransport(connection,{preparationCommitment:c.preparation_commitment});
   const wallet=new WalletClient({manifest:m,prover,journal,chain,rpc,wallets,fetch:fetcher});
-  const service=new ClientDaemon({client,journal,noteId:c.note_id,mode:c.mode,models,keyReuseSeconds:c.key_reuse_seconds,settlementWaitMs:c.settlement_wait_ms,
+  const service=new ClientDaemon({client,journal,noteId:c.note_id,mode:c.mode,models,services,keyReuseSeconds:c.key_reuse_seconds,settlementWaitMs:c.settlement_wait_ms,
     prepare:async(model,credentials)=>{
       const selected=models.find(configured=>configured.id===model);if(!selected)throw Error('model not configured');
       const current=await journal.read(c.note_id);if(!current?.value.witness)throw Error('full finalized note required');
       const snap=await chain.sessionSnapshot(current.value.witness.note_id,prover);
       const quote=await client.quote({mode:c.mode,provider:selected.provider,models:[c.mode==='proxy'?model:'*'],session_ttl_seconds:String(c.key_reuse_seconds===0?60:c.key_reuse_seconds??60)},selected.tariff);
+      return{prepared:await prover.prepareSession(current.value.witness,current.value.state,snap.root,snap.siblings,quote,selected.tariff,credentials),root:snap.root};
+    },
+    prepareApi:async(api,credentials)=>{
+      const selected=services.find(s=>apiOperationPath(s.tariff.api)===apiOperationPath(api));if(!selected)throw Error('API operation not configured');
+      const current=await journal.read(c.note_id);if(!current?.value.witness)throw Error('full finalized note required');
+      const snap=await chain.sessionSnapshot(current.value.witness.note_id,prover);
+      const quote=await client.quoteApi(api,selected.tariff);
       return{prepared:await prover.prepareSession(current.value.witness,current.value.state,snap.root,snap.siblings,quote,selected.tariff,credentials),root:snap.root};
     },
     wallet:async(command:any)=>{if(!command||typeof command!=='object')throw Error('wallet command required');switch(command.action){case'deposit':await wallet.beginDeposit(c.note_id,command.amount,command.roles as WalletRoles);break;case'withdraw':await wallet.beginWithdrawal(c.note_id,command.mode,command.destination_owner,command.roles);break;case'escape':await wallet.fallbackToEscape(c.note_id);break;case'clear-unaccepted-auth':await wallet.reconcileUnacceptedAuthorization(c.note_id);break;case'emergency-escape':await wallet.beginEmergencyEscape(c.note_id,command.destination_owner,command.roles);break;case'reconcile-challenge':await wallet.reconcileChallengedEscape(c.note_id);break;case'finalize':await wallet.beginFinalize(c.note_id,command.roles);break;case'advance':return wallet.advance(c.note_id);case'prove':await wallet.resumeProof(c.note_id);break;case'recover-expired-setup':await wallet.reconcileExpiredCreation(c.note_id);break;case'retry-rejected':await wallet.retryRejected(c.note_id);break;default:throw Error('unsupported wallet action');}return{saved:true};},

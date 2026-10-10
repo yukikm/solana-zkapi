@@ -131,7 +131,7 @@
     "@solana/kit": "8.4.0",
     "@solana/rpc-spec-types": "8.4.0"
   },
-  "description": "Solana USDC-funded AI API client with local proofs and durable settlement recovery",
+  "description": "Solana USDC-funded API client with local proofs and durable settlement recovery",
   "engines": {
     "node": ">=24.19.0 <25"
   },

@@ -1,7 +1,8 @@
 # API, proxy and settlement contract
 
-Control APIs use `/zkapi/v1`; inference APIs use `/v1`. Supported designs are
-`direct_oa`, `direct_openrouter` and provider-specific proxy sessions. See
+Control APIs use `/zkapi/v1`; inference compatibility APIs use `/v1`, and
+registered JSON operations use `/zkapi/v1/api/{service}/{operation}`. Supported
+designs are `direct_oa`, `direct_openrouter` and proxy sessions. See
 [OpenAPI](../contracts/openapi.json) for types/routes,
 [ledger.sql](../contracts/ledger.sql) for durable state and
 [support status](../support.md) for verified deployment scope.
@@ -10,14 +11,14 @@ Control APIs use `/zkapi/v1`; inference APIs use `/v1`. Supported designs are
 
 1. Deposit USDC using a locally generated tree proof and authenticated transport;
    obtain the finalized root and note path.
-2. Request a quote for provider, mode, models and tariff.
+2. Request a quote for provider, mode, operation scope and tariff.
 3. Generate request UUID, control secret and, for proxy mode, proxy secret with
    the device CSPRNG; durably journal them.
 4. Generate a request proof bound to the quote and credential hashes. Do not send
    the secret note or wallet address to the control API.
 5. Authorize with `POST /zkapi/v1/sessions`. Direct keys are delivered only in the
    first creation response; proxy uses the client's own token.
-6. Run inference within the cap. Expiry/close stops new admission and starts settlement.
+6. Execute API operations within the cap. Expiry/close stops new admission and starts settlement.
 7. Retrieve and verify charge, successor commitment/anchor, blind delta and state
    signature before updating the journal.
 8. Start the next authorization or withdraw. Never advance one note twice concurrently.
@@ -29,11 +30,12 @@ constant time.
 | Token | Purpose |
 |---|---|
 | `zkc1.<request_uuid>.<secret43>` | Session creation, status, close, recovery and operation status |
-| `zkp1.<request_uuid>.<secret43>` | Inference only |
+| `zkp1.<request_uuid>.<secret43>` | Authorized proxy API operations only |
 
 Bodies contain credential hashes only. Put full tokens in authentication headers,
-never URL/query/cookies. Proxy accepts OpenAI Bearer or Anthropic x-api-key,
-rejecting simultaneous headers. It substitutes operator credentials upstream;
+never URL/query/cookies. Proxy accepts Bearer authorization; Anthropic
+compatibility routes also accept x-api-key, rejecting simultaneous headers.
+It substitutes operator credentials upstream;
 client tokens are never forwarded. Proofs bind mode, UUID and both credential
 hashes so an intercepted proof alone cannot recover keys or settlement details.
 Lost credentials require the client's encrypted backup; wallet-signature recovery
@@ -44,10 +46,10 @@ must not link ordinary authorization to deposits.
 QuoteBody is UTF-8 RFC 8785 JCS; SHA-256 excludes quote_hash and signature. Amounts,
 times and integer versions use decimal strings, never JavaScript Number.
 Reject duplicate keys, invalid UTF-8 and unknown fields. Array order is meaningful;
-models are ASCII-sorted and unique.
+inference models are ASCII-sorted and unique.
 
 ```text
-QuoteBody:
+Inference QuoteBody:
 quote_id, deployment_id, pool, mode, provider, models[], tariff_hash,
 cap_micro_usdc, issued_at, expires_at, session_ttl_seconds, max_concurrency,
 control_api_origin, inference_api_origin
@@ -57,12 +59,76 @@ version:"1", deployment_id, pool, request_id, quote_hash, mode,
 control_secret_hash, proxy_secret_hash
 ```
 
-Allowed pairs are direct_oa/oa, direct_openrouter/openrouter and
+Inference pairs are direct_oa/oa, direct_openrouter/openrouter and
 proxy/{openai,anthropic,openrouter}. Check catalog endpoint/model support.
 Direct uses `models=["*"]` and provider-enforced permissions; zkAPI cannot enforce
-restrictions absent from the upstream key. Proxy quotes bind one concrete model.
+restrictions absent from the upstream key. Inference proxy quotes bind one concrete model.
 Direct proxy_secret_hash is null. JCS AuthorizationBody supplies authorization_bytes
-for H2F; it contains neither prompt nor prompt hash.
+for H2F; it contains neither request content nor its hash.
+
+### Registered JSON API operations
+
+The additional `proxy/generic` pair uses the same authorization version `"1"`,
+request proof, nullifier reservation, ledger and sign-once settlement. The
+quote's hash commits to an `api` descriptor instead of `models`. Inference is
+one application of these payment primitives, not a restriction of the circuits.
+No circuit, Vault layout or custody migration accompanies this extension.
+
+```text
+ApiBinding:
+version:"1", service, operation, method:"POST", path, origin,
+request_max_bytes, response_max_bytes, timeout_seconds, billing:"http_2xx_json"
+```
+
+Generic QuoteRequest contains `mode:"proxy"`, `provider:"generic"`, `api` and
+optional `session_ttl_seconds`. Generic QuoteBody keeps every common field of
+the inference quote above but omits `models` and adds `api`. The complete
+descriptor must equal the configured provider operation and the tariff's
+descriptor. IDs are 1–64 lowercase ASCII letters/digits/underscore/hyphen,
+starting with a letter or digit. `origin` is canonical. `path` is an absolute
+ASCII path of at most 1024 bytes, using letters/digits and `/ - . _ ~`; reject
+a `//` prefix, dot segments, percent encoding, query or fragment. Size bounds
+are integer decimal strings from 1 to 1048576; deadline is 1–600 seconds.
+
+The generic tariff is version `"2"`, provider `"generic"`, with `api` instead of
+`model`, pricing basis `"fixed_request"`, fee `"0"` and exactly one rate:
+`unit:"requests"`, positive `nano_usdc_numerator` bounded by i64 maximum, and
+`unit_denominator:"1"`. Validity and hash rules are unchanged. Authorization
+binds the tariff hash; each admitted operation reserves its full fixed price
+before dispatch. The independent dispatcher checks the original signed
+descriptor, operation path, exact body fingerprint and reservation again.
+
+Execution uses `POST /zkapi/v1/api/{service}/{operation}` with proxy Bearer
+authorization, UUIDv4 `Idempotency-Key` and strict JSON. A client supplies no
+upstream URL or arbitrary headers. Operator configuration supplies the upstream
+credential file; the adapter sends Bearer authorization, JSON content type and
+accepts JSON. Non-fixture destinations require HTTPS and public resolved addresses;
+the explicit local fixture mode uses numeric loopback HTTP. Redirects,
+environment proxies and automatic retries are disabled.
+
+The `http_2xx_json` rule charges `requests="1"` only when a complete HTTP 2xx
+response has JSON content type, valid strict JSON, allowed content encoding,
+bounded size and finishes within the deadline. An observed non-2xx response
+produces `requests="0"` and a sanitized 502 error. Invalid or incomplete
+successful responses and transport uncertainty produce unknown usage, never an
+automatic retry; existing operator-loss waiver rules apply. These operations
+use version `"2"` receipts: measured usage has exactly one `requests` count,
+`"0"` or `"1"`; unknown/not-dispatched receipts have empty usage. Charges,
+rounding, independent receipt verification and state signatures are unchanged.
+This rule attests the operator's observation, not correctness of the JSON data.
+
+Legacy quotes/tariffs omit the new `api` field entirely, preserving their exact
+canonical bytes and hashes. Generic objects omit model fields; `api:null` is
+invalid. Existing inference receipts remain version `"1"`. Updated native/WASM
+verifiers accept both contracts; existing journal schemas remain readable,
+and old authorizations and receipts are never rewritten. Published releases,
+manifests and funded profiles remain immutable; this is a source/local feature
+until separately released and deployed.
+
+The first adapter covers fixed-price synchronous POST JSON. Other methods,
+streaming, asynchronous jobs, custom authentication or billing rules need
+explicit adapters/contracts and execution-recovery evidence. Generic direct
+access additionally requires provider-supported credential lifecycle controls.
 
 Persist quotes. The manifest-pinned Ed25519 quote key signs raw quote_hash32,
 separately from Baby-JubJub state/clearance keys. SDKs verify signature, origins,
@@ -365,10 +431,10 @@ and denominators are canonical decimal strings. Require denominator>=1 and
 `valid_from <= quote.issued_at < valid_until`; accepted sessions keep the tariff
 after expiry.
 
-Units are input_tokens, output_tokens, cache_read_tokens, cache_write_tokens,
+Inference units are input_tokens, output_tokens, cache_read_tokens, cache_write_tokens,
 cache_write_5m_tokens and cache_write_1h_tokens. A single cache-write rate cannot
-coexist with 5m/1h rates. Proxy requires input/output and all potentially charged
-cache units; provider/model must match quote. Direct permits oa/openrouter,
+coexist with 5m/1h rates. Inference proxy tariffs require input/output and all potentially charged
+cache units; provider/model must match quote. Direct inference permits oa/openrouter,
 model="*", rates=[]. `operator_fee_micro_usdc="0"`.
 
 Counts and rate numerators are 0..2^63−1; denominators 1..2^63−1; at most six rates.

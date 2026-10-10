@@ -40,7 +40,7 @@ pub struct DispatchObservation {
     pub http_status: Option<u16>,
     pub downstream_dropped: bool,
     pub diagnostic: DispatchDiagnostic,
-    response_started: bool,
+    pub(crate) response_started: bool,
 }
 
 /// Bounded operational metadata only. Never retains provider fields or errors.
@@ -95,7 +95,7 @@ impl HttpAdapter {
             Provider::Openai => "api.openai.com",
             Provider::Anthropic => "api.anthropic.com",
             Provider::Openrouter => "openrouter.ai",
-            Provider::Oa => return Err(ProxyError::Configuration),
+            Provider::Oa | Provider::Generic => return Err(ProxyError::Configuration),
         };
         let addresses: Vec<_> = tokio::net::lookup_host((host, 443))
             .await
@@ -131,7 +131,7 @@ impl HttpAdapter {
         deadline: Duration,
     ) -> Result<Self> {
         let url = Url::parse(origin).map_err(|_| ProxyError::Configuration)?;
-        if provider == Provider::Oa
+        if matches!(provider, Provider::Oa | Provider::Generic)
             || url.scheme() != "http"
             || url.path() != "/"
             || url.query().is_some()
@@ -506,7 +506,7 @@ fn send_error(
 pub(crate) fn valid_id(id: &str) -> bool {
     !id.is_empty() && id.len() <= 256 && !id.chars().any(char::is_control)
 }
-fn public_ip(ip: IpAddr) -> bool {
+pub(crate) fn public_ip(ip: IpAddr) -> bool {
     match ip {
         IpAddr::V4(v) => {
             !(v.is_private()

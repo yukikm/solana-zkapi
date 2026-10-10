@@ -1,7 +1,7 @@
 //! Dedicated provider process boundary. Secrets are loaded only by `dispatcherd`.
 //! A claimed immutable ledger attempt and a durable exclusive file precede egress.
 //! Process exit plus the retained claim prevent the same attempt from ever restarting.
-use crate::{direct, ledger::DispatchAttempt, proxy, wire};
+use crate::{direct, generic, ledger::DispatchAttempt, proxy, wire};
 use anyhow::{ensure, Context, Result};
 use serde::{Deserialize, Serialize};
 use std::{
@@ -51,6 +51,9 @@ impl ServiceConfig {
             "nested dispatcher forbidden"
         );
         crate::operations::local_database(&self.database_url)?;
+        for api in &self.providers.api {
+            generic::validate_origin(&api.api, self.local_test_only)?;
+        }
         if self.local_test_only {
             ensure!(self.devnet.is_none(), "ambiguous provider test profile");
             return Ok(());
@@ -101,6 +104,13 @@ impl ServiceConfig {
 #[derive(Serialize, Deserialize)]
 #[serde(tag = "action", rename_all = "snake_case", deny_unknown_fields)]
 pub enum Action {
+    Api {
+        attempt: DispatchAttempt,
+        api: wire::ApiBinding,
+        reservation_nano: String,
+        body: Vec<u8>,
+        proxy_secret: [u8; 32],
+    },
     Proxy {
         attempt: DispatchAttempt,
         endpoint: proxy::Endpoint,
@@ -186,7 +196,7 @@ impl ClientConfig {
     /// Errors discard all child diagnostics. No retry exists on this channel.
     pub async fn call(
         &self,
-        request: Request,
+        mut request: Request,
         mut relay: Option<mpsc::Sender<proxy::RelayEvent>>,
     ) -> Result<serde_json::Value> {
         self.validate()?;
@@ -198,7 +208,12 @@ impl ClientConfig {
             .stderr(Stdio::null())
             .kill_on_drop(true)
             .spawn()?;
-        let mut input = serde_json::to_vec(&request)?;
+        let mut input = zeroize::Zeroizing::new(serde_json::to_vec(&request)?);
+        if let Action::Api { proxy_secret, .. } = &mut request.action {
+            use zeroize::Zeroize;
+            proxy_secret.zeroize();
+        }
+        drop(request);
         input.push(b'\n');
         ensure!(input.len() <= 8 * 1024 * 1024, "dispatcher input limit");
         let mut stdin = child.stdin.take().context("dispatcher input")?;
@@ -254,6 +269,31 @@ impl ClientConfig {
             Err(_) => anyhow::bail!("dispatcher timed out"),
         }
     }
+    pub async fn api(
+        &self,
+        attempt: DispatchAttempt,
+        request: generic::PreparedRequest,
+        proxy_secret: [u8; 32],
+        relay: Option<mpsc::Sender<proxy::RelayEvent>>,
+    ) -> Result<proxy::DispatchObservation> {
+        let value = self
+            .call(
+                Request {
+                    provider: wire::Provider::Generic,
+                    action: Action::Api {
+                        attempt,
+                        api: request.api,
+                        reservation_nano: request.reservation_nano.to_string(),
+                        body: request.body,
+                        proxy_secret,
+                    },
+                },
+                relay,
+            )
+            .await?;
+        Ok(serde_json::from_value(value)?)
+    }
+
     pub async fn proxy(
         &self,
         provider: wire::Provider,
@@ -445,6 +485,96 @@ pub async fn serve(c: ServiceConfig, request: Request) -> Result<()> {
     }
     let p = request.provider;
     let value = match request.action {
+        Action::Api {
+            attempt,
+            api,
+            reservation_nano,
+            body,
+            proxy_secret,
+        } => {
+            use subtle::ConstantTimeEq;
+            let secret = zeroize::Zeroizing::new(proxy_secret);
+            ensure!(
+                p == wire::Provider::Generic && attempt.operation_id.is_some(),
+                "API attempt identity"
+            );
+            let cfg = c
+                .providers
+                .api
+                .iter()
+                .find(|x| x.api == api)
+                .context("API unavailable")?;
+            let op = db.query_one("SELECT o.endpoint,o.model,o.reservation_nano::text,o.request_hmac,s.request_transcript,s.proxy_secret_hash FROM operations o JOIN sessions s ON s.pool=o.pool AND s.request_id=o.request_id WHERE o.pool=$1 AND o.request_id=$2 AND o.operation_id=$3", &[&&c.pool[..], &attempt.request_id, &attempt.operation_id]).await?;
+            let path = wire::api_path(&api);
+            ensure!(
+                op.get::<_, String>(0) == path
+                    && op.get::<_, String>(1).is_empty()
+                    && op.get::<_, String>(2) == reservation_nano,
+                "API reservation mismatch"
+            );
+            let secret_hash: Option<Vec<u8>> = op.get(5);
+            ensure!(
+                secret_hash
+                    .as_ref()
+                    .is_some_and(|hash| bool::from(hash.as_slice().ct_eq(&wire::sha256(&*secret)))),
+                "API secret binding"
+            );
+            let hmac = wire::operation_hmac(&secret, "POST", &path, "", &body)?;
+            ensure!(
+                bool::from(op.get::<_, Vec<u8>>(3).as_slice().ct_eq(&hmac)),
+                "API exact request binding"
+            );
+            let transcript: wire::SessionCreate = serde_json::from_slice(&op.get::<_, Vec<u8>>(4))?;
+            ensure!(
+                transcript.quote.body.api.as_ref() == Some(&api),
+                "API saved quote binding"
+            );
+            let tariff_row = db.query_one("SELECT t.canonical_body,t.tariff_hash FROM sessions s JOIN quotes q ON q.pool=s.pool AND q.quote_id=s.quote_id JOIN tariffs t ON t.tariff_hash=q.tariff_hash WHERE s.pool=$1 AND s.request_id=$2", &[&&c.pool[..], &attempt.request_id]).await?;
+            let raw: Vec<u8> = tariff_row.get(0);
+            let hash: Vec<u8> = tariff_row.get(1);
+            ensure!(
+                wire::sha256(&raw).as_slice() == hash,
+                "saved tariff checksum mismatch"
+            );
+            let mut tariff: serde_json::Value = serde_json::from_slice(&raw)?;
+            tariff["tariff_hash"] = hex::encode(hash).into();
+            let tariff: wire::Tariff = serde_json::from_value(tariff)?;
+            ensure!(
+                transcript.quote.body.tariff_hash == tariff.tariff_hash
+                    && crate::quote::quote_matches_tariff(&transcript.quote.body, &tariff),
+                "API frozen tariff scope"
+            );
+            let checked = generic::validate(&api, &body, &tariff)?;
+            ensure!(
+                checked.reservation_nano.to_string() == reservation_nano,
+                "API immutable reservation"
+            );
+            let adapter = generic::HttpAdapter::connect(cfg, c.local_test_only).await?;
+            authorize(&db, &c, &p, &attempt).await?;
+            let (tx, mut rx) = mpsc::channel(32);
+            let dispatch = adapter.dispatch_once(checked, Some(tx));
+            let output = async {
+                while let Some(event) = rx.recv().await {
+                    let _ = emit(match event {
+                        proxy::RelayEvent::Head {
+                            status,
+                            provider_request_id,
+                            ..
+                        } => Event::Head {
+                            status,
+                            reference: provider_request_id,
+                            sse: false,
+                        },
+                        proxy::RelayEvent::Data(bytes) => Event::Data {
+                            bytes: bytes.to_vec(),
+                        },
+                    })
+                    .await;
+                }
+            };
+            let (observation, ()) = tokio::join!(dispatch, output);
+            serde_json::to_value(observation)?
+        }
         Action::Proxy {
             attempt,
             endpoint,
@@ -600,7 +730,7 @@ pub async fn serve(c: ServiceConfig, request: Request) -> Result<()> {
                     adapter.delete_key(&reference).await?;
                     serde_json::Value::Null
                 }
-                Action::Proxy { .. } => unreachable!(),
+                Action::Proxy { .. } | Action::Api { .. } => unreachable!(),
             }
         }
     };

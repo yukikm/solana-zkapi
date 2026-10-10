@@ -956,23 +956,55 @@ impl Ledger {
             .get(0);
         let quote: Value = serde_json::from_slice(&quote_body)
             .map_err(|_| LedgerError::Invalid("invalid_saved_quote"))?;
-        if s.mode != "proxy"
-            || !quote
-                .get("models")
-                .and_then(Value::as_array)
-                .is_some_and(|m| m.iter().any(|m| m.as_str() == Some(&n.model)))
-        {
-            return Err(LedgerError::Invalid("model_not_allowed"));
+        if s.mode != "proxy" {
+            return Err(LedgerError::Invalid("proxy_session_required"));
         }
-        if !matches!(
-            (s.provider.as_str(), n.endpoint.as_str()),
-            ("anthropic", "/v1/messages")
-                | ("anthropic", "/v1/messages/count_tokens")
-                | ("openai", "/v1/chat/completions")
-                | ("openai", "/v1/responses")
-                | ("openrouter", "/v1/chat/completions")
-        ) {
-            return Err(LedgerError::Invalid("endpoint_not_allowed"));
+        if s.provider == "generic" {
+            let body: crate::wire::QuoteBody = crate::wire::strict_parse(&quote_body)
+                .map_err(|_| LedgerError::Invalid("invalid_saved_quote"))?;
+            let tariff_hash = crate::wire::hash(&body.tariff_hash)
+                .map_err(|_| LedgerError::Invalid("invalid_saved_quote"))?;
+            let tariff_bytes: Vec<u8> = tx
+                .query_one(
+                    "SELECT canonical_body FROM tariffs WHERE tariff_hash=$1",
+                    &[&&tariff_hash[..]],
+                )
+                .await?
+                .get(0);
+            if crate::wire::sha256(&tariff_bytes) != tariff_hash {
+                return Err(LedgerError::Invalid("stored_tariff_digest_mismatch"));
+            }
+            let mut value: Value = serde_json::from_slice(&tariff_bytes)
+                .map_err(|_| LedgerError::Invalid("invalid_stored_tariff"))?;
+            value
+                .as_object_mut()
+                .ok_or(LedgerError::Invalid("invalid_stored_tariff"))?
+                .insert(
+                    "tariff_hash".into(),
+                    Value::String(body.tariff_hash.clone()),
+                );
+            let tariff: crate::wire::Tariff = serde_json::from_value(value)
+                .map_err(|_| LedgerError::Invalid("invalid_stored_tariff"))?;
+            validate_generic_operation(&body, &tariff, n)?;
+        } else {
+            if quote.get("api").is_some()
+                || !quote
+                    .get("models")
+                    .and_then(Value::as_array)
+                    .is_some_and(|m| m.iter().any(|m| m.as_str() == Some(&n.model)))
+            {
+                return Err(LedgerError::Invalid("model_not_allowed"));
+            }
+            if !matches!(
+                (s.provider.as_str(), n.endpoint.as_str()),
+                ("anthropic", "/v1/messages")
+                    | ("anthropic", "/v1/messages/count_tokens")
+                    | ("openai", "/v1/chat/completions")
+                    | ("openai", "/v1/responses")
+                    | ("openrouter", "/v1/chat/completions")
+            ) {
+                return Err(LedgerError::Invalid("endpoint_not_allowed"));
+            }
         }
         // Count estimates are free to the user, including any upstream cost.
         // The per-session bound survives process restarts and concurrent callers.
@@ -1313,7 +1345,10 @@ impl Ledger {
         Ok(count < 3)
     }
     pub async fn reset_provider_admission(&self, provider: &str, evidence: Hash) -> Result<()> {
-        if !matches!(provider, "oa" | "openai" | "anthropic" | "openrouter") {
+        if !matches!(
+            provider,
+            "oa" | "openai" | "anthropic" | "openrouter" | "generic"
+        ) {
             return Err(LedgerError::Invalid("invalid_provider"));
         }
         let mut c = self.inner.client.lock().await;
@@ -1813,6 +1848,124 @@ fn settlement_row(r: &Row) -> Result<SettlementRecord> {
         state_signature: r.get("state_signature"),
     })
 }
+fn validate_generic_operation(
+    body: &crate::wire::QuoteBody,
+    tariff: &crate::wire::Tariff,
+    operation: &NewOperation,
+) -> Result<()> {
+    crate::quote::quote_body_valid(body)
+        .map_err(|_| LedgerError::Invalid("invalid_saved_quote"))?;
+    crate::quote::validate_tariff(tariff)
+        .map_err(|_| LedgerError::Invalid("invalid_stored_tariff"))?;
+    if body.provider != crate::wire::Provider::Generic
+        || body.mode != crate::wire::Mode::Proxy
+        || body.tariff_hash != tariff.tariff_hash
+        || !crate::quote::quote_matches_tariff(body, tariff)
+        || !operation.model.is_empty()
+        || body
+            .api
+            .as_ref()
+            .is_none_or(|api| operation.endpoint != crate::wire::api_path(api))
+        || operation.reservation_nano
+            != u128::from(
+                crate::wire::uint(&tariff.rates[0].nano_usdc_numerator)
+                    .map_err(|_| LedgerError::Invalid("invalid_stored_tariff"))?,
+            )
+    {
+        return Err(LedgerError::Invalid("generic_operation_scope_mismatch"));
+    }
+    Ok(())
+}
+
+#[cfg(test)]
+mod generic_scope_tests {
+    use super::*;
+    use crate::wire::{ApiBinding, Mode, Provider, QuoteBody, Rate, Tariff};
+
+    #[test]
+    fn reservations_require_the_exact_frozen_generic_operation_and_price() {
+        let api = ApiBinding {
+            version: "1".into(),
+            service: "catalog".into(),
+            operation: "lookup".into(),
+            method: "POST".into(),
+            path: "/lookup".into(),
+            origin: "http://127.0.0.1:9090".into(),
+            request_max_bytes: "1024".into(),
+            response_max_bytes: "1024".into(),
+            timeout_seconds: "10".into(),
+            billing: "http_2xx_json".into(),
+        };
+        let mut tariff = Tariff {
+            tariff_hash: String::new(),
+            version: "2".into(),
+            provider: Provider::Generic,
+            model: String::new(),
+            api: Some(api.clone()),
+            pricing_basis: "fixed_request".into(),
+            valid_from: "1".into(),
+            valid_until: "4000000000".into(),
+            rates: vec![Rate {
+                unit: "requests".into(),
+                nano_usdc_numerator: "7000".into(),
+                unit_denominator: "1".into(),
+            }],
+            operator_fee_micro_usdc: "0".into(),
+        };
+        tariff.tariff_hash = crate::quote::tariff_hash(&tariff).unwrap();
+        let quote = QuoteBody {
+            quote_id: Uuid::new_v4().to_string(),
+            deployment_id: "local-test".into(),
+            pool: bs58::encode([2; 32]).into_string(),
+            mode: Mode::Proxy,
+            provider: Provider::Generic,
+            models: vec![],
+            api: Some(api.clone()),
+            tariff_hash: tariff.tariff_hash.clone(),
+            cap_micro_usdc: zkapi_solana_types::MicroUsdc::new(1_000_000).unwrap(),
+            issued_at: "100".into(),
+            expires_at: "220".into(),
+            session_ttl_seconds: "60".into(),
+            max_concurrency: "4".into(),
+            control_api_origin: "http://127.0.0.1:8788".into(),
+            inference_api_origin: "http://127.0.0.1:8789".into(),
+        };
+        let mut operation = NewOperation {
+            request_id: Uuid::new_v4(),
+            operation_id: Uuid::new_v4(),
+            request_hmac: [9; 32],
+            endpoint: crate::wire::api_path(&api),
+            model: String::new(),
+            reservation_nano: 7000,
+        };
+        validate_generic_operation(&quote, &tariff, &operation).unwrap();
+        for endpoint in [
+            "/zkapi/v1/api/catalog/other",
+            "/zkapi/v1/api/other/lookup",
+            "/v1/chat/completions",
+        ] {
+            operation.endpoint = endpoint.into();
+            assert!(validate_generic_operation(&quote, &tariff, &operation).is_err());
+        }
+        operation.endpoint = crate::wire::api_path(&api);
+        operation.model = "pretend-model".into();
+        assert!(validate_generic_operation(&quote, &tariff, &operation).is_err());
+        operation.model.clear();
+        for amount in [0, 6999, 7001] {
+            operation.reservation_nano = amount;
+            assert!(validate_generic_operation(&quote, &tariff, &operation).is_err());
+        }
+        operation.reservation_nano = 7000;
+        let mut changed = quote.clone();
+        changed.api.as_mut().unwrap().path = "/other".into();
+        assert!(validate_generic_operation(&changed, &tariff, &operation).is_err());
+        let mut changed = tariff.clone();
+        changed.api.as_mut().unwrap().origin = "http://127.0.0.1:9091".into();
+        changed.tariff_hash = crate::quote::tariff_hash(&changed).unwrap();
+        assert!(validate_generic_operation(&quote, &changed, &operation).is_err());
+    }
+}
+
 async fn insert_receipt(
     tx: &Transaction<'_>,
     pool: Hash,
@@ -1841,7 +1994,7 @@ async fn insert_receipt(
     {
         return Err(LedgerError::Invalid("receipt_identity_mismatch"));
     }
-    let identity=tx.query_one("SELECT p.deployment_id,q.tariff_hash,t.canonical_body,s.provider,s.mode,s.cap_micro,o.model FROM pools p JOIN sessions s ON s.pool=p.pool JOIN quotes q ON q.pool=s.pool AND q.quote_id=s.quote_id JOIN tariffs t ON t.tariff_hash=q.tariff_hash LEFT JOIN operations o ON o.pool=s.pool AND o.request_id=s.request_id AND o.operation_id=$3 WHERE p.pool=$1 AND s.request_id=$2",&[&&pool[..],&r.request_id,&r.operation_id]).await?;
+    let identity=tx.query_one("SELECT p.deployment_id,q.tariff_hash,t.canonical_body,s.provider,s.mode,s.cap_micro,o.model,o.endpoint FROM pools p JOIN sessions s ON s.pool=p.pool JOIN quotes q ON q.pool=s.pool AND q.quote_id=s.quote_id JOIN tariffs t ON t.tariff_hash=q.tariff_hash LEFT JOIN operations o ON o.pool=s.pool AND o.request_id=s.request_id AND o.operation_id=$3 WHERE p.pool=$1 AND s.request_id=$2",&[&&pool[..],&r.request_id,&r.operation_id]).await?;
     if body.deployment_id != identity.get::<_, String>(0)
         || body.tariff_hash != hex::encode(identity.get::<_, Vec<u8>>(1))
     {
@@ -1875,6 +2028,13 @@ async fn insert_receipt(
                 .ok_or(LedgerError::Invalid("missing_receipt_operation"))?
     {
         return Err(LedgerError::Invalid("receipt_model_mismatch"));
+    }
+    if let Some(api) = &tariff.api {
+        if identity.get::<_, Option<String>>(7).as_deref()
+            != Some(crate::wire::api_path(api).as_str())
+        {
+            return Err(LedgerError::Invalid("receipt_api_scope_mismatch"));
+        }
     }
     crate::receipts::validate_tariff_math(&body, &tariff)
         .map_err(|_| LedgerError::Invalid("receipt_tariff_calculation_mismatch"))?;

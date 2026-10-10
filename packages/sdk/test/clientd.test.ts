@@ -85,7 +85,7 @@ test('model switch settles the old session and dispatches the original new opera
   assert.equal(f.sentRequests[1].body,new TextDecoder().decode(otherBody));
   const saved=(await f.journal.read('note'))!.value;
   assert.equal(saved.history[0].operations[0].id,oldId);
-  assert.equal(saved.pending!.prepared.request.quote.body.models[0],'n');
+  const savedQuote=saved.pending!.prepared.request.quote.body;assert.ok('models' in savedQuote);assert.equal(savedQuote.models[0],'n');
   await assert.rejects(f.service.infer('/v1/chat/completions',body,oldId),DaemonConflict);
   await assert.rejects(f.service.infer('/v1/chat/completions',otherBody,newId),DaemonConflict);
   assert.deepEqual(f.counts(),{creates:2,closes:1,sends:2});

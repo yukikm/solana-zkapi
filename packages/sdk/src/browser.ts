@@ -23,7 +23,7 @@ export async function createBrowserClient(options: CreateBrowserClientOptions) {
   const name = JSON.stringify([options.storageName, expected.deployment_id, expected.pool, options.wallet.publicKey]);
   const wasm = new Uint8Array(options.wasm), sha256 = options.wasmSha256, createWorker = options.createWorker;
   // Snapshot mutable inputs before opening asynchronous custody.
-  const input = { ...options, models: structuredClone(options.models),
+  const input = { ...options, models: structuredClone(options.models), services:structuredClone(options.services),
     directProviderBases: structuredClone(options.directProviderBases), oaVerifier: structuredClone(options.oaVerifier),
     deployment: { ...options.deployment, manifest: new Uint8Array(options.deployment.manifest),
       trust: structuredClone(options.deployment.trust), artifacts: structuredClone(options.deployment.artifacts) } };

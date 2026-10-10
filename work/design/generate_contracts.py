@@ -35,7 +35,7 @@ UNITS = ['cache_read_tokens','cache_write_1h_tokens','cache_write_5m_tokens','ca
 P = {'type': 'string', 'pattern': '^[1-9A-HJ-NP-Za-km-z]{32,44}$', 'description': 'Base58 decoding must yield exactly 32 bytes.'}
 ID = {'type': 'string', 'format': 'uuid', 'pattern': '^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$'}
 MODE = {'type': 'string', 'enum': ['proxy', 'direct_openrouter', 'direct_oa']}
-PROVIDER = {'type': 'string', 'enum': ['openai', 'anthropic', 'openrouter', 'oa']}
+PROVIDER = {'type': 'string', 'enum': ['openai', 'anthropic', 'openrouter', 'oa', 'generic']}
 sch = {'UInt': U, 'Hash': H, 'Field': F, 'Pubkey': P, 'RequestId': ID,
        'Mode': MODE, 'Provider': PROVIDER, 'Scalar': SCALAR}
 sch['Point'] = obj({'x': F, 'y': F})
@@ -47,14 +47,22 @@ sch['RequestInputs'] = array(F, minItems=12, maxItems=12)
 sch['Error'] = obj({'error': obj({'code': S, 'message': S, 'retriable': B,
     'request_id': {'type': ['string','null']}, 'retry_after_seconds': U, 'latest_root': F},
     ['code','message','retriable'])})
-sch['QuoteRequest'] = obj({'mode': MODE, 'provider': PROVIDER,
+API_ID = {'type':'string','pattern':'^[a-z0-9][a-z0-9_-]{0,63}$'}
+sch['ApiBinding'] = obj({'version':{'type':'string','const':'1'},'service':API_ID,'operation':API_ID,
+    'method':{'type':'string','const':'POST'},'path':{'type':'string','pattern':'^/[A-Za-z0-9/._~-]*$','maxLength':1024,
+        'description':'No // prefix or dot/dot-dot segments. No query or encoded path.'},
+    'origin':{'type':'string','format':'uri','description':'Canonical origin. Production adapters require HTTPS/public addresses; isolated fixtures require numeric loopback HTTP.'},
+    'request_max_bytes':POS,'response_max_bytes':POS,'timeout_seconds':POS,'billing':{'type':'string','const':'http_2xx_json'}})
+sch['ApiBinding']['description']='Exact signed operation descriptor. Request/response bounds 1..1048576 bytes; deadline 1..600 seconds.'
+sch['QuoteRequest'] = obj({'mode': MODE, 'provider': PROVIDER, 'api':ref('ApiBinding'),
     'models': array(S, minItems=1, maxItems=32, uniqueItems=True),
-    'session_ttl_seconds': U},['mode','provider','models'])
+    'session_ttl_seconds': U},['mode','provider'])
 sch['QuoteBody'] = obj({'quote_id': ID, 'deployment_id': S, 'pool': P, 'mode': MODE,
-    'provider': PROVIDER, 'models': array(S,minItems=1,uniqueItems=True), 'tariff_hash': H,
+    'provider': PROVIDER, 'models': array(S,minItems=1,uniqueItems=True), 'api':ref('ApiBinding'), 'tariff_hash': H,
     'cap_micro_usdc': U, 'issued_at': U, 'expires_at': U, 'session_ttl_seconds': U,
     'max_concurrency': U, 'control_api_origin': {'type':'string','format':'uri'},
     'inference_api_origin': {'type':'string','format':'uri'}})
+sch['QuoteBody']['required']=[k for k in sch['QuoteBody']['required'] if k not in ('models','api')]
 sch['Quote'] = obj({'body': ref('QuoteBody'), 'quote_hash': H,
     'signature': {'type':'string','contentEncoding':'base64','description':'64-byte Ed25519 signature over raw quote hash.'}})
 for name in ('QuoteRequest','QuoteBody'):
@@ -64,6 +72,11 @@ for name in ('QuoteRequest','QuoteBody'):
         {'properties': {'mode': {'const':'proxy'}, 'provider': {'enum':['openai','anthropic','openrouter']},
             'models': {'minItems':1,'maxItems':1,'items':{'type':'string','minLength':1,'not':{'const':'*'}}}}}
     ]
+    for branch in sch[name]['oneOf']:
+        branch['required']=['models']
+        branch['not']={'required':['api']}
+    sch[name]['oneOf'].append({'properties':{'mode':{'const':'proxy'},'provider':{'const':'generic'}},
+        'required':['api'],'not':{'required':['models']}})
 sch['Authorization'] = obj({'version': {'type':'string','const':'1'},
     'deployment_id': S, 'pool': P, 'request_id': ID, 'quote_hash': H, 'mode': MODE,
     'control_secret_hash': H, 'proxy_secret_hash': {'anyOf':[H,{'type':'null'}]}})
@@ -109,8 +122,8 @@ sch['OperationStatus'] = obj({'operation_id': ID, 'request_id': ID,
         'METERED','DONE','WAIVED_OPERATOR_LOSS']}, 'charged_nano_usdc': U,
     'usage': obj({},[],True), 'tariff_hash': H, 'response_replayable': {'type':'boolean','const':False}},
     ['operation_id','request_id','state','response_replayable'])
-sch['NormalizedUsage'] = array(obj({'unit':{'type':'string','enum':UNITS},'count':U}), maxItems=6)
-sch['ReceiptBody'] = obj({'version':{'type':'string','const':'1'},'receipt_id':ID,
+sch['NormalizedUsage'] = array(obj({'unit':{'type':'string','enum':UNITS+['requests']},'count':U}), maxItems=6)
+sch['ReceiptBody'] = obj({'version':{'type':'string','enum':['1','2']},'receipt_id':ID,
     'deployment_id':S,'pool':P,'request_id':ID,'operation_id':{'anyOf':[ID,{'type':'null'}]},
     'billing_effect':{'type':'string','enum':['charge','late_loss_observation']},
     'related_receipt_hash':{'anyOf':[H,{'type':'null'}]},'observed_at':U,
@@ -122,6 +135,9 @@ sch['ReceiptBody'] = obj({'version':{'type':'string','const':'1'},'receipt_id':I
     'operator_loss_nano_usdc':{'anyOf':[U,{'type':'null'}]},
     'reason':{'type':'string','enum':['metered','not_dispatched','waived_unknown','late_usage']}})
 sch['ReceiptBody']['allOf'] = [
+    {'if':{'properties':{'version':{'const':'1'}}},'then':{'properties':{'usage':array(obj({'unit':{'type':'string','enum':UNITS},'count':U}),maxItems=6)}}},
+    {'if':{'properties':{'version':{'const':'2'}}},'then':{'properties':{'operation_id':ID,'provider_reported_usd':{'type':'null'},
+        'usage':array(obj({'unit':{'type':'string','const':'requests'},'count':{'type':'string','enum':['0','1']}}),maxItems=1)}}},
     {'if':{'properties':{'evidence_kind':{'enum':['OA_SIGNED_RECEIPT','OPENROUTER_USAGE']},'reason':{'const':'metered'}},
            'required':['evidence_kind','reason']},
      'then':{'properties':{'provider_reported_usd':{'type':'string'},'operation_id':{'type':'null'},'usage':{'maxItems':0}}}},
@@ -200,16 +216,25 @@ sch['Manifest']['description'] = 'Layout 2 only; profile digest and artifact has
 sch['CatalogEntry'] = obj({'model':S,'provider':PROVIDER,'modes':array(MODE),
     'endpoints':array(S),'modalities':array(S),'tariff_hash':H})
 sch['Catalog'] = obj({'models':array(ref('CatalogEntry'))})
-sch['TariffRate'] = obj({'unit':{'type':'string','enum':UNITS},'nano_usdc_numerator':U,'unit_denominator':POS})
-sch['Tariff'] = obj({'tariff_hash':H,'version':U,'provider':PROVIDER,'model':S,
-    'pricing_basis':{'type':'string','enum':['provider_reported_usd','fixed_usage_rates']},
+sch['TariffRate'] = obj({'unit':{'type':'string','enum':UNITS+['requests']},'nano_usdc_numerator':U,'unit_denominator':POS})
+sch['Tariff'] = obj({'tariff_hash':H,'version':U,'provider':PROVIDER,'model':S,'api':ref('ApiBinding'),
+    'pricing_basis':{'type':'string','enum':['provider_reported_usd','fixed_usage_rates','fixed_request']},
     'valid_from':U,'valid_until':U,'rates':array(ref('TariffRate'),maxItems=6),
     'operator_fee_micro_usdc':{'type':'string','const':'0'}})
+sch['Tariff']['required']=[k for k in sch['Tariff']['required'] if k not in ('model','api')]
 sch['Tariff']['description'] = 'SHA256 of JCS object excluding tariff_hash; rates sorted by unique unit. See api-proxy section 8 for exact bounds and arithmetic.'
 sch['Tariff']['oneOf'] = [
     {'properties':{'pricing_basis':{'const':'provider_reported_usd'},'provider':{'enum':['oa','openrouter']},'model':{'const':'*'},'rates':{'maxItems':0}}},
     {'properties':{'pricing_basis':{'const':'fixed_usage_rates'},'provider':{'enum':['openai','anthropic','openrouter']},'model':{'not':{'const':'*'}},'rates':{'minItems':2}}}
 ]
+for branch in sch['Tariff']['oneOf']:
+    branch['required']=['model']
+    branch['not']={'required':['api']}
+    if branch['properties']['pricing_basis']['const']=='fixed_usage_rates':
+        branch['properties']['rates']['items']=obj({'unit':{'type':'string','enum':UNITS},'nano_usdc_numerator':U,'unit_denominator':POS})
+sch['Tariff']['oneOf'].append({'properties':{'version':{'const':'2'},'provider':{'const':'generic'},'pricing_basis':{'const':'fixed_request'},
+    'rates':array(obj({'unit':{'type':'string','const':'requests'},'nano_usdc_numerator':POS,'unit_denominator':{'type':'string','const':'1'}}),minItems=1,maxItems=1)},
+    'required':['api'],'not':{'required':['model']}})
 sch['Root'] = obj({'pool':P,'root':F,'slot':U,'blockhash':P,'sequence':U,'next_note_id':U})
 sch['Path'] = obj({'snapshot':ref('Root'),'note_id':U,'leaf':F,
     'siblings':array(F,minItems=32,maxItems=32)})
@@ -320,6 +345,13 @@ for path,body,operation in compat:
 paths['/v1/models']={'get':{'operationId':'models','security':[{'ProxyToken':[]},{'AnthropicProxyKey':[]}],
     'responses':{'200':{'description':'Provider-compatible allowlisted model list.',
         'content':{'application/json':{'schema':obj({},[],True)}}}}}}
+paths['/zkapi/v1/api/{service}/{operation}']={'post':{
+    'operationId':'executeRegisteredJsonApi','security':[{'ProxyToken':[]}],
+    'description':'Registered proxy POST JSON operation, bound to the complete signed ApiBinding. One request unit only for bounded HTTP 2xx JSON; observed HTTP failures cost zero, uncertain execution is never replayed. No arbitrary URL or client-selected upstream headers.',
+    'parameters':[parameter('service',API_ID),parameter('operation',API_ID),parameter('Idempotency-Key',ID,'header')],
+    'requestBody':{'required':True,'content':{'application/json':{'schema':{}}}},
+    'responses':{'200':{'description':'Bounded upstream JSON response. Billing evidence comes from signed version 2 receipts.','content':{'application/json':{'schema':{}}}},
+        '409':{'description':'Operation already exists or conflicts; response cannot be replayed.'},'default':{'description':'Failed or unknown operation; inspect saved operation status.'}}}}
 
 doc = {'openapi':'3.1.0','info':{'title':'Solana zkAPI USDC + Proxy','version':'1.0.0-design',
     'description':'Implementation contract, not a deployed service. JSON amounts are decimal strings. Public control objects reject unknown fields; provider nested payloads require adapter validation.'},

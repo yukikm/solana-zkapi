@@ -133,7 +133,7 @@ test('one chat call quotes, proves, authorizes, sends once and verifies settleme
   assert.equal((await f.client.status()).settledBalanceMicroUsdc, '199'); assert.equal((await f.client.status()).canRequest, true);
   await readChatText(await f.client.chat(chat('second')));
   const saved = (await f.journal.read('note'))!.value;
-  assert.deepEqual(saved.history.map(h => h.prepared.tariff.model), ['first', 'second']);
+  assert.deepEqual(saved.history.map(h => 'model' in h.prepared.tariff ? h.prepared.tariff.model : undefined), ['first', 'second']);
   assert.equal(f.counts.wallet, 0); assert.equal(f.counts.sends, 2);
   await assert.rejects(f.client.chat(first)); assert.equal(f.counts.sends, 2);
 });

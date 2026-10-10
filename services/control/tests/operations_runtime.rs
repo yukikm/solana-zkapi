@@ -185,6 +185,7 @@ async fn dispatcher_one_shot_process_and_restart_fencing() {
         pool: identity.pool,
         claims_directory: dir.path().into(),
         providers: zkapi_control::provider_runtime::ProviderConfig {
+            api: vec![],
             dispatcher: None,
             direct: vec![],
             proxy: vec![zkapi_control::provider_runtime::ProxyProviderConfig {

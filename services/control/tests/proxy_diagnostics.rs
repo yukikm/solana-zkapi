@@ -47,6 +47,7 @@ fn prepared(stream: bool) -> proxy::PreparedRequest {
         cache_mode: CacheMode::InclusiveRead,
     };
     let mut tariff = Tariff {
+        api: None,
         tariff_hash: String::new(),
         version: "1".into(),
         provider: Provider::Openai,

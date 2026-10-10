@@ -6,6 +6,7 @@ pub mod crypto;
 pub mod direct;
 pub mod dispatcher;
 pub mod faults;
+pub mod generic;
 pub mod inference;
 mod inference_diagnostics;
 pub mod ledger;

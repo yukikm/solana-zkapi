@@ -182,11 +182,30 @@ fn main() {
                     "wasm-escape",
                     "clientd",
                     "i10",
-                    "pending-escape"
+                    "pending-escape",
+                    "general-api"
                 ]
                 .contains(&name));
                 fs::write(
-                    if name == "i10" {
+                    if name == "general-api" {
+                        let path = std::path::PathBuf::from(
+                            command["report_path"]
+                                .as_str()
+                                .expect("isolated general API report path"),
+                        );
+                        assert!(
+                            path.is_absolute()
+                                && path.starts_with(
+                                    root.canonicalize()
+                                        .unwrap()
+                                        .join("target/general-api-local")
+                                )
+                        );
+                        assert!(!path
+                            .components()
+                            .any(|component| matches!(component, std::path::Component::ParentDir)));
+                        path
+                    } else if name == "i10" {
                         root.join("target/i10/vault-sbf-results.json")
                     } else {
                         root.join(format!("target/i08-wallet/{name}-sbf-results.json"))

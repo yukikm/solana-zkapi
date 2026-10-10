@@ -11,10 +11,13 @@ import (
 	"net/http"
 	"net/http/httputil"
 	"net/url"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
 )
+
+var apiOperationPath = regexp.MustCompile(`^/zkapi/v1/api/[a-z0-9][a-z0-9_-]{0,63}/[a-z0-9][a-z0-9_-]{0,63}$`)
 
 type Server struct {
 	InferenceToken, ManagementToken string
@@ -93,8 +96,9 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		failure(w, http.StatusUnauthorized, "local_credential_required")
 		return
 	}
-	valid := r.Method == "GET" && r.URL.Path == "/v1/models"
+	valid := r.Method == "GET" && (r.URL.Path == "/v1/models" || r.URL.Path == "/zkapi/v1/apis")
 	if r.Method == "POST" {
+		valid = apiOperationPath.MatchString(r.URL.Path)
 		switch r.URL.Path {
 		case "/v1/chat/completions", "/v1/responses", "/v1/messages", "/v1/messages/count_tokens":
 			valid = true

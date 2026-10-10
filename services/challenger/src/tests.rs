@@ -72,6 +72,7 @@ fn evidence(trust: &Trust) -> Evidence {
         },
         quote: Quote {
             body: QuoteBody {
+                api: None,
                 quote_id: request_id.to_string(),
                 deployment_id: trust.deployment.clone(),
                 pool: trust.pool.pool.clone(),

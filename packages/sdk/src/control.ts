@@ -27,18 +27,61 @@ export interface Quote {
     session_ttl_seconds: string; max_concurrency: string; control_api_origin: string; inference_api_origin: string;
   }; quote_hash: string; signature: string;
 }
+/** A registered HTTP operation. The complete descriptor is signed with the quote. */
+export interface ApiBinding {
+  version: '1'; service: string; operation: string; method: 'POST'; path: string; origin: string;
+  request_max_bytes: string; response_max_bytes: string; timeout_seconds: string; billing: 'http_2xx_json';
+}
+export interface ApiQuote {
+  body: Omit<Quote['body'], 'provider' | 'models'> & { provider: 'generic'; api: ApiBinding };
+  quote_hash: string; signature: string;
+}
 export interface SessionCreate {
   authorization: { version: '1'; deployment_id: string; pool: string; request_id: string; quote_hash: string;
     mode: Mode; control_secret_hash: string; proxy_secret_hash: string | null };
-  quote: Quote; public_inputs: string[]; proof: { backend: 'groth16_bn254'; proof: string };
+  quote: Quote | ApiQuote; public_inputs: string[]; proof: { backend: 'groth16_bn254'; proof: string };
 }
 export interface Tariff {
   tariff_hash: string; version: string; provider: string; model: string; pricing_basis: string;
   valid_from: string; valid_until: string; rates: { unit: string; nano_usdc_numerator: string; unit_denominator: string }[];
   operator_fee_micro_usdc: string;
 }
+export interface ApiTariff extends Omit<Tariff, 'provider' | 'model' | 'version' | 'pricing_basis'> {
+  version: '2'; provider: 'generic'; api: ApiBinding; pricing_basis: 'fixed_request';
+}
+export interface ApiService { tariff: ApiTariff }
+export function apiOperationPath(api: Pick<ApiBinding, 'service' | 'operation'>): string {
+  return `/zkapi/v1/api/${api.service}/${api.operation}`;
+}
+export function isApiOperationPath(path: string): boolean {
+  return /^\/zkapi\/v1\/api\/[a-z0-9][a-z0-9_-]{0,63}\/[a-z0-9][a-z0-9_-]{0,63}$/.test(path);
+}
+export function validateApiBinding(api: ApiBinding): void {
+  object(api);
+  requireTrue(Object.keys(api).sort().join(',') === 'billing,method,operation,origin,path,request_max_bytes,response_max_bytes,service,timeout_seconds,version', 'invalid API binding fields');
+  requireTrue(api.version === '1' && api.method === 'POST' && api.billing === 'http_2xx_json'
+    && /^[a-z0-9][a-z0-9_-]{0,63}$/.test(api.service) && /^[a-z0-9][a-z0-9_-]{0,63}$/.test(api.operation), 'invalid API binding');
+  const origin = new URL(api.origin);
+  requireTrue(origin.origin === api.origin && (origin.protocol === 'https:' || origin.protocol === 'http:' && ['127.0.0.1','[::1]','localhost'].includes(origin.hostname)), 'invalid API origin');
+  requireTrue(typeof api.path === 'string' && api.path.startsWith('/') && !api.path.startsWith('//') && api.path.length <= 1024
+    && /^[A-Za-z0-9/._~-]+$/.test(api.path) && !api.path.split('/').some(part => part === '.' || part === '..')
+    && new URL(api.path, api.origin).pathname === api.path, 'invalid API path');
+  for (const [value, limit] of [[api.request_max_bytes,1048576], [api.response_max_bytes,1048576], [api.timeout_seconds,600]] as const)
+    requireTrue(typeof value === 'string' && /^[1-9][0-9]{0,6}$/.test(value) && BigInt(value) <= BigInt(limit), 'invalid API limit');
+}
+export function validateApiService(service: ApiService): void {
+  object(service); object(service.tariff); const t = service.tariff;
+  validateApiBinding(t.api);
+  requireTrue(Object.keys(service).join(',') === 'tariff' && Object.keys(t).sort().join(',') === 'api,operator_fee_micro_usdc,pricing_basis,provider,rates,tariff_hash,valid_from,valid_until,version'
+    && t.provider === 'generic' && t.version === '2' && t.pricing_basis === 'fixed_request' && t.operator_fee_micro_usdc === '0'
+    && Array.isArray(t.rates) && t.rates.length === 1, 'invalid API tariff');
+  const rate = t.rates[0]; object(rate);
+  requireTrue(Object.keys(rate).sort().join(',') === 'nano_usdc_numerator,unit,unit_denominator'
+    && rate.unit === 'requests' && rate.unit_denominator === '1' && typeof rate.nano_usdc_numerator === 'string'
+    && /^[1-9][0-9]{0,18}$/.test(rate.nano_usdc_numerator) && BigInt(rate.nano_usdc_numerator) <= 0x7fffffffffffffffn, 'invalid request rate');
+}
 export interface PreparedSession {
-  request: SessionCreate; control_token: string; proxy_token: string | null; tariff: Tariff; rerandomization: string;
+  request: SessionCreate; control_token: string; proxy_token: string | null; tariff: Tariff | ApiTariff; rerandomization: string;
 }
 export interface Settlement {
   charge_micro_usdc: string; next_commitment: Point; next_anchor: string;
@@ -146,7 +189,7 @@ function validateOperations(operations: Operation[]): void {
   const ids = new Set<string>();
   for (const o of operations) {
     object(o); uuid(o.id); requireTrue(!ids.has(o.id), 'duplicate operation'); ids.add(o.id);
-    requireTrue(routes.has(o.path) && typeof o.anthropicVersion === 'string'
+    requireTrue((routes.has(o.path) || isApiOperationPath(o.path)) && typeof o.anthropicVersion === 'string'
       && ['prepared','send_unknown','response_received','not_accepted'].includes(o.phase), 'invalid operation');
     requireTrue(typeof o.bodyBase64 === 'string', 'invalid operation bytes');
     const raw = Buffer.from(o.bodyBase64,'base64');
@@ -356,7 +399,7 @@ export class ControlHttpError extends Error {
 export class ResponseNotReplayable extends Error {
   readonly operationId: string; readonly statusPath: string;
   constructor(operationId: string, statusPath: string) {
-    super('Inference response cannot be replayed. Check operation status; a new inference requires an explicit new operation.');
+    super('API response cannot be replayed. Check operation status; a new request requires an explicit new operation.');
     this.operationId = operationId; this.statusPath = statusPath;
   }
 }
@@ -502,13 +545,28 @@ export class ControlClient {
   /** Optional cancellation bounds this call's transport only; it never changes
    * the client's transport or the lifetime of a later inference/close call. */
   async quote(request: { mode: Mode; provider: Quote['body']['provider']; models: string[]; session_ttl_seconds?: string }, tariff: Tariff, signal?: AbortSignal): Promise<Quote> {
+    return await this.verifiedQuote(request, tariff, signal) as Quote;
+  }
+  async quoteApi(api: ApiBinding, tariff: ApiTariff, signal?: AbortSignal): Promise<ApiQuote> {
+    const selected=structuredClone(api), frozenTariff=structuredClone(tariff);
+    validateApiService({tariff:frozenTariff}); validateApiBinding(selected);
+    requireTrue(await sha256Hex(jcsBytes(selected)) === await sha256Hex(jcsBytes(frozenTariff.api)), 'API tariff binding');
+    return await this.verifiedQuote({mode:'proxy',provider:'generic',api:selected,session_ttl_seconds:'60'}, frozenTariff, signal) as ApiQuote;
+  }
+  private async verifiedQuote(request: { mode: Mode; provider: string; models?: string[]; api?: ApiBinding; session_ttl_seconds?: string }, tariff: Tariff | ApiTariff, signal?: AbortSignal): Promise<Quote | ApiQuote> {
     signal?.throwIfAborted();
     const wanted = structuredClone(request), frozenTariff = structuredClone(tariff);
     object(wanted);
-    requireTrue(Object.keys(wanted).every(k => ['mode','provider','models','session_ttl_seconds'].includes(k)), 'unknown quote request field');
-    requireTrue(Array.isArray(wanted.models) && wanted.models.length === 1 && typeof wanted.models[0] === 'string', 'quote model selection');
-    requireTrue(wanted.mode === 'proxy' ? ['openai','anthropic','openrouter'].includes(wanted.provider) && wanted.models[0] !== '*' && /^[\x21-\x7e]+$/.test(wanted.models[0])
-      : (wanted.mode === 'direct_oa' && wanted.provider === 'oa' || wanted.mode === 'direct_openrouter' && wanted.provider === 'openrouter') && wanted.models[0] === '*', 'explicit quote mode/provider required');
+    const generic = wanted.provider === 'generic';
+    requireTrue(Object.keys(wanted).every(k => ['mode','provider',generic ? 'api' : 'models','session_ttl_seconds'].includes(k)), 'unknown quote request field');
+    if (generic) {
+      requireTrue(wanted.mode === 'proxy' && wanted.api && 'api' in frozenTariff, 'generic API requires proxy');
+      validateApiBinding(wanted.api); validateApiService({tariff:frozenTariff});
+    } else {
+      requireTrue(Array.isArray(wanted.models) && wanted.models.length === 1 && typeof wanted.models[0] === 'string', 'quote model selection');
+      requireTrue(wanted.mode === 'proxy' ? ['openai','anthropic','openrouter'].includes(wanted.provider) && wanted.models[0] !== '*' && /^[\x21-\x7e]+$/.test(wanted.models[0])
+        : (wanted.mode === 'direct_oa' && wanted.provider === 'oa' || wanted.mode === 'direct_openrouter' && wanted.provider === 'openrouter') && wanted.models[0] === '*', 'explicit quote mode/provider required');
+    }
     if (wanted.session_ttl_seconds !== undefined) requireTrue(typeof wanted.session_ttl_seconds === 'string' && /^[1-9][0-9]{0,2}$/.test(wanted.session_ttl_seconds) && BigInt(wanted.session_ttl_seconds) <= 300n, 'session TTL');
     const response = await (this.options.fetch ?? globalThis.fetch)(this.config.control_api_origin + '/zkapi/v1/quotes', {
       method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(wanted),
@@ -517,18 +575,26 @@ export class ControlClient {
     if (!response.ok) throw new ControlHttpError(response.status);
     const raw = await this.json(response); object(raw);
     requireTrue(Object.keys(raw).sort().join(',') === 'body,quote_hash,signature', 'invalid quote fields');
-    const quote = raw as unknown as Quote; object(quote.body); const b = quote.body;
-    requireTrue(Object.keys(b).sort().join(',') === ['quote_id','deployment_id','pool','mode','provider','models','tariff_hash','cap_micro_usdc','issued_at','expires_at','session_ttl_seconds','max_concurrency','control_api_origin','inference_api_origin'].sort().join(','), 'invalid quote body');
+    const quote = raw as unknown as Quote | ApiQuote; object(quote.body); const b = quote.body;
+    requireTrue(Object.keys(b).sort().join(',') === ['quote_id','deployment_id','pool','mode','provider',generic ? 'api' : 'models','tariff_hash','cap_micro_usdc','issued_at','expires_at','session_ttl_seconds','max_concurrency','control_api_origin','inference_api_origin'].sort().join(','), 'invalid quote body');
     const hash = await sha256Hex(jcsBytes(b)); requireTrue(hash === quote.quote_hash, 'quote hash');
     await verifyEd25519(this.config.quote_public_key, Uint8Array.from(Buffer.from(hash, 'hex')), quote.signature);
     const { tariff_hash: tariffHash, ...tariffBody } = frozenTariff;
     requireTrue(await sha256Hex(jcsBytes(tariffBody)) === tariffHash && this.config.tariff_hashes.includes(tariffHash), 'untrusted tariff');
     requireTrue(b.deployment_id === this.config.deployment_id && b.pool === this.config.pool && b.cap_micro_usdc === this.config.cap_micro_usdc
       && b.control_api_origin === this.config.control_api_origin && b.inference_api_origin === this.config.inference_api_origin
-      && b.mode === wanted.mode && b.provider === wanted.provider && JSON.stringify(b.models) === JSON.stringify(wanted.models)
-      && b.tariff_hash === tariffHash && b.provider === frozenTariff.provider && b.models.length === 1 && b.models[0] === frozenTariff.model, 'quote binding');
-    requireTrue(b.mode === 'proxy' ? ['openai','anthropic','openrouter'].includes(b.provider) && b.models[0] !== '*' && /^[\x21-\x7e]+$/.test(b.models[0]) && frozenTariff.pricing_basis === 'fixed_usage_rates'
-      : (b.mode === 'direct_oa' && b.provider === 'oa' || b.mode === 'direct_openrouter' && b.provider === 'openrouter') && b.models[0] === '*' && frozenTariff.pricing_basis === 'provider_reported_usd', 'mode/provider mismatch');
+      && b.mode === wanted.mode && b.provider === wanted.provider
+      && b.tariff_hash === tariffHash && b.provider === frozenTariff.provider, 'quote binding');
+    if (generic) {
+      requireTrue('api' in b && 'api' in frozenTariff && b.mode === 'proxy'
+        && await sha256Hex(jcsBytes(b.api)) === await sha256Hex(jcsBytes(wanted.api))
+        && await sha256Hex(jcsBytes(b.api)) === await sha256Hex(jcsBytes(frozenTariff.api)), 'API quote binding');
+    } else {
+      requireTrue('models' in b && 'model' in frozenTariff && JSON.stringify(b.models) === JSON.stringify(wanted.models)
+        && b.models.length === 1 && b.models[0] === frozenTariff.model, 'quote binding');
+      requireTrue(b.mode === 'proxy' ? ['openai','anthropic','openrouter'].includes(b.provider) && b.models[0] !== '*' && /^[\x21-\x7e]+$/.test(b.models[0]) && frozenTariff.pricing_basis === 'fixed_usage_rates'
+        : (b.mode === 'direct_oa' && b.provider === 'oa' || b.mode === 'direct_openrouter' && b.provider === 'openrouter') && b.models[0] === '*' && frozenTariff.pricing_basis === 'provider_reported_usd', 'mode/provider mismatch');
+    }
     uuid(b.quote_id); parseMicroUsdc(b.cap_micro_usdc);
     for (const v of [b.issued_at,b.expires_at,b.session_ttl_seconds,frozenTariff.valid_from,frozenTariff.valid_until]) requireTrue(typeof v === 'string' && /^(0|[1-9][0-9]*)$/.test(v) && v.length <= 20 && BigInt(v) <= 0xffffffffffffffffn, 'quote time');
     // Only an authenticated, otherwise valid quote may wait for a small clock
@@ -706,7 +772,7 @@ export class ControlClient {
     throw new Error('receipt page limit; settlement remains unresolved');
   }
   async prepareOperation(noteId: string, operationId: string, path: string, body: Uint8Array, anthropicVersion = ''): Promise<void> {
-    uuid(operationId); requireTrue(routes.has(path) && body.length <= 1024 * 1024, 'unsupported inference');
+    uuid(operationId); requireTrue((routes.has(path) || isApiOperationPath(path)) && body.length <= 1024 * 1024, 'unsupported API operation');
     new TextDecoder('utf-8', { fatal: true }).decode(body);
     const anthropic = path.startsWith('/v1/messages');
     requireTrue(anthropic ? /^[\x20-\x7e]+$/.test(anthropicVersion) : anthropicVersion === '', 'invalid API version');
@@ -715,6 +781,12 @@ export class ControlClient {
       const r = await this.record(noteId); const p = r.value.pending;
       requireTrue(!r.value.wallet?.emergencyEscapes?.some(e=>e.phase!=='settled'),'emergency escape fences inference');
       requireTrue(p && p.phase === 'active' && p.serverState === 'ACTIVE' && p.prepared.request.authorization.mode === 'proxy', 'proxy session required');
+      const quote = p.prepared.request.quote.body;
+      if ('api' in quote) {
+        validateApiBinding(quote.api);
+        requireTrue(apiOperationPath(quote.api) === path && body.length <= Number(quote.api.request_max_bytes), 'API operation does not match authorization');
+        parseStrictJson(body);
+      } else requireTrue(!isApiOperationPath(path), 'generic API authorization required');
       const old = p.operations.find(o => o.id === operationId);
       if (old) { if (old.bodyRedacted) throw new ResponseNotReplayable(operationId,this.path(p) + `/operations/${operationId}`); requireTrue(old.path === path && old.bodyBase64 === bodyBase64 && old.anthropicVersion === anthropicVersion, 'idempotency conflict'); return; }
       p.operations.push({ id: operationId, path, bodyBase64, anthropicVersion, phase: 'prepared' }); await this.save(noteId, r);
@@ -841,4 +913,4 @@ export function expiryNotice(expiry: bigint, now: bigint): { severity: 'expired'
 }
 export const DIRECT_OPENROUTER_PRIVACY_NOTICE = 'Prompts go to OpenRouter and its selected provider. Every direct request requires ZDR and denied data collection. Providers still see content and network metadata; routing policy is not proof of deletion.';
 export const DIRECT_PRIVACY_NOTICE = 'Prompts go to the selected provider. The provider sees content and network metadata.';
-export const PROXY_PRIVACY_NOTICE = 'The proxy operator can read your prompts and responses. Direct and proxy modes are selected explicitly.';
+export const PROXY_PRIVACY_NOTICE = 'The proxy operator can read your request and response content. Direct and proxy modes are selected explicitly.';

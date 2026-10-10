@@ -287,6 +287,7 @@ async fn fixture_app_for_mode(
     config.tariffs = vec![tariff.clone()];
     write_private(&dir.join("provider.key"), b"fixture-provider-secret");
     config.providers = ProviderConfig {
+        api: vec![],
         dispatcher: None,
         direct: vec![],
         proxy: vec![ProxyProviderConfig {
@@ -303,7 +304,37 @@ async fn fixture_app_for_mode(
             }],
         }],
     };
-    if mode != "proxy" {
+    if mode == "generic" {
+        let api = wire::ApiBinding {
+            version: "1".into(),
+            service: "catalog".into(),
+            operation: "lookup".into(),
+            method: "POST".into(),
+            path: "/lookup".into(),
+            origin: provider_origin.into(),
+            request_max_bytes: "1024".into(),
+            response_max_bytes: "1024".into(),
+            timeout_seconds: "30".into(),
+            billing: "http_2xx_json".into(),
+        };
+        tariff.version = "2".into();
+        tariff.provider = wire::Provider::Generic;
+        tariff.model.clear();
+        tariff.api = Some(api.clone());
+        tariff.pricing_basis = "fixed_request".into();
+        tariff.rates = vec![wire::Rate {
+            unit: "requests".into(),
+            nano_usdc_numerator: "7000".into(),
+            unit_denominator: "1".into(),
+        }];
+        tariff.tariff_hash = quote::tariff_hash(&tariff)?;
+        config.tariffs = vec![tariff.clone()];
+        config.providers.proxy.clear();
+        config.providers.api = vec![zkapi_control::generic::ApiProviderConfig {
+            api,
+            credential_file: dir.join("provider.key"),
+        }];
+    } else if mode != "proxy" {
         tariff.provider = if mode == "direct_oa" {
             wire::Provider::Oa
         } else {
@@ -315,6 +346,7 @@ async fn fixture_app_for_mode(
         tariff.tariff_hash = quote::tariff_hash(&tariff)?;
         config.tariffs = vec![tariff.clone()];
         config.providers = ProviderConfig {
+            api: vec![],
             dispatcher: None,
             proxy: vec![],
             direct: vec![if mode == "direct_oa" {
@@ -372,6 +404,9 @@ async fn fixture_app_for_mode(
         });
         // The control process has no usable provider secret reference.
         for p in &mut config.providers.proxy {
+            p.credential_file = dir.join("not-mounted-in-control");
+        }
+        for p in &mut config.providers.api {
             p.credential_file = dir.join("not-mounted-in-control");
         }
         for p in &mut config.providers.direct {
@@ -483,6 +518,87 @@ async fn settled(f: &Fixture, id: Uuid) -> Result<()> {
         tokio::time::sleep(Duration::from_millis(10)).await;
     }
     anyhow::bail!("provider session failed to settle")
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+#[ignore = "requires disposable PostgreSQL and actual SBF export; scripts/run_i05.sh"]
+async fn generic_reserved_operation_closes_without_dispatch_and_settles_zero() -> Result<()> {
+    let calls = Arc::new(AtomicUsize::new(0));
+    let counter = calls.clone();
+    let (upstream, task) = serve(Router::new().route(
+        "/lookup",
+        post(move || {
+            counter.fetch_add(1, Ordering::SeqCst);
+            async { Json(json!({"unexpected": true})) }
+        }),
+    ))
+    .await;
+    let mut fixture = fixture_app_for_mode(&upstream, "generic", None).await?;
+    fixture.tasks.push(task);
+    let client = reqwest::Client::new();
+    let api = &fixture.app.config.runtime.providers.api[0].api;
+    let quote: wire::Quote = serde_json::from_value(
+        response(
+            client
+                .post(format!("{}/zkapi/v1/quotes", fixture.origin))
+                .json(&json!({"mode":"proxy","provider":"generic","api":api})),
+            200,
+        )
+        .await,
+    )?;
+    let (authorization, control) = authorization(&quote);
+    let request = bound_request(authorization, quote, genesis_state());
+    let id = wire::uuid(&request.authorization.request_id)?;
+    response(
+        client
+            .post(format!("{}/zkapi/v1/sessions", fixture.origin))
+            .header("authorization", control)
+            .json(&request),
+        201,
+    )
+    .await;
+    // Reproduce recovery after admission has committed but before any sender
+    // exists, such as a process interruption or concurrent session close.
+    let operation_id = Uuid::new_v4();
+    fixture
+        .app
+        .ledger
+        .reserve_operation(&zkapi_control::ledger::NewOperation {
+            request_id: id,
+            operation_id,
+            request_hmac: wire::operation_hmac(&[8; 32], "POST", &wire::api_path(api), "", b"{}")?,
+            endpoint: wire::api_path(api),
+            model: String::new(),
+            reservation_nano: 7000,
+        })
+        .await?;
+    settled(&fixture, id).await?;
+    let operation = fixture.app.ledger.operation(id, operation_id).await?;
+    assert_eq!(operation.state, "DONE");
+    assert_eq!(operation.charged_nano, 0);
+    let receipts = fixture.app.ledger.receipts(id, None, 10).await?;
+    assert_eq!(receipts.len(), 1);
+    let body: zkapi_control::receipts::ReceiptBody =
+        serde_json::from_slice(&receipts[0].canonical_body)?;
+    assert_eq!(body.version, "2");
+    assert_eq!(body.reason, "not_dispatched");
+    assert_eq!(body.charged_nano_usdc, "0");
+    zkapi_control::receipts::validate_tariff_math(&body, &fixture.app.config.runtime.tariffs[0])?;
+    assert!(fixture
+        .app
+        .ledger
+        .dispatch_attempts_for_session(id)
+        .await?
+        .is_empty());
+    assert_eq!(calls.load(Ordering::SeqCst), 0);
+    // Repeated recovery preserves the original signed receipt and settlement.
+    fixture.app.advance(id).await.unwrap();
+    assert_eq!(
+        fixture.app.ledger.receipts(id, None, 10).await?[0].canonical_body,
+        receipts[0].canonical_body
+    );
+    assert_eq!(calls.load(Ordering::SeqCst), 0);
+    Ok(())
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]

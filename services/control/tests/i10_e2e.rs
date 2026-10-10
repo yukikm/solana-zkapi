@@ -144,6 +144,7 @@ async fn all_modes_deposit_infer_settle_withdraw_same_note() -> Result<()> {
     private(&dir.join("receipt.seed"), &[12; 32])?;
     private(&dir.join("provider.key"), b"i10-provider-secret")?;
     let providers = ProviderConfig {
+        api: vec![],
         dispatcher: None,
         direct: vec![
             DirectConfig::Oa {

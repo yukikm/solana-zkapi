@@ -17,6 +17,7 @@ use zkapi_client_verify::*;
 use zkapi_control::{
     crypto, quote,
     receipts::{Receipt, ReceiptBody, UsageUnit},
+    wire,
 };
 use zkapi_proof::{compact, groth16};
 use zkapi_solana_types::{field::field_bytes, FieldElement, MicroUsdc, CHAIN_NAMESPACE};
@@ -213,6 +214,91 @@ fn verify(f: &Fixture) -> anyhow::Result<PrivateState> {
         &f.receipts,
         &f.operations,
     )
+}
+
+#[test]
+fn generic_real_proof_and_fixed_receipt_verify_without_inference_fields() {
+    let mut fixture = fixture().clone();
+    let api = wire::ApiBinding {
+        version: "1".into(),
+        service: "catalog".into(),
+        operation: "lookup".into(),
+        method: "POST".into(),
+        path: "/lookup".into(),
+        origin: "http://127.0.0.1:9090".into(),
+        request_max_bytes: "1024".into(),
+        response_max_bytes: "1024".into(),
+        timeout_seconds: "30".into(),
+        billing: "http_2xx_json".into(),
+    };
+    let mut tariff = support::tariff();
+    tariff.provider = wire::Provider::Generic;
+    tariff.version = "2".into();
+    tariff.model.clear();
+    tariff.api = Some(api.clone());
+    tariff.pricing_basis = "fixed_request".into();
+    tariff.rates = vec![wire::Rate {
+        unit: "requests".into(),
+        nano_usdc_numerator: "7000".into(),
+        unit_denominator: "1".into(),
+    }];
+    tariff.tariff_hash = quote::tariff_hash(&tariff).unwrap();
+    let quote = quote::issue_quote(
+        &wire::QuoteRequest {
+            mode: wire::Mode::Proxy,
+            provider: wire::Provider::Generic,
+            models: vec![],
+            api: Some(api),
+            session_ttl_seconds: None,
+        },
+        &tariff,
+        &support::local_binding(),
+        3_000_000_000,
+        &SigningKey::from_bytes(&[11; 32]),
+    )
+    .unwrap();
+    let (authorization, credential) = support::authorization(&quote);
+    fixture.prepared = Prepared {
+        proxy_token: Some(format!(
+            "zkp1.{}.{}",
+            authorization.request_id,
+            URL_SAFE_NO_PAD.encode([8; 32])
+        )),
+        request: support::bound_request(authorization, quote, support::genesis_state()),
+        control_token: credential.strip_prefix("Bearer ").unwrap().into(),
+        tariff,
+        rerandomization: scalar_field(Scalar::from(23u64)),
+    };
+    fixture.ctx.tariff_hashes = vec![fixture.prepared.tariff.tariff_hash.clone()];
+    let operation = Uuid::new_v4().to_string();
+    let mut receipt = charge_receipt(&fixture, &operation, 21_000).body;
+    receipt.version = "2".into();
+    receipt.usage = vec![UsageUnit {
+        unit: "requests".into(),
+        count: "1".into(),
+    }];
+    receipt.reservation_nano_usdc = "7000".into();
+    fixture.operations = vec![operation];
+    fixture.receipts = vec![Receipt::sign(receipt, &receipt_key()).unwrap()];
+    fixture.settlement = settle(&fixture, 7);
+    verify_prepared(&fixture.ctx, &fixture.state, &fixture.prepared).unwrap();
+    assert_eq!(
+        verify(&fixture).unwrap().balance_micro_usdc.get(),
+        4_999_993
+    );
+    let mut changed = fixture.clone();
+    changed.prepared.tariff.api.as_mut().unwrap().path = "/other".into();
+    changed.prepared.tariff.tariff_hash = quote::tariff_hash(&changed.prepared.tariff).unwrap();
+    changed.ctx.tariff_hashes = vec![changed.prepared.tariff.tariff_hash.clone()];
+    assert!(verify(&changed).is_err());
+    let mut changed = fixture;
+    let mut body = changed.receipts[0].body.clone();
+    body.usage[0].count = "0".into();
+    changed.receipts[0] = Receipt::sign(body, &receipt_key()).unwrap();
+    assert!(
+        verify(&changed).is_err(),
+        "a valid operator signature does not bypass tariff recomputation"
+    );
 }
 
 #[test]
@@ -466,6 +552,7 @@ fn both_direct_modes_require_exact_quote_cap_usd_receipt_and_no_proxy_credential
         tariff.tariff_hash = quote::tariff_hash(&tariff).unwrap();
         let quote = quote::issue_quote(
             &wire::QuoteRequest {
+                api: None,
                 mode: mode.clone(),
                 provider,
                 models: vec!["*".into()],

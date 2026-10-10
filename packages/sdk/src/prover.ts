@@ -3,7 +3,7 @@ import { Buffer } from 'buffer';
 import { getAddressEncoder, type Address } from '@solana/kit';
 import { parseField, parseMicroUsdc } from './encoding.ts';
 import { verifyArtifactBundle, type ArtifactBundle, type VerifiedManifest } from './trust.ts';
-import type { PrivateState, Quote, Tariff, PreparedSession, StateSignature, createCredentials } from './control.ts';
+import type { PrivateState, Quote, Tariff, ApiQuote, ApiTariff, PreparedSession, StateSignature, createCredentials } from './control.ts';
 import type { PublicProof } from './layout2.ts';
 import type { ClientProver } from './prover-runtime.ts';
 import type { SnapshotNote, SnapshotPath } from './session-snapshot.ts';
@@ -56,7 +56,7 @@ export class NoteProver {
   async inspect(witness: NoteWitness, state: PrivateState): Promise<{nullifier:string;registration_commitment:string}> {
     return await this.run({kind:'inspect',context:this.context,witness,state}) as {nullifier:string;registration_commitment:string};
   }
-  async prepareSession(witness: NoteWitness, state: PrivateState, root: string, siblings: string[], quote: Quote, tariff: Tariff,
+  async prepareSession(witness: NoteWitness, state: PrivateState, root: string, siblings: string[], quote: Quote | ApiQuote, tariff: Tariff | ApiTariff,
     credentials: Awaited<ReturnType<typeof createCredentials>>): Promise<PreparedSession> {
     const q = structuredClone(quote), t = structuredClone(tariff), c = structuredClone(credentials);
     const authorization = {version:'1' as const,deployment_id:q.body.deployment_id,pool:q.body.pool,request_id:c.requestId,quote_hash:q.quote_hash,

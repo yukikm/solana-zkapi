@@ -61,7 +61,7 @@ pub fn quote_body_valid(body: &QuoteBody) -> Result<()> {
     uuid(&body.quote_id)?;
     pubkey(&body.pool)?;
     hash(&body.tariff_hash)?;
-    mode_models(&body.mode, &body.provider, &body.models)?;
+    scope_valid(&body.mode, &body.provider, &body.models, body.api.as_ref())?;
     origin(&body.control_api_origin)?;
     origin(&body.inference_api_origin)?;
     let issued = uint(&body.issued_at)?;
@@ -85,10 +85,16 @@ pub fn issue_quote(
     now: u64,
     key: &SigningKey,
 ) -> Result<Quote> {
-    mode_models(&request.mode, &request.provider, &request.models)?;
+    scope_valid(
+        &request.mode,
+        &request.provider,
+        &request.models,
+        request.api.as_ref(),
+    )?;
     validate_tariff(tariff)?;
     if tariff.provider != request.provider
-        || tariff.model != request.models[0]
+        || tariff.api != request.api
+        || (tariff.provider != Provider::Generic && request.models != [tariff.model.clone()])
         || !tariff_valid_at(tariff, now)?
     {
         return Err(invalid("tariff selection"));
@@ -104,6 +110,7 @@ pub fn issue_quote(
         mode: request.mode.clone(),
         provider: request.provider.clone(),
         models: request.models.clone(),
+        api: request.api.clone(),
         tariff_hash: tariff.tariff_hash.clone(),
         cap_micro_usdc: cfg.cap,
         issued_at: now.to_string(),
@@ -196,8 +203,7 @@ pub fn validate_new(
     let b = &request.quote.body;
     validate_tariff(tariff)?;
     if b.tariff_hash != tariff.tariff_hash
-        || b.provider != tariff.provider
-        || b.models != [tariff.model.clone()]
+        || !quote_matches_tariff(b, tariff)
         || uint(&b.issued_at)? < uint(&tariff.valid_from)?
         || uint(&b.issued_at)? >= uint(&tariff.valid_until)?
     {
@@ -210,6 +216,17 @@ pub fn validate_new(
         return Err(ValidationError::Conflict("stale root"));
     }
     Ok(())
+}
+
+/// Compare the complete frozen API scope, including generic operation terms.
+pub fn quote_matches_tariff(body: &QuoteBody, tariff: &Tariff) -> bool {
+    body.provider == tariff.provider
+        && body.api == tariff.api
+        && if tariff.provider == Provider::Generic {
+            body.models.is_empty() && tariff.model.is_empty()
+        } else {
+            body.models == [tariff.model.clone()]
+        }
 }
 
 pub fn tariff_body(tariff: &Tariff) -> Result<serde_json::Value> {
@@ -233,7 +250,24 @@ pub fn validate_tariff(tariff: &Tariff) -> Result<()> {
     {
         return Err(invalid("tariff body"));
     }
-    units(tariff.rates.iter().map(|r| r.unit.as_str()))?;
+    if tariff.pricing_basis == "fixed_request" {
+        if tariff.provider != Provider::Generic
+            || tariff.version != "2"
+            || !tariff.model.is_empty()
+            || tariff.rates.len() != 1
+            || tariff.rates[0].unit != "requests"
+            || tariff.rates[0].unit_denominator != "1"
+            || uint(&tariff.rates[0].nano_usdc_numerator)? == 0
+        {
+            return Err(invalid("fixed request tariff"));
+        }
+        validate_api_binding(tariff.api.as_ref().ok_or(invalid("missing API binding"))?)?;
+    } else {
+        if tariff.provider == Provider::Generic || tariff.api.is_some() {
+            return Err(invalid("unexpected API binding"));
+        }
+        units(tariff.rates.iter().map(|r| r.unit.as_str()))?;
+    }
     for r in &tariff.rates {
         if uint(&r.nano_usdc_numerator)? > i64::MAX as u64
             || !(1..=i64::MAX as u64).contains(&uint(&r.unit_denominator)?)
@@ -262,6 +296,7 @@ pub fn validate_tariff(tariff: &Tariff) -> Result<()> {
                 return Err(invalid("proxy tariff"));
             }
         }
+        "fixed_request" => {}
         _ => return Err(invalid("pricing basis")),
     }
     Ok(())
@@ -277,6 +312,16 @@ fn checked_ceil(value: Ratio<BigUint>) -> Result<u128> {
 }
 pub fn calculate_charge(tariff: &Tariff, usage: &[Usage]) -> Result<u128> {
     validate_tariff(tariff)?;
+    if tariff.pricing_basis == "fixed_request" {
+        if usage.len() != 1
+            || usage[0].unit != "requests"
+            || !matches!(usage[0].count.as_str(), "0" | "1")
+        {
+            return Err(invalid("fixed request usage"));
+        }
+        return Ok(u128::from(uint(&tariff.rates[0].nano_usdc_numerator)?)
+            * u128::from(uint(&usage[0].count)?));
+    }
     if tariff.pricing_basis != "fixed_usage_rates" {
         return Err(invalid("proxy tariff required"));
     }

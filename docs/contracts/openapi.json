@@ -1243,6 +1243,71 @@
           }
         }
       }
+    },
+    "/zkapi/v1/api/{service}/{operation}": {
+      "post": {
+        "operationId": "executeRegisteredJsonApi",
+        "security": [
+          {
+            "ProxyToken": []
+          }
+        ],
+        "description": "Registered proxy POST JSON operation, bound to the complete signed ApiBinding. One request unit only for bounded HTTP 2xx JSON; observed HTTP failures cost zero, uncertain execution is never replayed. No arbitrary URL or client-selected upstream headers.",
+        "parameters": [
+          {
+            "name": "service",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-z0-9][a-z0-9_-]{0,63}$"
+            }
+          },
+          {
+            "name": "operation",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-z0-9][a-z0-9_-]{0,63}$"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {}
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Bounded upstream JSON response. Billing evidence comes from signed version 2 receipts.",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "409": {
+            "description": "Operation already exists or conflicts; response cannot be replayed."
+          },
+          "default": {
+            "description": "Failed or unknown operation; inspect saved operation status."
+          }
+        }
+      }
     }
   },
   "components": {
@@ -1285,7 +1350,8 @@
           "openai",
           "anthropic",
           "openrouter",
-          "oa"
+          "oa",
+          "generic"
         ]
       },
       "Scalar": {
@@ -1413,6 +1479,68 @@
         ],
         "additionalProperties": false
       },
+      "ApiBinding": {
+        "type": "object",
+        "properties": {
+          "version": {
+            "type": "string",
+            "const": "1"
+          },
+          "service": {
+            "type": "string",
+            "pattern": "^[a-z0-9][a-z0-9_-]{0,63}$"
+          },
+          "operation": {
+            "type": "string",
+            "pattern": "^[a-z0-9][a-z0-9_-]{0,63}$"
+          },
+          "method": {
+            "type": "string",
+            "const": "POST"
+          },
+          "path": {
+            "type": "string",
+            "pattern": "^/[A-Za-z0-9/._~-]*$",
+            "maxLength": 1024,
+            "description": "No // prefix or dot/dot-dot segments. No query or encoded path."
+          },
+          "origin": {
+            "type": "string",
+            "format": "uri",
+            "description": "Canonical origin. Production adapters require HTTPS/public addresses; isolated fixtures require numeric loopback HTTP."
+          },
+          "request_max_bytes": {
+            "type": "string",
+            "pattern": "^[1-9][0-9]*$"
+          },
+          "response_max_bytes": {
+            "type": "string",
+            "pattern": "^[1-9][0-9]*$"
+          },
+          "timeout_seconds": {
+            "type": "string",
+            "pattern": "^[1-9][0-9]*$"
+          },
+          "billing": {
+            "type": "string",
+            "const": "http_2xx_json"
+          }
+        },
+        "required": [
+          "version",
+          "service",
+          "operation",
+          "method",
+          "path",
+          "origin",
+          "request_max_bytes",
+          "response_max_bytes",
+          "timeout_seconds",
+          "billing"
+        ],
+        "additionalProperties": false,
+        "description": "Exact signed operation descriptor. Request/response bounds 1..1048576 bytes; deadline 1..600 seconds."
+      },
       "QuoteRequest": {
         "type": "object",
         "properties": {
@@ -1430,8 +1558,12 @@
               "openai",
               "anthropic",
               "openrouter",
-              "oa"
+              "oa",
+              "generic"
             ]
+          },
+          "api": {
+            "$ref": "#/components/schemas/ApiBinding"
           },
           "models": {
             "type": "array",
@@ -1450,8 +1582,7 @@
         },
         "required": [
           "mode",
-          "provider",
-          "models"
+          "provider"
         ],
         "additionalProperties": false,
         "oneOf": [
@@ -1468,6 +1599,14 @@
                   "*"
                 ]
               }
+            },
+            "required": [
+              "models"
+            ],
+            "not": {
+              "required": [
+                "api"
+              ]
             }
           },
           {
@@ -1483,6 +1622,14 @@
                   "*"
                 ]
               }
+            },
+            "required": [
+              "models"
+            ],
+            "not": {
+              "required": [
+                "api"
+              ]
             }
           },
           {
@@ -1508,6 +1655,32 @@
                   }
                 }
               }
+            },
+            "required": [
+              "models"
+            ],
+            "not": {
+              "required": [
+                "api"
+              ]
+            }
+          },
+          {
+            "properties": {
+              "mode": {
+                "const": "proxy"
+              },
+              "provider": {
+                "const": "generic"
+              }
+            },
+            "required": [
+              "api"
+            ],
+            "not": {
+              "required": [
+                "models"
+              ]
             }
           }
         ]
@@ -1542,7 +1715,8 @@
               "openai",
               "anthropic",
               "openrouter",
-              "oa"
+              "oa",
+              "generic"
             ]
           },
           "models": {
@@ -1552,6 +1726,9 @@
             },
             "minItems": 1,
             "uniqueItems": true
+          },
+          "api": {
+            "$ref": "#/components/schemas/ApiBinding"
           },
           "tariff_hash": {
             "type": "string",
@@ -1597,7 +1774,6 @@
           "pool",
           "mode",
           "provider",
-          "models",
           "tariff_hash",
           "cap_micro_usdc",
           "issued_at",
@@ -1622,6 +1798,14 @@
                   "*"
                 ]
               }
+            },
+            "required": [
+              "models"
+            ],
+            "not": {
+              "required": [
+                "api"
+              ]
             }
           },
           {
@@ -1637,6 +1821,14 @@
                   "*"
                 ]
               }
+            },
+            "required": [
+              "models"
+            ],
+            "not": {
+              "required": [
+                "api"
+              ]
             }
           },
           {
@@ -1662,6 +1854,32 @@
                   }
                 }
               }
+            },
+            "required": [
+              "models"
+            ],
+            "not": {
+              "required": [
+                "api"
+              ]
+            }
+          },
+          {
+            "properties": {
+              "mode": {
+                "const": "proxy"
+              },
+              "provider": {
+                "const": "generic"
+              }
+            },
+            "required": [
+              "api"
+            ],
+            "not": {
+              "required": [
+                "models"
+              ]
             }
           }
         ]
@@ -2140,7 +2358,8 @@
                 "cache_write_5m_tokens",
                 "cache_write_tokens",
                 "input_tokens",
-                "output_tokens"
+                "output_tokens",
+                "requests"
               ]
             },
             "count": {
@@ -2162,7 +2381,10 @@
         "properties": {
           "version": {
             "type": "string",
-            "const": "1"
+            "enum": [
+              "1",
+              "2"
+            ]
           },
           "receipt_id": {
             "type": "string",
@@ -2331,6 +2553,95 @@
         ],
         "additionalProperties": false,
         "allOf": [
+          {
+            "if": {
+              "properties": {
+                "version": {
+                  "const": "1"
+                }
+              }
+            },
+            "then": {
+              "properties": {
+                "usage": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "unit": {
+                        "type": "string",
+                        "enum": [
+                          "cache_read_tokens",
+                          "cache_write_1h_tokens",
+                          "cache_write_5m_tokens",
+                          "cache_write_tokens",
+                          "input_tokens",
+                          "output_tokens"
+                        ]
+                      },
+                      "count": {
+                        "type": "string",
+                        "pattern": "^(0|[1-9][0-9]*)$",
+                        "description": "Unsigned integer decimal string; enforce semantic bounds in specs."
+                      }
+                    },
+                    "required": [
+                      "unit",
+                      "count"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "maxItems": 6
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "version": {
+                  "const": "2"
+                }
+              }
+            },
+            "then": {
+              "properties": {
+                "operation_id": {
+                  "type": "string",
+                  "format": "uuid",
+                  "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                },
+                "provider_reported_usd": {
+                  "type": "null"
+                },
+                "usage": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "unit": {
+                        "type": "string",
+                        "const": "requests"
+                      },
+                      "count": {
+                        "type": "string",
+                        "enum": [
+                          "0",
+                          "1"
+                        ]
+                      }
+                    },
+                    "required": [
+                      "unit",
+                      "count"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "maxItems": 1
+                }
+              }
+            }
+          },
           {
             "if": {
               "properties": {
@@ -3148,7 +3459,8 @@
               "openai",
               "anthropic",
               "openrouter",
-              "oa"
+              "oa",
+              "generic"
             ]
           },
           "modes": {
@@ -3215,7 +3527,8 @@
               "cache_write_5m_tokens",
               "cache_write_tokens",
               "input_tokens",
-              "output_tokens"
+              "output_tokens",
+              "requests"
             ]
           },
           "nano_usdc_numerator": {
@@ -3253,17 +3566,22 @@
               "openai",
               "anthropic",
               "openrouter",
-              "oa"
+              "oa",
+              "generic"
             ]
           },
           "model": {
             "type": "string"
           },
+          "api": {
+            "$ref": "#/components/schemas/ApiBinding"
+          },
           "pricing_basis": {
             "type": "string",
             "enum": [
               "provider_reported_usd",
-              "fixed_usage_rates"
+              "fixed_usage_rates",
+              "fixed_request"
             ]
           },
           "valid_from": {
@@ -3292,7 +3610,6 @@
           "tariff_hash",
           "version",
           "provider",
-          "model",
           "pricing_basis",
           "valid_from",
           "valid_until",
@@ -3319,6 +3636,14 @@
               "rates": {
                 "maxItems": 0
               }
+            },
+            "required": [
+              "model"
+            ],
+            "not": {
+              "required": [
+                "api"
+              ]
             }
           },
           {
@@ -3339,8 +3664,96 @@
                 }
               },
               "rates": {
-                "minItems": 2
+                "minItems": 2,
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "unit": {
+                      "type": "string",
+                      "enum": [
+                        "cache_read_tokens",
+                        "cache_write_1h_tokens",
+                        "cache_write_5m_tokens",
+                        "cache_write_tokens",
+                        "input_tokens",
+                        "output_tokens"
+                      ]
+                    },
+                    "nano_usdc_numerator": {
+                      "type": "string",
+                      "pattern": "^(0|[1-9][0-9]*)$",
+                      "description": "Unsigned integer decimal string; enforce semantic bounds in specs."
+                    },
+                    "unit_denominator": {
+                      "type": "string",
+                      "pattern": "^[1-9][0-9]*$"
+                    }
+                  },
+                  "required": [
+                    "unit",
+                    "nano_usdc_numerator",
+                    "unit_denominator"
+                  ],
+                  "additionalProperties": false
+                }
               }
+            },
+            "required": [
+              "model"
+            ],
+            "not": {
+              "required": [
+                "api"
+              ]
+            }
+          },
+          {
+            "properties": {
+              "version": {
+                "const": "2"
+              },
+              "provider": {
+                "const": "generic"
+              },
+              "pricing_basis": {
+                "const": "fixed_request"
+              },
+              "rates": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "unit": {
+                      "type": "string",
+                      "const": "requests"
+                    },
+                    "nano_usdc_numerator": {
+                      "type": "string",
+                      "pattern": "^[1-9][0-9]*$"
+                    },
+                    "unit_denominator": {
+                      "type": "string",
+                      "const": "1"
+                    }
+                  },
+                  "required": [
+                    "unit",
+                    "nano_usdc_numerator",
+                    "unit_denominator"
+                  ],
+                  "additionalProperties": false
+                },
+                "minItems": 1,
+                "maxItems": 1
+              }
+            },
+            "required": [
+              "api"
+            ],
+            "not": {
+              "required": [
+                "model"
+              ]
             }
           }
         ]

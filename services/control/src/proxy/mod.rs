@@ -6,7 +6,11 @@ mod transport;
 mod usage;
 
 pub use request::{parse_json, validate, PreparedRequest};
-pub use transport::{DispatchObservation, HttpAdapter, RelayEvent, ServiceCredential};
+pub(crate) use transport::public_ip;
+pub use transport::{
+    DispatchDiagnostic, DispatchObservation, DispatchStage, HttpAdapter, RelayEvent,
+    ServiceCredential,
+};
 pub use usage::{normalize_usage, SseMeter};
 
 use crate::wire::{Provider, Tariff, Usage};

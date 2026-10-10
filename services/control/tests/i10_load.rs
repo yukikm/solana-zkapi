@@ -101,6 +101,7 @@ async fn database() -> (String, Client) {
 }
 async fn tariff(ledger: &Ledger) -> Hash {
     let mut tariff = Tariff {
+        api: None,
         tariff_hash: String::new(),
         version: "1".into(),
         provider: Provider::Openai,

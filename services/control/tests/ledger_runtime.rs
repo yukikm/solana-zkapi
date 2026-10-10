@@ -80,6 +80,7 @@ async fn runtime_writer_url(url: &str, c: &Client) -> String {
 }
 async fn tariff(ledger: &Ledger) -> Hash {
     let mut t = Tariff {
+        api: None,
         tariff_hash: "".into(),
         version: "1".into(),
         provider: Provider::Openai,
@@ -1084,6 +1085,7 @@ async fn admission_expiry_cursor_and_direct_dispatch_contract() {
         .is_err());
     // Direct issuance is a persisted single attempt. Unknown and late success never reissue/reactivate.
     let mut t = Tariff {
+        api: None,
         tariff_hash: "".into(),
         version: "1".into(),
         provider: Provider::Openrouter,

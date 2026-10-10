@@ -325,7 +325,12 @@ impl App {
                     let request: wire::SessionCreate = wire::strict_parse(&s.request_transcript)?;
                     let receipt_id = Uuid::new_v4();
                     let b = crate::receipts::ReceiptBody {
-                        version: "1".into(),
+                        version: if request.quote.body.api.is_some() {
+                            "2"
+                        } else {
+                            "1"
+                        }
+                        .into(),
                         receipt_id: receipt_id.to_string(),
                         deployment_id: self.config.binding.deployment_id.clone(),
                         pool: self.config.binding.pool.clone(),
@@ -474,8 +479,15 @@ async fn config(State(a): State<Arc<App>>) -> Json<Value> {
 async fn catalog(State(a): State<Arc<App>>) -> Json<Value> {
     let timestamp = now();
     let mut models = Vec::new();
+    let mut apis = Vec::new();
     for t in &a.config.runtime.tariffs {
         if !quote::tariff_valid_at(t, timestamp).unwrap_or(false) {
+            continue;
+        }
+        if let Some(api) = &t.api {
+            if a.api_available(api).await {
+                apis.push(json!({"api":api,"mode":"proxy","provider":"generic","endpoint":wire::api_path(api),"tariff_hash":t.tariff_hash}));
+            }
             continue;
         }
         let mode = match t.provider {
@@ -499,7 +511,11 @@ async fn catalog(State(a): State<Arc<App>>) -> Json<Value> {
             .unwrap_or_default();
         models.push(json!({"model":t.model,"provider":t.provider,"modes":[mode],"endpoints":endpoints,"modalities":["text"],"tariff_hash":t.tariff_hash}));
     }
-    Json(json!({"models":models}))
+    let mut catalog = json!({"models":models});
+    if !apis.is_empty() {
+        catalog["apis"] = apis.into();
+    }
+    Json(catalog)
 }
 async fn attestation(State(a): State<Arc<App>>) -> Json<Value> {
     let mut value = json!({"deployment_id":a.config.binding.deployment_id,"manifest_hash":a.config.runtime.trusted_manifest_hash,"direct_oa_enabled":false});
@@ -541,6 +557,7 @@ async fn issue_quote(
 ) -> Result<Json<wire::Quote>> {
     a.limit().await?;
     let r: wire::QuoteRequest = body(&headers, bytes)?;
+    wire::scope_valid(&r.mode, &r.provider, &r.models, r.api.as_ref())?;
     if r.mode == wire::Mode::DirectOa {
         let ttl = wire::uint(r.session_ttl_seconds.as_deref().unwrap_or("60"))?;
         if ttl == 0 || ttl > 300 || !ttl.is_multiple_of(60) {
@@ -550,11 +567,14 @@ async fn issue_quote(
             ));
         }
     }
-    if r.models.len() != 1
-        || !a
-            .adapter_available(&r.mode, &r.provider, &r.models[0])
-            .await
-    {
+    let available = if let Some(api) = &r.api {
+        a.api_available(api).await
+    } else {
+        r.models.len() == 1
+            && a.adapter_available(&r.mode, &r.provider, &r.models[0])
+                .await
+    };
+    if !available {
         return Err(ApiError(StatusCode::BAD_REQUEST, "adapter_unavailable"));
     }
     let timestamp = now();
@@ -565,7 +585,8 @@ async fn issue_quote(
         .iter()
         .find(|t| {
             t.provider == r.provider
-                && r.models == [t.model.clone()]
+                && t.api == r.api
+                && (r.api.is_some() || r.models == [t.model.clone()])
                 && quote::tariff_valid_at(t, timestamp).unwrap_or(false)
         })
         .ok_or(ApiError(StatusCode::BAD_REQUEST, "adapter_unavailable"))?;
@@ -602,14 +623,17 @@ async fn create_session(
         Err(LedgerError::NotFound) => {}
         Err(e) => return Err(e.into()),
     }
-    if !a
-        .adapter_available(
+    let available = if let Some(api) = &r.quote.body.api {
+        a.api_available(api).await
+    } else {
+        a.adapter_available(
             &r.authorization.mode,
             &r.quote.body.provider,
             &r.quote.body.models[0],
         )
         .await
-    {
+    };
+    if !available {
         return Err(ApiError(StatusCode::BAD_REQUEST, "adapter_unavailable"));
     }
     let saved = a.ledger.quote(wire::uuid(&r.quote.body.quote_id)?).await?;

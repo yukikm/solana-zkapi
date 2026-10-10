@@ -58,6 +58,7 @@ fn setup(provider: Provider, cache_mode: CacheMode) -> (ModelProfile, Tariff) {
         ],
     };
     let mut tariff = Tariff {
+        api: None,
         tariff_hash: "".into(),
         version: "1".into(),
         provider,

@@ -76,13 +76,19 @@ fn uuid(s: &str) -> Result<()> {
 impl ReceiptBody {
     pub fn validate(&self) -> Result<()> {
         ensure!(
-            self.version == "1" && !self.deployment_id.is_empty(),
+            matches!(self.version.as_str(), "1" | "2") && !self.deployment_id.is_empty(),
             "receipt version/deployment"
         );
         uuid(&self.receipt_id)?;
         uuid(&self.request_id)?;
         if let Some(id) = &self.operation_id {
             uuid(id)?;
+        }
+        if self.version == "2" {
+            ensure!(
+                self.operation_id.is_some() && self.provider_reported_usd.is_none(),
+                "generic receipt scope"
+            );
         }
         let pool = bs58::decode(&self.pool).into_vec()?;
         ensure!(
@@ -116,15 +122,20 @@ impl ReceiptBody {
         let mut previous = "";
         for item in &self.usage {
             ensure!(
-                matches!(
-                    item.unit.as_str(),
-                    "input_tokens"
-                        | "output_tokens"
-                        | "cache_read_tokens"
-                        | "cache_write_tokens"
-                        | "cache_write_5m_tokens"
-                        | "cache_write_1h_tokens"
-                ) && item.unit.as_str() > previous,
+                ((self.version == "2"
+                    && item.unit == "requests"
+                    && matches!(item.count.as_str(), "0" | "1"))
+                    || (self.version == "1"
+                        && matches!(
+                            item.unit.as_str(),
+                            "input_tokens"
+                                | "output_tokens"
+                                | "cache_read_tokens"
+                                | "cache_write_tokens"
+                                | "cache_write_5m_tokens"
+                                | "cache_write_1h_tokens"
+                        )))
+                    && item.unit.as_str() > previous,
                 "usage order/unit"
             );
             ensure!(uint(&item.count)? <= i64::MAX as u128, "usage bound");
@@ -159,7 +170,9 @@ impl ReceiptBody {
                 }
                 match self.evidence_kind.as_str() {
                     "PROXY_USAGE" => ensure!(
-                        self.operation_id.is_some() && self.provider_reported_usd.is_none(),
+                        self.operation_id.is_some()
+                            && self.provider_reported_usd.is_none()
+                            && (self.version == "1" || self.usage.len() == 1),
                         "proxy evidence mismatch"
                     ),
                     "OA_SIGNED_RECEIPT" | "OPENROUTER_USAGE" => {
@@ -258,7 +271,12 @@ pub fn validate_tariff_math(body: &ReceiptBody, tariff: &crate::wire::Tariff) ->
         body.tariff_hash == tariff.tariff_hash,
         "receipt tariff mismatch"
     );
-    let proxy = tariff.pricing_basis == "fixed_usage_rates";
+    let fixed_request = tariff.pricing_basis == "fixed_request";
+    ensure!(
+        body.version == if fixed_request { "2" } else { "1" },
+        "receipt tariff version mismatch"
+    );
+    let proxy = fixed_request || tariff.pricing_basis == "fixed_usage_rates";
     ensure!(
         proxy || body.reason != "waived_unknown",
         "direct usage cannot be automatically waived"
@@ -267,6 +285,13 @@ pub fn validate_tariff_math(body: &ReceiptBody, tariff: &crate::wire::Tariff) ->
         proxy == body.operation_id.is_some(),
         "receipt pricing scope mismatch"
     );
+    if fixed_request {
+        ensure!(
+            uint(&body.reservation_nano_usdc)?
+                == u128::from(crate::wire::uint(&tariff.rates[0].nano_usdc_numerator)?),
+            "fixed request reservation mismatch"
+        );
+    }
     if !matches!(body.reason.as_str(), "metered" | "late_usage") {
         return Ok(());
     }

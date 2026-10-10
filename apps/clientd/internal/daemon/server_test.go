@@ -23,6 +23,12 @@ func TestLoopbackCredentialsAndRoutes(t *testing.T) {
 		status                                       int
 	}{
 		{"inference", "127.0.0.1:5", "127.0.0.1:8787", "", "i", "/v1/chat/completions", "POST", 204},
+		{"registered API", "127.0.0.1:5", "127.0.0.1:8787", "", "i", "/zkapi/v1/api/weather/current", "POST", 204},
+		{"API catalog", "127.0.0.1:5", "127.0.0.1:8787", "", "i", "/zkapi/v1/apis", "GET", 204},
+		{"API wrong method", "127.0.0.1:5", "127.0.0.1:8787", "", "i", "/zkapi/v1/api/weather/current", "GET", 404},
+		{"API wrong role", "127.0.0.1:5", "127.0.0.1:8787", "", "m", "/zkapi/v1/api/weather/current", "POST", 401},
+		{"API encoded route", "127.0.0.1:5", "127.0.0.1:8787", "", "i", "/zkapi/v1/api/weather/%63urrent", "POST", 400},
+		{"API traversal", "127.0.0.1:5", "127.0.0.1:8787", "", "i", "/zkapi/v1/api/weather/../current", "POST", 404},
 		{"management", "[::1]:5", "localhost:8787", "http://localhost:8787", "m", "/admin/status", "GET", 204},
 		{"upgrade plan", "127.0.0.1:5", "localhost:8787", "", "m", "/admin/upgrade-plan", "GET", 204},
 		{"model availability", "127.0.0.1:5", "localhost:8787", "", "m", "/admin/model-availability", "GET", 204},
@@ -60,7 +66,7 @@ func TestLoopbackCredentialsAndRoutes(t *testing.T) {
 			}
 		})
 	}
-	if calls != 6 {
+	if calls != 8 {
 		t.Fatalf("unauthorized calls: %d", calls)
 	}
 }

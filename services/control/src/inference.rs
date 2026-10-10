@@ -2,6 +2,7 @@
 //! disconnect; inference bytes never enter the control ledger.
 use crate::{
     api::App,
+    generic,
     inference_diagnostics::{self, Stage},
     ledger::{self, NewOperation, OperationOutcome},
     proxy::{self, Endpoint, RelayEvent},
@@ -21,9 +22,26 @@ use subtle::ConstantTimeEq;
 use tokio::sync::mpsc;
 use uuid::Uuid;
 
+enum PreparedOperation {
+    Inference(proxy::PreparedRequest),
+    Api(generic::PreparedRequest),
+}
+impl PreparedOperation {
+    fn reservation_nano(&self) -> u128 {
+        match self {
+            Self::Inference(p) => p.reservation_nano,
+            Self::Api(p) => p.reservation_nano,
+        }
+    }
+    fn streaming(&self) -> bool {
+        matches!(self, Self::Inference(p) if p.streaming)
+    }
+}
+
 pub fn router(app: Arc<App>) -> Router {
     Router::new()
         .route("/v1/models", get(models))
+        .route("/zkapi/v1/api/{service}/{operation}", post(infer))
         .route("/v1/chat/completions", post(infer))
         .route("/v1/responses", post(infer))
         .route("/v1/messages", post(infer))
@@ -135,10 +153,10 @@ async fn infer(
     {
         return fail(StatusCode::BAD_REQUEST, "invalid_content_type");
     }
-    let endpoint = match Endpoint::from_path(path) {
-        Ok(v) => v,
-        Err(_) => return fail(StatusCode::NOT_FOUND, "unsupported_endpoint"),
-    };
+    let endpoint = Endpoint::from_path(path).ok();
+    if endpoint.is_none() && !wire::is_api_path(path) {
+        return fail(StatusCode::NOT_FOUND, "unsupported_endpoint");
+    }
     let token = match credential(&headers, path.starts_with("/v1/messages")) {
         Ok(v) => v,
         Err(_) => return fail(StatusCode::UNAUTHORIZED, "invalid_credential"),
@@ -210,17 +228,22 @@ async fn infer(
     if !app.providers.available(&app.ledger, provider).await {
         return fail(StatusCode::SERVICE_UNAVAILABLE, "provider_suspended");
     }
-    let Some(profile) = app
-        .config
-        .runtime
-        .providers
-        .proxy
-        .iter()
-        .filter(|p| p.provider == *provider)
-        .flat_map(|p| &p.models)
-        .find(|p| p.model == request.quote.body.models[0])
-    else {
-        return fail(StatusCode::BAD_REQUEST, "adapter_unavailable");
+    let profile = if request.quote.body.api.is_none() {
+        let Some(profile) = app
+            .config
+            .runtime
+            .providers
+            .proxy
+            .iter()
+            .filter(|p| p.provider == *provider)
+            .flat_map(|p| &p.models)
+            .find(|p| request.quote.body.models.first() == Some(&p.model))
+        else {
+            return fail(StatusCode::BAD_REQUEST, "adapter_unavailable");
+        };
+        Some(profile)
+    } else {
+        None
     };
     let Some(tariff) = app
         .config
@@ -232,12 +255,30 @@ async fn infer(
     else {
         return fail(StatusCode::SERVICE_UNAVAILABLE, "tariff_unavailable");
     };
-    let prepared = match proxy::validate(endpoint, &raw, profile, &tariff) {
-        Ok(p) => p,
-        Err(proxy::ProxyError::TooLarge) => {
-            return fail(StatusCode::PAYLOAD_TOO_LARGE, "body_too_large")
+    let prepared = if let Some(api) = &request.quote.body.api {
+        if path != wire::api_path(api) || !app.api_available(api).await {
+            return fail(StatusCode::BAD_REQUEST, "unsupported_endpoint");
         }
-        Err(_) => return fail(StatusCode::BAD_REQUEST, "unsupported_metering"),
+        match generic::validate(api, &raw, &tariff) {
+            Ok(p) => PreparedOperation::Api(p),
+            Err(_) => return fail(StatusCode::BAD_REQUEST, "invalid_api_request"),
+        }
+    } else {
+        let Some(endpoint) = endpoint else {
+            return fail(StatusCode::BAD_REQUEST, "unsupported_endpoint");
+        };
+        match proxy::validate(
+            endpoint,
+            &raw,
+            profile.expect("inference profile checked"),
+            &tariff,
+        ) {
+            Ok(p) => PreparedOperation::Inference(p),
+            Err(proxy::ProxyError::TooLarge) => {
+                return fail(StatusCode::PAYLOAD_TOO_LARGE, "body_too_large")
+            }
+            Err(_) => return fail(StatusCode::BAD_REQUEST, "unsupported_metering"),
+        }
     };
     let adapter = app
         .providers
@@ -245,8 +286,14 @@ async fn infer(
         .iter()
         .find(|(p, _)| p == provider)
         .map(|(_, a)| a.clone());
+    let api_adapter = app
+        .providers
+        .api
+        .iter()
+        .find(|(binding, _)| request.quote.body.api.as_ref() == Some(binding))
+        .map(|(_, a)| a.clone());
     let dispatcher = app.providers.dispatcher.clone();
-    if adapter.is_none() && dispatcher.is_none() {
+    if adapter.is_none() && api_adapter.is_none() && dispatcher.is_none() {
         return fail(StatusCode::SERVICE_UNAVAILABLE, "adapter_unavailable");
     }
     let dispatch_provider = provider.clone();
@@ -257,8 +304,8 @@ async fn infer(
             operation_id: operation,
             request_hmac: hmac,
             endpoint: path.into(),
-            model: profile.model.clone(),
-            reservation_nano: prepared.reservation_nano,
+            model: profile.map(|p| p.model.clone()).unwrap_or_default(),
+            reservation_nano: prepared.reservation_nano(),
         })
         .await
     {
@@ -289,6 +336,7 @@ async fn infer(
     };
     let (tx, mut rx) = mpsc::channel(32);
     let worker = app.clone();
+    let proxy_secret = zeroize::Zeroizing::new(token.secret);
     tokio::spawn(async move {
         let mut downstream = Some(tx);
         let result: anyhow::Result<()> = async {
@@ -336,7 +384,7 @@ async fn infer(
                 worker.ledger.mark_operation_unknown(id, operation).await?;
                 anyhow::bail!("dispatch claim denied");
             }
-            let streaming = prepared.streaming;
+            let streaming = prepared.streaming();
             let (provider_tx, mut provider_rx) = mpsc::channel(32);
             let forward = async {
                 while let Some(event) = provider_rx.recv().await {
@@ -370,21 +418,38 @@ async fn infer(
                 }
             };
             let dispatch = async {
-                if let Some(dispatcher) = dispatcher {
-                    dispatcher
-                        .proxy(
-                            dispatch_provider,
-                            attempt.clone(),
-                            prepared,
-                            Some(provider_tx),
-                        )
-                        .await
-                } else {
-                    Ok(adapter
-                        .as_ref()
-                        .expect("adapter checked")
-                        .dispatch_once(prepared, Some(provider_tx))
-                        .await)
+                match prepared {
+                    PreparedOperation::Inference(prepared) => {
+                        if let Some(dispatcher) = dispatcher {
+                            dispatcher
+                                .proxy(
+                                    dispatch_provider,
+                                    attempt.clone(),
+                                    prepared,
+                                    Some(provider_tx),
+                                )
+                                .await
+                        } else {
+                            Ok(adapter
+                                .as_ref()
+                                .expect("adapter checked")
+                                .dispatch_once(prepared, Some(provider_tx))
+                                .await)
+                        }
+                    }
+                    PreparedOperation::Api(prepared) => {
+                        if let Some(dispatcher) = dispatcher {
+                            dispatcher
+                                .api(attempt.clone(), prepared, *proxy_secret, Some(provider_tx))
+                                .await
+                        } else {
+                            Ok(api_adapter
+                                .as_ref()
+                                .expect("API adapter checked")
+                                .dispatch_once(prepared, Some(provider_tx))
+                                .await)
+                        }
+                    }
                 }
             };
             let (observation, ()) = tokio::join!(dispatch, forward);

@@ -141,8 +141,7 @@ pub fn verify_prepared(ctx: &Context, state: &PrivateState, prepared: &Prepared)
     let b = &prepared.request.quote.body;
     ensure!(
         b.tariff_hash == prepared.tariff.tariff_hash
-            && b.provider == prepared.tariff.provider
-            && b.models == [prepared.tariff.model.clone()]
+            && quote::quote_matches_tariff(b, &prepared.tariff)
             && quote::tariff_valid_at(&prepared.tariff, wire::uint(&b.issued_at)?)?,
         "tariff binding"
     );

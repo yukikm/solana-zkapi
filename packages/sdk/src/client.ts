@@ -3,8 +3,8 @@
 import { address, type Rpc, type SolanaRpcApi } from '@solana/kit';
 import { decodeRpcAccount, safeRpcNumber } from './solana-rpc.ts';
 import { ClientDaemon } from './clientd-bridge.ts';
-import { ControlClient, validateNoteJournal, verifiedClientBundle, expiryNotice,
-  PROXY_PRIVACY_NOTICE, DIRECT_OPENROUTER_PRIVACY_NOTICE, DIRECT_PRIVACY_NOTICE, type ClientOptions, type Mode, type NoteJournal, type Quote, type Tariff } from './control.ts';
+import { ControlClient, validateNoteJournal, verifiedClientBundle, expiryNotice, validateApiService, apiOperationPath,
+  PROXY_PRIVACY_NOTICE, DIRECT_OPENROUTER_PRIVACY_NOTICE, DIRECT_PRIVACY_NOTICE, type ClientOptions, type Mode, type NoteJournal, type Quote, type Tariff, type ApiService, type ApiBinding, type ApiTariff } from './control.ts';
 import { ProverSessionVerifier } from './control-prover.ts';
 import { EncryptedJournal, type AtomicJournalStore } from './journal.ts';
 import { NoteProver, type ClientProver } from './prover.ts';
@@ -18,7 +18,7 @@ import { privacyProfile, planClientUpgrade, type PrivacyProfile } from './client
 export { privacyProfile, planClientUpgrade, type PrivacyProfile, type UpgradePlan } from './client-guidance.ts';
 export type { ModelAvailability } from './provider-status.ts';
 
-export type { Mode, Tariff, ManifestTrustPolicy, ArtifactBundle, V0Wallet, ClientProver };
+export type { Mode, Tariff, ApiService, ApiBinding, ApiTariff, ManifestTrustPolicy, ArtifactBundle, V0Wallet, ClientProver };
 export type InferenceApi = 'chat' | 'responses' | 'messages';
 const paths: Record<InferenceApi, string> = { chat: '/v1/chat/completions', responses: '/v1/responses', messages: '/v1/messages' };
 
@@ -53,6 +53,7 @@ export interface CreateClientOptions {
   noteId: string;
   mode: Mode;
   models: readonly ModelConfiguration[];
+  services?: readonly ApiService[];
   /** Direct default: reuse the 300-second lease, renewing with 90 seconds left.
    * Set 0 for per-request settlement or 1–300 for a fixed reuse window. */
   keyReuseSeconds?: number;
@@ -109,6 +110,9 @@ export interface ChatRequest {
   stream?: boolean;
   signal?: AbortSignal;
 }
+export interface ApiRequest {
+  operationId: string; service: string; operation: string; body: unknown; signal?: AbortSignal;
+}
 
 /** Advanced composition for existing hosts. All components must share one journal,
  * deployment and independently verified configuration. Prefer createZkApiClient. */
@@ -119,6 +123,7 @@ export interface ClientComponents {
   noteId: string;
   mode: Mode;
   models: readonly ModelConfiguration[];
+  services?: readonly ApiService[];
   keyReuseSeconds?: number;
 }
 
@@ -127,6 +132,7 @@ export class ZkApiClient {
   private readonly walletClient: WalletClient;
   private readonly daemon: ClientDaemon;
   private readonly models: ModelConfiguration[];
+  private readonly services: ApiService[];
   private busy = false;
   private disposed = false;
   private activeSessionId?: string;
@@ -136,12 +142,14 @@ export class ZkApiClient {
   constructor(options: ClientComponents) {
     if (!options.noteId || options.noteId.length > 1024 || !options.wallet.wallets.length) throw new Error('stable note ID and selected wallet required');
     this.models = structuredClone([...options.models]);
-    validateModelConfigurations(options.mode, this.models);
+    this.services = structuredClone([...(options.services ?? [])]);
+    validateClientConfiguration(options.mode,this.models,this.services);
     this.options = { ...options, wallet: { ...options.wallet, wallets: [...options.wallet.wallets] } };
     this.walletClient = new WalletClient(this.options.wallet);
     const reuse = options.keyReuseSeconds ?? (options.mode === 'proxy' ? 0 : 300);
     this.daemon = new ClientDaemon({ client: options.control, journal: options.wallet.journal,
       noteId: options.noteId, mode: options.mode, models: this.models, keyReuseSeconds: reuse,
+      services:this.services,
       minimumLeaseRemainingSeconds: options.keyReuseSeconds === undefined && options.mode !== 'proxy' ? 90 : 1,
       settlementWaitMs: options.mode === 'proxy' ? 0 : 45_000,
       prepare: async (id, credentials) => {
@@ -155,10 +163,19 @@ export class ZkApiClient {
           snapshot.root, snapshot.siblings, quote, model.tariff, credentials);
         return { prepared, root: snapshot.root };
       },
+      prepareApi: async (api, credentials) => {
+        const selected = this.services.find(s=>apiOperationPath(s.tariff.api) === apiOperationPath(api))!;
+        const record = await this.options.wallet.journal.read(this.options.noteId);
+        if (!record?.value.witness) throw new Error('funded note witness required');
+        const quote = await this.options.control.quoteApi(api,selected.tariff);
+        const snapshot = await authorizationSnapshot(this.options.wallet.chain,record.value.witness.note_id,this.options.wallet.prover);
+        return {prepared:await this.options.wallet.prover.prepareSession(record.value.witness,record.value.state,snapshot.root,snapshot.siblings,quote,selected.tariff,credentials),root:snapshot.root};
+      },
     });
   }
 
   listModels(): ModelInfo[] { return this.models.map(({ tariff: _tariff, ...model }) => structuredClone(model)); }
+  listApis(): ApiBinding[] { return this.services.map(s=>structuredClone(s.tariff.api)); }
 
   /** Local read only. No AUTH, inference, wallet prompt or transaction is sent. */
   async status(): Promise<ClientStatus> {
@@ -315,6 +332,21 @@ export class ZkApiClient {
       if (body.length > 1024 * 1024) throw new ClientActionError('invalid_request', 'Request exceeds 1 MiB.');
     } catch (error) { return Promise.reject(error); }
     const operationId = request.operationId, sessionId = request.sessionId ?? 'default', path = paths[request.api], version = request.anthropicVersion ?? '', signal = request.signal;
+    return this.dispatchResponse(sessionId,signal,()=>this.daemon.infer(path,body,operationId,version,signal));
+  }
+  /** Execute a registered fixed-price JSON operation through the shared note lifecycle. */
+  requestApi(request: ApiRequest): Promise<Response> {
+    let body: Uint8Array;
+    try {
+      const selected = this.services.find(s=>s.tariff.api.service === request.service && s.tariff.api.operation === request.operation);
+      if (!selected || this.options.mode !== 'proxy' || !/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/.test(request.operationId)) throw new ClientActionError('invalid_request','Choose a registered API operation and a stable operation UUID.');
+      body=jcsBytes(request.body);
+      if(body.length>Number(selected.tariff.api.request_max_bytes))throw new ClientActionError('invalid_request','Request exceeds this API operation limit.');
+    } catch(error) { return Promise.reject(error); }
+    const {service,operation,operationId,signal}=request;
+    return this.dispatchResponse('default',signal,()=>this.daemon.requestApi(service,operation,body,operationId,signal));
+  }
+  private dispatchResponse(sessionId: string, signal: AbortSignal | undefined, dispatch:()=>Promise<Response>):Promise<Response> {
     return new Promise<Response>((resolve, reject) => {
       const completed = this.action(async () => {
         signal?.throwIfAborted();
@@ -331,7 +363,7 @@ export class ZkApiClient {
           throw new ClientActionError('not_ready', 'Settle the previous conversation before using its balance in another conversation.');
         await this.daemon.startIfNeeded();
         this.activeSessionId = sessionId;
-        const response = await this.daemon.infer(path, body, operationId, version, signal);
+        const response = await dispatch();
         if (!response.body) { void completed.then(() => resolve(response), reject); return; }
         const reader = response.body.getReader();
         let release!: () => void;
@@ -390,21 +422,27 @@ export function validateModelConfigurations(mode: Mode, models: readonly ModelCo
         : m.provider !== (mode === 'direct_oa' ? 'oa' : 'openrouter') || m.tariff.model !== '*' || m.tariff.pricing_basis !== 'provider_reported_usd')) throw new Error('model, API, mode and tariff must agree');
   }
 }
+function validateClientConfiguration(mode:Mode,models:readonly ModelConfiguration[],services:readonly ApiService[]):void {
+  if(models.length || !services.length)validateModelConfigurations(mode,models);
+  if(services.length && mode!=='proxy')throw new Error('registered API services require explicit proxy mode');
+  const paths=new Set<string>();
+  for(const service of services){validateApiService(service);const path=apiOperationPath(service.tariff.api);if(paths.has(path))throw new Error('duplicate API operation');paths.add(path);}
+}
 
 /** Read-only initialization: authenticate pins/artifacts and finalized PoolConfig.
  * Reopening a pending journal does not submit AUTH or sign a transaction. */
 export async function createZkApiClient(options: CreateClientOptions): Promise<ZkApiClient> {
   const d = options.deployment;
   const manifestBytes = new Uint8Array(d.manifest), trust = structuredClone(d.trust), artifacts = structuredClone(d.artifacts);
-  const models = structuredClone([...options.models]), mode = options.mode, noteId = options.noteId, keyReuseSeconds = options.keyReuseSeconds;
+  const models = structuredClone([...options.models]), services=structuredClone([...(options.services ?? [])]), mode = options.mode, noteId = options.noteId, keyReuseSeconds = options.keyReuseSeconds;
   const wallet = options.wallet, storage = { ...options.storage }, engine = options.prover;
   const connection = d.connection, fetcher = d.fetch, indexerOrigin = d.indexerOrigin, preparationCommitment = d.preparationCommitment;
   const directProviderBases = structuredClone(options.directProviderBases), oaVerifier = structuredClone(options.oaVerifier), priorityFeeMicroLamports = options.priorityFeeMicroLamports;
-  validateModelConfigurations(mode, models);
+  validateClientConfiguration(mode, models, services);
   if (mode !== 'proxy' && !directProviderBases?.[mode]) throw new Error('independently installed direct provider base required');
   if (mode === 'direct_oa' && !oaVerifier) throw new Error('independently installed OA verifier required');
   const manifest: VerifiedManifest = await verifyManifest(manifestBytes, trust);
-  for (const model of models) {
+  for (const model of [...models,...services]) {
     const { tariff_hash, ...body } = model.tariff;
     if (!manifest.tariff_hashes.includes(tariff_hash) || await sha256Hex(jcsBytes(body)) !== tariff_hash) throw new Error('model tariff is not pinned by this deployment');
   }
@@ -422,7 +460,7 @@ export async function createZkApiClient(options: CreateClientOptions): Promise<Z
   const chain = new SolanaWalletChain(connection, manifest, indexerOrigin, { fetch: fetcher, allowLoopbackHttp, preparationCommitment });
   const client = new ZkApiClient({ wallet: { manifest, prover, journal, chain, rpc: connectionTransport(connection, { preparationCommitment }),
     wallets: [wallet], fetch: fetcher, priorityFeeMicroLamports }, control, store: storage.store, noteId, mode, models,
-    keyReuseSeconds });
+    keyReuseSeconds,services });
   await client.status(); // Fail on corrupt or incompatible storage before returning.
   return client;
 }

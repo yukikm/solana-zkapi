@@ -169,7 +169,14 @@ async fn sample(app: Arc<App>) -> Report {
             };
             let configured = match mode {
                 wire::Mode::Proxy => {
-                    app.config.runtime.providers.proxy.iter().any(|p| {
+                    tariff.api.as_ref().is_some_and(|api| {
+                        app.config
+                            .runtime
+                            .providers
+                            .api
+                            .iter()
+                            .any(|p| &p.api == api)
+                    }) || app.config.runtime.providers.proxy.iter().any(|p| {
                         p.provider == tariff.provider
                             && p.models.iter().any(|m| m.model == tariff.model)
                     }) || app.config.runtime.enable_local_adapter

@@ -43,6 +43,7 @@ fn strict_optional_values_and_numeric_objects_cannot_bypass_parser() {
     assert!(strict_parse::<Value>(br#"{"a":"first","\u0061":"second"}"#).is_err());
     assert!(strict_parse::<QuoteRequest>(br#"{"mode":"proxy","provider":"openai","models":["local-test"],"session_ttl_seconds":null}"#).is_err());
     let request = QuoteRequest {
+        api: None,
         mode: Mode::Proxy,
         provider: Provider::Openai,
         models: vec!["local-test".into()],
