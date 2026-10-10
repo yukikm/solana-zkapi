@@ -10,7 +10,7 @@ import {promisify} from 'node:util';
 import {loadPublicDeploymentProfile, publicProfileClientOptions, type LoadedPublicDeploymentProfile} from '../packages/sdk/src/public-profile.ts';
 import {parseStrictJson,sha256Hex,jcsBytes} from '../packages/sdk/src/trust.ts';
 import {directControlRelay,loadBrowserChatBudget,localForwarder,type BrowserChatDevnetHostConfig,type DirectDemoBudget} from './browser_chat_devnet_host.ts';
-import {startUiHost,validatePublicBrowserOrigins,type HostOptions,type UiDirectProviderBudget} from './devnet-browser-relay/host.ts';
+import {startUiHost,validatePublicBrowserOrigins,type HostOptions,type UiDirectProviderBudget,type OperatorFundedStatus} from './devnet-browser-relay/host.ts';
 import {publicReadiness} from './public_devnet_readiness.ts';
 import {validatePublicModelExpansion} from './public_model_profile.ts';
 
@@ -51,7 +51,7 @@ export interface PublicDevnetGatewayConfig {
   indexerUrl:string;
   controlUrl:string;
   localCaPath?:string;
-  budget:BrowserChatDevnetHostConfig['budget'] | SupplementalGatewayBudget | DetachedGatewayBudget;
+  budget:BrowserChatDevnetHostConfig['budget'] | SupplementalGatewayBudget | DetachedGatewayBudget | {kind:'operator-funded'};
 }
 function fields(value:any,required:string[],optional:string[]=[]){
   assert.ok(value&&typeof value==='object'&&!Array.isArray(value));
@@ -79,6 +79,10 @@ function validateConfig(config:PublicDevnetGatewayConfig){
     const u=new URL(input);assert.ok(u.origin===input&&!u.username&&!u.password&&(u.protocol==='https:'||u.protocol==='http:'&&['127.0.0.1','[::1]'].includes(u.hostname)));
   }
   if('kind' in config.budget){
+    if(config.budget.kind==='operator-funded'){
+      fields(config.budget,['kind']);
+      return;
+    }
     assert.ok(config.budget.kind==='supplemental-v1'||config.budget.kind==='supplemental-detached-v2');
     fields(config.budget,['kind',config.budget.kind==='supplemental-v1'?'planPath':'historySnapshotPath',
       'stateDir','authorizationPath','authorizationSha256','sdkSha256','nativeSha256']);
@@ -217,7 +221,8 @@ export async function configuredPublicDevnetGateway(config:PublicDevnetGatewayCo
   config=structuredClone(config);
   const loaded=await loadGatewayPublicProfile(config), {profile,manifest,model}=validateGatewayProfile(config,loaded);
   const modelDiscovery=await gatewayModelDiscovery(config,loaded);
-  const budget='kind' in config.budget?await loadSupplementalGatewayBudget(config,loaded):
+  const budget='kind' in config.budget&&config.budget.kind==='operator-funded'?operatorFundedGatewayBudget(config):
+    'kind' in config.budget?await loadSupplementalGatewayBudget(config,loaded):
     await loadBrowserChatBudget(config.budget,manifest,model.tariff,model.id,config.allowTransactions,config.allowNewAdmissions);
   const forward=localForwarder(config.localCaPath?await publicFile(config.localCaPath,1024*1024):undefined);
   const control=directControlRelay({manifest,tariff:model.tariff,budget,
@@ -233,6 +238,19 @@ export async function configuredPublicDevnetGateway(config:PublicDevnetGatewayCo
     ...(config.historyRpcUrl?{historyRpc:(data:Buffer,signal?:AbortSignal)=>forward(config.historyRpcUrl!,'POST',data,{},4*1024*1024,signal)}:{}),
     indexer:(path,signal)=>forward(config.indexerUrl+path,'GET',undefined,{},path.startsWith('/zkapi/v1/tree/snapshots/')?4*1024*1024:65536,signal)};
   return startUiHost(options);
+}
+
+/** Explicit operator policy: remove only the gateway's campaign allowance.
+ * The shared control ledger still validates and reserves every authorization.
+ * Original campaign files remain untouched for historical verification. */
+export function operatorFundedGatewayBudget(config:PublicDevnetGatewayConfig){
+  validateConfig(config);
+  assert.deepEqual(config.budget,{kind:'operator-funded'});
+  const allowTransactions=config.allowTransactions,allowNewAdmissions=config.allowNewAdmissions;
+  return {kind:'operator-funded' as const,async status():Promise<OperatorFundedStatus>{
+    return {schema:2,budget_scope:'operator_funded',trial_limits:false,allowTransactions,
+      allowNewAdmissions:allowTransactions&&allowNewAdmissions,request_max_cost_micro_usdc:'1000000',provider_credit:'not_checked'};
+  }};
 }
 async function main(){
   const args=process.argv.slice(2);assert.ok(args.length===2&&args[0]==='--config');

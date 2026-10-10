@@ -75,7 +75,9 @@ Use the [native quickstart](../sdk/clientd-quickstart.md) or
 The native executable is not Apple signed/notarized; Linux, Windows and Intel
 macOS packages are not included in this release.
 
-The existing seven-request provider grant is exhausted. Publication and preflight
-do not add capacity or authorize paid inference, funding or grant renewal.
+The historical seven-request provider grant remains exhausted; the operator
+later removed the fixed trial allowance as a separate server policy. See
+[current access policy](../sdk/devnet-funding.md). Publication and preflight
+do not authorize paid inference, funding or replay of historical lifecycles.
 Release validation uses local fixtures and public read-only checks. Dated funded
 acceptance of `.3` does not establish paid multi-request acceptance of `.6`.

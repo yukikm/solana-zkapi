@@ -114,5 +114,6 @@ npm install --save-exact /absolute/downloads/zkapi-solana-sdk-0.2.0-devnet.8.tgz
 No program authority, proof setup, grant or financial state changes are part of
 this release. The [remaining trust differences](privacy-preview.md#trust-comparison-with-ethereum)
 remain. [Publication, signatures and downloads are verified](https://github.com/yukikm/solana-zkapi/blob/ea4cb0ac005832abae6e703eb177914c0c9aa193/docs/evidence/PD-sdk8-publication-20261010.md).
-The public operator's empty catalog currently blocks ordinary preflight on both
-`.7` and `.8`; the metadata helper's successful read is a separate observation.
+At publication, an empty operator catalog blocked ordinary preflight on both
+`.7` and `.8`. See [current service status](../sdk/status.md) for later server
+repairs and preflight results; public metadata reads remain separate observations.

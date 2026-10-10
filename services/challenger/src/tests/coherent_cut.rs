@@ -20,6 +20,7 @@ async fn rpc_daemon_advancing_cut_preserves_archive_and_same_cut_pool_validation
 async fn rpc_daemon_larger_archive_batch_preserves_prefix_recovery_and_account_cut() {
     check_archive_batches(
         Some(runtime::ArchiveBatchPolicy {
+            rpc_concurrency: None,
             max_blocks: 256,
             max_bytes: 32 * 1024 * 1024,
         }),
@@ -254,6 +255,7 @@ async fn check_archive_batches(policy: Option<runtime::ArchiveBatchPolicy>, segm
     }
     let mut invalid = config.clone();
     invalid.archive_batch = Some(runtime::ArchiveBatchPolicy {
+        rpc_concurrency: None,
         max_blocks: 257,
         max_bytes: 1,
     });
@@ -511,6 +513,7 @@ async fn check_archive_batches(policy: Option<runtime::ArchiveBatchPolicy>, segm
     let mut changed = config;
     changed.journal_directory = dir.path().join("oversized-singletons");
     changed.archive_batch = Some(runtime::ArchiveBatchPolicy {
+        rpc_concurrency: None,
         max_blocks: 256,
         max_bytes: 1,
     });

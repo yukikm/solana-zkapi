@@ -206,3 +206,135 @@ fn checkpoint_nonprivate_or_symlink_cache_is_never_trusted_or_replaced() {
         .is_err());
     assert_eq!(fs::read(outside.path()).unwrap(), b"untouched");
 }
+
+#[test]
+fn offline_compression_cache_revalidation_preserves_payload_and_recovery_state() {
+    let (root, blocks) = migrated(514);
+    let directory = fs::canonicalize(root.path()).unwrap();
+    // Reproduce an original uncompressed installation before saving its cache.
+    for entry in fs::read_dir(directory.join(ARCHIVE_DIR)).unwrap() {
+        let path = entry.unwrap().path();
+        let encoded = fs::read(&path).unwrap();
+        let mut bytes = Vec::new();
+        flate2::read::GzDecoder::new(encoded.as_slice())
+            .read_to_end(&mut bytes)
+            .unwrap();
+        fs::write(path, bytes).unwrap();
+    }
+    let journal = Journal::open(&directory, POOL).unwrap();
+    journal
+        .save_checkpoint(
+            BINDING,
+            b"original runtime",
+            journal.archive_tail().unwrap(),
+        )
+        .unwrap();
+    let expected_state = serde_json::to_vec(&journal.state).unwrap();
+    drop(journal);
+    let follower = tempfile::tempdir().unwrap();
+    let follower_path = fs::canonicalize(follower.path()).unwrap().join("cache");
+    ReadOnlyArchive::open(&directory, POOL)
+        .unwrap()
+        .save_checkpoint(
+            &follower_path,
+            BINDING,
+            b"original follower",
+            ArchiveTail::from(&blocks[299]),
+        )
+        .unwrap();
+    let cache = directory.join(NAME);
+    let original = fs::read(&cache).unwrap();
+    let follower_original = fs::read(&follower_path).unwrap();
+    let head = fs::read(directory.join("journal.json")).unwrap();
+    let scripts = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../scripts");
+    let result = std::process::Command::new("python3")
+        .arg(scripts.join("compress_archive_chunks.py"))
+        .arg(&directory)
+        .output()
+        .unwrap();
+    assert!(result.status.success(), "{:?}", result.stderr);
+    assert!(Journal::open_with_checkpoint(&directory, POOL, BINDING)
+        .unwrap()
+        .1
+        .is_none());
+    let candidate = directory.join("revalidated.next");
+    let follower_candidate = follower_path.with_file_name("revalidated.next");
+    let result = std::process::Command::new("python3")
+        .arg(scripts.join("revalidate_archive_checkpoint.py"))
+        .arg(&directory)
+        .arg("--checkpoint")
+        .arg(&cache)
+        .arg(hex::encode(sha(&original)))
+        .arg(&candidate)
+        .arg("--checkpoint")
+        .arg(&follower_path)
+        .arg(hex::encode(sha(&follower_original)))
+        .arg(&follower_candidate)
+        .output()
+        .unwrap();
+    assert!(result.status.success(), "{:?}", result.stderr);
+    assert_eq!(
+        fs::read(&cache).unwrap(),
+        original,
+        "staging never overwrites the source"
+    );
+    assert_eq!(fs::read(&follower_path).unwrap(), follower_original);
+    assert_eq!(read_cache(&candidate).unwrap().1, b"original runtime");
+    fs::rename(candidate, &cache).unwrap();
+    clear_reads();
+    let (journal, state) = Journal::open_with_checkpoint(&directory, POOL, BINDING).unwrap();
+    assert_eq!(state.unwrap().bytes, b"original runtime");
+    assert_eq!(serde_json::to_vec(&journal.state).unwrap(), expected_state);
+    assert_eq!(fs::read(directory.join("journal.json")).unwrap(), head);
+    assert!(journal.transport("synthetic-unknown-send").is_some());
+    readonly::READS.with(|r| {
+        assert!(
+            r.borrow().is_empty(),
+            "warm open after explicit full-content verification"
+        )
+    });
+    let (_, state) =
+        ReadOnlyArchive::open_with_checkpoint(&directory, POOL, BINDING, &follower_candidate)
+            .unwrap();
+    let state = state.unwrap();
+    assert_eq!(state.bytes, b"original follower");
+    assert_eq!(state.tail.unwrap().slot, 300);
+}
+
+#[test]
+fn offline_cache_revalidation_refuses_bad_pin_changed_legacy_and_corrupt_content() {
+    let (root, _) = saved(4);
+    let directory = fs::canonicalize(root.path()).unwrap();
+    let cache = directory.join(NAME);
+    let original = fs::read(&cache).unwrap();
+    let script = Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("../../scripts/revalidate_archive_checkpoint.py");
+    let candidate = directory.join("refused.next");
+    let call = |pin: String| {
+        std::process::Command::new("python3")
+            .arg(&script)
+            .arg(&directory)
+            .arg("--checkpoint")
+            .arg(&cache)
+            .arg(pin)
+            .arg(&candidate)
+            .output()
+            .unwrap()
+    };
+    assert!(!call("00".repeat(32)).status.success());
+    let chunk = fs::read_dir(directory.join(ARCHIVE_DIR))
+        .unwrap()
+        .next()
+        .unwrap()
+        .unwrap()
+        .path();
+    let chunk_bytes = fs::read(&chunk).unwrap();
+    fs::write(&chunk, b"corrupt").unwrap();
+    assert!(!call(hex::encode(sha(&original))).status.success());
+    fs::write(chunk, chunk_bytes).unwrap();
+    let legacy = directory.join(BACKUP);
+    fs::write(&legacy, fs::read(&legacy).unwrap()).unwrap();
+    assert!(!call(hex::encode(sha(&original))).status.success());
+    assert!(!candidate.exists());
+    assert_eq!(fs::read(cache).unwrap(), original);
+}

@@ -9,12 +9,17 @@ existing private channel for operating windows or incident updates.
 As of the **2026-10-10 JST** evidence:
 
 - The API [no longer requires invitations](https://github.com/yukikm/solana-zkapi/blob/ea4cb0ac005832abae6e703eb177914c0c9aa193/docs/evidence/PD-invitation-removal-20261009.md).
-  All seven provider request slots were consumed at the
+  All seven historical provider request slots were consumed at the
   [model-profile deployment](https://github.com/yukikm/solana-zkapi/blob/ea4cb0ac005832abae6e703eb177914c0c9aa193/docs/evidence/PD-model-expansion-20261009.md).
-  Additional capacity needs separate operator authorization.
-- The [latest public preflight](https://github.com/yukikm/solana-zkapi/blob/ea4cb0ac005832abae6e703eb177914c0c9aa193/docs/evidence/PD-sdk8-publication-20261010.md) failed
-  on an empty operator catalog with both `.7` and `.8`. Its cause is unproven;
-  the separate successful ZDR metadata read does not establish service readiness.
+  The operator separately removed the fixed trial allowance on 2026-10-10;
+  old grant records remain unchanged. See [funding and access](devnet-funding.md).
+- The [publication preflight](https://github.com/yukikm/solana-zkapi/blob/ea4cb0ac005832abae6e703eb177914c0c9aa193/docs/evidence/PD-sdk8-publication-20261010.md) failed
+  on an empty operator catalog with both `.7` and `.8`. Later inspection found
+  archive disk exhaustion affecting PostgreSQL. Lossless compression restored
+  disk headroom. Chain recovery and bounded readiness-read repairs completed,
+  and admission reopened at 10:07 UTC on 2026-10-10. All ten installed `.8`
+  read-only preflight checks and 24 repeated public API reads passed; see
+  [current status](status.md) for the scope and remaining limits.
 - Native recovery and withdrawal, E01 emergency withdrawal and service restart
   have [scoped evidence](status.md). These are completed historical operations,
   not instructions to replay them.
@@ -24,7 +29,8 @@ The hosting target is approximately USD50/month, not a billing cap. See the
 [retained-capacity record](https://github.com/yukikm/solana-zkapi/blob/ea4cb0ac005832abae6e703eb177914c0c9aa193/docs/evidence/PD-capacity-retained-20261009.md). The
 80 GiB data volume remains retained and chain history continues to grow;
 returning to 40 GiB requires a verified migration. Hosting costs and provider
-spending are separate.
+spending are separate. The [archive storage procedure](../../deploy/public-devnet/archive-storage.md)
+documents lossless compression, database headroom and rollback requirements.
 
 Earlier checkpoints, including the failed backup preparation and suspension,
 are preserved in the [documentation archive](https://github.com/yukikm/solana-zkapi/blob/ea4cb0ac005832abae6e703eb177914c0c9aa193/docs/evidence/PD-documentation-cleanup-20261010.md)
@@ -39,7 +45,7 @@ read-only preflight and inspect these endpoints on the public API origin:
 |---|---|
 | Preflight/readiness | Deployment and service checks; no provider-slot reservation |
 | `/relay-status` | Configured admission, invitation and recovery policy |
-| `/provider-budget` | Remaining provider request capacity |
+| `/provider-budget` | Operator-funded policy without a trial counter, or remaining finite allowance; not provider credit |
 
 `admission: suspended` blocks new AUTH while retaining existing reserved AUTH
 and settlement identities. `recovery: enabled` describes policy; recovery,

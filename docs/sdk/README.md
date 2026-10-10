@@ -10,10 +10,10 @@ model selection and the interface.
 3. Add [recovery controls](recovery.md) and consult the [API reference](api.md).
 
 Published clients are `0.2.0-devnet.8`; use the [release guide](../releases/usability-preview.md)
-for downloads and upgrade guidance. The public preview's recorded provider
-allowance is exhausted; check [funding and access](devnet-funding.md) before use.
-The latest recorded public preflight also failed on an empty operator catalog;
-see [status](status.md) for tested combinations and remaining limits.
+for downloads and upgrade guidance. The public preview uses operator-funded
+usage without a fixed trial allowance; check [funding and access](devnet-funding.md)
+and fresh preflight before use. See [status](status.md) for current service
+observations, tested combinations and remaining limits.
 Upgrades from the first preview require the [Kit migration guide](kit-migration.md).
 
 ## Responsibilities

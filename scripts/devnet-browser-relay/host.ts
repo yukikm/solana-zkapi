@@ -48,6 +48,11 @@ export interface UiDirectProviderBudget {
   max_requests: number; reserved_requests: number; remaining_requests: number;
   request_max_cost_micro_usdc: string; available_requests: number;
 }
+export interface OperatorFundedStatus {
+  schema: 2; budget_scope: 'operator_funded'; trial_limits: false;
+  allowTransactions: boolean; allowNewAdmissions: boolean;
+  request_max_cost_micro_usdc: string; provider_credit: 'not_checked';
+}
 /** Reads only prepared references, never credential files or .env. Budget
  * reservation remains the existing Python reserve-once coordinator. */
 export async function loadProviderUi(config: NonNullable<HostConfig['provider']>, manifest: VerifiedManifest) {
@@ -192,7 +197,7 @@ export interface HostOptions {
   /** Only /control is delegated, after the same loopback/origin/header/write guards.
    * The installed application must enforce its exact native routes and budget. */
   controlRelay?: (input: {path: string; method: 'GET' | 'POST'; authorization?: string; data: Buffer; allowNewAdmissions?: boolean; newAdmissionAuthorized?: boolean; signal?: AbortSignal}) => Promise<UpstreamReply>;
-  directBudget?: () => Promise<UiDirectProviderBudget>;
+  directBudget?: () => Promise<UiDirectProviderBudget | OperatorFundedStatus>;
   /** Public consumer profile and configured Chat models, with no provider request. */
   modelDiscovery?: {profileUrl:string;profileSha256:string;models:readonly {id:string;label:string;capabilities:{streaming:boolean;tools:boolean}}[]};
   /** Redacted, bounded read-only capability projection; no admission claim. */

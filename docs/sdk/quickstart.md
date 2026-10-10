@@ -2,9 +2,9 @@
 
 This guide uses the published `.8` SDK and a Wallet Standard browser wallet.
 You need a reviewed deployment bundle. The [public Devnet preview](public-devnet-preview.md)
-has downloads and profiles, but its recorded provider allowance is exhausted.
-The latest recorded public preflight also failed on an empty operator catalog.
-Check [funding and access](devnet-funding.md) before depositing for new requests.
+has downloads and profiles and uses operator-funded usage without a fixed trial
+allowance. Check [service status](status.md), fresh read-only preflight and
+[funding and access](devnet-funding.md) before depositing for new requests.
 
 ## 1. Install the SDK in your own repository
 

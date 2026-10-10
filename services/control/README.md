@@ -157,6 +157,21 @@ These are read-only attempts inside the existing admission check, not AUTH or
 inference retries. Dispatch still requires durable ownership and the existing
 post-check session-expiry validation.
 
+The separate public `GET /zkapi/v1/readiness` sampler has a 25-second indexer
+deadline, shared concurrent work and a five-second result cache. If a correctly
+encoded Clock account disagrees with the RPC account context slot, it samples
+`getMultipleAccounts` once more with the same finalized commitment and minimum
+slot. The final cut must still pass exact Clock/context equality, block anchors,
+PoolConfig, TreeState and freshness checks. Persistent disagreement remains
+invalid. Each of the three allowed RPC read methods permits one retry after
+250 ms for connection/timeouts, HTTP 500/502/503/504, a temporarily unavailable
+block/minimum bank, or a null block. HTTP429, skipped/pruned slots, unknown RPC
+errors, invalid envelopes and malformed bodies are terminal. The complete
+25-second probe deadline still applies, including delays and in-flight reads;
+at most ten RPC HTTP attempts are possible. Logs contain only method, a fixed
+failure category and the retry decision. No AUTH, provider call, signing or
+financial-state change occurs, and transaction methods are rejected outright.
+
 ## I09 local operations runtime
 
 `providers.dispatcher` now connects the shared writer to the separately executed

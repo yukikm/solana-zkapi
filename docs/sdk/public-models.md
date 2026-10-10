@@ -1,7 +1,7 @@
 # Public Devnet model selection
 
-New SDK/native **`0.2.0-devnet.6`** consumers: see the [session reuse release guide](../releases/session-reuse-preview.md)
-for exact downloads and the compatible immutable revision-4 profile. Existing
+New SDK/native **`0.2.0-devnet.8`** consumers: see the [release guide](../releases/usability-preview.md)
+for exact downloads and the compatible immutable revision-6 profile. Existing
 `.3` installations retain their original profile and recovery inputs.
 
 The revision-3 consumer profile lists all 21 regular text Chat models in the
@@ -26,7 +26,8 @@ picker. Routing suffixes are not additional model versions.
 
 ## Consumer configuration
 
-Use the existing SDK/native **0.2.0-devnet.3** with this new immutable profile:
+The gateway's preserved discovery input for SDK/native **0.2.0-devnet.3** is
+shown below. New `.8` consumers use the revision-6 input linked above:
 
 ```json
 {
@@ -68,12 +69,12 @@ The configured list controls SDK model selection; it is not an OpenRouter
 per-model key ACL. Quotes and AUTH use the existing `models: ["*"]` tariff and
 provider-reported cost accounting.
 
-At the pre-deployment observation, all seven authorized request reservations
-were consumed and all seven sessions were settled. Model publication does not
-replenish that allowance. Check `/provider-budget`; a new inference needs an
-explicitly authorized capacity extension when `available_requests` is zero.
-Readiness/preflight success does not establish remaining capacity or inference
-success for the new models.
+At the original model-deployment observation, all seven authorized request
+reservations were consumed and all seven sessions were settled. Those records
+remain unchanged. On 2026-10-10, the operator separately selected usage without
+a fixed trial allowance. Check `/provider-budget` and [funding and access](devnet-funding.md)
+for schema 2 operator-funded status, then run fresh preflight. Model publication
+does not change provider credit or establish inference success for each model.
 
 The profile is an immutable catalog snapshot, not automatic future model
 discovery. Later eligible releases require a new catalog snapshot/profile and

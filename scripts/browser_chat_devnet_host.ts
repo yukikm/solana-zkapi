@@ -34,7 +34,7 @@ export interface DirectDemoBudget {
   reserve(requestId: string, authorizationSha256: string, allowNew?: boolean): Promise<void>;
 }
 export interface DirectControlOptions {
-  manifest: VerifiedManifest; tariff: Tariff; budget: DirectDemoBudget;
+  manifest: VerifiedManifest; tariff: Tariff; budget: DirectDemoBudget | {kind: 'operator-funded'};
   forward(path: string, method: 'GET' | 'POST', headers: Record<string, string>, data?: Buffer, signal?: AbortSignal): Promise<UpstreamReply>;
 }
 
@@ -90,7 +90,20 @@ export function directControlRelay(options: DirectControlOptions): NonNullable<H
       // The server/SDK verify the proof itself. Reserve the entire allowed lease,
       // not an estimated prompt cost. Never retry forwarding here.
       signal?.throwIfAborted();
-      await budget.reserve(auth.request_id, await sha256Hex(data), allowNewAdmissions !== false && newAdmissionAuthorized !== false);
+      const allowNew = allowNewAdmissions !== false && newAdmissionAuthorized !== false;
+      if ('kind' in budget) {
+        // The shared control ledger owns durable AUTH/transcript binding and
+        // per-note reservations. No separate trial allowance is consumed.
+        // During suspension only an authenticated, already persisted session
+        // may reach idempotent AUTH recovery; a failed read never permits POST.
+        assert.equal(budget.kind, 'operator-funded');
+        if (!allowNew) {
+          const existing = await forward('/zkapi/v1/sessions/' + auth.request_id, 'GET', headers, undefined, signal);
+          assert.equal(existing.status, 200, 'new provider admission suspended');
+        }
+      } else {
+        await budget.reserve(auth.request_id, await sha256Hex(data), allowNew);
+      }
     } else if (path === '/zkapi/v1/withdraw/clearance') {
       assert.equal(method, 'POST'); assert.equal(authorization, undefined);
       const value = parseStrictJson(data) as any; exact(value, ['nullifier']); parseField(value.nullifier);

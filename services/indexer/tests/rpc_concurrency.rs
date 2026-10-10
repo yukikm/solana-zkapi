@@ -24,6 +24,7 @@ use zkapi_indexer::{
 const FIRST: u64 = 507_277_497;
 const COUNT: u64 = 12;
 struct RpcState {
+    window: usize,
     blocks: BTreeMap<u64, Value>,
     active: AtomicUsize,
     peak: AtomicUsize,
@@ -71,12 +72,12 @@ async fn endpoint(State(state): State<Arc<RpcState>>, Json(request): Json<Value>
             let active = state.active.fetch_add(1, Ordering::SeqCst) + 1;
             state.peak.fetch_max(active, Ordering::SeqCst);
             if state.reverse.load(Ordering::SeqCst) {
-                let group = ((slot - FIRST) / 4) as usize;
-                let position = ((slot - FIRST) % 4) as usize;
+                let group = ((slot - FIRST) / state.window as u64) as usize;
+                let position = ((slot - FIRST) % state.window as u64) as usize;
                 state.barriers[group].wait().await;
                 // Deterministically complete each four-read window backwards.
                 // A sequential implementation cannot pass the four-party gate.
-                if position < 3 {
+                if position < state.window - 1 {
                     state.gates[group][position]
                         .acquire()
                         .await
@@ -115,6 +116,9 @@ async fn endpoint(State(state): State<Arc<RpcState>>, Json(request): Json<Value>
     Json(json!({"jsonrpc":"2.0","id":request["id"],"result":result})).into_response()
 }
 async fn server(fault: usize) -> Server {
+    server_with_window(fault, 4).await
+}
+async fn server_with_window(fault: usize, window: usize) -> Server {
     let first: Value =
         serde_json::from_str(include_str!("fixtures/devnet-v1-initialize-block.json")).unwrap();
     let decoded = decode_finalized_block(FIRST, &first).unwrap();
@@ -147,6 +151,7 @@ async fn server(fault: usize) -> Server {
             .unwrap();
     }
     let state = Arc::new(RpcState {
+        window,
         blocks,
         active: AtomicUsize::new(0),
         peak: AtomicUsize::new(0),
@@ -154,9 +159,11 @@ async fn server(fault: usize) -> Server {
         rate_limited: AtomicBool::new(false),
         calls: AtomicUsize::new(0),
         reverse: AtomicBool::new(true),
-        barriers: (0..COUNT / 4).map(|_| Barrier::new(4)).collect(),
-        gates: (0..COUNT / 4)
-            .map(|_| (0..3).map(|_| Semaphore::new(0)).collect())
+        barriers: (0..COUNT / window as u64)
+            .map(|_| Barrier::new(window))
+            .collect(),
+        gates: (0..COUNT / window as u64)
+            .map(|_| (0..window - 1).map(|_| Semaphore::new(0)).collect())
             .collect(),
         completions: Mutex::new(Vec::new()),
         ranges: Mutex::new(Vec::new()),
@@ -493,4 +500,45 @@ async fn actual_rpc_failure_stderr_is_numeric_redacted_and_does_not_retry() {
             "exactly one HTTP invocation and no retry"
         );
     }
+}
+
+#[tokio::test]
+async fn explicit_eight_read_window_keeps_order_errors_and_default_bound() {
+    let server = server_with_window(1, 8).await;
+    let slots: Vec<_> = (FIRST..FIRST + 8).collect();
+    assert!(server.rpc.finalized_block_window(&slots).await.is_err());
+    for bound in [0, 7, 17] {
+        assert!(server
+            .rpc
+            .finalized_block_window_bounded(&slots, bound)
+            .await
+            .is_err());
+    }
+    assert_eq!(server.state.calls.load(Ordering::SeqCst), 0);
+    let values = tokio::time::timeout(
+        Duration::from_secs(10),
+        server.rpc.finalized_block_window_bounded(&slots, 8),
+    )
+    .await
+    .unwrap()
+    .unwrap();
+    assert_eq!(server.state.peak.load(Ordering::SeqCst), 8);
+    assert_eq!(
+        server.state.calls.load(Ordering::SeqCst),
+        8,
+        "no automatic read retry"
+    );
+    assert!(values[1].is_err());
+    for (position, value) in values.into_iter().enumerate() {
+        if position != 1 {
+            assert_eq!(
+                value.unwrap(),
+                server.state.blocks[&(FIRST + position as u64)]
+            );
+        }
+    }
+    assert_eq!(
+        *server.state.completions.lock().unwrap(),
+        slots.into_iter().rev().collect::<Vec<_>>()
+    );
 }

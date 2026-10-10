@@ -33,12 +33,12 @@ Based on records through **2026-10-10 JST**:
 - The published client release is **`0.2.0-devnet.8`**. It includes direct-session
   reuse, request filtering, OpenRouter ZDR routing, journal minimization and
   read-only upgrade guidance. See the [release guide](docs/releases/usability-preview.md).
-- **Public preflight was blocked at the latest recorded check:** the operator
-  returned an empty model catalog on both `.7` and `.8`. The cause remains
-  unproven. A separate ZDR catalog read does not establish inference readiness.
+- The empty operator catalog was traced to a full archive volume affecting
+  the financial database. See [current service status](docs/sdk/status.md) for
+  the repair and fresh preflight results.
 - The public gateway permits any browser origin and does not require an
-  invitation. **All seven authorized request slots were consumed**; new usage
-  needs additional operator-authorized capacity.
+  invitation. The fixed seven-request trial allowance was removed in favor of
+  operator-funded usage; provider charges and per-session caps still apply.
 - Selected native/OpenClaw funding, recovery and withdrawal cases have
   [recorded results](docs/sdk/status.md). Current funded browser acceptance,
   broader provider coverage and long-term availability remain unverified.

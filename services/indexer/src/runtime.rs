@@ -504,7 +504,20 @@ impl ArchiveRpc {
     /// results in the requested order. Durable consumers must stop at the first
     /// failed item; a later fetched block never authorizes skipping that slot.
     pub async fn finalized_block_window(&self, slots: &[u64]) -> Result<Vec<Result<Value>>> {
-        if slots.is_empty() || slots.len() > 4 || slots.windows(2).any(|pair| pair[0] >= pair[1]) {
+        self.finalized_block_window_bounded(slots, 4).await
+    }
+    /// Explicit operator-selected read concurrency. This changes scheduling,
+    /// never replay order, retry policy or the first-error commit boundary.
+    pub async fn finalized_block_window_bounded(
+        &self,
+        slots: &[u64],
+        concurrency: usize,
+    ) -> Result<Vec<Result<Value>>> {
+        if !(1..=16).contains(&concurrency)
+            || slots.is_empty()
+            || slots.len() > concurrency
+            || slots.windows(2).any(|pair| pair[0] >= pair[1])
+        {
             return Err("invalid finalized block window".into());
         }
         let mut tasks = tokio::task::JoinSet::new();

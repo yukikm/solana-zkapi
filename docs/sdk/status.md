@@ -6,17 +6,28 @@ availability or a pass for later source changes.
 
 Published SDK/native clients are **`0.2.0-devnet.8`**. See the
 [release guide](../releases/usability-preview.md) for downloads, the revision-6
-profile and handling of older installations. **The latest recorded public
-preflight failed on an empty operator catalog** with both `.7` and `.8`.
-New-consumer readiness has not been established.
+profile and handling of older installations. The empty operator catalog was
+traced to archive disk exhaustion affecting PostgreSQL. The 2026-10-10 repair
+restored the catalog and signer/control services and removed the fixed trial
+allowance. Lossless conversion reclaimed approximately 63 GB without deleting
+history. The readiness sampler also gained bounded rechecks for inconsistent
+Clock/account cuts and transient RPC reads, preserving all validity checks.
+**At 10:07 UTC (19:07 JST), public readiness returned HTTP200 and new admission
+was enabled without an invitation.** The unchanged installed `.8` client passed
+all ten read-only preflight checks at slot 509504577; all 7,264 installed files
+retained their hashes. All 24 repeated public readiness/root reads passed from
+10:04–10:06 UTC, including recovery from two transient block-read failures.
+Model discovery returned 21 models. The seven historical sessions, financial
+records and signer journal remained unchanged. No new funded inference or
+wallet action was run.
 
 ## Recorded results
 
 | Area | Verified scope | Limit |
 |---|---|---|
 | Distribution | [SDK `.8` tarball and macOS ARM64 clientd](https://github.com/yukikm/solana-zkapi/blob/ea4cb0ac005832abae6e703eb177914c0c9aa193/docs/evidence/PD-sdk8-publication-20261010.md): release signatures, downloads and installed-file hashes | No npm release, Apple notarization or verified packages for other platforms |
-| Public API | [Invitation removal](https://github.com/yukikm/solana-zkapi/blob/ea4cb0ac005832abae6e703eb177914c0c9aa193/docs/evidence/PD-invitation-removal-20261009.md) and [browser CORS](https://github.com/yukikm/solana-zkapi/blob/ea4cb0ac005832abae6e703eb177914c0c9aa193/docs/evidence/PD-public-cors-20261009.md) | Later `.8` preflight failed on an empty catalog; cause and long-term availability remain unverified |
-| Models and capacity | [Revision-6 profile](../releases/usability-preview.md) retains 21 models; a separate public ZDR metadata read listed 19 | Listing is not inference acceptance. All seven authorized request slots were consumed |
+| Public API | [Invitation removal](https://github.com/yukikm/solana-zkapi/blob/ea4cb0ac005832abae6e703eb177914c0c9aa193/docs/evidence/PD-invitation-removal-20261009.md) and [browser CORS](https://github.com/yukikm/solana-zkapi/blob/ea4cb0ac005832abae6e703eb177914c0c9aa193/docs/evidence/PD-public-cors-20261009.md); catalog, public HTTP200 readiness, admission and all ten installed `.8` preflight checks passed after the disk repair | Read-only checks at the stated cut; no new funded lifecycle or uptime commitment |
+| Models and capacity | [Revision-6 profile](../releases/usability-preview.md) retains 21 models; the gateway now reports operator-funded usage without a fixed trial allowance | Listing is not inference acceptance or a provider-credit check. The seven historical reservations remain consumed |
 | Native lifecycle | [N-01](https://github.com/yukikm/solana-zkapi/blob/ea4cb0ac005832abae6e703eb177914c0c9aa193/docs/evidence/PD-native-public-N01.md) deposit and Chat; [N-02/N-03](https://github.com/yukikm/solana-zkapi/blob/ea4cb0ac005832abae6e703eb177914c0c9aa193/docs/evidence/PD-native-public-N02-N03.md) OpenClaw text/read-tool continuation; [N-04](https://github.com/yukikm/solana-zkapi/blob/ea4cb0ac005832abae6e703eb177914c0c9aa193/docs/evidence/PD-native-public-N04.md) interrupted-stream recovery and withdrawal | Selected OpenRouter cases using the settlement adapter; not general client/provider compatibility |
 | Emergency withdrawal | [E01](https://github.com/yukikm/solana-zkapi/blob/ea4cb0ac005832abae6e703eb177914c0c9aa193/docs/evidence/PD-E01-emergency-withdrawal-20261009.md) returned the original one micro-USDC and closed the note | Completed from its original deposit/journal; do not repeat it |
 | Browser SDK | Local custody/proof-worker tests and [separate-origin preflight](https://github.com/yukikm/solana-zkapi/blob/ea4cb0ac005832abae6e703eb177914c0c9aa193/docs/evidence/PD-public-runtime-origin-followup.md) | Current funded browser/Phantom acceptance is deferred |
@@ -35,6 +46,9 @@ New-consumer readiness has not been established.
 - **Capacity:** retained chain history continues to grow. The
   [80 GiB data-volume checkpoint](https://github.com/yukikm/solana-zkapi/blob/ea4cb0ac005832abae6e703eb177914c0c9aa193/docs/evidence/PD-capacity-retained-20261009.md)
   does not establish long-term capacity or a completed storage rollback.
+  [Lossless archive compression and a database headroom floor](../../deploy/public-devnet/archive-storage.md)
+  reduce growth and prevent archive writes from consuming the reserved headroom;
+  finite storage still requires ongoing capacity management.
 - **Client compatibility:** tested Claude Code and Codex CLI requests hit
   validation blockers. See the [compatibility table](../integrations/README.md).
 - **Release scope:** production qualification, mainnet, audits and the full

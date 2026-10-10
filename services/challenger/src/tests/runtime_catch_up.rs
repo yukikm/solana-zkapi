@@ -94,6 +94,7 @@ impl Fixture {
             alert_sink_directory: None,
             priority_fee: None,
             archive_batch: Some(ArchiveBatchPolicy {
+                rpc_concurrency: None,
                 max_blocks,
                 max_bytes: 32 * 1024 * 1024,
             }),
@@ -140,9 +141,15 @@ impl Fixture {
 
 #[tokio::test(flavor = "current_thread")]
 async fn catch_up_clones_retained_history_per_batch_not_per_block() {
-    for max_blocks in [64, 256] {
+    for (max_blocks, rpc_concurrency) in [(64, None), (256, Some(8)), (256, Some(16))] {
         let retained = 4096;
-        let fixture = Fixture::new(retained, max_blocks).await;
+        let mut fixture = Fixture::new(retained, max_blocks).await;
+        fixture
+            .config
+            .archive_batch
+            .as_mut()
+            .unwrap()
+            .rpc_concurrency = rpc_concurrency;
         let mut runtime = Runtime::open(fixture.config.clone(), false).unwrap();
         crate::scan::CLONE_COUNT.with(|count| count.set(0));
         let tip = retained + 2 * max_blocks as u64;
@@ -160,9 +167,15 @@ async fn catch_up_failure_rebuilds_exact_successful_prefix_without_poisoning_res
     for fault in ["fetch", "decode", "replay"] {
         // Exercise an error before the first commit and after a full commit;
         // each leaves two successful blocks in the uncommitted suffix.
-        for offset in [3, 67] {
+        for (offset, rpc_concurrency) in [(3, None), (67, None), (3, Some(8)), (67, Some(16))] {
             let retained = 64;
-            let fixture = Fixture::new(retained, 64).await;
+            let mut fixture = Fixture::new(retained, 64).await;
+            fixture
+                .config
+                .archive_batch
+                .as_mut()
+                .unwrap()
+                .rpc_concurrency = rpc_concurrency;
             let failed_slot = retained + offset;
             *fixture.fault.lock().unwrap() = Some((failed_slot, fault));
             let mut runtime = Runtime::open(fixture.config.clone(), false).unwrap();

@@ -517,8 +517,11 @@ fn segmented_rehashed_chunk_semantic_corruption_is_rejected() {
         } else {
             let mut reference = head.tail.clone().unwrap();
             let path = root.path().join(ARCHIVE_DIR);
-            let (mut chunk, _, _): (Chunk<Vec<FinalizedBlock>>, _, _) =
-                read_json(regular(&chunk_path(&path, &reference)).unwrap()).unwrap();
+            let (mut chunk, _, _): (Chunk<Vec<FinalizedBlock>>, _, _) = read_chunk_json(
+                regular(&chunk_path(&path, &reference)).unwrap(),
+                reference.bytes,
+            )
+            .unwrap();
             match fault {
                 "parent" => chunk.blocks[0].parent_slot -= 1,
                 "previous_hash" => chunk.blocks[0].previous_blockhash = [0; 32],
@@ -718,7 +721,10 @@ fn segmented_disk_reads_reject_post_open_chunk_substitution_before_callback_or_c
         let before = raw(root.path());
         let (_, head) = read_head(root.path());
         let path = chunk_path(&root.path().join(ARCHIVE_DIR), head.tail.as_ref().unwrap());
-        let mut bytes = fs::read(&path).unwrap();
+        let mut bytes = Vec::new();
+        flate2::read::GzDecoder::new(regular(&path).unwrap())
+            .read_to_end(&mut bytes)
+            .unwrap();
         // Same byte length and valid JSON, but a different archived payload.
         let needle = b"\"data\":[31,";
         let position = bytes
@@ -895,4 +901,52 @@ fn oversized_archive_json_retains_streaming_fallback() {
         fingerprint(regular(&path).unwrap()).unwrap()
     );
     assert_eq!(result.2, expected_bytes);
+}
+
+#[test]
+fn compressed_chunks_keep_original_hashes_and_support_mixed_history() {
+    let (root, blocks) = migrated(257);
+    let before = raw(root.path());
+    let (_, head) = read_head(root.path());
+    let tail = head.tail.unwrap();
+    let path = chunk_path(&root.path().join(ARCHIVE_DIR), &tail);
+    let compressed = fs::read(&path).unwrap();
+    assert_eq!(&compressed[..2], &[0x1f, 0x8b]);
+    let mut original = Vec::new();
+    flate2::read::GzDecoder::new(compressed.as_slice())
+        .read_to_end(&mut original)
+        .unwrap();
+    assert_eq!(sha(&original), tail.sha256);
+    assert_eq!(original.len() as u64, tail.bytes);
+    assert!(compressed.len() < original.len());
+    fs::write(&path, &original).unwrap();
+    assert_eq!(archive(&Journal::open(root.path(), POOL).unwrap()), blocks);
+    assert_eq!(raw(root.path()), before);
+    for bytes in [
+        compressed[..compressed.len() - 1].to_vec(),
+        {
+            let mut v = compressed.clone();
+            v.extend_from_slice(b"trailing");
+            v
+        },
+        {
+            let mut v = compressed.clone();
+            v.extend_from_slice(&compressed);
+            v
+        },
+        {
+            let mut v = compressed.clone();
+            let n = v.len();
+            v[n - 8] ^= 1;
+            v
+        },
+    ] {
+        fs::write(&path, bytes).unwrap();
+        assert!(Journal::open(root.path(), POOL).is_err());
+    }
+    fs::write(&path, &compressed).unwrap();
+    assert!(read_chunk_json::<serde_json::Value>(regular(&path).unwrap(), tail.bytes - 1).is_err());
+    assert!(read_chunk_json::<serde_json::Value>(regular(&path).unwrap(), tail.bytes + 1).is_err());
+    assert!(require_archive_headroom(2 * 1024 * 1024 * 1024).is_err());
+    assert!(require_archive_headroom(2 * 1024 * 1024 * 1024 + CHUNK_BYTES).is_ok());
 }

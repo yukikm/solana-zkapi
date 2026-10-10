@@ -5,15 +5,18 @@ new installations. See the [release guide](../releases/usability-preview.md) for
 upgrade guidance. Existing notes must keep their original installation, profile,
 custody and journal until recovery and closure are complete.
 
-**Public preflight was blocked at the latest recorded check (2026-10-10 JST):**
-the operator returned an empty catalog with both `.7` and `.8` clients. The cause
-remains unproven. A separate successful ZDR metadata check does not establish
-inference readiness. [Recorded observations](https://github.com/yukikm/solana-zkapi/blob/ea4cb0ac005832abae6e703eb177914c0c9aa193/docs/evidence/PD-sdk8-publication-20261010.md).
+The `.8` publication's [recorded preflight failure](https://github.com/yukikm/solana-zkapi/blob/ea4cb0ac005832abae6e703eb177914c0c9aa193/docs/evidence/PD-sdk8-publication-20261010.md)
+was traced to archive disk exhaustion affecting the operator's database. The
+catalog has been restored; check [current service status](status.md) and run
+fresh preflight before new usage. A public ZDR metadata read does not establish
+inference readiness.
 
-The gateway permits any browser origin and does not require invitations, but
-**all seven authorized request slots were consumed**. Preflight or model
-listing does not provide additional capacity. Check `/provider-budget` before
-funding for new requests; additional usage requires operator authorization.
+The gateway permits any browser origin and does not require invitations. The
+operator removed the fixed seven-request trial allowance on 2026-10-10.
+`/provider-budget` reports schema 2 `operator_funded` usage with
+`trial_limits: false`; the per-session cap and note-balance checks remain.
+Check admission and readiness before funding. This policy does not establish
+OpenRouter credit or guarantee successful inference.
 
 This preview has no uptime commitment. See [verification status](status.md) and
 the [operator guide](public-devnet-operations.md) for limits and incident handling.
@@ -94,8 +97,9 @@ remain available; do not initialize replacement custody to recover existing fund
 3. Run read-only preflight. It verifies deployment assets, genesis, the finalized
    Pool, control catalog and tree snapshot without creating custody, AUTH,
    inference or transactions.
-4. Check `/relay-status` for admission policy and `/provider-budget` for remaining
-   capacity. Preflight does not reserve a request slot.
+4. Check `/relay-status` for admission policy and `/provider-budget` for the
+   operator-funded or finite-allowance policy. Preflight does not reserve funds
+   or check provider credit.
 5. Follow the [funding guide](devnet-funding.md) once new usage is available.
 
 A `snapshot` error means the chain snapshot could not be verified; it does not

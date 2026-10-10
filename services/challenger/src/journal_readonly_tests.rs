@@ -436,7 +436,11 @@ fn readonly_archive_replay_hashes_payload_even_if_metadata_observation_is_replac
         &root.path().join(ARCHIVE_DIR),
         reader.archive.head.tail.as_ref().unwrap(),
     );
-    let mut chunk: serde_json::Value = serde_json::from_slice(&fs::read(&path).unwrap()).unwrap();
+    let (mut chunk, _, _): (serde_json::Value, _, _) = read_chunk_json(
+        regular(&path).unwrap(),
+        reader.archive.head.tail.as_ref().unwrap().bytes,
+    )
+    .unwrap();
     chunk["blocks"][0]["transactions"][0]["instructions"][0]["data"][0] = serde_json::json!(18);
     fs::write(&path, serde_json::to_vec(&chunk).unwrap()).unwrap();
     // Test-only bypass of the fast metadata guard: actual replay must still

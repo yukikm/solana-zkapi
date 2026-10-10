@@ -190,7 +190,10 @@ fn observations(root: &Path, metadata: &Metadata) -> Result<Observations> {
             || reference.blocks > CHUNK_BLOCKS as u64
             || reference.first_slot > reference.last_slot
             || last_slot.is_some_and(|slot| reference.first_slot <= slot)
-            || stamp.fields[2] != reference.bytes
+            // A gzip chunk's stored length differs from its authenticated JSON
+            // length. The complete stamp is still captured after checksum
+            // verification, and unchanged-file continuity remains mandatory.
+            || stamp.fields[2] == 0
         {
             return Err(Error::Conflict("checkpoint archive references"));
         }

@@ -72,7 +72,7 @@ profile and complete bundle from operator-installed public files. It reuses
 `loadPublicDeploymentProfile` for exact profile/descriptor/artifact/WASM hashes,
 manifest trust and model bindings. Loading is offline: no chain/provider call,
 wallet, UI checkout, custody creation or budget initialization is involved.
-Startup then validates the explicitly initialized private budget selection and
+Startup then validates the explicit budget policy selection and
 binds only `127.0.0.1`.
 
 Run with a private owner-only configuration:
@@ -96,7 +96,7 @@ The strict configuration fields are:
 | `rpcUrl`, optional `historyRpcUrl` | Private HTTPS upstream RPCs; never included in public responses |
 | `indexerUrl`, `controlUrl` | Fixed upstream service origins; HTTPS or numeric-loopback HTTP |
 | optional `localCaPath` | Existing local service CA; never disables verification or changes public TLS trust |
-| `budget` | Selected AWS `supplemental-detached-v2` authority and snapshot pins; see [the exact configuration](detached-budget.md#gateway-and-service-confinement). Legacy `planPath`/`stateDir`/`caseId` and local `supplemental-v1` selections remain supported for their own authorities. |
+| `budget` | Explicit `operator-funded` policy without a trial allowance, or a previously initialized finite authority. AWS `supplemental-detached-v2` uses [authority and snapshot pins](detached-budget.md#gateway-and-service-confinement); legacy `planPath`/`stateDir`/`caseId` and local `supplemental-v1` remain supported for their own authorities. |
 
 Set `requireInvitation: false` to remove the invitation requirement. Keep
 `allowTransactions: true` and `allowNewAdmissions: true` to accept new sessions.
@@ -221,8 +221,8 @@ or custody change. It explicitly reports `readiness: "not_checked"` and leaves
 signer, provider credit and finalized Pool checks `not_checked`. HTTP 200 from
 this route is not service readiness. It rejects request credentials and returns
 no filesystem paths, wallet identifiers, request IDs, endpoint credentials or
-raw upstream errors. `/provider-budget` supplies validated capacity totals,
-never the individual immutable reservation rows.
+raw upstream errors. `/provider-budget` reports the selected operator-funded or
+finite policy, never individual immutable reservation rows.
 
 Use the SDK public-profile preflight for actual read-only asset/manifest/chain/
 indexer/model validation. Provider credit, signer reconciliation and challenger
@@ -230,8 +230,16 @@ readiness require independent operator observations. The existing private
 [operations collector](../operations/README.md) checks signer, ledger, finalized
 chain/indexer, fee payer and challenger; it currently requires numeric loopback
 HTTP sources and a local read-only database role. Do not publish its private
-config or pretend an unavailable source is a healthy zero. An external public
-readiness endpoint aggregating these authenticated live sources remains work.
+config or pretend an unavailable source is a healthy zero.
+
+`GET /zkapi/v1/readiness` exposes bounded control/indexer/signer observations and
+the pinned provider capability. It does not check provider credit, operator
+admission or challenger readiness. A transient Clock/account-context mismatch
+permits one additional finalized account read within the existing 25-second
+probe deadline. Known transient RPC read failures permit one retry after 250 ms;
+rate limits, malformed replies and identity failures do not. The complete final
+cut must still validate; persistent failure remains unavailable. No financial
+request is retried. See the [control sampler limits](../../services/control/README.md).
 
 ## Required deployment and funding decisions
 
@@ -263,3 +271,28 @@ keys. Advertise only model/API/mode, streaming and tool combinations that have
 separate current public lifecycle evidence; older private/custom-relay successes
 remain historical evidence. Required live acceptance includes verified signed
 settlement, same-journal recovery and withdrawal, plus an emergency path drill.
+
+## Operator-funded usage without a trial allowance
+
+An operator can explicitly select `"budget": {"kind":"operator-funded"}` to
+remove the gateway's lifetime request-count and campaign-exposure allowance.
+The old campaign directories and reservations remain immutable historical
+records; this mode neither resets them nor creates another financial ledger.
+The existing control ledger still verifies the signed quote/proof, binds the
+AUTH transcript idempotently, durably reserves the note balance, limits each
+session to the pinned cap and settles once. The operator pays actual provider
+charges; Devnet tokens do not buy OpenRouter credit.
+
+`GET /provider-budget` then returns schema 2 with `budget_scope: operator_funded`
+and `trial_limits: false`, the unchanged `request_max_cost_micro_usdc`, both
+admission flags and `provider_credit: not_checked`. It does not invent a remaining
+request count or claim unlimited provider credit. Existing finite configurations
+retain schema 1 and their exact previous behavior. There is no OpenRouter account
+setting that removes this gateway's seven-request trial allowance.
+
+When new admission is suspended or an invitation is required, the gateway first
+checks the existing session through an authenticated read. Only a successful
+existing-session read permits AUTH recovery. The control ledger then checks its
+original signed transcript; no key is reissued. An unavailable/not-found session
+never permits a new AUTH. Every forward remains single-attempt. SDK journals and
+original custody/profile bindings remain unchanged.

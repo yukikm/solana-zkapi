@@ -292,26 +292,103 @@ async fn bounded(response: reqwest::Response) -> Result<Value, ()> {
     // security-relevant field below; the financial wire parser forbids numbers.
     serde_json::from_slice(&bytes).map_err(|_| ())
 }
+#[derive(Debug)]
+struct RpcReadFailure {
+    retryable: bool,
+    reason: &'static str,
+}
+impl RpcReadFailure {
+    fn permanent(reason: &'static str) -> Self {
+        Self {
+            retryable: false,
+            reason,
+        }
+    }
+    fn transient(reason: &'static str) -> Self {
+        Self {
+            retryable: true,
+            reason,
+        }
+    }
+}
+async fn rpc_once(
+    client: &reqwest::Client,
+    url: &str,
+    method: &str,
+    params: &Value,
+) -> Result<Value, RpcReadFailure> {
+    let id = uuid::Uuid::new_v4().to_string();
+    let response = client
+        .post(url)
+        .json(&json!({"jsonrpc":"2.0","id":id,"method":method,"params":params}))
+        .send()
+        .await
+        .map_err(|error| {
+            if error.is_connect() || error.is_timeout() {
+                RpcReadFailure::transient("transport")
+            } else {
+                RpcReadFailure::permanent("transport")
+            }
+        })?;
+    if matches!(response.status().as_u16(), 500 | 502 | 503 | 504) {
+        return Err(RpcReadFailure::transient("http_5xx"));
+    }
+    let value = bounded(response)
+        .await
+        .map_err(|_| RpcReadFailure::permanent("http_or_body"))?;
+    if value["jsonrpc"] != "2.0" || value["id"] != id {
+        return Err(RpcReadFailure::permanent("envelope"));
+    }
+    if let Some(error) = value.get("error") {
+        // Agave: block unavailable/not yet available, or minimum bank not reached.
+        // Skipped/pruned slots, rate limits and other errors are not retried.
+        return Err(
+            if matches!(error["code"].as_i64(), Some(-32004 | -32014 | -32016)) {
+                RpcReadFailure::transient("bank_not_available")
+            } else {
+                RpcReadFailure::permanent("rpc_error")
+            },
+        );
+    }
+    let result = value
+        .get("result")
+        .cloned()
+        .ok_or(RpcReadFailure::permanent("envelope"))?;
+    if method == "getBlock" && result.is_null() {
+        return Err(RpcReadFailure::transient("block_not_available"));
+    }
+    Ok(result)
+}
 async fn rpc(
     client: &reqwest::Client,
     url: &str,
     method: &str,
     params: Value,
 ) -> Result<Value, ()> {
-    let id = uuid::Uuid::new_v4().to_string();
-    let value = bounded(
-        client
-            .post(url)
-            .json(&json!({"jsonrpc":"2.0","id":id,"method":method,"params":params}))
-            .send()
-            .await
-            .map_err(|_| ())?,
-    )
-    .await?;
-    if value["jsonrpc"] != "2.0" || value["id"] != id || value.get("error").is_some() {
+    if !matches!(
+        method,
+        "getGenesisHash" | "getBlock" | "getMultipleAccounts"
+    ) {
         return Err(());
     }
-    value.get("result").cloned().ok_or(())
+    for attempt in 0..2 {
+        match rpc_once(client, url, method, &params).await {
+            Ok(value) => return Ok(value),
+            Err(error) => {
+                let retry = attempt == 0 && error.retryable;
+                // Finite diagnostics only: no URL, nonce, account, body or raw error.
+                eprintln!(
+                    "readiness_rpc_read method={method} reason={} retry={retry}",
+                    error.reason
+                );
+                if !retry {
+                    return Err(());
+                }
+                tokio::time::sleep(Duration::from_millis(250)).await;
+            }
+        }
+    }
+    Err(())
 }
 fn tree_address(trusted: &chain::TrustedPool) -> Result<(solana_pubkey::Pubkey, u8), ()> {
     let program = solana_pubkey::Pubkey::from(wire::pubkey(&trusted.program_id).map_err(|_| ())?);
@@ -366,7 +443,8 @@ async fn indexer_health(
     wire::uint(&root.sequence).map_err(|_| ())?;
     wire::pubkey(&root.blockhash).map_err(|_| ())?;
     let (tree, _) = tree_address(trusted)?;
-    let (genesis, block, accounts) = tokio::try_join!(
+    let account_params = json!([[trusted.pool,tree.to_string(),CLOCK],{"encoding":"base64","commitment":"finalized","minContextSlot":slot}]);
+    let (genesis, block, mut accounts) = tokio::try_join!(
         rpc(&client, rpc_url, "getGenesisHash", json!([])),
         rpc(
             &client,
@@ -378,9 +456,15 @@ async fn indexer_health(
             &client,
             rpc_url,
             "getMultipleAccounts",
-            json!([[trusted.pool,tree.to_string(),CLOCK],{"encoding":"base64","commitment":"finalized","minContextSlot":slot}])
+            account_params.clone()
         )
     )?;
+    // An RPC can briefly return Clock from an adjacent bank. Keep the exact
+    // bank/Clock equality requirement: resample this read-only account cut once,
+    // then apply every original validation below. No financial request is retried.
+    if clock_context_mismatch(&accounts)? {
+        accounts = rpc(&client, rpc_url, "getMultipleAccounts", account_params).await?;
+    }
     // Match the SDK's independently captured finalized account-cut anchor.
     let observed = accounts["context"]["slot"].as_u64().ok_or(())?;
     if observed != slot {
@@ -388,6 +472,19 @@ async fn indexer_health(
         wire::pubkey(anchor["blockhash"].as_str().ok_or(())?).map_err(|_| ())?;
     }
     validate_cut(trusted, &root, &genesis, &block, &accounts, now())
+}
+fn clock_context_mismatch(accounts: &Value) -> Result<bool, ()> {
+    let observed = accounts["context"]["slot"].as_u64().ok_or(())?;
+    let values = accounts["value"].as_array().ok_or(())?;
+    if values.len() != 3 {
+        return Err(());
+    }
+    let clock = account_data(
+        &values[2],
+        "Sysvar1111111111111111111111111111111111111",
+        40,
+    )?;
+    Ok(u64::from_le_bytes(clock[..8].try_into().unwrap()) != observed)
 }
 fn validate_cut(
     trusted: &chain::TrustedPool,
@@ -647,6 +744,141 @@ mod tests {
             .await
             .is_err());
         assert!(calls.lock().await.len() <= 7, "no automatic RPC retries");
+        server.abort();
+    }
+    #[tokio::test]
+    async fn inconsistent_clock_cut_is_resampled_once_without_relaxing_validation() {
+        let (trusted, root, block, accounts) = fixture();
+        let mode = Arc::new(AtomicUsize::new(0));
+        let reads = Arc::new(AtomicUsize::new(0));
+        let calls = Arc::new(AtomicUsize::new(0));
+        let router = axum::Router::new()
+            .route("/zkapi/v1/tree/root", axum::routing::get({
+                let root = root.clone();
+                move || { let root = root.clone(); async move { Json(root) } }
+            }))
+            .route("/rpc", axum::routing::post({
+                let mode = mode.clone(); let reads = reads.clone(); let calls = calls.clone();
+                let genesis = trusted.genesis_hash.clone();
+                move |Json(request): Json<Value>| {
+                    let mode = mode.load(Ordering::SeqCst);
+                    calls.fetch_add(1, Ordering::SeqCst);
+                    let mut value = match request["method"].as_str().unwrap() {
+                        "getGenesisHash" => json!(genesis),
+                        "getBlock" => block.clone(),
+                        "getMultipleAccounts" => {
+                            assert_eq!(request["params"][1], json!({"encoding":"base64","commitment":"finalized","minContextSlot":100}));
+                            let read = reads.fetch_add(1, Ordering::SeqCst);
+                            let mut value = accounts.clone();
+                            if read == 0 || mode == 1 {
+                                let mut clock = STANDARD.decode(value["value"][2]["data"][0].as_str().unwrap()).unwrap();
+                                clock[..8].copy_from_slice(&111u64.to_le_bytes());
+                                value["value"][2]["data"][0] = STANDARD.encode(clock).into();
+                            }
+                            if read == 1 && mode == 2 {
+                                let mut tree = STANDARD.decode(value["value"][1]["data"][0].as_str().unwrap()).unwrap();
+                                tree[10] ^= 1;
+                                value["value"][1]["data"][0] = STANDARD.encode(tree).into();
+                            }
+                            if mode == 3 { value["value"][2]["owner"] = "invalid".into(); }
+                            value
+                        }
+                        _ => panic!("unexpected read"),
+                    };
+                    let response = if mode == 4 && request["method"] == "getMultipleAccounts" {
+                        (StatusCode::TOO_MANY_REQUESTS, Json(json!({})))
+                    } else {
+                        value = json!({"jsonrpc":"2.0","id":request["id"],"result":value});
+                        (StatusCode::OK, Json(value))
+                    };
+                    async move { response }
+                }
+            }));
+        let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let origin = format!("http://{}", listener.local_addr().unwrap());
+        let server = tokio::spawn(async move { axum::serve(listener, router).await.unwrap() });
+        for (case, expected, account_reads) in [
+            (0, Ok(Capability::Available), 2),
+            (1, Ok(Capability::Invalid), 2),
+            (2, Ok(Capability::Invalid), 2),
+            (3, Err(()), 1),
+            (4, Err(()), 1),
+        ] {
+            mode.store(case, Ordering::SeqCst);
+            reads.store(0, Ordering::SeqCst);
+            calls.store(0, Ordering::SeqCst);
+            assert_eq!(
+                indexer_health(&format!("{origin}/rpc"), &origin, &trusted).await,
+                expected
+            );
+            assert_eq!(reads.load(Ordering::SeqCst), account_reads);
+            assert!(calls.load(Ordering::SeqCst) <= 5);
+        }
+        server.abort();
+    }
+    #[tokio::test]
+    async fn transient_rpc_reads_have_one_retry_and_never_retry_invalid_or_financial_calls() {
+        let mode = Arc::new(AtomicUsize::new(0));
+        let calls = Arc::new(AtomicUsize::new(0));
+        let router = axum::Router::new().route("/rpc", axum::routing::post({
+            let mode = mode.clone(); let calls = calls.clone();
+            move |Json(v): Json<Value>| {
+                let mode = mode.load(Ordering::SeqCst);
+                let call = calls.fetch_add(1, Ordering::SeqCst);
+                let (status, body) = if mode == 1 || mode == 0 && call == 0 {
+                    (StatusCode::SERVICE_UNAVAILABLE, json!({}))
+                } else if mode == 2 && call == 0 || mode == 3 {
+                    (StatusCode::OK, json!({"jsonrpc":"2.0","id":v["id"],"error":{"code":if mode==2{-32016}else{-32007},"message":"PRIVATE_CANARY"}}))
+                } else if mode == 4 {
+                    (StatusCode::TOO_MANY_REQUESTS, json!({}))
+                } else if mode == 5 {
+                    (StatusCode::OK, json!({"jsonrpc":"2.0","id":"wrong","result":true}))
+                } else {
+                    (StatusCode::OK, json!({"jsonrpc":"2.0","id":v["id"],"result":if mode==6&&call==0{Value::Null}else{json!({"blockhash":"fixture"})}}))
+                };
+                async move { (status, Json(body)) }
+            }
+        }));
+        let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let url = format!("http://{}/rpc", listener.local_addr().unwrap());
+        let server = tokio::spawn(async move { axum::serve(listener, router).await.unwrap() });
+        let client = reqwest::Client::new();
+        for (case, success, count) in [
+            (0, true, 2),
+            (1, false, 2),
+            (2, true, 2),
+            (3, false, 1),
+            (4, false, 1),
+            (5, false, 1),
+            (6, true, 2),
+        ] {
+            mode.store(case, Ordering::SeqCst);
+            calls.store(0, Ordering::SeqCst);
+            assert_eq!(
+                rpc(&client, &url, "getBlock", json!([])).await.is_ok(),
+                success
+            );
+            assert_eq!(calls.load(Ordering::SeqCst), count);
+        }
+        calls.store(0, Ordering::SeqCst);
+        assert!(rpc(&client, &url, "sendTransaction", json!([]))
+            .await
+            .is_err());
+        assert_eq!(calls.load(Ordering::SeqCst), 0);
+        mode.store(1, Ordering::SeqCst);
+        calls.store(0, Ordering::SeqCst);
+        assert!(tokio::time::timeout(
+            Duration::from_millis(100),
+            rpc(&client, &url, "getBlock", json!([]))
+        )
+        .await
+        .is_err());
+        tokio::time::sleep(Duration::from_millis(300)).await;
+        assert_eq!(
+            calls.load(Ordering::SeqCst),
+            1,
+            "no background retry after cancellation"
+        );
         server.abort();
     }
     #[tokio::test]

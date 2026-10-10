@@ -139,3 +139,9 @@ The runner executes native tests with fsync-enabled disposable PostgreSQL/SELECT
 The DB test inserts a synthetic archived envelope around an existing real RP into the real I05 schema; it does not rerun authorization/settlement. Proof tests reuse the immutable I02 PK/VK hashes and known-public test entropy; this is never production setup evidence. Actual Vault SBF coverage includes historical-root challenge, pause, exact-deadline rejection, buffer create/append/seal/execute, restored root/Note/Pending, USDC preservation, permanent nullifier/tombstone, and replay rejection. The new SDK case executes the freshly generated payload using the I04 bridge's exact signed v0 bytes, including the extra priority-fee instruction. A subsequent definite failure is followed by a bridge-signed close, checking buffer removal and rent return.
 
 I09 C–E dispatcher/fencing, DB/WAL/signer restore, dashboard and production secret boundaries are separate components. See the [I09 evidence](https://github.com/yukikm/solana-zkapi/blob/ea4cb0ac005832abae6e703eb177914c0c9aa193/docs/evidence/I09.md) for their current status. No vendored upstream files, circuit/hash semantics, applied control migration or financial-writer ownership were changed by the challenger. It reuses pinned `ethereum/zkapi@045b444ea1b52538d1b40273c7cb6ed09468a052` proof code through existing crates.
+
+New v2 archive payload chunks use lossless gzip storage while retaining their
+original uncompressed hash/length and full finalized block history. Readers
+accept mixed old/new chunks. See [archive storage and maintenance](../../deploy/public-devnet/archive-storage.md)
+for the 2 GiB database headroom floor, explicit conversion of existing chunks,
+checkpoint revalidation and old-binary rollback requirements.

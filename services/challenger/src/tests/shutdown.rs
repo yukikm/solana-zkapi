@@ -152,6 +152,7 @@ async fn native_scan_stop_commits_validated_prefix_and_does_not_mask_write_failu
         (
             false,
             Some(runtime::ArchiveBatchPolicy {
+                rpc_concurrency: None,
                 max_blocks: 256,
                 max_bytes: 32 * 1024 * 1024,
             }),
@@ -159,6 +160,7 @@ async fn native_scan_stop_commits_validated_prefix_and_does_not_mask_write_failu
         (
             true,
             Some(runtime::ArchiveBatchPolicy {
+                rpc_concurrency: None,
                 max_blocks: 256,
                 max_bytes: 32 * 1024 * 1024,
             }),

@@ -154,10 +154,22 @@ pub(super) fn read_chunk_observed(
         return Err(Error::Conflict("archive chunk sequence/count"));
     }
     let file_path = chunk_path(path, reference);
-    if regular(&file_path)?.metadata()?.len() != reference.bytes {
-        return Err(Error::Conflict("archive chunk byte count"));
+    let file = regular(&file_path)?;
+    #[cfg(test)]
+    READS.with(|reads| reads.borrow_mut().push(file_path.clone()));
+    let probe = file.try_clone()?;
+    let before = FileStamp::of(&probe.metadata()?)?;
+    if observations
+        .get(&file_path)
+        .is_some_and(|old| old != &before)
+    {
+        return Err(Error::Conflict("verified archive file changed"));
     }
-    let (chunk, hash, bytes) = read_json_observed(&file_path, Some(observations))?;
+    let (chunk, hash, bytes) = read_chunk_json(file, reference.bytes)?;
+    if before != FileStamp::of(&probe.metadata()?)? || before != FileStamp::at(&file_path)? {
+        return Err(Error::Conflict("verified archive file changed"));
+    }
+    observations.insert(file_path, before);
     validate_chunk(chunk, hash, bytes, reference, pool)
 }
 

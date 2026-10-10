@@ -58,9 +58,9 @@ authenticated profile's `sdkVersions`, as listed in the
 [current public profile](public-devnet-preview.md). Releases before
 `0.2.0-devnet.2` do not include profile/capability support.
 
-The public gateway no longer requires an invitation. Check `/relay-status`
-and `/provider-budget` before new usage: the 2026-10-09 record shows all seven
-request slots consumed. See [funding and access](devnet-funding.md).
+The public gateway no longer requires an invitation or a fixed trial allowance.
+Check fresh preflight, `/relay-status` and `/provider-budget` before new usage.
+See [funding and access](devnet-funding.md) for operator-funded status semantics.
 
 For deployments that still require invitations, the helper accepts
 `--admission-token-file`, using `network.json`'s optional

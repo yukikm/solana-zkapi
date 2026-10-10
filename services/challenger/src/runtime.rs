@@ -54,12 +54,16 @@ pub struct Config {
 pub struct ArchiveBatchPolicy {
     pub max_blocks: usize,
     pub max_bytes: usize,
+    /// Finalized read scheduling only. Omission preserves four in flight.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub rpc_concurrency: Option<usize>,
 }
 impl Default for ArchiveBatchPolicy {
     fn default() -> Self {
         Self {
             max_blocks: 64,
             max_bytes: 8 * 1024 * 1024,
+            rpc_concurrency: None,
         }
     }
 }
@@ -69,6 +73,7 @@ impl ArchiveBatchPolicy {
             || self.max_blocks > 256
             || self.max_bytes == 0
             || self.max_bytes > 32 * 1024 * 1024
+            || !(1..=16).contains(&self.rpc_concurrency.unwrap_or(4))
         {
             return Err(bad("archive batch policy"));
         }
@@ -436,7 +441,12 @@ impl Runtime {
             let mut checked = self.scanner.clone();
             let result: Result<()> = async {
                 let mut previous = None;
-                for window in slots.as_array().ok_or(bad("RPC block range"))?.chunks(4) {
+                let concurrency = batch.rpc_concurrency.unwrap_or(4);
+                for window in slots
+                    .as_array()
+                    .ok_or(bad("RPC block range"))?
+                    .chunks(concurrency)
+                {
                     let mut ordered = Vec::with_capacity(window.len());
                     for slot in window {
                         let slot = slot.as_u64().ok_or(bad("RPC slot"))?;
@@ -448,7 +458,8 @@ impl Runtime {
                     }
                     let values = interruptible(
                         self.shutdown.as_ref(),
-                        self.rpc.finalized_block_window(&ordered),
+                        self.rpc
+                            .finalized_block_window_bounded(&ordered, concurrency),
                     )
                     .await?
                     .map_err(|_| bad("RPC archive read window"))?;

@@ -37,13 +37,19 @@ provider bill separately; consumers do not need provider-management credentials.
 
 The public gateway [removed its invitation requirement](https://github.com/yukikm/solana-zkapi/blob/ea4cb0ac005832abae6e703eb177914c0c9aa193/docs/evidence/PD-invitation-removal-20261009.md)
 on 2026-10-09. At the [model expansion checkpoint](https://github.com/yukikm/solana-zkapi/blob/ea4cb0ac005832abae6e703eb177914c0c9aa193/docs/evidence/PD-model-expansion-20261009.md),
-all seven authorized one-USDC request reservations were consumed. **Funding a
-note does not create provider capacity.** Check `/relay-status` and
-`/provider-budget` before depositing for new requests; additional capacity needs
-separate operator authorization.
+all seven authorized one-USDC request reservations were consumed. On 2026-10-10,
+the operator selected usage without that fixed trial allowance. **Funding a
+note does not purchase provider credit.** Check fresh preflight, `/relay-status`
+and `/provider-budget` before depositing for new requests.
 
-Reservations cover maximum exposure and remain consumed even when the signed
-charge is smaller. The earlier private campaign and this public allowance stay
+Schema 2 budget status reports `budget_scope: operator_funded` and
+`trial_limits: false`, with no remaining-request counter. The pinned per-session
+cap and note-balance checks remain. `provider_credit: not_checked` does not claim
+unlimited credit; actual OpenRouter charges are paid by the operator. Other
+deployments can retain schema 1 finite allowances and must honor their limits.
+
+Historical grant reservations cover maximum exposure and remain consumed even
+when the signed charge is smaller. The earlier private and public allowances stay
 separate; neither is reset by a profile update, withdrawal or retry. Their
 original amounts and access policy are retained in the
 [documentation archive](https://github.com/yukikm/solana-zkapi/blob/ea4cb0ac005832abae6e703eb177914c0c9aa193/docs/evidence/PD-documentation-cleanup-20261010.md).

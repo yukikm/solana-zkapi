@@ -4,7 +4,7 @@
 use super::*;
 use rand::{rngs::OsRng, RngCore};
 use serde::de::DeserializeOwned;
-use std::io::{Read, Result as IoResult};
+use std::io::{BufRead, Read, Result as IoResult};
 use zkapi_indexer::FinalizedBlock;
 
 #[path = "journal_readonly.rs"]
@@ -216,6 +216,50 @@ fn read_json_stream<T: DeserializeOwned>(file: File) -> Result<(T, Hash, u64)> {
     let reader = reader.into_inner();
     Ok((value, reader.hash.finalize().into(), reader.bytes))
 }
+
+/// Compression changes storage only. The immutable reference continues to bind
+/// the exact original JSON bytes, length, block chain and complete payload.
+fn read_chunk_json<T: DeserializeOwned>(file: File, expected: u64) -> Result<(T, Hash, u64)> {
+    let mut source = BufReader::with_capacity(JOURNAL_IO_BUFFER_BYTES, file);
+    if !source.fill_buf()?.starts_with(&[0x1f, 0x8b]) {
+        if source.get_ref().metadata()?.len() != expected {
+            return Err(Error::Conflict("archive chunk byte count"));
+        }
+        // fill_buf advanced the descriptor; rewind before the ordinary reader.
+        use std::io::{Seek, SeekFrom};
+        let mut file = source.into_inner();
+        file.seek(SeekFrom::Start(0))?;
+        return read_json(file);
+    }
+    let mut decoder = flate2::bufread::GzDecoder::new(source);
+    let limit = expected
+        .checked_add(1)
+        .ok_or(Error::Conflict("archive byte count overflow"))?;
+    if expected <= CHUNK_BYTES {
+        let mut bytes = Vec::with_capacity(expected as usize);
+        (&mut decoder).take(limit).read_to_end(&mut bytes)?;
+        if bytes.len() as u64 != expected || !decoder.into_inner().fill_buf()?.is_empty() {
+            return Err(Error::Conflict("archive chunk byte count"));
+        }
+        return Ok((serde_json::from_slice(&bytes)?, sha(&bytes), expected));
+    }
+    let mut reader = BufReader::with_capacity(
+        JOURNAL_IO_BUFFER_BYTES,
+        HashedReader {
+            source: (&mut decoder).take(limit),
+            hash: Sha256::new(),
+            bytes: 0,
+        },
+    );
+    let value = serde_json::from_reader(&mut reader)?;
+    let reader = reader.into_inner();
+    let count = reader.bytes;
+    let hash = reader.hash.finalize().into();
+    if count != expected || !decoder.into_inner().fill_buf()?.is_empty() {
+        return Err(Error::Conflict("archive chunk byte count"));
+    }
+    Ok((value, hash, count))
+}
 pub(super) fn read_source(path: &Path) -> Result<(Envelope, Hash, u64)> {
     read_json(regular(&path.join("journal.json"))?)
 }
@@ -276,10 +320,8 @@ fn read_chunk(path: &Path, current: &ChunkRef, pool: Hash) -> Result<Chunk<Vec<F
         return Err(Error::Conflict("archive chunk sequence/count"));
     }
     let file = regular(&chunk_path(path, current))?;
-    if file.metadata()?.len() != current.bytes {
-        return Err(Error::Conflict("archive chunk byte count"));
-    }
-    let (chunk, hash, bytes): (Chunk<Vec<FinalizedBlock>>, _, _) = read_json(file)?;
+    let (chunk, hash, bytes): (Chunk<Vec<FinalizedBlock>>, _, _) =
+        read_chunk_json(file, current.bytes)?;
     validate_chunk(chunk, hash, bytes, current, pool)
 }
 fn validate_chunk(
@@ -668,6 +710,9 @@ fn write_chunk(
     previous: Option<ChunkRef>,
     blocks: &[FinalizedBlock],
 ) -> Result<ChunkRef> {
+    // Chain history shares storage with the financial ledger in the preview.
+    // Stop archive growth before it consumes the database/recovery headroom.
+    require_archive_headroom(fs2::available_space(path)?)?;
     let sequence = previous
         .as_ref()
         .map_or(Some(1), |p| p.sequence.checked_add(1))
@@ -675,11 +720,12 @@ fn write_chunk(
     let nonce = nonce();
     let temporary = path.join(format!("chunk-{}.next", hex::encode(nonce)));
     let mut file = create(&temporary)?;
+    let mut compressed = flate2::write::GzEncoder::new(&mut file, flate2::Compression::fast());
     let (sha256, bytes) = {
         let mut writer = BufWriter::with_capacity(
             JOURNAL_IO_BUFFER_BYTES,
             HashingWriter {
-                inner: &mut file,
+                inner: &mut compressed,
                 hash: Sha256::new(),
                 bytes: 0,
             },
@@ -700,6 +746,7 @@ fn write_chunk(
         let writer = writer.into_inner().map_err(|e| e.into_error())?;
         (writer.hash.finalize().into(), writer.bytes)
     };
+    compressed.finish()?;
     file.sync_all()?;
     fault("chunk_after_sync")?;
     let reference = ChunkRef {
@@ -718,6 +765,12 @@ fn write_chunk(
     fs::remove_file(&temporary)?;
     sync_directory(path)?;
     Ok(reference)
+}
+fn require_archive_headroom(available: u64) -> Result<()> {
+    if available < 2 * 1024 * 1024 * 1024 + CHUNK_BYTES {
+        return Err(Error::Conflict("archive storage headroom"));
+    }
+    Ok(())
 }
 fn append_chunks(
     root: &Path,

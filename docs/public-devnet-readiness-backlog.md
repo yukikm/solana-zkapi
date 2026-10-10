@@ -1,5 +1,9 @@
 # Public Devnet readiness backlog
 
+For the 2026-10-10 disk-exhaustion repair, operator-funded admission policy and
+fresh service checks, use the [current support status](sdk/status.md). Dated
+grant limits and availability observations below retain their original scope.
+
 Current core scope — 2026-10-09 JST: **finish ZKAPI core; stop demo/chat UI work**.
 Funded browser/Phantom PD-08 is deferred, not completed and not a core gate.
 The [scope reconciliation](https://github.com/yukikm/solana-zkapi/blob/ea4cb0ac005832abae6e703eb177914c0c9aa193/docs/evidence/PD-core-scope-reconciliation.md) credits

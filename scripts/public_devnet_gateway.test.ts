@@ -10,7 +10,7 @@ import {promisify} from 'node:util';
 import {randomUUID} from 'node:crypto';
 import {publicProfileFixture} from '../packages/sdk/test/public-profile-fixture.ts';
 import {jcsBytes,sha256Hex,manifestDigest} from '../packages/sdk/src/trust.ts';
-import {loadGatewayPublicProfile,validateGatewayProfile,gatewayModelDiscovery,loadSupplementalGatewayBudget,type PublicDevnetGatewayConfig,type SupplementalGatewayBudget,type DetachedGatewayBudget} from './public_devnet_gateway.ts';
+import {loadGatewayPublicProfile,validateGatewayProfile,gatewayModelDiscovery,loadSupplementalGatewayBudget,operatorFundedGatewayBudget,type PublicDevnetGatewayConfig,type SupplementalGatewayBudget,type DetachedGatewayBudget} from './public_devnet_gateway.ts';
 import {createPublicModelProfile} from './public_model_profile.ts';
 import {startUiHost,type HostOptions} from './devnet-browser-relay/host.ts';
 import {localForwarder} from './browser_chat_devnet_host.ts';
@@ -514,4 +514,18 @@ test('readiness is a credential-free exact GET with reviewed CORS and leaves rel
   assert.equal(samples,2);assert.equal(other,0);
   const status=JSON.parse((await call(h.base,'/relay-status')).body);
   assert.equal(status.scope,'relay_configuration_only');assert.equal(status.readiness,'not_checked');assert.equal(status.signer,'not_checked');assert.equal(samples,2);
+});
+
+
+test('operator-funded policy is explicit, opens no grant files and reports no invented capacity',async t=>{
+  const {config}=await installedFixture(t);
+  const selected:PublicDevnetGatewayConfig={...config,budget:{kind:'operator-funded'},requireInvitation:false,allowNewAdmissions:true};
+  await loadGatewayPublicProfile(selected);
+  const budget=operatorFundedGatewayBudget(selected);
+  assert.equal(budget.kind,'operator-funded');
+  assert.deepEqual(await budget.status(),{schema:2,budget_scope:'operator_funded',trial_limits:false,allowTransactions:true,allowNewAdmissions:true,request_max_cost_micro_usdc:'1000000',provider_credit:'not_checked'});
+  assert.equal((await operatorFundedGatewayBudget({...selected,allowNewAdmissions:false}).status()).allowNewAdmissions,false);
+  assert.equal((await operatorFundedGatewayBudget({...selected,allowTransactions:false}).status()).allowNewAdmissions,false);
+  await assert.rejects(loadGatewayPublicProfile({...selected,budget:{kind:'operator-funded',stateDir:'/do-not-open'}} as any));
+  await assert.rejects(loadGatewayPublicProfile({...selected,budget:{kind:'unlimited'}} as any));
 });

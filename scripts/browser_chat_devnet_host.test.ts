@@ -277,3 +277,33 @@ test('direct budget status exposes totals only, counts all legacy rows, and exac
   for(const headers of [{origin:'https://foreign.invalid'},{authorization:'private'},{cookie:'private'}, {'sec-fetch-site':'cross-site'}] as Record<string,string>[])assert.equal((await fetch(host.origin+'/provider-budget',{headers})).status,400);
   fail=true;const unavailable=await fetch(host.origin+'/provider-budget');assert.equal(unavailable.status,503);assert.deepEqual(await unavailable.json(),{error:'provider campaign unavailable'});
 });
+
+test('operator-funded AUTH has no lifetime trial quota and retains one-forward and suspension boundaries',async()=>{
+  const f=await fixture(),data=Buffer.from(jcsBytes(f.auth));
+  const calls:Array<{path:string;method:string;data?:Buffer}>=[];
+  let existingStatus=404;
+  const relay=directControlRelay({...f,budget:{kind:'operator-funded'},async forward(path,method,headers,body){
+    assert.equal(headers.authorization,f.authorization);calls.push({path,method,data:body});
+    return {status:method==='GET'?existingStatus:503,bytes:Buffer.from('{}')};
+  }});
+  const input={path:'/zkapi/v1/sessions',method:'POST' as const,authorization:f.authorization,data};
+  // Explicit calls, not automatic retries: no gateway exhaustion after seven.
+  for(let n=0;n<10;n++)assert.equal((await relay(input)).status,503);
+  assert.equal(calls.length,10);assert.ok(calls.every(c=>c.method==='POST'&&c.data===data));
+  for(const existing of [404,401,503]){
+    existingStatus=existing;const before=calls.length;
+    await assert.rejects(relay({...input,allowNewAdmissions:false}),/new provider admission suspended/);
+    assert.equal(calls.length,before+1);assert.equal(calls.at(-1)!.method,'GET');
+  }
+  existingStatus=200;
+  assert.equal((await relay({...input,allowNewAdmissions:false})).status,503);
+  assert.deepEqual(calls.slice(-2).map(c=>c.method),['GET','POST']);
+  assert.equal(calls.at(-2)!.path,'/zkapi/v1/sessions/'+id);
+  assert.equal(calls.at(-1)!.data,data,'saved AUTH bytes reach the existing ledger unchanged');
+  existingStatus=404;
+  await assert.rejects(relay({...input,newAdmissionAuthorized:false}),/new provider admission suspended/);
+  const changed=structuredClone(f.auth);changed.quote.body.cap_micro_usdc='1000001';
+  const before=calls.length;
+  await assert.rejects(relay({...input,data:Buffer.from(jcsBytes(changed))}));
+  assert.equal(calls.length,before,'per-session cap and signed quote checks still precede forwarding');
+});

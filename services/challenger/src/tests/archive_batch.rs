@@ -10,6 +10,14 @@ fn archive_batch_policy_preserves_defaults_and_rejects_unbounded_overrides() {
     let default = runtime::ArchiveBatchPolicy::default();
     assert_eq!(default.max_blocks, 64);
     assert_eq!(default.max_bytes, 8 * 1024 * 1024);
+    assert_eq!(default.rpc_concurrency, None);
+    for (rpc_concurrency, valid) in [(1, true), (8, true), (16, true), (0, false), (17, false)] {
+        let policy: runtime::ArchiveBatchPolicy = serde_json::from_value(json!({
+            "max_blocks": 256, "max_bytes": 33554432, "rpc_concurrency": rpc_concurrency,
+        }))
+        .unwrap();
+        assert_eq!(policy.validate().is_ok(), valid);
+    }
     for (max_blocks, max_bytes, valid) in [
         (64, 8 * 1024 * 1024, true),
         (256, 32 * 1024 * 1024, true),
@@ -21,6 +29,7 @@ fn archive_batch_policy_preserves_defaults_and_rejects_unbounded_overrides() {
     ] {
         assert_eq!(
             runtime::ArchiveBatchPolicy {
+                rpc_concurrency: None,
                 max_blocks,
                 max_bytes
             }
