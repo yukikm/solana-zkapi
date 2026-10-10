@@ -8,7 +8,7 @@ are the exact contract. Older clients retain their release-specific behavior.
 `ClientDeployment.connection` is a native Kit `Rpc<SolanaRpcApi>`. `V0Wallet`
 keeps the `publicKey` property name but its value is a Kit `Address` string;
 `signTransaction` accepts and returns a Kit `Transaction`. See
-[Kit migration](kit-migration.md) for code and asynchronous lower-level APIs.
+[Kit migration](../getting-started/sdk-migration.md) for code and asynchronous lower-level APIs.
 
 ## Factories
 
@@ -25,7 +25,7 @@ WASM bytes and independent `wasmSha256`. Custody is scoped by app name, selected
 account, deployment ID and pool. The installed worker is part of your trusted
 app build. Disposal rejects while an action/response is active.
 `persistence` reports `persistent`, `best_effort` or `unknown`; show the retention
-warning described in [recovery](recovery.md) before funding.
+warning described in [recovery](../getting-started/recovery.md) before funding.
 
 Existing advanced hosts can use `new ZkApiClient(components)` with already
 verified components. It is not a trust-checking factory: control, wallet,
@@ -134,7 +134,7 @@ not network polling or cross-tab broadcasts. Observer exceptions do not interrup
 `ClientActionError.code`: `busy`, `not_ready`, `invalid_request`, `closed`.
 Lower-layer errors retain their existing types. Do not retry based on exception
 class: a transport failure can follow a successful send. Read status and select
-a [recovery action](recovery.md). Lost response bodies cannot be reproduced.
+a [recovery action](../getting-started/recovery.md). Lost response bodies cannot be reproduced.
 
 ## Text helpers
 
@@ -159,4 +159,4 @@ with the signed settlement path, not these parsers.
 settled history and settled emergency copies, preserving financial and recovery
 evidence. It returns `{historyOperations, emergencyOperations}` and performs no
 network or wallet action. Active requests and unresolved escape archives remain.
-See [retention and backup limitations](recovery.md#local-request-retention).
+See [retention and backup limitations](../getting-started/recovery.md#local-request-retention).

@@ -1,12 +1,14 @@
 #!/usr/bin/env python3
 """Offline structural checks for design contracts; not a runtime/security audit."""
 import hashlib
+import html
 import json
 import re
 import subprocess
 import sys
 from fractions import Fraction
 from pathlib import Path
+from urllib.parse import unquote, urlsplit
 
 ROOT = Path(__file__).resolve().parents[1]
 errors = []
@@ -116,20 +118,10 @@ for row in vectors['direct_usd_rounding']:
     check((nano+999)//1000==int(row['expected_micro']), 'Direct micro rounding')
 check(vectors['vectors'][1]['field']!=vectors['vectors'][2]['field'],'Destination mutation vector')
 
-reference=documents['docs/ethereum-reference.json']
-target=reference['proposed_target']
-check(target['billing_asset']=='circle_usdc_on_solana','USDC target')
-check(target['proxy_mode']=='required_initial_production','Proxy must be required')
-check(reference['observed_mainnet_sdk_config']['trusted_deployment']['billing_asset']=='native_eth','Upstream evidence changed')
-check({x['id'] for x in reference['work_items']}=={f'I{i:02}' for i in range(1,13)},'Task IDs')
-for item in reference['work_items']:
-    check(item['status'] in ('not_started','in_progress','completed','blocked'), 'Unknown implementation status')
-
-parity=(ROOT/'docs/production-parity.md').read_text()
-features=re.findall(r'^\| (P\d\d) \|',parity,re.M)
+requirements=(ROOT/'docs/specs/requirements.md').read_text()
+features=re.findall(r'^\| (P\d\d) \|',requirements,re.M)
 check(sorted(features)==[f'P{i:02}' for i in range(1,37)],'Required feature matrix')
-plan=(ROOT/'docs/implementation-plan.md').read_text()
-tests=re.findall(r'^\| (T\d\d) \|',plan,re.M)
+tests=re.findall(r'^\| (T\d\d) \|',requirements,re.M)
 check(sorted(tests)==[f'T{i:02}' for i in range(1,21)],'Acceptance matrix')
 
 tree = documents['docs/contracts/tree-transition.json']
@@ -174,31 +166,63 @@ tree_spec=(ROOT/'docs/specs/tree-transition.md').read_text()
 check(re.findall(r'^\| (TT\d\d) \|',tree_spec,re.M)==[f'TT{i:02}' for i in range(1,9)],
       'Tree transition acceptance matrix')
 
+def without_fences(text):
+    return re.sub(r'^\s*(`{3,}|~{3,})[^\n]*\n.*?^\s*\1\s*$', '', text, flags=re.M|re.S)
+
+def markdown_anchors(text):
+    text = without_fences(text)
+    anchors = set(re.findall(r'<[^>]+\b(?:id|name)=[\"\']([^\"\']+)[\"\']', text))
+    used = set()
+    for heading in re.findall(r'^ {0,3}#{1,6}\s+(.+?)\s*#*$', text, re.M):
+        heading = re.sub(r'\[([^]]+)\]\([^)]+\)', r'\1', heading)
+        heading = html.unescape(re.sub(r'<[^>]*>', '', heading)).lower()
+        slug = re.sub(r'[^\w\- ]', '', heading).replace(' ', '-')
+        anchor = slug
+        suffix = 0
+        while anchor in used:
+            suffix += 1
+            anchor = f'{slug}-{suffix}'
+        used.add(anchor)
+        anchors.add(anchor)
+    return anchors
+
+# Include component READMEs and newly added guides before staging them, while
+# excluding ignored local output and the independently maintained submodule.
+markdown_paths = subprocess.check_output(
+    ['git', '-C', str(ROOT), 'ls-files', '--cached', '--others', '--exclude-standard', '-z', '--', '*.md'],
+    text=True,
+).split('\0')
 link_count=0
-# Keep the source-migration provenance valid. Historical reports now live outside
-# the current tree; current guides must resolve without local report copies.
-migrations = documents.get('docs/source-migrations.json', {})
-historical_paths = migrations.get('paths', {})
-check(migrations.get('schema') == 1 and bool(re.fullmatch(r'[0-9a-f]{40}', migrations.get('source_revision', ''))),
-      'Historical source migration revision')
-for name, entry in historical_paths.items():
-    check(name.startswith(('examples/browser-chat/', 'scripts/i10-wallet-ui/'))
-          and '..' not in Path(name).parts and bool(re.fullmatch(r'[0-9a-f]{64}', entry.get('sha256', ''))),
-          'Invalid historical source migration: ' + name)
-for path in [ROOT/'README.md', *sorted((ROOT/'docs').rglob('*.md'))]:
-    if path.is_relative_to(ROOT/'docs/evidence'):
+anchor_cache={}
+for name in sorted(set(markdown_paths)):
+    if not name or name.startswith(('vendor/ethereum-zkapi/', 'work/', 'target/', 'docs/evidence/')):
         continue
+    # These notices are verbatim pinned third-party copies with upstream-relative
+    # links. Leave their bodies intact; links to them are still checked normally.
+    if name.startswith('deploy/public-devnet/upstream-notices/'):
+        continue
+    path=ROOT/name
+    if not path.is_file():
+        continue  # Deleted or moved files can remain in the index until staging.
     text=path.read_text()
-    check(text.count('```')%2==0,'Unclosed code fence '+str(path))
-    for link in re.findall(r'\]\(([^)]+)\)',text):
-        if '://' in link or link.startswith('#'): continue
-        link=link.split('#',1)[0]
-        if not link: continue
+    check(text.count('```')%2==0,'Unclosed code fence '+name)
+    text=without_fences(text)
+    links=re.findall(r'\]\((<[^>]+>|[^\s)]+)(?:\s+[\"\'][^\n]*?[\"\'])?\)',text)
+    links+=re.findall(r'^ {0,3}\[[^]]+\]:\s*(<[^>]+>|\S+)',text,re.M)
+    for link in links:
+        link=link.removeprefix('<').removesuffix('>')
+        url=urlsplit(link)
+        if url.scheme or url.netloc: continue
         link_count+=1
-        target = (path.parent/link).resolve()
+        target=(path.parent/unquote(url.path)).resolve() if url.path else path.resolve()
         check(not target.is_relative_to(ROOT/'docs/evidence'),
-              f'Public documentation links to local-only evidence {path.name}: {link}')
-        check(target.exists(), f'Broken local link {path.name}: {link}')
+              f'Public documentation links to local-only evidence {name}: {link}')
+        check(target.exists(), f'Broken local link {name}: {link}')
+        if url.fragment and target.is_file() and target.suffix=='.md':
+            if target not in anchor_cache:
+                anchor_cache[target]=markdown_anchors(target.read_text())
+            check(unquote(url.fragment) in anchor_cache[target],
+                  f'Broken local anchor {name}: {link}')
 
 generated=subprocess.run([sys.executable,str(ROOT/'work/design/generate_contracts.py'),'--check'],capture_output=True,text=True)
 check(generated.returncode==0, generated.stdout+generated.stderr)

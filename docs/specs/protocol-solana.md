@@ -109,9 +109,9 @@ challengeのRP.active_rootをcurrent rootへ書き換えてはいけない。提
 
 error名：`Paused`, `InvalidBinding`, `InvalidMint`, `InvalidTokenAccount`, `InvalidField`, `InvalidProof`, `StaleRoot`, `StaleNoteId`, `InvalidExpiry`, `TreeFull`, `InvalidBalance`, `ReplayedNullifier`, `NoteNotActive`, `NotPending`, `ChallengeExpired`, `ChallengeNotExpired`, `NotExpired`, `InvalidBuffer`, `ArithmeticOverflow`。Anchorの6000番台へ順序固定で割当て、IDLに記録。
 
-### I04が引き継ぐ実account列
+### Financial instruction accounts
 
-I03の`execute_payload`はIDLにある`payload`（writable）、`uploader`（signer）、`rent_payer`（writable）の3 accountに続け、次の`Financial` 18 accountを**この順序でremaining accountsへ追加**する。番号はFinancial内の0始まり。IDLのexecute account列だけでは命令は成立しない。以下の順序と属性は[実context](../../programs/zkapi-vault/src/accounts.rs)、使用例は[実SBF harness](../../tests/svm/src/vault_support.rs)に対応する。
+`execute_payload`はIDLにある`payload`（writable）、`uploader`（signer）、`rent_payer`（writable）の3 accountに続け、次の`Financial` 18 accountを**この順序でremaining accountsへ追加**する。番号はFinancial内の0始まり。IDLのexecute account列だけでは命令は成立しない。以下の順序と属性は[実context](../../programs/zkapi-vault/src/accounts.rs)、使用例は[実SBF harness](../../tests/svm/src/vault_support.rs)に対応する。
 
 | 番号 | account | writable | signer | 実accountが必要な操作 |
 |---|---|---|---|---|
@@ -138,7 +138,9 @@ I03の`execute_payload`はIDLにある`payload`（writable）、`uploader`（sig
 
 共通contextの`token_owner`はIDL上UncheckedAccountだが、depositのhandlerは署名を必須とする。buffer depositではslot 13の`isSigner=true`をSDKが設定し、そのownerの署名を集める。uploader・payer・token ownerは同一である必要はない。inline depositはFinancialの後ろにIDLの`token_owner_signer`を追加し、slot 13と同じpubkeyを指定する。buffer executeへこの追加slotを持ち込まない。ほかのinline資金命令はFinancialだけを使い、finalizeはbufferを使わない。上表の18 slotはinstruction account列であり、transaction message内の同一pubkeyの集約とは別である。
 
-この列はI03実装の契約であり、I04では独立したuploader/payer/token ownerとrent返却先を含む署名済みv0を実serializeしてサイズ/CUを再測定する。I03の863 bytesという最大値を全wallet構成の保証として使わない。
+Measure actual signed v0 transactions with independent uploader, payer, token
+owner and rent recipient roles. A size measured for one wallet configuration
+does not establish the transaction-size or compute bound for every configuration.
 
 ### Indexerが再現するイベントと履歴
 
@@ -160,7 +162,7 @@ buffer手順：`create_payload(op,len,digest,nonce,expires)` → `append_payload
 
 buffer op:u8はdeposit=0、mutual_close=1、initiate_escape=2、challenge_escape=3、claim_expired=4。他の値は拒否（tree-transition回路のopとは別enum）。create argsは順にu8/u32/[u8;32]/[u8;32]/u64、appendはu32 offsetとBorsh Vec<u8>、seal/closeはargsなし。executeはexpected_digest:[u8;32]を署名対象instruction dataに含める。
 
-I03のPayloadBufferをそのまま使用する。account先頭をoffset 0とすると、Vecの長さprefixはoffset 124のu32le、payload bytesはoffset 128から、nonceは`128 + payload.len()`から32 bytes。全serialized長は`160 + payload.len()` bytes（8-byte discriminatorを含む）。`HEADER_SPACE=160`はnonceを含めた固定部分の合計で、payloadの開始offsetではない。seal/execute時には`payload.len() == payload_len == next_offset`が必要となる。I04のcreate/appendはこのBorsh配置を維持し、確保する最終account容量を`160 + payload_len`としてrentを計算する。digestはpayload bytesだけのSHA-256で、Vec長prefix・nonce・Anchor命令discriminatorを含めない。
+既存のPayloadBufferを使用する。account先頭をoffset 0とすると、Vecの長さprefixはoffset 124のu32le、payload bytesはoffset 128から、nonceは`128 + payload.len()`から32 bytes。全serialized長は`160 + payload.len()` bytes（8-byte discriminatorを含む）。`HEADER_SPACE=160`はnonceを含めた固定部分の合計で、payloadの開始offsetではない。seal/execute時には`payload.len() == payload_len == next_offset`が必要となる。create/appendはこのBorsh配置を維持し、確保する最終account容量を`160 + payload_len`としてrentを計算する。digestはpayload bytesだけのSHA-256で、Vec長prefix・nonce・Anchor命令discriminatorを含めない。
 
 I04で固定したaccount list（順序、w=writable、s=signer）：createは `[payload(w), pool, uploader(s), rent_payer(ws), system_program]`、append/sealは `[payload(w), pool, uploader(s)]`、closeは `[payload(w), pool, closer(s), rent_payer(w)]`。executeは前節の3 prefix＋Financialとする。生成IDLで順序・権限・wireを検査する。
 

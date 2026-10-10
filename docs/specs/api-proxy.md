@@ -193,7 +193,7 @@ operationの観測費用は `observed_nano = ceil(Σ count_i * numerator_i / den
 正規化usageは料金unitと同じ名前の整数count配列（ASCII順、重複なし）。usage欠落を0とは解釈しない。OpenAI系のinclusive inputからcache-read/cache-writeを差し引き、Anthropicのexclusive inputにはcache分を足し戻してinputとして再請求しない。5m/1hのwrite内訳は分離する。outputに含まれるreasoning tokenを二重計上しない。SSEの累積値を各frameで足し込まない。正確な写像、欠落が0を意味するfield、利用可能なcache区分はprovider/model/API version別adapter fixtureにpinし、未検証の区分をcatalogへ公開しない。
 一次資料：[OpenAI cache usage](https://developers.openai.com/api/docs/guides/prompt-caching)、[Anthropic cache usage](https://platform.claude.com/docs/en/build-with-claude/prompt-caching)。外部schemaはI07で再確認し、snapshotと正常/欠落/矛盾usageのfixtureを保存する。
 
-### Direct OpenRouter capture policy — Ethereum parity
+### Direct OpenRouter capture policy
 
 For direct OpenRouter, the selected amount is the exact `usage + byok_usage`
 management observation captured after the key is confirmed disabled and the
@@ -203,7 +203,6 @@ unavailable usage is not zero. A failed/ambiguous deletion remains pending and
 reuses the saved amount; it does not issue a replacement key or replay inference.
 A finalized session is never repriced.
 
-This follows [Ethereum zkAPI at the reviewed immutable revision](https://github.com/ethereum/zkapi/blob/045b444ea1b52538d1b40273c7cb6ed09468a052/docs/note-bound-commitments.md#L58-L62).
 The configured grace is an **operator assumption** about in-flight requests and
 accounting delay. It does not establish an authoritative final provider invoice.
 Delayed or unobserved cost remains the operator's risk and cannot retroactively
@@ -213,11 +212,8 @@ A separately obtained late observation may use the existing operator-only
 append contract; a new reconciliation service is not required for this preview.
 OA's issuer-finalized receipt path and proxy metering retain their own rules.
 
-The [parity evidence](https://github.com/yukikm/solana-zkapi/blob/ea4cb0ac005832abae6e703eb177914c0c9aa193/docs/evidence/PD-openrouter-ethereum-parity.md) distinguishes
-this selected contract from the earlier two-sample implementation and records
-whether the successor has actually been deployed. Upstream's default grace and
-settlement-poll intervals are 5 and 2 seconds; deployed configuration remains an
-explicit operator choice, not an accounting guarantee.
+The grace interval is an explicit operator choice, not an accounting guarantee.
+See [support status](../status.md) for the verified public deployment policy.
 
 ## 9. 署名付き明細
 

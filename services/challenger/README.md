@@ -1,4 +1,4 @@
-# I09 challenger — native daemon and emergency CLI
+# Challenger — native daemon and emergency CLI
 
 The native daemon now connects the existing evidence/proof/journal foundation to finalized JSON-RPC scanning, restart replay, the I04 signed-v0 transport, and exact-signature recovery. Its local tests include real proofs, real Ed25519-signed v0 transactions, synthetic RPC fault outcomes, and a separate actual Vault SBF test consuming the SDK bridge's signed bytes. Public RPC, production trust/setup, hosted CI and release gates remain unverified.
 
@@ -64,15 +64,13 @@ Archive reads use the indexer's bounded four-request window. Responses may finis
 
 Persistence defaults to batches of at most 64 validated blocks or 8 MiB of serialized block data. An explicit optional `archive_batch` configuration accepts `max_blocks` from 1 through 256 and `max_bytes` from 1 through 33554432; for example, `{"max_blocks":256,"max_bytes":33554432}` reduces full-journal rewrite frequency during catch-up. A single larger block is preserved and committed alone. Fetch, decode or replay failure flushes only the valid prefix; reconciliation and discovery always wait for its durable commit. A crash can require fetching the uncommitted read-only suffix again, but no proof or send observes that suffix. The Scanner advances only after file fsync, atomic rename and directory fsync. The v1 journal format and checksum bytes remain unchanged; bounded serializer passes compute the checksum and write the same envelope, and restart parses through a buffered reader without retaining the whole encoded file. This option does not bound total archive or process memory, reduce retained history, or guarantee catch-up throughput. Long-term archive growth still needs separate validation.
 
-An explicit offline command can convert an existing v1 archive to the segmented v2 storage candidate:
-
-```sh
-services/challenger/target/debug/challengerd migrate-archive /absolute/path/config.json
-```
-
-Stop the worker first and use its same authenticated configuration and journal directory. The command validates the manifest and Pool identity, acquires the existing owner lock, retains the exact original file as `legacy-v1.json`, and activates the verified full-history chunks under `archive-v2/` through the journal's durable migration path. Its JSON report contains only format version, byte/block/chunk counts and hashes. It opens no Scanner, RPC connection, database repository, transport bridge or fee key. Ordinary `init` still creates v1; ordinary startup validates and opens the existing format without migration or fallback.
-
-An existing v2 journal, active owner, mismatched Pool, `archive-v2/` directory or `legacy-v1.json` file causes migration to refuse replacement. Retain any partial staging after a failure or cancellation for inspection; do not automatically delete it and retry. Cancellation is checked before staging, between chunks and before activation. Once primary activation starts, it finishes or reports uncertain durability without automatic rollback. Restore decisions require inspecting the retained exact files and failure observation. This conversion preserves all archived blocks, queue identities, unknown signed attempts and the original replay cursor. It reduces full-history rewrite and clone costs; it does not bound retained archive memory/disk or establish hosted catch-up performance.
+Archive format migration is an explicit offline operator operation; follow the
+[v1-to-v2 migration procedure](../../docs/getting-started/operators/archive-storage.md#migrate-a-v1-journal-to-v2)
+for prerequisites, the command, retained files and failure handling. Ordinary
+`init` creates v1; startup validates and opens the existing format without
+implicit migration or fallback. The v2 format preserves the complete archive,
+queue identities, unknown signed attempts and replay cursor while reducing
+full-history rewrite costs. It does not bound retained history or memory usage.
 
 SIGINT and SIGTERM are latched before journal replay or network access. The worker stops admitting work at safe checkpoints, cancels read-only RPC/DB waits, and durably flushes any already validated archive prefix. It explicitly kills and reaps an active Node bridge before returning success. A bridge recovering a transaction can only send the exact bytes already in the journal; stopping before its response retains the Unknown attempt and first-send timestamp for restart. Signing-only prepare/refresh output that was never saved has not been broadcast. Cancellation never manufactures a finalized outcome or replaces an unknown execute.
 
@@ -98,13 +96,16 @@ Each run/once tick also atomically writes `journal_directory/health.json` with m
 
 ## Read-only indexer over an existing v2 archive
 
-The explicit `archive-indexer` mode lets the public indexer replay the challenger's committed blocks without fetching the same full blocks from RPC:
-
-```sh
-services/challenger/target/debug/challengerd archive-indexer /absolute/path/archive-indexer.json
-```
-
-Its strict configuration has two fields: `archive_directory`, the canonical absolute path to an existing v2 challenger journal, and `indexer`, the complete existing indexer configuration. Preserve the original `start_slot`, Pool, program, genesis and profile pins. Use a separate snapshot output directory; source/output overlap, parent traversal and aliases into the archive are rejected. Grant this process read access to the source, preferably through a read-only filesystem mount, and write access only to its separate indexer snapshots. It does not initialize or migrate storage, acquire or create `owner.lock`, write challenger health, load a DB or fee key, or construct the financial challenger runtime. Ordinary writer commands and the default RPC indexer remain separate modes.
+The explicit `archive-indexer` mode lets the public indexer replay the
+challenger's committed blocks without fetching the same full blocks from RPC.
+Follow [shared archive indexer setup](../../docs/getting-started/operators/archive-storage.md#run-an-indexer-from-the-shared-v2-archive)
+for configuration, filesystem access, startup and readiness checks. Its strict
+configuration has only `archive_directory` and the complete existing `indexer`
+configuration. Source/output overlap, parent traversal and archive aliases are
+rejected. The mode does not initialize or migrate storage, acquire or create
+`owner.lock`, write challenger health, load a DB or fee key, or construct the
+financial challenger runtime. Ordinary writer commands and the default RPC
+indexer remain separate modes.
 
 Cold open checks the fixed head, its state checksum and Pool, the retained complete legacy prefix, and every referenced chunk. It streams the stored `FinalizedBlock` values through the existing indexer replay; these are decoded evidence, not reconstructed original RPC responses. Incremental refresh accepts only an authenticated extension of the exact prior tail. Already verified immutable files use trusted Unix device/inode/size/mtime/ctime continuity; new and replayed chunks are always hashed. Missing or changed files, rollback and replacement fail closed. This metadata shortcut does not defend against a privileged actor able to forge filesystem metadata. Unreferenced files are never adopted or removed.
 
@@ -142,6 +143,6 @@ I09 C–E dispatcher/fencing, DB/WAL/signer restore, dashboard and production se
 
 New v2 archive payload chunks use lossless gzip storage while retaining their
 original uncompressed hash/length and full finalized block history. Readers
-accept mixed old/new chunks. See [archive storage and maintenance](../../deploy/public-devnet/archive-storage.md)
+accept mixed old/new chunks. See [archive storage and maintenance](../../docs/getting-started/operators/archive-storage.md)
 for the 2 GiB database headroom floor, explicit conversion of existing chunks,
 checkpoint revalidation and old-binary rollback requirements.

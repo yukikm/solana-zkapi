@@ -2,9 +2,12 @@
 
 ## Start here
 
-Read `README.md`, `CONTRIBUTING.md`, `docs/sdk/status.md` and the relevant
-component README. Protocol work also starts with `docs/implementation-ready.md`
+Read `README.md`, `docs/getting-started/README.md`, `CONTRIBUTING.md`,
+`docs/status.md` and the relevant
+component README. Protocol work also starts with `docs/architecture/overview.md`
 and its referenced specifications. Public documentation and examples are English.
+Keep user, SDK integration, provider and operator setup procedures under
+`docs/getting-started/`; component READMEs link there and retain source/API reference.
 
 ## Implementation invariants
 
@@ -27,7 +30,7 @@ and its referenced specifications. Public documentation and examples are English
   `docs/evidence/` or `target/`. Never force-add them to Git. Keep reproducible
   tests, required fixtures, specifications, release notes and public guides tracked.
 - Preserve historical successes and failures locally. Refer to published reports
-  through immutable Git links described in `docs/verification.md`; public guides
+  through immutable Git links described in `docs/development/verification.md`; public guides
   must not depend on an ignored file being present in a fresh clone.
 - Do not commit credentials, private RPC URLs, wallet/note secrets, mutable
   financial state or raw private logs. Keep temporary review copies in `target/`.

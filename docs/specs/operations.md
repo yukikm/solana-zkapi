@@ -70,7 +70,12 @@ raw IPはアクセスログに残さず、rate limit用salted keyは24時間で�
 
 移植試験は元のsingle-party setupを使って回路互換性を切り分ける。新しいproduction poolでは、採用したrequest/withdrawal/tree-transitionの3回路について、レビュー済みのGroth16 setup/contribution手順と公開transcript検証をrelease条件にする。運営者以外を含む複数の独立参加者を想定し、少なくとも1参加者が秘密を破棄したという信頼仮定を明記する。単発のローカルsetupをproduction ceremony完了として扱わない。既存artifactをそのまま採用する変更には、その信頼モデルを別ADRで明示する。
 
-Rust/Agave/groth16-solanaはI02の実測lockを開始点とする。I03開始時にAnchorとprogram SDK、I04/I08でtransaction SDKを実際に解決・buildし、exact version/commitとlockを保存する。未buildのAnchor versionを検証済みと記載しない。Arkworksはupstream lockを基準に0.5系列を維持する。初版はv0_bufferを必須とし、追加v1対応のSolana/SDK versionは実cluster/RPC/walletまで確認し、SBF側依存とRPC側依存は別crateに隔離する。「latest」の可変tagでCI/production buildしない。
+Use the repository's exact Rust, Agave, Anchor, program/client SDK and
+`groth16-solana` pins and committed lockfiles. Keep Arkworks on the compatible
+upstream 0.5 series. Verify real builds before claiming toolchain support.
+`v0_buffer` remains required; validate additional transports against the actual
+cluster, RPC and wallet, with SBF and RPC dependencies in separate crates.
+Do not use mutable `latest` tags for CI or production builds.
 
 production build/release検査はsetup_profile=test_only、既知fixtureのPK/VK hash、欠落/不正transcript、profile不一致を拒否する。devnet/localと本番manifestを別に署名し、環境名だけを変えた昇格を禁止する。programのmainnetへのupload自体をこれだけで防げるとは主張せず、配備手順と署名者のrelease検査で強制する。
 

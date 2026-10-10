@@ -119,21 +119,26 @@ Manifestは`protocol_layout_version=2`、`tree_backend=transition_proof`、`tree
 
 productionはrequest/withdrawal/treeの3回路でレビュー済みsetup/contribution/transcript検証を行う。`setup_profile=test_only`、既知test key hash、未検証transcriptをproduction manifest/build/deployの検査で拒否する。環境名を変更するだけでtest artifactを昇格させない。実chain IDや秘密鍵が未発行でもlocal実装には着手できる。本番のsetup完了はI11/G4で判定する。
 
-## 6. 受入条件と担当境界
+## 6. Acceptance requirements
 
-| ID | 実装担当・必須の検証 |
+| ID | Required validation |
 |---|---|
-| TT01 | I02-B：全11公開入力・各siblings・u32/u64境界・op・旧新path不一致を拒否。元hash vectors、tag、empty rootを独立実装と照合 |
-| TT02 | I02-B/I03：単体で有効な別Note/Vault/rootのWPとTP、別PendingのRPとTPの組合せを拒否。byte改変試験だけで代用しない |
-| TT03 | I03：deposit、close、escape開始、challenge、finalize、expiryの成功/拒否条件を固定EVMと比較。比較詳細は下記 |
-| TT04 | I03：偽account/別pool/layout/profile/VK、宛先・key・clearance・status・TTL・N・最大ID、2回目CPI失敗で状態/残高/sequence全rollback |
-| TT05 | I04：上表のwire、payload length/op、public/proof順、全buffer段階、seal後stale、同PDA別digestへの旧署名、再送/rollback/rentを検査 |
-| TT06 | I03/I04：全資金命令の最大負荷と通常失敗経路で<=1,000,000 CU、署名/実accounts付きv0各送信<=1232 bytes。ATA/PDA作成、イベント、buffer closeも含む |
-| TT07 | I08/I09：native prover必須、browser workerの時間/メモリーを記録。worker停止でもローカル出金/challenge生成可能、root競合・expiry日境界・送信不明を復旧 |
-| TT08 | I11：test key/mainnet設定・改変PK/VK・profile/hash不一致・欠落transcriptを拒否。3回路のsetupとproduction SBFで再測定 |
+| TT01 | 全11公開入力・各siblings・u32/u64境界・op・旧新path不一致を拒否。元hash vectors、tag、empty rootを独立実装と照合 |
+| TT02 | 単体で有効な別Note/Vault/rootのWPとTP、別PendingのRPとTPの組合せを拒否。byte改変試験だけで代用しない |
+| TT03 | deposit、close、escape開始、challenge、finalize、expiryの成功/拒否条件を固定EVMと比較。比較詳細は下記 |
+| TT04 | 偽account/別pool/layout/profile/VK、宛先・key・clearance・status・TTL・N・最大ID、2回目CPI失敗で状態/残高/sequence全rollback |
+| TT05 | 上表のwire、payload length/op、public/proof順、全buffer段階、seal後stale、同PDA別digestへの旧署名、再送/rollback/rentを検査 |
+| TT06 | 全資金命令の最大負荷と通常失敗経路で<=1,000,000 CU、署名/実accounts付きv0各送信<=1232 bytes。ATA/PDA作成、イベント、buffer closeも含む |
+| TT07 | native prover必須、browser workerの時間/メモリーを記録。worker停止でもローカル出金/challenge生成可能、root競合・expiry日境界・送信不明を復旧 |
+| TT08 | test key/mainnet設定・改変PK/VK・profile/hash不一致・欠落transcriptを拒否。3回路のsetupとproduction SBFで再測定 |
 
 EVM比較は同じ整数D/B/id/時刻/操作列・元hashを使い、root、leaf集合、next ID、Note status、PendingのB/N/deadline、nullifier消費、利用者/treasuryの増減を照合する。資産単位を対応させ、EVM addressとSolana owner/bindingは各環境で正しく証明する。同じproof bytesのchain間受理は求めない。全成功ケースは実proofを使い、mock版の状態機械試験は補助と明記する。
 
 必須trace：入金→署名付き利用/精算→合意出金、escape→deadlineでfinalize、認可A→別入金Bでroot変更→Aのescape→保存した過去RPでchallenge、Activeの期限切れ、pause中のchallenge/finalize/expiry、challenge後の同N再利用拒否。双方でroot等号だけでなく拒否条件を比較する。既存の意図した差分（USDC/H2F、counterだけu64で最大u32 IDを利用可能）を比較レポートへ明記する。
 
-研究harnessの37〜67万CUに続き、採用方式の[I02-B](https://github.com/yukikm/solana-zkapi/blob/ea4cb0ac005832abae6e703eb177914c0c9aa193/docs/evidence/I02B.md)では約15〜32万CUを実測した。いずれも記録したmeasurement account範囲の値。性能目標は全命令100万CUのままで、基準を緩めて設計Readyにしない。native tree prove＋送信がchallengeの5分目標に収まるかをI08/I09で測り、root競合下の再試行も含める。browser性能の実測が不足してもnative経路を隠さず提供し、UIを無限待ちにしない。
+Measure complete instructions against the 1,000,000-CU target, including token
+and account operations. Measure native tree proving plus challenge submission
+against the five-minute target, including root contention and recovery. Record
+browser worker time and memory separately; retain the native proving path when
+browser capability is insufficient. Historical measurements apply only to their
+original source and measured account configuration.

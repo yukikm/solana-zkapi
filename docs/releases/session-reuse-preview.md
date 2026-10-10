@@ -70,14 +70,14 @@ components; no source checkout or npm install is required. Read-only preflight:
   --profile-sha256 3f8af848ea882f478d5b00c30d677fa5147a5b45d2bf1aceaa4f645a62d50179
 ```
 
-Use the [native quickstart](../sdk/clientd-quickstart.md) or
-[browser quickstart](../sdk/quickstart.md) for deliberate setup and integration.
+Use the [native quickstart](../getting-started/clientd.md) or
+[browser quickstart](../getting-started/sdk.md) for deliberate setup and integration.
 The native executable is not Apple signed/notarized; Linux, Windows and Intel
 macOS packages are not included in this release.
 
 The historical seven-request provider grant remains exhausted; the operator
 later removed the fixed trial allowance as a separate server policy. See
-[current access policy](../sdk/devnet-funding.md). Publication and preflight
+[current access policy](../getting-started/devnet-funding.md). Publication and preflight
 do not authorize paid inference, funding or replay of historical lifecycles.
 Release validation uses local fixtures and public read-only checks. Dated funded
 acceptance of `.3` does not establish paid multi-request acceptance of `.6`.

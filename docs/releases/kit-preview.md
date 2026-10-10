@@ -9,7 +9,7 @@ Historical reports and immutable earlier releases remain available as evidence.
 The SDK's low-level TypeScript API changes: addresses are Kit `Address` strings,
 RPC clients are `Rpc<SolanaRpcApi>`, and wallet signing uses Kit `Transaction`.
 PDA construction and journal validation are asynchronous. Read the
-[Kit migration guide](../sdk/kit-migration.md) before upgrading an application.
+[Kit migration guide](../getting-started/sdk-migration.md) before upgrading an application.
 The application facade's deposit, inference and withdrawal lifecycle is retained.
 Existing journal schemas and signed v0 transaction bytes are preserved; upgrading
 does not authorize replaying an uncertain transaction or inference.
@@ -25,7 +25,7 @@ provides the compiled SDK archive, the current-platform native daemon archive,
 
 Verify the artifact digest from a trusted release before installation. Install the
 SDK using `npm install ./zkapi-solana-sdk-0.2.0-devnet.1.tgz`. Extract native clientd
-into a new directory and follow the [private profile setup](../sdk/clientd-quickstart.md).
+into a new directory and follow the [private profile setup](../getting-started/clientd.md).
 Retain an existing profile and custody/journal backups during upgrades; do not
 initialize new custody over an existing profile. Review and repin the new
 installation manifest before using it with an existing profile.

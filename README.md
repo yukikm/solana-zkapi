@@ -1,83 +1,61 @@
 # Solana zkAPI
 
-An SDK and API for funding AI usage with USDC on Solana. It handles local
-zero-knowledge proofs, authorization, signed billing receipts and withdrawals.
-Applications provide their own UI, model selection and conversation history.
-SOL pays network fees; usage is accounted for in integer micro-USDC.
+Fund AI usage with USDC on Solana. The SDK handles local zero-knowledge proofs,
+authorization, signed billing receipts and withdrawals. `clientd` exposes a local
+API for existing AI clients. SOL pays network fees; usage is accounted for in
+integer micro-USDC.
 
-**Devnet preview.** Selected provider and native-client lifecycles have been
-tested. Production use, audits and broader browser/provider coverage remain
-incomplete. See [support and verification status](docs/sdk/status.md).
+**Devnet preview:** published SDK/native version **`0.2.0-devnet.8`**.
+The native download supports **Apple Silicon Macs, macOS 13.5+**. The SDK is
+distributed as a tarball; there is no npm registry release. See
+[supported features and limits](docs/status.md) before use.
 
 ## Get started
 
-| Task | Guide |
-|---|---|
-| Build an application | [SDK quickstart](docs/sdk/quickstart.md) and [API reference](docs/sdk/api.md) |
-| Connect an AI agent | [clientd quickstart](docs/sdk/clientd-quickstart.md) and [client compatibility](docs/integrations/README.md) |
-| Try the public Devnet deployment | [Downloads and profile](docs/sdk/public-devnet-preview.md), [funding and access](docs/sdk/devnet-funding.md) |
-| Operate a deployment | [Deployment configuration](docs/sdk/deployment.md) and [operations](deploy/operations/README.md) |
-| Work on the protocol | [Implementation contract](docs/implementation-ready.md) and [plan](docs/implementation-plan.md) |
+Start with **[Getting started](docs/getting-started/README.md)** and choose your
+role. Installation, application setup, provider connection and operator
+procedures are all maintained under `docs/getting-started/`.
 
-The SDK is distributed as a tarball; the native client package targets macOS
-ARM64. There is no npm registry release. The optional
+| I want to… | Follow this guide |
+|---|---|
+| Install the native client | [clientd](docs/getting-started/clientd.md) |
+| Use OpenClaw | [OpenClaw setup](docs/getting-started/openclaw.md) |
+| Configure Claude Desktop | [Desktop gateway setup and compatibility](docs/getting-started/claude-desktop.md) |
+| Build an application with the SDK | [SDK application walkthrough](docs/getting-started/sdk.md) |
+| Call the local API from a script | [HTTP API](docs/getting-started/http-api.md) |
+| Run a Proxy/payment service | [Operator setup](docs/getting-started/proxy-operator.md) |
+| Connect an upstream API provider | [API provider setup](docs/getting-started/api-provider.md) |
+| Fund, recover or upgrade | [Funding](docs/getting-started/devnet-funding.md), [recovery](docs/getting-started/recovery.md), [upgrading](docs/getting-started/upgrading.md) |
+
+The native archive includes Node and the prover; it does not require a source
+checkout. Existing funded installations keep their original profile, keys and
+journal until recovery and closure. The public profile serves OpenRouter Chat;
+Claude Desktop's Anthropic Messages gateway needs a different reviewed
+deployment and has not passed Desktop acceptance here.
+
+For deeper reference, use [all documentation](docs/README.md),
+[API methods](docs/sdk/api.md), [architecture](docs/architecture/overview.md) and
+[contributing](CONTRIBUTING.md). Current downloads and profile hashes are in
+[Public Devnet](docs/getting-started/public-devnet-preview.md).
+
+## How it works
+
+An application or clientd creates a local encrypted note journal, funds the note
+with USDC and authorizes bounded AI usage. Verified receipts settle the charge;
+the remaining balance can be withdrawn. Applications own their UI, model
+selection and conversation history. The optional
 [reference chat application](https://github.com/yukikm/solana-zkapi-client)
 is maintained separately.
 
-<a id="current-handoff--2026-10-09-jst"></a>
-
-## Preview status
-
-Based on records through **2026-10-10 JST**:
-
-- The published client release is **`0.2.0-devnet.8`**. It includes direct-session
-  reuse, request filtering, OpenRouter ZDR routing, journal minimization and
-  read-only upgrade guidance. See the [release guide](docs/releases/usability-preview.md).
-- The empty operator catalog was traced to a full archive volume affecting
-  the financial database. See [current service status](docs/sdk/status.md) for
-  the repair and fresh preflight results.
-- The public gateway permits any browser origin and does not require an
-  invitation. The fixed seven-request trial allowance was removed in favor of
-  operator-funded usage; provider charges and per-session caps still apply.
-- Selected native/OpenClaw funding, recovery and withdrawal cases have
-  [recorded results](docs/sdk/status.md). Current funded browser acceptance,
-  broader provider coverage and long-term availability remain unverified.
-
-Run fresh preflight and check provider capacity before use. Earlier successful
-checks do not establish current availability. Existing funded notes must retain
-their original profile, custody and journal. Operational details are in the
-[incident guide](docs/sdk/public-devnet-operations.md); earlier handoffs are
-preserved in the [documentation archive](https://github.com/yukikm/solana-zkapi/blob/ea4cb0ac005832abae6e703eb177914c0c9aa193/docs/evidence/PD-documentation-cleanup-20261010.md).
-
-## Build an application
-
-After [initialization and funding](docs/sdk/quickstart.md):
-
-```ts
-import { readChatText } from '@zkapi/solana-sdk/chat';
-
-const response = await client.chat({
-  operationId: crypto.randomUUID(), // once per explicit user Send action
-  model: client.listModels()[0].id,
-  messages: [{ role: 'user', content: 'Hello!' }],
-  maxOutputTokens: 128,
-});
-const text = await readChatText(response);
-const status = await client.status(); // inspect balance and pending settlement
-```
-
-Consume or cancel every response. Resolve pending work through
-[recovery](docs/sdk/recovery.md); the SDK never automatically replays inference.
-
 In **direct** mode, prompts go to the selected provider using a short-lived key.
-In **proxy** mode, the operator relays requests and can read prompts and
-responses. Both modes expose prompts to the provider; neither provides network
-anonymity by itself.
+In **proxy** mode, the operator relays requests and can read prompts and responses.
+Both modes expose prompts to the provider. Resolve uncertain operations through
+the saved journal; recovery never automatically replays inference.
 
 ## Develop locally
 
-Use the versions in `package.json` and `rust-toolchain.toml` (Node 24.19.0,
-npm 11.9.0 for TypeScript):
+Use the pinned versions in `package.json`, `.go-version` and
+`rust-toolchain.toml`. For the SDK, use Node **24.19.0** and npm **11.9.0**:
 
 ```sh
 git submodule update --init --recursive
@@ -87,19 +65,15 @@ npm run typecheck
 npm run build:sdk
 npm run test:sdk-distribution
 npm test
+python3 scripts/check_design.py
 ```
 
-SDK tests use local fixtures; browser storage tests need Chromium. See
-[CONTRIBUTING.md](CONTRIBUTING.md) for test scopes and evidence requirements.
-Upgrading from the first preview requires the [Kit migration guide](docs/sdk/kit-migration.md).
+See [CONTRIBUTING.md](CONTRIBUTING.md) for prerequisites and component checks.
 
-## Upstream and license
+## License and dependencies
 
-Based on [`ethereum/zkapi`](https://github.com/ethereum/zkapi) at
-`045b444ea1b52538d1b40273c7cb6ed09468a052`, with Solana bindings, USDC accounting
-and Solana transaction transport. Newly authored code and documentation use the
-[MIT license](LICENSE). Vendored components retain their own terms; see
-[source provenance](vendor/README.md) and [third-party notices](THIRD_PARTY_NOTICES.md).
-
-An [earlier README archive](https://github.com/yukikm/solana-zkapi/blob/ea4cb0ac005832abae6e703eb177914c0c9aa193/docs/evidence/I10-readme-before-app-sdk.md) preserves
-the pre-application-SDK history.
+New code and documentation use the [MIT license](LICENSE). The project reuses
+pinned zkAPI circuits and cryptographic primitives, with Solana bindings, USDC
+accounting and Solana transaction transport. Dependency versions and original
+licenses are recorded in [vendor/](vendor/README.md) and
+[third-party notices](THIRD_PARTY_NOTICES.md).

@@ -4,16 +4,16 @@ An SDK for USDC-funded AI usage on Solana. It handles wallet operations, local
 proofs, encrypted storage, authorization and signed settlement. Applications own
 their UI, conversation history and provider mode.
 
-Start with the [quickstart](../../docs/sdk/quickstart.md),
-[API reference](../../docs/sdk/api.md) and [distribution guide](DISTRIBUTION.md).
+Start with the [browser app walkthrough](https://github.com/yukikm/solana-zkapi/blob/main/docs/getting-started/sdk.md),
+[API reference](https://github.com/yukikm/solana-zkapi/blob/main/docs/sdk/api.md) and [distribution guide](https://github.com/yukikm/solana-zkapi/blob/main/docs/getting-started/sdk-distribution.md).
 The published release is `0.2.0-devnet.8`; see
-[downloads and verification](../../docs/sdk/public-devnet-preview.md).
+[downloads and verification](https://github.com/yukikm/solana-zkapi/blob/main/docs/getting-started/public-devnet-preview.md).
 The package is distributed as a tarball, with `private: true` to disable npm
 registry publication. Node integrations use Node 24.19.0; browser integrations
 bundle the browser entry points.
 
 The SDK uses `@solana/kit` 8.4.0. Install Kit explicitly if your app imports it,
-and read the [migration guide](../../docs/sdk/kit-migration.md) when upgrading
+and read the [migration guide](https://github.com/yukikm/solana-zkapi/blob/main/docs/getting-started/sdk-migration.md) when upgrading
 from the first preview.
 
 | Import | Purpose |
@@ -32,8 +32,8 @@ Use a stable note ID and storage identity, consume or cancel each response, and
 resolve pending work before new inference. Recovery never replays inference.
 
 Direct-session reuse uses a 300-second lease and a 90-second renewal margin.
-See [session reuse](../../docs/sdk/api.md#direct-session-reuse) for configuration
-and settlement behavior. `.8` also provides [upgrade and privacy guidance](../../docs/releases/usability-preview.md).
+See [session reuse](https://github.com/yukikm/solana-zkapi/blob/main/docs/sdk/api.md#direct-session-reuse) for configuration
+and settlement behavior. `.8` also provides [upgrade and privacy guidance](https://github.com/yukikm/solana-zkapi/blob/main/docs/releases/usability-preview.md).
 Keep existing custody on its original profile and recovery inputs; upgrades use
 a separate installation after the original note is closed.
 

@@ -1,8 +1,14 @@
-# I05 control service and isolated signer
+# Control service and isolated signer
 
 The control service implements the USDC authorization ledger, quotes, receipts, session recovery, dispatch ownership contract, and Baby-JubJub settlement/clearance signing. Financial writes use one PostgreSQL connection per pool; that same connection owns the advisory lock. Losing it stops writes. The signer reads the primary through a separate read-only connection and preserves its own append-only, fsynced journal.
 
-This build is a **local test profile**. It embeds the existing test request VK and the Vault's role-specific test public keys. `controld` requires `local_test_only: true` and a loopback listener; `signerd` requires `--local-test`. The only advertised adapter is `openai / i05-local-only`, a synthetic local acceptance fixture. OA-org/OpenRouter key issuance, real provider inference/SSE, production KMS/mTLS/egress fencing, live RPC/wallet acceptance, and G1–G4 release gates remain outside this result.
+The binaries support explicit local-test and Devnet profiles with pinned proof
+and signing keys. `controld` requires `local_test_only: true` and a loopback
+listener. The commands below reproduce the synthetic `openai / i05-local-only`
+fixture. Real direct and proxy adapters are configured separately in
+[PROVIDERS.md](PROVIDERS.md); the [Devnet operator guide](../../docs/getting-started/operators/gateway.md)
+describes deployment inputs. Neither a local fixture pass nor the Devnet test
+setup establishes production qualification.
 
 ## Reproduce the local acceptance suite
 
@@ -60,7 +66,14 @@ Financial integers and times in quote/tariff/proof wire objects use canonical de
 
 Export `signer.json` from `controld signer-config control.json` after validating trusted local configuration. Its exact [`SignerConfig`](src/signer.rs) fields are `authorization`, `pool`, `binding`, `state_key`, `clearance_key`, and `receipt_key`. `authorization` contains the deployment/pool, field binding, two state-key coordinates, cap, both origins, and quote public key. Raw 32-byte values in this internal config are JSON byte arrays; the authorization field elements are canonical `0x` strings and its cap is a decimal string. This export keeps the signer independently pinned to the trusted manifest instead of deriving its configuration from restored ledger rows.
 
-## Database roles and first start
+<a id="database-roles-and-first-start"></a>
+
+## Local fixture database roles and startup
+
+This section starts the synthetic `openai/i05-local-only` fixture described
+above. Use the [proxy operator guide](../../docs/getting-started/proxy-operator.md)
+for Devnet service installation. These local SQL roles illustrate the runtime
+permission contract; they are not a production deployment recipe.
 
 Use three separate local logins: a migration owner, a runtime writer, and a signer reader. Neither runtime login may own the database, tables, or schema. Local authentication and connection secrets are provisioned separately. As the disposable/persistent local cluster administrator, create the group roles before the migration owner runs migrations:
 
@@ -110,7 +123,7 @@ ZKAPI_DATABASE_URL="$ZKAPI_WRITER_DATABASE_URL" "$zkapi_bin/controld" \
 
 `provision` registers immutable pool settings with admission disabled. Journal initialization is a one-time operation and refuses an existing path. The signer must start successfully before the writer: both verify schema checksums, and the writer checks chain health plus signer/ledger reconciliation before accepting new work. A transient RPC/indexer outage or pool pause leaves admission disabled while the service can recover already accepted settlement/clearance targets, including after restart. An observed genesis or PoolConfig mismatch still rejects startup. Starting a second writer for the same pool fails; starting a second signer against the same journal fails its exclusive file lock. Migration reruns verify applied checksums and apply only missing versions. Editing an already-applied migration or introducing an unknown version blocks startup.
 
-Control routes under `/zkapi/v1` cover config/catalog/tariffs/quotes, sessions/status/close, operations/status, receipts, clearance, and nullifier status. Tree routes stay with the I04 indexer. Provider-facing operation admission/metering are internal adapter contracts; I05 does not expose working provider inference endpoints or distribute real direct keys. Saved session recovery authenticates the original credential and exact request digest; a direct key is never replayed.
+Control routes under `/zkapi/v1` cover config/catalog/tariffs/quotes, sessions/status/close, operations/status, receipts, clearance, and nullifier status. Tree routes stay with the I04 indexer. Provider-facing admission and metering use the same ledger; enable real inference routes and direct-key issuance through the explicit provider configuration in [PROVIDERS.md](PROVIDERS.md). Saved session recovery authenticates the original credential and exact request digest; a direct key is never replayed.
 
 ## Restart and restore
 
@@ -118,7 +131,7 @@ Restart with the same manifest, primary ledger, role-specific keys, and **same i
 
 A new writer takes the advisory lock on its dedicated connection, advances the epoch, and reconciles before admission. An epoch or lease expiry does not prove that an old dispatcher has stopped. An uncertain dispatch keeps its immutable attempt/owner and cannot be sent again. `LocalOwner::stop` produces local fencing evidence only after killing and waiting for that exact process; a timer or manually set database flag cannot supply it. Real provider egress fencing remains later work.
 
-I06 adapters must persist a discovered provider management reference before awaiting the final chain check. A failed check or interrupted delivery must retain that reference for disable/delete and final-usage recovery. A stored reference is not permission to return a key: only the first successful activation may deliver it; a retry drains the key. I07 adapters must use the final one-shot dispatch claim as well as the initial attempt commit. The claim rechecks pool admission, session expiry/close, and the operation state; a stopped pool or an operation already marked unknown cannot start a new send.
+Direct adapters must persist a discovered provider management reference before awaiting the final chain check. A failed check or interrupted delivery must retain that reference for disable/delete and final-usage recovery. A stored reference is not permission to return a key: only the first successful activation may deliver it; a retry drains the key. Proxy adapters must use the final one-shot dispatch claim as well as the initial attempt commit. The claim rechecks pool admission, session expiry/close, and the operation state; a stopped pool or an operation already marked unknown cannot start a new send.
 
 The signer pins `(pool, N)`, AUTH/CLEARANCE kind, request ID, role key, frozen target and message before signing, then fsyncs its generated signature before returning it. It independently reloads the request proof/binding, frozen quote/tariff, terminal operations, stopped dispatches, signed receipt arithmetic, and successor commitment/anchor. The ledger tariff must equal the hash authorized by the signed quote, including on recovery. The writer verifies and saves the returned signature before exposing SETTLED/clearance results. Zero-charge sessions still receive exactly one successor.
 
@@ -126,7 +139,7 @@ Any journal target missing or changed in a restored ledger, any signed ledger ta
 
 Fault injection is test-only: `ZKAPI_LOCAL_CRASH_AT=reserved|sign_pending|signature|settled` exits controld at the named durable boundary. Signerd's `--crash-at intent|signature|synced` exercises its journal boundaries. Leave these unset for ordinary local use. Local recovery tests do not establish production RPO/RTO, hosted CI completion, provider acceptance, or release readiness.
 
-I06/I07 direct and proxy HTTP adapters are described in [PROVIDERS.md](PROVIDERS.md).
+Direct and proxy HTTP adapters are described in [PROVIDERS.md](PROVIDERS.md).
 Run `bash scripts/run_i06_i07.sh` from the repository root for the combined local
 acceptance suite; actual provider authorization/usage remains a separate G3 gate.
 
@@ -172,7 +185,7 @@ at most ten RPC HTTP attempts are possible. Logs contain only method, a fixed
 failure category and the retry decision. No AUTH, provider call, signing or
 financial-state change occurs, and transaction methods are rejected outright.
 
-## I09 local operations runtime
+## Operations runtime
 
 `providers.dispatcher` now connects the shared writer to the separately executed
 `dispatcherd`. The child owns provider credentials and independently rechecks
@@ -198,7 +211,7 @@ Run `python3 scripts/run_i09_operations.py` for actual provider worker processes
 real control proofs/signatures through mTLS/envelopes, child suspension/termination,
 admin redaction, restore corruption detection and PostgreSQL physical backup/WAL,
 synchronous-replica ACK blocking and old-primary termination before promotion.
-See [the operations runbook](../../deploy/operations/README.md) for configuration,
+See [the operations runbook](../../docs/getting-started/operators/operations.md) for configuration,
 quiescent restore cuts, least privilege and exact local/production boundaries.
 Local fixed cryptographic profiles remain explicitly gated. Production credential
 isolation, network ACL enforcement, external KMS tenancy, independent fault-domain

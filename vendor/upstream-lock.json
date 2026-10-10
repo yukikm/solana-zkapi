@@ -16,6 +16,15 @@
     "protocol/setup/v2/request.vk": "8011244c99fa1a8524870906462d430fc86366b8ad821736c5fa726b479e6d97",
     "protocol/setup/v2/withdrawal.pk": "8e41398092fdd02b9ff86c6ccbecbd7ce2402e6f22ec162e6124d1d04fe0a668",
     "protocol/setup/v2/withdrawal.vk": "2a8ea7f07176e369a93d1d816124192a798d1466c99fd6dc47850ba82094b679",
-    "protocol/setup/v2/README.md": "df3fad81c1be174ab43c61447a304ff70ef440a1f9120e8261b77e868240fa05"
+    "protocol/setup/v2/README.md": "df3fad81c1be174ab43c61447a304ff70ef440a1f9120e8261b77e868240fa05",
+    "protocol/contracts/src/ZkApiVault.sol": "f11e0d85fe5ffecac1a7f7bb7925ce04cf02146191c73a08c4ce2fab8804d5ba",
+    "protocol/rust/crates/zkapi-core/src/v2.rs": "b3dcf29553df74fa8e42ffa32b38b25296e49ed8af3a3589e386e0a58807efb7",
+    "protocol/rust/crates/zkapi-proof/src/groth16.rs": "dfeaeb9e5579329458de29b961c76f2bd87e78c5324aa295375f9a55ed1261df",
+    "protocol/rust/crates/zkapi-proof/src/compact.rs": "258c15ae1b13ef86f8b3d84de6e971457e685035f735e74115e945423491bc91",
+    "crates/zkapi-serverd/src/routes.rs": "bb6c24bc18dddd593c19bb69655ffcfebcc43997904f4d3cc4ea289671e954fc",
+    "crates/zkapi-indexerd/src/http.rs": "e1849d3a94825a1d49d56df5b6814e14199217c8c29243a172917d039ab6130d",
+    "sdk/assets/config/mainnet.json": "4bd04be1fa28ea5906d0e2eabc6d7c9dc66c129e2f01f1d292add50f0b34e22c",
+    "sdk/assets/manifest.json": "e1b8e3cb2ffc22a852ed71ee93a818fe3362917a6be357b0b6af31ec020e3c45",
+    "protocol/setup/v2/manifest.json": "c3a085a3881f8aa6fcae08c0a89c9ff021ca5daab035c9e48f20c8d67b7098e4"
   }
 }

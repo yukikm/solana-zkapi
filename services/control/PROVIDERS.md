@@ -1,6 +1,6 @@
-# I06/I07 provider adapters
+# Provider adapters
 
-`controld serve` now connects direct issuance and the native inference routes to
+`controld serve` connects direct issuance and the native inference routes to
 one `Ledger` and the existing isolated signer. `RuntimeConfig.providers` defaults
 to empty, so old I05 fixture configurations remain valid. Enabling the synthetic
 `i05-local-only` adapter does not enable any provider HTTP adapter.
@@ -12,9 +12,9 @@ manifest/genesis/pool/build validation, a matching connected database deployment
 and manifest identity, and a dedicated read-only Unix PostgreSQL role. It does
 not promote the known test setup to production. Live provider permissions/usage,
 external egress fencing, production secret management, wallet UI and release
-gates remain separate acceptance work. See [provider preparation](../../docs/provider-acceptance.md)
-for `.env` credentials, the approved 10 USDC campaign, exact model/price pins,
-and the no-replay reservation journal.
+gates remain separate acceptance work. See [provider preparation](../../docs/development/provider-acceptance.md)
+for credential requirements, exact model/price pins, budget preparation and the
+no-replay reservation journal.
 The provider adapter implementation is exercised with HTTP fixtures, not a claim
 that those fixtures are provider attestations.
 
@@ -118,7 +118,7 @@ evidence is never included in OpenRouter or proxy responses. Clients close and
 recover the existing session if independent OA verification fails, without key
 reissuance or a proxy fallback. They can close the saved management
 reference. Issuance uncertainty never creates a replacement key. The selected
-OpenRouter policy follows [Ethereum zkAPI's retirement sequence](https://github.com/ethereum/zkapi/blob/045b444ea1b52538d1b40273c7cb6ed09468a052/crates/zkapi-serverd/src/processor_v2.rs#L1050-L1146):
+OpenRouter retirement policy is:
 confirm disable, wait the configured grace, capture one valid management
 `usage + byok_usage` observation, durably checkpoint it, confirm deletion, and
 sign the capped immutable charge. Missing/unavailable usage stays pending; a
@@ -128,17 +128,14 @@ The grace covers in-flight calls and accounting propagation by operator
 assumption. It is not provider invoice finality: delayed/unobserved cost belongs
 to the operator and cannot increase a settled customer charge. An observed zero
 is valid, but neither zero nor repeated equal samples proves absence of external
-cost. Exact decimal arithmetic and cap/receipt guards remain unchanged. The
-[parity record](https://github.com/yukikm/solana-zkapi/blob/ea4cb0ac005832abae6e703eb177914c0c9aa193/docs/evidence/PD-openrouter-ethereum-parity.md) currently
-labels the local successor as a candidate; it does not relabel the deployed
-historical two-sample implementation. Upstream defaults are grace 5 seconds and
-settlement polling 2 seconds; configured values are explicit operator choices.
+cost. Exact decimal arithmetic and cap/receipt guards remain unchanged. Configure the
+grace explicitly; the current public deployment uses five seconds. Deployment
+verification is recorded in [support status](../../docs/status.md).
 OA final receipts follow its issuer's separate retirement lifecycle.
 
 Proxy unknown usage is waived only during drain after the owner returned or was
 independently fenced. Old-epoch unquiesced attempts stop admission and settlement;
-restart/timeout alone is never fencing. I09 must provide deployment-specific
-process/egress fencing. The runtime derives the provider admission breaker from
+restart/timeout alone is never fencing. Deployment supervisors must provide process/egress fencing. The runtime derives the provider admission breaker from
 durable ledger observations, so restarting cannot clear it. Audited reset requires
 all of that provider's operations to be terminal, and applies to the running process.
 Production egress isolation and external alert delivery require separate acceptance.

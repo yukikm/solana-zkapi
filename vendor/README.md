@@ -11,8 +11,10 @@ Open Anonymity Team. The pinned tree has no root LICENSE file; do not fabricate
 one or describe the clientd license as the license of every bundled dependency.
 Dependency notices also remain under their original paths.
 
-`upstream-lock.json` adds SHA-256 pins for setup, dependency lockfiles and license
-evidence to the source pins already recorded in `docs/ethereum-reference.json`.
+[upstream-lock.json](upstream-lock.json) is the single source for the upstream
+commit and SHA-256 pins for source, setup, dependency lockfiles and license
+evidence. The checker verifies the Git submodule commit and file hashes, then
+compares the proving keys with the configuration in that same pinned source.
 These are upstream single-party test setup artifacts, not a production ceremony.
 
 Intentional differences live outside this directory: Solana H2F bindings,

@@ -30,7 +30,7 @@ A fingerprint can identify identical or guessable content to someone with journa
 access. Erasure preserves active requests and unresolved escape archives, including
 unchallenged closed-wallet archives; external backups, filesystem snapshots and
 application transcripts remain separate. Reading a legacy record does not rewrite
-it. See [retention and recovery](../sdk/recovery.md#local-request-retention).
+it. See [retention and recovery](../getting-started/recovery.md#local-request-retention).
 
 The routing policy applies to direct OpenRouter. It is not a claim that the proxy
 service or OA gained ZDR, nor cryptographic evidence of provider deletion.

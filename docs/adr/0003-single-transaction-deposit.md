@@ -1,6 +1,6 @@
 # ADR-0003 — compactな入金命令を1つのv0取引で送る
 
-2026-10-06 JST更新。状態：**実装済み。ローカルruntime検証を追加し、公開canary／Phantom受入前。** [詳細設計](../single-signature-deposit-design.md)を実装契約とし、結果は[実装証跡](https://github.com/yukikm/solana-zkapi/blob/ea4cb0ac005832abae6e703eb177914c0c9aa193/docs/evidence/I10-single-deposit-implementation.md)に記録する。ADR-0001の稼働manifest・既存journalの既定経路は変更しない。
+2026-10-06 JST更新。状態：**実装済み。ローカルruntime検証を追加し、公開canary／Phantom受入前。** [詳細設計](../architecture/single-signature-deposit.md)を実装契約とし、結果は[実装証跡](https://github.com/yukikm/solana-zkapi/blob/ea4cb0ac005832abae6e703eb177914c0c9aa193/docs/evidence/I10-single-deposit-implementation.md)に記録する。ADR-0001の稼働manifest・既存journalの既定経路は変更しない。
 
 ## 問題
 
@@ -22,4 +22,4 @@
 
 正常系で署名1回を目標とする。root/next ID/expiryの競合で確定拒否された場合は新しい取引への再署名が必要。「障害時も一度の承認を永続利用する」署名intent/nonce/relayer protocolは別設計とする。
 
-[設計初版のoffline計測](https://github.com/yukikm/solana-zkapi/blob/ea4cb0ac005832abae6e703eb177914c0c9aa193/docs/evidence/I10-single-deposit-transport-analysis.json)はサイズと符号化の証拠であり、後続の実SBF・SDK・Indexer検証は[実装証跡](https://github.com/yukikm/solana-zkapi/blob/ea4cb0ac005832abae6e703eb177914c0c9aa193/docs/evidence/I10-single-deposit-implementation.md)で区別する。公開wallet・本番受入は未確認。配備順序は[詳細設計](../single-signature-deposit-design.md)に固定する。
+[設計初版のoffline計測](https://github.com/yukikm/solana-zkapi/blob/ea4cb0ac005832abae6e703eb177914c0c9aa193/docs/evidence/I10-single-deposit-transport-analysis.json)はサイズと符号化の証拠であり、後続の実SBF・SDK・Indexer検証は[実装証跡](https://github.com/yukikm/solana-zkapi/blob/ea4cb0ac005832abae6e703eb177914c0c9aa193/docs/evidence/I10-single-deposit-implementation.md)で区別する。公開wallet・本番受入は未確認。配備順序は[詳細設計](../architecture/single-signature-deposit.md)に固定する。

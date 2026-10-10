@@ -1,11 +1,29 @@
-# Public consumer acceptance preparation
+# Public consumer acceptance tools
 
-This workflow prepares the seven deliberate cases in
-[the approved acceptance plan](../docs/public-devnet-acceptance-plan.md).
+This is the developer reference for `prepare_public_consumer_acceptance.mjs`
+and the acceptance-only OpenClaw input gate. For normal installation and use,
+start with [clientd](../docs/getting-started/clientd.md) and
+[public Devnet access](../docs/getting-started/public-devnet-preview.md).
+See [current status](../docs/status.md) for supported behavior and remaining
+coverage, and [provider acceptance](../docs/development/provider-acceptance.md)
+for provider configuration, budget and recovery tooling.
+
 Preparation is offline: it does not initialize a budget, reserve AUTH, fund a
-note, issue a provider key, run inference, or start a client. The final public
-profile and selected authority must be reviewed before execution. Preserve all
-failed observations; the seven-cap approval contains no automatic replacement.
+note, issue a provider key, run inference or start a client. The generated
+template has seven case identifiers:
+
+| Cases | Observation |
+| --- | --- |
+| B-01 / B-02 | Browser nonstreaming / streaming on the same conversation and note. |
+| B-03 | Browser interruption while an operation remains unresolved, then recovery. |
+| N-01 | Native nonstreaming request through the installed clientd supervisor. |
+| N-02 / N-03 | OpenClaw read-tool exchange with exactly two provider operations. |
+| N-04 | Native supervisor interruption while an operation remains unresolved, then recovery. |
+
+These identifiers are test inputs, not unused spending capacity. Prior funded
+cases are closed and must not be replayed. A new live run requires a reviewed
+profile, authority and spending limit; failed observations do not permit
+automatic replacement requests.
 
 ## Build and stage the independent app
 
@@ -80,8 +98,8 @@ request body. Do not print the token, enable redirects, retry the request, or
 replace an uncertain operation with another UUID. The response and journal must
 be retained privately; publish only verified aggregate evidence.
 
-The historical `external_sdk_live.mjs` rewrites endpoints through a custom local
-relay and is unsuitable for claiming stock public transport. Likewise,
+`external_sdk_live.mjs` rewrites endpoints through a custom local relay and is
+unsuitable for claiming stock public transport. Likewise,
 `run_openclaw_clientd_acceptance.ts` is a fixture test even though it executes
 OpenClaw. Its isolated configuration pattern is reusable, not its fixture result.
 For actual OpenClaw, retain the pinned installed version, use a new private
@@ -146,28 +164,22 @@ Retain actual CLI output privately and independently verify both settlements.
 
 The opt-in local probe is selected with `ZKAPI_OPENCLAW_INPUT_GATE_TEST=1` in
 `run_openclaw_clientd_acceptance.ts`, with `ZKAPI_OPENCLAW_ENTRYPOINT` pointing at
-the pinned installed CLI and a new output directory. The 2026-10-08 run passed
-11 checks using actual OpenClaw 2026.9.8, the production Go HTTP frontend and
-compiled SDK, but synthetic control/provider/proof/chain fixtures. Its tool
-exchange produced exactly two gate forwards, two provider EOF observations and
-zero provider-stream cancellations, while the second request waited through a
-synthetic 1.5-second settlement delay. The full fixture included eight synthetic
-inferences/authorizations; these are not the seven funded acceptance cases and
-consumed no real-provider reservation. Separate gate tests cover eight refusal,
-durability, response-bound and cancellation cases. The earlier failed probe is
-preserved: the read allowlist alone exposed three catalog tools, so the strict
-gate refused the first tool input before forwarding. The narrow fix was the
-supported `tools.toolSearch: false` configuration, without widening native or
-gate validation. Actual provider grace, public transport, browser behavior and
-native process restart still require their separate live observations.
+the pinned installed CLI and a new output directory. It runs the actual client
+and Go HTTP frontend against synthetic control/provider/proof/chain fixtures.
+Actual provider grace, public transport, browser behavior and native process
+restart require separate live observations. Run the gate's local tests with:
+
+```sh
+node --test scripts/public_openclaw_input_gate.test.mjs
+```
 
 ## Browser and interruption observations
 
 Use real Chrome with the selected Phantom account. Unlock/connect and explicit
 deposit/withdrawal confirmations may require user interaction. Never import a
-wallet seed into automation or bypass a browser block. Use a fresh explicit
-profile-bound note (4 test USDC for the browser, 5 for native); do not migrate
-existing browser custody or alter its original pins.
+wallet seed into automation or bypass a browser block. Use the reviewed funding
+amount and an explicit profile-bound note; do not migrate existing browser
+custody or alter its original pins. See [Devnet funding](../docs/getting-started/devnet-funding.md).
 
 B-01/B-02 use the independent app's nonstreaming and streaming controls and the
 same conversation/note. B-03 must observe inference dispatch and a durable

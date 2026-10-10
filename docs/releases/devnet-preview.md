@@ -31,8 +31,8 @@ npm install ./zkapi-solana-sdk-0.1.0-devnet.1.tgz
 
 Use Node 24.19.0 for the validated native SDK environment. Browser consumers
 bundle the browser and worker entry points. Follow the
-[SDK quickstart](../sdk/quickstart.md) and
-[artifact installation guide](../../packages/sdk/DISTRIBUTION.md).
+[SDK quickstart](../getting-started/sdk.md) and
+[artifact installation guide](../getting-started/sdk-distribution.md).
 
 ## Install clientd
 
@@ -45,12 +45,12 @@ tar -xzf zkapi-clientd-0.1.0-devnet.1-darwin-arm64.tar.gz
 ./zkapi-clientd-0.1.0-devnet.1-darwin-arm64/bin/clientd --help
 ```
 
-Follow [private setup, funding and recovery](../sdk/clientd-quickstart.md).
+Follow [private setup, funding and recovery](../getting-started/clientd.md).
 The release manifest records the installed `release.json` digest required by
 `clientd setup`. Keep the installation immutable and the private profile outside
 it. Give an AI application only the local inference token.
 
-The [OpenClaw guide](../integrations/openclaw.md) uses a dedicated configuration,
+The [OpenClaw guide](../getting-started/openclaw.md) uses a dedicated configuration,
 disabled retries and explicit Chat-capable model policies. Legacy string-only
 model entries are rejected by the generator. Claude Code and Codex remain
 blocked by their current production request formats; their diagnostic guides
