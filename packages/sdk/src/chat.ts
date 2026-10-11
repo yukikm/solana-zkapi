@@ -1,3 +1,5 @@
+import { ChatCompletionStreamParser, ChatStreamError } from './chat-stream.ts';
+
 /** Optional text helpers. Provider usage is never a trusted billing receipt. */
 export class ChatResponseError extends Error {
   readonly code: 'http_error' | 'invalid_response' | 'incomplete_stream';
@@ -27,8 +29,8 @@ async function check(response: Response, stream: boolean): Promise<void> {
     throw failure(response, response.ok ? 'invalid_response' : 'http_error');
   }
 }
-async function cleanup(response: Response, reader: ReadableStreamDefaultReader<Uint8Array>, failed: boolean): Promise<void> {
-  try { await reader.cancel(); }
+async function cleanup(response: Response, reader: ReadableStreamDefaultReader<Uint8Array>, failed: boolean, complete = false): Promise<void> {
+  try { if (!complete) await reader.cancel(); }
   catch { if (!failed) throw failure(response, 'invalid_response'); }
   finally { reader.releaseLock(); }
 }
@@ -51,62 +53,34 @@ export async function readChatText(response: Response): Promise<string> {
   finally { await cleanup(response, reader, failed); }
 }
 
-/** Bounded Chat Completions SSE parser. Breaking iteration cancels the body and
- * triggers the SDK's ordinary settlement attempt; it never replays inference. */
+/** Bounded text-only Chat Completions SSE parser. Each pending read has a
+ * ten-minute deadline; time spent processing a yielded delta is excluded.
+ * Success requires terminal SSE and HTTP EOF. Breaking iteration cancels that
+ * body branch; native clone/tee siblings can continue independently. */
 export async function* readChatDeltas(response: Response): AsyncGenerator<string> {
   await check(response, true);
   const reader = response.body?.getReader(); if (!reader) throw failure(response, 'invalid_response');
-  const decoder = new TextDecoder('utf-8', { fatal: true });
-  let buffer = '', data: string[] = [], frameSize = 0, total = 0, done = false, failed = false;
-  let finishReason: string | null = null;
-  function event(): string | null {
-    const source = data.join('\n'); data = []; frameSize = 0;
-    if (!source) return null;
-    if (source === '[DONE]') {
-      if (!finishReason) throw failure(response, 'incomplete_stream');
-      done = true; return null;
-    }
-    const value = JSON.parse(source);
-    if (value.error || !Array.isArray(value.choices) || value.choices.length > 1) throw failure(response, 'invalid_response');
-    if (!value.choices.length) return null; // Optional final usage metadata, never billing authority.
-    const choice = value.choices[0];
-    if (choice.index !== 0 || !textMessage(choice.delta)) throw failure(response, 'invalid_response');
-    if (finishReason) {
-      // OpenRouter can repeat the empty terminal choice in its final usage frame.
-      // Accept metadata only; it cannot append text or change the completed choice.
-      if (!value.usage || typeof value.usage !== 'object' || Array.isArray(value.usage)
-        || choice.finish_reason !== finishReason || (choice.delta.content ?? '') !== '') throw failure(response, 'invalid_response');
-      return null;
-    }
-    if (choice.finish_reason !== undefined && choice.finish_reason !== null) {
-      if (!textFinishReasons.has(choice.finish_reason)) throw failure(response, 'invalid_response');
-      finishReason = choice.finish_reason;
-    }
-    const content = choice.delta.content;
-    if (content !== undefined && content !== null && typeof content !== 'string') throw failure(response, 'invalid_response');
-    return content ?? null;
+  const parser = new ChatCompletionStreamParser({ textOnly: true });
+  let failed = false, complete = false;
+  function read(): Promise<ReadableStreamReadResult<Uint8Array>> {
+    // One timer per pending read, with no timer/reaction retained after it ends.
+    // A slow consumer or a sibling draining buffered bytes is not a stalled
+    // transport. The SDK separately bounds the whole upstream transport.
+    return new Promise((resolve, reject) => {
+      const timer = setTimeout(() => reject(failure(response, 'incomplete_stream')), 600_000);
+      reader!.read().then(value => { clearTimeout(timer); resolve(value); },
+        error => { clearTimeout(timer); reject(error); });
+    });
   }
   try {
-    while (!done) {
-      const next = await reader.read();
-      if (next.done) buffer += decoder.decode();
-      else {
-        total += next.value.length; if (total > 16 * 1024 * 1024) throw failure(response, 'invalid_response');
-        buffer += decoder.decode(next.value, { stream: true });
-      }
-      for (;;) {
-        const match = /\r\n|\r|\n/.exec(buffer);
-        if (!match || !next.done && match[0] === '\r' && match.index === buffer.length - 1) break;
-        const line = buffer.slice(0, match.index); buffer = buffer.slice(match.index + match[0].length);
-        frameSize += line.length;
-        if (frameSize > 1024 * 1024) throw failure(response, 'invalid_response');
-        if (!line) { const content = event(); if (content) yield content; if (done) break; }
-        else if (line.startsWith('data:')) data.push(line.slice(5).replace(/^ /, ''));
-      }
-      if (buffer.length + frameSize > 1024 * 1024) throw failure(response, 'invalid_response');
-      if (next.done) break;
+    for (;;) {
+      const next = await read();
+      if (next.done) { yield* parser.finish(); complete = true; break; }
+      yield* parser.push(next.value);
     }
-    if (!done) throw failure(response, 'incomplete_stream');
-  } catch (error) { failed = true; if (error instanceof ChatResponseError) throw error; throw failure(response, 'invalid_response'); }
-  finally { await cleanup(response, reader, failed); }
+  } catch (error) {
+    failed = true;
+    if (error instanceof ChatResponseError) throw error;
+    throw failure(response, error instanceof ChatStreamError ? error.code : 'invalid_response');
+  } finally { await cleanup(response, reader, failed, complete); }
 }

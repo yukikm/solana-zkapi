@@ -5,16 +5,40 @@ TypeScript declarations, so your application does not need TypeScript source
 loading or access to the zkAPI repository. Registry publication is disabled with
 `private: true`; no package under this name on npm is endorsed by this project.
 
-Obtain `zkapi-solana-sdk-0.2.0-devnet.10.tgz` and its SHA-256 through a trusted release
-channel, check the checksum, then install the exact tarball. The release target is
-[`v0.2.0-devnet.10`](https://github.com/yukikm/solana-zkapi/releases/tag/v0.2.0-devnet.10).
-Check that the assets and manifest have actually been published; a source version
-or a locally built archive alone does not establish publication:
+Download `zkapi-solana-sdk-0.2.0-devnet.12.tgz` from the
+[SDK `.12` GitHub release](https://github.com/yukikm/solana-zkapi/releases/tag/v0.2.0-devnet.12):
+[SDK archive](https://github.com/yukikm/solana-zkapi/releases/download/v0.2.0-devnet.12/zkapi-solana-sdk-0.2.0-devnet.12.tgz),
+[release manifest](https://github.com/yukikm/solana-zkapi/releases/download/v0.2.0-devnet.12/release-manifest.json),
+and [SHA256SUMS](https://github.com/yukikm/solana-zkapi/releases/download/v0.2.0-devnet.12/SHA256SUMS).
+Native packages remain at immutable
+[`.10`](https://github.com/yukikm/solana-zkapi/releases/tag/v0.2.0-devnet.10).
+Preserve earlier archives, including local candidates, in their original
+locations. Download into a new directory so that a local candidate with the
+same filename cannot be overwritten:
 
 ```sh
-shasum -a 256 zkapi-solana-sdk-0.2.0-devnet.10.tgz
-npm install --save-exact ./zkapi-solana-sdk-0.2.0-devnet.10.tgz @solana/kit@8.4.0
+gh release download v0.2.0-devnet.12 --repo yukikm/solana-zkapi \
+  --pattern 'zkapi-solana-sdk-0.2.0-devnet.12.tgz' --pattern SHA256SUMS \
+  --dir sdk-release-v0.2.0-devnet.12
+gh release verify v0.2.0-devnet.12 --repo yukikm/solana-zkapi
+gh release verify-asset v0.2.0-devnet.12 \
+  sdk-release-v0.2.0-devnet.12/SHA256SUMS --repo yukikm/solana-zkapi
+gh release verify-asset v0.2.0-devnet.12 \
+  sdk-release-v0.2.0-devnet.12/zkapi-solana-sdk-0.2.0-devnet.12.tgz \
+  --repo yukikm/solana-zkapi
+shasum -a 256 sdk-release-v0.2.0-devnet.12/zkapi-solana-sdk-0.2.0-devnet.12.tgz
 ```
+
+Compare the displayed SHA-256 with the SDK entry in the authenticated
+`SHA256SUMS` before installing. Verification must succeed before proceeding:
+
+```sh
+npm install --save-exact ./sdk-release-v0.2.0-devnet.12/zkapi-solana-sdk-0.2.0-devnet.12.tgz @solana/kit@8.4.0
+```
+
+See the [streaming update guide](../../docs/getting-started/sdk-streaming-upgrade.md)
+for application rebuilds and existing custody requirements. Alternatively, build
+from the reviewed release source using the procedure below.
 
 Read the [Kit API migration guide](../../docs/sdk/kit-migration.md) when upgrading
 from the first preview. Keep the tarball and your application's lockfile. Node integrations use Node
@@ -81,10 +105,10 @@ retain exact request bodies, including conversation context.
 From the repository root, install the pinned build dependencies and run:
 
 ```sh
-npm ci
+npm ci --ignore-scripts
 mkdir -p target/sdk-distribution
 npm pack --workspace @zkapi/solana-sdk --pack-destination target/sdk-distribution
-shasum -a 256 target/sdk-distribution/zkapi-solana-sdk-0.2.0-devnet.10.tgz
+shasum -a 256 target/sdk-distribution/zkapi-solana-sdk-0.2.0-devnet.12.tgz
 python3 scripts/run_external_sdk_acceptance.py
 ```
 

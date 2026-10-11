@@ -9,7 +9,7 @@ import { decodeRpcAccount } from './solana-rpc.ts';
 import { jcsBytes, parseStrictJson, sha256Hex, verifyArtifactBundle, verifyManifest, verifyPoolConfig, type VerifiedManifest } from './trust.ts';
 
 export const PUBLIC_PROFILE_SCHEMA = 1;
-export const PUBLIC_PROFILE_SDK_VERSION = '0.2.0-devnet.10';
+export const PUBLIC_PROFILE_SDK_VERSION = '0.2.0-devnet.12';
 const DEVNET_GENESIS = 'EtWTRABZaYq6iMfeYKouRu166VU2xqa1wcaWoxPkrZBG';
 const DEVNET_USDC = '4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU';
 const TOKEN_PROGRAM = 'TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA';
@@ -93,7 +93,7 @@ function validateProfile(value: unknown): PublicDeploymentProfile {
     && new Set(value.sdkVersions).size === value.sdkVersions.length);
   // These prior client releases use the same deployment and custody contract.
   // Accept the original authenticated profile bytes; never rewrite a funded binding.
-  if (!value.sdkVersions.some((version: string) => [PUBLIC_PROFILE_SDK_VERSION, '0.2.0-devnet.8', '0.2.0-devnet.9'].includes(version)) || value.protocolLayoutVersion !== 2) throw new PublicProfileError('compatibility');
+  if (!value.sdkVersions.some((version: string) => [PUBLIC_PROFILE_SDK_VERSION, '0.2.0-devnet.8', '0.2.0-devnet.9', '0.2.0-devnet.10', '0.2.0-devnet.11'].includes(version)) || value.protocolLayoutVersion !== 2) throw new PublicProfileError('compatibility');
   fields(value.bundle,['url','sha256']); publicUrl(value.bundle.url); digest(value.bundle.sha256);
   publicUrl(value.rpcUrl); publicUrl(value.indexerOrigin,true);
   requireValue(value.preparationCommitment === undefined || ['finalized','confirmed'].includes(value.preparationCommitment));

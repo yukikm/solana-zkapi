@@ -46,7 +46,7 @@ included in SDK `.6`; published `.3` artifacts retain their original behavior.
 | `upgradePlan()` | Local guidance for a separate installation; blocks pending recovery and unclosed notes |
 | `checkModelAvailability(signal?)` | Explicit keyless ZDR metadata check through the installed transport; no inference |
 | `subscribe(listener)` | Initial status and local action-boundary updates; returns unsubscribe |
-| `chat({operationId, sessionId?, model, messages, maxOutputTokens, stream?, signal?})` | Text Chat Completions; returns one-use `Response` |
+| `chat({operationId, sessionId?, model, messages, maxOutputTokens, stream?, signal?})` | Text Chat Completions; returns native `Response` |
 | `request({operationId, sessionId?, model, api, body, anthropicVersion?, signal?})` | Native request; `api`: `chat`, `responses`, `messages` |
 | `settle()` | Ask saved session to close; inspect status afterward |
 | `recover()` | Reconcile/close saved AUTH; never replay inference |
@@ -65,12 +65,36 @@ status; inspect `response.ok` or use the helpers. Do not log raw provider errors
 default `default`). Another conversation must settle the current lease first.
 Model switches can reuse a lease only with the same tariff; a changed tariff
 requires settlement and fresh authorization. Successful responses keep the key
-until its fixed expiry; cancellation, stream errors and non-2xx responses retire
-it. A renewal may wait for verified settlement before the new operation is sent.
+until its fixed expiry; shared transport cancellation, stream errors and
+non-2xx responses retire it. A renewal may wait for verified settlement before
+the new operation is sent.
 It never resubmits an old inference. Idle settlement runs only for a session
 owned by the current client and stops on disposal; initialization/status remain
 read-only. Call `settle()` and inspect status before disposal if immediate
 retirement is required.
+
+In SDK `.12`, Chat SSE completion is validated upstream,
+independently of the application reader. `Response.clone()` and
+`response.body.tee()` follow native stream locking, `bodyUsed` and cancellation
+rules. Canceling one branch leaves the other active; canceling all branches
+before upstream EOF retires the lease. A branch cancellation promise may wait
+for the other branch to finish or cancel, so do not await it before starting
+that branch's work. The original request's `AbortSignal` affects the shared
+transport while active.
+
+A fast branch can finish upstream transport while a slow branch is still
+consuming queued text. Native tee adds no per-branch queue bound: the slow
+branch can buffer the whole response, subject to the SDK's 16 MiB Chat SSE
+response limit. Consume or cancel each branch. Consumer progress and financial
+status are separate; use `canRequest` and verified settlement status for their
+respective controls. The upstream validator accepts valid tool-call,
+function-call and multiple-choice Chat streams, although the text helper does
+not. Rejecting unsupported valid content or canceling buffered data after
+upstream completion does not reverse that successful transport.
+
+The shared Chat SSE transport has a 600,000 ms deadline from response-wrapper
+creation through validated upstream EOF, ending before bounded settlement
+waiting. See the [`.12` streaming contract](../releases/direct-stream-preview.md).
 
 Native `body` omits `model`, selected separately. Supply `anthropicVersion` only
 for Messages. The protocol supports text and client-executed tools, not arbitrary
@@ -139,10 +163,13 @@ native JSON for tool responses, including tool calls accompanied by text.
 
 `readChatDeltas(response): AsyncGenerator<string>` accepts Chat Completions SSE,
 handles split UTF-8/CRLF, comments and multiline data, and requires a terminal
-text choice followed by `[DONE]`. Bare `[DONE]`, tool-call deltas, unknown finish
-reasons and further choices after termination are rejected.
+text choice followed by `[DONE]` and HTTP EOF. Bare `[DONE]`, tool-call deltas,
+unknown finish reasons and further choices after termination are rejected.
 Limits: 16 MiB total; 1 MiB buffered event text. Breaking iteration cancels the
-body. Tool-call deltas need a native SSE consumer instead.
+consumer's branch; with a clone or tee, cleanup follows native cancellation
+promise behavior. Each pending read has a 600,000 ms timeout, excluding consumer
+processing pauses between reads. Tool-call deltas need a native SSE consumer
+instead.
 
 Both cancel unread data on errors. `ChatResponseError` exposes `code`, HTTP
 `status` and `operationId` without raw provider text. Billing verification stays

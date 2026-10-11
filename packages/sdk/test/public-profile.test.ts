@@ -94,8 +94,8 @@ test('duplicate JSON fields are rejected even if exact malicious bytes are pinne
   await assert.rejects(loadPublicDeploymentProfile('https://profiles.example.com/p.json',{profileSha256:await sha256Hex(raw),fetch:async()=>new Response(raw)}),component('profile'));
 });
 
-test('recovery SDK accepts original .8 and .9 profiles without rewriting custody pins',async()=>{
-  for (const version of ['0.2.0-devnet.8','0.2.0-devnet.9']) {
+test('streaming SDK accepts original .8, .9, .10 and .11 profiles without rewriting custody pins',async()=>{
+  for (const version of ['0.2.0-devnet.8','0.2.0-devnet.9','0.2.0-devnet.10','0.2.0-devnet.11']) {
     const f=await publicProfileFixture();f.profile.sdkVersions=[version];
     const original=jcsBytes(f.profile),pin=await f.profileSha256();
     const loaded=await loadPublicDeploymentProfile(f.profileUrl,{profileSha256:pin,installedProfileSha256:pin,fetch:f.fetcher});

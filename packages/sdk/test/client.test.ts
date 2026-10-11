@@ -474,8 +474,13 @@ test('idle browser lease settles automatically, but never while a response is he
   assert.equal(f.counts.closes, 1); assert.equal((await f.client.status()).session, null);
   await readChatText(await f.client.chat(chat()));
   t.mock.timers.tick(301_000);
-  for (let i = 0; i < 30 && (await f.client.status()).session; i++) await new Promise(resolve => setTimeout(resolve, 100));
-  assert.equal((await f.client.status()).session, null); assert.equal(f.counts.closes, 2);
+  for (let i = 0; i < 30; i++) {
+    const status = await f.client.status();
+    if (!status.session && !status.busy) break;
+    await new Promise(resolve => setTimeout(resolve, 100));
+  }
+  assert.equal((await f.client.status()).session, null); assert.equal((await f.client.status()).busy, false);
+  assert.equal(f.counts.closes, 2);
   assert.equal(f.counts.sends, 3);
 });
 

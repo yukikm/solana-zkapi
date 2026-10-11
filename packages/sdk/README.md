@@ -1,4 +1,5 @@
-Current client release: [privacy and recovery guidance .8](../../docs/releases/usability-preview.md).
+SDK `0.2.0-devnet.12`: [GitHub release](https://github.com/yukikm/solana-zkapi/releases/tag/v0.2.0-devnet.12)
+with the [direct streaming and response-branch fix](../../docs/releases/direct-stream-preview.md).
 
 # Solana zkAPI SDK
 
@@ -12,8 +13,15 @@ Applications keep control of their UI, conversation history and provider mode.
 
 Install the reviewed npm tarball with compiled ES modules and TypeScript
 declarations from an independent application. See [distribution and artifact
-setup](DISTRIBUTION.md). This checkout builds `0.2.0-devnet.10`; download availability
-and verification are recorded in the [timeout release guide](../../docs/releases/authorization-recovery-preview.md).
+setup](DISTRIBUTION.md). Download the
+[`.12` SDK tarball](https://github.com/yukikm/solana-zkapi/releases/download/v0.2.0-devnet.12/zkapi-solana-sdk-0.2.0-devnet.12.tgz)
+and verify its release attestation and
+[SHA256SUMS](https://github.com/yukikm/solana-zkapi/releases/download/v0.2.0-devnet.12/SHA256SUMS)
+before installation. This is an SDK-only successor to the
+[`.10` release](https://github.com/yukikm/solana-zkapi/releases/tag/v0.2.0-devnet.10);
+native packages remain at `.10`. Follow
+[the application update guide](../../docs/getting-started/sdk-streaming-upgrade.md)
+to retain existing profiles and custody.
 Earlier immutable preview releases remain unchanged. The package uses
 `private: true` to prevent accidental npm publication. Node integrations use Node 24.19.0; browser
 integrations bundle the browser entry points. Do not install an unrelated
