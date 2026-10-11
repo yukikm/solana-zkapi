@@ -20,6 +20,7 @@ existing public deployment. See the [local JSON API tutorial](getting-started/js
 | Native package | Apple Silicon, macOS 13.5+. No Apple notarization or verified packages for other platforms. |
 | SDK | Tarball distribution; no npm registry release. Browser custody/proof tests are local; funded browser/Phantom acceptance is unverified. |
 | Public profile | Direct OpenRouter Chat Completions. Model names do not enable other API dialects. |
+| Public output limit | Up to 4,096 output tokens per response under the current [application usage policy](getting-started/devnet.md#5-use-and-recover), subject to a lower model limit. This is not a token bound in the authenticated profile or direct backend. |
 | OpenClaw | Selected text and read-tool continuation cases succeeded using a bounded settlement adapter. The current `.8` configuration has not had a new funded lifecycle test. |
 | Claude Desktop | A simple local fixture connection test passed. Real Chat is rejected by query/body validation. |
 | Claude Code | Requests hit query, metadata and beta-header compatibility limits. |

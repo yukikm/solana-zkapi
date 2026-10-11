@@ -162,11 +162,17 @@ const response = await client.chat({
   sessionId: 'conversation-1',      // stable for this conversation
   model: client.listModels()[0].id,
   messages: [{ role: 'user', content: 'Hello!' }],
-  maxOutputTokens: 128,
+  maxOutputTokens: 4096,
 });
 const text = await readChatText(response);
 const status = await client.status();
 ```
+
+The [public Devnet application limit](devnet.md#5-use-and-recover) is 4,096
+output tokens per response. Choose a positive `maxOutputTokens` within both
+4096 and the selected model's output limit. This application setting is separate from
+the authenticated profile and monetary session cap; longer responses can cost
+more. A response can still end at the selected token limit.
 
 For streaming, set `stream: true` and consume with `readChatDeltas(response)`.
 Always consume or cancel the response body. Keep history in your app and send it
