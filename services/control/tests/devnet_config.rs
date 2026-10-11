@@ -191,7 +191,12 @@ fn gateway_configuration_rejects_reservations_above_the_pool_cap() {
     }))
     .unwrap();
     config.enable_local_adapter = false;
-    let cap = config.manifest["cap_micro_usdc"].as_str().unwrap().parse::<u64>().unwrap() * 1000;
+    let cap = config.manifest["cap_micro_usdc"]
+        .as_str()
+        .unwrap()
+        .parse::<u64>()
+        .unwrap()
+        * 1000;
     for reservation in [cap, cap + 1] {
         tariff.rates[0].nano_usdc_numerator = reservation.to_string();
         tariff.tariff_hash = zkapi_control::quote::tariff_hash(&tariff).unwrap();
@@ -202,8 +207,14 @@ fn gateway_configuration_rejects_reservations_above_the_pool_cap() {
         if reservation == cap {
             result.unwrap();
         } else {
-            assert!(result.is_err(), "an unadmittable gateway must not be advertised");
-            assert_eq!(result.err().unwrap().to_string(), "gateway reservation exceeds cap");
+            assert!(
+                result.is_err(),
+                "an unadmittable gateway must not be advertised"
+            );
+            assert_eq!(
+                result.err().unwrap().to_string(),
+                "gateway reservation exceeds cap"
+            );
         }
     }
 }

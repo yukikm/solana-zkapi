@@ -481,7 +481,8 @@ impl RuntimeConfig {
             validate_tariff(tariff)?;
             ensure!(
                 tariff.version != "3"
-                    || crate::quote::calculate_reservation(tariff)? <= trusted.cap_micro_usdc.as_nano(),
+                    || crate::quote::calculate_reservation(tariff)?
+                        <= trusted.cap_micro_usdc.as_nano(),
                 "gateway reservation exceeds cap"
             );
             ensure!(
