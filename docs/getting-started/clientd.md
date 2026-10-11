@@ -198,7 +198,13 @@ For the public Devnet profile:
 | Base URL | `http://127.0.0.1:8787/v1` |
 | API key | Contents of `profile-devnet8/inference-token` |
 | Model | An exact ID from the `models` command |
-| Maximum output | 128 tokens |
+| Maximum output | 4,096 tokens, or the selected model's lower limit |
+
+Set this output limit in the connected application. It is the
+[current public Devnet application policy](devnet.md#5-use-and-recover), not a
+token limit encoded in the authenticated profile or enforced by the direct
+backend. The monetary session cap still applies. Existing installations can
+change this application setting without replacing their profile or custody.
 
 Copy the inference token on macOS:
 

@@ -46,9 +46,12 @@ ZKAPI_OPENCLAW="$ZKAPI_BASE/openclaw/node_modules/.bin/openclaw"
 Choose an exact model ID from the `models` response with Chat text support and,
 for tool use, client-tool support. Replace `YOUR_LISTED_CHAT_MODEL` below and
 set `ZKAPI_CONTEXT_WINDOW` to a reviewed context size supported by that model.
-The example advertises 32,000 tokens and uses the public profile's 128-token
-output limit. Neither listing a model nor generating configuration establishes
-funded acceptance for it. There is no required model vendor.
+The example advertises 32,000 context tokens and uses the
+[public Devnet application limit](devnet.md#5-use-and-recover) of 4,096 output
+tokens. Reduce `--max-tokens` if the selected model has a lower output limit.
+This setting does not change the authenticated profile or monetary session cap.
+Neither listing a model nor generating configuration establishes funded
+acceptance for it. There is no required model vendor.
 
 ```sh
 ZKAPI_MODEL='YOUR_LISTED_CHAT_MODEL'
@@ -58,7 +61,7 @@ ZKAPI_CONTEXT_WINDOW=32000
   umask 077
   set -C
   "$ZKAPI_INSTALL/bin/clientd" openclaw-config "$ZKAPI_PROFILE" \
-    --model "$ZKAPI_MODEL" --context-window "$ZKAPI_CONTEXT_WINDOW" --max-tokens 128 \
+    --model "$ZKAPI_MODEL" --context-window "$ZKAPI_CONTEXT_WINDOW" --max-tokens 4096 \
     > "$ZKAPI_BASE/openclaw-zkapi.json"
 )
 ```

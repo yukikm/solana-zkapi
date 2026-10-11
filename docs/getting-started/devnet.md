@@ -101,10 +101,23 @@ A balance below the cap cannot authorize another session.
 
 ## 5. Use and recover
 
-This profile uses direct OpenRouter Chat Completions with a 128-token maximum
-output. Prompts go to OpenRouter. A listed model is not a guarantee of current
-provider availability or credit. Browser requests must omit cookies
-(`credentials: "omit"`).
+This profile uses direct OpenRouter Chat Completions. The current public Devnet
+application limit is **4,096 output tokens per response**, replacing the former
+128-token preview limit. Set `maxOutputTokens` in SDK applications or the
+equivalent output setting in your AI client to at most 4096; a lower model limit
+still applies. Longer replies can incur higher charges and can still reach the
+selected output limit.
+
+This is an application usage limit, not a field in the authenticated public
+profile or a token limit enforced by the direct backend. Direct authorization
+retains the monetary session cap described above. Existing published profiles,
+SDK archives and funded storage do not need to change for this output setting.
+
+Prompts go to OpenRouter. A listed model is not a guarantee of current provider
+availability or credit. Browser requests must omit cookies
+(`credentials: "omit"`). If the provider reports `finish_reason: "length"`, show
+that the reply reached its output limit; any continuation is a separate,
+explicit inference request.
 
 After interruption, reopen the same client storage and use its recovery action.
 Do not clear storage or repeat an uncertain deposit or inference request.
