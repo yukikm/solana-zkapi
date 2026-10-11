@@ -29,6 +29,11 @@ For legacy schema 1 only, the SDK accepts profiles listing `.8`, `.9`, `.10`,
 Schema 2/3 selections must explicitly list `.13`. Existing funded selections do
 not gain gateway capabilities through a client update.
 
+Existing `clientd serve` runtime configuration files remain accepted with
+permissions such as `0600` or `0644`. These files contain public configuration;
+group/other writes remain prohibited, and secret files still require owner-only
+permissions.
+
 Operators must deploy matching control and signer binaries and the additive
 `0004_finite_http.sql` migration. Follow the [server upgrade procedure](../getting-started/gateway-release-upgrade.md#update-an-existing-control-service).
 The current public Devnet selection remains direct OpenRouter Chat Completions;
@@ -51,7 +56,7 @@ truncation, lost delivery and upstream timeout with conservation and no duplicat
 dispatch. Source, installed-package and hosted CI evidence are separate; the
 release body records the final counts and CI links.
 
-No fresh paid inference or wallet transaction is part of release validation.
+No fresh paid inference or public-chain wallet transaction is part of release validation.
 Public provider coverage, funded browser acceptance, mainnet, production,
 security audit and long-term availability remain unverified. Consult
 [support](../support.md) and fresh read-only preflight before use.
