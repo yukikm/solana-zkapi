@@ -382,6 +382,57 @@ async fn http_real_proof_process_signer_successor_and_vault_fixture() -> Result<
     let catalog = response(client.get(format!("{origin}/zkapi/v1/catalog")), 200).await;
     assert_eq!(catalog["models"].as_array().unwrap().len(), 1);
     assert_eq!(catalog["models"][0]["tariff_hash"], q.body.tariff_hash);
+    // Real-proof retirement prevents delayed admission without consuming N.
+    let (retired_auth, retired_token) = authorization(&q);
+    let retired_request = bound_request(retired_auth, q, genesis_state());
+    let retire_url = format!("{origin}/zkapi/v1/sessions/retire");
+    response(client.post(&retire_url).json(&retired_request), 401).await;
+    let retired = response(
+        client
+            .post(&retire_url)
+            .header("authorization", &retired_token)
+            .json(&retired_request),
+        200,
+    )
+    .await;
+    assert_eq!(retired["state"], "NOT_ACCEPTED");
+    let retirement_receipt = &retired["retirement"];
+    quote::verify_hash_signature(
+        &retirement_receipt["body"],
+        retirement_receipt["receipt_hash"].as_str().unwrap(),
+        retirement_receipt["signature"].as_str().unwrap(),
+        &app.config.receipt_key.verifying_key().to_bytes(),
+    )?;
+    assert_eq!(
+        retirement_receipt["body"]["request_digest"],
+        hex::encode(wire::digest(&retired_request)?)
+    );
+    assert_eq!(
+        retired,
+        response(
+            client
+                .post(&retire_url)
+                .header("authorization", &retired_token)
+                .json(&retired_request),
+            200
+        )
+        .await
+    );
+    response(
+        client
+            .post(format!("{origin}/zkapi/v1/sessions"))
+            .header("authorization", &retired_token)
+            .json(&retired_request),
+        409,
+    )
+    .await;
+    assert_eq!(
+        sql.query_one("SELECT count(*) FROM nullifier_reservations", &[])
+            .await?
+            .get::<_, i64>(0),
+        0
+    );
+    let q: wire::Quote = serde_json::from_value(response(client.post(&quotes).json(&json!({"mode":"proxy","provider":"openai","models":["i05-local-only"],"session_ttl_seconds":"300"})),200).await)?;
     let (auth, token) = authorization(&q);
     let request = bound_request(auth, q, genesis_state());
     let id = wire::uuid(&request.authorization.request_id)?;

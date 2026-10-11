@@ -114,7 +114,7 @@ retain challenge RP/proof after settlement.
 
 Never store secret notes, wallet seeds, prompts/responses or raw tokens in server
 logs, databases or backups. Retain authorization transcripts (proof, inputs,
-quote, credential hashes), CLEARANCE reservations, signer journals and nullifier
+quote, credential hashes), retired authorization request/quote fences, CLEARANCE reservations, signer journals and nullifier
 tombstones while a pool operates. TTL alone cannot establish that an anonymous
 request's note is closed. Apply retention deletion only after chain verification
 that all notes are Closed, admission is permanently disabled and challenges ended.

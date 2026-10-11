@@ -559,6 +559,22 @@ async fn dashboard_acl_redaction_and_restore_witness() {
 async fn restore_witness_covers_pool_tariff_provider_and_chain_state() {
     let (_, mut sql, identity, ledger) = database().await;
     let s = session(&ledger, "openai", "proxy", 78).await;
+    let mut unused = ledger.quote(s.quote_id).await.unwrap();
+    unused.quote_id = Uuid::new_v4();
+    unused.canonical_body = b"retired-quote-fixture".to_vec();
+    unused.quote_hash = wire::sha256(&unused.canonical_body);
+    ledger.store_quote(&unused).await.unwrap();
+    let mut retired = s.clone();
+    retired.request_id = Uuid::new_v4();
+    retired.quote_id = unused.quote_id;
+    retired.nullifier = [79; 32];
+    retired.request_transcript = retired.request_id.as_bytes().to_vec();
+    retired.request_digest = wire::sha256(&retired.request_transcript);
+    assert!(ledger
+        .retire_authorization(&retired)
+        .await
+        .unwrap()
+        .is_none());
     sql.execute("INSERT INTO provider_evidence(evidence_id,pool,request_id,kind,digest,encrypted_record) VALUES($1,$2::bytea,$3,'PROXY_USAGE',$4::bytea,$5)", &[&Uuid::new_v4(), &&identity.pool[..], &s.request_id, &&[4u8;32][..], &&[1u8;16][..]]).await.unwrap();
     sql.execute("INSERT INTO chain_checkpoints(pool,finalized_slot,blockhash,tree_sequence,root,snapshot_hash) VALUES($1::bytea,1,$2::bytea,1,$2::bytea,$2::bytea)", &[&&identity.pool[..], &&[5u8;32][..]]).await.unwrap();
     sql.execute("INSERT INTO chain_events(pool,signature,instruction_index,event_index,slot,event_body) VALUES($1::bytea,$2,0,0,1,'{}')", &[&&identity.pool[..], &&[6u8;64][..]]).await.unwrap();
@@ -569,6 +585,7 @@ async fn restore_witness_covers_pool_tariff_provider_and_chain_state() {
     for (table, mutation, restore) in [
         ("pools", "ALTER TABLE pools DISABLE TRIGGER ALL; UPDATE pools SET authorization_config='{}'; ALTER TABLE pools ENABLE TRIGGER ALL", "ALTER TABLE pools DISABLE TRIGGER ALL"),
         ("tariffs", "ALTER TABLE tariffs DISABLE TRIGGER ALL; UPDATE tariffs SET canonical_body='altered'; ALTER TABLE tariffs ENABLE TRIGGER ALL", "ALTER TABLE tariffs DISABLE TRIGGER ALL"),
+        ("retired_authorizations", "ALTER TABLE retired_authorizations DISABLE TRIGGER ALL; DELETE FROM retired_authorizations; ALTER TABLE retired_authorizations ENABLE TRIGGER ALL", ""),
         ("provider_evidence", "DELETE FROM provider_evidence", ""),
         ("chain_checkpoints", "DELETE FROM chain_checkpoints", ""),
         ("chain_events", "DELETE FROM chain_events", ""),

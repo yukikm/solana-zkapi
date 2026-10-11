@@ -235,6 +235,10 @@ struct Writer {
 const MIGRATIONS: &[(i32, &str)] = &[
     (1, include_str!("../migrations/0001_ledger.sql")),
     (2, include_str!("../migrations/0002_invariants.sql")),
+    (
+        3,
+        include_str!("../migrations/0003_authorization_retirement.sql"),
+    ),
 ];
 
 /// Run only with the migration credential. Runtime users have no DDL privileges.
@@ -467,6 +471,61 @@ impl Ledger {
                 .ok_or(LedgerError::NotFound)?,
         )
     }
+    /// Commit a permanent fence for this request and quote only. No nullifier
+    /// reservation, provider work or balance change is created. An admitted
+    /// request is returned to the existing settlement path instead.
+    pub async fn retire_authorization(&self, n: &NewSession) -> Result<Option<SessionRecord>> {
+        if Sha256::digest(&n.request_transcript).as_slice() != n.request_digest {
+            return Err(LedgerError::Invalid("invalid_session"));
+        }
+        let mut c = self.inner.client.lock().await;
+        let tx = c.transaction().await?;
+        self.lock_pool(&tx).await?; // Recovery remains available while admission is paused.
+        if let Some(row) = tx
+            .query_opt(SESSION_SELECT, &[&&self.inner.pool[..], &n.request_id])
+            .await?
+        {
+            let s = session_row(&row)?;
+            if s.request_digest != n.request_digest || s.request_transcript != n.request_transcript
+            {
+                return Err(LedgerError::Conflict("idempotency_conflict"));
+            }
+            tx.commit().await?;
+            return Ok(Some(s));
+        }
+        if let Some(row) = tx.query_opt(
+            "SELECT request_id,request_digest,request_transcript FROM retired_authorizations WHERE pool=$1 AND (request_id=$2 OR quote_id=$3)",
+            &[&&self.inner.pool[..], &n.request_id, &n.quote_id],
+        ).await? {
+            if row.get::<_, Uuid>(0) != n.request_id || row.get::<_, Vec<u8>>(1) != n.request_digest
+                || row.get::<_, Vec<u8>>(2) != n.request_transcript {
+                return Err(LedgerError::Conflict("idempotency_conflict"));
+            }
+            tx.commit().await?;
+            return Ok(None);
+        }
+        if tx
+            .query_opt(
+                "SELECT 1 FROM nullifier_reservations WHERE pool=$1 AND nullifier=$2",
+                &[&&self.inner.pool[..], &&n.nullifier[..]],
+            )
+            .await?
+            .is_some()
+            || tx
+                .query_opt(
+                    "SELECT 1 FROM sessions WHERE pool=$1 AND quote_id=$2",
+                    &[&&self.inner.pool[..], &n.quote_id],
+                )
+                .await?
+                .is_some()
+        {
+            return Err(LedgerError::Conflict("nullifier_reserved"));
+        }
+        tx.execute("INSERT INTO retired_authorizations(pool,request_id,quote_id,nullifier,request_digest,request_transcript) VALUES($1::bytea,$2,$3,$4::bytea,$5::bytea,$6)",
+            &[&&self.inner.pool[..], &n.request_id, &n.quote_id, &&n.nullifier[..], &&n.request_digest[..], &n.request_transcript]).await?;
+        tx.commit().await?;
+        Ok(None)
+    }
     pub async fn reserve_session<F, Fut>(
         &self,
         n: &NewSession,
@@ -508,6 +567,10 @@ impl Ledger {
             }
             tx.commit().await?;
             return Ok(s);
+        }
+        if tx.query_opt("SELECT 1 FROM retired_authorizations WHERE pool=$1 AND (request_id=$2 OR quote_id=$3)",
+            &[&&self.inner.pool[..], &n.request_id, &n.quote_id]).await?.is_some() {
+            return Err(LedgerError::Conflict("authorization_retired"));
         }
         if !accepting {
             return Err(LedgerError::Unavailable("pool_not_accepting"));

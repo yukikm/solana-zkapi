@@ -302,6 +302,15 @@ created = add('/zkapi/v1/sessions','post','createSession','SessionCreated','Sess
     description='Exact body retry only. First direct creation may contain provider_key; direct_oa also requires provider_key_verification for independent client verification. Neither field is replayed. Control token hash must match proof-bound authorization.')
 created['responses']['200'] = response('SessionStatus','Idempotent existing result, no provider key or verification evidence')
 created['responses']['202'] = response('SessionStatus','Proxy may become ACTIVE; direct closes delivery channel, persists close_requested and drains any late key.')
+retirement_body = obj({'version':{'const':'1'}, 'kind':{'const':'authorization_retired'},
+    'deployment_id':{'type':'string'}, 'pool':P, 'request_id':ID, 'quote_id':ID,
+    'quote_hash':H, 'request_digest':H, 'nullifier':F, 'control_api_origin':{'type':'string','format':'uri'}})
+sch['AuthorizationRetired'] = obj({'state':{'const':'NOT_ACCEPTED'}, 'retirement':obj({
+    'body':retirement_body, 'receipt_hash':H, 'signature':{'type':'string',
+        'description':'Base64 Ed25519 signature of raw SHA256(JCS(body)) under manifest receipt_public_key.'}})})
+retired = add('/zkapi/v1/sessions/retire','post','retireUnacceptedAuthorization','AuthorizationRetired','SessionCreate','ControlToken',
+    description='Exact saved AUTH recovery: durably fence an unaccepted request and quote without reserving its nullifier or changing funds. If admission won the race, return existing authenticated session status for ordinary settlement. Available during admission suspension. Verify the signed retirement receipt; HTTP errors or absence alone never release AUTH.')
+retired['responses']['200']['content']['application/json']['schema'] = {'oneOf':[ref('SessionStatus'),ref('AuthorizationRetired')]}
 add('/zkapi/v1/sessions/{request_id}','get','sessionStatus','SessionStatus',auth='ControlToken',params=[request_param])
 add('/zkapi/v1/sessions/{request_id}/close','post','closeSession','SessionStatus',auth='ControlToken',params=[request_param],code='202')
 add('/zkapi/v1/sessions/{request_id}/operations/{operation_id}','get','operationStatus','OperationStatus',

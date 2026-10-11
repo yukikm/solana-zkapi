@@ -307,3 +307,13 @@ test('operator-funded AUTH has no lifetime trial quota and retains one-forward a
   await assert.rejects(relay({...input,data:Buffer.from(jcsBytes(changed))}));
   assert.equal(calls.length,before,'per-session cap and signed quote checks still precede forwarding');
 });
+
+test('retiring exact AUTH is available during suspension without allocating a trial or forwarding new admission',async()=>{
+  const f=await fixture(),data=Buffer.from(jcsBytes(f.auth));let reserves=0;const calls:string[]=[];
+  const relay=directControlRelay({...f,budget:{async reserve(){reserves++;}},async forward(path,method,headers,body){
+    calls.push(path);assert.equal(method,'POST');assert.equal(headers.authorization,f.authorization);assert.equal(body,data);
+    return {status:200,bytes:Buffer.from('{}')};
+  }});
+  await relay({path:'/zkapi/v1/sessions/retire',method:'POST',authorization:f.authorization,data,allowNewAdmissions:false,newAdmissionAuthorized:false});
+  assert.equal(reserves,0);assert.deepEqual(calls,['/zkapi/v1/sessions/retire']);
+});

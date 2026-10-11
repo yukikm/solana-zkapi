@@ -269,6 +269,56 @@
         }
       }
     },
+    "/zkapi/v1/sessions/retire": {
+      "post": {
+        "operationId": "retireUnacceptedAuthorization",
+        "description": "Exact saved AUTH recovery: durably fence an unaccepted request and quote without reserving its nullifier or changing funds. If admission won the race, return existing authenticated session status for ordinary settlement. Available during admission suspension. Verify the signed retirement receipt; HTTP errors or absence alone never release AUTH.",
+        "security": [
+          {
+            "ControlToken": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/SessionStatus"
+                    },
+                    {
+                      "$ref": "#/components/schemas/AuthorizationRetired"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error; see error contract.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SessionCreate"
+              }
+            }
+          }
+        }
+      }
+    },
     "/zkapi/v1/sessions/{request_id}": {
       "get": {
         "operationId": "sessionStatus",
@@ -4428,6 +4478,97 @@
         "required": [
           "model",
           "messages"
+        ],
+        "additionalProperties": false
+      },
+      "AuthorizationRetired": {
+        "type": "object",
+        "properties": {
+          "state": {
+            "const": "NOT_ACCEPTED"
+          },
+          "retirement": {
+            "type": "object",
+            "properties": {
+              "body": {
+                "type": "object",
+                "properties": {
+                  "version": {
+                    "const": "1"
+                  },
+                  "kind": {
+                    "const": "authorization_retired"
+                  },
+                  "deployment_id": {
+                    "type": "string"
+                  },
+                  "pool": {
+                    "type": "string",
+                    "pattern": "^[1-9A-HJ-NP-Za-km-z]{32,44}$",
+                    "description": "Base58 decoding must yield exactly 32 bytes."
+                  },
+                  "request_id": {
+                    "type": "string",
+                    "format": "uuid",
+                    "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                  },
+                  "quote_id": {
+                    "type": "string",
+                    "format": "uuid",
+                    "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                  },
+                  "quote_hash": {
+                    "type": "string",
+                    "pattern": "^[0-9a-f]{64}$"
+                  },
+                  "request_digest": {
+                    "type": "string",
+                    "pattern": "^[0-9a-f]{64}$"
+                  },
+                  "nullifier": {
+                    "type": "string",
+                    "pattern": "^0x[0-9a-f]{64}$",
+                    "description": "Canonical BN254 Fr; reject >= r."
+                  },
+                  "control_api_origin": {
+                    "type": "string",
+                    "format": "uri"
+                  }
+                },
+                "required": [
+                  "version",
+                  "kind",
+                  "deployment_id",
+                  "pool",
+                  "request_id",
+                  "quote_id",
+                  "quote_hash",
+                  "request_digest",
+                  "nullifier",
+                  "control_api_origin"
+                ],
+                "additionalProperties": false
+              },
+              "receipt_hash": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{64}$"
+              },
+              "signature": {
+                "type": "string",
+                "description": "Base64 Ed25519 signature of raw SHA256(JCS(body)) under manifest receipt_public_key."
+              }
+            },
+            "required": [
+              "body",
+              "receipt_hash",
+              "signature"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "state",
+          "retirement"
         ],
         "additionalProperties": false
       }

@@ -72,7 +72,7 @@ descriptors and version 2 tariffs carry no model or token billing requirement.
 See the [OpenAPI contract](../../docs/contracts/openapi.json).
 
 `GET /zkapi/v1/readiness` samples control, finalized chain, indexer and signer
-state with a 25-second deadline and a five-second cache. Limited transient RPC
+state with a 45-second deadline and a five-second cache. Limited transient RPC
 reads can retry; malformed accounts, identity failures and persistent mismatches
 fail closed. It does not check provider credit, gateway admission or challenger
 readiness. Its read retries never retry AUTH, inference or transactions.
@@ -80,6 +80,11 @@ readiness. Its read retries never retry AUTH, inference or transactions.
 Proxy failures before provider egress emit bounded `proxy_pre_dispatch_stopped`
 diagnostics with stage, fixed reason and elapsed milliseconds. They omit prompts,
 credentials, account addresses and request IDs.
+
+`POST /zkapi/v1/sessions/retire` resolves an unaccepted AUTH with an immutable
+request/quote fence and signed receipt, preserving the note for a new request.
+Migration 0003 and matching SDK/gateway support are required; permanent clearance
+is still withdrawal-only. See [the recovery contract](../../docs/specs/api-proxy.md#retiring-a-never-admitted-authorization).
 
 ## Recovery rules
 

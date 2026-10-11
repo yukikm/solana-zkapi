@@ -35,6 +35,18 @@ CREATE TABLE quotes (
     UNIQUE (pool, quote_hash)
 );
 
+CREATE TABLE retired_authorizations (
+    pool bytes32 NOT NULL REFERENCES pools,
+    request_id uuid NOT NULL,
+    quote_id uuid NOT NULL,
+    nullifier bytes32 NOT NULL,
+    request_digest bytes32 NOT NULL,
+    request_transcript bytea NOT NULL,
+    PRIMARY KEY (pool, request_id),
+    UNIQUE (pool, quote_id),
+    FOREIGN KEY (pool, quote_id) REFERENCES quotes
+);
+
 CREATE TABLE nullifier_reservations (
     pool bytes32 NOT NULL REFERENCES pools,
     nullifier bytes32 NOT NULL,
