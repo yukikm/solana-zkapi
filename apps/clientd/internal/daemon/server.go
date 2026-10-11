@@ -30,7 +30,7 @@ func NewServer(socket, inference, management string, port int) (*Server, error) 
 	p := httputil.NewSingleHostReverseProxy(target)
 	p.Transport = &http.Transport{DialContext: func(ctx context.Context, _, _ string) (net.Conn, error) {
 		return (&net.Dialer{}).DialContext(ctx, "unix", socket)
-	}, DisableCompression: true, ResponseHeaderTimeout: 5 * time.Minute}
+	}, DisableCompression: true, ResponseHeaderTimeout: 15 * time.Minute}
 	p.FlushInterval = -1
 	p.Director = func(r *http.Request) {
 		r.URL.Scheme = target.Scheme

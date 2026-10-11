@@ -9,7 +9,7 @@ import { decodeRpcAccount } from './solana-rpc.ts';
 import { jcsBytes, parseStrictJson, sha256Hex, verifyArtifactBundle, verifyManifest, verifyPoolConfig, type VerifiedManifest } from './trust.ts';
 
 export const PUBLIC_PROFILE_SCHEMA = 1;
-export const PUBLIC_PROFILE_SDK_VERSION = '0.2.0-devnet.8';
+export const PUBLIC_PROFILE_SDK_VERSION = '0.2.0-devnet.9';
 const DEVNET_GENESIS = 'EtWTRABZaYq6iMfeYKouRu166VU2xqa1wcaWoxPkrZBG';
 const DEVNET_USDC = '4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU';
 const TOKEN_PROGRAM = 'TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA';
@@ -164,7 +164,7 @@ function cloneAssets(a: LoadedDeploymentAssets): LoadedDeploymentAssets {
 function clientParts(profile: PublicDeploymentProfile, assets: LoadedDeploymentAssets, fetcher: typeof fetch): Pick<CreateClientOptions,'deployment'|'mode'|'models'|'directProviderBases'|'oaVerifier'> {
   const safeFetch: typeof fetch = (url,init) => fetcher(url,{...init,credentials:'omit',redirect:'error',cache:'no-store'});
   const rpcFetch: typeof fetch = async (url,init) => {
-    const bound = deadline(30_000,init?.signal ?? undefined,30_000);
+    const bound = deadline(60_000,init?.signal ?? undefined,60_000);
     try { return new Response(new Uint8Array(await fetchBytes(fetcher,String(url),bound.signal,MAX_RESPONSE,init))); }
     catch { throw new PublicProfileError('rpc'); }
     finally { bound.close(); }
@@ -231,7 +231,7 @@ export async function preflightPublicDeployment(loaded: LoadedPublicDeploymentPr
   try {
     const stored = loadedProfiles.get(loaded); requireValue(stored);
     const {profile,assets} = stored, fetcher = options.fetch ?? stored.fetcher;
-    bound = deadline(options.timeoutMs,options.signal,60_000); const signal = bound.signal;
+    bound = deadline(options.timeoutMs,options.signal,180_000); const signal = bound.signal;
     component = 'assets'; const m = await validateAssets(profile,assets);
     const now = options.nowSeconds ?? BigInt(Math.floor(Date.now()/1000)); requireValue(typeof now === 'bigint' && now >= 0n);
     component = 'models'; await validateModelPins(profile,m,now);

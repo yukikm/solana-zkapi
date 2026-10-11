@@ -446,7 +446,7 @@ export class ControlClient {
     requireTrue(path.startsWith('/zkapi/v1/') && !path.includes('://'), 'invalid control path');
     return (this.options.fetch ?? globalThis.fetch)(this.config.control_api_origin + path, {
       method, headers: { Authorization: `Bearer ${token}`, ...(body === undefined ? {} : { 'Content-Type': 'application/json' }) }, body,
-      redirect: 'error', credentials: 'omit', cache: 'no-store', signal: signal ? AbortSignal.any([signal, AbortSignal.timeout(60_000)]) : AbortSignal.timeout(60_000),
+      redirect: 'error', credentials: 'omit', cache: 'no-store', signal: signal ? AbortSignal.any([signal, AbortSignal.timeout(120_000)]) : AbortSignal.timeout(120_000),
     });
   }
   private path(p: PendingSession): string { return `/zkapi/v1/sessions/${p.prepared.request.authorization.request_id}`; }
@@ -475,7 +475,7 @@ export class ControlClient {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ station_id: evidence.station_id, api_key: key, key_valid_till: evidence.key_valid_till,
           station_signature: evidence.station_signature, org_signature: evidence.org_signature }),
-        redirect: 'error', credentials: 'omit', cache: 'no-store', signal: signal ? AbortSignal.any([signal, AbortSignal.timeout(60_000)]) : AbortSignal.timeout(60_000),
+        redirect: 'error', credentials: 'omit', cache: 'no-store', signal: signal ? AbortSignal.any([signal, AbortSignal.timeout(120_000)]) : AbortSignal.timeout(120_000),
       });
       if (!response.ok) { await response.body?.cancel(); throw new Error('OA verifier unavailable'); }
       const verified = await this.json(response); object(verified);
@@ -512,7 +512,7 @@ export class ControlClient {
     if (wanted.session_ttl_seconds !== undefined) requireTrue(typeof wanted.session_ttl_seconds === 'string' && /^[1-9][0-9]{0,2}$/.test(wanted.session_ttl_seconds) && BigInt(wanted.session_ttl_seconds) <= 300n, 'session TTL');
     const response = await (this.options.fetch ?? globalThis.fetch)(this.config.control_api_origin + '/zkapi/v1/quotes', {
       method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(wanted),
-      redirect: 'error', credentials: 'omit', cache: 'no-store', signal: signal ? AbortSignal.any([signal, AbortSignal.timeout(60_000)]) : AbortSignal.timeout(60_000),
+      redirect: 'error', credentials: 'omit', cache: 'no-store', signal: signal ? AbortSignal.any([signal, AbortSignal.timeout(120_000)]) : AbortSignal.timeout(120_000),
     });
     if (!response.ok) throw new ControlHttpError(response.status);
     const raw = await this.json(response); object(raw);

@@ -263,7 +263,7 @@ export class WalletClient {
   private async clearance(id:string,r:JournalRecord<NoteJournal>):Promise<JournalRecord<NoteJournal>>{
     const c=r.value.wallet!.clearance!;
     if(c.phase==='verified'){requireTrue(c.signature,'missing verified clearance');await this.o.prover.verifyClearance(c.nullifier,c.signature);return r;}
-    const response=await (this.o.fetch??fetch)(this.o.manifest.control_api_origin+'/zkapi/v1/withdraw/clearance',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({nullifier:c.nullifier}),redirect:'error',credentials:'omit',cache:'no-store',signal:AbortSignal.timeout(60_000)});
+    const response=await (this.o.fetch??fetch)(this.o.manifest.control_api_origin+'/zkapi/v1/withdraw/clearance',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({nullifier:c.nullifier}),redirect:'error',credentials:'omit',cache:'no-store',signal:AbortSignal.timeout(120_000)});
     requireTrue(response.ok,'clearance unavailable; saved nullifier retained');
     const reader=response.body?.getReader();requireTrue(reader,'clearance response');let count=0;const chunks:Uint8Array[]=[];
     try{for(;;){const {done,value}=await reader.read();if(done)break;count+=value.length;requireTrue(count<=4096,'clearance response bound');chunks.push(value);}}finally{await reader.cancel();}

@@ -31,7 +31,7 @@ export class SolanaWalletChain implements WalletChain {
     this.connection=connection;this.manifest=manifest;this.origin=indexerOrigin;this.fetcher=options.fetch??fetch;
   }
   private async json(path:string):Promise<any> {
-    const r=await this.fetcher(this.origin+path,{redirect:'error',credentials:'omit',cache:'no-store',signal:AbortSignal.timeout(30_000)});
+    const r=await this.fetcher(this.origin+path,{redirect:'error',credentials:'omit',cache:'no-store',signal:AbortSignal.timeout(60_000)});
     if(!r.ok)throw Error('finalized indexer unavailable');
     const reader=r.body?.getReader();if(!reader)throw Error('indexer body');let length=0;const parts:Uint8Array[]=[];
     try{for(;;){const {done,value}=await reader.read();if(done)break;length+=value.length;if(length>65536)throw Error('indexer response bound');parts.push(value);}}finally{await reader.cancel();}

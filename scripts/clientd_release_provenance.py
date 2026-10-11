@@ -13,7 +13,7 @@ NOTICE_INDEX_PATH = 'share/zkapi-clientd/third-party/dependencies.json'
 COPIED_FILES = (
     'THIRD_PARTY_NOTICES.md', 'apps/clientd/runtime.ts', 'scripts/clientd_secrets.py',
     'apps/clientd/README.md', 'docs/sdk/clientd-quickstart.md', 'docs/sdk/recovery.md',
-    'docs/sdk/public-profile.md', 'docs/sdk/devnet-funding.md', 'docs/releases/usability-preview.md',
+    'docs/sdk/public-profile.md', 'docs/sdk/devnet-funding.md', 'docs/releases/usability-preview.md', 'docs/releases/timeout-preview.md', 'docs/support.md',
     'tools/public-devnet-consumer/cli.mjs', 'tools/public-devnet-consumer/native-inputs.mjs',
     'tools/public-devnet-consumer/browser.ts', 'tools/public-devnet-consumer/worker.ts',
     'tools/public-devnet-consumer/README.md', 'tools/public-devnet-consumer/package.json',

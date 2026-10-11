@@ -12,8 +12,8 @@ Applications keep control of their UI, conversation history and provider mode.
 
 Install the reviewed npm tarball with compiled ES modules and TypeScript
 declarations from an independent application. See [distribution and artifact
-setup](DISTRIBUTION.md). This checkout builds `0.2.0-devnet.3`; download availability
-and verification are recorded in the [public deployment guide](../../docs/sdk/public-devnet-preview.md).
+setup](DISTRIBUTION.md). This checkout builds `0.2.0-devnet.9`; download availability
+and verification are recorded in the [timeout release guide](../../docs/releases/timeout-preview.md).
 Earlier immutable preview releases remain unchanged. The package uses
 `private: true` to prevent accidental npm publication. Node integrations use Node 24.19.0; browser
 integrations bundle the browser entry points. Do not install an unrelated

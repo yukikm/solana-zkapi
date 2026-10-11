@@ -1,5 +1,11 @@
 # Solana zkAPI
 
+Current client release: **`0.2.0-devnet.9`**. The [timeout release guide](docs/releases/timeout-preview.md)
+contains downloads, the revision-7 profile and update instructions. This focused
+client release extends `.8` transport waits; it does not include later general
+JSON API source work or change the deployed protocol. See [support](docs/support.md).
+The dated records below describe earlier releases and observations.
+
 [Privacy release verified](docs/evidence/PD-sdk7-publication-20261010.md): SDK/native
 **`0.2.0-devnet.7`** adds direct-request filtering, direct OpenRouter ZDR policy and
 request-journal minimization. See the [release guide](docs/releases/privacy-preview.md)

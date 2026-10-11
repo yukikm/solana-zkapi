@@ -189,7 +189,7 @@ func New(config Config) (*Relay, error) {
 		}
 		tlsConfig.RootCAs = roots
 	}
-	t := &http.Transport{Proxy: nil, DialContext: dial, TLSClientConfig: tlsConfig, TLSHandshakeTimeout: 20 * time.Second, ResponseHeaderTimeout: 60 * time.Second, DisableCompression: true, ForceAttemptHTTP2: true}
+	t := &http.Transport{Proxy: nil, DialContext: dial, TLSClientConfig: tlsConfig, TLSHandshakeTimeout: 20 * time.Second, ResponseHeaderTimeout: 10 * time.Minute, DisableCompression: true, ForceAttemptHTTP2: true}
 	return &Relay{client: &http.Client{Transport: t, Timeout: 10 * time.Minute, CheckRedirect: func(_ *http.Request, _ []*http.Request) error { return http.ErrUseLastResponse }}, routes: append([]Route(nil), config.Routes...), admissionOrigin: admissionOrigin, admissionToken: admissionToken}, nil
 }
 

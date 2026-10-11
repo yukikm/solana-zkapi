@@ -199,3 +199,9 @@ SDK/native `.8` status also includes structured `privacy` information. CLI comma
 GETs. Existing `.3`/`.6`/`.7` installations can export their original status for
 the new offline upgrade helper; never replace an old profile binding. See the
 [consumer guide](../../docs/releases/usability-preview.md).
+
+In `.9`, provider response headers may take up to ten minutes, within the existing
+ten-minute total response limit. The local frontend waits up to fifteen minutes
+for SDK response headers, allowing authorization and settlement around inference.
+TCP/TLS connection limits, lease expiry and signed settlement deadlines remain
+unchanged. Cancellation still propagates; no uncertain request is replayed.
