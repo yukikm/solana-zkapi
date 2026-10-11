@@ -425,6 +425,37 @@ impl Runtime {
         self.scanner.reconcile(&accounts, &pool)
     }
     async fn catch_up_to(&mut self, tip: u64) -> Result<()> {
+        self.catch_up_with_tail_wait(tip, Duration::from_secs(10))
+            .await
+    }
+    async fn catch_up_with_tail_wait(&mut self, tip: u64, wait: Duration) -> Result<()> {
+        if self.catch_up_once(tip).await? {
+            return Ok(());
+        }
+        // Some RPC nodes briefly omit the finalized target from getBlocks.
+        // Retain that target and the durable prefix; retry only read-only suffix
+        // work. Never repeat discovery, proof generation or transaction sends.
+        let deadline = tokio::time::Instant::now() + wait;
+        loop {
+            eprintln!(
+                "archive_tail_pending target_slot={tip} retained_slot={}",
+                self.journal.archive_tail().map_or(0, |b| b.slot)
+            );
+            let shutdown = self.shutdown.clone();
+            let retry = async {
+                tokio::time::sleep(Duration::from_millis(250)).await;
+                self.catch_up_once(tip).await
+            };
+            match interruptible(shutdown.as_ref(), tokio::time::timeout_at(deadline, retry)).await?
+            {
+                Ok(Ok(true)) => return Ok(()),
+                Ok(Ok(false)) => {}
+                Ok(Err(error)) => return Err(error),
+                Err(_) => return Err(bad("RPC finalized tail missing")),
+            }
+        }
+    }
+    async fn catch_up_once(&mut self, tip: u64) -> Result<bool> {
         let batch = self.config.archive_batch.unwrap_or_default();
         let tail = self.journal.archive_tail();
         let mut next = tail.map_or(self.config.start_slot, |b| b.slot.saturating_add(1));
@@ -509,10 +540,7 @@ impl Runtime {
             next = end.checked_add(1).ok_or(bad("slot overflow"))?;
         }
         let expected = self.scanner.replay_state()?;
-        if expected.slot != tip {
-            return Err(bad("RPC finalized tail missing"));
-        }
-        Ok(())
+        Ok(expected.slot == tip)
     }
     fn commit_archive_prefix(
         &mut self,

@@ -45,7 +45,7 @@ function rootView(root: any, pool: string): void {
   uint(root.sequence); parseField(root.root); key(root.blockhash);
 }
 async function read(fetcher: typeof fetch, url: string, max: number): Promise<Uint8Array> {
-  const response = await fetcher(url, { credentials:'omit', redirect:'error', cache:'no-store', signal:AbortSignal.timeout(30_000) });
+  const response = await fetcher(url, { credentials:'omit', redirect:'error', cache:'no-store', signal:AbortSignal.timeout(60_000) });
   requireTrue(response.ok, 'finalized indexer unavailable');
   const reader=response.body?.getReader(); requireTrue(reader, 'indexer body');
   const parts:Uint8Array[]=[]; let size=0;

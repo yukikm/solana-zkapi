@@ -223,6 +223,16 @@ with `recovery_required: true` and inference returns HTTP 409. Status reads do
 not clear this hold. Use the explicit recovery action for the saved operation.
 Invalid trust, chain, binary pins or local custody still fail startup.
 
+### Request timeouts
+
+The source relay allows ten minutes for provider response headers and the complete
+provider response. The local Go-to-SDK header budget is fifteen minutes to include
+preparation and settlement waiting. Control requests use a two-minute SDK budget;
+indexer reads use one minute. Caller cancellation still wins. These changes are
+also included in native `.9` and `.10`; existing immutable `.8` installations
+remain unchanged. Session/key expiry,
+settlement rules and the no-replay requirement are unchanged.
+
 ### Request and privacy limits
 
 Direct requests pass API-specific field allowlists before authorization and

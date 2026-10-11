@@ -62,7 +62,7 @@ async function fixture(t:TestContext,mode:Mode='proxy',reuse=60,models:DaemonOpt
     if(mode!=='proxy'){assert.equal((init!.headers as any).Authorization,'Bearer provider-secret');assert.equal(u.origin,'https://direct.invalid');}
     if(loss)throw Error('fixture response loss');
     if(pendingInference)return pendingInference(init!.signal!);
-    return new Response('data: first\n\ndata: [DONE]\n\n',{headers:{'Content-Type':'text/event-stream'}});
+    return new Response('data: {"choices":[{"index":0,"delta":{"content":"first"},"finish_reason":"stop"}]}\n\ndata: [DONE]\n\n',{headers:{'Content-Type':'text/event-stream'}});
   };
   const verifier:SessionVerifier={async prepare(){},async settle(_c,s,_p,_s,_r,operations){if(mode!=='proxy')assert.deepEqual(operations,[]);if(settlementRejected)throw Error('fixture invalid successor signature');if(missingSettlement&&operations.length)throw Error('fixture missing operation receipt');return{...s,anchor:field(8)};}};
   const clientOptions={context,journal,verifier,fetch:http,now:()=>now,directProviderBases:{direct_oa:'https://direct.invalid/v1',direct_openrouter:'https://direct.invalid/v1'},oaVerifier:{base:'https://verifier.invalid/api',stationId:'trusted-station'}};
@@ -208,7 +208,7 @@ test('direct Responses requires explicit disabled storage before AUTH',async t=>
 test('daemon exposes inference headers without upstream cookies or tracking headers',async t=>{
   for(const mode of ['proxy','direct_openrouter','direct_oa'] as const){
     const f=await fixture(t,mode,0),id=crypto.randomUUID();
-    f.pendingInference(async()=>new Response('data: [DONE]\n\n',{headers:{'Content-Type':'text/event-stream','Retry-After':'3','Set-Cookie':'provider_identity=private; Path=/','X-Request-Id':'private-correlation','Access-Control-Allow-Origin':'*','X-Zkapi-Operation-Id':'untrusted-id','Cache-Control':'public, max-age=3600'}}));
+    f.pendingInference(async()=>new Response('data: {"choices":[{"index":0,"delta":{},"finish_reason":"stop"}]}\n\ndata: [DONE]\n\n',{headers:{'Content-Type':'text/event-stream','Retry-After':'3','Set-Cookie':'provider_identity=private; Path=/','X-Request-Id':'private-correlation','Access-Control-Allow-Origin':'*','X-Zkapi-Operation-Id':'untrusted-id','Cache-Control':'public, max-age=3600'}}));
     const response=await f.service.infer('/v1/chat/completions',body,id);await response.text();
     assert.equal(response.headers.get('Set-Cookie'),null);
     assert.equal(response.headers.get('X-Request-Id'),null);
@@ -385,7 +385,7 @@ test('canceling a pending read retains native admission until upstream cancellat
     const f=await fixture(t,mode,0);
     let reading!:()=>void,canceling!:()=>void,release!:()=>void;
     const readStarted=new Promise<void>(resolve=>{reading=resolve;}),cancelStarted=new Promise<void>(resolve=>{canceling=resolve;}),blocked=new Promise<void>(resolve=>{release=resolve;});
-    f.pendingInference(async()=>new Response(new ReadableStream<Uint8Array>({pull(){reading();},async cancel(){canceling();await blocked;}},{highWaterMark:0})));
+    f.pendingInference(async()=>new Response(new ReadableStream<Uint8Array>({pull(){reading();},async cancel(){canceling();await blocked;}},{highWaterMark:0}),{headers:{'Content-Type':'text/event-stream'}}));
     const response=await f.service.infer('/v1/chat/completions',body),reader=response.body!.getReader();
     const pendingRead=reader.read();await readStarted;
     const canceled=reader.cancel();await cancelStarted;await pendingRead;

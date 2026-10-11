@@ -75,8 +75,9 @@ quote, submits AUTH, executes an API operation or inference, or retries a reques
 uses the listed GET routes and `getGenesisHash`, `getAccountInfo`,
 `getMultipleAccounts`, and `getBlock` RPC reads. Errors expose a component name,
 never a server body, URL, credential or private exception. Loading has a
-180-second overall deadline and preflight 60 seconds; `timeoutMs` may explicitly
-select up to 300 seconds. Abort applies to stalled custom fetches and streams.
+180-second overall deadline. Preflight in source and `.9` or later releases also
+allows 180 seconds (`.8`: 60 seconds); `timeoutMs` may explicitly select up to
+300 seconds. Abort applies to stalled custom fetches and streams.
 Downloads omit credentials, refuse redirects and enforce byte bounds.
 
 Bundle schema 2 also authenticates public license/provenance notices. Loading
@@ -107,7 +108,8 @@ const instance = await createBrowserClient({
 
 `publicProfileClientOptions` returns detached copies of authenticated inputs and
 a Kit RPC client using bounded, credential-free, redirect-refusing transport.
-Each RPC attempt has a 30-second deadline and a 4-MiB response limit. It never
+Each RPC attempt in source and `.9` or later releases has a 60-second deadline
+(`.8`: 30 seconds) and a 4-MiB response limit. It never
 retries automatically. Supplied custom fetch implementations must honor the
 request's origin, body, abort, credential and redirect policy.
 Returned `models`, `services` and nested tariffs are detached copies. The profile

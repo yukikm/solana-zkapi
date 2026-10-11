@@ -5,14 +5,14 @@ TypeScript declarations, so your application does not need TypeScript source
 loading or access to the zkAPI repository. Registry publication is disabled with
 `private: true`; no package under this name on npm is endorsed by this project.
 
-Download `zkapi-solana-sdk-0.2.0-devnet.8.tgz` from the
-[published release](https://github.com/yukikm/solana-zkapi/releases/tag/v0.2.0-devnet.8).
+Download `zkapi-solana-sdk-0.2.0-devnet.12.tgz` from the
+[published SDK release](https://github.com/yukikm/solana-zkapi/releases/tag/v0.2.0-devnet.12).
 Verify it against the independently obtained SHA-256 in the
-[public deployment guide](../../docs/getting-started/devnet.md), then install:
+[streaming SDK upgrade guide](../../docs/getting-started/sdk-streaming-upgrade.md), then install:
 
 ```sh
-shasum -a 256 zkapi-solana-sdk-0.2.0-devnet.8.tgz
-npm install --save-exact ./zkapi-solana-sdk-0.2.0-devnet.8.tgz @solana/kit@8.4.0
+shasum -a 256 zkapi-solana-sdk-0.2.0-devnet.12.tgz
+npm install --save-exact ./zkapi-solana-sdk-0.2.0-devnet.12.tgz @solana/kit@8.4.0
 ```
 
 Read the [Kit API migration guide](../../docs/sdk/kit-migration.md) when upgrading
@@ -77,13 +77,17 @@ retain exact request bodies, including conversation context.
 
 ## Building a tarball from a reviewed checkout
 
-From the repository root, install the pinned build dependencies and run:
+Source builds use the version in `packages/sdk/package.json`. The current
+`0.2.0-devnet.9-onboarding.0` build combines unpublished JSON API onboarding with
+the published recovery and streaming fixes; it does not reproduce the immutable
+`.12` release. From the repository root, install the pinned build dependencies and run:
 
 ```sh
 npm ci
 mkdir -p target/sdk-distribution
 npm pack --workspace @zkapi/solana-sdk --pack-destination target/sdk-distribution
-shasum -a 256 target/sdk-distribution/zkapi-solana-sdk-0.2.0-devnet.8.tgz
+SDK_VERSION=$(node -p "require('./packages/sdk/package.json').version")
+shasum -a 256 "target/sdk-distribution/zkapi-solana-sdk-${SDK_VERSION}.tgz"
 python3 scripts/run_external_sdk_acceptance.py
 ```
 

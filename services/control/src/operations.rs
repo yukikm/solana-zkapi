@@ -139,6 +139,7 @@ pub async fn capture(db: &mut tokio_postgres::Client, pool: [u8; 32]) -> Result<
       ("clearances","SELECT encode(nullifier,'hex') AS key,row_to_json(c)::text AS body FROM clearances c WHERE pool=$1 ORDER BY nullifier"),
       ("receipts","SELECT receipt_id::text AS key,row_to_json(r)::text AS body FROM receipts r WHERE pool=$1 ORDER BY receipt_id"),
       ("outbox","SELECT id::text AS key,row_to_json(o)::text AS body FROM outbox o WHERE pool=$1 ORDER BY id"),
+      ("retired_authorizations","SELECT request_id::text AS key,row_to_json(r)::text AS body FROM retired_authorizations r WHERE pool=$1 ORDER BY request_id"),
       ("quotes","SELECT quote_id::text AS key,row_to_json(q)::text AS body FROM quotes q WHERE pool=$1 ORDER BY quote_id"),
       ("provider_evidence","SELECT evidence_id::text AS key,row_to_json(e)::text AS body FROM provider_evidence e WHERE pool=$1 ORDER BY evidence_id"),
       ("chain_checkpoints","SELECT encode(pool,'hex') AS key,row_to_json(c)::text AS body FROM chain_checkpoints c WHERE pool=$1"),

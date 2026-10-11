@@ -6,6 +6,8 @@ import { directRequestBytes } from './direct-request.ts';
 import { privacyProfile, planClientUpgrade } from './client-guidance.ts';
 import { parseStrictJson } from './trust.ts';
 import { daemonApiPaths, validateDaemonModelPolicy, validateModelRequestCapabilities, type DaemonModelPolicy } from './clientd-models.ts';
+import { ControlHttpError } from './control.ts';
+import { ChatCompletionStreamParser } from './chat-stream.ts';
 
 export interface DaemonOptions {
   client: ControlClient; journal: EncryptedJournal<NoteJournal>; noteId: string; mode: Mode;
@@ -24,6 +26,10 @@ const routes = new Set(['/v1/chat/completions','/v1/responses','/v1/messages','/
 const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
 function json(value: unknown, status = 200): Response { return new Response(JSON.stringify(value),{status,headers:{'Content-Type':'application/json','Cache-Control':'no-store'}}); }
 export class DaemonConflict extends Error { constructor() { super('Unresolved session or operation. Inspect status; inference was not replayed.'); } }
+function transientSettlementError(error: unknown): boolean {
+  return error instanceof ControlHttpError && (error.status === 408 || error.status === 429 || error.status >= 500)
+    || error instanceof DOMException && error.name === 'TimeoutError';
+}
 export class ClientDaemon {
   private readonly o: DaemonOptions; private readonly reuse: number; private readonly settlementWait: number;
   private readonly stoppingController = new AbortController();
@@ -85,7 +91,12 @@ export class ClientDaemon {
         signal.throwIfAborted();
         // The verified closing phase prevents recover from taking its AUTH path.
         // Existing close/status/receipt checks alone may clear the old session.
-        await this.o.client.recover(this.o.noteId,signal);
+        try { await this.o.client.recover(this.o.noteId,signal); }
+        catch (error) {
+          // Only retry observation of an already-closing, locally completed
+          // request. Invalid receipts and journal errors fail closed immediately.
+          if (!transientSettlementError(error)) throw error;
+        }
         const pending = (await this.record()).value.pending;
         signal.throwIfAborted();
         if (!pending) { this.completedDirectResponse = undefined; return; }
@@ -132,16 +143,28 @@ export class ClientDaemon {
     });
   }
   async startIfNeeded(): Promise<void> { if (!this.started && !this.recoveryRequired) await this.start(); }
-  async maintenance(): Promise<void> {
+  async maintenance(waitForSettlement = false): Promise<void> {
     await this.exclusive(async()=>{
       if (this.inflight || this.recoveryRequired) return;
       const p = (await this.record()).value.pending;
       if (!p) return;
       if (this.maintenanceDue(p)) {
         try {
+          if (waitForSettlement && this.canWaitForSettlement(p)) {
+            await this.waitForSettlement(p); return;
+          }
           if (p.phase === 'prepared' || p.phase === 'send_unknown') await this.o.client.recover(this.o.noteId);
           if ((await this.record()).value.pending) await this.o.client.close(this.o.noteId);
-        } catch (error) { this.completedDirectResponse = undefined; throw error; }
+        } catch (error) {
+          let retainCompletion = false;
+          try {
+            if (transientSettlementError(error)) {
+              const pending = (await this.record()).value.pending;
+              retainCompletion = !!pending && this.canWaitForSettlement(pending);
+            }
+          } finally { if (!retainCompletion) this.completedDirectResponse = undefined; }
+          throw error;
+        }
       }
     });
   }
@@ -199,11 +222,14 @@ export class ClientDaemon {
     if (!model) throw new Error('model is not in the pinned allowlist');
     if (typeof model !== 'string' && !model.apis.some(api => daemonApiPaths[api] === path)) throw new Error('model API is not configured');
     if (typeof model !== 'string') validateModelRequestCapabilities(model, body);
+    if (path === '/v1/chat/completions' && body.stream === true && body.n != null
+      && (typeof body.n !== 'number' || !Number.isSafeInteger(body.n) || body.n < 1)) throw new Error('invalid Chat choice count');
     const snapshot = this.o.mode === 'proxy' ? new Uint8Array(bytes) : directRequestBytes(this.o.mode,path,bytes);
     return this.dispatchRequest(path,snapshot,operationId,anthropicVersion,signal,{
       matches: p => 'models' in p.prepared.request.quote.body && (this.o.mode !== 'proxy' || p.prepared.request.quote.body.models[0] === body.model)
         && !(typeof model !== 'string' && 'tariff' in model && (model.tariff as {tariff_hash:string}).tariff_hash !== p.prepared.tariff.tariff_hash),
       prepare: credentials => this.o.prepare(body.model as string,credentials), singleRequest:false,
+      chatStreamChoices: path === '/v1/chat/completions' && body.stream === true ? (typeof body.n === 'number' ? body.n : 1) : undefined,
     });
   }
   async requestApi(service: string, operation: string, bytes: Uint8Array, operationId = crypto.randomUUID() as string, signal?: AbortSignal): Promise<Response> {
@@ -219,7 +245,7 @@ export class ClientDaemon {
     });
   }
   private async dispatchRequest(path: string, snapshot: Uint8Array, operationId: string, anthropicVersion: string, signal: AbortSignal | undefined,
-    selection: { matches(p:NonNullable<NoteJournal['pending']>):boolean; prepare(credentials:Awaited<ReturnType<typeof createCredentials>>):Promise<{prepared:PreparedSession;root:string}>; singleRequest:boolean }): Promise<Response> {
+    selection: { matches(p:NonNullable<NoteJournal['pending']>):boolean; prepare(credentials:Awaited<ReturnType<typeof createCredentials>>):Promise<{prepared:PreparedSession;root:string}>; singleRequest:boolean; chatStreamChoices?:number }): Promise<Response> {
     let requestId: string | undefined;
     await this.exclusive(async()=>{
       signal?.throwIfAborted();
@@ -235,7 +261,13 @@ export class ClientDaemon {
         if (this.inflight) throw new DaemonConflict();
         // Retire an active owned lease once before polling its signed successor.
         try {
-          if (p.phase !== 'closing' || this.settlementWait === 0) await this.o.client.close(this.o.noteId);
+          if (p.phase !== 'closing' || this.settlementWait === 0) {
+            try { await this.o.client.close(this.o.noteId); }
+            catch (error) {
+              const closing = (await this.record()).value.pending;
+              if (!transientSettlementError(error) || !closing || !this.canWaitForSettlement(closing)) throw error;
+            }
+          }
           const closing = (await this.record()).value.pending;
           if (closing && this.settlementWait > 0) await this.waitForSettlement(closing,signal);
         } catch (error) { this.completedDirectResponse = undefined; throw error; }
@@ -282,7 +314,7 @@ export class ClientDaemon {
         this.completedDirectResponse.operationIds.add(operationId);
       } else { this.invalidated = this.o.mode !== 'proxy'; this.completedDirectResponse = undefined; }
       this.inflight--; if(this.inflight===0)for(const resolve of this.idleWaiters.splice(0))resolve();
-      await this.maintenance().catch(()=>{ this.completedDirectResponse = undefined; });
+      await this.maintenance().catch(()=>{});
     })();
     try {
       const response = this.o.mode === 'proxy' ? await this.o.client.sendOperation(this.o.noteId,operationId,signal) : await this.o.client.sendDirectOperation(this.o.noteId,operationId,path,snapshot,signal);
@@ -293,25 +325,69 @@ export class ClientDaemon {
         const value = response.headers.get(name); if (value !== null) headers.set(name,value);
       }
       headers.set('X-Zkapi-Operation-Id',operationId); headers.set('Cache-Control','no-store');
+      // Validate the wire before any public Response can be cloned or teed.
+      // Consumer parsers have independent positions and cannot decide whether
+      // the network operation completed. Other API dialects remain untouched.
+      const chatStream = response.ok && selection.chatStreamChoices !== undefined;
+      const parser = chatStream ? new ChatCompletionStreamParser({ expectedChoices: selection.chatStreamChoices }) : undefined;
       const reader = response.body?.getReader();
-      if (!reader) { await finish(response.ok); return new Response(null,{status:response.status,headers}); }
-      let canceling = false;
-      const body = new ReadableStream<Uint8Array>({
+      if (!reader) {
+        await finish(response.ok && !chatStream);
+        if (chatStream) throw new Error('upstream stream interrupted; no replay');
+        return new Response(null,{status:response.status,headers});
+      }
+      let ended = false;
+      let timer: ReturnType<typeof setTimeout> | undefined;
+      let stopping: Promise<void> | undefined;
+      let stop: (reason?: unknown) => Promise<void>;
+      const detach = () => { clearTimeout(timer); signal?.removeEventListener('abort', aborted); };
+      const aborted = () => { void stop().catch(() => {}); };
+      const stream = new ReadableStream<Uint8Array>({
+        start(controller) {
+          stop = reason => stopping ??= (async () => {
+            if (ended) { await finish(); return; }
+            ended = true; detach();
+            // Canceling may resolve a pending read. The ended flag prevents it
+            // from being mistaken for genuine EOF, including with custom fetch.
+            // Keep admission held until cancellation and accounting both finish.
+            try { await reader.cancel(reason); } catch { /* Preserve the redacted interruption. */ }
+            await finish();
+            controller.error(new Error('upstream stream interrupted; no replay'));
+          })();
+          if (parser) timer = setTimeout(aborted, 600_000);
+          signal?.addEventListener('abort', aborted, { once: true });
+          if (signal?.aborted) aborted();
+        },
         async pull(controller) {
           try {
+            if (parser && response.headers.get('Content-Type')?.split(';')[0].trim().toLowerCase() !== 'text/event-stream')
+              throw new Error('invalid Chat stream');
             const next = await reader.read();
-            // cancel() resolves an outstanding read before its asynchronous
-            // finalizer completes. Cancellation alone owns admission release.
-            if (canceling) return;
-            if (next.done) { await finish(response.ok); controller.close(); } else controller.enqueue(next.value);
+            if (ended) return;
+            if (next.done) {
+              if (parser) for (const _ of parser.finish()) { /* validation only */ }
+              ended = true; detach();
+              // EOF is verified before accounting finalization. Forward byte-
+              // neutral progress so per-read consumer deadlines naturally reset
+              // through native clone/tee, without sharing parser state or hooks.
+              if (parser) controller.enqueue(new Uint8Array());
+              await finish(response.ok); controller.close();
+            } else {
+              if (parser) for (const _ of parser.push(next.value)) { /* validation only */ }
+              controller.enqueue(next.value);
+            }
           } catch {
-            if (canceling) return;
-            await finish(); controller.error(new Error('upstream stream interrupted; no replay'));
+            if (ended) return;
+            await stop();
           }
         },
-        async cancel() { canceling = true; try { await reader.cancel(); } finally { await finish(); } },
-      });
-      return new Response(body,{status:response.status,headers});
+        async cancel(reason) {
+          if (ended) { await (stopping ?? finish()); return; }
+          ended = true; detach();
+          try { await reader.cancel(reason); } finally { await finish(); }
+        },
+      }, { highWaterMark: 0 });
+      return new Response(stream,{status:response.status,headers});
     } catch (error) { await finish(); throw error; }
   }
   async handle(method: string, path: string, bytes: Uint8Array, headers: Headers, signal?: AbortSignal): Promise<Response> {

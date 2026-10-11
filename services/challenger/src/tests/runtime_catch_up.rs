@@ -20,6 +20,8 @@ struct Fixture {
     _directory: tempfile::TempDir,
     config: Config,
     fault: Arc<Mutex<Option<(u64, &'static str)>>>,
+    omitted_ranges: Arc<Mutex<usize>>,
+    ranges: Arc<Mutex<Vec<(u64, u64)>>>,
     server: tokio::task::JoinHandle<()>,
 }
 impl Drop for Fixture {
@@ -31,15 +33,29 @@ impl Fixture {
     async fn new(retained: u64, max_blocks: usize) -> Self {
         let (trust, manifest) = crate::tests::trust_and_manifest();
         let fault = Arc::new(Mutex::new(None::<(u64, &'static str)>));
+        let omitted_ranges = Arc::new(Mutex::new(0usize));
+        let ranges = Arc::new(Mutex::new(Vec::new()));
         let route = {
             let fault = fault.clone();
+            let omitted_ranges = omitted_ranges.clone();
+            let ranges = ranges.clone();
             post(move |Json(body): Json<Value>| {
                 let fault = *fault.lock().unwrap();
+                let omitted_ranges = omitted_ranges.clone();
+                let ranges = ranges.clone();
                 async move {
                     let result = match body["method"].as_str().unwrap() {
-                        "getBlocks" => json!((body["params"][0].as_u64().unwrap()
-                            ..=body["params"][1].as_u64().unwrap())
-                            .collect::<Vec<_>>()),
+                        "getBlocks" => {
+                            let start = body["params"][0].as_u64().unwrap();
+                            let end = body["params"][1].as_u64().unwrap();
+                            ranges.lock().unwrap().push((start, end));
+                            let mut omitted = omitted_ranges.lock().unwrap();
+                            let missing = *omitted > 0;
+                            *omitted = omitted.saturating_sub(1);
+                            json!((start..=end)
+                                .filter(|slot| !missing || *slot != end)
+                                .collect::<Vec<_>>())
+                        }
                         "getBlock" => {
                             let slot = body["params"][0].as_u64().unwrap();
                             if fault == Some((slot, "fetch")) {
@@ -110,6 +126,8 @@ impl Fixture {
             _directory: directory,
             config,
             fault,
+            omitted_ranges,
+            ranges,
             server,
         }
     }
@@ -137,6 +155,38 @@ impl Fixture {
         assert_eq!(persisted, expected_blocks);
         assert_eq!(runtime.journal.archive_tail().unwrap().slot, last);
     }
+}
+
+#[tokio::test]
+async fn missing_finalized_tail_retries_only_suffix_at_the_original_target() {
+    let fixture = Fixture::new(64, 64).await;
+    *fixture.omitted_ranges.lock().unwrap() = 2;
+    let mut runtime = Runtime::open(fixture.config.clone(), false).unwrap();
+    runtime.catch_up_to(68).await.unwrap();
+    assert_eq!(
+        *fixture.ranges.lock().unwrap(),
+        vec![(65, 68), (68, 68), (68, 68)]
+    );
+    fixture.assert_prefix(&runtime, 68);
+}
+
+#[tokio::test]
+async fn persistent_missing_tail_expires_and_preserves_restart_prefix() {
+    let fixture = Fixture::new(64, 64).await;
+    *fixture.omitted_ranges.lock().unwrap() = usize::MAX;
+    let mut runtime = Runtime::open(fixture.config.clone(), false).unwrap();
+    let start = Instant::now();
+    assert!(runtime
+        .catch_up_with_tail_wait(68, Duration::from_millis(300))
+        .await
+        .is_err());
+    assert!(start.elapsed() < Duration::from_secs(2));
+    fixture.assert_prefix(&runtime, 67);
+    drop(runtime);
+    *fixture.omitted_ranges.lock().unwrap() = 0;
+    let mut runtime = Runtime::open(fixture.config.clone(), false).unwrap();
+    runtime.catch_up_to(68).await.unwrap();
+    fixture.assert_prefix(&runtime, 68);
 }
 
 #[tokio::test(flavor = "current_thread")]

@@ -11,7 +11,7 @@ use solana_pubkey::Pubkey;
 use std::time::Duration;
 use zkapi_solana_types::{FieldElement, MicroUsdc};
 
-const OBSERVATION_TIMEOUT: Duration = Duration::from_secs(30);
+const OBSERVATION_TIMEOUT: Duration = Duration::from_secs(60);
 const OBSERVATION_INTERVAL: Duration = Duration::from_millis(250);
 const OBSERVATION_ATTEMPTS: usize = 120;
 
@@ -556,7 +556,7 @@ impl ChainClient {
         }
         Ok(Self {
             client: reqwest::Client::builder()
-                .timeout(Duration::from_secs(10))
+                .timeout(Duration::from_secs(30))
                 .redirect(reqwest::redirect::Policy::none())
                 .build()
                 .map_err(|_| invalid("HTTP client"))?,

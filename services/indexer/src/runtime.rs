@@ -605,9 +605,9 @@ struct HttpState {
     config: Arc<Config>,
     updated: watch::Receiver<()>,
 }
-// Leave headroom under the control client's thirty-second indexer timeout. Waiting
+// Leave headroom under released SDKs' thirty-second indexer timeout. Waiting
 // adds no RPC calls and never exposes the previous cut while a refresh runs.
-const READY_WAIT: Duration = Duration::from_secs(20);
+const READY_WAIT: Duration = Duration::from_secs(25);
 async fn ready_state(s: &HttpState, timeout: Duration) -> Option<OwnedRwLockReadGuard<Published>> {
     let mut updated = s.updated.clone();
     tokio::time::timeout(timeout, async {

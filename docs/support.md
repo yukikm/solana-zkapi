@@ -1,8 +1,9 @@
 # Support
 
-ZKAPI is a **Devnet preview**. Published SDK and native clients are
-`0.2.0-devnet.8`; see the [release notes](releases/usability-preview.md).
-This compatibility summary is based on records through **2026-10-10 JST**.
+ZKAPI is a **Devnet preview**. The published SDK is
+[`0.2.0-devnet.12`](releases/direct-stream-preview.md); the native package remains
+[`0.2.0-devnet.10`](https://github.com/yukikm/solana-zkapi/releases/tag/v0.2.0-devnet.10).
+This compatibility summary is based on records through **2026-10-11 JST**.
 Run [fresh preflight](getting-started/devnet.md) to check a deployment now.
 
 The payment and proof primitives are shared across API use cases. The source
@@ -10,7 +11,9 @@ tree adds registered, fixed-price JSON operations through the same SDK, clientd
 and ledger, with offline registration, API-only schema 2 profiles and native
 discovery/invocation in the unpublished onboarding build. Initial support is proxy POST with bounded JSON requests and
 responses; a signed descriptor binds the operation, destination and billing rule.
-This source capability is separate from the published `.8` clients and the
+The source package remains the unpublished `0.2.0-devnet.9-onboarding.0` build;
+its version does not identify either published release. This source capability is
+separate from the published inference clients and the
 existing public deployment. See the [local JSON API tutorial](getting-started/json-api.md),
 [general API integration](getting-started/api-integration.md) and the separate
 [inference tutorials](getting-started/inference.md).

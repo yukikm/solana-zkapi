@@ -197,3 +197,18 @@ routes available. Stop control and its provider children before signer and
 PostgreSQL. Resume with the original state and pins. Unknown work must reconcile
 through the existing ledger; a timeout or restart is never permission to resend
 inference, replace transactions or initialize a new journal.
+
+For an existing deployment adding authorization retirement, follow the
+[recovery upgrade procedure](authorization-recovery-upgrade.md). Matching control,
+signer and operations binaries must accompany migration 0003; preserve every
+acknowledged retirement fence in backups and restore checkpoints.
+
+## Read timeouts
+
+The indexer's HTTP refresh wait is 25 seconds to remain below released `.8`
+clients' 30-second read deadline. Control readiness allows 45 seconds and its public
+gateway wrapper 48 seconds. Increasing only an inner timeout beyond an outer
+client/gateway limit cannot improve availability. These transport budgets do not
+extend account-cut freshness, key/session expiry or settlement deadlines.
+A failed or unreconciled observation still returns unavailable; no timeout allows
+inference or transaction replay.

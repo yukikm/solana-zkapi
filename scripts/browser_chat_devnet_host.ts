@@ -57,7 +57,7 @@ export function directControlRelay(options: DirectControlOptions): NonNullable<H
     if (path === '/zkapi/v1/quotes') {
       assert.equal(method, 'POST'); assert.equal(authorization, undefined);
       assert.ok(same(parseStrictJson(data), quoteRequest));
-    } else if (path === '/zkapi/v1/sessions') {
+    } else if (path === '/zkapi/v1/sessions' || path === '/zkapi/v1/sessions/retire') {
       assert.equal(method, 'POST');
       const request = parseStrictJson(data) as any;
       exact(request, ['authorization', 'quote', 'public_inputs', 'proof']);
@@ -91,7 +91,9 @@ export function directControlRelay(options: DirectControlOptions): NonNullable<H
       // not an estimated prompt cost. Never retry forwarding here.
       signal?.throwIfAborted();
       const allowNew = allowNewAdmissions !== false && newAdmissionAuthorized !== false;
-      if ('kind' in budget) {
+      if (path.endsWith('/retire')) {
+        // Recovery fences only the old request/quote; it consumes no admission.
+      } else if ('kind' in budget) {
         // The shared control ledger owns durable AUTH/transcript binding and
         // per-note reservations. No separate trial allowance is consumed.
         // During suspension only an authenticated, already persisted session

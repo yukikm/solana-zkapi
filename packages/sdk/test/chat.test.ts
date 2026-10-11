@@ -8,6 +8,22 @@ function chunks(bytes: Uint8Array, split: number, type = 'text/event-stream') {
     { headers: { 'Content-Type': type, 'X-Zkapi-Operation-Id': 'test-operation' } }), cancelled: () => cancelled };
 }
 async function text(response: Response) { let result = ''; for await (const part of readChatDeltas(response)) result += part; return result; }
+const completeSse = 'data: {"choices":[{"index":0,"delta":{"content":"answer"},"finish_reason":"stop"}]}\n\ndata: [DONE]\n\n';
+test('SSE completion waits for delayed HTTP EOF without cancelling the response', async () => {
+  let controller!: ReadableStreamDefaultController<Uint8Array>, cancelled = false, completed = false;
+  const response = new Response(new ReadableStream<Uint8Array>({
+    start(value) { controller = value; controller.enqueue(encode(completeSse)); },
+    cancel() { cancelled = true; },
+  }), { headers: { 'Content-Type': 'text/event-stream' } });
+  const consuming = text(response).then(value => { completed = true; return value; });
+  await new Promise<void>(resolve => setImmediate(resolve));
+  assert.equal(completed, false, 'terminal SSE frames alone must not close the SDK operation');
+  assert.equal(cancelled, false);
+  controller.close();
+  assert.equal(await consuming, 'answer');
+  assert.equal(cancelled, false);
+  assert.equal(response.body!.locked, false);
+});
 test('Chat SSE accepts UTF-8, comments, CRLF splits, usage events and multiline data at every byte boundary', async () => {
   const sse = ': comment\r\ndata: {"choices":\r\ndata: [{"index":0,"delta":{"content":"日本語"}}]}\r\n\r\ndata: {"choices":[{"index":0,"delta":{},"finish_reason":"stop"}]}\n\ndata: {"choices":[],"usage":{"total_tokens":2}}\n\ndata: [DONE]\n\n';
   const bytes = encode(sse);
@@ -52,17 +68,91 @@ test('reader and cancellation failures never expose private errors from text or 
   const response = new Response(new ReadableStream({ cancel() { throw new Error('PRIVATE HTTP cancellation failure'); } }), { status: 502 });
   await assert.rejects(readChatText(response), error => error instanceof ChatResponseError && error.code === 'http_error');
 });
-test('SSE cancellation failures after DONE or early exit are redacted', async () => {
-  for (const earlyExit of [false, true]) {
-    const response = new Response(new ReadableStream({
-      start(controller) { controller.enqueue(encode(earlyExit
-        ? 'data: {"choices":[{"index":0,"delta":{"content":"answer"}}]}\n\n' : 'data: {"choices":[{"index":0,"delta":{},"finish_reason":"stop"}]}\n\ndata: [DONE]\n\n')); },
-      cancel() { throw new Error('PRIVATE cancellation failure'); },
+test('SSE cancellation failures on early iteration exit are redacted', async () => {
+  const response = new Response(new ReadableStream({
+    start(controller) { controller.enqueue(encode('data: {"choices":[{"index":0,"delta":{"content":"answer"}}]}\n\n')); },
+    cancel() { throw new Error('PRIVATE cancellation failure'); },
+  }), { headers: { 'Content-Type': 'text/event-stream' } });
+  const consume = async () => { for await (const delta of readChatDeltas(response)) { assert.equal(delta, 'answer'); break; } };
+  await assert.rejects(consume(), error => error instanceof ChatResponseError && error.code === 'invalid_response');
+  assert.equal(response.body!.locked, false);
+});
+
+test('SSE without HTTP EOF times out after DONE and cancels unread data', async t => {
+  t.mock.timers.enable({ apis: ['setTimeout'] });
+  let cancelled = false;
+  const response = new Response(new ReadableStream({
+    start(controller) { controller.enqueue(encode(completeSse)); },
+    cancel() { cancelled = true; },
+  }), { headers: { 'Content-Type': 'text/event-stream' } });
+  const consuming = text(response);
+  const rejected = assert.rejects(consuming, error => error instanceof ChatResponseError && error.code === 'incomplete_stream');
+  await new Promise<void>(resolve => setImmediate(resolve));
+  t.mock.timers.tick(599_999);
+  await new Promise<void>(resolve => setImmediate(resolve));
+  assert.equal(cancelled, false);
+  t.mock.timers.tick(1);
+  await rejected;
+  assert.equal(cancelled, true);
+  assert.equal(response.body!.locked, false);
+});
+
+test('SSE read deadline excludes time the consumer spends processing a delta', async t => {
+  t.mock.timers.enable({ apis: ['setTimeout'] });
+  let cancelled = false;
+  const response = new Response(new ReadableStream({
+    start(controller) { controller.enqueue(encode(completeSse)); controller.close(); },
+    cancel() { cancelled = true; },
+  }), { headers: { 'Content-Type': 'text/event-stream' } });
+  const iterator = readChatDeltas(response);
+  assert.deepEqual(await iterator.next(), { value: 'answer', done: false });
+  t.mock.timers.tick(600_001);
+  assert.deepEqual(await iterator.next(), { value: undefined, done: true });
+  assert.equal(cancelled, false);
+  assert.equal(response.body!.locked, false);
+});
+
+test('SSE disconnect or abort after DONE is still an interrupted response', async () => {
+  for (const reason of [new Error('PRIVATE disconnected'), new DOMException('PRIVATE aborted', 'AbortError')]) {
+    let controller!: ReadableStreamDefaultController<Uint8Array>;
+    const response = new Response(new ReadableStream<Uint8Array>({
+      start(value) { controller = value; controller.enqueue(encode(completeSse)); },
     }), { headers: { 'Content-Type': 'text/event-stream' } });
-    const consume = async () => { for await (const delta of readChatDeltas(response)) { assert.equal(delta, 'answer'); if (earlyExit) break; } };
-    await assert.rejects(consume(), error => error instanceof ChatResponseError && error.code === 'invalid_response');
+    const rejected = assert.rejects(text(response), error => error instanceof ChatResponseError
+      && error.code === 'invalid_response' && !error.message.includes('PRIVATE'));
+    await new Promise<void>(resolve => setImmediate(resolve));
+    controller.error(reason);
+    await rejected;
     assert.equal(response.body!.locked, false);
   }
+});
+
+test('SSE rejects data or malformed UTF-8 after DONE but accepts comment trailers', async () => {
+  for (const suffix of ['data: [DONE]\n\n', 'data: {"choices":[]}\n\n', 'data: PRIVATE', 'PRIVATE\n\n', 'event: message\n\n']) {
+    const bytes = encode(completeSse + suffix);
+    for (const split of [1, encode(completeSse).length, bytes.length]) {
+      await assert.rejects(text(chunks(bytes, split).response), error => error instanceof ChatResponseError
+        && error.code === 'invalid_response' && !error.message.includes('PRIVATE'));
+    }
+  }
+  const bytes = new Uint8Array([...encode(completeSse), 0xff]);
+  await assert.rejects(text(chunks(bytes, bytes.length - 1).response), ChatResponseError);
+  for (const suffix of ['\n', ': keepalive\n\n', ': final comment']) {
+    assert.equal(await text(chunks(encode(completeSse + suffix), encode(completeSse).length).response), 'answer');
+  }
+});
+
+test('SSE total size remains bounded while draining comment trailers after DONE', async () => {
+  let cancelled = false;
+  const comment = encode(':' + 'x'.repeat(1024 * 1024 - 2) + '\n\n');
+  let count = 0;
+  const response = new Response(new ReadableStream<Uint8Array>({
+    start(controller) { controller.enqueue(encode(completeSse)); },
+    pull(controller) { if (count++ < 17) controller.enqueue(comment); else controller.close(); },
+    cancel() { cancelled = true; },
+  }), { headers: { 'Content-Type': 'text/event-stream' } });
+  await assert.rejects(text(response), error => error instanceof ChatResponseError && error.code === 'invalid_response');
+  assert.equal(cancelled, true);
 });
 
 test('text helpers refuse tool calls mixed with text and missing or unsupported terminal reasons', async () => {

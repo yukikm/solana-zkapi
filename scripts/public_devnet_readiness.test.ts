@@ -42,6 +42,13 @@ test('only pinned public provider survives projection; unrelated configured adap
   assert.ok(!r.bytes.includes('PRIVATE_CANARY'));assert.ok(!r.bytes.includes('private-model'));
 });
 
+test('a slow completed probe remains valid without extending observation freshness',()=>{
+  const slow={...fixture(),started_at:955};
+  assert.equal(projectReadiness(reply(slow,200),binding,1_000).status,200);
+  assert.equal(projectReadiness(reply(slow,200),binding,1_005).status,503);
+  assert.equal(projectReadiness(reply({...slow,started_at:953},200),binding,1_000).status,503);
+});
+
 test('upstream refusal and caller abort return unknown component states with no retry or error reflection',async()=>{
   let calls=0;const error=await publicReadiness(async()=>{calls++;throw Error('PRIVATE_RPC_KEY');},binding);
   assert.equal(calls,1);assert.equal(error.status,503);assert.equal(body(error).control,'unavailable');assert.ok(!error.bytes.includes('PRIVATE_RPC_KEY'));

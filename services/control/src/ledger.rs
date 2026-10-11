@@ -235,6 +235,10 @@ struct Writer {
 const MIGRATIONS: &[(i32, &str)] = &[
     (1, include_str!("../migrations/0001_ledger.sql")),
     (2, include_str!("../migrations/0002_invariants.sql")),
+    (
+        3,
+        include_str!("../migrations/0003_authorization_retirement.sql"),
+    ),
 ];
 
 /// Run only with the migration credential. Runtime users have no DDL privileges.
@@ -467,6 +471,61 @@ impl Ledger {
                 .ok_or(LedgerError::NotFound)?,
         )
     }
+    /// Commit a permanent fence for this request and quote only. No nullifier
+    /// reservation, provider work or balance change is created. An admitted
+    /// request is returned to the existing settlement path instead.
+    pub async fn retire_authorization(&self, n: &NewSession) -> Result<Option<SessionRecord>> {
+        if Sha256::digest(&n.request_transcript).as_slice() != n.request_digest {
+            return Err(LedgerError::Invalid("invalid_session"));
+        }
+        let mut c = self.inner.client.lock().await;
+        let tx = c.transaction().await?;
+        self.lock_pool(&tx).await?; // Recovery remains available while admission is paused.
+        if let Some(row) = tx
+            .query_opt(SESSION_SELECT, &[&&self.inner.pool[..], &n.request_id])
+            .await?
+        {
+            let s = session_row(&row)?;
+            if s.request_digest != n.request_digest || s.request_transcript != n.request_transcript
+            {
+                return Err(LedgerError::Conflict("idempotency_conflict"));
+            }
+            tx.commit().await?;
+            return Ok(Some(s));
+        }
+        if let Some(row) = tx.query_opt(
+            "SELECT request_id,request_digest,request_transcript FROM retired_authorizations WHERE pool=$1 AND (request_id=$2 OR quote_id=$3)",
+            &[&&self.inner.pool[..], &n.request_id, &n.quote_id],
+        ).await? {
+            if row.get::<_, Uuid>(0) != n.request_id || row.get::<_, Vec<u8>>(1) != n.request_digest
+                || row.get::<_, Vec<u8>>(2) != n.request_transcript {
+                return Err(LedgerError::Conflict("idempotency_conflict"));
+            }
+            tx.commit().await?;
+            return Ok(None);
+        }
+        if tx
+            .query_opt(
+                "SELECT 1 FROM nullifier_reservations WHERE pool=$1 AND nullifier=$2",
+                &[&&self.inner.pool[..], &&n.nullifier[..]],
+            )
+            .await?
+            .is_some()
+            || tx
+                .query_opt(
+                    "SELECT 1 FROM sessions WHERE pool=$1 AND quote_id=$2",
+                    &[&&self.inner.pool[..], &n.quote_id],
+                )
+                .await?
+                .is_some()
+        {
+            return Err(LedgerError::Conflict("nullifier_reserved"));
+        }
+        tx.execute("INSERT INTO retired_authorizations(pool,request_id,quote_id,nullifier,request_digest,request_transcript) VALUES($1::bytea,$2,$3,$4::bytea,$5::bytea,$6)",
+            &[&&self.inner.pool[..], &n.request_id, &n.quote_id, &&n.nullifier[..], &&n.request_digest[..], &n.request_transcript]).await?;
+        tx.commit().await?;
+        Ok(None)
+    }
     pub async fn reserve_session<F, Fut>(
         &self,
         n: &NewSession,
@@ -508,6 +567,10 @@ impl Ledger {
             }
             tx.commit().await?;
             return Ok(s);
+        }
+        if tx.query_opt("SELECT 1 FROM retired_authorizations WHERE pool=$1 AND (request_id=$2 OR quote_id=$3)",
+            &[&&self.inner.pool[..], &n.request_id, &n.quote_id]).await?.is_some() {
+            return Err(LedgerError::Conflict("authorization_retired"));
         }
         if !accepting {
             return Err(LedgerError::Unavailable("pool_not_accepting"));
@@ -1877,95 +1940,6 @@ fn validate_generic_operation(
     Ok(())
 }
 
-#[cfg(test)]
-mod generic_scope_tests {
-    use super::*;
-    use crate::wire::{ApiBinding, Mode, Provider, QuoteBody, Rate, Tariff};
-
-    #[test]
-    fn reservations_require_the_exact_frozen_generic_operation_and_price() {
-        let api = ApiBinding {
-            version: "1".into(),
-            service: "catalog".into(),
-            operation: "lookup".into(),
-            method: "POST".into(),
-            path: "/lookup".into(),
-            origin: "http://127.0.0.1:9090".into(),
-            request_max_bytes: "1024".into(),
-            response_max_bytes: "1024".into(),
-            timeout_seconds: "10".into(),
-            billing: "http_2xx_json".into(),
-        };
-        let mut tariff = Tariff {
-            tariff_hash: String::new(),
-            version: "2".into(),
-            provider: Provider::Generic,
-            model: String::new(),
-            api: Some(api.clone()),
-            pricing_basis: "fixed_request".into(),
-            valid_from: "1".into(),
-            valid_until: "4000000000".into(),
-            rates: vec![Rate {
-                unit: "requests".into(),
-                nano_usdc_numerator: "7000".into(),
-                unit_denominator: "1".into(),
-            }],
-            operator_fee_micro_usdc: "0".into(),
-        };
-        tariff.tariff_hash = crate::quote::tariff_hash(&tariff).unwrap();
-        let quote = QuoteBody {
-            quote_id: Uuid::new_v4().to_string(),
-            deployment_id: "local-test".into(),
-            pool: bs58::encode([2; 32]).into_string(),
-            mode: Mode::Proxy,
-            provider: Provider::Generic,
-            models: vec![],
-            api: Some(api.clone()),
-            tariff_hash: tariff.tariff_hash.clone(),
-            cap_micro_usdc: zkapi_solana_types::MicroUsdc::new(1_000_000).unwrap(),
-            issued_at: "100".into(),
-            expires_at: "220".into(),
-            session_ttl_seconds: "60".into(),
-            max_concurrency: "4".into(),
-            control_api_origin: "http://127.0.0.1:8788".into(),
-            inference_api_origin: "http://127.0.0.1:8789".into(),
-        };
-        let mut operation = NewOperation {
-            request_id: Uuid::new_v4(),
-            operation_id: Uuid::new_v4(),
-            request_hmac: [9; 32],
-            endpoint: crate::wire::api_path(&api),
-            model: String::new(),
-            reservation_nano: 7000,
-        };
-        validate_generic_operation(&quote, &tariff, &operation).unwrap();
-        for endpoint in [
-            "/zkapi/v1/api/catalog/other",
-            "/zkapi/v1/api/other/lookup",
-            "/v1/chat/completions",
-        ] {
-            operation.endpoint = endpoint.into();
-            assert!(validate_generic_operation(&quote, &tariff, &operation).is_err());
-        }
-        operation.endpoint = crate::wire::api_path(&api);
-        operation.model = "pretend-model".into();
-        assert!(validate_generic_operation(&quote, &tariff, &operation).is_err());
-        operation.model.clear();
-        for amount in [0, 6999, 7001] {
-            operation.reservation_nano = amount;
-            assert!(validate_generic_operation(&quote, &tariff, &operation).is_err());
-        }
-        operation.reservation_nano = 7000;
-        let mut changed = quote.clone();
-        changed.api.as_mut().unwrap().path = "/other".into();
-        assert!(validate_generic_operation(&changed, &tariff, &operation).is_err());
-        let mut changed = tariff.clone();
-        changed.api.as_mut().unwrap().origin = "http://127.0.0.1:9091".into();
-        changed.tariff_hash = crate::quote::tariff_hash(&changed).unwrap();
-        assert!(validate_generic_operation(&quote, &changed, &operation).is_err());
-    }
-}
-
 async fn insert_receipt(
     tx: &Transaction<'_>,
     pool: Hash,
@@ -2088,4 +2062,93 @@ fn validate_receipt(
         return Err(LedgerError::Invalid("receipt_operation_mismatch"));
     }
     Ok(())
+}
+
+#[cfg(test)]
+mod generic_scope_tests {
+    use super::*;
+    use crate::wire::{ApiBinding, Mode, Provider, QuoteBody, Rate, Tariff};
+
+    #[test]
+    fn reservations_require_the_exact_frozen_generic_operation_and_price() {
+        let api = ApiBinding {
+            version: "1".into(),
+            service: "catalog".into(),
+            operation: "lookup".into(),
+            method: "POST".into(),
+            path: "/lookup".into(),
+            origin: "http://127.0.0.1:9090".into(),
+            request_max_bytes: "1024".into(),
+            response_max_bytes: "1024".into(),
+            timeout_seconds: "10".into(),
+            billing: "http_2xx_json".into(),
+        };
+        let mut tariff = Tariff {
+            tariff_hash: String::new(),
+            version: "2".into(),
+            provider: Provider::Generic,
+            model: String::new(),
+            api: Some(api.clone()),
+            pricing_basis: "fixed_request".into(),
+            valid_from: "1".into(),
+            valid_until: "4000000000".into(),
+            rates: vec![Rate {
+                unit: "requests".into(),
+                nano_usdc_numerator: "7000".into(),
+                unit_denominator: "1".into(),
+            }],
+            operator_fee_micro_usdc: "0".into(),
+        };
+        tariff.tariff_hash = crate::quote::tariff_hash(&tariff).unwrap();
+        let quote = QuoteBody {
+            quote_id: Uuid::new_v4().to_string(),
+            deployment_id: "local-test".into(),
+            pool: bs58::encode([2; 32]).into_string(),
+            mode: Mode::Proxy,
+            provider: Provider::Generic,
+            models: vec![],
+            api: Some(api.clone()),
+            tariff_hash: tariff.tariff_hash.clone(),
+            cap_micro_usdc: zkapi_solana_types::MicroUsdc::new(1_000_000).unwrap(),
+            issued_at: "100".into(),
+            expires_at: "220".into(),
+            session_ttl_seconds: "60".into(),
+            max_concurrency: "4".into(),
+            control_api_origin: "http://127.0.0.1:8788".into(),
+            inference_api_origin: "http://127.0.0.1:8789".into(),
+        };
+        let mut operation = NewOperation {
+            request_id: Uuid::new_v4(),
+            operation_id: Uuid::new_v4(),
+            request_hmac: [9; 32],
+            endpoint: crate::wire::api_path(&api),
+            model: String::new(),
+            reservation_nano: 7000,
+        };
+        validate_generic_operation(&quote, &tariff, &operation).unwrap();
+        for endpoint in [
+            "/zkapi/v1/api/catalog/other",
+            "/zkapi/v1/api/other/lookup",
+            "/v1/chat/completions",
+        ] {
+            operation.endpoint = endpoint.into();
+            assert!(validate_generic_operation(&quote, &tariff, &operation).is_err());
+        }
+        operation.endpoint = crate::wire::api_path(&api);
+        operation.model = "pretend-model".into();
+        assert!(validate_generic_operation(&quote, &tariff, &operation).is_err());
+        operation.model.clear();
+        for amount in [0, 6999, 7001] {
+            operation.reservation_nano = amount;
+            assert!(validate_generic_operation(&quote, &tariff, &operation).is_err());
+        }
+        operation.reservation_nano = 7000;
+        let mut changed = quote.clone();
+        changed.api.as_mut().unwrap().path = "/other".into();
+        assert!(validate_generic_operation(&changed, &tariff, &operation).is_err());
+        let mut changed = tariff.clone();
+        changed.api.as_mut().unwrap().origin = "http://127.0.0.1:9091".into();
+        changed.tariff_hash = crate::quote::tariff_hash(&changed).unwrap();
+        assert!(validate_generic_operation(&quote, &changed, &operation).is_err());
+    }
 }

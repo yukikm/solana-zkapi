@@ -19,7 +19,7 @@ export function projectReadiness(reply:Reply,binding:ReadinessBinding,now=Math.f
     assert.equal(value.schema,1);assert.equal(value.scope,'read_only_capabilities');
     assert.equal(value.deployment_id,binding.deploymentId);assert.equal(value.manifest_hash,binding.manifestHash);
     for(const key of ['started_at','completed_at','expires_at'])assert.ok(Number.isSafeInteger(value[key])&&value[key]>=0);
-    assert.ok(value.started_at<=value.completed_at&&value.completed_at-value.started_at<=26
+    assert.ok(value.started_at<=value.completed_at&&value.completed_at-value.started_at<=46
       &&value.completed_at<=now&&value.expires_at===value.completed_at+5&&now<value.expires_at);
     assert.equal(value.control,'available');
     assert.ok(['available','stale','paused','unavailable','invalid'].includes(value.indexer));
@@ -37,6 +37,6 @@ export function projectReadiness(reply:Reply,binding:ReadinessBinding,now=Math.f
   }catch{return unavailable(binding,now);}
 }
 export async function publicReadiness(forward:(signal:AbortSignal)=>Promise<Reply>,binding:ReadinessBinding,signal?:AbortSignal):Promise<Reply>{
-  try{return projectReadiness(await forward(AbortSignal.any([AbortSignal.timeout(28_000),...(signal?[signal]:[])])),binding);}
+  try{return projectReadiness(await forward(AbortSignal.any([AbortSignal.timeout(48_000),...(signal?[signal]:[])])),binding);}
   catch{return unavailable(binding,Math.floor(Date.now()/1000));}
 }

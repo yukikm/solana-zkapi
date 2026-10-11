@@ -18,7 +18,7 @@ use tokio::{
     sync::Mutex,
 };
 
-const PROBE_TIMEOUT: Duration = Duration::from_secs(25);
+const PROBE_TIMEOUT: Duration = Duration::from_secs(45);
 const CACHE_SECONDS: u64 = 5;
 const MAX_BODY: usize = 65_536;
 const CLOCK: &str = "SysvarC1ock11111111111111111111111111111111";
@@ -225,8 +225,8 @@ async fn sample(app: Arc<App>) -> Report {
                 &app.config.trusted
             )
         ),
-        tokio::time::timeout(Duration::from_secs(2), signer),
-        tokio::time::timeout(Duration::from_secs(2), providers)
+        tokio::time::timeout(Duration::from_secs(5), signer),
+        tokio::time::timeout(Duration::from_secs(5), providers)
     );
     report.indexer = indexer
         .ok()
@@ -428,7 +428,7 @@ async fn indexer_health(
     let client = reqwest::Client::builder()
         .no_proxy()
         .redirect(reqwest::redirect::Policy::none())
-        .timeout(Duration::from_secs(24))
+        .timeout(Duration::from_secs(30))
         .build()
         .map_err(|_| ())?;
     let root = bounded(

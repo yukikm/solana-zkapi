@@ -156,11 +156,19 @@ export interface PendingSession {
   /** Preserve close intent while an unacknowledged create still needs exact POST recovery. */
   closeRequested?: boolean;
 }
+export interface AuthorizationRetirement {
+  body: Record<string, unknown>;
+  receipt_hash: string;
+  signature: string;
+}
 export interface NoteJournal {
   schema: 1 | 2; state: PrivateState; pending: PendingSession | null;
   /** Full prover witness stays in the same encrypted record as control state. */
   witness?: NoteWitness;
   wallet?: WalletJournal;
+  /** Prompt-free evidence of permanently retired request/quote pairs. The
+   * original private state and credentials are retained; no balance is reset. */
+  retiredAuthorizations?: { previous: PrivateState; pending: PendingSession; retirement: AuthorizationRetirement }[];
   history: { previous: PrivateState; prepared: PreparedSession; settlement: Settlement; receipts: Receipt[]; operations: Operation[] }[];
 }
 export interface SessionStatus {
@@ -218,7 +226,25 @@ export async function validateNoteJournal(input: unknown): Promise<void> {
   // PDA derivation is asynchronous. Validate a detached value across every await.
   const value: unknown = structuredClone(input);
   object(value); requireTrue((value.schema === 1 || value.schema === 2) && Array.isArray(value.history), 'invalid note journal');
-  if(value.schema===2)allowedFields(value,['schema','state','pending','witness','wallet','history']);
+  if(value.schema===2)allowedFields(value,['schema','state','pending','witness','wallet','history','retiredAuthorizations']);
+  if(value.retiredAuthorizations !== undefined) {
+    requireTrue(Array.isArray(value.retiredAuthorizations), 'invalid retired authorizations');
+    const ids = new Set<string>();
+    for (const archived of value.retiredAuthorizations) {
+      object(archived); allowedFields(archived,['previous','pending','retirement']);
+      privateState(archived.previous as PrivateState); pendingSession(archived.pending as PendingSession);
+      const p = archived.pending as PendingSession, receipt = archived.retirement as AuthorizationRetirement;
+      object(receipt); object(receipt.body);
+      const id = p.prepared.request.authorization.request_id;
+      requireTrue(p.phase === 'send_unknown' && p.operations.length === 0 && p.providerKey === undefined && p.serverState === undefined
+        && !ids.has(id) && receipt.body.kind === 'authorization_retired' && receipt.body.request_id === id
+        && receipt.body.quote_hash === p.prepared.request.quote.quote_hash
+        && receipt.body.request_digest === await sha256Hex(jcsBytes(p.prepared.request))
+        && receipt.receipt_hash === await sha256Hex(jcsBytes(receipt.body))
+        && typeof receipt.signature === 'string', 'invalid retirement archive');
+      ids.add(id);
+    }
+  }
   for (const h of value.history) { object(h); validateOperations(h.operations as Operation[]); }
   privateState(value.state as PrivateState);
   if (value.witness !== undefined) validateWitness(value.witness);
@@ -494,7 +520,7 @@ export class ControlClient {
     requireTrue(path.startsWith('/zkapi/v1/') && !path.includes('://'), 'invalid control path');
     return (this.options.fetch ?? globalThis.fetch)(this.config.control_api_origin + path, {
       method, headers: { Authorization: `Bearer ${token}`, ...(body === undefined ? {} : { 'Content-Type': 'application/json' }) }, body,
-      redirect: 'error', credentials: 'omit', cache: 'no-store', signal: signal ? AbortSignal.any([signal, AbortSignal.timeout(60_000)]) : AbortSignal.timeout(60_000),
+      redirect: 'error', credentials: 'omit', cache: 'no-store', signal: signal ? AbortSignal.any([signal, AbortSignal.timeout(120_000)]) : AbortSignal.timeout(120_000),
     });
   }
   private path(p: PendingSession): string { return `/zkapi/v1/sessions/${p.prepared.request.authorization.request_id}`; }
@@ -523,7 +549,7 @@ export class ControlClient {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ station_id: evidence.station_id, api_key: key, key_valid_till: evidence.key_valid_till,
           station_signature: evidence.station_signature, org_signature: evidence.org_signature }),
-        redirect: 'error', credentials: 'omit', cache: 'no-store', signal: signal ? AbortSignal.any([signal, AbortSignal.timeout(60_000)]) : AbortSignal.timeout(60_000),
+        redirect: 'error', credentials: 'omit', cache: 'no-store', signal: signal ? AbortSignal.any([signal, AbortSignal.timeout(120_000)]) : AbortSignal.timeout(120_000),
       });
       if (!response.ok) { await response.body?.cancel(); throw new Error('OA verifier unavailable'); }
       const verified = await this.json(response); object(verified);
@@ -575,7 +601,7 @@ export class ControlClient {
     if (wanted.session_ttl_seconds !== undefined) requireTrue(typeof wanted.session_ttl_seconds === 'string' && /^[1-9][0-9]{0,2}$/.test(wanted.session_ttl_seconds) && BigInt(wanted.session_ttl_seconds) <= 300n, 'session TTL');
     const response = await (this.options.fetch ?? globalThis.fetch)(this.config.control_api_origin + '/zkapi/v1/quotes', {
       method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(wanted),
-      redirect: 'error', credentials: 'omit', cache: 'no-store', signal: signal ? AbortSignal.any([signal, AbortSignal.timeout(60_000)]) : AbortSignal.timeout(60_000),
+      redirect: 'error', credentials: 'omit', cache: 'no-store', signal: signal ? AbortSignal.any([signal, AbortSignal.timeout(120_000)]) : AbortSignal.timeout(120_000),
     });
     if (!response.ok) throw new ControlHttpError(response.status);
     const raw = await this.json(response); object(raw);
@@ -678,13 +704,51 @@ export class ControlClient {
     // Recovering an unknown create resends only the identical authorization;
     // provider inference is never repeated by this path.
     const existing = await this.record(noteId); requireTrue(existing.value.pending, 'no pending authorization');
-    if (['prepared', 'send_unknown'].includes(existing.value.pending.phase)) return this.submit(noteId, signal);
+    if (['prepared', 'send_unknown'].includes(existing.value.pending.phase)) {
+      try { return await this.submit(noteId, signal); }
+      catch (error) {
+        // A 409 alone is not evidence of non-acceptance. Obtain a signed,
+        // durable request/quote fence; an old/unavailable server leaves work saved.
+        if (existing.value.pending.phase !== 'send_unknown' || !(error instanceof ControlHttpError) || error.status !== 409) throw error;
+        return this.retireUnaccepted(noteId, signal);
+      }
+    }
     return this.options.journal.withNoteLock(noteId, async () => {
       signal?.throwIfAborted();
       const r = await this.record(noteId); const p = r.value.pending; requireTrue(p, 'already settled');
       const response = await this.fetch(this.path(p), 'GET', p.prepared.control_token, undefined, signal);
       if (!response.ok) throw new ControlHttpError(response.status);
       return this.accept(noteId, r, await this.json(response), false, signal);
+    });
+  }
+  private async retireUnaccepted(noteId: string, signal?: AbortSignal): Promise<SessionStatus> {
+    return this.options.journal.withNoteLock(noteId, async () => {
+      signal?.throwIfAborted();
+      const r = await this.record(noteId), p = r.value.pending;
+      requireTrue(p?.phase === 'send_unknown' && p.operations.length === 0 && p.providerKey === undefined && p.serverState === undefined
+        && !r.value.wallet?.clearance && !r.value.wallet?.emergencyEscapes?.some(e => e.phase !== 'settled'),
+        'only unresolved authorization without inference can be retired');
+      const response = await this.fetch('/zkapi/v1/sessions/retire', 'POST', p.prepared.control_token, p.exactRequest, signal);
+      if (!response.ok) throw new ControlHttpError(response.status);
+      const raw = await this.json(response); object(raw);
+      // An admission racing recovery wins normally; settle it through the
+      // existing verifier instead of treating a missing acknowledgement as free.
+      if (raw.state !== 'NOT_ACCEPTED') return this.accept(noteId, r, raw, false, signal);
+      requireTrue(Object.keys(raw).sort().join(',') === 'retirement,state', 'invalid retirement response');
+      object(raw.retirement); const receipt = raw.retirement;
+      requireTrue(Object.keys(receipt).sort().join(',') === 'body,receipt_hash,signature', 'invalid retirement receipt');
+      const request = p.prepared.request, q = request.quote;
+      const expected = {version:'1',kind:'authorization_retired',deployment_id:this.options.context.deployment_id,pool:this.options.context.pool,
+        request_id:request.authorization.request_id,quote_id:q.body.quote_id,quote_hash:q.quote_hash,
+        request_digest:await sha256Hex(jcsBytes(request)),nullifier:request.public_inputs[8],control_api_origin:this.options.context.control_api_origin};
+      requireTrue(sameJson(receipt.body, expected) && receipt.receipt_hash === await sha256Hex(jcsBytes(expected))
+        && typeof receipt.signature === 'string', 'retirement binding mismatch');
+      await verifyEd25519(this.options.context.receipt_public_key, Buffer.from(receipt.receipt_hash as string,'hex'), receipt.signature);
+      signal?.throwIfAborted();
+      (r.value.retiredAuthorizations ??= []).push({previous:structuredClone(r.value.state),pending:structuredClone(p),retirement:receipt as unknown as AuthorizationRetirement});
+      r.value.pending = null;
+      await this.save(noteId, r);
+      return {request_id:request.authorization.request_id,mode:request.authorization.mode,state:'NOT_ACCEPTED',cap_micro_usdc:q.body.cap_micro_usdc};
     });
   }
   async close(noteId: string): Promise<SessionStatus> {

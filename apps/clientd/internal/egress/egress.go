@@ -191,7 +191,7 @@ func New(config Config) (*Relay, error) {
 		}
 		tlsConfig.RootCAs = roots
 	}
-	t := &http.Transport{Proxy: nil, DialContext: dial, TLSClientConfig: tlsConfig, TLSHandshakeTimeout: 20 * time.Second, ResponseHeaderTimeout: 60 * time.Second, DisableCompression: true, ForceAttemptHTTP2: true}
+	t := &http.Transport{Proxy: nil, DialContext: dial, TLSClientConfig: tlsConfig, TLSHandshakeTimeout: 20 * time.Second, ResponseHeaderTimeout: 10 * time.Minute, DisableCompression: true, ForceAttemptHTTP2: true}
 	apiTransport := t.Clone()
 	apiTransport.ResponseHeaderTimeout = 660 * time.Second
 	apiClient := &http.Client{Transport: apiTransport, Timeout: 660 * time.Second, CheckRedirect: func(_ *http.Request, _ []*http.Request) error { return http.ErrUseLastResponse }}

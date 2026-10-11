@@ -20,8 +20,8 @@ fits your service. This project is a **Devnet preview**; check
   components, shared custody and exact interfaces.
 
 The source SDK supports registered JSON operations and inference adapters.
-The published `.8` clients retain their documented inference scope. Additional
-API formats and billing rules require explicit integration.
+The published SDK `.12` and native `.10` clients retain their documented inference
+scope. Additional API formats and billing rules require explicit integration.
 
 ## Use an inference API
 
@@ -30,6 +30,7 @@ inference examples:
 
 - [clientd on macOS](clientd.md) and [OpenClaw on macOS](openclaw.md).
 - [Inference SDK tutorial](sdk.md) for your own application.
+- [Update a chat application to SDK `.12`](sdk-streaming-upgrade.md) while retaining existing custody.
 - [Inference provider setup](api-provider.md) for operators.
 
 The inference index also links compatibility notes for Claude Desktop, Claude
@@ -43,6 +44,9 @@ Code and Codex. Their current request formats have limitations for normal use.
 3. For the supplied public gateway, use the [gateway configuration](gateway.md).
 4. Set up [monitoring and recovery](operations.md), [backup and restart](backup-and-restart.md),
    and [archive storage](archive-storage.md).
+
+Existing operators adding signed authorization retirement must follow the
+[server recovery upgrade procedure](authorization-recovery-upgrade.md).
 
 Operator setup requires a matching Solana program, Pool, keys and deployment
 artifacts. This repository does not provide a production-ready one-command installer.

@@ -266,7 +266,7 @@ export class ZkApiClient {
     const p = (await this.options.wallet.journal.read(this.options.noteId))?.value.pending;
     if (!p || !this.daemon.canContinue(p) || this.disposed || this.busy) return;
     // Idle checks do not emit a busy state or touch control before retirement.
-    if (this.daemon.maintenanceDue(p)) await this.action(() => this.daemon.maintenance());
+    if (this.daemon.maintenanceDue(p)) await this.action(() => this.daemon.maintenance(true));
     else await this.scheduleMaintenance();
   }
 
@@ -315,8 +315,9 @@ export class ZkApiClient {
       body: { messages: request.messages.map(m => ({ role: m.role, content: m.content })), max_completion_tokens: request.maxOutputTokens, stream: request.stream ?? false } });
   }
 
-  /** Response bytes are delivered once. Always consume or cancel the body.
-   * Successful direct responses retain their bounded key. Cancellation retires it.
+  /** Consume or cancel every native Response/clone/tee branch. Successful direct
+   * transport completion retains its bounded key. Aborting the shared transport
+   * or canceling all branches before EOF retires it; one sibling may continue.
    * A pending settlement stays visible in status(); it is never treated as paid. */
   request(request: InferenceRequest): Promise<Response> {
     let body: Uint8Array;

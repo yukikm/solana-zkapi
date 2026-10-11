@@ -189,7 +189,7 @@ function cloneAssets(a: LoadedDeploymentAssets): LoadedDeploymentAssets {
 function clientParts(profile: PublicDeploymentProfile, assets: LoadedDeploymentAssets, fetcher: typeof fetch): Pick<CreateClientOptions,'deployment'|'mode'|'models'|'services'|'directProviderBases'|'oaVerifier'> {
   const safeFetch: typeof fetch = (url,init) => fetcher(url,{...init,credentials:'omit',redirect:'error',cache:'no-store'});
   const rpcFetch: typeof fetch = async (url,init) => {
-    const bound = deadline(30_000,init?.signal ?? undefined,30_000);
+    const bound = deadline(60_000,init?.signal ?? undefined,60_000);
     try { return new Response(new Uint8Array(await fetchBytes(fetcher,String(url),bound.signal,MAX_RESPONSE,init))); }
     catch { throw new PublicProfileError('rpc'); }
     finally { bound.close(); }
@@ -287,7 +287,7 @@ export async function preflightPublicDeployment(loaded: LoadedPublicDeploymentPr
   try {
     const stored = loadedProfiles.get(loaded); requireValue(stored);
     const {profile,assets} = stored, fetcher = options.fetch ?? stored.fetcher;
-    bound = deadline(options.timeoutMs,options.signal,60_000); const signal = bound.signal;
+    bound = deadline(options.timeoutMs,options.signal,180_000); const signal = bound.signal;
     component = 'assets'; const m = await validateAssets(profile,assets);
     const now = options.nowSeconds ?? BigInt(Math.floor(Date.now()/1000)); requireValue(typeof now === 'bigint' && now >= 0n);
     component = 'models'; await validateSelectionPins(profile,m,now);

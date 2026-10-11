@@ -820,3 +820,80 @@ test('redaction marker shape is checked in active and historical records',async 
   const redacted=structuredClone(note);redacted.pending!.operations[0].bodyBase64='';redacted.pending!.operations[0].bodyRedacted=true;
   await validateNoteJournal(redacted);
 });
+
+/** Fixture request proofs, real Ed25519 retirement receipts and encrypted CAS. */
+async function retirementSetup(t: TestContext) {
+  const h = await setup(t, 2), keys = await crypto.subtle.generateKey({name:'Ed25519'}, true, ['sign','verify']) as CryptoKeyPair;
+  const receipt_public_key = bs58.encode(new Uint8Array(await crypto.subtle.exportKey('raw',keys.publicKey)));
+  const client = h.clientWith({context:{...context,receipt_public_key}});
+  await client.prepare('note',prepared(),field(14));
+  h.setHandler(async()=>response({},503));
+  await assert.rejects(client.submit('note'),/503/);
+  const before = structuredClone((await h.journal.read('note'))!.value), p = before.pending!, q = p.prepared.request.quote;
+  const body = {version:'1',kind:'authorization_retired',deployment_id:context.deployment_id,pool:context.pool,
+    request_id:requestId,quote_id:q.body.quote_id,quote_hash:q.quote_hash,request_digest:await sha256Hex(jcsBytes(p.prepared.request)),
+    nullifier:p.prepared.request.public_inputs[8],control_api_origin:context.control_api_origin};
+  const sign = async (input: Record<string,unknown> = body) => {
+    const receipt_hash = await sha256Hex(jcsBytes(input));
+    const signature = Buffer.from(await crypto.subtle.sign('Ed25519',keys.privateKey,Buffer.from(receipt_hash,'hex'))).toString('base64');
+    return {state:'NOT_ACCEPTED',retirement:{body:input,receipt_hash,signature}};
+  };
+  let reply = await sign();
+  h.setHandler(async call=>{
+    assert.equal(call.init.body,p.exactRequest);
+    assert.equal((call.init.headers as Record<string,string>).Authorization,'Bearer '+p.prepared.control_token);
+    if(call.url.endsWith('/sessions')) return response({},409);
+    assert.ok(call.url.endsWith('/sessions/retire')); return response(reply);
+  });
+  return {...h,client,before,sign,body,setReply:(r:typeof reply)=>{reply=r}};
+}
+
+test('503 then expired/stale AUTH recovers with unchanged balance and witness using a signed durable fence',async t=>{
+  const h=await retirementSetup(t);
+  assert.equal((await h.client.recover('note')).state,'NOT_ACCEPTED');
+  const after=(await h.journal.read('note'))!.value;
+  assert.equal(after.pending,null);assert.deepEqual(after.state,h.before.state);assert.deepEqual(after.wallet,h.before.wallet);assert.deepEqual(after.witness,h.before.witness);
+  assert.deepEqual(after.history,h.before.history);assert.deepEqual(after.retiredAuthorizations![0].pending,h.before.pending);
+  assert.deepEqual(after.retiredAuthorizations![0].previous,h.before.state);
+  assert.equal(h.verified.settlements.length,0);
+  const fresh=prepared();fresh.request.authorization.request_id=crypto.randomUUID();
+  await h.client.prepare('note',fresh,field(14));
+  assert.equal((await h.journal.read('note'))!.value.pending!.prepared.request.authorization.request_id,fresh.request.authorization.request_id);
+  assert.ok(h.calls.every(c=>c.url.endsWith('/sessions')||c.url.endsWith('/sessions/retire')),'no inference, clearance or wallet call');
+});
+
+test('retirement rejects forged signatures, different bindings and unsigned absence without releasing AUTH',async t=>{
+  const h=await retirementSetup(t);
+  for(const key of Object.keys(h.body)) {
+    h.setReply(await h.sign({...h.body,[key]:'wrong'}));
+    await assert.rejects(h.client.recover('note'),/binding/);
+    assert.deepEqual((await h.journal.read('note'))!.value,h.before);
+  }
+  const bad=await h.sign();bad.retirement.signature=Buffer.alloc(64).toString('base64');h.setReply(bad);
+  await assert.rejects(h.client.recover('note'),/signature/);
+  assert.deepEqual((await h.journal.read('note'))!.value,h.before);
+});
+
+test('unavailable retirement and lost local commit preserve exact AUTH; retry stores only one archive',async t=>{
+  const h=await retirementSetup(t);
+  const signed=await h.sign();let commitFails=true;
+  h.setHandler(async call=>{
+    if(call.url.endsWith('/sessions')) return response({},409);
+    assert.ok(call.url.endsWith('/retire')); if(commitFails) h.failStorage(); return response(signed);
+  });
+  await assert.rejects(h.client.recover('note'),/disk full/);h.failStorage(false);commitFails=false;
+  assert.deepEqual((await h.journal.read('note'))!.value,h.before);
+  await h.client.recover('note');assert.equal((await h.journal.read('note'))!.value.retiredAuthorizations!.length,1);
+  const j=await retirementSetup(t);
+  j.setHandler(async call=>response({},call.url.endsWith('/retire')?503:409));
+  await assert.rejects(j.client.recover('note'),/503/);assert.deepEqual((await j.journal.read('note'))!.value,j.before);
+});
+
+
+test('retirement racing an accepted AUTH retains the session for verified settlement',async t=>{
+  const h=await retirementSetup(t);
+  h.setHandler(async call=>call.url.endsWith('/retire')?response(status()):response({},409));
+  const result=await h.client.recover('note');assert.equal(result.state,'ACTIVE');
+  const saved=(await h.journal.read('note'))!.value;
+  assert.equal(saved.pending!.phase,'active');assert.equal(saved.retiredAuthorizations,undefined);assert.deepEqual(saved.state,h.before.state);
+});

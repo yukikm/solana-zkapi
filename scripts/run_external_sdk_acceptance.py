@@ -59,7 +59,7 @@ def main() -> None:
     started = time.monotonic()
     source_paths = [*sorted((ROOT / 'packages/sdk/src').glob('*.ts')),
                     *[ROOT / 'packages/sdk' / name for name in ['package.json', 'build.mjs', 'tsconfig.json', 'tsconfig.build.json', 'README.md', 'DISTRIBUTION.md', 'INTERNALS.md', 'LICENSE']],
-                    *[ROOT / 'packages/sdk/test' / name for name in ['client-guidance.test.ts', 'generic-api.test.ts', 'selection.test.ts', 'client.test.ts', 'chat.test.ts', 'clientd-models.test.ts', 'trust.test.ts', 'deployment.test.ts', 'public-profile.test.ts', 'public-profile-fixture.ts', 'api-onboarding-fixture.ts', 'chain-fixture.ts', 'session-snapshot-runtime.ts', 'kit-helpers.ts']],
+                    *[ROOT / 'packages/sdk/test' / name for name in ['client-guidance.test.ts', 'control.test.ts', 'generic-api.test.ts', 'selection.test.ts', 'clientd.test.ts', 'client.test.ts', 'direct-chat-stream.test.ts', 'response-branches.test.ts', 'chat.test.ts', 'clientd-models.test.ts', 'trust.test.ts', 'deployment.test.ts', 'public-profile.test.ts', 'public-profile-fixture.ts', 'api-onboarding-fixture.ts', 'chain-fixture.ts', 'session-snapshot-runtime.ts', 'kit-helpers.ts']],
                     *sorted((ROOT / 'tools/public-devnet-consumer').glob('*.*')),
                     *sorted((ROOT / 'tests/fixtures/sdk-consumer').glob('*.json')),
                     ROOT / 'scripts/sdk_consumer_lock.py', ROOT / 'package-lock.json', Path(__file__).resolve()]
@@ -146,7 +146,7 @@ def main() -> None:
             run('declarations', ['node', 'node_modules/typescript/bin/tsc', '-p', 'tsconfig.json'], consumer)
             # Reuse source tests but redirect every runtime library import to the
             # installed package. Fixtures are explicit local copies, not imports.
-            test_names = ['client-guidance.test.ts', 'control.test.ts', 'generic-api.test.ts', 'selection.test.ts', 'clientd.test.ts', 'client.test.ts', 'chat.test.ts', 'clientd-models.test.ts', 'trust.test.ts', 'deployment.test.ts', 'public-profile.test.ts', 'public-profile-fixture.ts', 'api-onboarding-fixture.ts', 'chain-fixture.ts', 'kit-helpers.ts']
+            test_names = ['client-guidance.test.ts', 'control.test.ts', 'generic-api.test.ts', 'selection.test.ts', 'clientd.test.ts', 'client.test.ts', 'direct-chat-stream.test.ts', 'response-branches.test.ts', 'chat.test.ts', 'clientd-models.test.ts', 'trust.test.ts', 'deployment.test.ts', 'public-profile.test.ts', 'public-profile-fixture.ts', 'api-onboarding-fixture.ts', 'chain-fixture.ts', 'kit-helpers.ts']
             if args.real_provers:
                 test_names.append('session-snapshot-runtime.ts')
             for name in test_names:

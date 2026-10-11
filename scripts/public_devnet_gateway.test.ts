@@ -327,6 +327,20 @@ test('CORS explicitly allows reviewed browser origin, methods and headers withou
   assert.equal(status.status,200);assert.ok(!status.body.includes('TokenSha256'));assert.ok(!status.body.includes('x-zkapi-admission'));
 });
 
+test('retirement browser preflight and exact recovery forwarding remain available during admission suspension',async t=>{
+  const path='/zkapi/v1/sessions/retire',authorization='Bearer retained-control-token',data='{"saved":"exact AUTH"}';
+  let forwards=0;const h=await host(t,{controlRelay:async input=>{
+    forwards++;assert.equal(input.path,path);assert.equal(input.method,'POST');assert.equal(input.authorization,authorization);
+    assert.equal(input.data.toString(),data);assert.equal(input.allowNewAdmissions,false);assert.equal(input.newAdmissionAuthorized,false);
+    return{status:200,bytes:Buffer.from('{"fixture":"retired"}')};
+  }});
+  const headers={origin:browserOrigin,'access-control-request-method':'POST','access-control-request-headers':'authorization, content-type'};
+  const preflight=await call(h.base,path,'OPTIONS',headers);assert.equal(preflight.status,204);assert.equal(forwards,0);
+  assert.equal(preflight.headers['access-control-allow-origin'],browserOrigin);
+  const reply=await call(h.base,path,'POST',{origin:browserOrigin,authorization,'content-type':'application/json'},data);
+  assert.equal(reply.status,200);assert.equal(forwards,1);assert.equal(reply.body,'{"fixture":"retired"}');
+});
+
 test('native no-Origin transport is explicit and browser headers/cookies cannot impersonate it',async t=>{
   let forwards=0;const controlRelay=async()=>{forwards++;return{status:200,bytes:Buffer.from('{}')};};
   const enabled=await host(t,{controlRelay}),disabled=await host(t,{controlRelay,allowNativeRequests:false});

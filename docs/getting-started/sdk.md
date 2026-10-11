@@ -13,6 +13,10 @@ or use [clientd](clientd.md).
 
 ## 1. Install
 
+These commands reproduce the recorded `.8` installation. For current streaming
+and authorization recovery fixes, use the [SDK `.12` upgrade procedure](sdk-streaming-upgrade.md)
+with the same authenticated profile and custody described below.
+
 Use Node **24.19.0** and npm **11.9.0** in your application directory. The download
 example below uses a POSIX shell and `curl` (Linux or macOS), with Node for
 checksum verification.

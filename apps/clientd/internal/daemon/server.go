@@ -33,7 +33,7 @@ func NewServer(socket, inference, management string, port int) (*Server, error) 
 	p := httputil.NewSingleHostReverseProxy(target)
 	transport := &http.Transport{DialContext: func(ctx context.Context, _, _ string) (net.Conn, error) {
 		return (&net.Dialer{}).DialContext(ctx, "unix", socket)
-	}, DisableCompression: true, ResponseHeaderTimeout: 5 * time.Minute}
+	}, DisableCompression: true, ResponseHeaderTimeout: 15 * time.Minute}
 	apiTransport := transport.Clone()
 	// This hop includes proof/authorization before the bounded API execution.
 	// Keep its budget aligned with the API command's overall deadline.

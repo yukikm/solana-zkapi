@@ -2,6 +2,9 @@
 
 | Version | Changes |
 |---|---|
+| [0.2.0-devnet.12](direct-stream-preview.md) | SDK direct-stream completion and native Response branches; native packages remain `.10` |
+| [0.2.0-devnet.10](https://github.com/yukikm/solana-zkapi/releases/tag/v0.2.0-devnet.10) | SDK/native balance-preserving authorization recovery |
+| [0.2.0-devnet.9](https://github.com/yukikm/solana-zkapi/releases/tag/v0.2.0-devnet.9) | SDK/native transport timeouts |
 | [0.2.0-devnet.8](usability-preview.md) | Upgrade guidance, model availability and privacy status |
 | [0.2.0-devnet.7](privacy-preview.md) | Request filtering and journal minimization |
 | [0.2.0-devnet.6](session-reuse-preview.md) | Direct-session reuse |

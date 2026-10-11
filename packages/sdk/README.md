@@ -15,8 +15,10 @@ still require explicit adapters and contracts.
 Use the [inference SDK tutorial](../../docs/getting-started/sdk.md),
 [API reference](../../docs/sdk/api.md) and [distribution guide](DISTRIBUTION.md)
 for the implemented interfaces.
-The published release is `0.2.0-devnet.8` and retains its inference interfaces;
-the registered JSON API addition is source/local only. See
+The published SDK release is `0.2.0-devnet.12` and retains its inference interfaces;
+the registered JSON API additions in this `0.2.0-devnet.9-onboarding.0` source
+build are source/local only. This build also includes the published recovery
+and streaming fixes. See
 [downloads and verification](../../docs/getting-started/devnet.md).
 The package is distributed as a tarball, with `private: true` to disable npm
 registry publication. Node integrations use Node 24.19.0; browser integrations
@@ -48,7 +50,8 @@ resolve pending work before new inference. Recovery never replays inference.
 
 Direct-session reuse uses a 300-second lease and a 90-second renewal margin.
 See [session reuse](../../docs/sdk/api.md#direct-session-reuse) for configuration
-and settlement behavior. `.8` also provides [upgrade and privacy guidance](../../docs/releases/usability-preview.md).
+and settlement behavior. Read the [streaming SDK upgrade guide](../../docs/getting-started/sdk-streaming-upgrade.md)
+and [privacy guidance](../../docs/releases/usability-preview.md).
 Keep existing custody on its original profile and recovery inputs; upgrades use
 a separate installation after the original note is closed.
 
