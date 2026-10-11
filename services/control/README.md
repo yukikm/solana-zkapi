@@ -83,8 +83,10 @@ credentials, account addresses and request IDs.
 
 `POST /zkapi/v1/sessions/retire` resolves an unaccepted AUTH with an immutable
 request/quote fence and signed receipt, preserving the note for a new request.
-Migration 0003 and matching SDK/gateway support are required; permanent clearance
+Migration 0003, matching control/signer binaries and SDK/gateway support are required; permanent clearance
 is still withdrawal-only. See [the recovery contract](../../docs/specs/api-proxy.md#retiring-a-never-admitted-authorization).
+
+See [the upgrade procedure](../../docs/getting-started/authorization-recovery-upgrade.md) for signer/schema compatibility and preservation checks.
 
 ## Recovery rules
 
