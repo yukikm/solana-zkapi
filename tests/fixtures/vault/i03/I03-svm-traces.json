@@ -1,0 +1,934 @@
+{
+  "active_expiry": [
+    {
+      "active_leaves": [
+        "0x0000000000000000000000000000000000000000000000000000000000000000",
+        "0x0000000000000000000000000000000000000000000000000000000000000000"
+      ],
+      "label": "init",
+      "next_id": 0,
+      "nullifier_used": false,
+      "pending_balance": [
+        0,
+        0
+      ],
+      "pending_deadline": [
+        0,
+        0
+      ],
+      "pending_exists": [
+        false,
+        false
+      ],
+      "pending_nullifier": [
+        "0x0000000000000000000000000000000000000000000000000000000000000000",
+        "0x0000000000000000000000000000000000000000000000000000000000000000"
+      ],
+      "root": "0x2bb43759c24665d98a33afa8d5094817d359d5e4c72a45b45a2a563176d37933",
+      "statuses": [
+        0,
+        0
+      ],
+      "time": 3000000000,
+      "treasury_delta": 0,
+      "user_delta": 0,
+      "vault_units": 0
+    },
+    {
+      "active_leaves": [
+        "0x04dbfc272f894c0d1739ac1e19e7479267c98986ceedcb31be08abece82968f8",
+        "0x0000000000000000000000000000000000000000000000000000000000000000"
+      ],
+      "label": "deposit",
+      "next_id": 1,
+      "nullifier_used": false,
+      "pending_balance": [
+        0,
+        0
+      ],
+      "pending_deadline": [
+        0,
+        0
+      ],
+      "pending_exists": [
+        false,
+        false
+      ],
+      "pending_nullifier": [
+        "0x0000000000000000000000000000000000000000000000000000000000000000",
+        "0x0000000000000000000000000000000000000000000000000000000000000000"
+      ],
+      "root": "0x0d0c94df0567dc5a63abcc7bf3330fcf47c08ebaec5b1aec208f679076c6efab",
+      "statuses": [
+        1,
+        0
+      ],
+      "time": 3000000000,
+      "treasury_delta": 0,
+      "user_delta": -5000000,
+      "vault_units": 5000000
+    },
+    {
+      "active_leaves": [
+        "0x0000000000000000000000000000000000000000000000000000000000000000",
+        "0x0000000000000000000000000000000000000000000000000000000000000000"
+      ],
+      "label": "expiry",
+      "next_id": 1,
+      "nullifier_used": false,
+      "pending_balance": [
+        0,
+        0
+      ],
+      "pending_deadline": [
+        0,
+        0
+      ],
+      "pending_exists": [
+        false,
+        false
+      ],
+      "pending_nullifier": [
+        "0x0000000000000000000000000000000000000000000000000000000000000000",
+        "0x0000000000000000000000000000000000000000000000000000000000000000"
+      ],
+      "root": "0x2bb43759c24665d98a33afa8d5094817d359d5e4c72a45b45a2a563176d37933",
+      "statuses": [
+        3,
+        0
+      ],
+      "time": 3002659200,
+      "treasury_delta": 5000000,
+      "user_delta": -5000000,
+      "vault_units": 0
+    }
+  ],
+  "escape_finalize": [
+    {
+      "active_leaves": [
+        "0x0000000000000000000000000000000000000000000000000000000000000000",
+        "0x0000000000000000000000000000000000000000000000000000000000000000"
+      ],
+      "label": "init",
+      "next_id": 0,
+      "nullifier_used": false,
+      "pending_balance": [
+        0,
+        0
+      ],
+      "pending_deadline": [
+        0,
+        0
+      ],
+      "pending_exists": [
+        false,
+        false
+      ],
+      "pending_nullifier": [
+        "0x0000000000000000000000000000000000000000000000000000000000000000",
+        "0x0000000000000000000000000000000000000000000000000000000000000000"
+      ],
+      "root": "0x2bb43759c24665d98a33afa8d5094817d359d5e4c72a45b45a2a563176d37933",
+      "statuses": [
+        0,
+        0
+      ],
+      "time": 3000000000,
+      "treasury_delta": 0,
+      "user_delta": 0,
+      "vault_units": 0
+    },
+    {
+      "active_leaves": [
+        "0x04dbfc272f894c0d1739ac1e19e7479267c98986ceedcb31be08abece82968f8",
+        "0x0000000000000000000000000000000000000000000000000000000000000000"
+      ],
+      "label": "deposit",
+      "next_id": 1,
+      "nullifier_used": false,
+      "pending_balance": [
+        0,
+        0
+      ],
+      "pending_deadline": [
+        0,
+        0
+      ],
+      "pending_exists": [
+        false,
+        false
+      ],
+      "pending_nullifier": [
+        "0x0000000000000000000000000000000000000000000000000000000000000000",
+        "0x0000000000000000000000000000000000000000000000000000000000000000"
+      ],
+      "root": "0x0d0c94df0567dc5a63abcc7bf3330fcf47c08ebaec5b1aec208f679076c6efab",
+      "statuses": [
+        1,
+        0
+      ],
+      "time": 3000000000,
+      "treasury_delta": 0,
+      "user_delta": -5000000,
+      "vault_units": 5000000
+    },
+    {
+      "active_leaves": [
+        "0x0000000000000000000000000000000000000000000000000000000000000000",
+        "0x0000000000000000000000000000000000000000000000000000000000000000"
+      ],
+      "label": "escape",
+      "next_id": 1,
+      "nullifier_used": true,
+      "pending_balance": [
+        4900000,
+        0
+      ],
+      "pending_deadline": [
+        3000086400,
+        0
+      ],
+      "pending_exists": [
+        true,
+        false
+      ],
+      "pending_nullifier": [
+        "0x06584904acf1bb3c893a8ddaad64746f05e9e50686eae349e3db9dac92f01916",
+        "0x0000000000000000000000000000000000000000000000000000000000000000"
+      ],
+      "root": "0x2bb43759c24665d98a33afa8d5094817d359d5e4c72a45b45a2a563176d37933",
+      "statuses": [
+        2,
+        0
+      ],
+      "time": 3000000000,
+      "treasury_delta": 0,
+      "user_delta": -5000000,
+      "vault_units": 5000000
+    },
+    {
+      "active_leaves": [
+        "0x0000000000000000000000000000000000000000000000000000000000000000",
+        "0x0000000000000000000000000000000000000000000000000000000000000000"
+      ],
+      "label": "finalize",
+      "next_id": 1,
+      "nullifier_used": true,
+      "pending_balance": [
+        0,
+        0
+      ],
+      "pending_deadline": [
+        0,
+        0
+      ],
+      "pending_exists": [
+        false,
+        false
+      ],
+      "pending_nullifier": [
+        "0x0000000000000000000000000000000000000000000000000000000000000000",
+        "0x0000000000000000000000000000000000000000000000000000000000000000"
+      ],
+      "root": "0x2bb43759c24665d98a33afa8d5094817d359d5e4c72a45b45a2a563176d37933",
+      "statuses": [
+        3,
+        0
+      ],
+      "time": 3000086400,
+      "treasury_delta": 100000,
+      "user_delta": -100000,
+      "vault_units": 0
+    }
+  ],
+  "historical_challenge": [
+    {
+      "active_leaves": [
+        "0x0000000000000000000000000000000000000000000000000000000000000000",
+        "0x0000000000000000000000000000000000000000000000000000000000000000"
+      ],
+      "label": "init",
+      "next_id": 0,
+      "nullifier_used": false,
+      "pending_balance": [
+        0,
+        0
+      ],
+      "pending_deadline": [
+        0,
+        0
+      ],
+      "pending_exists": [
+        false,
+        false
+      ],
+      "pending_nullifier": [
+        "0x0000000000000000000000000000000000000000000000000000000000000000",
+        "0x0000000000000000000000000000000000000000000000000000000000000000"
+      ],
+      "root": "0x2bb43759c24665d98a33afa8d5094817d359d5e4c72a45b45a2a563176d37933",
+      "statuses": [
+        0,
+        0
+      ],
+      "time": 3000000000,
+      "treasury_delta": 0,
+      "user_delta": 0,
+      "vault_units": 0
+    },
+    {
+      "active_leaves": [
+        "0x04dbfc272f894c0d1739ac1e19e7479267c98986ceedcb31be08abece82968f8",
+        "0x0000000000000000000000000000000000000000000000000000000000000000"
+      ],
+      "label": "deposit_a",
+      "next_id": 1,
+      "nullifier_used": false,
+      "pending_balance": [
+        0,
+        0
+      ],
+      "pending_deadline": [
+        0,
+        0
+      ],
+      "pending_exists": [
+        false,
+        false
+      ],
+      "pending_nullifier": [
+        "0x0000000000000000000000000000000000000000000000000000000000000000",
+        "0x0000000000000000000000000000000000000000000000000000000000000000"
+      ],
+      "root": "0x0d0c94df0567dc5a63abcc7bf3330fcf47c08ebaec5b1aec208f679076c6efab",
+      "statuses": [
+        1,
+        0
+      ],
+      "time": 3000000000,
+      "treasury_delta": 0,
+      "user_delta": -5000000,
+      "vault_units": 5000000
+    },
+    {
+      "active_leaves": [
+        "0x04dbfc272f894c0d1739ac1e19e7479267c98986ceedcb31be08abece82968f8",
+        "0x0ea4fc3604ec8a230301760b3fb1ddf759965bf28ad3681bde01cf2c9b09f72a"
+      ],
+      "label": "deposit_b",
+      "next_id": 2,
+      "nullifier_used": false,
+      "pending_balance": [
+        0,
+        0
+      ],
+      "pending_deadline": [
+        0,
+        0
+      ],
+      "pending_exists": [
+        false,
+        false
+      ],
+      "pending_nullifier": [
+        "0x0000000000000000000000000000000000000000000000000000000000000000",
+        "0x0000000000000000000000000000000000000000000000000000000000000000"
+      ],
+      "root": "0x1d9ed8e993f5aa8568f3cb796935a528b995feb33a4643e995aad333d012e2a2",
+      "statuses": [
+        1,
+        1
+      ],
+      "time": 3000000000,
+      "treasury_delta": 0,
+      "user_delta": -10000000,
+      "vault_units": 10000000
+    },
+    {
+      "active_leaves": [
+        "0x0000000000000000000000000000000000000000000000000000000000000000",
+        "0x0ea4fc3604ec8a230301760b3fb1ddf759965bf28ad3681bde01cf2c9b09f72a"
+      ],
+      "label": "escape",
+      "next_id": 2,
+      "nullifier_used": true,
+      "pending_balance": [
+        4900000,
+        0
+      ],
+      "pending_deadline": [
+        3000086400,
+        0
+      ],
+      "pending_exists": [
+        true,
+        false
+      ],
+      "pending_nullifier": [
+        "0x06584904acf1bb3c893a8ddaad64746f05e9e50686eae349e3db9dac92f01916",
+        "0x0000000000000000000000000000000000000000000000000000000000000000"
+      ],
+      "root": "0x07ad9ba8d56bfb7d045bf67771669f0475743650283bdea06400dd27369c7e30",
+      "statuses": [
+        2,
+        1
+      ],
+      "time": 3000000000,
+      "treasury_delta": 0,
+      "user_delta": -10000000,
+      "vault_units": 10000000
+    },
+    {
+      "active_leaves": [
+        "0x04dbfc272f894c0d1739ac1e19e7479267c98986ceedcb31be08abece82968f8",
+        "0x0ea4fc3604ec8a230301760b3fb1ddf759965bf28ad3681bde01cf2c9b09f72a"
+      ],
+      "label": "challenge",
+      "next_id": 2,
+      "nullifier_used": true,
+      "pending_balance": [
+        0,
+        0
+      ],
+      "pending_deadline": [
+        0,
+        0
+      ],
+      "pending_exists": [
+        false,
+        false
+      ],
+      "pending_nullifier": [
+        "0x0000000000000000000000000000000000000000000000000000000000000000",
+        "0x0000000000000000000000000000000000000000000000000000000000000000"
+      ],
+      "root": "0x1d9ed8e993f5aa8568f3cb796935a528b995feb33a4643e995aad333d012e2a2",
+      "statuses": [
+        1,
+        1
+      ],
+      "time": 3000086399,
+      "treasury_delta": 0,
+      "user_delta": -10000000,
+      "vault_units": 10000000
+    }
+  ],
+  "paused_challenge": [
+    {
+      "active_leaves": [
+        "0x0000000000000000000000000000000000000000000000000000000000000000",
+        "0x0000000000000000000000000000000000000000000000000000000000000000"
+      ],
+      "label": "init",
+      "next_id": 0,
+      "nullifier_used": false,
+      "pending_balance": [
+        0,
+        0
+      ],
+      "pending_deadline": [
+        0,
+        0
+      ],
+      "pending_exists": [
+        false,
+        false
+      ],
+      "pending_nullifier": [
+        "0x0000000000000000000000000000000000000000000000000000000000000000",
+        "0x0000000000000000000000000000000000000000000000000000000000000000"
+      ],
+      "root": "0x2bb43759c24665d98a33afa8d5094817d359d5e4c72a45b45a2a563176d37933",
+      "statuses": [
+        0,
+        0
+      ],
+      "time": 3000000000,
+      "treasury_delta": 0,
+      "user_delta": 0,
+      "vault_units": 0
+    },
+    {
+      "active_leaves": [
+        "0x04dbfc272f894c0d1739ac1e19e7479267c98986ceedcb31be08abece82968f8",
+        "0x0000000000000000000000000000000000000000000000000000000000000000"
+      ],
+      "label": "deposit_a",
+      "next_id": 1,
+      "nullifier_used": false,
+      "pending_balance": [
+        0,
+        0
+      ],
+      "pending_deadline": [
+        0,
+        0
+      ],
+      "pending_exists": [
+        false,
+        false
+      ],
+      "pending_nullifier": [
+        "0x0000000000000000000000000000000000000000000000000000000000000000",
+        "0x0000000000000000000000000000000000000000000000000000000000000000"
+      ],
+      "root": "0x0d0c94df0567dc5a63abcc7bf3330fcf47c08ebaec5b1aec208f679076c6efab",
+      "statuses": [
+        1,
+        0
+      ],
+      "time": 3000000000,
+      "treasury_delta": 0,
+      "user_delta": -5000000,
+      "vault_units": 5000000
+    },
+    {
+      "active_leaves": [
+        "0x04dbfc272f894c0d1739ac1e19e7479267c98986ceedcb31be08abece82968f8",
+        "0x0ea4fc3604ec8a230301760b3fb1ddf759965bf28ad3681bde01cf2c9b09f72a"
+      ],
+      "label": "deposit_b",
+      "next_id": 2,
+      "nullifier_used": false,
+      "pending_balance": [
+        0,
+        0
+      ],
+      "pending_deadline": [
+        0,
+        0
+      ],
+      "pending_exists": [
+        false,
+        false
+      ],
+      "pending_nullifier": [
+        "0x0000000000000000000000000000000000000000000000000000000000000000",
+        "0x0000000000000000000000000000000000000000000000000000000000000000"
+      ],
+      "root": "0x1d9ed8e993f5aa8568f3cb796935a528b995feb33a4643e995aad333d012e2a2",
+      "statuses": [
+        1,
+        1
+      ],
+      "time": 3000000000,
+      "treasury_delta": 0,
+      "user_delta": -10000000,
+      "vault_units": 10000000
+    },
+    {
+      "active_leaves": [
+        "0x0000000000000000000000000000000000000000000000000000000000000000",
+        "0x0ea4fc3604ec8a230301760b3fb1ddf759965bf28ad3681bde01cf2c9b09f72a"
+      ],
+      "label": "escape",
+      "next_id": 2,
+      "nullifier_used": true,
+      "pending_balance": [
+        4900000,
+        0
+      ],
+      "pending_deadline": [
+        3000086400,
+        0
+      ],
+      "pending_exists": [
+        true,
+        false
+      ],
+      "pending_nullifier": [
+        "0x06584904acf1bb3c893a8ddaad64746f05e9e50686eae349e3db9dac92f01916",
+        "0x0000000000000000000000000000000000000000000000000000000000000000"
+      ],
+      "root": "0x07ad9ba8d56bfb7d045bf67771669f0475743650283bdea06400dd27369c7e30",
+      "statuses": [
+        2,
+        1
+      ],
+      "time": 3000000000,
+      "treasury_delta": 0,
+      "user_delta": -10000000,
+      "vault_units": 10000000
+    },
+    {
+      "active_leaves": [
+        "0x04dbfc272f894c0d1739ac1e19e7479267c98986ceedcb31be08abece82968f8",
+        "0x0ea4fc3604ec8a230301760b3fb1ddf759965bf28ad3681bde01cf2c9b09f72a"
+      ],
+      "label": "challenge",
+      "next_id": 2,
+      "nullifier_used": true,
+      "pending_balance": [
+        0,
+        0
+      ],
+      "pending_deadline": [
+        0,
+        0
+      ],
+      "pending_exists": [
+        false,
+        false
+      ],
+      "pending_nullifier": [
+        "0x0000000000000000000000000000000000000000000000000000000000000000",
+        "0x0000000000000000000000000000000000000000000000000000000000000000"
+      ],
+      "root": "0x1d9ed8e993f5aa8568f3cb796935a528b995feb33a4643e995aad333d012e2a2",
+      "statuses": [
+        1,
+        1
+      ],
+      "time": 3000086399,
+      "treasury_delta": 0,
+      "user_delta": -10000000,
+      "vault_units": 10000000
+    }
+  ],
+  "paused_expiry": [
+    {
+      "active_leaves": [
+        "0x0000000000000000000000000000000000000000000000000000000000000000",
+        "0x0000000000000000000000000000000000000000000000000000000000000000"
+      ],
+      "label": "init",
+      "next_id": 0,
+      "nullifier_used": false,
+      "pending_balance": [
+        0,
+        0
+      ],
+      "pending_deadline": [
+        0,
+        0
+      ],
+      "pending_exists": [
+        false,
+        false
+      ],
+      "pending_nullifier": [
+        "0x0000000000000000000000000000000000000000000000000000000000000000",
+        "0x0000000000000000000000000000000000000000000000000000000000000000"
+      ],
+      "root": "0x2bb43759c24665d98a33afa8d5094817d359d5e4c72a45b45a2a563176d37933",
+      "statuses": [
+        0,
+        0
+      ],
+      "time": 3000000000,
+      "treasury_delta": 0,
+      "user_delta": 0,
+      "vault_units": 0
+    },
+    {
+      "active_leaves": [
+        "0x04dbfc272f894c0d1739ac1e19e7479267c98986ceedcb31be08abece82968f8",
+        "0x0000000000000000000000000000000000000000000000000000000000000000"
+      ],
+      "label": "deposit",
+      "next_id": 1,
+      "nullifier_used": false,
+      "pending_balance": [
+        0,
+        0
+      ],
+      "pending_deadline": [
+        0,
+        0
+      ],
+      "pending_exists": [
+        false,
+        false
+      ],
+      "pending_nullifier": [
+        "0x0000000000000000000000000000000000000000000000000000000000000000",
+        "0x0000000000000000000000000000000000000000000000000000000000000000"
+      ],
+      "root": "0x0d0c94df0567dc5a63abcc7bf3330fcf47c08ebaec5b1aec208f679076c6efab",
+      "statuses": [
+        1,
+        0
+      ],
+      "time": 3000000000,
+      "treasury_delta": 0,
+      "user_delta": -5000000,
+      "vault_units": 5000000
+    },
+    {
+      "active_leaves": [
+        "0x0000000000000000000000000000000000000000000000000000000000000000",
+        "0x0000000000000000000000000000000000000000000000000000000000000000"
+      ],
+      "label": "expiry",
+      "next_id": 1,
+      "nullifier_used": false,
+      "pending_balance": [
+        0,
+        0
+      ],
+      "pending_deadline": [
+        0,
+        0
+      ],
+      "pending_exists": [
+        false,
+        false
+      ],
+      "pending_nullifier": [
+        "0x0000000000000000000000000000000000000000000000000000000000000000",
+        "0x0000000000000000000000000000000000000000000000000000000000000000"
+      ],
+      "root": "0x2bb43759c24665d98a33afa8d5094817d359d5e4c72a45b45a2a563176d37933",
+      "statuses": [
+        3,
+        0
+      ],
+      "time": 3002659200,
+      "treasury_delta": 5000000,
+      "user_delta": -5000000,
+      "vault_units": 0
+    }
+  ],
+  "paused_finalize": [
+    {
+      "active_leaves": [
+        "0x0000000000000000000000000000000000000000000000000000000000000000",
+        "0x0000000000000000000000000000000000000000000000000000000000000000"
+      ],
+      "label": "init",
+      "next_id": 0,
+      "nullifier_used": false,
+      "pending_balance": [
+        0,
+        0
+      ],
+      "pending_deadline": [
+        0,
+        0
+      ],
+      "pending_exists": [
+        false,
+        false
+      ],
+      "pending_nullifier": [
+        "0x0000000000000000000000000000000000000000000000000000000000000000",
+        "0x0000000000000000000000000000000000000000000000000000000000000000"
+      ],
+      "root": "0x2bb43759c24665d98a33afa8d5094817d359d5e4c72a45b45a2a563176d37933",
+      "statuses": [
+        0,
+        0
+      ],
+      "time": 3000000000,
+      "treasury_delta": 0,
+      "user_delta": 0,
+      "vault_units": 0
+    },
+    {
+      "active_leaves": [
+        "0x04dbfc272f894c0d1739ac1e19e7479267c98986ceedcb31be08abece82968f8",
+        "0x0000000000000000000000000000000000000000000000000000000000000000"
+      ],
+      "label": "deposit",
+      "next_id": 1,
+      "nullifier_used": false,
+      "pending_balance": [
+        0,
+        0
+      ],
+      "pending_deadline": [
+        0,
+        0
+      ],
+      "pending_exists": [
+        false,
+        false
+      ],
+      "pending_nullifier": [
+        "0x0000000000000000000000000000000000000000000000000000000000000000",
+        "0x0000000000000000000000000000000000000000000000000000000000000000"
+      ],
+      "root": "0x0d0c94df0567dc5a63abcc7bf3330fcf47c08ebaec5b1aec208f679076c6efab",
+      "statuses": [
+        1,
+        0
+      ],
+      "time": 3000000000,
+      "treasury_delta": 0,
+      "user_delta": -5000000,
+      "vault_units": 5000000
+    },
+    {
+      "active_leaves": [
+        "0x0000000000000000000000000000000000000000000000000000000000000000",
+        "0x0000000000000000000000000000000000000000000000000000000000000000"
+      ],
+      "label": "escape",
+      "next_id": 1,
+      "nullifier_used": true,
+      "pending_balance": [
+        4900000,
+        0
+      ],
+      "pending_deadline": [
+        3000086400,
+        0
+      ],
+      "pending_exists": [
+        true,
+        false
+      ],
+      "pending_nullifier": [
+        "0x06584904acf1bb3c893a8ddaad64746f05e9e50686eae349e3db9dac92f01916",
+        "0x0000000000000000000000000000000000000000000000000000000000000000"
+      ],
+      "root": "0x2bb43759c24665d98a33afa8d5094817d359d5e4c72a45b45a2a563176d37933",
+      "statuses": [
+        2,
+        0
+      ],
+      "time": 3000000000,
+      "treasury_delta": 0,
+      "user_delta": -5000000,
+      "vault_units": 5000000
+    },
+    {
+      "active_leaves": [
+        "0x0000000000000000000000000000000000000000000000000000000000000000",
+        "0x0000000000000000000000000000000000000000000000000000000000000000"
+      ],
+      "label": "finalize",
+      "next_id": 1,
+      "nullifier_used": true,
+      "pending_balance": [
+        0,
+        0
+      ],
+      "pending_deadline": [
+        0,
+        0
+      ],
+      "pending_exists": [
+        false,
+        false
+      ],
+      "pending_nullifier": [
+        "0x0000000000000000000000000000000000000000000000000000000000000000",
+        "0x0000000000000000000000000000000000000000000000000000000000000000"
+      ],
+      "root": "0x2bb43759c24665d98a33afa8d5094817d359d5e4c72a45b45a2a563176d37933",
+      "statuses": [
+        3,
+        0
+      ],
+      "time": 3000086400,
+      "treasury_delta": 100000,
+      "user_delta": -100000,
+      "vault_units": 0
+    }
+  ],
+  "signed_close": [
+    {
+      "active_leaves": [
+        "0x0000000000000000000000000000000000000000000000000000000000000000",
+        "0x0000000000000000000000000000000000000000000000000000000000000000"
+      ],
+      "label": "init",
+      "next_id": 0,
+      "nullifier_used": false,
+      "pending_balance": [
+        0,
+        0
+      ],
+      "pending_deadline": [
+        0,
+        0
+      ],
+      "pending_exists": [
+        false,
+        false
+      ],
+      "pending_nullifier": [
+        "0x0000000000000000000000000000000000000000000000000000000000000000",
+        "0x0000000000000000000000000000000000000000000000000000000000000000"
+      ],
+      "root": "0x2bb43759c24665d98a33afa8d5094817d359d5e4c72a45b45a2a563176d37933",
+      "statuses": [
+        0,
+        0
+      ],
+      "time": 3000000000,
+      "treasury_delta": 0,
+      "user_delta": 0,
+      "vault_units": 0
+    },
+    {
+      "active_leaves": [
+        "0x04dbfc272f894c0d1739ac1e19e7479267c98986ceedcb31be08abece82968f8",
+        "0x0000000000000000000000000000000000000000000000000000000000000000"
+      ],
+      "label": "deposit",
+      "next_id": 1,
+      "nullifier_used": false,
+      "pending_balance": [
+        0,
+        0
+      ],
+      "pending_deadline": [
+        0,
+        0
+      ],
+      "pending_exists": [
+        false,
+        false
+      ],
+      "pending_nullifier": [
+        "0x0000000000000000000000000000000000000000000000000000000000000000",
+        "0x0000000000000000000000000000000000000000000000000000000000000000"
+      ],
+      "root": "0x0d0c94df0567dc5a63abcc7bf3330fcf47c08ebaec5b1aec208f679076c6efab",
+      "statuses": [
+        1,
+        0
+      ],
+      "time": 3000000000,
+      "treasury_delta": 0,
+      "user_delta": -5000000,
+      "vault_units": 5000000
+    },
+    {
+      "active_leaves": [
+        "0x0000000000000000000000000000000000000000000000000000000000000000",
+        "0x0000000000000000000000000000000000000000000000000000000000000000"
+      ],
+      "label": "close",
+      "next_id": 1,
+      "nullifier_used": true,
+      "pending_balance": [
+        0,
+        0
+      ],
+      "pending_deadline": [
+        0,
+        0
+      ],
+      "pending_exists": [
+        false,
+        false
+      ],
+      "pending_nullifier": [
+        "0x0000000000000000000000000000000000000000000000000000000000000000",
+        "0x0000000000000000000000000000000000000000000000000000000000000000"
+      ],
+      "root": "0x2bb43759c24665d98a33afa8d5094817d359d5e4c72a45b45a2a563176d37933",
+      "statuses": [
+        3,
+        0
+      ],
+      "time": 3000000000,
+      "treasury_delta": 100000,
+      "user_delta": -100000,
+      "vault_units": 0
+    }
+  ]
+}

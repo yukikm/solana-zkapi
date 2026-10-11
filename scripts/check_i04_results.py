@@ -52,7 +52,7 @@ def main():
         assert scenario["paths_checked"] > 0
     # Existing state/event behavior remains identical to the historical I03 trace.
     for suffix in ("traces", "rejections"):
-        assert read(f"target/i04/i03-regression/I03-svm-{suffix}.json") == read(f"docs/evidence/I03-svm-{suffix}.json")
+        assert read(f"target/i04/i03-regression/I03-svm-{suffix}.json") == read(f"tests/fixtures/vault/i03/I03-svm-{suffix}.json")
     summary = {
         "date_jst": "2026-10-04",
         "scope": "local test-key/mint real SBF and signed-v0 transport, synthetic finalized envelopes, indexer replay",
