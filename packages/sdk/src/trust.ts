@@ -55,6 +55,7 @@ export interface ManifestTrustPolicy {
     /** Independently installed build capabilities. Required to enable compact deposits;
      * omission preserves legacy buffer-only distributions. Never copy from fetched config. */
     readonly transactionFormats?: Manifest['transaction_formats'];
+    readonly gatewayAdapters?: { readonly transport: readonly string[]; readonly meters: readonly string[] };
     /** Out-of-band, reviewed ceremony transcripts; merely downloading a transcript is insufficient. */
     readonly verifiedSetupTranscripts?: SetupTranscripts;
   };

@@ -1,8 +1,9 @@
 /** Pure registration contract. No files, credentials, network, clocks or custody. */
 import {resolve} from 'node:path';
 import bs58 from 'bs58';
-import {validateApiBinding,validateApiService,apiOperationPath,type ApiBinding,type ApiService,type Mode} from '../packages/sdk/src/control.ts';
+import {validateApiBinding,validateApiService,apiOperationPath,type ApiBindingV1,type ApiService,type Mode} from '../packages/sdk/src/control.ts';
 import {validateClientConfiguration,type ModelConfiguration,type CreateClientOptions} from '../packages/sdk/src/client.ts';
+import {validateGatewayHashes,validateGatewayTariff,validateGatewayConfiguration,gatewayAmount,type ApiBindingV2,type TariffV3,type GatewayConfiguration} from '../packages/sdk/src/gateway.ts';
 import {jcsBytes,sha256Hex} from '../packages/sdk/src/trust.ts';
 
 export const REGISTRATION_CONTRACT_VERSION=1;
@@ -25,33 +26,51 @@ export function integerString(value:unknown,field:string,positive=false,maximum=
   const n=BigInt(value);requireConfig(n<=maximum,'invalid_tariff',field,'integer exceeds supported bound');return n;
 }
 export interface PinnedFile{path:string;sha256:string}
-export interface ServiceDeclaration{api:ApiBinding;priceMicroUsdc:string;validFrom:string;validUntil:string;credentialFile:string}
-export interface ApiProject{schema:1;target:'devnet-new';staging:PinnedFile;operator:PinnedFile;services:readonly ServiceDeclaration[]}
-export interface StagingConsumer{id:string;revision:number;mode:Mode;models:readonly ModelConfiguration[];modelCapabilities:Readonly<Record<string,{streaming:boolean;tools:boolean}>>;services:readonly ApiService[];directProviderBases?:CreateClientOptions['directProviderBases'];oaVerifier?:CreateClientOptions['oaVerifier']}
+export interface LegacyServiceDeclaration{api:ApiBindingV1;priceMicroUsdc:string;validFrom:string;validUntil:string;credentialFile:string}
+export interface GatewayServiceDeclaration{api:ApiBindingV2;rates:TariffV3['rates'];validFrom:string;validUntil:string;credentialFile?:string;transportArtifactSha256:string;meterArtifactSha256:string}
+export type ServiceDeclaration=LegacyServiceDeclaration|GatewayServiceDeclaration;
+export type ApiProject={schema:1;target:'devnet-new';staging:PinnedFile;operator:PinnedFile;services:readonly LegacyServiceDeclaration[]}|{schema:2;target:'devnet-new';staging:PinnedFile;operator:PinnedFile;services:readonly ServiceDeclaration[];gateway:GatewayConfiguration};
+export interface StagingConsumer{id:string;revision:number;mode:Mode;models:readonly ModelConfiguration[];modelCapabilities:Readonly<Record<string,{streaming:boolean;tools:boolean}>>;services:readonly ApiService[];gateway?:GatewayConfiguration;directProviderBases?:CreateClientOptions['directProviderBases'];oaVerifier?:CreateClientOptions['oaVerifier']}
+function freeze<T>(value:T):T{if(value&&typeof value==='object'){for(const child of Object.values(value))freeze(child);Object.freeze(value);}return value;}
 export function validatePin(pin:PinnedFile,field:string){exact(pin,['path','sha256'],[],field);canonicalPath(pin.path,field+'.path');requireConfig(typeof pin.sha256==='string'&&/^[0-9a-f]{64}$/.test(pin.sha256),'pin_mismatch',field+'.sha256','SHA256 required');}
-export function validateApiProject(project:ApiProject){exact(project,['schema','target','staging','operator','services']);requireConfig(project.schema===1&&project.target==='devnet-new','invalid_schema','target','new Devnet staging required');validatePin(project.staging,'staging');validatePin(project.operator,'operator');requireConfig(Array.isArray(project.services)&&project.services.length>0&&project.services.length<=64,'invalid_schema','services','one to 64 operations required');}
+export function validateApiProject(project:ApiProject){exact(project,['schema','target','staging','operator','services',...(project.schema===2?['gateway']:[])]);requireConfig((project.schema===1||project.schema===2)&&project.target==='devnet-new','invalid_schema','target','new Devnet staging required');validatePin(project.staging,'staging');validatePin(project.operator,'operator');requireConfig(Array.isArray(project.services)&&project.services.length>0&&project.services.length<=64,'invalid_schema','services','one to 64 operations required');requireConfig(project.schema===2||project.services.every(s=>s.api.version==='1'),'invalid_schema','services','schema two required for gateway bindings');}
 export async function compileApiServices(declarations:readonly ServiceDeclaration[],capMicroUsdc:string,policy:'public'|'local_fixture'='public'):Promise<readonly ApiService[]>{
   requireConfig(Array.isArray(declarations)&&declarations.length>0&&declarations.length<=64,'invalid_schema','services','one to 64 operations required');
   const cap=integerString(capMicroUsdc,'capMicroUsdc',true),seen=new Set<string>(),result:ApiService[]=[];
   for(const [i,item] of declarations.entries()){
-    const f=`services[${i}]`;exact(item,['api','priceMicroUsdc','validFrom','validUntil','credentialFile'],[],f);
-    try{validateApiBinding(item.api);}catch{throw new RegistrationError('unsupported_api_contract',f+'.api','registered POST JSON descriptor required');}
-    if(policy==='public')publicHttps(item.api.origin,true,f+'.api.origin');else{const u=new URL(item.api.origin);requireConfig(u.protocol==='http:'&&['127.0.0.1','[::1]'].includes(u.hostname),'unsupported_api_contract',f+'.api.origin','numeric loopback HTTP required');}
-    canonicalPath(item.credentialFile,f+'.credentialFile');
-    const identity=apiOperationPath(item.api);requireConfig(!seen.has(identity),'duplicate_operation',f+'.api','operation already declared');seen.add(identity);
-    const price=integerString(item.priceMicroUsdc,f+'.priceMicroUsdc',true),nano=price*1000n;
+    const f=`services[${i}]`;
+    if(item.api.version==='2'){
+      const gateway=item as GatewayServiceDeclaration;
+      exact(gateway,['api','rates','validFrom','validUntil','transportArtifactSha256','meterArtifactSha256'],['credentialFile'],f);
+      try{await validateGatewayHashes(gateway.api);}catch{throw new RegistrationError('unsupported_api_contract',f+'.api','finite HTTP descriptor required');}
+      if(policy==='public')publicHttps(gateway.api.origin,true,f+'.api.origin');else{const u=new URL(gateway.api.origin);requireConfig(u.protocol==='http:'&&['127.0.0.1','[::1]'].includes(u.hostname),'unsupported_api_contract',f+'.api.origin','numeric loopback HTTP required');}
+      requireConfig(gateway.transportArtifactSha256===gateway.api.transport.artifact_sha256&&gateway.meterArtifactSha256===gateway.api.meter.adapter.artifact_sha256,'pin_mismatch',f,'independent installed adapter digests required');
+      if(gateway.api.authentication.scheme==='none')requireConfig(gateway.credentialFile===undefined,'invalid_schema',f+'.credentialFile','no credential permitted');else canonicalPath(gateway.credentialFile,f+'.credentialFile');
+      const identity=apiOperationPath(gateway.api);requireConfig(!seen.has(identity),'duplicate_operation',f+'.api','operation already declared');seen.add(identity);
+      const start=integerString(gateway.validFrom,f+'.validFrom'),end=integerString(gateway.validUntil,f+'.validUntil');requireConfig(end>start,'invalid_tariff',f+'.validUntil','validity interval must increase');
+      const body={version:'3' as const,provider:'generic' as const,api:structuredClone(gateway.api),pricing_basis:gateway.api.meter.adapter.id==='fixed_http'?'fixed_request' as const:'fixed_usage_rates' as const,valid_from:gateway.validFrom,valid_until:gateway.validUntil,rates:structuredClone(gateway.rates),operator_fee_micro_usdc:'0' as const};
+      const tariff={...body,tariff_hash:await sha256Hex(jcsBytes(body))};validateGatewayTariff(tariff);
+      requireConfig(gatewayAmount(tariff.rates,tariff.rates.map(rate=>rate.reservation_max_count))<=cap*1000n,'price_exceeds_cap',f+'.rates','full reservation exceeds authorization cap');
+      result.push(freeze({tariff}));continue;
+    }
+    const legacy=item as LegacyServiceDeclaration;exact(item,['api','priceMicroUsdc','validFrom','validUntil','credentialFile'],[],f);
+    try{validateApiBinding(legacy.api);}catch{throw new RegistrationError('unsupported_api_contract',f+'.api','registered POST JSON descriptor required');}
+    if(policy==='public')publicHttps(legacy.api.origin,true,f+'.api.origin');else{const u=new URL(legacy.api.origin);requireConfig(u.protocol==='http:'&&['127.0.0.1','[::1]'].includes(u.hostname),'unsupported_api_contract',f+'.api.origin','numeric loopback HTTP required');}
+    canonicalPath(legacy.credentialFile,f+'.credentialFile');
+    const identity=apiOperationPath(legacy.api);requireConfig(!seen.has(identity),'duplicate_operation',f+'.api','operation already declared');seen.add(identity);
+    const price=integerString(legacy.priceMicroUsdc,f+'.priceMicroUsdc',true),nano=price*1000n;
     requireConfig(nano<=0x7fffffffffffffffn,'invalid_tariff',f+'.priceMicroUsdc','nano rate exceeds signed i64');requireConfig(price<=cap,'price_exceeds_cap',f+'.priceMicroUsdc','operation exceeds authorization cap');
     const start=integerString(item.validFrom,f+'.validFrom'),end=integerString(item.validUntil,f+'.validUntil');requireConfig(end>start,'invalid_tariff',f+'.validUntil','validity interval must increase');
-    const body={version:'2' as const,provider:'generic' as const,pricing_basis:'fixed_request' as const,api:structuredClone(item.api),valid_from:item.validFrom,valid_until:item.validUntil,rates:[{unit:'requests',nano_usdc_numerator:nano.toString(),unit_denominator:'1'}],operator_fee_micro_usdc:'0'};
+    const body={version:'2' as const,provider:'generic' as const,pricing_basis:'fixed_request' as const,api:structuredClone(legacy.api),valid_from:item.validFrom,valid_until:item.validUntil,rates:[{unit:'requests',nano_usdc_numerator:nano.toString(),unit_denominator:'1'}],operator_fee_micro_usdc:'0'};
     const service={tariff:{...body,tariff_hash:await sha256Hex(jcsBytes(body))}};validateApiService(service);
     Object.freeze(service.tariff.api);Object.freeze(service.tariff.rates[0]);Object.freeze(service.tariff.rates);Object.freeze(service.tariff);Object.freeze(service);result.push(service);
   }
   return Object.freeze(result);
 }
 export function validateStagingConsumer(c:StagingConsumer){
-  exact(c,['id','revision','mode','models','modelCapabilities','services'],['directProviderBases','oaVerifier'],'consumer');
+  exact(c,['id','revision','mode','models','modelCapabilities','services'],['directProviderBases','oaVerifier','gateway'],'consumer');
   requireConfig(typeof c.id==='string'&&/^[a-zA-Z0-9][a-zA-Z0-9._-]{0,127}$/.test(c.id)&&Number.isSafeInteger(c.revision)&&c.revision>0,'invalid_schema','consumer','valid profile identity required');
-  validateClientConfiguration(c.mode,c.models,c.services);exact(c.modelCapabilities,c.models.map(m=>m.id),[],'consumer.modelCapabilities');
+  validateClientConfiguration(c.mode,c.models,c.services);if(c.gateway)validateGatewayConfiguration(c.gateway,c.services,c.models);requireConfig(!c.services.some(s=>s.tariff.api.version==='2')||c.gateway!==undefined,'invalid_schema','consumer.gateway','gateway mounts required');exact(c.modelCapabilities,c.models.map(m=>m.id),[],'consumer.modelCapabilities');
   for(const m of c.models){exact(c.modelCapabilities[m.id],['streaming','tools'],[],'consumer.modelCapabilities');requireConfig(Object.values(c.modelCapabilities[m.id]).every(v=>typeof v==='boolean'),'invalid_schema','consumer.modelCapabilities','boolean capabilities required');}
 }
 export function selectedTariffHashes(c:Pick<StagingConsumer,'models'|'services'>){return [...new Set([...c.models.map(m=>m.tariff.tariff_hash),...c.services.map(s=>s.tariff.tariff_hash)])].sort();}
@@ -119,7 +138,8 @@ export interface FrontendRoutes{schema:1;listeners:{control:string;indexer:strin
 export function frontendRoutes(manifest:any,selection:StagingConsumer,o:OperatorPreparation,rpcUrl:string):FrontendRoutes{
  const control=manifest.control_api_origin,execution=manifest.inference_api_origin,indexer=o.indexer.publicOrigin;
  const routes:FrontendRoute[]=INDEXER_ROUTES.map(path=>({origin:indexer,methods:['GET'],path,match:path.includes('{')?'template':'exact',backend:'indexer',requestMaxBytes:0,responseMaxBytes:16*1024*1024,timeoutMs:60000}));
- for(const s of selection.services)routes.push({origin:execution,methods:['POST'],path:apiOperationPath(s.tariff.api),match:'exact',backend:'control',requestMaxBytes:Number(s.tariff.api.request_max_bytes),responseMaxBytes:Math.max(65536,Number(s.tariff.api.response_max_bytes)),timeoutMs:660000});
+ // Every DATA frame may carry only one byte: include worst-case framing, not average TCP chunks.
+ for(const s of selection.services)routes.push({origin:execution,methods:['POST'],path:apiOperationPath(s.tariff.api),match:'exact',backend:'control',requestMaxBytes:s.tariff.api.version==='2'?65540+Number(s.tariff.api.limits.request_bytes):Number(s.tariff.api.request_max_bytes),responseMaxBytes:s.tariff.api.version==='2'?6*Number(s.tariff.api.limits.response_bytes)+3*(65536+5):Math.max(65536,Number(s.tariff.api.response_max_bytes)),timeoutMs:660000});
  if(selection.models.length)for(const path of selectedApiEndpoints({...selection,services:[]}).filter(p=>p.startsWith('/v1/')))routes.push({origin:execution,methods:[path==='/v1/models'?'GET':'POST'],path,match:'exact',backend:'control',requestMaxBytes:8*1024*1024,responseMaxBytes:32*1024*1024,timeoutMs:300000});
  routes.push({origin:control,methods:['GET','POST','DELETE'],path:'/zkapi/v1',match:'prefix',backend:'control',requestMaxBytes:8*1024*1024,responseMaxBytes:16*1024*1024,timeoutMs:60000});
  const rpc=new URL(rpcUrl);routes.push({origin:rpc.origin,methods:['POST'],path:rpc.pathname,match:'exact',backend:'rpc',requestMaxBytes:8*1024*1024,responseMaxBytes:32*1024*1024,timeoutMs:60000});
@@ -139,13 +159,13 @@ export function renderOperatorConfiguration(input:{operator:OperatorPreparation;
  requireConfig(c.services.length===declarations.length&&c.services.every((s,i)=>Buffer.from(jcsBytes(s.tariff.api as any)).equals(Buffer.from(jcsBytes(declarations[i].api as any)))),'provider_config_mismatch','services','compiled operation descriptor mismatch');
  const path=(name:string)=>o.targetRoot+'/private/'+name;
  const devnet={idl_file:a.idl,program_file:a.program,build_manifest_file:a.buildManifest,trusted_build_manifest_hash:a.buildManifestHash,public_profile_file:a.publicProfile,trusted_public_profile_hash:a.publicProfileHash};
- const providers={direct:[],proxy:structuredClone(o.inferenceProviders),api:c.services.map((s,i)=>({api:structuredClone(s.tariff.api),credential_file:declarations[i].credentialFile}))};
+ const providers={direct:[],proxy:structuredClone(o.inferenceProviders),api:c.services.flatMap((s,i)=>s.tariff.api.version==='1'?[{api:structuredClone(s.tariff.api),credential_file:declarations[i].credentialFile}]:[]),...(c.gateway?{gateway:c.services.flatMap((s,i)=>s.tariff.api.version==='2'?[{api:structuredClone(s.tariff.api),credential_file:declarations[i].credentialFile??null,transport_artifact_sha256:(declarations[i] as GatewayServiceDeclaration).transportArtifactSha256,meter_artifact_sha256:(declarations[i] as GatewayServiceDeclaration).meterArtifactSha256}]:[])}:{})};
  const dispatcher={local_test_only:input.network==='local',...(input.network==='devnet'?{devnet:{deployment:devnet,manifest:m,trusted_manifest_hash:m.manifest_hash}}:{}),database_url:o.dispatcher.databaseUrl,pool:[...bs58.decode(m.pool)],claims_directory:o.dispatcher.claimsDirectory,providers};
  const control={local_test_only:true,...(input.network==='devnet'?{devnet}:{}),listen:o.control.listen,manifest:m,trusted_manifest_hash:m.manifest_hash,primary_rpc:o.control.primaryRpc,secondary_rpc:o.control.secondaryRpc,indexer_origin:o.control.indexerOrigin,signer_socket:o.signer.socket,quote_seed_file:o.control.quoteSeedFile,receipt_seed_file:o.control.receiptSeedFile,enable_local_adapter:false,providers:{...providers,dispatcher:{binary:o.dispatcher.binary.path,binary_sha256:o.dispatcher.binary.sha256,config_file:path('dispatcher.json')}},tariffs:[...new Map([...c.models.map(x=>x.tariff),...c.services.map(x=>x.tariff)].map(t=>[t.tariff_hash,t])).values()]};
  const indexer={rpc_url:o.indexer.rpcUrl,program_id:m.program_id,pool:m.pool,genesis_hash:m.genesis_hash,circuit_profile_hash:m.circuit_profile_hash,start_slot:o.indexer.startSlot,listen:o.indexer.listen,public_origin:o.indexer.publicOrigin,snapshots_directory:o.indexer.snapshotsDirectory};
  const ch=o.challenger;const challenger={manifest:a.manifest,manifest_sha256:m.manifest_hash,...(input.network==='devnet'?{devnet}:{}),rpc_url:ch.rpcUrl,database_dsn_file:ch.databaseDsnFile,start_slot:o.indexer.startSlot,journal_directory:ch.journalDirectory,tree_pk:a.treePk,node:ch.node,transport_bridge:ch.transportBridge.path,transport_bridge_sha256:ch.transportBridge.sha256,fee_key_file:ch.feeKeyFile,payer:ch.payer,poll_seconds:ch.pollSeconds,...(ch.alertSinkDirectory===undefined?{}:{alert_sink_directory:ch.alertSinkDirectory}),...(ch.priorityFee===undefined?{}:{priority_fee:ch.priorityFee}),...(ch.archiveBatch===undefined?{}:{archive_batch:ch.archiveBatch})};
  const signerInputs={schema:1,localTest:true,config:path('signer.json'),journal:o.signer.journal,socket:o.signer.socket,stateSeedFile:o.signer.stateSeedFile,clearanceSeedFile:o.signer.clearanceSeedFile,databaseDsnFile:o.database.signerDsnFile};
- const startup={schema:1,targetRoot:o.targetRoot,configs:{control:path('control.json'),dispatcher:path('dispatcher.json'),indexer:path('indexer.json'),challenger:path('challenger.json'),signer:path('signer.json'),signerInputs:path('signer-inputs.json')},database:o.database,dispatcherBinary:o.dispatcher.binary,challengerTransportBridge:ch.transportBridge,providerCredentialFiles:declarations.map(d=>d.credentialFile),requiredBeforeStartup:['independent_finalized_deployment_verification','independent_pool_initialization_slot_verification','new_database_and_financial_state'],order:['migrate_new_database','provision_pool_admission_disabled','initialize_signer_journal_once','initialize_challenger_once','start_signer','start_indexer','reconcile','start_control','start_challenger'],environmentFromFiles:{migrate:{ZKAPI_DATABASE_URL:o.database.migrationDsnFile},control:{ZKAPI_DATABASE_URL:o.database.writerDsnFile},signer:{ZKAPI_SIGNER_DATABASE_URL:o.database.signerDsnFile}}};
+ const startup={schema:1,targetRoot:o.targetRoot,configs:{control:path('control.json'),dispatcher:path('dispatcher.json'),indexer:path('indexer.json'),challenger:path('challenger.json'),signer:path('signer.json'),signerInputs:path('signer-inputs.json')},database:o.database,dispatcherBinary:o.dispatcher.binary,challengerTransportBridge:ch.transportBridge,providerCredentialFiles:declarations.flatMap(d=>d.credentialFile?[d.credentialFile]:[]),requiredBeforeStartup:['independent_finalized_deployment_verification','independent_pool_initialization_slot_verification','new_database_and_financial_state'],order:['migrate_new_database','provision_pool_admission_disabled','initialize_signer_journal_once','initialize_challenger_once','start_signer','start_indexer','reconcile','start_control','start_challenger'],environmentFromFiles:{migrate:{ZKAPI_DATABASE_URL:o.database.migrationDsnFile},control:{ZKAPI_DATABASE_URL:o.database.writerDsnFile},signer:{ZKAPI_SIGNER_DATABASE_URL:o.database.signerDsnFile}}};
  const routes=frontendRoutes(m,c,o,input.rpcUrl);validateFrontendRoutes(routes,o.indexer.publicOrigin);
  return{control,dispatcher,indexer,challenger,signerInputs,startup,routes};
 }

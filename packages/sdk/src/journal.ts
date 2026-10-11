@@ -79,19 +79,25 @@ export class EncryptedJournal<T extends object> {
   }
   async read(noteId: string, minimumHead?: JournalHead): Promise<JournalRecord<T> | null> {
     minimumHead = minimumHead && { ...minimumHead };
-    const key = await this.storageKey(noteId), record = await this.store.read(key);
-    const previous = this.seen.get(key);
-    if (!record) {
-      if (previous || minimumHead) throw new JournalIntegrityError('journal disappeared; reconcile before continuing');
-      return null;
+    const key = await this.storageKey(noteId);
+    for (let attempt = 0; ; attempt++) {
+      const previous = this.seen.get(key), record = await this.store.read(key);
+      if (!record) {
+        if (previous || this.seen.has(key) || minimumHead) throw new JournalIntegrityError('journal disappeared; reconcile before continuing');
+        return null;
+      }
+      const result = await this.decode(noteId, record);
+      if (previous) checkHead(result.head, previous);
+      const latest = this.seen.get(key);
+      // Another authenticated read/commit may advance our head while storage
+      // or decryption is pending. Retry only that overlap, never return the old
+      // snapshot; the next read must satisfy the new head and caller checkpoint.
+      if (latest && result.revision < latest.revision && (!previous || latest.revision > previous.revision) && attempt < 2) continue;
+      if (latest) checkHead(result.head, latest);
+      if (minimumHead) checkHead(result.head, minimumHead);
+      this.remember(key, result.head);
+      return result;
     }
-    const result = await this.decode(noteId, record);
-    if (previous) checkHead(result.head, previous);
-    if (minimumHead) checkHead(result.head, minimumHead);
-    // A concurrent read/commit may have finished while decryption was pending.
-    const latest = this.seen.get(key); if (latest) checkHead(result.head, latest);
-    this.remember(key, result.head);
-    return result;
   }
   async create(noteId: string, value: T): Promise<JournalRecord<T>> { return this.commit(noteId, null, value); }
   async compareAndSwap(noteId: string, expectedRevision: number, value: T): Promise<JournalRecord<T>> {

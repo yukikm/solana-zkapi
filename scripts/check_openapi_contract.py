@@ -135,5 +135,38 @@ for role in ['admin','upgrade']:
         bad = deepcopy(devnet)
         bad['authorities'][role] = malformed
         case('Manifest',bad,False)
+# Finite HTTP additions are independent of the legacy inference schema branches.
+gateway=json.loads((Path(__file__).resolve().parents[1]/"docs/contracts/universal-api-gateway-vectors.json").read_text())
+case("ApiBinding",gateway["binding"],True)
+case("ApiBindingV2",gateway["binding"],True)
+media_binding=deepcopy(gateway["binding"])
+media_binding['representation']['request_media_types']=["application/vnd.example%'+`|~"]
+case("ApiBindingV2",media_binding,True)
+media_binding['representation']['request_media_types']=["*","application/json"]
+case("ApiBindingV2",media_binding,False)
+case("Tariff",gateway["tariff"],True)
+case("Tariff",{**gateway["tariff"],"model":"legacy"},False)
+case("Tariff",{**gateway["tariff"],"pricing_basis":"fixed_usage_rates"},False)
+case("TariffRateV3",gateway["tariff"]["rates"][0],True)
+case("TariffRate",gateway["tariff"]["rates"][0],False)
+for field,value in [("query","decode"),("mode","direct_oa"),("unknown",True),("version","1")]:
+    case("ApiBindingV2",{**gateway["binding"],field:value},False)
+fixed_receipt={**body,"version":"3","operation_id":"00000000-0000-4000-8000-000000000003","evidence_kind":"PROXY_USAGE","provider_reported_usd":None,"binding_hash":gateway["binding_hash"],"operation_hmac":"00"*32,"meter_hash":"00"*32,"resource":None,"completion":{"rule_hash":"00"*32,"outcome":"satisfied","http_status":200},"usage":[{"unit":"requests","count":"1"}]}
+case("ReceiptBody",fixed_receipt,True)
+for field in ["binding_hash","operation_hmac","meter_hash","resource","completion"]:
+    missing=deepcopy(fixed_receipt);del missing[field];case("ReceiptBody",missing,False)
+case("ReceiptBody",{**fixed_receipt,"version":"2"},False)
+case("ReceiptBody",{**fixed_receipt,"completion":None},False)
+unknown={**fixed_receipt,"reason":"waived_unknown","evidence_kind":"UNKNOWN_OPERATOR_LOSS","usage":[],"completion":None,"observed_nano_usdc":None,"charged_nano_usdc":"0","operator_loss_nano_usdc":None}
+case("ReceiptBody",unknown,True)
+case("ReceiptBody",{**unknown,"usage":[{"unit":"requests","count":"0"}]},False)
+configuration={"capabilities":["finite_http_v1"],"mounts":[{"prefix":"","service":"fixture","operation":"lookup","binding_hash":gateway["binding_hash"]}]}
+case("GatewayConfiguration",configuration,True)
+case("GatewayConfiguration",{**configuration,"capabilities":["websocket"]},False)
+for filename in ["receipts.schema.json","universal-api-gateway.schema.json","public-profile.schema.json","api-project.schema.json"]:
+    schema=json.loads((Path(__file__).resolve().parents[1]/"docs/contracts"/filename).read_text());Draft202012Validator.check_schema(schema)
+    if filename=="receipts.schema.json":
+        assert Draft202012Validator(schema).is_valid({"body":fixed_receipt,"receipt_hash":"00"*32,"signature":"test"})
+    if filename=="universal-api-gateway.schema.json":assert Draft202012Validator(schema).is_valid(gateway["binding"])
 print(f"PASS: OpenAPI 3.1, {len(schemas)} schemas, {count} positive/negative examples.")
 print("NOT RUN: provider-native nested payload conformance, manifest crypto/setup verification and runtime semantic checks.")

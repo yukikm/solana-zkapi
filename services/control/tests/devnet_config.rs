@@ -157,7 +157,7 @@ fn generic_transport_policy_requires_authenticated_scope_and_isolated_dispatcher
     ] {
         let mut changed = config.clone();
         changed.providers.api[0].api.origin = origin.into();
-        changed.tariffs[0].api = Some(changed.providers.api[0].api.clone());
+        changed.tariffs[0].api = Some(changed.providers.api[0].api.clone().into());
         changed.tariffs[0].tariff_hash =
             zkapi_control::quote::tariff_hash(&changed.tariffs[0]).unwrap();
         changed.manifest["tariff_hashes"] = json!([changed.tariffs[0].tariff_hash]);
@@ -165,6 +165,49 @@ fn generic_transport_policy_requires_authenticated_scope_and_isolated_dispatcher
         assert!(changed.validate_public_inputs().is_err(), "{origin}");
     }
 }
+#[test]
+fn gateway_configuration_rejects_reservations_above_the_pool_cap() {
+    let dir = tempfile::tempdir().unwrap();
+    let mut config = fixture(dir.path(), true);
+    let vectors: Value = serde_json::from_str(include_str!(
+        "../../../docs/contracts/universal-api-gateway-vectors.json"
+    ))
+    .unwrap();
+    let mut api: wire::ApiBindingV2 = serde_json::from_value(vectors["binding"].clone()).unwrap();
+    api.transport.artifact_sha256 = zkapi_control::gateway::transport_artifact_sha256();
+    api.meter.adapter.artifact_sha256 = zkapi_control::gateway::meter_artifact_sha256();
+    let mut tariff: wire::Tariff = serde_json::from_value(vectors["tariff"].clone()).unwrap();
+    tariff.api = Some(api.clone().into());
+    config.providers = serde_json::from_value(json!({
+        "dispatcher": {
+            "binary":"/not-mounted/dispatcherd", "binary_sha256":"12".repeat(32),
+            "config_file":"/not-mounted/dispatcher.json"
+        },
+        "gateway":[{
+            "api":api,
+            "transport_artifact_sha256":api.transport.artifact_sha256,
+            "meter_artifact_sha256":api.meter.adapter.artifact_sha256
+        }]
+    }))
+    .unwrap();
+    config.enable_local_adapter = false;
+    let cap = config.manifest["cap_micro_usdc"].as_str().unwrap().parse::<u64>().unwrap() * 1000;
+    for reservation in [cap, cap + 1] {
+        tariff.rates[0].nano_usdc_numerator = reservation.to_string();
+        tariff.tariff_hash = zkapi_control::quote::tariff_hash(&tariff).unwrap();
+        config.manifest["tariff_hashes"] = json!([tariff.tariff_hash]);
+        config.tariffs = vec![tariff.clone()];
+        repin(&mut config);
+        let result = config.validate_public_inputs();
+        if reservation == cap {
+            result.unwrap();
+        } else {
+            assert!(result.is_err(), "an unadmittable gateway must not be advertised");
+            assert_eq!(result.err().unwrap().to_string(), "gateway reservation exceeds cap");
+        }
+    }
+}
+
 #[test]
 fn generic_dispatcher_independently_derives_public_and_local_transport_scope() {
     let directory = tempfile::tempdir().unwrap();

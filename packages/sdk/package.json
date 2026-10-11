@@ -1,6 +1,6 @@
 {
   "name": "@zkapi/solana-sdk",
-  "version": "0.2.0-devnet.9-onboarding.0",
+  "version": "0.2.0-devnet.13",
   "private": true,
   "type": "module",
   "exports": {
@@ -123,6 +123,10 @@
     "./provider-status": {
       "types": "./dist/provider-status.d.ts",
       "import": "./dist/provider-status.js"
+    },
+    "./gateway": {
+      "types": "./dist/gateway.d.ts",
+      "import": "./dist/gateway.js"
     }
   },
   "dependencies": {

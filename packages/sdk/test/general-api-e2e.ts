@@ -27,16 +27,23 @@ import {NativeJournalStore} from '../src/journal-node.ts';
 import {verifyManifest, jcsBytes, type Manifest, type ArtifactBundle} from '../src/trust.ts';
 import {connectionTransport, type TransportRpc, type V0Wallet} from '../src/transport.ts';
 import {read, json, digest} from './wallet-fixture.ts';
+import {nativeAgentFixture, type NativeAgentKind} from './native-agent-fixture.ts';
 
 const onboarding = process.env.ZKAPI_ONBOARDING_VARIANT;
-const fault = onboarding?.split('-')[1] as 'lost_response'|'upstream_timeout'|undefined;
+const gatewayMode = process.env.ZKAPI_GATEWAY_TEST === '1';
+const nativeAgentKind=process.env.ZKAPI_GATEWAY_CLIENT as NativeAgentKind|undefined;
+if(nativeAgentKind)assert.ok(['codex','claude'].includes(nativeAgentKind));
+const nativeAgentGroup=Number(process.env.ZKAPI_GATEWAY_CLIENT_GROUP) as 1|2|3;
+if(nativeAgentKind)assert.ok([1,2,3].includes(nativeAgentGroup));
+const gatewayExecutionPath=nativeAgentKind?'/zkapi/v2/execute/'+nativeAgentKind+'/'+(nativeAgentKind==='codex'?'responses':'messages'):'/zkapi/v2/execute/catalog/lookup';
+const fault = (nativeAgentKind?undefined:onboarding?.split('-')[1]) as 'lost_response'|'upstream_timeout'|undefined;
 const nativeMode = onboarding?.startsWith('native');
 const expectedCharge = fault==='upstream_timeout'?0:onboarding?250:251;
 const expectedWithdrawal=5000000-expectedCharge;
-const variants=fault==='lost_response'?['success']:fault==='upstream_timeout'?['upstream_timeout']:['success','http_error','invalid_json'];
+const variants=fault==='lost_response'?['success']:fault==='upstream_timeout'?['upstream_timeout']:['success','http_error',gatewayMode?'truncated':'invalid_json'];
 const expectedCalls=Object.fromEntries([...(onboarding?[]:['legacy']),...variants].map(v=>[v,1]));
 const runDir = resolve(process.env.ZKAPI_GENERAL_API_RUN_DIR!);
-assert.ok(runDir.startsWith(resolve('target/general-api-local') + '/'));
+assert.ok(['target/general-api-local','target/gateway-native-local'].some(root=>runDir.startsWith(resolve(root)+'/')));
 const directory = await mkdtemp(join(runDir, 'encrypted-journal-'));
 const stdin = createInterface({input: process.stdin}), input = stdin[Symbol.asyncIterator]();
 const elf = resolve(process.env.ZKAPI_TEST_VAULT_ELF!);
@@ -88,7 +95,7 @@ function frontendEvidence() {
     assert.ok(routeCalls.some(call => call.backend==='indexer' && call.method==='GET' && call.path===path), `generated frontend must carry ${path}`);
   }
   assert.ok(routeCalls.some(call => call.backend==='indexer' && call.method==='GET' && /^\/zkapi\/v1\/tree\/snapshots\/[0-9a-f]{64}\.json$/.test(call.path)));
-  assert.ok(routeCalls.some(call => call.backend==='control' && call.method==='POST' && call.path==='/zkapi/v1/api/catalog/lookup'));
+  assert.ok(routeCalls.some(call => call.backend==='control' && call.method==='POST' && call.path===(gatewayMode?gatewayExecutionPath:'/zkapi/v1/api/catalog/lookup')));
   assert.deepEqual(frontendRpcRejections,['batch','unknown_method']);
   return {generated_frontend_verified:true,frontend_route_calls:routeCalls,
     frontend_rpc_methods:Object.fromEntries([...new Set(routeCalls.flatMap(call=>call.rpcMethod?[call.rpcMethod]:[]))].sort().map(method=>[method,routeCalls.filter(call=>call.rpcMethod===method).length])),
@@ -102,6 +109,7 @@ let lostObserved!:()=>void, lostRelease!:()=>void;
 const lostResponseBarrier={observed:new Promise<void>(resolve=>lostObserved=resolve),release:()=>lostRelease()};
 const lostContinue=new Promise<void>(resolve=>lostRelease=resolve);
 const snapshots = new Map<string, Uint8Array>(), calls: Record<string, number> = {};
+const nativeAgent=nativeAgentKind?nativeAgentFixture(nativeAgentKind,calls):undefined;
 const count = (name: string) => calls[name] = (calls[name] ?? 0) + 1;
 const reply = (res: ServerResponse, body: unknown) => { res.setHeader('Content-Type', 'application/json'); res.end(JSON.stringify(body)); };
 async function snapshot() {
@@ -154,6 +162,7 @@ async function handler(req: IncomingMessage, res: ServerResponse) {
     }
     if (path === '/zkapi/v1/tree/root') { reply(res, await call({kind: 'root'})); return; }
     if (path.startsWith('/zkapi/v1/tree/notes/')) { reply(res, await call({kind: 'path', note_id: Number(path.split('/')[5])})); return; }
+    if(nativeAgent){await nativeAgent.handle(req,res,body,Buffer.from(raw));return;}
     assert.equal(req.method, 'POST'); assert.equal(req.headers.authorization, 'Bearer general-api-fixture-credential');
     if (path === '/v1/chat/completions') {
       count('legacy'); assert.equal(body.model, 'legacy-fixture');
@@ -161,11 +170,19 @@ async function handler(req: IncomingMessage, res: ServerResponse) {
         usage: {prompt_tokens: 10, completion_tokens: 5, total_tokens: 15, prompt_tokens_details: {cached_tokens: 0}}}); return;
     }
     assert.equal(path, '/lookup'); assert.equal(body.model, undefined); assert.equal(body.query, 'GENERAL_API_PRIVATE_QUERY');
-    assert.ok(['success', 'http_error', 'invalid_json','upstream_timeout'].includes(body.variant)); count(body.variant);
+    assert.ok(['success', 'http_error', 'invalid_json','truncated','upstream_timeout'].includes(body.variant)); count(body.variant);
+    if(gatewayMode){
+      assert.equal(req.url,'/lookup?tag=a&tag=b%2f&empty=');
+      const repeated=req.rawHeaders.flatMap((name,i)=>i%2===0&&name.toLowerCase()==='x-gateway-test'?[req.rawHeaders[i+1]]:[]);
+      assert.deepEqual(repeated,['one','two']);
+      res.setHeader('x-gateway-result',['first',Buffer.from([128,255]).toString('latin1')]);res.setHeader('Trailer','x-gateway-checksum');
+    }
+    const apiReply=(value:unknown)=>{if(!gatewayMode){reply(res,value);return;}res.setHeader('Content-Type','application/json');res.write(JSON.stringify(value));res.addTrailers({'x-gateway-checksum':'fixture-complete'});res.end();};
+    if(body.variant==='truncated'){invalidObserved();await invalidContinue;res.setHeader('Content-Type','application/octet-stream');res.write('partial');setImmediate(()=>res.destroy());return;}
     if(body.variant==='upstream_timeout'){await new Promise<void>(resolve=>res.once('close',resolve));return;}
-    if (body.variant === 'http_error') { res.statusCode = 503; reply(res, {error: 'fixture temporarily unavailable'}); return; }
+    if (body.variant === 'http_error') { res.statusCode = 503; apiReply({error: 'fixture temporarily unavailable'}); return; }
     if (body.variant === 'invalid_json') { if(onboarding){invalidObserved();await invalidContinue;} res.setHeader('Content-Type', 'application/json'); res.end('{'); return; }
-    reply(res, {items: [{id: 'catalog-42', label: 'GENERAL_API_PRIVATE_RESULT'}], source: 'local catalog'});
+    apiReply({items: [{id: 'catalog-42', label: 'GENERAL_API_PRIVATE_RESULT'}], source: 'local catalog'});
   } catch (error) { process.stderr.write(String(error) + '\n'); if (!res.headersSent) res.writeHead(500); res.end('{"error":"fixture failure"}'); }
 }
 const primary = createServer(handler), secondary = createServer(handler);
@@ -188,6 +205,19 @@ const frontend = createServer(async (req,res)=>{
     // Fetch forbids overriding Host. Use HTTP directly so the backend sees the
     // authenticated public route origin, while the socket stays on loopback.
     const forwardedHeaders:Record<string,string>={};headers.forEach((value,key)=>forwardedHeaders[key]=value);
+    if(nativeAgent&&route.path===gatewayExecutionPath){
+      await new Promise<void>((resolve,reject)=>{
+        const request=httpRequest(target,{method:req.method,headers:forwardedHeaders,signal:AbortSignal.timeout(route.timeoutMs)},upstream=>{
+          res.statusCode=upstream.statusCode??502;
+          for(const[key,value]of Object.entries(upstream.headers))if(value&&!['content-length','transfer-encoding','connection'].includes(key))res.setHeader(key,value);
+          res.flushHeaders();let length=0;
+          upstream.on('data',chunk=>{length+=chunk.length;if(length>route.responseMaxBytes){request.destroy(Error('fixture response bound'));return;}if(!res.write(chunk))upstream.pause();});
+          res.on('drain',()=>upstream.resume());upstream.on('end',()=>{res.end();resolve();});
+          upstream.on('error',error=>{res.destroy(error);resolve();});
+        });
+        res.on('close',()=>{request.destroy();resolve();});request.on('error',error=>{if(res.headersSent){res.destroy(error);resolve();}else reject(error);});request.end(body);
+      });return;
+    }
     const response=await new Promise<{status:number;headers:IncomingHttpHeaders;body:Buffer}>((resolve,reject)=>{
       const request=httpRequest(target,{method:req.method,headers:forwardedHeaders,signal:AbortSignal.timeout(route.timeoutMs)},upstream=>{
         const chunks:Buffer[]=[];let length=0;
@@ -197,7 +227,7 @@ const frontend = createServer(async (req,res)=>{
       request.on('error',reject);request.end(body);
     });
     res.statusCode=response.status;for(const [key,value] of Object.entries(response.headers))if(value&&!['content-length','transfer-encoding','connection'].includes(key))res.setHeader(key,value);
-    if(fault==='lost_response'&&route.path==='/zkapi/v1/api/catalog/lookup'&&response.status===200){lostObserved();await lostContinue;}
+    if(fault==='lost_response'&&route.path===(gatewayMode?gatewayExecutionPath:'/zkapi/v1/api/catalog/lookup')&&response.status===200){lostObserved();await lostContinue;}
     res.end(response.body);
   } catch {if(!res.headersSent)res.writeHead(502);res.end('{"error":"fixture frontend rejected request"}');}
 });
@@ -222,11 +252,11 @@ try {
   const trust = {anchor: {kind: 'hash', sha256: m.manifest_hash},
     expected: {deployment_id: m.deployment_id, deployment_environment: m.deployment_environment, genesis_hash: m.genesis_hash, program_id: m.program_id,
       pool: m.pool, mint: m.mint, token_program: m.token_program, control_api_origin: controlOrigin, inference_api_origin: m.inference_api_origin},
-    build: {stateKey: m.state_key, clearanceKey: m.clearance_key, circuitProfileHash: m.circuit_profile_hash, idlHash: m.idl_hash, setupProfile: m.setup_profile}} as const;
+    build: {...(gatewayMode?{gatewayAdapters:{transport:[configuration.tariffs[0].api.transport.artifact_sha256],meters:[configuration.tariffs[0].api.meter.adapter.artifact_sha256]}}:{}),stateKey: m.state_key, clearanceKey: m.clearance_key, circuitProfileHash: m.circuit_profile_hash, idlHash: m.idl_hash, setupProfile: m.setup_profile}} as const;
   const manifest = await verifyManifest(jcsBytes(m), trust);
   if(nativeMode){
     const {runNativeOnboarding}=await import('./native-onboarding.ts');
-    const report=await runNativeOnboarding({runDir,installation:process.env.ZKAPI_TEST_NATIVE_INSTALLATION!,manifest,trust,artifacts,tariff:configuration.tariffs[0],rpcOrigin:frontendOrigin,roles:{payer:pair.address,uploader:pair.address,feePayer:pair.address,rentPayer:pair.address,tokenOwner:pair.address},walletSeed:pair.secretKey,destinationOwner:key(7),call,calls,invalidJsonBarrier,fault,lostResponseBarrier});
+    const report=await runNativeOnboarding({runDir,installation:process.env.ZKAPI_TEST_NATIVE_INSTALLATION!,manifest,trust,artifacts,tariff:configuration.tariffs[0],rpcOrigin:frontendOrigin,roles:{payer:pair.address,uploader:pair.address,feePayer:pair.address,rentPayer:pair.address,tokenOwner:pair.address},walletSeed:pair.secretKey,destinationOwner:key(7),call,calls,invalidJsonBarrier,fault,lostResponseBarrier,...(nativeAgent?{nativeAgent:{...nativeAgent,group:nativeAgentGroup,binary:process.env[nativeAgentKind==='codex'?'ZKAPI_CODEX':'ZKAPI_CLAUDE']!}}:{})});
     process.stdout.write(JSON.stringify({...report,...frontendEvidence()})+'\n');
   } else {
   const proverPath = resolve(process.env.ZKAPI_TEST_NATIVE_PROVER!);

@@ -43,7 +43,7 @@ export async function validateRegistration(configPath:string){
  }
  // The cap is read only from the independently pinned deployment, never from a duplicated project field.
  const deployment=await pinned({path:staging.deploymentPath,sha256:staging.deploymentSha256});
- const services=await compileApiServices(project.services,deployment.cap_micro_usdc);staging.consumer={...staging.consumer,services};validateStagingConsumer(staging.consumer);validateOperator(operator,staging.consumer);
+ const services=await compileApiServices(project.services,deployment.cap_micro_usdc);staging.consumer={...staging.consumer,services,...(project.schema===2?{gateway:project.gateway}:{})};if(project.schema===2){const gateway=project.services.filter(s=>s.api.version==='2') as import('./api_registration.ts').GatewayServiceDeclaration[];staging.gatewayAdapters={transport:[...new Set(gateway.map(s=>s.transportArtifactSha256))].sort(),meters:[...new Set(gateway.map(s=>s.meterArtifactSha256))].sort()};}validateStagingConsumer(staging.consumer);validateOperator(operator,staging.consumer);
  requireConfig(String(PUBLIC_PROFILE_SDK_VERSION)!=='0.2.0-devnet.8','invalid_schema','sdkVersion','distinct unpublished schema two build required');
  try{await stagePublicDevnetDeployment(staging,join(dirname(configPath),'.validation-no-output'),{validateOnly:true});}catch(e){throw safeError(e);}
  // Pin and inspect only the public binary bytes; no execution or credential reads during validate.
@@ -73,7 +73,7 @@ async function roundTrip(root:string,normalized:any){
  const loaded=await loadPublicDeploymentProfile(url,{profileSha256:await sha256Hex(bytes),fetch:fetcher});
  const c=normalized.staging.consumer,compiled=await compileApiServices(normalized.project.services,loaded.assets.verifiedManifest.cap_micro_usdc);requireConfig(Buffer.from(jcsBytes(compiled as any)).equals(Buffer.from(jcsBytes(c.services))),'artifact_verification_failed','services','declaration price and tariff mismatch');
  requireConfig(Buffer.from(jcsBytes(Object.fromEntries(Object.keys(c).map(k=>[k,profile[k]])))).equals(Buffer.from(jcsBytes(c))),'artifact_verification_failed','profile','consumer selection mismatch');
- requireConfig(profile.schema===2&&profile.mode==='proxy'&&Buffer.from(jcsBytes(profile.services)).equals(Buffer.from(jcsBytes(c.services)))&&Buffer.from(jcsBytes(profile.models)).equals(Buffer.from(jcsBytes(c.models))),'artifact_verification_failed','profile','selection binding mismatch');
+ requireConfig(profile.schema===(c.gateway?3:2)&&profile.mode==='proxy'&&Buffer.from(jcsBytes(profile.services)).equals(Buffer.from(jcsBytes(c.services)))&&Buffer.from(jcsBytes(profile.models)).equals(Buffer.from(jcsBytes(c.models))),'artifact_verification_failed','profile','selection binding mismatch');
  requireConfig(profile.indexerOrigin===normalized.operator.indexer.publicOrigin,'artifact_verification_failed','profile','indexer binding mismatch');
  const artifacts=artifactPaths(normalized.operator.targetRoot,descriptor),rendered=renderOperatorConfiguration({operator:normalized.operator,manifest:loaded.assets.verifiedManifest,selection:c,declarations:normalized.project.services,artifacts,rpcUrl:profile.rpcUrl,network:'devnet'});
  const files={'control.json':rendered.control,'dispatcher.json':rendered.dispatcher,'indexer.json':rendered.indexer,'challenger.json':rendered.challenger,'signer-inputs.json':rendered.signerInputs,'startup.json':rendered.startup,'frontend-routes.json':rendered.routes};

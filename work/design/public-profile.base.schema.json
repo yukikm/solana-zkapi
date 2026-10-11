@@ -1,0 +1,506 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://zkapi.example/contracts/public-profile.schema.json",
+  "title": "Authenticated public deployment profile",
+  "description": "Structural wire contract. Runtime also verifies canonical integers and bounds, URL origin policies, exact model capabilities, unique selections, mode/provider/API rules, JCS hashes, authenticated manifest pins and authorization cap.",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "schema": {
+      "enum": [
+        1,
+        2
+      ]
+    },
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9-]{0,79}$"
+    },
+    "revision": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 9007199254740991
+    },
+    "sdkVersions": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 16,
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+(?:-[a-zA-Z0-9.-]+)?$"
+      }
+    },
+    "protocolLayoutVersion": {
+      "const": 2
+    },
+    "bundle": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "url": {
+          "$ref": "#/$defs/publicUrl"
+        },
+        "sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        }
+      },
+      "required": [
+        "url",
+        "sha256"
+      ]
+    },
+    "rpcUrl": {
+      "$ref": "#/$defs/publicUrl"
+    },
+    "indexerOrigin": {
+      "$ref": "#/$defs/publicOrigin"
+    },
+    "mode": {
+      "enum": [
+        "proxy",
+        "direct_oa",
+        "direct_openrouter"
+      ]
+    },
+    "models": {
+      "type": "array",
+      "maxItems": 32,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[!-~]{1,200}$",
+            "not": {
+              "const": "*"
+            }
+          },
+          "label": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 160
+          },
+          "provider": {
+            "enum": [
+              "openai",
+              "anthropic",
+              "openrouter",
+              "oa"
+            ]
+          },
+          "apis": {
+            "type": "array",
+            "minItems": 1,
+            "uniqueItems": true,
+            "items": {
+              "enum": [
+                "chat",
+                "responses",
+                "messages"
+              ]
+            }
+          },
+          "tariff": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "tariff_hash": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{64}$"
+              },
+              "valid_from": {
+                "type": "string",
+                "pattern": "^(0|[1-9][0-9]*)$",
+                "maxLength": 20
+              },
+              "valid_until": {
+                "type": "string",
+                "pattern": "^(0|[1-9][0-9]*)$",
+                "maxLength": 20
+              },
+              "operator_fee_micro_usdc": {
+                "const": "0"
+              },
+              "version": {
+                "type": "string",
+                "pattern": "^(0|[1-9][0-9]*)$",
+                "maxLength": 20
+              },
+              "provider": {
+                "enum": [
+                  "openai",
+                  "anthropic",
+                  "openrouter",
+                  "oa"
+                ]
+              },
+              "model": {
+                "type": "string"
+              },
+              "pricing_basis": {
+                "enum": [
+                  "provider_reported_usd",
+                  "fixed_usage_rates"
+                ]
+              },
+              "rates": {
+                "type": "array",
+                "maxItems": 6,
+                "items": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "unit": {
+                      "enum": [
+                        "cache_read_tokens",
+                        "cache_write_1h_tokens",
+                        "cache_write_5m_tokens",
+                        "cache_write_tokens",
+                        "input_tokens",
+                        "output_tokens"
+                      ]
+                    },
+                    "nano_usdc_numerator": {
+                      "type": "string",
+                      "pattern": "^(0|[1-9][0-9]*)$",
+                      "maxLength": 20
+                    },
+                    "unit_denominator": {
+                      "type": "string",
+                      "pattern": "^(0|[1-9][0-9]*)$",
+                      "maxLength": 20
+                    }
+                  },
+                  "required": [
+                    "unit",
+                    "nano_usdc_numerator",
+                    "unit_denominator"
+                  ]
+                }
+              }
+            },
+            "required": [
+              "tariff_hash",
+              "valid_from",
+              "valid_until",
+              "operator_fee_micro_usdc",
+              "version",
+              "provider",
+              "model",
+              "pricing_basis",
+              "rates"
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "provider",
+          "apis",
+          "tariff"
+        ]
+      }
+    },
+    "modelCapabilities": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "streaming": {
+            "type": "boolean"
+          },
+          "tools": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "streaming",
+          "tools"
+        ]
+      }
+    },
+    "services": {
+      "type": "array",
+      "maxItems": 64,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "tariff": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "tariff_hash": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{64}$"
+              },
+              "valid_from": {
+                "type": "string",
+                "pattern": "^(0|[1-9][0-9]*)$",
+                "maxLength": 20
+              },
+              "valid_until": {
+                "type": "string",
+                "pattern": "^(0|[1-9][0-9]*)$",
+                "maxLength": 20
+              },
+              "operator_fee_micro_usdc": {
+                "const": "0"
+              },
+              "version": {
+                "const": "2"
+              },
+              "provider": {
+                "const": "generic"
+              },
+              "api": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "version": {
+                    "const": "1"
+                  },
+                  "service": {
+                    "type": "string",
+                    "pattern": "^[a-z0-9][a-z0-9_-]{0,63}$"
+                  },
+                  "operation": {
+                    "type": "string",
+                    "pattern": "^[a-z0-9][a-z0-9_-]{0,63}$"
+                  },
+                  "method": {
+                    "const": "POST"
+                  },
+                  "path": {
+                    "type": "string",
+                    "pattern": "^/[A-Za-z0-9/._~-]*$",
+                    "maxLength": 1024
+                  },
+                  "origin": {
+                    "$ref": "#/$defs/publicOrigin"
+                  },
+                  "request_max_bytes": {
+                    "type": "string",
+                    "pattern": "^[1-9][0-9]{0,6}$"
+                  },
+                  "response_max_bytes": {
+                    "type": "string",
+                    "pattern": "^[1-9][0-9]{0,6}$"
+                  },
+                  "timeout_seconds": {
+                    "type": "string",
+                    "pattern": "^[1-9][0-9]{0,6}$"
+                  },
+                  "billing": {
+                    "const": "http_2xx_json"
+                  }
+                },
+                "required": [
+                  "version",
+                  "service",
+                  "operation",
+                  "method",
+                  "path",
+                  "origin",
+                  "request_max_bytes",
+                  "response_max_bytes",
+                  "timeout_seconds",
+                  "billing"
+                ]
+              },
+              "pricing_basis": {
+                "const": "fixed_request"
+              },
+              "rates": {
+                "type": "array",
+                "minItems": 1,
+                "maxItems": 1,
+                "items": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "unit": {
+                      "const": "requests"
+                    },
+                    "nano_usdc_numerator": {
+                      "type": "string",
+                      "pattern": "^[1-9][0-9]{0,18}$"
+                    },
+                    "unit_denominator": {
+                      "const": "1"
+                    }
+                  },
+                  "required": [
+                    "unit",
+                    "nano_usdc_numerator",
+                    "unit_denominator"
+                  ]
+                }
+              }
+            },
+            "required": [
+              "tariff_hash",
+              "valid_from",
+              "valid_until",
+              "operator_fee_micro_usdc",
+              "version",
+              "provider",
+              "api",
+              "pricing_basis",
+              "rates"
+            ]
+          }
+        },
+        "required": [
+          "tariff"
+        ]
+      }
+    },
+    "directProviderBases": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "direct_oa": {
+          "$ref": "#/$defs/publicUrl"
+        },
+        "direct_openrouter": {
+          "$ref": "#/$defs/publicUrl"
+        }
+      },
+      "required": []
+    },
+    "oaVerifier": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "base": {
+          "$ref": "#/$defs/publicUrl"
+        },
+        "stationId": {
+          "type": "string",
+          "pattern": "^[!-~]{1,200}$"
+        }
+      },
+      "required": [
+        "base",
+        "stationId"
+      ]
+    },
+    "preparationCommitment": {
+      "enum": [
+        "confirmed",
+        "finalized"
+      ]
+    }
+  },
+  "required": [
+    "schema",
+    "id",
+    "revision",
+    "sdkVersions",
+    "protocolLayoutVersion",
+    "bundle",
+    "rpcUrl",
+    "indexerOrigin",
+    "mode",
+    "models",
+    "modelCapabilities"
+  ],
+  "$defs": {
+    "publicUrl": {
+      "type": "string",
+      "maxLength": 2048,
+      "pattern": "^https://[^/@?#:]+(?:\\:[0-9]+)?(?:/[^?#]*)?$"
+    },
+    "publicOrigin": {
+      "type": "string",
+      "maxLength": 2048,
+      "pattern": "^https://[^/@?#:]+(?:\\:[0-9]+)?$"
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "schema": {
+            "const": 1
+          }
+        }
+      },
+      "then": {
+        "not": {
+          "required": [
+            "services"
+          ]
+        },
+        "properties": {
+          "models": {
+            "minItems": 1
+          }
+        }
+      },
+      "else": {
+        "required": [
+          "services"
+        ],
+        "anyOf": [
+          {
+            "properties": {
+              "models": {
+                "minItems": 1
+              }
+            }
+          },
+          {
+            "properties": {
+              "services": {
+                "minItems": 1
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "mode": {
+            "const": "proxy"
+          }
+        }
+      },
+      "then": {
+        "not": {
+          "anyOf": [
+            {
+              "required": [
+                "directProviderBases"
+              ]
+            },
+            {
+              "required": [
+                "oaVerifier"
+              ]
+            }
+          ]
+        }
+      },
+      "else": {
+        "required": [
+          "directProviderBases"
+        ],
+        "properties": {
+          "models": {
+            "minItems": 1
+          },
+          "services": {
+            "maxItems": 0
+          }
+        }
+      }
+    }
+  ]
+}

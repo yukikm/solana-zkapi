@@ -86,7 +86,7 @@ never alters a funded Pool or calls the provider.
 
 ## Call it through the SDK
 
-Install the matching unpublished source SDK tarball in your application. Load
+Install the matching `.13` SDK tarball in your application. Load
 the generated schema 2 public profile with its independently installed SHA-256,
 then pass `publicProfileClientOptions(loaded)` to `createZkApiClient` together
 with your existing prover, selected wallet and encrypted storage. The loaded
@@ -119,7 +119,7 @@ const status = await client.status();
 
 ## Use the installed native client
 
-The matching unpublished native installer materializes every authenticated
+The matching `.13` native installer materializes every authenticated
 service tariff and the exact execution egress routes. It includes no upstream
 provider route or provider credential. Follow the native setup procedure with
 the generated API-only inputs; no model or OpenClaw configuration is needed.

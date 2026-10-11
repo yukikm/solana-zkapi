@@ -9,11 +9,15 @@ import { decodeRpcAccount } from './solana-rpc.ts';
 import { jcsBytes, parseStrictJson, sha256Hex, verifyArtifactBundle, verifyManifest, verifyPoolConfig, type VerifiedManifest } from './trust.ts';
 
 import { validateApiBinding, validateApiService, apiOperationPath, type ApiService, type ApiBinding } from './control.ts';
+import { validateGatewayConfiguration, type GatewayConfiguration } from './gateway.ts';
 import { SDK_VERSION } from './version.ts';
 
-export const PUBLIC_PROFILE_SCHEMA = 2;
-export const PUBLIC_PROFILE_SUPPORTED_SCHEMAS = Object.freeze([1, 2] as const);
+export const PUBLIC_PROFILE_SCHEMA = 3;
+export const PUBLIC_PROFILE_SUPPORTED_SCHEMAS = Object.freeze([1, 2, 3] as const);
 export const PUBLIC_PROFILE_SDK_VERSION = SDK_VERSION;
+// Match the published .12 inference loader without changing authenticated
+// profile bytes. New API schemas must explicitly select the installed SDK.
+const LEGACY_PROFILE_SDK_VERSIONS = new Set(['0.2.0-devnet.8','0.2.0-devnet.9','0.2.0-devnet.10','0.2.0-devnet.11','0.2.0-devnet.12']);
 const DEVNET_GENESIS = 'EtWTRABZaYq6iMfeYKouRu166VU2xqa1wcaWoxPkrZBG';
 const DEVNET_USDC = '4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU';
 const TOKEN_PROGRAM = 'TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA';
@@ -35,7 +39,8 @@ interface PublicDeploymentProfileBase {
 }
 export interface PublicDeploymentProfileV1 extends PublicDeploymentProfileBase { schema: 1 }
 export interface PublicDeploymentProfileV2 extends PublicDeploymentProfileBase { schema: 2; services: readonly ApiService[] }
-export type PublicDeploymentProfile = PublicDeploymentProfileV1 | PublicDeploymentProfileV2;
+export interface PublicDeploymentProfileV3 extends PublicDeploymentProfileBase { schema:3;services:readonly ApiService[];gateway:GatewayConfiguration }
+export type PublicDeploymentProfile = PublicDeploymentProfileV1 | PublicDeploymentProfileV2 | PublicDeploymentProfileV3;
 export interface LoadedPublicDeploymentProfile {
   readonly profile: PublicDeploymentProfile;
   readonly profileSha256: string;
@@ -92,12 +97,14 @@ function deepFreeze<T>(value: T): T {
 function validateProfile(value: unknown): PublicDeploymentProfile {
   object(value);
   requireValue(PUBLIC_PROFILE_SUPPORTED_SCHEMAS.includes(value.schema));
-  fields(value, ['schema','id','revision','sdkVersions','protocolLayoutVersion','bundle','rpcUrl','indexerOrigin','mode','models','modelCapabilities', ...(value.schema === 2 ? ['services'] : [])],
+  fields(value, ['schema','id','revision','sdkVersions','protocolLayoutVersion','bundle','rpcUrl','indexerOrigin','mode','models','modelCapabilities', ...(value.schema !== 1 ? ['services'] : []),...(value.schema === 3 ? ['gateway'] : [])],
     ['directProviderBases','oaVerifier','preparationCommitment']);
   requireValue(Array.isArray(value.sdkVersions) && value.sdkVersions.length > 0 && value.sdkVersions.length <= 16
     && value.sdkVersions.every((v: unknown) => typeof v === 'string' && /^[0-9]+\.[0-9]+\.[0-9]+(?:-[a-zA-Z0-9.-]+)?$/.test(v))
     && new Set(value.sdkVersions).size === value.sdkVersions.length);
-  if (!value.sdkVersions.includes(PUBLIC_PROFILE_SDK_VERSION) || value.protocolLayoutVersion !== 2) throw new PublicProfileError('compatibility');
+  const compatible = value.sdkVersions.includes(PUBLIC_PROFILE_SDK_VERSION)
+    || value.schema === 1 && value.sdkVersions.some((version: string) => LEGACY_PROFILE_SDK_VERSIONS.has(version));
+  if (!compatible || value.protocolLayoutVersion !== 2) throw new PublicProfileError('compatibility');
   fields(value.bundle,['url','sha256']); publicUrl(value.bundle.url); digest(value.bundle.sha256);
   publicUrl(value.rpcUrl); publicUrl(value.indexerOrigin,true);
   requireValue(value.preparationCommitment === undefined || ['finalized','confirmed'].includes(value.preparationCommitment));
@@ -107,13 +114,13 @@ function validateProfile(value: unknown): PublicDeploymentProfile {
 /** Pure public selection contract for registration before signing or custody.
  * This validates configuration only; it never authenticates a loaded profile. */
 export function validatePublicProfileSelection(value: unknown): void {
-  fields(value,['id','revision','mode','models','modelCapabilities','services'],['directProviderBases','oaVerifier']);
-  validateProfileSelection({...value,schema:2});
+  fields(value,['id','revision','mode','models','modelCapabilities','services'],['directProviderBases','oaVerifier','gateway']);
+  validateProfileSelection({...value,schema:value.gateway?3:2});
 }
 function validateProfileSelection(value: Record<string, any>): void {
   requireValue(typeof value.id === 'string' && /^[a-z0-9][a-z0-9-]{0,79}$/.test(value.id)
     && Number.isSafeInteger(value.revision) && value.revision > 0);
-  requireValue(Array.isArray(value.models) && (value.schema === 2 || value.models.length > 0) && value.models.length <= 32);
+  requireValue(Array.isArray(value.models) && (value.schema !== 1 || value.models.length > 0) && value.models.length <= 32);
   fields(value.modelCapabilities, value.models.map((m: any) => m?.id));
   for (const m of value.models) {
     fields(m,['id','provider','apis','tariff'],['label']);
@@ -136,14 +143,16 @@ function validateProfileSelection(value: Record<string, any>): void {
     requireValue(!selected.includes('cache_write_tokens') || !selected.some((u: string) => u === 'cache_write_1h_tokens' || u === 'cache_write_5m_tokens'));
     requireValue(value.mode === 'proxy' ? selected.includes('input_tokens') && selected.includes('output_tokens') : t.rates.length === 0);
   }
-  if (value.schema === 2) {
+  if (value.schema !== 1) {
     try {
       requireValue(Array.isArray(value.services) && value.services.length <= 64);
       for (const service of value.services) { validateApiService(service); publicUrl(service.tariff.api.origin, true); }
       requireValue(value.services.length === 0 || value.mode === 'proxy');
     } catch { throw new PublicProfileError('services'); }
   }
-  try { if (value.models.length) validateModelConfigurations(value.mode,value.models); validateClientConfiguration(value.mode, value.models, value.schema === 2 ? value.services : []); }
+  if(value.schema===3){validateGatewayConfiguration(value.gateway,value.services,value.models);}
+  else requireValue(!value.services?.some((s:ApiService)=>s.tariff.api.version==='2'));
+  try { if (value.models.length) validateModelConfigurations(value.mode,value.models); validateClientConfiguration(value.mode, value.models, value.schema !== 1 ? value.services : []); }
   catch (error) { throw new PublicProfileError(error instanceof ClientSelectionError ? error.component : 'models'); }
   if (value.mode === 'proxy') requireValue(value.directProviderBases === undefined && value.oaVerifier === undefined);
   else {
@@ -186,7 +195,7 @@ function deadline(timeoutMs: number | undefined, caller: AbortSignal | undefined
 function cloneAssets(a: LoadedDeploymentAssets): LoadedDeploymentAssets {
   return {...a,manifest:new Uint8Array(a.manifest),trust:structuredClone(a.trust),artifacts:structuredClone(a.artifacts),wasm:new Uint8Array(a.wasm),notices:structuredClone(a.notices)};
 }
-function clientParts(profile: PublicDeploymentProfile, assets: LoadedDeploymentAssets, fetcher: typeof fetch): Pick<CreateClientOptions,'deployment'|'mode'|'models'|'services'|'directProviderBases'|'oaVerifier'> {
+function clientParts(profile: PublicDeploymentProfile, assets: LoadedDeploymentAssets, fetcher: typeof fetch): Pick<CreateClientOptions,'deployment'|'mode'|'models'|'services'|'gateway'|'directProviderBases'|'oaVerifier'> {
   const safeFetch: typeof fetch = (url,init) => fetcher(url,{...init,credentials:'omit',redirect:'error',cache:'no-store'});
   const rpcFetch: typeof fetch = async (url,init) => {
     const bound = deadline(60_000,init?.signal ?? undefined,60_000);
@@ -196,7 +205,7 @@ function clientParts(profile: PublicDeploymentProfile, assets: LoadedDeploymentA
   };
   return {deployment:{manifest:new Uint8Array(assets.manifest),trust:structuredClone(assets.trust),artifacts:structuredClone(assets.artifacts),
     connection:createSolanaRpcWithFetch(profile.rpcUrl,rpcFetch),indexerOrigin:profile.indexerOrigin,fetch:safeFetch,preparationCommitment:profile.preparationCommitment},
-  mode:profile.mode,services:structuredClone(profile.schema === 2 ? [...profile.services] : []),models:profile.models.map(m => ({...structuredClone(m),capabilities:structuredClone(profile.modelCapabilities[m.id])})),
+  mode:profile.mode,...(profile.schema===3?{gateway:structuredClone(profile.gateway)}:{}),services:structuredClone(profile.schema !== 1 ? [...profile.services] : []),models:profile.models.map(m => ({...structuredClone(m),capabilities:structuredClone(profile.modelCapabilities[m.id])})),
   ...(profile.directProviderBases ? {directProviderBases:structuredClone(profile.directProviderBases)} : {}),
   ...(profile.oaVerifier ? {oaVerifier:structuredClone(profile.oaVerifier)} : {})};
 }
@@ -210,8 +219,9 @@ async function validateAssets(profile: PublicDeploymentProfile, assets: LoadedDe
   requireValue(await sha256Hex(assets.wasm) === assets.wasmSha256 && WebAssembly.validate(new Uint8Array(assets.wasm)));
   return m;
 }
-async function validateSelectionPins(profile: PublicDeploymentProfile, manifest: VerifiedManifest, now?: bigint) {
-  try { await validateClientSelectionPins({models:profile.models,services:profile.schema === 2 ? profile.services : []},manifest,now); }
+async function validateSelectionPins(profile: PublicDeploymentProfile, manifest: VerifiedManifest, now?: bigint, pins?: import('./trust.ts').ManifestTrustPolicy['build']['gatewayAdapters']) {
+  try { await validateClientSelectionPins({models:profile.models,services:profile.schema !== 1 ? profile.services : []},manifest,now,pins);
+    if(profile.schema===3)for(const mount of profile.gateway.mounts){const selected=profile.services.find(s=>s.tariff.api.service===mount.service&&s.tariff.api.operation===mount.operation)!;requireValue(await sha256Hex(jcsBytes(selected.tariff.api))===mount.binding_hash);} }
   catch (error) { throw error instanceof ClientSelectionError ? new PublicProfileError(error.component) : error; }
 }
 /** A profile's exact digest authenticates its bundle digest and therefore the
@@ -226,7 +236,7 @@ export async function loadPublicDeploymentProfile(url: string | URL, options: Pu
     requireValue(await sha256Hex(bytes) === expected);
     const profile = validateProfile(parseStrictJson(bytes)); component = 'assets';
     const assets = await loadDeploymentAssets(profile.bundle.url,{bundleSha256:profile.bundle.sha256,fetch:fetcher,signal:bound.signal,timeoutMs:options.timeoutMs ?? 180_000});
-    const manifest = await validateAssets(profile,assets); component = 'models'; await validateSelectionPins(profile,manifest);
+    const manifest = await validateAssets(profile,assets); component = 'models'; await validateSelectionPins(profile,manifest,undefined,assets.trust.build.gatewayAdapters);
     bound.signal.throwIfAborted();
     const stored = {profile,assets:cloneAssets(assets),fetcher,hash:expected};
     const result = Object.freeze({profile,profileSha256:expected,get assets() { return cloneAssets(stored.assets); },
@@ -290,7 +300,7 @@ export async function preflightPublicDeployment(loaded: LoadedPublicDeploymentPr
     bound = deadline(options.timeoutMs,options.signal,180_000); const signal = bound.signal;
     component = 'assets'; const m = await validateAssets(profile,assets);
     const now = options.nowSeconds ?? BigInt(Math.floor(Date.now()/1000)); requireValue(typeof now === 'bigint' && now >= 0n);
-    component = 'models'; await validateSelectionPins(profile,m,now);
+    component = 'models'; await validateSelectionPins(profile,m,now,assets.trust.build.gatewayAdapters);
     const readonlyFetch: typeof fetch = async (input,init) => {
       const url = String(input), method = init?.method ?? 'GET';
       if (url === profile.rpcUrl) {
@@ -319,7 +329,7 @@ export async function preflightPublicDeployment(loaded: LoadedPublicDeploymentPr
       && entry.provider === model.provider && entry.tariff_hash === model.tariff.tariff_hash && Array.isArray(entry.modes) && entry.modes.includes(profile.mode)
       && Array.isArray(entry.modalities) && entry.modalities.includes('text')
       && (profile.mode !== 'proxy' || Array.isArray(entry.endpoints) && model.apis.every(api => entry.endpoints.includes(apiPaths[api])))));
-    for (const service of profile.schema === 2 ? profile.services : []) requireValue(validatedCatalog.apis.some(entry =>
+    for (const service of profile.schema !== 1 ? profile.services : []) requireValue(validatedCatalog.apis.some(entry =>
       entry.tariff_hash === service.tariff.tariff_hash && entry.endpoint === apiOperationPath(service.tariff.api)
       && new TextDecoder().decode(jcsBytes(entry.api)) === new TextDecoder().decode(jcsBytes(service.tariff.api))));
     component = 'snapshot';
@@ -329,7 +339,7 @@ export async function preflightPublicDeployment(loaded: LoadedPublicDeploymentPr
     signal.throwIfAborted();
     return {profileId:profile.id,profileSha256:stored.hash,deploymentId:m.deployment_id,pool:m.pool,manifestHash:m.manifest_hash,slot:String(snapshot.slot),
       paused:snapshot.paused,chainAllowsNewOperations:!snapshot.paused,operatorAdmission:'unverified',models:profile.models.map(v=>v.id),
-      apis:(profile.schema === 2 ? profile.services : []).map(({tariff})=>({service:tariff.api.service,operation:tariff.api.operation,endpoint:apiOperationPath(tariff.api),tariffHash:tariff.tariff_hash})),snapshot,
+      apis:(profile.schema !== 1 ? profile.services : []).map(({tariff})=>({service:tariff.api.service,operation:tariff.api.operation,endpoint:apiOperationPath(tariff.api),tariffHash:tariff.tariff_hash})),snapshot,
       checks:['profile','assets','manifest','tariffs','genesis','finalized_pool','control_config','catalog','shared_snapshot','chain_clock']};
   } catch (error) { throw error instanceof PublicProfileError ? error : new PublicProfileError(component); }
   finally { bound?.close(); }

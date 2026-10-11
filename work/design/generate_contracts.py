@@ -365,6 +365,9 @@ paths['/zkapi/v1/api/{service}/{operation}']={'post':{
     'responses':{'200':{'description':'Bounded upstream JSON response. Billing evidence comes from signed version 2 receipts.','content':{'application/json':{'schema':{}}}},
         '409':{'description':'Operation already exists or conflicts; response cannot be replayed.'},'default':{'description':'Failed or unknown operation; inspect saved operation status.'}}}}
 
+from gateway_contracts import extend, standalone, profile_schemas
+extend(sch, paths, obj, array, ref, parameter, U, H, ID, API_ID)
+
 doc = {'openapi':'3.1.0','info':{'title':'Solana zkAPI USDC + Proxy','version':'1.0.0-design',
     'description':'Implementation contract, not a deployed service. JSON amounts are decimal strings. Public control objects reject unknown fields; provider nested payloads require adapter validation.'},
     'servers':[{'url':'https://zkapi.example.invalid'}],
@@ -374,6 +377,11 @@ doc = {'openapi':'3.1.0','info':{'title':'Solana zkAPI USDC + Proxy','version':'
         'AdminToken':{'type':'http','scheme':'bearer','description':'Admin-only credential on private listener; not a user token.'},
         'AnthropicProxyKey':{'type':'apiKey','in':'header','name':'x-api-key','description':'Same proxy token, never an upstream API key.'}}}}
 emit('openapi.json', doc)
+emit('receipts.schema.json', standalone(sch, 'Receipt'))
+emit('universal-api-gateway.schema.json', standalone(sch, 'ApiBindingV2'))
+profile_schema, project_schema = profile_schemas(sch, ROOT)
+emit('public-profile.schema.json', profile_schema)
+emit('api-project.schema.json', project_schema)
 
 # Design-time wire contract, not proof/test evidence. Values are fixed by ADR-0001.
 tree_fields = ['vault_binding','old_root','new_root','note_id','old_leaf','new_leaf',

@@ -1,2 +1,2 @@
 /** Generated from packages/sdk/package.json by build.mjs. */
-export const SDK_VERSION = "0.2.0-devnet.9-onboarding.0";
+export const SDK_VERSION = "0.2.0-devnet.13";

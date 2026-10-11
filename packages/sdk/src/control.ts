@@ -2,6 +2,7 @@
  * no inference is retried, and only the cryptographic verifier advances a note.
  */
 import { Buffer } from 'buffer';
+import { validateGatewayBinding, validateGatewayTariff, validateGatewayReceipt, validateGatewayHashes, gatewayAmount, validateGatewayInvocation, encodeGatewayRequest, decodeGatewayRequest, gatewayOperationHmac, decodeGatewayResponse,trackGatewayDelivery, GATEWAY_REQUEST_TYPE, GATEWAY_RESPONSE_TYPE, type ApiBindingV2, type TariffV3, type GatewayInvocation, type GatewayResult } from './gateway.ts';
 import { directRequestBytes } from './direct-request.ts';
 import { checkModelAvailability, describeProviderError } from './provider-status.ts';
 import { parseField, parseMicroUsdc, parseScalar } from './encoding.ts';
@@ -28,10 +29,11 @@ export interface Quote {
   }; quote_hash: string; signature: string;
 }
 /** A registered HTTP operation. The complete descriptor is signed with the quote. */
-export interface ApiBinding {
+export interface ApiBindingV1 {
   version: '1'; service: string; operation: string; method: 'POST'; path: string; origin: string;
   request_max_bytes: string; response_max_bytes: string; timeout_seconds: string; billing: 'http_2xx_json';
 }
+export type ApiBinding = ApiBindingV1 | ApiBindingV2;
 export interface ApiQuote {
   body: Omit<Quote['body'], 'provider' | 'models'> & { provider: 'generic'; api: ApiBinding };
   quote_hash: string; signature: string;
@@ -46,18 +48,20 @@ export interface Tariff {
   valid_from: string; valid_until: string; rates: { unit: string; nano_usdc_numerator: string; unit_denominator: string }[];
   operator_fee_micro_usdc: string;
 }
-export interface ApiTariff extends Omit<Tariff, 'provider' | 'model' | 'version' | 'pricing_basis'> {
-  version: '2'; provider: 'generic'; api: ApiBinding; pricing_basis: 'fixed_request';
+export interface ApiTariffV2 extends Omit<Tariff, 'provider' | 'model' | 'version' | 'pricing_basis'> {
+  version: '2'; provider: 'generic'; api: ApiBindingV1; pricing_basis: 'fixed_request';
 }
+export type ApiTariff = ApiTariffV2 | TariffV3;
 export interface ApiService { tariff: ApiTariff }
-export function apiOperationPath(api: Pick<ApiBinding, 'service' | 'operation'>): string {
-  return `/zkapi/v1/api/${api.service}/${api.operation}`;
+export function apiOperationPath(api: Pick<ApiBinding, 'service' | 'operation'> & {version?:string}): string {
+  return `/zkapi/${api.version === '2' ? 'v2/execute' : 'v1/api'}/${api.service}/${api.operation}`;
 }
 export function isApiOperationPath(path: string): boolean {
-  return /^\/zkapi\/v1\/api\/[a-z0-9][a-z0-9_-]{0,63}\/[a-z0-9][a-z0-9_-]{0,63}$/.test(path);
+  return /^\/zkapi\/(?:v1\/api|v2\/execute)\/[a-z0-9][a-z0-9_-]{0,63}\/[a-z0-9][a-z0-9_-]{0,63}$/.test(path);
 }
 export function validateApiBinding(api: ApiBinding): void {
   object(api);
+  if(api.version==='2'){validateGatewayBinding(api);return;}
   requireTrue(Object.keys(api).sort().join(',') === 'billing,method,operation,origin,path,request_max_bytes,response_max_bytes,service,timeout_seconds,version', 'invalid API binding fields');
   requireTrue(api.version === '1' && api.method === 'POST' && api.billing === 'http_2xx_json'
     && typeof api.service === 'string' && typeof api.operation === 'string'
@@ -72,6 +76,7 @@ export function validateApiBinding(api: ApiBinding): void {
 }
 export function validateApiService(service: ApiService): void {
   object(service); object(service.tariff); const t = service.tariff;
+  if(t.version==='3'){requireTrue(Object.keys(service).join(',')==='tariff','invalid API service');validateGatewayTariff(t);return;}
   validateApiBinding(t.api);
   requireTrue(Object.keys(service).join(',') === 'tariff' && Object.keys(t).sort().join(',') === 'api,operator_fee_micro_usdc,pricing_basis,provider,rates,tariff_hash,valid_from,valid_until,version'
     && t.provider === 'generic' && t.version === '2' && t.pricing_basis === 'fixed_request' && t.operator_fee_micro_usdc === '0'
@@ -137,6 +142,8 @@ export interface Operation {
   id: string; path: string; anthropicVersion: string; bodyBase64: string;
   /** Empty body with this marker is permanently non-replayable, even if prepared. */
   bodyRedacted?: true;
+  /** V2 keeps only a keyed commitment after atomic send/redaction. */
+  invocationVersion?: '2'; operationHmac?: string;
   /** Exact dispatched-body fingerprint, never sufficient to replay. Explicit purge removes it too. */
   bodySha256?: string;
   phase: 'prepared' | 'send_unknown' | 'response_received' | 'not_accepted';
@@ -162,7 +169,10 @@ export interface AuthorizationRetirement {
   signature: string;
 }
 export interface NoteJournal {
-  schema: 1 | 2; state: PrivateState; pending: PendingSession | null;
+  schema: 1 | 2 | 3;
+  /** Delivery fence only; financial ownership stays in pending/history. */
+  gatewayRecoveryHold?: {request_id:string;operation_id:string;delivered:boolean};
+  state: PrivateState; pending: PendingSession | null;
   /** Full prover witness stays in the same encrypted record as control state. */
   witness?: NoteWitness;
   wallet?: WalletJournal;
@@ -170,6 +180,10 @@ export interface NoteJournal {
    * original private state and credentials are retained; no balance is reset. */
   retiredAuthorizations?: { previous: PrivateState; pending: PendingSession; retirement: AuthorizationRetirement }[];
   history: { previous: PrivateState; prepared: PreparedSession; settlement: Settlement; receipts: Receipt[]; operations: Operation[] }[];
+}
+function clearDeliveredGatewayHold(value:NoteJournal):void{
+  const hold=value.gatewayRecoveryHold;if(!hold?.delivered)return;
+  if(value.history.some(h=>h.prepared.request.authorization.request_id===hold.request_id&&h.receipts.some(receipt=>receipt.body.request_id===hold.request_id&&receipt.body.operation_id===hold.operation_id&&receipt.body.version==='3'&&receipt.body.billing_effect==='charge'&&receipt.body.reason==='metered'&&(receipt.body.completion as {outcome?:string}|null)?.outcome==='satisfied')))delete value.gatewayRecoveryHold;
 }
 export interface SessionStatus {
   request_id: string; mode: Mode; state: string; cap_micro_usdc: string;
@@ -206,7 +220,9 @@ function validateOperations(operations: Operation[]): void {
       && ['prepared','send_unknown','response_received','not_accepted'].includes(o.phase), 'invalid operation');
     requireTrue(typeof o.bodyBase64 === 'string', 'invalid operation bytes');
     const raw = Buffer.from(o.bodyBase64,'base64');
-    requireTrue(raw.toString('base64') === o.bodyBase64 && raw.length <= 1024*1024, 'invalid operation bytes');
+    requireTrue(raw.toString('base64') === o.bodyBase64 && raw.length <= (o.invocationVersion==='2'?1024*1024+65540:1024*1024), 'invalid operation bytes');
+    requireTrue(o.invocationVersion === undefined || o.invocationVersion==='2' && typeof o.operationHmac==='string' && /^[0-9a-f]{64}$/.test(o.operationHmac) && o.anthropicVersion==='' && o.path.startsWith('/zkapi/v2/execute/') && o.bodySha256===undefined, 'invalid gateway journal');
+    if(o.invocationVersion==='2'){allowedFields(o,['id','path','anthropicVersion','bodyBase64','bodyRedacted','phase','invocationVersion','operationHmac']);requireTrue(o.phase==='prepared'||o.bodyRedacted===true,'sent gateway content must be redacted');}
     requireTrue(o.bodySha256 === undefined || typeof o.bodySha256 === 'string' && /^[0-9a-f]{64}$/.test(o.bodySha256), 'invalid body fingerprint');
     requireTrue(o.bodyRedacted === undefined || o.bodyRedacted === true && o.bodyBase64 === '', 'invalid body redaction');
   }
@@ -215,7 +231,7 @@ async function redactOperations(operations: Operation[], eraseFingerprints = fal
   let count = 0;
   for (const o of operations) {
     if (!o.bodyRedacted || eraseFingerprints && o.bodySha256 !== undefined) count++;
-    if (!o.bodyRedacted && !eraseFingerprints) o.bodySha256 = await sha256Hex(Buffer.from(o.bodyBase64,'base64'));
+    if (!o.bodyRedacted && !eraseFingerprints && o.invocationVersion!=='2') o.bodySha256 = await sha256Hex(Buffer.from(o.bodyBase64,'base64'));
     if (eraseFingerprints) delete o.bodySha256;
     o.bodyBase64 = ''; o.bodyRedacted = true;
   }
@@ -225,8 +241,12 @@ async function redactOperations(operations: Operation[], eraseFingerprints = fal
 export async function validateNoteJournal(input: unknown): Promise<void> {
   // PDA derivation is asynchronous. Validate a detached value across every await.
   const value: unknown = structuredClone(input);
-  object(value); requireTrue((value.schema === 1 || value.schema === 2) && Array.isArray(value.history), 'invalid note journal');
-  if(value.schema===2)allowedFields(value,['schema','state','pending','witness','wallet','history','retiredAuthorizations']);
+  object(value); requireTrue((value.schema === 1 || value.schema === 2 || value.schema === 3) && Array.isArray(value.history), 'invalid note journal');
+  if(value.schema!==1)allowedFields(value,['schema','state','pending','witness','wallet','history','retiredAuthorizations','gatewayRecoveryHold']);
+  if(value.gatewayRecoveryHold!==undefined){
+    requireTrue(value.schema===3,'gateway recovery hold requires schema3');object(value.gatewayRecoveryHold);const hold=value.gatewayRecoveryHold;allowedFields(hold,['request_id','operation_id','delivered']);uuid(hold.request_id as string);uuid(hold.operation_id as string);requireTrue(typeof hold.delivered==='boolean','invalid gateway delivery marker');
+    const note=value as unknown as NoteJournal;const sessions=[...(note.pending?[note.pending]:[]),...note.history,...(note.wallet?.emergencyEscapes??[]).map(e=>e.pending)];const matches=sessions.flatMap(p=>(p.operations??[]).filter(op=>op.id===hold.operation_id).map(op=>({op,request:p.prepared.request.authorization.request_id,tariff:p.prepared.tariff,quote:p.prepared.request.quote.body})));requireTrue(matches.length>0&&matches.every(m=>m.request===hold.request_id&&m.tariff.version==='3'&&'api' in m.tariff&&m.tariff.api.version==='2'&&'api' in m.quote&&m.quote.api.version==='2'&&m.op.invocationVersion==='2'&&m.op.phase!=='prepared'&&m.op.operationHmac===matches[0].op.operationHmac),'gateway hold operation linkage');
+  }
   if(value.retiredAuthorizations !== undefined) {
     requireTrue(Array.isArray(value.retiredAuthorizations), 'invalid retired authorizations');
     const ids = new Set<string>();
@@ -252,7 +272,7 @@ export async function validateNoteJournal(input: unknown): Promise<void> {
     const w = value.wallet as WalletJournal;
     requireTrue(w && ['unfunded','active','pending_escape','closed'].includes(w.status) && Array.isArray(w.history), 'invalid wallet journal');
     requireTrue(value.witness !== undefined, 'wallet witness missing');
-    if(value.schema===2)allowedFields(w,['status','clearance','clearedAuthorization','emergencyEscapes','operation','history']);
+    if(value.schema!==1)allowedFields(w,['status','clearance','clearedAuthorization','emergencyEscapes','operation','history']);
     if (w.clearance) { parseField(w.clearance.nullifier); requireTrue(['requested','verified'].includes(w.clearance.phase), 'invalid clearance journal'); }
     if (w.clearedAuthorization !== undefined) {
       const archived = w.clearedAuthorization; object(archived);
@@ -275,7 +295,7 @@ export async function validateNoteJournal(input: unknown): Promise<void> {
       requireTrue(operation && typeof operation === 'object', 'invalid wallet operation');
       const inline = operation.transport === 'v0_inline_deposit_v1';
       requireTrue(operation.transport === undefined || operation.transport === 'v0_buffer' || inline, 'unknown wallet transport');
-      requireTrue(value.schema === 2 || !inline && !operation.inlinePlan && operation.attempts?.every(a => a.kind !== 'deposit_inline' && a.schema === 1), 'schema 1 cannot contain inline deposit');
+      requireTrue(value.schema !== 1 || !inline && !operation.inlinePlan && operation.attempts?.every(a => a.kind !== 'deposit_inline' && a.schema === 1), 'schema 1 cannot contain inline deposit');
       requireTrue(['deposit','mutual_close','initiate_escape','finalize_escape'].includes(operation.kind)
         && ['proving','ready','stale','closing_stale','failed','cancelled'].includes(operation.phase)
         && Array.isArray(operation.attempts) && Number.isInteger(operation.step) && operation.step >= 0, 'invalid financial operation');
@@ -293,7 +313,7 @@ export async function validateNoteJournal(input: unknown): Promise<void> {
       }
       else {
         requireTrue(operation.inlinePlan === undefined, 'buffer operation contains inline plan');
-        if(value.schema===2){
+        if(value.schema!==1){
           allowedFields(operation,['id','kind','phase','roles','destinationOwner','plan','finalization','step','attempts','current','finalized','expiredCreations','transport']);
           allowedFields(operation.roles,['uploader','rentPayer','feePayer','payer','tokenOwner']);
           const planFields=['programId','pool','operation','payloadHex','nonceHex','expires','uploader','rentPayer','feePayer','snapshotSlot','snapshotSequence','expectedRoot','expectedNoteId','financial','priorityFeeMicroLamports'];
@@ -308,6 +328,7 @@ export async function validateNoteJournal(input: unknown): Promise<void> {
     }
   }
   if (value.pending !== null) pendingSession(value.pending as PendingSession);
+  if(value.schema!==3){const note=value as unknown as NoteJournal;const sessions=[...(note.pending?[note.pending]:[]),...note.history,...(note.retiredAuthorizations??[]).map(a=>a.pending),...(note.wallet?.clearedAuthorization?[note.wallet.clearedAuthorization.pending]:[]),...(note.wallet?.emergencyEscapes??[]).map(e=>e.pending)];for(const session of sessions){const tariff=session.prepared?.tariff,quote=session.prepared?.request?.quote?.body;requireTrue(!(tariff&&'api' in tariff&&tariff.api.version==='2')&&!(quote&&'api' in quote&&quote.api.version==='2')&&!session.operations.some(o=>o.invocationVersion==='2'),'gateway authorization requires journal schema 3');}}
   if (value.wallet) validateEmergencyEscapes(value as unknown as NoteJournal);
 }
 function sameJson(a:unknown,b:unknown):boolean { return Buffer.from(jcsBytes(a)).equals(Buffer.from(jcsBytes(b))); }
@@ -581,6 +602,8 @@ export class ControlClient {
   async quoteApi(api: ApiBinding, tariff: ApiTariff, signal?: AbortSignal): Promise<ApiQuote> {
     const selected=structuredClone(api), frozenTariff=structuredClone(tariff);
     validateApiService({tariff:frozenTariff}); validateApiBinding(selected);
+    if(selected.version==='2'){await validateGatewayHashes(selected);requireTrue(selected.origin.startsWith('https:')||this.options.allowLoopbackHttp===true,'gateway HTTPS required outside synthetic fixture');}
+    if(frozenTariff.version==='3')requireTrue(gatewayAmount(frozenTariff.rates,frozenTariff.rates.map(rate=>rate.reservation_max_count))<=BigInt(this.config.cap_micro_usdc)*1000n,'gateway reservation exceeds authorization cap');
     requireTrue(await sha256Hex(jcsBytes(selected)) === await sha256Hex(jcsBytes(frozenTariff.api)), 'API tariff binding');
     return await this.verifiedQuote({mode:'proxy',provider:'generic',api:selected,session_ttl_seconds:'60'}, frozenTariff, signal) as ApiQuote;
   }
@@ -633,7 +656,7 @@ export class ControlClient {
     requireTrue(BigInt(b.expires_at) === BigInt(b.issued_at)+120n
       && BigInt(b.issued_at) >= BigInt(frozenTariff.valid_from) && BigInt(b.issued_at) < BigInt(frozenTariff.valid_until)
       && BigInt(b.session_ttl_seconds) >= 1n && BigInt(b.session_ttl_seconds) <= 300n
-      && b.session_ttl_seconds === (wanted.session_ttl_seconds ?? '60') && b.max_concurrency === '4', 'quote limits');
+      && b.session_ttl_seconds === (wanted.session_ttl_seconds ?? '60') && b.max_concurrency === (wanted.api?.version==='2'?wanted.api.limits.max_concurrency:'4'), 'quote limits');
     signal?.throwIfAborted();
     let now = this.options.now?.() ?? BigInt(Math.floor(Date.now()/1000));
     if (BigInt(b.issued_at) > now) {
@@ -652,18 +675,32 @@ export class ControlClient {
     requireTrue(BigInt(b.issued_at) <= now && now < BigInt(b.expires_at) && BigInt(b.expires_at) === BigInt(b.issued_at)+120n
       && BigInt(b.issued_at) >= BigInt(frozenTariff.valid_from) && BigInt(b.issued_at) < BigInt(frozenTariff.valid_until)
       && BigInt(b.session_ttl_seconds) >= 1n && BigInt(b.session_ttl_seconds) <= 300n
-      && b.session_ttl_seconds === (wanted.session_ttl_seconds ?? '60') && b.max_concurrency === '4', 'quote limits');
+      && b.session_ttl_seconds === (wanted.session_ttl_seconds ?? '60') && b.max_concurrency === (wanted.api?.version==='2'?wanted.api.limits.max_concurrency:'4'), 'quote limits');
     return quote;
   }
-  async prepare(noteId: string, prepared: PreparedSession, finalizedRoot: string): Promise<void> {
+  async prepare(noteId: string, prepared: PreparedSession, finalizedRoot: string, signal?: AbortSignal): Promise<void> {
+    signal?.throwIfAborted();
     // Snapshot the proof and secrets before asynchronous verification/storage.
     const copy = structuredClone(prepared);
+    if('api' in copy.tariff&&copy.tariff.api.version==='2')requireTrue(copy.tariff.api.origin.startsWith('https:')||this.options.allowLoopbackHttp===true,'gateway HTTPS required outside synthetic fixture');
     await this.options.journal.withNoteLock(noteId, async () => {
+      signal?.throwIfAborted();
       const r = await this.record(noteId); requireTrue(r.value.pending === null, 'note already has an unresolved authorization');
+      requireTrue(!r.value.gatewayRecoveryHold, 'gateway recovery required before new authorization');
       requireTrue(!r.value.wallet || r.value.wallet.status === 'active' && !r.value.wallet.operation && !r.value.wallet.clearance && !r.value.wallet.emergencyEscapes?.some(e=>e.phase!=='settled'), 'note has an unresolved financial operation or permanent clearance intent');
       const id = copy.request.authorization.request_id;
       requireTrue(!r.value.history.some(h => h.prepared.request.authorization.request_id === id), 'request already settled');
-      await this.options.verifier.prepare(this.config, r.value.state, copy, (this.options.now?.() ?? BigInt(Math.floor(Date.now() / 1000))).toString(), finalizedRoot);
+      // Verification is pure. Abort releases the journal lock immediately, and
+      // a late verifier result cannot create a prepared authorization.
+      await new Promise<void>((resolve,reject)=>{
+        const abort=()=>{signal?.removeEventListener('abort',abort);reject(signal!.reason);};
+        signal?.addEventListener('abort',abort,{once:true});
+        Promise.resolve().then(()=>{signal?.throwIfAborted();return this.options.verifier.prepare(this.config,r.value.state,copy,(this.options.now?.()??BigInt(Math.floor(Date.now()/1000))).toString(),finalizedRoot);})
+          .then(()=>{signal?.removeEventListener('abort',abort);resolve();},error=>{signal?.removeEventListener('abort',abort);reject(error);});
+        if(signal?.aborted)abort();
+      });
+      signal?.throwIfAborted();
+      if('api' in copy.tariff&&copy.tariff.api.version==='2')r.value.schema=3;
       r.value.pending = { prepared: copy, exactRequest: JSON.stringify(copy.request), phase: 'prepared', operations: [] };
       await this.save(noteId, r);
     });
@@ -751,16 +788,16 @@ export class ControlClient {
       return {request_id:request.authorization.request_id,mode:request.authorization.mode,state:'NOT_ACCEPTED',cap_micro_usdc:q.body.cap_micro_usdc};
     });
   }
-  async close(noteId: string): Promise<SessionStatus> {
+  async close(noteId: string, signal?:AbortSignal): Promise<SessionStatus> {
     return this.options.journal.withNoteLock(noteId, async () => {
       let r = await this.record(noteId); const p = r.value.pending; requireTrue(p, 'no pending authorization');
       requireTrue(p.phase !== 'prepared', 'submit authorization before close');
       p.closeRequested = true;
-      if (p.phase === 'send_unknown') return this.submitPending(noteId, r);
+      if (p.phase === 'send_unknown') return this.submitPending(noteId, r,signal);
       p.phase = 'closing'; r = await this.save(noteId, r);
-      const response = await this.fetch(this.path(p) + '/close', 'POST', p.prepared.control_token);
+      const response = await this.fetch(this.path(p) + '/close', 'POST', p.prepared.control_token,undefined,signal);
       if (!response.ok) throw new ControlHttpError(response.status);
-      return this.accept(noteId, r, await this.json(response), false);
+      return this.accept(noteId, r, await this.json(response), false,signal);
     });
   }
   private async accept(noteId: string, r: JournalRecord<NoteJournal>, raw: unknown, initial: boolean, signal?: AbortSignal): Promise<SessionStatus> {
@@ -791,8 +828,26 @@ export class ControlClient {
     if (status.state === 'SETTLED') {
       requireTrue(status.settlement && !status.provider_key, 'missing settlement');
       const receipts = await this.receipts(p, signal);
+      if(p.prepared.tariff.version==='3'&&'api' in p.prepared.tariff&&p.prepared.tariff.api.version==='2')for(const receipt of receipts){
+        const operation=p.operations.find(o=>o.id===receipt.body.operation_id);requireTrue(operation?.invocationVersion==='2'&&operation.operationHmac,'gateway receipt has no saved commitment');
+        requireTrue(receipt.body.request_id===p.prepared.request.authorization.request_id&&receipt.body.deployment_id===this.config.deployment_id&&receipt.body.pool===this.config.pool,'gateway receipt identity');
+        await validateGatewayReceipt(receipt.body,p.prepared.tariff as TariffV3,operation.operationHmac);
+        requireTrue(await sha256Hex(jcsBytes(receipt.body))===receipt.receipt_hash,'gateway receipt hash');
+        await verifyEd25519(this.config.receipt_public_key,Buffer.from(receipt.receipt_hash,'hex'),receipt.signature);
+      }
       const operations = q.mode === 'proxy' ? p.operations.filter(o => o.phase !== 'prepared' && o.phase !== 'not_accepted').map(o => o.id) : [];
-      const next = await this.options.verifier.settle(this.config, r.value.state, p.prepared, status.settlement, receipts, operations);
+      signal?.throwIfAborted();
+      // A canceled observer leaves the same signed settlement recoverable. The
+      // pure verifier may finish later, but cannot commit a successor afterward.
+      const verify=()=>this.options.verifier.settle(this.config,r.value.state,p.prepared,status.settlement!,receipts,operations);
+      const next = signal ? await new Promise<PrivateState>((resolve,reject)=>{
+        const abort=()=>{signal.removeEventListener('abort',abort);reject(signal.reason);};
+        signal.addEventListener('abort',abort,{once:true});
+        Promise.resolve().then(()=>{signal.throwIfAborted();return verify();})
+          .then(value=>{signal.removeEventListener('abort',abort);resolve(value);},error=>{signal.removeEventListener('abort',abort);reject(error);});
+        if(signal.aborted)abort();
+      }) : await verify();
+      signal?.throwIfAborted();
       privateState(next);
       const clearance = r.value.wallet?.clearance;
       if (clearance) {
@@ -808,8 +863,9 @@ export class ControlClient {
       // both copies only after verifying a terminal successor.
       await redactOperations(p.operations);
       if (emergency) await redactOperations(emergency.pending.operations);
+      signal?.throwIfAborted();
       r.value.history.push({ previous: r.value.state, prepared: p.prepared, settlement: status.settlement, receipts, operations: p.operations });
-      r.value.state = next; r.value.pending = null; if(emergency)emergency.phase='settled'; await this.save(noteId, r);
+      r.value.state = next; r.value.pending = null; clearDeliveredGatewayHold(r.value); if(emergency)emergency.phase='settled'; await this.save(noteId, r);
       this.verifiedOaKeys.delete(p.prepared.request.authorization.request_id);
       return status;
     }
@@ -853,13 +909,41 @@ export class ControlClient {
       const quote = p.prepared.request.quote.body;
       if ('api' in quote) {
         validateApiBinding(quote.api);
-        requireTrue(apiOperationPath(quote.api) === path && body.length <= Number(quote.api.request_max_bytes), 'API operation does not match authorization');
+        requireTrue(quote.api.version==='1' && apiOperationPath(quote.api) === path && body.length <= Number(quote.api.request_max_bytes), 'API operation does not match authorization');
         parseStrictJson(body);
       } else requireTrue(!isApiOperationPath(path), 'generic API authorization required');
       const old = p.operations.find(o => o.id === operationId);
       if (old) { if (old.bodyRedacted) throw new ResponseNotReplayable(operationId,this.path(p) + `/operations/${operationId}`); requireTrue(old.path === path && old.bodyBase64 === bodyBase64 && old.anthropicVersion === anthropicVersion, 'idempotency conflict'); return; }
       p.operations.push({ id: operationId, path, bodyBase64, anthropicVersion, phase: 'prepared' }); await this.save(noteId, r);
     });
+  }
+  async prepareGatewayOperation(noteId:string,operationId:string,input:GatewayInvocation):Promise<void> {
+    uuid(operationId);const snapshot=structuredClone(input);
+    await this.options.journal.withNoteLock(noteId,async()=>{
+      const r=await this.record(noteId),p=r.value.pending;
+      requireTrue(!r.value.wallet?.emergencyEscapes?.some(e=>e.phase!=='settled'),'emergency escape fences inference');
+      requireTrue(p&&p.phase==='active'&&p.serverState==='ACTIVE'&&p.prepared.proxy_token&&p.prepared.tariff.version==='3'&&'api' in p.prepared.tariff&&p.prepared.tariff.api.version==='2','gateway session required');
+      const binding=p.prepared.tariff.api,invocation=validateGatewayInvocation(binding,snapshot),token=p.prepared.proxy_token.split('.');
+      requireTrue(token.length===3&&token[0]==='zkp1'&&token[1]===p.prepared.request.authorization.request_id,'invalid proxy credential');
+      const secret=Buffer.from(token[2].replace(/-/g,'+').replace(/_/g,'/'),'base64');
+      const operationHmac=await gatewayOperationHmac(secret,{deployment_id:this.config.deployment_id,pool:this.config.pool,authorization_id:token[1],operation_id:operationId,binding_hash:await sha256Hex(jcsBytes(binding)),tariff_hash:p.prepared.tariff.tariff_hash},invocation);
+      const existing=p.operations.find(o=>o.id===operationId);if(existing){requireTrue(existing.operationHmac===operationHmac,'idempotency conflict');if(existing.bodyRedacted||existing.phase!=='prepared')throw new ResponseNotReplayable(operationId,this.path(p)+`/operations/${operationId}`);return;}
+      requireTrue(!r.value.history.some(h=>h.operations.some(o=>o.id===operationId)),'operation already settled');
+      r.value.schema=3;p.operations.push({id:operationId,path:apiOperationPath(binding),anthropicVersion:'',bodyBase64:Buffer.from(await encodeGatewayRequest(binding,invocation)).toString('base64'),phase:'prepared',invocationVersion:'2',operationHmac});await this.save(noteId,r);
+    });
+  }
+  async sendGatewayOperation(noteId:string,operationId:string,signal?:AbortSignal):Promise<GatewayResult> {
+    const p=(await this.record(noteId)).value.pending;requireTrue(p&&'api' in p.prepared.tariff&&p.prepared.tariff.api.version==='2','gateway session required');
+    const operation=p.operations.find(o=>o.id===operationId);requireTrue(operation?.invocationVersion==='2'&&!operation.bodyRedacted,'gateway request is not replayable');
+    const method=(await decodeGatewayRequest(p.prepared.tariff.api,Buffer.from(operation.bodyBase64,'base64'))).method;
+    const response=await this.sendOperation(noteId,operationId,signal);return trackGatewayDelivery({...await decodeGatewayResponse(response,p.prepared.tariff.api,method),operationId,statusPath:this.path(p)+`/operations/${operationId}`},()=>this.confirmGatewayDelivery(noteId,operationId));
+  }
+  async confirmGatewayDelivery(noteId:string,operationId:string):Promise<void>{
+    await this.options.journal.withNoteLock(noteId,async()=>{const r=await this.record(noteId),hold=r.value.gatewayRecoveryHold;if(!hold)return;requireTrue(hold.operation_id===operationId,'gateway delivery identity');hold.delivered=true;clearDeliveredGatewayHold(r.value);await this.save(noteId,r);});
+  }
+  /** Only explicit management recovery may release an uncertain delivery. */
+  async recoverGatewayDelivery(noteId:string):Promise<void>{
+    await this.options.journal.withNoteLock(noteId,async()=>{const r=await this.record(noteId);if(!r.value.gatewayRecoveryHold)return;requireTrue(r.value.pending===null&&!r.value.wallet?.emergencyEscapes?.some(e=>e.phase!=='settled'),'gateway recovery requires closed authorization');if(r.value.gatewayRecoveryHold){delete r.value.gatewayRecoveryHold;await this.save(noteId,r);}});
   }
   async sendOperation(noteId: string, operationId: string, signal?: AbortSignal): Promise<Response> {
     signal?.throwIfAborted();
@@ -871,12 +955,15 @@ export class ControlClient {
       const operation = p.operations.find(o => o.id === operationId); requireTrue(operation, 'operation must be saved before sending');
       if (operation.phase !== 'prepared' || operation.bodyRedacted) throw new ResponseNotReplayable(operationId, this.path(p) + `/operations/${operationId}`);
       const bytes = new Uint8Array(Buffer.from(operation.bodyBase64,'base64'));
+      requireTrue(!r.value.gatewayRecoveryHold,'gateway recovery required before new dispatch');
+      if(operation.invocationVersion==='2')r.value.gatewayRecoveryHold={request_id:p.prepared.request.authorization.request_id,operation_id:operationId,delivered:false};
       operation.phase = 'send_unknown'; await redactOperations([operation]); await this.save(noteId, r);
       return { operation: structuredClone(operation), bytes, token: p.prepared.proxy_token, statusPath: this.path(p) + `/operations/${operationId}`,
         timeoutMs: p.prepared.request.quote.body.provider === 'generic' ? 660_000 : 600_000 };
     });
     const response = await (this.options.fetch ?? globalThis.fetch)(this.config.inference_api_origin + dispatch.operation.path, {
-      method: 'POST', headers: { Authorization: `Bearer ${dispatch.token}`, 'Content-Type': 'application/json', 'Idempotency-Key': operationId,
+      method: 'POST', headers: { Authorization: `Bearer ${dispatch.token}`, 'Content-Type': dispatch.operation.invocationVersion==='2'?GATEWAY_REQUEST_TYPE:'application/json', 'Idempotency-Key': operationId,
+        ...(dispatch.operation.invocationVersion==='2'?{'Accept':GATEWAY_RESPONSE_TYPE}:{}),
         ...(dispatch.operation.anthropicVersion ? { 'anthropic-version': dispatch.operation.anthropicVersion } : {}) },
       body: dispatch.bytes, redirect: 'error', credentials: 'omit', cache: 'no-store', signal: signal ? AbortSignal.any([signal, AbortSignal.timeout(dispatch.timeoutMs)]) : AbortSignal.timeout(dispatch.timeoutMs),
     });

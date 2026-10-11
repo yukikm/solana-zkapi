@@ -89,6 +89,7 @@ fn tariff(direct: bool) -> Tariff {
             ["cache_read_tokens", "input_tokens", "output_tokens"]
                 .into_iter()
                 .map(|unit| Rate {
+                    reservation_max_count: None,
                     unit: unit.into(),
                     nano_usdc_numerator: "1".into(),
                     unit_denominator: "1".into(),
@@ -167,6 +168,7 @@ fn receipt(
     };
     let signed = Receipt::sign(
         ReceiptBody {
+            gateway: None,
             version: "1".into(),
             receipt_id: id.to_string(),
             deployment_id: identity.deployment_id.clone(),
@@ -275,6 +277,7 @@ impl Harness {
             claims_directory: claims,
             providers: ProviderConfig {
                 api: vec![],
+                gateway: vec![],
                 dispatcher: None,
                 proxy: vec![ProxyProviderConfig {
                     provider: Provider::Openai,

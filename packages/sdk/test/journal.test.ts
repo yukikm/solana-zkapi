@@ -6,7 +6,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { spawn } from 'node:child_process';
 import { once } from 'node:events';
-import { EncryptedJournal, EncryptedTransportJournal, importJournalKey, JournalConflictError, JournalIntegrityError } from '../src/journal.ts';
+import { EncryptedJournal, EncryptedTransportJournal, importJournalKey, JournalConflictError, JournalIntegrityError, type EncryptedRecord } from '../src/journal.ts';
 import { NativeJournalStore } from '../src/journal-node.ts';
 
 interface State { schema: 1; noteSecret: string; pending: { requestId: string; token: string; bytes: string } | null }
@@ -50,6 +50,32 @@ test('concurrent native journals allow only one create and one revision CAS', as
   const writes = await Promise.allSettled([journal.compareAndSwap('note', 1, pending()), other.compareAndSwap('note', 1, pending())]);
   assert.equal(writes.filter(v => v.status === 'fulfilled').length, 1);
   assert.equal((await journal.read('note'))?.revision, 2);
+});
+
+for (const rollback of [false, true]) test(`a read overlapping a legitimate commit ${rollback ? 'still rejects an actual storage rollback' : 'returns the fresh revision without a false rollback error'}`, async () => {
+  let record: EncryptedRecord | null = null, pause = false;
+  let entered!: () => void, resume!: () => void;
+  const reading = new Promise<void>(resolve => { entered = resolve; });
+  const release = new Promise<void>(resolve => { resume = resolve; });
+  const journal = new EncryptedJournal<State>({
+    async read() { return record && structuredClone(record); },
+    async compareAndSwap(_key, expected, next) { assert.equal(record?.revision ?? null, expected); record = structuredClone(next); },
+    async withLock(_key, action) { return action(); },
+  }, await importJournalKey(new Uint8Array(32).fill(7)), context, async value => {
+    validate(value);
+    if (pause) { pause = false; entered(); await release; }
+  });
+  await journal.create('note', initial()); const old = structuredClone(record);
+  pause = true; const inFlight = journal.read('note'); await reading;
+  const next = await journal.compareAndSwap('note', 1, pending());
+  if (rollback) record = old;
+  resume();
+  if (rollback) await assert.rejects(inFlight, JournalIntegrityError);
+  else {
+    assert.deepEqual(await inFlight, next);
+    await assert.rejects(journal.read('note', { revision: next.revision, digest: '00'.repeat(32) }), JournalIntegrityError);
+    await assert.rejects(journal.read('note', { revision: next.revision + 1, digest: next.head.digest }), JournalIntegrityError);
+  }
 });
 
 test('AES authentication rejects wrong keys, context substitution, ciphertext corruption and corrupted overwrite', async t => {

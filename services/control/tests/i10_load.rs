@@ -112,6 +112,7 @@ async fn tariff(ledger: &Ledger) -> Hash {
         rates: ["input_tokens", "output_tokens"]
             .into_iter()
             .map(|unit| Rate {
+                reservation_max_count: None,
                 unit: unit.into(),
                 nano_usdc_numerator: "1".into(),
                 unit_denominator: "1".into(),
@@ -192,6 +193,7 @@ fn receipt(
     let charge = observed.unwrap_or(0).min(op.reservation_nano);
     let receipt = Receipt::sign(
         ReceiptBody {
+            gateway: None,
             version: "1".into(),
             receipt_id: id.to_string(),
             deployment_id: identity.deployment_id.clone(),

@@ -23,10 +23,17 @@ test('init is exclusive owner-private, placeholders fail validation and output a
 // Structural schema checking is intentionally independent of semantic compiler
 // checks (pins, URL policy, tariff arithmetic and Rust cross-field constraints).
 function schemaAccepts(schema:any,value:any,root:any=schema):boolean{
+ if(schema.oneOf&&schema.oneOf.filter((branch:any)=>schemaAccepts(branch,value,root)).length!==1)return false;
+ if(schema.anyOf&&!schema.anyOf.some((branch:any)=>schemaAccepts(branch,value,root)))return false;
+ if(schema.allOf&&!schema.allOf.every((branch:any)=>schemaAccepts(branch,value,root)))return false;
+ if(schema.not&&schemaAccepts(schema.not,value,root))return false;
+ if(schema.if&&!schemaAccepts(schemaAccepts(schema.if,value,root)?schema.then??{}:schema.else??{},value,root))return false;
+ if(schema.required&&(!value||typeof value!=='object'||schema.required.some((key:string)=>!Object.hasOwn(value,key))))return false;
+ if(schema.properties&&value&&typeof value==='object'&&!Array.isArray(value)&&Object.keys(value).some(key=>schema.properties[key]&&!schemaAccepts(schema.properties[key],value[key],root)))return false;
  if(schema.$ref){const ref=schema.$ref.split('/').slice(1).reduce((s:any,key:string)=>s[key],root);return schemaAccepts(ref,value,root);}
  if(Object.hasOwn(schema,'const')&&value!==schema.const)return false;
  if(schema.enum&&!schema.enum.includes(value))return false;
- if(schema.type==='object'){if(!value||typeof value!=='object'||Array.isArray(value))return false;if(schema.required.some((k:string)=>!Object.hasOwn(value,k)))return false;if(schema.additionalProperties===false&&Object.keys(value).some(k=>!Object.hasOwn(schema.properties,k)))return false;return Object.keys(value).every(k=>!schema.properties[k]||schemaAccepts(schema.properties[k],value[k],root));}
+ if(schema.type==='object'){if(!value||typeof value!=='object'||Array.isArray(value))return false;if((schema.required??[]).some((k:string)=>!Object.hasOwn(value,k)))return false;if(schema.additionalProperties===false&&Object.keys(value).some(k=>!Object.hasOwn(schema.properties,k)))return false;return Object.keys(value).every(k=>!schema.properties[k]||schemaAccepts(schema.properties[k],value[k],root));}
  if(schema.type==='array')return Array.isArray(value)&&(!schema.minItems||value.length>=schema.minItems)&&(!schema.maxItems||value.length<=schema.maxItems)&&(!schema.uniqueItems||new Set(value.map(v=>JSON.stringify(v))).size===value.length)&&value.every(v=>schemaAccepts(schema.items,v,root));
  if(schema.type==='integer')return Number.isSafeInteger(value)&&value>=schema.minimum&&value<=schema.maximum;
  if(schema.type==='string')return typeof value==='string'&&(!schema.pattern||new RegExp(schema.pattern).test(value))&&(!schema.maxLength||value.length<=schema.maxLength);

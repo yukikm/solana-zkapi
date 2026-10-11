@@ -553,7 +553,7 @@ func validateInstalledConfiguration(installed, release, pin, runtime, runtimePin
 	for i, operation := range summary.Operations {
 		key := operation.Service + "/" + operation.Operation
 		if !apiIdentity.MatchString(operation.Service) || !apiIdentity.MatchString(operation.Operation) || i > 0 && (operation.Service < lastService || operation.Service == lastService && operation.Operation <= lastOperation) ||
-			operation.Endpoint != "/zkapi/v1/api/"+key || !sha256Pattern.MatchString(operation.TariffHash) {
+			(operation.Endpoint != "/zkapi/v1/api/"+key && operation.Endpoint != "/zkapi/v2/execute/"+key) || !sha256Pattern.MatchString(operation.TariffHash) {
 			return summary, errors.New("invalid offline operation summary")
 		}
 		lastService, lastOperation = operation.Service, operation.Operation

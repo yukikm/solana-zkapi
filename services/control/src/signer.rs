@@ -1027,7 +1027,7 @@ async fn verify_receipts(
                         && operations.insert(id),
                     "receipt operation mismatch"
                 );
-                let op=tx.query_one("SELECT charged_nano::text,reservation_nano::text,state,observed_cost_nano::text,operator_loss_nano::text,model,dispatched_at,endpoint FROM operations WHERE pool=$1 AND request_id=$2 AND operation_id=$3",&[&&config.pool[..],&request_id,&id]).await?;
+                let op=tx.query_one("SELECT charged_nano::text,reservation_nano::text,state,observed_cost_nano::text,operator_loss_nano::text,model,dispatched_at,endpoint,request_hmac,envelope_version,binding_hash,meter_hash FROM operations WHERE pool=$1 AND request_id=$2 AND operation_id=$3",&[&&config.pool[..],&request_id,&id]).await?;
                 ensure!(
                     op.get::<_, String>(0).parse::<u128>()? == charged
                         && op.get::<_, String>(1).parse::<u128>()?
@@ -1043,6 +1043,17 @@ async fn verify_receipts(
                     ensure!(
                         op.get::<_, String>(7) == crate::wire::api_path(api),
                         "operation API scope mismatch"
+                    );
+                }
+                if let Some(g) = &typed.gateway {
+                    ensure!(
+                        op.get::<_, i16>(9) == 2
+                            && op.get::<_, Vec<u8>>(8) == crate::wire::hash(&g.operation_hmac)?
+                            && op.get::<_, Option<Vec<u8>>>(10).as_deref()
+                                == Some(crate::wire::hash(&g.binding_hash)?.as_slice())
+                            && op.get::<_, Option<Vec<u8>>>(11).as_deref()
+                                == Some(crate::wire::hash(&g.meter_hash)?.as_slice()),
+                        "gateway immutable commitment mismatch"
                     );
                 }
                 if let Some(loss) = &typed.operator_loss_nano_usdc {

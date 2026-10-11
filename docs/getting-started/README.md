@@ -19,9 +19,10 @@ fits your service. This project is a **Devnet preview**; check
 - [Architecture](../architecture.md) and [SDK reference](../sdk/README.md) —
   components, shared custody and exact interfaces.
 
-The source SDK supports registered JSON operations and inference adapters.
-The published SDK `.12` and native `.10` clients retain their documented inference
-scope. Additional API formats and billing rules require explicit integration.
+The `.13` SDK/native release supports registered JSON operations, finite HTTP
+gateways and inference adapters. Follow the [upgrade procedure](gateway-release-upgrade.md)
+and use an authenticated selection for each API. Additional formats and billing
+rules require explicit integration.
 
 ## Use an inference API
 
@@ -54,3 +55,5 @@ artifacts. This repository does not provide a production-ready one-command insta
 [Devnet funds and connection details](devnet.md) covers test SOL, test USDC and
 deployment verification. Platform-specific installation guides state their OS
 requirements.
+
+For `finite_http_v1`, see [Finite HTTP gateway](finite-http-api.md).

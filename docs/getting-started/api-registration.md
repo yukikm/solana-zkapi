@@ -184,9 +184,9 @@ reveal its private upstream credentials. The existing OpenRouter reference
 gateway is a separate deployment component and is not this generic frontend.
 
 Publish only the reviewed public files, then independently distribute the exact
-profile SHA-256 and compatible SDK/native build. The source development version
-is unpublished; `.8` cannot load schema 2. Keep existing funded consumers on their
-original immutable artifacts. Read-only preflight verifies public configuration,
+profile SHA-256 and compatible SDK/native build. Release `.13` supports schema 2;
+`.8` cannot load it. Keep existing funded consumers' original profile and custody
+bindings. Read-only preflight verifies public configuration,
 catalog and chain bindings; it does not prove provider credit, availability or
 successful execution. Funded live acceptance needs its own explicit provider,
 wallet, deployment and budget authorization.

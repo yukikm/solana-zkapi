@@ -89,6 +89,7 @@ fn settle(fixture: &Fixture, charge: u64) -> Settlement {
 fn charge_receipt(fixture: &Fixture, operation: &str, count: u64) -> Receipt {
     Receipt::sign(
         ReceiptBody {
+            gateway: None,
             version: "1".into(),
             receipt_id: Uuid::new_v4().to_string(),
             deployment_id: fixture.ctx.deployment_id.clone(),
@@ -235,9 +236,10 @@ fn generic_real_proof_and_fixed_receipt_verify_without_inference_fields() {
     tariff.provider = wire::Provider::Generic;
     tariff.version = "2".into();
     tariff.model.clear();
-    tariff.api = Some(api.clone());
+    tariff.api = Some(api.clone().into());
     tariff.pricing_basis = "fixed_request".into();
     tariff.rates = vec![wire::Rate {
+        reservation_max_count: None,
         unit: "requests".into(),
         nano_usdc_numerator: "7000".into(),
         unit_denominator: "1".into(),
@@ -248,7 +250,7 @@ fn generic_real_proof_and_fixed_receipt_verify_without_inference_fields() {
             mode: wire::Mode::Proxy,
             provider: wire::Provider::Generic,
             models: vec![],
-            api: Some(api),
+            api: Some(api.into()),
             session_ttl_seconds: None,
         },
         &tariff,
@@ -287,7 +289,9 @@ fn generic_real_proof_and_fixed_receipt_verify_without_inference_fields() {
         4_999_993
     );
     let mut changed = fixture.clone();
-    changed.prepared.tariff.api.as_mut().unwrap().path = "/other".into();
+    if let wire::VersionedApiBinding::V1(api) = changed.prepared.tariff.api.as_mut().unwrap() {
+        api.path = "/other".into();
+    }
     changed.prepared.tariff.tariff_hash = quote::tariff_hash(&changed.prepared.tariff).unwrap();
     changed.ctx.tariff_hashes = vec![changed.prepared.tariff.tariff_hash.clone()];
     assert!(verify(&changed).is_err());
@@ -642,5 +646,137 @@ fn native_cli_stdin_roundtrip_and_rejections_redact_private_material() {
         assert!(!output.status.success());
         assert!(output.stdout.is_empty());
         assert_eq!(output.stderr, b"client verification rejected\n");
+    }
+}
+
+#[test]
+fn finite_http_real_proof_v3_receipts_and_unknown_recovery_use_original_authorization() {
+    use zkapi_control::receipts::{CompletionEvidence, GatewayReceiptFields};
+    let mut fixture = fixture().clone();
+    let vector: serde_json::Value = serde_json::from_str(include_str!(
+        "../../../../docs/contracts/universal-api-gateway-vectors.json"
+    ))
+    .unwrap();
+    let mut tariff: wire::Tariff = serde_json::from_value(vector["tariff"].clone()).unwrap();
+    tariff.valid_until = "4000000000".into();
+    tariff.tariff_hash = quote::tariff_hash(&tariff).unwrap();
+    let quote = quote::issue_quote(
+        &wire::QuoteRequest {
+            mode: wire::Mode::Proxy,
+            provider: wire::Provider::Generic,
+            models: vec![],
+            api: tariff.api.clone(),
+            session_ttl_seconds: None,
+        },
+        &tariff,
+        &support::local_binding(),
+        3_000_000_000,
+        &SigningKey::from_bytes(&[11; 32]),
+    )
+    .unwrap();
+    let (authorization, credential) = support::authorization(&quote);
+    fixture.prepared = Prepared {
+        proxy_token: Some(format!(
+            "zkp1.{}.{}",
+            authorization.request_id,
+            URL_SAFE_NO_PAD.encode([8; 32])
+        )),
+        request: support::bound_request(authorization, quote, support::genesis_state()),
+        control_token: credential.strip_prefix("Bearer ").unwrap().into(),
+        tariff,
+        rerandomization: scalar_field(Scalar::from(23u64)),
+    };
+    fixture.ctx.tariff_hashes = vec![fixture.prepared.tariff.tariff_hash.clone()];
+    let operation = Uuid::new_v4().to_string();
+    let api = fixture.prepared.tariff.api.as_ref().unwrap().v2().unwrap();
+    let mut receipt = charge_receipt(&fixture, &operation, 1).body;
+    receipt.version = "3".into();
+    receipt.gateway = Some(
+        GatewayReceiptFields::for_operation(
+            api,
+            &[8; 32],
+            Some(CompletionEvidence {
+                rule_hash: hex::encode(wire::digest(&api.completion).unwrap()),
+                outcome: "satisfied".into(),
+                http_status: 200,
+            }),
+        )
+        .unwrap(),
+    );
+    receipt.usage = vec![UsageUnit {
+        unit: "requests".into(),
+        count: "1".into(),
+    }];
+    receipt.reservation_nano_usdc = "250000".into();
+    receipt.observed_nano_usdc = Some("250000".into());
+    receipt.charged_nano_usdc = "250000".into();
+    receipt.operator_loss_nano_usdc = Some("0".into());
+    fixture.operations = vec![operation];
+    fixture.receipts = vec![Receipt::sign(receipt, &receipt_key()).unwrap()];
+    fixture.settlement = settle(&fixture, 250);
+    verify_prepared(&fixture.ctx, &fixture.state, &fixture.prepared).unwrap();
+    assert_eq!(
+        verify(&fixture).unwrap().balance_micro_usdc.get(),
+        4_999_750
+    );
+    let mut rejected_commands = Vec::new();
+    for mutation in 0..6 {
+        let mut changed = fixture.clone();
+        let mut body = changed.receipts[0].body.clone();
+        let g = body.gateway.as_mut().unwrap();
+        match mutation {
+            0 => g.binding_hash = "a".repeat(64),
+            1 => g.meter_hash = "a".repeat(64),
+            2 => g.completion.as_mut().unwrap().rule_hash = "a".repeat(64),
+            3 => g.completion.as_mut().unwrap().http_status = 404,
+            4 => {
+                g.resource = Some(wire::MeterResource {
+                    provider: "openai".into(),
+                    model: "foreign".into(),
+                })
+            }
+            5 => body.usage[0].count = "0".into(),
+            _ => unreachable!(),
+        }
+        changed.receipts[0] = Receipt::sign(body, &receipt_key()).unwrap();
+        assert!(
+            verify(&changed).is_err(),
+            "signed conflicting gateway identity/usage {mutation}"
+        );
+        rejected_commands.push(json!({"kind":"settle","context":changed.ctx,"state":changed.state,"prepared":changed.prepared,"settlement":changed.settlement,"receipts":changed.receipts,"operations":changed.operations}));
+    }
+    let successful = json!({"kind":"settle","context":fixture.ctx,"state":fixture.state,"prepared":fixture.prepared,"settlement":fixture.settlement,"receipts":fixture.receipts,"operations":fixture.operations});
+    let expected_success = verify(&fixture).unwrap();
+    let mut unknown = fixture;
+    let mut body = unknown.receipts[0].body.clone();
+    body.reason = "waived_unknown".into();
+    body.evidence_kind = "UNKNOWN_OPERATOR_LOSS".into();
+    body.usage.clear();
+    body.gateway.as_mut().unwrap().completion = None;
+    body.observed_nano_usdc = None;
+    body.operator_loss_nano_usdc = None;
+    body.charged_nano_usdc = "0".into();
+    unknown.receipts = vec![Receipt::sign(body, &receipt_key()).unwrap()];
+    unknown.settlement = settle(&unknown, 0);
+    assert_eq!(
+        verify(&unknown).unwrap().balance_micro_usdc.get(),
+        5_000_000
+    );
+    if let Ok(directory) = std::env::var("ZKAPI_GATEWAY_FIXTURE_DIR") {
+        let directory = std::path::PathBuf::from(directory);
+        let directory = if directory.is_absolute() {
+            directory
+        } else {
+            std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+                .join("../../..")
+                .join(directory)
+        };
+        std::fs::create_dir_all(&directory).unwrap();
+        let fixture = json!({"success":successful,"expected_success":expected_success,"unknown":{"kind":"settle","context":unknown.ctx,"state":unknown.state,"prepared":unknown.prepared,"settlement":unknown.settlement,"receipts":unknown.receipts,"operations":unknown.operations},"expected_unknown":verify(&unknown).unwrap(),"rejected":rejected_commands});
+        std::fs::write(
+            directory.join("gateway-verifier.json"),
+            serde_json::to_vec_pretty(&fixture).unwrap(),
+        )
+        .unwrap();
     }
 }

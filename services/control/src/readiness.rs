@@ -175,7 +175,14 @@ async fn sample(app: Arc<App>) -> Report {
                             .providers
                             .api
                             .iter()
-                            .any(|p| &p.api == api)
+                            .any(|p| api.v1() == Some(&p.api))
+                            || app
+                                .config
+                                .runtime
+                                .providers
+                                .gateway
+                                .iter()
+                                .any(|p| api.v2() == Some(&p.api))
                     }) || app.config.runtime.providers.proxy.iter().any(|p| {
                         p.provider == tariff.provider
                             && p.models.iter().any(|m| m.model == tariff.model)

@@ -13,9 +13,47 @@ pub struct UsageUnit {
     pub count: String,
 }
 
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(deny_unknown_fields)]
+pub struct CompletionEvidence {
+    pub rule_hash: String,
+    pub outcome: String,
+    pub http_status: u16,
+}
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(deny_unknown_fields)]
+pub struct GatewayReceiptFields {
+    pub binding_hash: String,
+    pub operation_hmac: String,
+    pub meter_hash: String,
+    #[serde(deserialize_with = "crate::wire::required_nullable")]
+    pub resource: Option<crate::wire::MeterResource>,
+    #[serde(deserialize_with = "crate::wire::required_nullable")]
+    pub completion: Option<CompletionEvidence>,
+}
+
+impl GatewayReceiptFields {
+    pub fn for_operation(
+        api: &crate::wire::ApiBindingV2,
+        operation_hmac: &[u8; 32],
+        completion: Option<CompletionEvidence>,
+    ) -> crate::wire::Result<Self> {
+        crate::wire::validate_api_binding_v2(api)?;
+        Ok(Self {
+            binding_hash: hex::encode(crate::wire::digest(api)?),
+            operation_hmac: hex::encode(operation_hmac),
+            meter_hash: hex::encode(crate::wire::digest(&api.meter)?),
+            resource: api.meter.resource.clone(),
+            completion,
+        })
+    }
+}
+
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct ReceiptBody {
+    #[serde(flatten, skip_serializing_if = "Option::is_none")]
+    pub gateway: Option<GatewayReceiptFields>,
     pub version: String,
     pub receipt_id: String,
     pub deployment_id: String,
@@ -76,7 +114,7 @@ fn uuid(s: &str) -> Result<()> {
 impl ReceiptBody {
     pub fn validate(&self) -> Result<()> {
         ensure!(
-            matches!(self.version.as_str(), "1" | "2") && !self.deployment_id.is_empty(),
+            matches!(self.version.as_str(), "1" | "2" | "3") && !self.deployment_id.is_empty(),
             "receipt version/deployment"
         );
         uuid(&self.receipt_id)?;
@@ -84,11 +122,42 @@ impl ReceiptBody {
         if let Some(id) = &self.operation_id {
             uuid(id)?;
         }
-        if self.version == "2" {
+        if matches!(self.version.as_str(), "2" | "3") {
             ensure!(
                 self.operation_id.is_some() && self.provider_reported_usd.is_none(),
                 "generic receipt scope"
             );
+        }
+        ensure!(
+            (self.version == "3") == self.gateway.is_some(),
+            "receipt gateway fields/version"
+        );
+        if let Some(g) = &self.gateway {
+            hash(&g.binding_hash)?;
+            hash(&g.operation_hmac)?;
+            hash(&g.meter_hash)?;
+            if let Some(r) = &g.resource {
+                ensure!(
+                    matches!(r.provider.as_str(), "openai" | "anthropic")
+                        && !r.model.is_empty()
+                        && r.model.len() <= 256
+                        && r.model.is_ascii()
+                        && !r.model.chars().any(char::is_control),
+                    "receipt resource"
+                );
+            }
+            ensure!(
+                g.completion.is_some() == matches!(self.reason.as_str(), "metered" | "late_usage"),
+                "receipt completion variant"
+            );
+            if let Some(c) = &g.completion {
+                hash(&c.rule_hash)?;
+                ensure!(
+                    matches!(c.outcome.as_str(), "satisfied" | "not_satisfied")
+                        && (200..=599).contains(&c.http_status),
+                    "receipt completion"
+                );
+            }
         }
         let pool = bs58::decode(&self.pool).into_vec()?;
         ensure!(
@@ -118,13 +187,17 @@ impl ReceiptBody {
             .map(uint)
             .transpose()?;
         ensure!(c <= r, "charge exceeds reservation");
-        ensure!(self.usage.len() <= 6, "usage limit");
+        ensure!(
+            self.usage.len() <= if self.version == "3" { 32 } else { 6 },
+            "usage limit"
+        );
         let mut previous = "";
         for item in &self.usage {
             ensure!(
-                ((self.version == "2"
-                    && item.unit == "requests"
-                    && matches!(item.count.as_str(), "0" | "1"))
+                ((self.version == "3" && crate::wire::unit_id(&item.unit))
+                    || (self.version == "2"
+                        && item.unit == "requests"
+                        && matches!(item.count.as_str(), "0" | "1"))
                     || (self.version == "1"
                         && matches!(
                             item.unit.as_str(),
@@ -172,7 +245,9 @@ impl ReceiptBody {
                     "PROXY_USAGE" => ensure!(
                         self.operation_id.is_some()
                             && self.provider_reported_usd.is_none()
-                            && (self.version == "1" || self.usage.len() == 1),
+                            && (self.version == "1"
+                                || self.version == "3" && !self.usage.is_empty()
+                                || self.usage.len() == 1),
                         "proxy evidence mismatch"
                     ),
                     "OA_SIGNED_RECEIPT" | "OPENROUTER_USAGE" => {
@@ -273,7 +348,14 @@ pub fn validate_tariff_math(body: &ReceiptBody, tariff: &crate::wire::Tariff) ->
     );
     let fixed_request = tariff.pricing_basis == "fixed_request";
     ensure!(
-        body.version == if fixed_request { "2" } else { "1" },
+        body.version
+            == if tariff.version == "3" {
+                "3"
+            } else if fixed_request {
+                "2"
+            } else {
+                "1"
+            },
         "receipt tariff version mismatch"
     );
     let proxy = fixed_request || tariff.pricing_basis == "fixed_usage_rates";
@@ -285,7 +367,43 @@ pub fn validate_tariff_math(body: &ReceiptBody, tariff: &crate::wire::Tariff) ->
         proxy == body.operation_id.is_some(),
         "receipt pricing scope mismatch"
     );
-    if fixed_request {
+    if tariff.version == "3" {
+        let api = tariff
+            .api
+            .as_ref()
+            .and_then(crate::wire::VersionedApiBinding::v2)
+            .ok_or_else(|| anyhow::anyhow!("gateway binding"))?;
+        let g = body
+            .gateway
+            .as_ref()
+            .ok_or_else(|| anyhow::anyhow!("gateway fields"))?;
+        ensure!(
+            g.binding_hash == hex::encode(crate::wire::digest(api)?)
+                && g.meter_hash == hex::encode(crate::wire::digest(&api.meter)?)
+                && g.resource == api.meter.resource,
+            "receipt gateway identity"
+        );
+        ensure!(
+            uint(&body.reservation_nano_usdc)? == crate::quote::calculate_reservation(tariff)?,
+            "gateway full reservation"
+        );
+        if let Some(c) = &g.completion {
+            ensure!(
+                c.rule_hash == hex::encode(crate::wire::digest(&api.completion)?),
+                "receipt completion rule"
+            );
+            if fixed_request {
+                let satisfied = api.completion.billable_statuses.contains(&c.http_status);
+                ensure!(
+                    (c.outcome == "satisfied") == satisfied
+                        && body.usage.len() == 1
+                        && body.usage[0].unit == "requests"
+                        && body.usage[0].count == if satisfied { "1" } else { "0" },
+                    "fixed completion usage"
+                );
+            }
+        }
+    } else if fixed_request {
         ensure!(
             uint(&body.reservation_nano_usdc)?
                 == u128::from(crate::wire::uint(&tariff.rates[0].nano_usdc_numerator)?),

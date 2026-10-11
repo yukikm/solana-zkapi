@@ -1,7 +1,7 @@
 //! Dedicated provider process boundary. Secrets are loaded only by `dispatcherd`.
 //! A claimed immutable ledger attempt and a durable exclusive file precede egress.
 //! Process exit plus the retained claim prevent the same attempt from ever restarting.
-use crate::{direct, generic, ledger::DispatchAttempt, proxy, wire};
+use crate::{direct, gateway, generic, ledger::DispatchAttempt, proxy, wire};
 use anyhow::{ensure, Context, Result};
 use serde::{Deserialize, Serialize};
 use std::{
@@ -56,6 +56,9 @@ impl ServiceConfig {
         crate::operations::local_database(&self.database_url)?;
         if self.local_test_only {
             ensure!(self.devnet.is_none(), "ambiguous provider test profile");
+            for gateway in &self.providers.gateway {
+                crate::gateway::validate_config(gateway, true, false)?;
+            }
             for api in &self.providers.api {
                 generic::validate_origin(&api.api, true)?;
             }
@@ -101,6 +104,9 @@ impl ServiceConfig {
             // real usage drain interval. Construction performs no HTTP call.
             let _ = direct::DirectAdapter::new(direct.clone(), false)?;
         }
+        for gateway in &self.providers.gateway {
+            crate::gateway::validate_config(gateway, false, false)?;
+        }
         for api in &self.providers.api {
             generic::validate_origin(&api.api, false)?;
         }
@@ -110,6 +116,14 @@ impl ServiceConfig {
 #[derive(Serialize, Deserialize)]
 #[serde(tag = "action", rename_all = "snake_case", deny_unknown_fields)]
 pub enum Action {
+    Gateway {
+        attempt: DispatchAttempt,
+        api: Box<wire::ApiBindingV2>,
+        metadata: gateway::RequestMetadata,
+        reservation_nano: String,
+        body: Vec<u8>,
+        proxy_secret: [u8; 32],
+    },
     Api {
         attempt: DispatchAttempt,
         api: wire::ApiBinding,
@@ -161,6 +175,9 @@ pub struct Request {
 #[derive(Serialize, Deserialize)]
 #[serde(tag = "event", rename_all = "snake_case", deny_unknown_fields)]
 enum Event {
+    Gateway {
+        bytes: Vec<u8>,
+    },
     Head {
         status: u16,
         reference: Option<String>,
@@ -202,8 +219,16 @@ impl ClientConfig {
     /// Errors discard all child diagnostics. No retry exists on this channel.
     pub async fn call(
         &self,
+        request: Request,
+        relay: Option<mpsc::Sender<proxy::RelayEvent>>,
+    ) -> Result<serde_json::Value> {
+        self.call_inner(request, relay, None).await
+    }
+    async fn call_inner(
+        &self,
         mut request: Request,
         mut relay: Option<mpsc::Sender<proxy::RelayEvent>>,
+        mut gateway_relay: Option<mpsc::Sender<Vec<u8>>>,
     ) -> Result<serde_json::Value> {
         self.validate()?;
         let mut child = Command::new(&self.binary)
@@ -215,7 +240,9 @@ impl ClientConfig {
             .kill_on_drop(true)
             .spawn()?;
         let mut input = zeroize::Zeroizing::new(serde_json::to_vec(&request)?);
-        if let Action::Api { proxy_secret, .. } = &mut request.action {
+        if let Action::Api { proxy_secret, .. } | Action::Gateway { proxy_secret, .. } =
+            &mut request.action
+        {
             use zeroize::Zeroize;
             proxy_secret.zeroize();
         }
@@ -233,6 +260,10 @@ impl ClientConfig {
                 read_line(&mut output, &mut line, 8 * 1024 * 1024).await?;
                 let event: Event = serde_json::from_slice(&line)?;
                 match event {
+                    Event::Gateway { bytes } => {
+                        ensure!(bytes.len() <= 65541, "gateway IPC frame limit");
+                        gateway::emit(&mut gateway_relay, bytes).await;
+                    }
                     Event::Result { value } => {
                         break value;
                     }
@@ -274,6 +305,32 @@ impl ClientConfig {
             Ok(result) => result,
             Err(_) => anyhow::bail!("dispatcher timed out"),
         }
+    }
+    pub async fn gateway(
+        &self,
+        attempt: DispatchAttempt,
+        request: gateway::PreparedRequest,
+        proxy_secret: [u8; 32],
+        relay: Option<mpsc::Sender<Vec<u8>>>,
+    ) -> Result<gateway::Observation> {
+        let value = self
+            .call_inner(
+                Request {
+                    provider: wire::Provider::Generic,
+                    action: Action::Gateway {
+                        attempt,
+                        api: Box::new(request.api),
+                        metadata: request.metadata,
+                        reservation_nano: request.reservation_nano.to_string(),
+                        body: request.body,
+                        proxy_secret,
+                    },
+                },
+                None,
+                relay,
+            )
+            .await?;
+        Ok(serde_json::from_value(value)?)
     }
     pub async fn api(
         &self,
@@ -491,6 +548,106 @@ pub async fn serve(c: ServiceConfig, request: Request) -> Result<()> {
     }
     let p = request.provider;
     let value = match request.action {
+        Action::Gateway {
+            attempt,
+            api,
+            metadata,
+            reservation_nano,
+            body,
+            proxy_secret,
+        } => {
+            use subtle::ConstantTimeEq;
+            let api = *api;
+            let secret = zeroize::Zeroizing::new(proxy_secret);
+            ensure!(
+                p == wire::Provider::Generic && attempt.operation_id.is_some(),
+                "gateway attempt identity"
+            );
+            let cfg = c
+                .providers
+                .gateway
+                .iter()
+                .find(|x| x.api == api)
+                .context("gateway unavailable")?;
+            let op = db.query_one("SELECT o.endpoint,o.model,o.reservation_nano::text,o.request_hmac,s.request_transcript,s.proxy_secret_hash,o.dispatched_at,p.deployment_id FROM operations o JOIN sessions s ON s.pool=o.pool AND s.request_id=o.request_id JOIN pools p ON p.pool=o.pool WHERE o.pool=$1 AND o.request_id=$2 AND o.operation_id=$3", &[&&c.pool[..], &attempt.request_id, &attempt.operation_id]).await?;
+            ensure!(
+                op.get::<_, String>(0) == wire::api_path(&api)
+                    && op.get::<_, String>(1).is_empty()
+                    && op.get::<_, String>(2) == reservation_nano,
+                "gateway reservation identity"
+            );
+            let secret_hash: Option<Vec<u8>> = op.get(5);
+            ensure!(
+                secret_hash
+                    .as_ref()
+                    .is_some_and(|hash| bool::from(hash.as_slice().ct_eq(&wire::sha256(&*secret)))),
+                "gateway secret binding"
+            );
+            let transcript: wire::SessionCreate = wire::strict_parse(&op.get::<_, Vec<u8>>(4))?;
+            ensure!(
+                transcript.quote.body.api.as_ref().and_then(|a| a.v2()) == Some(&api),
+                "gateway saved quote binding"
+            );
+            let row = db.query_one("SELECT t.canonical_body,t.tariff_hash FROM sessions s JOIN quotes q ON q.pool=s.pool AND q.quote_id=s.quote_id JOIN tariffs t ON t.tariff_hash=q.tariff_hash WHERE s.pool=$1 AND s.request_id=$2", &[&&c.pool[..], &attempt.request_id]).await?;
+            let raw: Vec<u8> = row.get(0);
+            let hash: Vec<u8> = row.get(1);
+            ensure!(
+                wire::sha256(&raw).as_slice() == hash,
+                "saved tariff checksum mismatch"
+            );
+            let mut tariff: serde_json::Value = serde_json::from_slice(&raw)?;
+            tariff["tariff_hash"] = hex::encode(hash).into();
+            let tariff: wire::Tariff = serde_json::from_value(tariff)?;
+            ensure!(
+                transcript.quote.body.tariff_hash == tariff.tariff_hash
+                    && crate::quote::quote_matches_tariff(&transcript.quote.body, &tariff),
+                "gateway frozen tariff scope"
+            );
+            let checked = gateway::validate_request(&api, metadata, &body, &tariff)?;
+            ensure!(
+                checked.reservation_nano.to_string() == reservation_nano,
+                "gateway immutable reservation"
+            );
+            let hmac = wire::operation_hmac_v2(
+                &secret,
+                &op.get::<_, String>(7),
+                &bs58::encode(c.pool).into_string(),
+                &attempt.request_id.to_string(),
+                &attempt
+                    .operation_id
+                    .context("gateway operation")?
+                    .to_string(),
+                &checked.metadata.binding_hash,
+                &tariff.tariff_hash,
+                &checked.metadata.method,
+                &checked.metadata.target,
+                &checked.metadata.headers,
+                &checked.body,
+            )?;
+            ensure!(
+                bool::from(op.get::<_, Vec<u8>>(3).as_slice().ct_eq(&hmac)),
+                "gateway exact request binding"
+            );
+            let adapter = gateway::HttpAdapter::connect(cfg, provider_policy.local())?;
+            authorize(&db, &c, &p, &attempt).await?;
+            let started: i64 = op
+                .get::<_, Option<i64>>(6)
+                .context("gateway dispatch time")?;
+            let elapsed = crate::provider_runtime::now()
+                .saturating_sub(u64::try_from(started)?)
+                .saturating_add(1);
+            let budget = wire::uint(&api.limits.execution_seconds)?.saturating_sub(elapsed);
+            let (tx, mut rx) = mpsc::channel(1);
+            let dispatch = adapter.dispatch_once(checked, Some(tx), Duration::from_secs(budget));
+            let output = async {
+                while let Some(bytes) = rx.recv().await {
+                    let _ = emit(Event::Gateway { bytes }).await;
+                }
+            };
+            let (observation, ()) = tokio::join!(dispatch, output);
+            serde_json::to_value(observation)?
+        }
+
         Action::Api {
             attempt,
             api,
@@ -532,7 +689,7 @@ pub async fn serve(c: ServiceConfig, request: Request) -> Result<()> {
             );
             let transcript: wire::SessionCreate = serde_json::from_slice(&op.get::<_, Vec<u8>>(4))?;
             ensure!(
-                transcript.quote.body.api.as_ref() == Some(&api),
+                transcript.quote.body.api.as_ref().and_then(|a| a.v1()) == Some(&api),
                 "API saved quote binding"
             );
             let tariff_row = db.query_one("SELECT t.canonical_body,t.tariff_hash FROM sessions s JOIN quotes q ON q.pool=s.pool AND q.quote_id=s.quote_id JOIN tariffs t ON t.tariff_hash=q.tariff_hash WHERE s.pool=$1 AND s.request_id=$2", &[&&c.pool[..], &attempt.request_id]).await?;
@@ -736,7 +893,9 @@ pub async fn serve(c: ServiceConfig, request: Request) -> Result<()> {
                     adapter.delete_key(&reference).await?;
                     serde_json::Value::Null
                 }
-                Action::Proxy { .. } | Action::Api { .. } => unreachable!(),
+                Action::Proxy { .. } | Action::Api { .. } | Action::Gateway { .. } => {
+                    unreachable!()
+                }
             }
         }
     };

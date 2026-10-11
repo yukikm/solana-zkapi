@@ -5,14 +5,14 @@ TypeScript declarations, so your application does not need TypeScript source
 loading or access to the zkAPI repository. Registry publication is disabled with
 `private: true`; no package under this name on npm is endorsed by this project.
 
-Download `zkapi-solana-sdk-0.2.0-devnet.12.tgz` from the
-[published SDK release](https://github.com/yukikm/solana-zkapi/releases/tag/v0.2.0-devnet.12).
+Download `zkapi-solana-sdk-0.2.0-devnet.13.tgz` from the
+[published SDK release](https://github.com/yukikm/solana-zkapi/releases/tag/v0.2.0-devnet.13).
 Verify it against the independently obtained SHA-256 in the
-[streaming SDK upgrade guide](../../docs/getting-started/sdk-streaming-upgrade.md), then install:
+[SDK/native upgrade guide](../../docs/getting-started/gateway-release-upgrade.md), then install:
 
 ```sh
-shasum -a 256 zkapi-solana-sdk-0.2.0-devnet.12.tgz
-npm install --save-exact ./zkapi-solana-sdk-0.2.0-devnet.12.tgz @solana/kit@8.4.0
+shasum -a 256 zkapi-solana-sdk-0.2.0-devnet.13.tgz
+npm install --save-exact ./zkapi-solana-sdk-0.2.0-devnet.13.tgz @solana/kit@8.4.0
 ```
 
 Read the [Kit API migration guide](../../docs/sdk/kit-migration.md) when upgrading

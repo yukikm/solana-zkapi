@@ -6,14 +6,16 @@ independently authenticated release; a checksum served only beside an untrusted
 file does not authenticate it.
 
 The API has been available since `.2`. New consumers should use the
-[published `.8` clients and revision-6 profile](../releases/usability-preview.md).
+[published `.13` clients](../releases/universal-api-gateway-preview.md) with the
+authenticated selection for their deployment.
 Existing custody keeps its original profile binding. Profile verification does
 not establish service availability or provider capacity; see [status](../support.md).
 
-The source build `0.2.0-devnet.9-onboarding.0` adds profile schema 2 for registered
-JSON APIs. This is an unpublished development version. New source installations
-use a profile listing that exact SDK version and a fresh namespace; published
-`.8` runtimes and funded profile bindings remain on their original inputs.
+Release `0.2.0-devnet.13` adds profile schema 2 for registered JSON APIs and
+schema 3 for finite HTTP. These profiles must explicitly list `.13`. For legacy
+schema 1 only, `.13` also accepts authenticated profiles listing `.8`, `.9`,
+`.10`, `.11` or `.12`, retaining their original bytes and hash. Compatibility
+does not enable gateway capabilities or replace existing custody bindings.
 
 ## Load and inspect before opening custody
 
@@ -211,3 +213,13 @@ applicable recovery and withdrawal routes available. A compromised or revoked
 profile must not be replaced inside an unresolved journal. Restore only an
 independently authenticated original configuration for its recovery; deliberate
 rotation, retirement and recovery drills remain operational work.
+
+## Schema 3 finite HTTP selection
+
+Schema 3 adds explicit `gateway.capabilities` and authenticated mounts to schema 2.
+Each version 3 service tariff pins its version 2 binding, transport and meter.
+Independent installed adapter digests live in `trust.build.gatewayAdapters`.
+Gateway-only profiles have empty `models` and `modelCapabilities`; native discovery
+derives model identities from mounted meter resources. Mixed selections require
+disjoint native routes and unambiguous model identities. No existing funded
+profile is rewritten. See the [finite HTTP guide](../getting-started/finite-http-api.md).

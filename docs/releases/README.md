@@ -2,6 +2,7 @@
 
 | Version | Changes |
 |---|---|
+| [0.2.0-devnet.13](universal-api-gateway-preview.md) | SDK/native finite HTTP gateway, registered JSON APIs, delivery accounting and legacy profile compatibility |
 | [0.2.0-devnet.12](direct-stream-preview.md) | SDK direct-stream completion and native Response branches; native packages remain `.10` |
 | [0.2.0-devnet.10](https://github.com/yukikm/solana-zkapi/releases/tag/v0.2.0-devnet.10) | SDK/native balance-preserving authorization recovery |
 | [0.2.0-devnet.9](https://github.com/yukikm/solana-zkapi/releases/tag/v0.2.0-devnet.9) | SDK/native transport timeouts |

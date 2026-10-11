@@ -1,0 +1,672 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$ref": "#/$defs/Receipt",
+  "$defs": {
+    "Receipt": {
+      "type": "object",
+      "properties": {
+        "body": {
+          "$ref": "#/$defs/ReceiptBody"
+        },
+        "receipt_hash": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "signature": {
+          "type": "string",
+          "contentEncoding": "base64",
+          "description": "Exactly 64 Ed25519 signature bytes over raw receipt hash."
+        }
+      },
+      "required": [
+        "body",
+        "receipt_hash",
+        "signature"
+      ],
+      "additionalProperties": false
+    },
+    "ReceiptBody": {
+      "type": "object",
+      "properties": {
+        "version": {
+          "type": "string",
+          "enum": [
+            "1",
+            "2",
+            "3"
+          ]
+        },
+        "receipt_id": {
+          "type": "string",
+          "format": "uuid",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+        },
+        "deployment_id": {
+          "type": "string"
+        },
+        "pool": {
+          "type": "string",
+          "pattern": "^[1-9A-HJ-NP-Za-km-z]{32,44}$",
+          "description": "Base58 decoding must yield exactly 32 bytes."
+        },
+        "request_id": {
+          "type": "string",
+          "format": "uuid",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+        },
+        "operation_id": {
+          "anyOf": [
+            {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "billing_effect": {
+          "type": "string",
+          "enum": [
+            "charge",
+            "late_loss_observation"
+          ]
+        },
+        "related_receipt_hash": {
+          "anyOf": [
+            {
+              "type": "string",
+              "pattern": "^[0-9a-f]{64}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "observed_at": {
+          "type": "string",
+          "pattern": "^(0|[1-9][0-9]*)$",
+          "description": "Unsigned integer decimal string; enforce semantic bounds in specs."
+        },
+        "evidence_kind": {
+          "type": "string",
+          "enum": [
+            "OA_SIGNED_RECEIPT",
+            "OPENROUTER_USAGE",
+            "PROXY_USAGE",
+            "UNKNOWN_OPERATOR_LOSS",
+            "NOT_DISPATCHED"
+          ]
+        },
+        "provider_request_id": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "provider_evidence_digest": {
+          "anyOf": [
+            {
+              "type": "string",
+              "pattern": "^[0-9a-f]{64}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "tariff_hash": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "usage": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "unit": {
+                "type": "string",
+                "pattern": "^[a-z][a-z0-9_]{0,63}$"
+              },
+              "count": {
+                "type": "string",
+                "pattern": "^(0|[1-9][0-9]*)$",
+                "description": "0..9223372036854775807; exact semantic bound enforced by every runtime.",
+                "maxLength": 19
+              }
+            },
+            "required": [
+              "unit",
+              "count"
+            ],
+            "additionalProperties": false
+          },
+          "maxItems": 32
+        },
+        "provider_reported_usd": {
+          "anyOf": [
+            {
+              "type": "string",
+              "pattern": "^(0|[1-9][0-9]*)(\\.[0-9]*[1-9])?$",
+              "maxLength": 128
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "reservation_nano_usdc": {
+          "type": "string",
+          "pattern": "^(0|[1-9][0-9]*)$",
+          "description": "Unsigned integer decimal string; enforce semantic bounds in specs."
+        },
+        "observed_nano_usdc": {
+          "anyOf": [
+            {
+              "type": "string",
+              "pattern": "^(0|[1-9][0-9]*)$",
+              "description": "Unsigned integer decimal string; enforce semantic bounds in specs."
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "charged_nano_usdc": {
+          "type": "string",
+          "pattern": "^(0|[1-9][0-9]*)$",
+          "description": "Unsigned integer decimal string; enforce semantic bounds in specs."
+        },
+        "operator_loss_nano_usdc": {
+          "anyOf": [
+            {
+              "type": "string",
+              "pattern": "^(0|[1-9][0-9]*)$",
+              "description": "Unsigned integer decimal string; enforce semantic bounds in specs."
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "reason": {
+          "type": "string",
+          "enum": [
+            "metered",
+            "not_dispatched",
+            "waived_unknown",
+            "late_usage"
+          ]
+        },
+        "binding_hash": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "operation_hmac": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "meter_hash": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "resource": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/GatewayMeterResource"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "completion": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/GatewayCompletionEvidence"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "version",
+        "receipt_id",
+        "deployment_id",
+        "pool",
+        "request_id",
+        "operation_id",
+        "billing_effect",
+        "related_receipt_hash",
+        "observed_at",
+        "evidence_kind",
+        "provider_request_id",
+        "provider_evidence_digest",
+        "tariff_hash",
+        "usage",
+        "provider_reported_usd",
+        "reservation_nano_usdc",
+        "observed_nano_usdc",
+        "charged_nano_usdc",
+        "operator_loss_nano_usdc",
+        "reason"
+      ],
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "version": {
+                "const": "1"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "usage": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "unit": {
+                      "type": "string",
+                      "enum": [
+                        "cache_read_tokens",
+                        "cache_write_1h_tokens",
+                        "cache_write_5m_tokens",
+                        "cache_write_tokens",
+                        "input_tokens",
+                        "output_tokens"
+                      ]
+                    },
+                    "count": {
+                      "type": "string",
+                      "pattern": "^(0|[1-9][0-9]*)$",
+                      "description": "Unsigned integer decimal string; enforce semantic bounds in specs."
+                    }
+                  },
+                  "required": [
+                    "unit",
+                    "count"
+                  ],
+                  "additionalProperties": false
+                },
+                "maxItems": 6
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "version": {
+                "const": "2"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "operation_id": {
+                "type": "string",
+                "format": "uuid",
+                "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+              },
+              "provider_reported_usd": {
+                "type": "null"
+              },
+              "usage": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "unit": {
+                      "type": "string",
+                      "const": "requests"
+                    },
+                    "count": {
+                      "type": "string",
+                      "enum": [
+                        "0",
+                        "1"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "unit",
+                    "count"
+                  ],
+                  "additionalProperties": false
+                },
+                "maxItems": 1
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "evidence_kind": {
+                "enum": [
+                  "OA_SIGNED_RECEIPT",
+                  "OPENROUTER_USAGE"
+                ]
+              },
+              "reason": {
+                "const": "metered"
+              }
+            },
+            "required": [
+              "evidence_kind",
+              "reason"
+            ]
+          },
+          "then": {
+            "properties": {
+              "provider_reported_usd": {
+                "type": "string"
+              },
+              "operation_id": {
+                "type": "null"
+              },
+              "usage": {
+                "maxItems": 0
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "operation_id": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "operation_id"
+            ]
+          },
+          "then": {
+            "properties": {
+              "provider_reported_usd": {
+                "type": "null"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "version": {
+                "const": "3"
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "binding_hash",
+              "operation_hmac",
+              "meter_hash",
+              "resource",
+              "completion"
+            ],
+            "properties": {
+              "operation_id": {
+                "type": "string",
+                "format": "uuid",
+                "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+              },
+              "provider_reported_usd": {
+                "type": "null"
+              },
+              "usage": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "unit": {
+                      "type": "string",
+                      "pattern": "^[a-z][a-z0-9_]{0,63}$"
+                    },
+                    "count": {
+                      "type": "string",
+                      "pattern": "^(0|[1-9][0-9]*)$",
+                      "description": "0..9223372036854775807; exact semantic bound enforced by every runtime.",
+                      "maxLength": 19
+                    }
+                  },
+                  "required": [
+                    "unit",
+                    "count"
+                  ],
+                  "additionalProperties": false
+                },
+                "maxItems": 32
+              }
+            },
+            "allOf": [
+              {
+                "if": {
+                  "properties": {
+                    "reason": {
+                      "type": "string",
+                      "enum": [
+                        "metered",
+                        "late_usage"
+                      ]
+                    }
+                  }
+                },
+                "then": {
+                  "properties": {
+                    "evidence_kind": {
+                      "const": "PROXY_USAGE"
+                    },
+                    "completion": {
+                      "$ref": "#/$defs/GatewayCompletionEvidence"
+                    },
+                    "usage": {
+                      "minItems": 1
+                    },
+                    "observed_nano_usdc": {
+                      "type": "string",
+                      "pattern": "^(0|[1-9][0-9]*)$",
+                      "description": "Unsigned integer decimal string; enforce semantic bounds in specs."
+                    },
+                    "operator_loss_nano_usdc": {
+                      "type": "string",
+                      "pattern": "^(0|[1-9][0-9]*)$",
+                      "description": "Unsigned integer decimal string; enforce semantic bounds in specs."
+                    }
+                  }
+                }
+              },
+              {
+                "if": {
+                  "properties": {
+                    "reason": {
+                      "const": "not_dispatched"
+                    }
+                  }
+                },
+                "then": {
+                  "properties": {
+                    "evidence_kind": {
+                      "const": "NOT_DISPATCHED"
+                    },
+                    "usage": {
+                      "maxItems": 0
+                    },
+                    "completion": {
+                      "type": "null"
+                    },
+                    "provider_request_id": {
+                      "type": "null"
+                    },
+                    "provider_evidence_digest": {
+                      "type": "null"
+                    },
+                    "observed_nano_usdc": {
+                      "const": "0"
+                    },
+                    "charged_nano_usdc": {
+                      "const": "0"
+                    },
+                    "operator_loss_nano_usdc": {
+                      "const": "0"
+                    }
+                  }
+                }
+              },
+              {
+                "if": {
+                  "properties": {
+                    "reason": {
+                      "const": "waived_unknown"
+                    }
+                  }
+                },
+                "then": {
+                  "properties": {
+                    "evidence_kind": {
+                      "const": "UNKNOWN_OPERATOR_LOSS"
+                    },
+                    "usage": {
+                      "maxItems": 0
+                    },
+                    "completion": {
+                      "type": "null"
+                    },
+                    "observed_nano_usdc": {
+                      "type": "null"
+                    },
+                    "charged_nano_usdc": {
+                      "const": "0"
+                    },
+                    "operator_loss_nano_usdc": {
+                      "type": "null"
+                    }
+                  }
+                }
+              },
+              {
+                "if": {
+                  "properties": {
+                    "reason": {
+                      "const": "late_usage"
+                    }
+                  }
+                },
+                "then": {
+                  "properties": {
+                    "billing_effect": {
+                      "const": "late_loss_observation"
+                    },
+                    "related_receipt_hash": {
+                      "type": "string",
+                      "pattern": "^[0-9a-f]{64}$"
+                    },
+                    "charged_nano_usdc": {
+                      "const": "0"
+                    }
+                  }
+                },
+                "else": {
+                  "properties": {
+                    "billing_effect": {
+                      "const": "charge"
+                    },
+                    "related_receipt_hash": {
+                      "type": "null"
+                    }
+                  }
+                }
+              }
+            ]
+          },
+          "else": {
+            "not": {
+              "anyOf": [
+                {
+                  "required": [
+                    "binding_hash"
+                  ]
+                },
+                {
+                  "required": [
+                    "operation_hmac"
+                  ]
+                },
+                {
+                  "required": [
+                    "meter_hash"
+                  ]
+                },
+                {
+                  "required": [
+                    "resource"
+                  ]
+                },
+                {
+                  "required": [
+                    "completion"
+                  ]
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    "GatewayMeterResource": {
+      "type": "object",
+      "properties": {
+        "provider": {
+          "type": "string",
+          "enum": [
+            "openai",
+            "anthropic"
+          ]
+        },
+        "model": {
+          "type": "string",
+          "pattern": "^[\\x20-\\x7e]{1,256}$"
+        }
+      },
+      "required": [
+        "provider",
+        "model"
+      ],
+      "additionalProperties": false
+    },
+    "GatewayCompletionEvidence": {
+      "type": "object",
+      "properties": {
+        "rule_hash": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "outcome": {
+          "type": "string",
+          "enum": [
+            "satisfied",
+            "not_satisfied"
+          ]
+        },
+        "http_status": {
+          "type": "integer",
+          "minimum": 200,
+          "maximum": 599
+        }
+      },
+      "required": [
+        "rule_hash",
+        "outcome",
+        "http_status"
+      ],
+      "additionalProperties": false
+    }
+  }
+}

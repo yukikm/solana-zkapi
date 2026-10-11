@@ -4,24 +4,49 @@ import {createPrivateKey, sign} from 'node:crypto';
 import {readFile, mkdir, writeFile} from 'node:fs/promises';
 import {resolve, join} from 'node:path';
 import {execFileSync} from 'node:child_process';
-import {compileApiServices, renderOperatorConfiguration, selectedApiEndpoints, type OperatorPreparation} from '../api_registration.ts';
+import {compileApiServices, renderOperatorConfiguration, selectedApiEndpoints, type OperatorPreparation,type ServiceDeclaration} from '../api_registration.ts';
 import {jcsBytes, sha256Hex} from '../../packages/sdk/src/trust.ts';
 import {API_ONBOARDING_DECLARATION} from '../../packages/sdk/test/api-onboarding-fixture.ts';
 
 const input = JSON.parse(await readFile(process.argv[2], 'utf8'));
 const run = resolve(process.env.ZKAPI_GENERAL_API_RUN_DIR!);
-assert.ok(run.startsWith(resolve('target/general-api-local') + '/'));
+assert.ok(['target/general-api-local','target/gateway-native-local'].some(root=>run.startsWith(resolve(root)+'/')));
 assert.ok(input.directory.startsWith(run + '/'));
 for (const value of [input.provider, input.secondary, input.controlOrigin]) {
   const url = new URL(value); assert.equal(url.protocol, 'http:'); assert.equal(url.hostname, '127.0.0.1');
 }
 const dir = input.directory, path = (name: string) => join(dir, name);
-const declarations = [{...API_ONBOARDING_DECLARATION,
+let declarations:ServiceDeclaration[] = [{...API_ONBOARDING_DECLARATION,
   api:{...API_ONBOARDING_DECLARATION.api,origin:input.provider,
     timeout_seconds:input.variant?.endsWith('upstream_timeout')?'1':API_ONBOARDING_DECLARATION.api.timeout_seconds},
   credentialFile:path('provider.key')}];
+if(input.gateway){
+  const vector=JSON.parse(await readFile(resolve('docs/contracts/universal-api-gateway-vectors.json'),'utf8'));
+  const api=vector.binding;api.service='catalog';api.operation='lookup';api.origin=input.provider;api.routes=[{method:'POST',path:'/lookup'}];
+  api.transport.artifact_sha256=await sha256Hex(await readFile(resolve('services/control/src/gateway/http.rs')));
+  api.meter.adapter.artifact_sha256=await sha256Hex(await readFile(resolve('services/control/src/gateway/meter.rs')));
+  api.authentication={scheme:'bearer',policy_id:'fixture'};api.headers.trailers=['x-gateway-checksum'];
+  api.limits.request_bytes='1048576';api.limits.response_bytes='1048576';
+  if(input.variant?.endsWith('upstream_timeout'))for(const key of ['execution_seconds','header_seconds','idle_seconds'])api.limits[key]='1';
+  declarations=[{api,rates:[{unit:'requests',nano_usdc_numerator:'250000',unit_denominator:'1',reservation_max_count:'1'}],validFrom:'1',validUntil:'4000000000',credentialFile:path('provider.key'),transportArtifactSha256:api.transport.artifact_sha256,meterArtifactSha256:api.meter.adapter.artifact_sha256}];
+  if(input.nativeAgent){
+    assert.ok(['codex','claude'].includes(input.nativeAgent));
+    const openai=input.nativeAgent==='codex';
+    api.service=input.nativeAgent;api.operation=openai?'responses':'messages';
+    api.routes=[{method:'POST',path:openai?'/v1/responses':'/v1/messages'}];api.headers.trailers=[];
+    api.limits.header_seconds='10';api.limits.idle_seconds='2';api.limits.execution_seconds='30';
+    api.completion={kind:'provider_terminal_usage',billable_statuses:[200]};
+    api.meter.adapter.id=openai?'openai_responses':'anthropic_messages';
+    api.meter.resource={provider:openai?'openai':'anthropic',model:openai?'gpt-5.4':'claude-sonnet-4-20250514'};
+    api.meter.config={provider_contract_sha256:await sha256Hex(await readFile(resolve('services/control/fixtures/gateway-meter-mappings.json'))),context_max_tokens:'200000',output_max_tokens:'32768',service_tier:'auto',extra_cost_policy:'operator_absorbs_unpriced'};
+    api.meter.config_hash=await sha256Hex(jcsBytes(api.meter.config));
+    const units=openai?['cache_read_tokens','input_tokens','output_tokens']:['cache_read_tokens','cache_write_1h_tokens','cache_write_5m_tokens','input_tokens','output_tokens'];
+    declarations=[{api,rates:units.map(unit=>({unit,nano_usdc_numerator:'1000',unit_denominator:'1',reservation_max_count:unit==='output_tokens'?'32768':'200000'})),validFrom:'1',validUntil:'4000000000',credentialFile:path('provider.key'),transportArtifactSha256:api.transport.artifact_sha256,meterArtifactSha256:api.meter.adapter.artifact_sha256}];
+  }
+}
 const services = await compileApiServices(declarations, input.manifest.cap_micro_usdc, 'local_fixture');
-const selection = {id:'local-api-only',revision:1,mode:'proxy' as const,models:[],modelCapabilities:{},services};
+const gateway=input.gateway?{capabilities:['finite_http_v1' as const],mounts:[{prefix:'',service:services[0].tariff.api.service,operation:services[0].tariff.api.operation,binding_hash:await sha256Hex(jcsBytes(services[0].tariff.api))}]}:undefined;
+const selection = {...(gateway?{gateway}:{}),id:'local-api-only',revision:1,mode:'proxy' as const,models:[],modelCapabilities:{},services};
 const manifest = {...input.manifest, control_api_origin:input.controlOrigin, inference_api_origin:input.controlOrigin,
   tariff_hashes:services.map(s=>s.tariff.tariff_hash), api_endpoints:selectedApiEndpoints(selection)};
 assert.equal(manifest.deployment_environment, 'local');

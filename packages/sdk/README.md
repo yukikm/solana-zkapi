@@ -6,8 +6,9 @@ their UI, request/response data and provider selection.
 
 Start with [General API integration](../../docs/getting-started/api-integration.md)
 for the shared payment lifecycle. The current source supports registered
-fixed-price POST JSON APIs through `requestApi()`; start with the
-[local JSON API tutorial](../../docs/getting-started/json-api.md).
+fixed-price POST JSON and finite HTTP APIs through `requestApi()`; start with the
+[local JSON API tutorial](../../docs/getting-started/json-api.md) or
+[finite HTTP guide](../../docs/getting-started/finite-http-api.md).
 Inference adapters support Chat Completions, Responses and Messages as enabled
 by a deployment's profile. New methods, billing units and response formats
 still require explicit adapters and contracts.
@@ -15,10 +16,12 @@ still require explicit adapters and contracts.
 Use the [inference SDK tutorial](../../docs/getting-started/sdk.md),
 [API reference](../../docs/sdk/api.md) and [distribution guide](DISTRIBUTION.md)
 for the implemented interfaces.
-The published SDK release is `0.2.0-devnet.12` and retains its inference interfaces;
-the registered JSON API additions in this `0.2.0-devnet.9-onboarding.0` source
-build are source/local only. This build also includes the published recovery
-and streaming fixes. See
+SDK `0.2.0-devnet.13` adds registered JSON and finite HTTP APIs alongside the
+existing inference interfaces, recovery and streaming fixes. Gateway use requires
+an explicit authenticated schema 3 profile and installed adapter pins; package
+installation alone does not enable a deployed capability. Existing schema 1
+profiles listing SDK `.8` through `.12` remain readable without changing their
+bytes, hashes or custody bindings. See
 [downloads and verification](../../docs/getting-started/devnet.md).
 The package is distributed as a tarball, with `private: true` to disable npm
 registry publication. Node integrations use Node 24.19.0; browser integrations

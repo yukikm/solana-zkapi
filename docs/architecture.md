@@ -58,6 +58,10 @@ The pinned development setup is not a production ceremony.
 
 ## Specifications
 
+- [Universal API gateway design](specs/universal-api-gateway.md): separate
+  general API transport from metering while retaining the existing payment core.
+  The [finite HTTP contract](specs/universal-api-gateway-contract.md) defines the
+  initial implementation scope; this is not a deployed capability.
 - [On-chain protocol](specs/protocol-solana.md)
 - [Tree transition](specs/tree-transition.md)
 - [API, proxy and accounting](specs/api-proxy.md)

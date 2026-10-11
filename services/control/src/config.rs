@@ -352,7 +352,7 @@ impl RuntimeConfig {
         Ok(
             serde_json::json!({"schema":1, "manifestHash":self.trusted_manifest_hash,
             "tariffHashes": self.tariffs.iter().map(|t| &t.tariff_hash).collect::<Vec<_>>(),
-            "operations": self.providers.api.iter().map(|p| &p.api).collect::<Vec<_>>(), "signer": signer}),
+            "operations": self.providers.api.iter().map(|p| serde_json::to_value(&p.api)).chain(self.providers.gateway.iter().map(|p| serde_json::to_value(&p.api))).collect::<std::result::Result<Vec<_>, _>>()?, "signer": signer}),
         )
     }
     /// Authenticates only public configuration. Never reads seeds, credentials,
@@ -480,6 +480,11 @@ impl RuntimeConfig {
         for tariff in &self.tariffs {
             validate_tariff(tariff)?;
             ensure!(
+                tariff.version != "3"
+                    || crate::quote::calculate_reservation(tariff)? <= trusted.cap_micro_usdc.as_nano(),
+                "gateway reservation exceeds cap"
+            );
+            ensure!(
                 allowed.iter().any(|x| x == &tariff.tariff_hash),
                 "unlisted tariff"
             );
@@ -497,8 +502,8 @@ impl RuntimeConfig {
                 ensure!(
                     tariff.provider != other.provider
                         || tariff.model != other.model
-                        || tariff.api.as_ref().map(|a| (&a.service, &a.operation))
-                            != other.api.as_ref().map(|a| (&a.service, &a.operation))
+                        || tariff.api.as_ref().map(|a| (a.service(), a.operation()))
+                            != other.api.as_ref().map(|a| (a.service(), a.operation()))
                         || wire::uint(&tariff.valid_from)? >= wire::uint(&other.valid_until)?
                         || wire::uint(&other.valid_from)? >= wire::uint(&tariff.valid_until)?,
                     "overlapping tariffs for provider/model"
@@ -507,7 +512,8 @@ impl RuntimeConfig {
         }
         let provider_policy = if self.devnet.is_some() {
             ensure!(
-                self.providers.api.is_empty() || self.providers.dispatcher.is_some(),
+                (self.providers.api.is_empty() && self.providers.gateway.is_empty())
+                    || self.providers.dispatcher.is_some(),
                 "public API provider requires an isolated dispatcher"
             );
             ProviderTransportPolicy::PublicDevnet

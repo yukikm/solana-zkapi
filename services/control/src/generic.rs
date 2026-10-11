@@ -33,7 +33,8 @@ pub fn validate(api: &ApiBinding, raw: &[u8], tariff: &Tariff) -> Result<Prepare
     wire::validate_api_binding(api)?;
     crate::quote::validate_tariff(tariff)?;
     ensure!(
-        tariff.api.as_ref() == Some(api) && tariff.pricing_basis == "fixed_request",
+        tariff.api.as_ref().and_then(|a| a.v1()) == Some(api)
+            && tariff.pricing_basis == "fixed_request",
         "API tariff binding"
     );
     proxy::parse_json(raw, wire::uint(&api.request_max_bytes)? as usize)?;

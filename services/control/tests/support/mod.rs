@@ -184,11 +184,13 @@ pub fn tariff() -> Tariff {
         valid_until: "4000000000".into(),
         rates: vec![
             Rate {
+                reservation_max_count: None,
                 unit: "input_tokens".into(),
                 nano_usdc_numerator: "1".into(),
                 unit_denominator: "3".into(),
             },
             Rate {
+                reservation_max_count: None,
                 unit: "output_tokens".into(),
                 nano_usdc_numerator: "1".into(),
                 unit_denominator: "3".into(),

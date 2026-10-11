@@ -193,6 +193,9 @@ func New(config Config) (*Relay, error) {
 	}
 	t := &http.Transport{Proxy: nil, DialContext: dial, TLSClientConfig: tlsConfig, TLSHandshakeTimeout: 20 * time.Second, ResponseHeaderTimeout: 10 * time.Minute, DisableCompression: true, ForceAttemptHTTP2: true}
 	apiTransport := t.Clone()
+	// Fresh connections prevent net/http's reused-connection retry path from
+	// replaying even a nominally idempotent gateway execution envelope.
+	apiTransport.DisableKeepAlives = true
 	apiTransport.ResponseHeaderTimeout = 660 * time.Second
 	apiClient := &http.Client{Transport: apiTransport, Timeout: 660 * time.Second, CheckRedirect: func(_ *http.Request, _ []*http.Request) error { return http.ErrUseLastResponse }}
 	return &Relay{client: &http.Client{Transport: t, Timeout: 10 * time.Minute, CheckRedirect: func(_ *http.Request, _ []*http.Request) error { return http.ErrUseLastResponse }}, apiClient: apiClient, routes: append([]Route(nil), config.Routes...), admissionOrigin: admissionOrigin, admissionToken: admissionToken}, nil
@@ -275,7 +278,7 @@ func (e *Relay) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-var registeredOperationPath = regexp.MustCompile(`^/zkapi/v1/api/[a-z0-9][a-z0-9_-]{0,63}/[a-z0-9][a-z0-9_-]{0,63}$`)
+var registeredOperationPath = regexp.MustCompile(`^/zkapi/(?:v1/api|v2/execute)/[a-z0-9][a-z0-9_-]{0,63}/[a-z0-9][a-z0-9_-]{0,63}$`)
 
 func (e *Relay) isRegisteredOperation(method, origin, path string) bool {
 	if method != http.MethodPost || !registeredOperationPath.MatchString(path) {

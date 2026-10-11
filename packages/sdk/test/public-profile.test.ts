@@ -1,11 +1,36 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { loadPublicDeploymentProfile, preflightPublicDeployment, publicProfileClientOptions, PublicProfileError } from '../src/public-profile.ts';
+import { loadPublicDeploymentProfile, preflightPublicDeployment, publicProfileClientOptions, PublicProfileError, PUBLIC_PROFILE_SDK_VERSION } from '../src/public-profile.ts';
 import { jcsBytes, sha256Hex } from '../src/trust.ts';
 import { publicProfileFixture } from './public-profile-fixture.ts';
+import { gatewayPublicProfileFixture } from './gateway-public-profile-fixture.ts';
 import { API_ONBOARDING_DECLARATION } from './api-onboarding-fixture.ts';
 
 const component=(name:string)=>(e:unknown)=>e instanceof PublicProfileError && e.component===name;
+const legacyVersions=['0.2.0-devnet.8','0.2.0-devnet.9','0.2.0-devnet.10','0.2.0-devnet.11','0.2.0-devnet.12'];
+test('legacy inference SDK profile compatibility preserves exact authenticated bytes and installed hash pins',async()=>{
+  for(const version of [...legacyVersions,PUBLIC_PROFILE_SDK_VERSION]){
+    const f=await publicProfileFixture();f.profile.sdkVersions=[version];
+    const original=jcsBytes(f.profile),pin=await f.profileSha256();
+    const loaded=await loadPublicDeploymentProfile(f.profileUrl,{profileSha256:pin,installedProfileSha256:pin,fetch:f.fetcher});
+    assert.equal(loaded.profile.schema,1);assert.equal(loaded.profileSha256,pin);
+    assert.deepEqual(jcsBytes(loaded.profile),original);assert.deepEqual(jcsBytes(f.profile),original);
+    assert.deepEqual(loaded.profile.sdkVersions,[version]);
+    assert.deepEqual(publicProfileClientOptions(loaded).deployment.manifest,f.state.controlManifest);
+    assert(f.calls.every(call=>call.method==='GET'));assert(!f.calls.some(call=>/quotes|sessions|notes/.test(call.url)));
+  }
+});
+test('API profile schemas require explicit current SDK membership before fetching assets',async()=>{
+  for(const version of [...legacyVersions,'0.2.0-devnet.9-onboarding.0'])for(const schema of [2,3]){
+    const f=schema===3?await gatewayPublicProfileFixture():await publicProfileFixture({schema:2,selection:'api'});
+    f.profile.sdkVersions=[version];
+    await assert.rejects(loadPublicDeploymentProfile(f.profileUrl,{profileSha256:await f.profileSha256(),fetch:f.fetcher}),component('compatibility'));
+    assert.equal(f.calls.length,1);assert.equal(f.calls[0].url,f.profileUrl);
+  }
+  const f=await gatewayPublicProfileFixture();f.profile.sdkVersions=['0.2.0-devnet.12',PUBLIC_PROFILE_SDK_VERSION];
+  const loaded=await loadPublicDeploymentProfile(f.profileUrl,{profileSha256:await f.profileSha256(),fetch:f.fetcher});
+  assert.equal(loaded.profile.schema,3);assert.deepEqual(publicProfileClientOptions(loaded).gateway,f.profile.gateway);
+});
 test('one pinned public profile loads all assets and preflights without custody, quotes, AUTH, inference or selected-note reads',async()=>{
   const f=await publicProfileFixture();
   const loaded=await loadPublicDeploymentProfile(f.profileUrl,{profileSha256:await f.profileSha256(),fetch:f.fetcher});
@@ -155,9 +180,9 @@ test('service hash and descriptor substitution fail as services; historical vali
   const loaded=await loadPublicDeploymentProfile(f.profileUrl,{profileSha256:await f.profileSha256(),fetch:f.fetcher});
   f.calls.length=0;
   await assert.rejects(preflightPublicDeployment(loaded,{nowSeconds:9999999999n}),component('services'));assert.equal(f.calls.length,0);
-  const opts=publicProfileClientOptions(loaded);opts.services![0].tariff.api.path='/mutated';opts.services![0].tariff.rates[0].nano_usdc_numerator='1';
-  assert.equal(publicProfileClientOptions(loaded).services![0].tariff.api.path,'/lookup');
-  assert.throws(()=>{if(loaded.profile.schema===2)loaded.profile.services[0].tariff.api.path='/mutated';});
+  const opts=publicProfileClientOptions(loaded);(opts.services![0].tariff.api as import('../src/control.ts').ApiBindingV1).path='/mutated';opts.services![0].tariff.rates[0].nano_usdc_numerator='1';
+  assert.equal((publicProfileClientOptions(loaded).services![0].tariff.api as import('../src/control.ts').ApiBindingV1).path,'/lookup');
+  assert.throws(()=>{if(loaded.profile.schema===2)(loaded.profile.services[0].tariff.api as import('../src/control.ts').ApiBindingV1).path='/mutated';});
 });
 
 test('API catalogs validate every entry and reject omissions, duplicates and descriptor or endpoint substitution',async()=>{

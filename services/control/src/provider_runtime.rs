@@ -20,6 +20,8 @@ pub struct ProviderConfig {
     pub proxy: Vec<ProxyProviderConfig>,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub api: Vec<crate::generic::ApiProviderConfig>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub gateway: Vec<crate::gateway::GatewayProviderConfig>,
 }
 #[derive(Clone, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -34,7 +36,10 @@ impl ProviderConfig {
     pub fn supports_tariff(&self, tariff: &Tariff) -> Result<bool> {
         if let Some(api) = &tariff.api {
             crate::quote::validate_tariff(tariff)?;
-            return Ok(self.api.iter().any(|p| &p.api == api));
+            return Ok(match api {
+                wire::VersionedApiBinding::V1(api) => self.api.iter().any(|p| &p.api == api),
+                wire::VersionedApiBinding::V2(api) => self.gateway.iter().any(|p| &p.api == api),
+            });
         }
         if tariff.pricing_basis == "provider_reported_usd" {
             return Ok(self.direct.iter().any(|d| d.provider() == tariff.provider));
@@ -53,7 +58,7 @@ impl ProviderConfig {
     }
     pub fn validate(&self, tariffs: &[Tariff], local: bool) -> Result<()> {
         ensure!(
-            local || self.api.is_empty(),
+            local || (self.api.is_empty() && self.gateway.is_empty()),
             "public API requires validated deployment scope"
         );
         if let Some(dispatcher) = &self.dispatcher {
@@ -79,14 +84,32 @@ impl ProviderConfig {
         self.validate_inner(tariffs, policy.local(), true)
     }
     fn validate_inner(&self, tariffs: &[Tariff], local: bool, private: bool) -> Result<()> {
+        ensure!(
+            local || self.gateway.is_empty() || self.dispatcher.is_some(),
+            "public gateway requires independent dispatcher"
+        );
         let mut apis = Vec::new();
+        for config in &self.gateway {
+            crate::gateway::validate_config(config, local, private && self.dispatcher.is_none())?;
+            let identity = (&config.api.service, &config.api.operation);
+            ensure!(!apis.contains(&identity), "duplicate API operation");
+            apis.push(identity);
+            ensure!(
+                tariffs
+                    .iter()
+                    .any(|t| t.api.as_ref().and_then(|a| a.v2()) == Some(&config.api)),
+                "gateway tariff missing"
+            );
+        }
         for config in &self.api {
             crate::generic::validate_origin(&config.api, local)?;
             let identity = (&config.api.service, &config.api.operation);
             ensure!(!apis.contains(&identity), "duplicate API operation");
             apis.push(identity);
             ensure!(
-                tariffs.iter().any(|t| t.api.as_ref() == Some(&config.api)),
+                tariffs
+                    .iter()
+                    .any(|t| t.api.as_ref().and_then(|a| a.v1()) == Some(&config.api)),
                 "API tariff missing"
             );
             if private && self.dispatcher.is_none() {
@@ -180,6 +203,8 @@ pub struct ProviderRuntime {
     pub proxy: Vec<(Provider, Arc<crate::proxy::HttpAdapter>)>,
     pub direct: Vec<(Provider, crate::direct::DirectRuntime)>,
     pub api: Vec<(wire::ApiBinding, Arc<crate::generic::HttpAdapter>)>,
+    pub gateway: Vec<(wire::ApiBindingV2, Arc<crate::gateway::HttpAdapter>)>,
+    pub gateway_admission: Vec<(wire::ApiBindingV2, Arc<tokio::sync::Semaphore>)>,
     owner: Uuid,
     // Ephemeral throttles hold no raw IP, credentials, prompt, or response.
     rates: Mutex<BTreeMap<[u8; 32], (u64, u32)>>,
@@ -188,7 +213,7 @@ pub struct ProviderRuntime {
 impl ProviderRuntime {
     pub async fn connect(config: &ProviderConfig, local: bool) -> Result<Self> {
         ensure!(
-            local || config.api.is_empty(),
+            local || (config.api.is_empty() && config.gateway.is_empty()),
             "public API requires validated deployment scope"
         );
         Self::connect_inner(config, local).await
@@ -200,6 +225,22 @@ impl ProviderRuntime {
         Self::connect_inner(config, policy.local()).await
     }
     async fn connect_inner(config: &ProviderConfig, local: bool) -> Result<Self> {
+        let mut gateway = Vec::new();
+        let mut gateway_admission = Vec::new();
+        for p in &config.gateway {
+            gateway_admission.push((
+                p.api.clone(),
+                Arc::new(tokio::sync::Semaphore::new(crate::gateway::number(
+                    &p.api.limits.max_concurrency,
+                )?)),
+            ));
+            if config.dispatcher.is_none() {
+                gateway.push((
+                    p.api.clone(),
+                    Arc::new(crate::gateway::HttpAdapter::connect(p, local)?),
+                ));
+            }
+        }
         let mut api = Vec::new();
         for p in config.api.iter().filter(|_| config.dispatcher.is_none()) {
             api.push((
@@ -240,6 +281,8 @@ impl ProviderRuntime {
             proxy,
             direct,
             api,
+            gateway,
+            gateway_admission,
             owner: Uuid::new_v4(),
             rates: Mutex::new(BTreeMap::new()),
             salt: rand::random(),
@@ -303,13 +346,24 @@ pub(crate) async fn abandoned_owner_exists(ledger: &ledger::Ledger) -> Result<bo
 }
 
 impl App {
-    pub(crate) async fn api_available(&self, binding: &wire::ApiBinding) -> bool {
-        self.config
-            .runtime
-            .providers
-            .api
-            .iter()
-            .any(|p| &p.api == binding)
+    pub(crate) async fn api_available(&self, binding: &wire::VersionedApiBinding) -> bool {
+        let configured = match binding {
+            wire::VersionedApiBinding::V1(api) => self
+                .config
+                .runtime
+                .providers
+                .api
+                .iter()
+                .any(|p| &p.api == api),
+            wire::VersionedApiBinding::V2(api) => self
+                .config
+                .runtime
+                .providers
+                .gateway
+                .iter()
+                .any(|p| &p.api == api),
+        };
+        configured
             && self
                 .providers
                 .available(&self.ledger, &Provider::Generic)
@@ -375,6 +429,7 @@ impl App {
             .transpose()?;
         let charged = observed.unwrap_or(0).min(op.reservation_nano);
         self.sign_provider_receipt(ReceiptBody {
+            gateway: None,
             version: if tariff.api.is_some() { "2" } else { "1" }.into(),
             receipt_id: Uuid::new_v4().to_string(),
             deployment_id: self.config.binding.deployment_id.clone(),
@@ -441,7 +496,11 @@ impl App {
                     .filter(|a| a.attempt.operation_id == Some(op.operation_id))
                     .all(|a| a.finished || a.fenced)
             {
-                let receipt = self.proxy_receipt(s, &op, None, tariff)?;
+                let receipt = if tariff.api.as_ref().and_then(|a| a.v2()).is_some() {
+                    self.gateway_receipt(s, &op, None, tariff)?
+                } else {
+                    self.proxy_receipt(s, &op, None, tariff)?
+                };
                 self.ledger
                     .complete_operation(
                         s.request_id,
@@ -544,6 +603,7 @@ impl App {
         let reservation = u128::from(s.cap_micro) * 1000;
         let charged = observed.min(reservation);
         let receipt = self.sign_provider_receipt(ReceiptBody {
+            gateway: None,
             version: "1".into(),
             receipt_id: Uuid::new_v4().to_string(),
             deployment_id: self.config.binding.deployment_id.clone(),

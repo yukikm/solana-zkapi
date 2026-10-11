@@ -90,11 +90,13 @@ async fn tariff(ledger: &Ledger) -> Hash {
         valid_until: "4102444800".into(),
         rates: vec![
             Rate {
+                reservation_max_count: None,
                 unit: "input_tokens".into(),
                 nano_usdc_numerator: "1".into(),
                 unit_denominator: "1".into(),
             },
             Rate {
+                reservation_max_count: None,
                 unit: "output_tokens".into(),
                 nano_usdc_numerator: "1".into(),
                 unit_denominator: "1".into(),
@@ -194,6 +196,7 @@ fn receipt(
 ) -> ReceiptRecord {
     let receipt_id = Uuid::new_v4();
     let body = ReceiptBody {
+        gateway: None,
         version: "1".into(),
         receipt_id: receipt_id.to_string(),
         deployment_id: deployment.into(),
@@ -1136,6 +1139,7 @@ async fn admission_expiry_cursor_and_direct_dispatch_contract() {
     );
     let receipt_id = Uuid::new_v4();
     let body = ReceiptBody {
+        gateway: None,
         version: "1".into(),
         receipt_id: receipt_id.to_string(),
         deployment_id: identity.deployment_id.clone(),

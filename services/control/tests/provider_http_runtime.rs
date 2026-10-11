@@ -278,6 +278,7 @@ async fn fixture_app_for_mode(
     tariff.rates = vec!["cache_read_tokens", "input_tokens", "output_tokens"]
         .into_iter()
         .map(|unit| wire::Rate {
+            reservation_max_count: None,
             unit: unit.into(),
             nano_usdc_numerator: "1".into(),
             unit_denominator: "1".into(),
@@ -288,6 +289,7 @@ async fn fixture_app_for_mode(
     write_private(&dir.join("provider.key"), b"fixture-provider-secret");
     config.providers = ProviderConfig {
         api: vec![],
+        gateway: vec![],
         dispatcher: None,
         direct: vec![],
         proxy: vec![ProxyProviderConfig {
@@ -320,9 +322,10 @@ async fn fixture_app_for_mode(
         tariff.version = "2".into();
         tariff.provider = wire::Provider::Generic;
         tariff.model.clear();
-        tariff.api = Some(api.clone());
+        tariff.api = Some(api.clone().into());
         tariff.pricing_basis = "fixed_request".into();
         tariff.rates = vec![wire::Rate {
+            reservation_max_count: None,
             unit: "requests".into(),
             nano_usdc_numerator: "7000".into(),
             unit_denominator: "1".into(),
@@ -333,6 +336,43 @@ async fn fixture_app_for_mode(
         config.providers.api = vec![zkapi_control::generic::ApiProviderConfig {
             api,
             credential_file: dir.join("provider.key"),
+        }];
+    } else if mode == "gateway" {
+        let vectors: Value = serde_json::from_str(include_str!(
+            "../../../docs/contracts/universal-api-gateway-vectors.json"
+        ))?;
+        let mut api: wire::ApiBindingV2 = serde_json::from_value(vectors["binding"].clone())?;
+        api.origin = provider_origin.into();
+        api.routes = vec![wire::HttpRoute {
+            method: "POST".into(),
+            path: "/lookup".into(),
+        }];
+        api.transport.artifact_sha256 = zkapi_control::gateway::transport_artifact_sha256();
+        api.meter.adapter.artifact_sha256 = zkapi_control::gateway::meter_artifact_sha256();
+        api.authentication = wire::AuthenticationPolicy::Bearer {
+            policy_id: "fixture".into(),
+        };
+        api.limits.idle_seconds = "1".into();
+        api.limits.max_concurrency = "1".into();
+        tariff.version = "3".into();
+        tariff.provider = wire::Provider::Generic;
+        tariff.model.clear();
+        tariff.api = Some(api.clone().into());
+        tariff.pricing_basis = "fixed_request".into();
+        tariff.rates = vec![wire::Rate {
+            reservation_max_count: Some("1".into()),
+            unit: "requests".into(),
+            nano_usdc_numerator: "7000".into(),
+            unit_denominator: "1".into(),
+        }];
+        tariff.tariff_hash = quote::tariff_hash(&tariff)?;
+        config.tariffs = vec![tariff.clone()];
+        config.providers.proxy.clear();
+        config.providers.gateway = vec![zkapi_control::gateway::GatewayProviderConfig {
+            api,
+            credential_file: Some(dir.join("provider.key")),
+            transport_artifact_sha256: zkapi_control::gateway::transport_artifact_sha256(),
+            meter_artifact_sha256: zkapi_control::gateway::meter_artifact_sha256(),
         }];
     } else if mode != "proxy" {
         tariff.provider = if mode == "direct_oa" {
@@ -347,6 +387,7 @@ async fn fixture_app_for_mode(
         config.tariffs = vec![tariff.clone()];
         config.providers = ProviderConfig {
             api: vec![],
+            gateway: vec![],
             dispatcher: None,
             proxy: vec![],
             direct: vec![if mode == "direct_oa" {
@@ -408,6 +449,9 @@ async fn fixture_app_for_mode(
         }
         for p in &mut config.providers.api {
             p.credential_file = dir.join("not-mounted-in-control");
+        }
+        for p in &mut config.providers.gateway {
+            p.credential_file = Some(dir.join("not-mounted-in-control"));
         }
         for p in &mut config.providers.direct {
             match p {
@@ -1598,5 +1642,256 @@ async fn operations_collector_live_sources_watch_and_failure_alerts() -> Result<
     watcher.child.kill()?;
     watcher.child.wait()?;
     provider.abort();
+    Ok(())
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+#[ignore = "requires disposable PostgreSQL, real proof keys and existing SBF export"]
+async fn gateway_http_receipt_hmac_disconnect_unknown_and_no_replay() -> Result<()> {
+    use axum::{
+        body::{Body, Bytes},
+        extract::OriginalUri,
+        http::{HeaderMap, Response},
+        response::IntoResponse,
+    };
+    use zkapi_control::gateway;
+    let sends = Arc::new(AtomicUsize::new(0));
+    let counter = sends.clone();
+    let (upstream, task) = serve(Router::new().route(
+        "/lookup",
+        post(
+            move |OriginalUri(uri): OriginalUri, headers: HeaderMap, body: Bytes| {
+                let counter = counter.clone();
+                async move {
+                    assert_eq!(
+                        uri.path_and_query().unwrap().as_str(),
+                        "/lookup?x=1+2&x=%2f?"
+                    );
+                    assert_eq!(
+                        headers.get("authorization").unwrap(),
+                        "Bearer fixture-provider-secret"
+                    );
+                    assert_eq!(
+                        headers
+                            .get_all("x-test")
+                            .iter()
+                            .map(|v| v.to_str().unwrap())
+                            .collect::<Vec<_>>(),
+                        vec!["one", "two"]
+                    );
+                    counter.fetch_add(1, Ordering::SeqCst);
+                    let delay = if body == b"UNKNOWN"[..] {
+                        Duration::from_millis(1300)
+                    } else {
+                        Duration::from_millis(100)
+                    };
+                    let stream = futures_util::stream::unfold(0, move |n| async move {
+                        if n == 2 {
+                            return None;
+                        }
+                        if n == 1 {
+                            tokio::time::sleep(delay).await;
+                        }
+                        Some((
+                            Ok::<_, std::convert::Infallible>(Bytes::from_static(
+                                b"gateway fixture bytes",
+                            )),
+                            n + 1,
+                        ))
+                    });
+                    Response::builder()
+                        .header("content-type", "application/octet-stream")
+                        .body(Body::from_stream(stream))
+                        .unwrap()
+                        .into_response()
+                }
+            },
+        ),
+    ))
+    .await;
+    let mut f = fixture_app_for_mode(&upstream, "gateway", None).await?;
+    f.tasks.push(task);
+    let client = reqwest::Client::new();
+    let api = f.app.config.runtime.providers.gateway[0].api.clone();
+    let quote: wire::Quote = serde_json::from_value(
+        response(
+            client
+                .post(format!("{}/zkapi/v1/quotes", f.origin))
+                .json(&json!({"mode":"proxy","provider":"generic","api":api})),
+            200,
+        )
+        .await,
+    )?;
+    let (auth, control) = authorization(&quote);
+    let request = bound_request(auth, quote, genesis_state());
+    let id = wire::uuid(&request.authorization.request_id)?;
+    response(
+        client
+            .post(format!("{}/zkapi/v1/sessions", f.origin))
+            .header("authorization", &control)
+            .json(&request),
+        201,
+    )
+    .await;
+    let proxy = format!("Bearer zkp1.{id}.{}", URL_SAFE_NO_PAD.encode([8; 32]));
+    assert_eq!(f.app.ledger.session(id).await?.max_concurrency, 1);
+    let envelope = |body: &[u8]| -> Result<Vec<u8>> {
+        let meta = gateway::RequestMetadata {
+            version: "2".into(),
+            binding_hash: gateway::digest(&api)?,
+            method: "POST".into(),
+            target: "/lookup?x=1+2&x=%2f?".into(),
+            headers: vec![
+                ("x-test".into(), gateway::encode_value(b"one")),
+                ("x-test".into(), gateway::encode_value(b"two")),
+            ],
+            body_length: body.len().to_string(),
+        };
+        let metadata = serde_jcs::to_vec(&meta)?;
+        let mut bytes = (metadata.len() as u32).to_be_bytes().to_vec();
+        bytes.extend(metadata);
+        bytes.extend(body);
+        Ok(bytes)
+    };
+    let invoke = |operation: Uuid, bytes: Vec<u8>| {
+        client
+            .post(format!("{}{}", f.origin, wire::api_path(&api)))
+            .header("authorization", &proxy)
+            .header("idempotency-key", operation.to_string())
+            .header("content-type", gateway::REQUEST_MEDIA)
+            .header("accept", gateway::RESPONSE_MEDIA)
+            .body(bytes)
+    };
+    let success = Uuid::new_v4();
+    let mut first = invoke(success, envelope(b"SUCCESS")?).send().await?;
+    if first.status() != 200 {
+        anyhow::bail!(
+            "gateway initial response: {} {}",
+            first.status(),
+            first.text().await?
+        );
+    }
+    let mut result = vec![];
+    while let Some(bytes) = first.chunk().await? {
+        result.extend_from_slice(&bytes)
+    }
+    assert!(result.ends_with(&[4, 0, 0, 0, 0]));
+    for _ in 0..200 {
+        if f.app.ledger.operation(id, success).await?.state == "DONE" {
+            break;
+        }
+        tokio::time::sleep(Duration::from_millis(10)).await;
+    }
+    assert_eq!(
+        f.app.ledger.operation(id, success).await?.charged_nano,
+        7000
+    );
+    let retry = invoke(success, envelope(b"SUCCESS")?).send().await?;
+    assert_eq!(retry.status(), 409);
+    assert_eq!(
+        retry.json::<Value>().await?["code"],
+        "response_not_replayable"
+    );
+    let conflict = invoke(success, envelope(b"CHANGED")?).send().await?;
+    assert_eq!(conflict.status(), 409);
+    assert_eq!(
+        conflict.json::<Value>().await?["code"],
+        "idempotency_conflict"
+    );
+    assert_eq!(sends.load(Ordering::SeqCst), 1);
+    let disconnected = Uuid::new_v4();
+    let mut stream = invoke(disconnected, envelope(b"DISCONNECT")?)
+        .send()
+        .await?;
+    let _ = stream.chunk().await?;
+    drop(stream);
+    for _ in 0..200 {
+        if f.app.ledger.operation(id, disconnected).await?.state == "DONE" {
+            break;
+        }
+        tokio::time::sleep(Duration::from_millis(10)).await;
+    }
+    assert_eq!(
+        f.app.ledger.operation(id, disconnected).await?.charged_nano,
+        7000
+    );
+    let unknown = Uuid::new_v4();
+    let mut response = invoke(unknown, envelope(b"UNKNOWN")?).send().await?;
+    assert_eq!(response.status(), 200);
+    // The outer carrier response starts before the detached provider dispatch.
+    // Wait for its first frame before checking the provider's invocation count.
+    let _ = response.chunk().await?;
+    let duplicate = invoke(unknown, envelope(b"UNKNOWN")?).send().await?;
+    assert_eq!(duplicate.status(), 409);
+    assert_eq!(
+        duplicate.json::<Value>().await?["code"],
+        "operation_in_progress"
+    );
+    assert_eq!(sends.load(Ordering::SeqCst), 3);
+    let bytes = response.bytes().await?;
+    assert!(!bytes.ends_with(&[4, 0, 0, 0, 0]));
+    settled(&f, id).await?;
+    assert_eq!(
+        f.app.ledger.operation(id, unknown).await?.state,
+        "WAIVED_OPERATOR_LOSS"
+    );
+    assert_eq!(f.app.ledger.settlement(id).await?.target.charge_micro, 14);
+    let records = f.app.ledger.receipts(id, None, 10).await?;
+    assert_eq!(records.len(), 3);
+    for record in records {
+        let body: zkapi_control::receipts::ReceiptBody =
+            serde_json::from_slice(&record.canonical_body)?;
+        assert_eq!(body.version, "3");
+        let op = f
+            .app
+            .ledger
+            .operation(id, record.operation_id.unwrap())
+            .await?;
+        assert_eq!(
+            body.gateway.as_ref().unwrap().operation_hmac,
+            hex::encode(op.request_hmac)
+        );
+        assert_eq!(
+            body.gateway.as_ref().unwrap().binding_hash,
+            gateway::digest(&api)?
+        );
+        zkapi_control::receipts::validate_tariff_math(&body, &f.app.config.runtime.tariffs[0])?;
+        if op.operation_id == unknown {
+            assert_eq!(body.reason, "waived_unknown");
+            assert!(body.gateway.unwrap().completion.is_none());
+            assert!(body.usage.is_empty());
+        } else {
+            assert_eq!(body.reason, "metered");
+            assert_eq!(
+                body.gateway.unwrap().completion.unwrap().outcome,
+                "satisfied"
+            );
+        }
+    }
+    let retry = invoke(unknown, envelope(b"UNKNOWN")?).send().await?;
+    assert_eq!(retry.status(), 409);
+    assert_eq!(sends.load(Ordering::SeqCst), 3);
+    let attempts = f.app.ledger.dispatch_attempts_for_session(id).await?;
+    assert_eq!(attempts.len(), 3);
+    assert!(attempts.iter().all(|a| a.finished && a.send_claimed));
+    let row=f.sql.query_one("SELECT envelope_version,binding_hash,meter_hash FROM operations WHERE request_id=$1 AND operation_id=$2",&[&id,&success]).await?;
+    assert_eq!(row.get::<_, i16>(0), 2);
+    assert_eq!(
+        hex::encode(row.get::<_, Vec<u8>>(1)),
+        gateway::digest(&api)?
+    );
+    assert_eq!(
+        hex::encode(row.get::<_, Vec<u8>>(2)),
+        gateway::digest(&api.meter)?
+    );
+    assert!(f
+        .sql
+        .execute(
+            "UPDATE operations SET request_hmac=$3 WHERE request_id=$1 AND operation_id=$2",
+            &[&id, &success, &&[99u8; 32][..]]
+        )
+        .await
+        .is_err());
+
     Ok(())
 }

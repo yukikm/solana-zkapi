@@ -1,0 +1,827 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$ref": "#/$defs/ApiBindingV2",
+  "$defs": {
+    "ApiBindingV2": {
+      "type": "object",
+      "properties": {
+        "version": {
+          "const": "2"
+        },
+        "service": {
+          "type": "string",
+          "pattern": "^[a-z0-9][a-z0-9_-]{0,63}$"
+        },
+        "operation": {
+          "type": "string",
+          "pattern": "^[a-z0-9][a-z0-9_-]{0,63}$"
+        },
+        "mode": {
+          "const": "proxy"
+        },
+        "transport": {
+          "$ref": "#/$defs/GatewayAdapterPin"
+        },
+        "origin": {
+          "type": "string",
+          "format": "uri",
+          "description": "Canonical HTTPS origin; explicit synthetic fixture runtime may use loopback HTTP."
+        },
+        "routes": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/GatewayRoute"
+          },
+          "minItems": 1,
+          "maxItems": 32,
+          "uniqueItems": true
+        },
+        "query": {
+          "const": "preserve"
+        },
+        "headers": {
+          "$ref": "#/$defs/GatewayHeaderPolicy"
+        },
+        "representation": {
+          "$ref": "#/$defs/GatewayRepresentation"
+        },
+        "limits": {
+          "$ref": "#/$defs/GatewayLimits"
+        },
+        "authentication": {
+          "$ref": "#/$defs/GatewayAuthentication"
+        },
+        "privacy": {
+          "type": "object",
+          "properties": {
+            "identifiers": {
+              "type": "string",
+              "enum": [
+                "allow",
+                "reject_by_meter"
+              ]
+            },
+            "resources": {
+              "type": "string",
+              "enum": [
+                "stateless",
+                "shared_public"
+              ]
+            }
+          },
+          "required": [
+            "identifiers",
+            "resources"
+          ],
+          "additionalProperties": false
+        },
+        "meter": {
+          "$ref": "#/$defs/GatewayMeter"
+        },
+        "completion": {
+          "$ref": "#/$defs/GatewayCompletionRule"
+        },
+        "recovery": {
+          "type": "object",
+          "properties": {
+            "policy": {
+              "const": "finite_unknown_v1"
+            },
+            "reconciliation_seconds": {
+              "const": "900"
+            }
+          },
+          "required": [
+            "policy",
+            "reconciliation_seconds"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "version",
+        "service",
+        "operation",
+        "mode",
+        "transport",
+        "origin",
+        "routes",
+        "query",
+        "headers",
+        "representation",
+        "limits",
+        "authentication",
+        "privacy",
+        "meter",
+        "completion",
+        "recovery"
+      ],
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "properties": {
+            "transport": {
+              "properties": {
+                "id": {
+                  "const": "http_finite"
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "meter": {
+                "properties": {
+                  "adapter": {
+                    "properties": {
+                      "id": {
+                        "const": "fixed_http"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "completion": {
+                "properties": {
+                  "kind": {
+                    "const": "http_complete"
+                  }
+                }
+              },
+              "privacy": {
+                "properties": {
+                  "identifiers": {
+                    "const": "allow"
+                  }
+                }
+              }
+            }
+          },
+          "else": {
+            "properties": {
+              "completion": {
+                "properties": {
+                  "kind": {
+                    "const": "provider_terminal_usage"
+                  }
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    "GatewayAdapterPin": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z0-9][a-z0-9_-]{0,63}$"
+        },
+        "version": {
+          "const": "1"
+        },
+        "artifact_sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        }
+      },
+      "required": [
+        "id",
+        "version",
+        "artifact_sha256"
+      ],
+      "additionalProperties": false
+    },
+    "GatewayRoute": {
+      "type": "object",
+      "properties": {
+        "method": {
+          "type": "string",
+          "enum": [
+            "GET",
+            "POST",
+            "PUT",
+            "PATCH",
+            "DELETE",
+            "HEAD",
+            "OPTIONS"
+          ]
+        },
+        "path": {
+          "type": "string",
+          "pattern": "^/(?!/)[\\x21-\\x7e]*$",
+          "maxLength": 1024
+        }
+      },
+      "required": [
+        "method",
+        "path"
+      ],
+      "additionalProperties": false
+    },
+    "GatewayHeaderPolicy": {
+      "type": "object",
+      "properties": {
+        "request": {
+          "const": "end_to_end"
+        },
+        "request_reject": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z0-9!#$%&'*+.^_`|~-]+$"
+          },
+          "maxItems": 64,
+          "uniqueItems": true
+        },
+        "response": {
+          "const": "end_to_end"
+        },
+        "response_reject": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z0-9!#$%&'*+.^_`|~-]+$"
+          },
+          "maxItems": 64,
+          "uniqueItems": true
+        },
+        "trailers": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z0-9!#$%&'*+.^_`|~-]+$"
+          },
+          "maxItems": 64,
+          "uniqueItems": true
+        },
+        "static_request": {
+          "$ref": "#/$defs/GatewayHeaderPairs"
+        }
+      },
+      "required": [
+        "request",
+        "request_reject",
+        "response",
+        "response_reject",
+        "trailers",
+        "static_request"
+      ],
+      "additionalProperties": false
+    },
+    "GatewayHeaderPairs": {
+      "type": "array",
+      "items": {
+        "type": "array",
+        "prefixItems": [
+          {
+            "type": "string",
+            "pattern": "^[a-z0-9!#$%&'*+.^_`|~-]+$"
+          },
+          {
+            "type": "string",
+            "contentEncoding": "base64",
+            "pattern": "^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$"
+          }
+        ],
+        "items": false,
+        "minItems": 2,
+        "maxItems": 2
+      },
+      "maxItems": 128
+    },
+    "GatewayRepresentation": {
+      "type": "object",
+      "properties": {
+        "request_media_types": {
+          "oneOf": [
+            {
+              "const": [
+                "*"
+              ]
+            },
+            {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "pattern": "^[a-z0-9!#$%&'+.^_`|~-]+/[a-z0-9!#$%&'+.^_`|~-]+$"
+              },
+              "minItems": 1,
+              "maxItems": 64,
+              "uniqueItems": true
+            }
+          ]
+        },
+        "response_media_types": {
+          "oneOf": [
+            {
+              "const": [
+                "*"
+              ]
+            },
+            {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "pattern": "^[a-z0-9!#$%&'+.^_`|~-]+/[a-z0-9!#$%&'+.^_`|~-]+$"
+              },
+              "minItems": 1,
+              "maxItems": 64,
+              "uniqueItems": true
+            }
+          ]
+        },
+        "request_encoding": {
+          "const": "identity"
+        },
+        "response_encodings": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "br",
+              "deflate",
+              "gzip",
+              "identity"
+            ]
+          },
+          "minItems": 1,
+          "maxItems": 4,
+          "uniqueItems": true,
+          "contains": {
+            "const": "identity"
+          }
+        }
+      },
+      "required": [
+        "request_media_types",
+        "response_media_types",
+        "request_encoding",
+        "response_encodings"
+      ],
+      "additionalProperties": false
+    },
+    "GatewayLimits": {
+      "type": "object",
+      "properties": {
+        "target_bytes": {
+          "type": "string",
+          "pattern": "^(0|[1-9][0-9]*)$",
+          "description": "Inclusive integer bounds 1..8192; enforced at runtime.",
+          "maxLength": 4
+        },
+        "header_pairs": {
+          "type": "string",
+          "pattern": "^(0|[1-9][0-9]*)$",
+          "description": "Inclusive integer bounds 1..128; enforced at runtime.",
+          "maxLength": 3
+        },
+        "header_bytes": {
+          "type": "string",
+          "pattern": "^(0|[1-9][0-9]*)$",
+          "description": "Inclusive integer bounds 1..32768; enforced at runtime.",
+          "maxLength": 5
+        },
+        "request_bytes": {
+          "type": "string",
+          "pattern": "^(0|[1-9][0-9]*)$",
+          "description": "Inclusive integer bounds 0..1048576; enforced at runtime.",
+          "maxLength": 7
+        },
+        "response_bytes": {
+          "type": "string",
+          "pattern": "^(0|[1-9][0-9]*)$",
+          "description": "Inclusive integer bounds 0..16777216; enforced at runtime.",
+          "maxLength": 8
+        },
+        "decoded_response_bytes": {
+          "type": "string",
+          "pattern": "^(0|[1-9][0-9]*)$",
+          "description": "Inclusive integer bounds 0..67108864; enforced at runtime.",
+          "maxLength": 8
+        },
+        "decode_ratio": {
+          "type": "string",
+          "pattern": "^(0|[1-9][0-9]*)$",
+          "description": "Inclusive integer bounds 1..64; enforced at runtime.",
+          "maxLength": 2
+        },
+        "parser_bytes": {
+          "type": "string",
+          "pattern": "^(0|[1-9][0-9]*)$",
+          "description": "Inclusive integer bounds 1..1048576; enforced at runtime.",
+          "maxLength": 7
+        },
+        "relay_buffer_bytes": {
+          "type": "string",
+          "pattern": "^(0|[1-9][0-9]*)$",
+          "description": "Inclusive integer bounds 1..1048576; enforced at runtime.",
+          "maxLength": 7
+        },
+        "header_seconds": {
+          "type": "string",
+          "pattern": "^(0|[1-9][0-9]*)$",
+          "description": "Inclusive integer bounds 1..600; enforced at runtime.",
+          "maxLength": 3
+        },
+        "idle_seconds": {
+          "type": "string",
+          "pattern": "^(0|[1-9][0-9]*)$",
+          "description": "Inclusive integer bounds 1..600; enforced at runtime.",
+          "maxLength": 3
+        },
+        "execution_seconds": {
+          "type": "string",
+          "pattern": "^(0|[1-9][0-9]*)$",
+          "description": "Inclusive integer bounds 1..600; enforced at runtime.",
+          "maxLength": 3
+        },
+        "max_concurrency": {
+          "type": "string",
+          "pattern": "^(0|[1-9][0-9]*)$",
+          "description": "Inclusive integer bounds 1..4; enforced at runtime.",
+          "maxLength": 1
+        }
+      },
+      "required": [
+        "target_bytes",
+        "header_pairs",
+        "header_bytes",
+        "request_bytes",
+        "response_bytes",
+        "decoded_response_bytes",
+        "decode_ratio",
+        "parser_bytes",
+        "relay_buffer_bytes",
+        "header_seconds",
+        "idle_seconds",
+        "execution_seconds",
+        "max_concurrency"
+      ],
+      "additionalProperties": false
+    },
+    "GatewayAuthentication": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "scheme": {
+              "const": "none"
+            },
+            "policy_id": {
+              "type": "string",
+              "pattern": "^[a-z0-9][a-z0-9_-]{0,63}$"
+            }
+          },
+          "required": [
+            "scheme",
+            "policy_id"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "scheme": {
+              "const": "bearer"
+            },
+            "policy_id": {
+              "type": "string",
+              "pattern": "^[a-z0-9][a-z0-9_-]{0,63}$"
+            }
+          },
+          "required": [
+            "scheme",
+            "policy_id"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "scheme": {
+              "const": "basic"
+            },
+            "policy_id": {
+              "type": "string",
+              "pattern": "^[a-z0-9][a-z0-9_-]{0,63}$"
+            }
+          },
+          "required": [
+            "scheme",
+            "policy_id"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "scheme": {
+              "const": "api_key_header"
+            },
+            "policy_id": {
+              "type": "string",
+              "pattern": "^[a-z0-9][a-z0-9_-]{0,63}$"
+            },
+            "header": {
+              "type": "string",
+              "pattern": "^[a-z0-9!#$%&'*+.^_`|~-]+$"
+            }
+          },
+          "required": [
+            "scheme",
+            "policy_id",
+            "header"
+          ],
+          "additionalProperties": false
+        }
+      ]
+    },
+    "GatewayMeter": {
+      "type": "object",
+      "properties": {
+        "adapter": {
+          "$ref": "#/$defs/GatewayAdapterPin"
+        },
+        "resource": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/GatewayMeterResource"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "config": {
+          "oneOf": [
+            {
+              "type": "object",
+              "properties": {
+                "exposure": {
+                  "const": "operator_upstream_cost"
+                }
+              },
+              "required": [
+                "exposure"
+              ],
+              "additionalProperties": false
+            },
+            {
+              "type": "object",
+              "properties": {
+                "provider_contract_sha256": {
+                  "type": "string",
+                  "pattern": "^[0-9a-f]{64}$"
+                },
+                "context_max_tokens": {
+                  "type": "string",
+                  "pattern": "^[1-9][0-9]{0,18}$"
+                },
+                "output_max_tokens": {
+                  "type": "string",
+                  "pattern": "^[1-9][0-9]{0,18}$"
+                },
+                "service_tier": {
+                  "type": "string",
+                  "pattern": "^[\\x20-\\x7e]{1,64}$"
+                },
+                "extra_cost_policy": {
+                  "type": "string",
+                  "enum": [
+                    "reject_unclassified",
+                    "operator_absorbs_unpriced"
+                  ]
+                }
+              },
+              "required": [
+                "provider_contract_sha256",
+                "context_max_tokens",
+                "output_max_tokens",
+                "service_tier",
+                "extra_cost_policy"
+              ],
+              "additionalProperties": false
+            }
+          ]
+        },
+        "config_hash": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        }
+      },
+      "required": [
+        "adapter",
+        "resource",
+        "config",
+        "config_hash"
+      ],
+      "additionalProperties": false,
+      "oneOf": [
+        {
+          "properties": {
+            "adapter": {
+              "properties": {
+                "id": {
+                  "const": "fixed_http"
+                }
+              }
+            },
+            "resource": {
+              "type": "null"
+            },
+            "config": {
+              "type": "object",
+              "properties": {
+                "exposure": {
+                  "const": "operator_upstream_cost"
+                }
+              },
+              "required": [
+                "exposure"
+              ],
+              "additionalProperties": false
+            }
+          }
+        },
+        {
+          "properties": {
+            "adapter": {
+              "properties": {
+                "id": {
+                  "const": "openai_responses"
+                }
+              }
+            },
+            "resource": {
+              "allOf": [
+                {
+                  "$ref": "#/$defs/GatewayMeterResource"
+                },
+                {
+                  "properties": {
+                    "provider": {
+                      "const": "openai"
+                    }
+                  }
+                }
+              ]
+            },
+            "config": {
+              "type": "object",
+              "properties": {
+                "provider_contract_sha256": {
+                  "type": "string",
+                  "pattern": "^[0-9a-f]{64}$"
+                },
+                "context_max_tokens": {
+                  "type": "string",
+                  "pattern": "^[1-9][0-9]{0,18}$"
+                },
+                "output_max_tokens": {
+                  "type": "string",
+                  "pattern": "^[1-9][0-9]{0,18}$"
+                },
+                "service_tier": {
+                  "type": "string",
+                  "pattern": "^[\\x20-\\x7e]{1,64}$"
+                },
+                "extra_cost_policy": {
+                  "type": "string",
+                  "enum": [
+                    "reject_unclassified",
+                    "operator_absorbs_unpriced"
+                  ]
+                }
+              },
+              "required": [
+                "provider_contract_sha256",
+                "context_max_tokens",
+                "output_max_tokens",
+                "service_tier",
+                "extra_cost_policy"
+              ],
+              "additionalProperties": false
+            }
+          }
+        },
+        {
+          "properties": {
+            "adapter": {
+              "properties": {
+                "id": {
+                  "const": "anthropic_messages"
+                }
+              }
+            },
+            "resource": {
+              "allOf": [
+                {
+                  "$ref": "#/$defs/GatewayMeterResource"
+                },
+                {
+                  "properties": {
+                    "provider": {
+                      "const": "anthropic"
+                    }
+                  }
+                }
+              ]
+            },
+            "config": {
+              "type": "object",
+              "properties": {
+                "provider_contract_sha256": {
+                  "type": "string",
+                  "pattern": "^[0-9a-f]{64}$"
+                },
+                "context_max_tokens": {
+                  "type": "string",
+                  "pattern": "^[1-9][0-9]{0,18}$"
+                },
+                "output_max_tokens": {
+                  "type": "string",
+                  "pattern": "^[1-9][0-9]{0,18}$"
+                },
+                "service_tier": {
+                  "type": "string",
+                  "pattern": "^[\\x20-\\x7e]{1,64}$"
+                },
+                "extra_cost_policy": {
+                  "type": "string",
+                  "enum": [
+                    "reject_unclassified",
+                    "operator_absorbs_unpriced"
+                  ]
+                }
+              },
+              "required": [
+                "provider_contract_sha256",
+                "context_max_tokens",
+                "output_max_tokens",
+                "service_tier",
+                "extra_cost_policy"
+              ],
+              "additionalProperties": false
+            }
+          }
+        }
+      ]
+    },
+    "GatewayMeterResource": {
+      "type": "object",
+      "properties": {
+        "provider": {
+          "type": "string",
+          "enum": [
+            "openai",
+            "anthropic"
+          ]
+        },
+        "model": {
+          "type": "string",
+          "pattern": "^[\\x20-\\x7e]{1,256}$"
+        }
+      },
+      "required": [
+        "provider",
+        "model"
+      ],
+      "additionalProperties": false
+    },
+    "GatewayCompletionRule": {
+      "type": "object",
+      "properties": {
+        "kind": {
+          "type": "string",
+          "enum": [
+            "http_complete",
+            "provider_terminal_usage"
+          ]
+        },
+        "billable_statuses": {
+          "type": "array",
+          "items": {
+            "type": "integer",
+            "minimum": 200,
+            "maximum": 599
+          },
+          "maxItems": 400,
+          "uniqueItems": true
+        }
+      },
+      "required": [
+        "kind",
+        "billable_statuses"
+      ],
+      "additionalProperties": false
+    }
+  }
+}

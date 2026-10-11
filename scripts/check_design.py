@@ -1,10 +1,13 @@
 #!/usr/bin/env python3
 """Offline structural checks for design contracts; not a runtime/security audit."""
+import base64
 import hashlib
+import hmac
 import json
 import re
 import subprocess
 import sys
+import uuid
 from fractions import Fraction
 from pathlib import Path
 
@@ -120,6 +123,55 @@ for row in vectors['direct_usd_rounding']:
     check((nano+999)//1000==int(row['expected_micro']), 'Direct micro rounding')
 check(vectors['vectors'][1]['field']!=vectors['vectors'][2]['field'],'Destination mutation vector')
 
+# Proposed gateway vectors are separate from the implemented v1 wire contract.
+# These checks establish byte agreement, not runtime/capability acceptance.
+gateway = documents['docs/contracts/universal-api-gateway-vectors.json']
+check(gateway['version'] == 2 and len(gateway['vectors']) == 2
+      and len(bytes.fromhex(gateway['proxy_secret_hex'])) == 32, 'Gateway vector fixture scope')
+def gateway_jcs(value):
+    # Fixture strings are ASCII and its only JSON numbers are small integers.
+    return json.dumps(value, sort_keys=True, separators=(',', ':'), ensure_ascii=False).encode()
+def gateway_frame(parts):
+    label = b'solana-zkapi-operation-v2'
+    return (len(label).to_bytes(2, 'big') + label + len(parts).to_bytes(2, 'big')
+            + b''.join(len(part).to_bytes(4, 'big') + part for part in parts))
+def gateway_base58(value):
+    alphabet = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz'
+    number = 0
+    for char in value:
+        number = number * 58 + alphabet.index(char)
+    return b'\0' * (len(value) - len(value.lstrip('1'))) + number.to_bytes((number.bit_length() + 7) // 8, 'big')
+binding_hash = hashlib.sha256(gateway_jcs(gateway['binding'])).hexdigest()
+tariff_body = {k:v for k,v in gateway['tariff'].items() if k != 'tariff_hash'}
+tariff_hash = hashlib.sha256(gateway_jcs(tariff_body)).hexdigest()
+check(binding_hash == gateway['binding_hash'], 'Gateway binding hash')
+check(tariff_hash == gateway['tariff']['tariff_hash'], 'Gateway tariff hash')
+check(gateway['tariff']['api'] == gateway['binding'], 'Gateway tariff binding')
+meter = gateway['binding']['meter']
+check(hashlib.sha256(gateway_jcs(meter['config'])).hexdigest() == meter['config_hash'], 'Gateway meter config hash')
+gateway_key = hashlib.sha256(b'zkapi-proxy-body-v2' + bytes.fromhex(gateway['proxy_secret_hex'])).digest()
+for row in gateway['vectors']:
+    value = row['input']
+    pairs = sorted([[name.lower(), base64.b64encode(base64.b64decode(encoded, validate=True).strip(b' \t')).decode()]
+                    for name, encoded in value['headers']], key=lambda pair: pair[0])
+    pool_bytes = gateway_base58(value['pool'])
+    check(len(pool_bytes) == 32, row['name'] + ' gateway Pool bytes')
+    parts = [value['deployment_id'].encode(), pool_bytes,
+             uuid.UUID(value['authorization_id']).bytes, uuid.UUID(value['operation_id']).bytes,
+             bytes.fromhex(binding_hash), bytes.fromhex(tariff_hash), value['method'].encode('ascii'),
+             value['target'].encode('ascii'), gateway_jcs(pairs), bytes.fromhex(value['body_hex'])]
+    framed = gateway_frame(parts)
+    digest = hmac.new(gateway_key, framed, hashlib.sha256).hexdigest()
+    check(pairs == row['semantic_header_pairs'], row['name'] + ' gateway headers')
+    check([part.hex() for part in parts] == row['parts_hex'], row['name'] + ' gateway encodings')
+    check(framed.hex() == row['frame_hex'], row['name'] + ' gateway frame')
+    check(digest == row['operation_hmac'], row['name'] + ' gateway HMAC')
+    for index in range(len(parts)):
+        changed = [*parts]
+        changed[index] += b'!'
+        check(hmac.new(gateway_key, gateway_frame(changed), hashlib.sha256).hexdigest() != digest,
+              row['name'] + ' gateway part commitment ' + str(index))
+
 tree = documents['docs/contracts/tree-transition.json']
 check(tree['protocol_layout_version']==2 and tree['tree_backend']=='transition_proof'
       and tree['tree_tag_policy']=='proof_bound','Selected layout 2 backend/policy')
@@ -196,5 +248,6 @@ if errors:
     raise SystemExit(1)
 print(f'PASS: {len(documents)} JSON documents; {len(api["paths"])} API paths; {refs} schema references; {link_count} local links.')
 print(f'PASS: {len(vectors["vectors"])} binding vectors; {len(vectors["rounding"])} rounding vectors.')
+print(f'PASS: {len(gateway["vectors"])} gateway HMAC vectors and 10-part mutation checks (offline only).')
 print('PASS: layout 2 wire/op/profile contract and 8 tree-transition acceptance conditions.')
 print('NOT CHECKED BY THIS SCRIPT: real proofs, SVM/CU, PostgreSQL migration, provider integration, independent audit.')

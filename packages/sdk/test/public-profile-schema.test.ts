@@ -1,6 +1,7 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
+import {gatewayPublicProfileFixture} from './gateway-public-profile-fixture.ts';
 import {publicProfileFixture} from './public-profile-fixture.ts';
 import {loadPublicDeploymentProfile,PUBLIC_PROFILE_SUPPORTED_SCHEMAS} from '../src/public-profile.ts';
 
@@ -16,11 +17,21 @@ test('machine profile contract declares the loader fixture fields, bounds and ex
     if(f.profile.schema===2&&f.profile.services.length){
       const service=schema.properties.services.items;assert.equal(service.additionalProperties,false);
       assert.deepEqual(service.required,['tariff']);assert.deepEqual(Object.keys(service.properties),['tariff']);
-      const tariff=service.properties.tariff, actual=f.profile.services[0].tariff;
+      assert.equal(service.properties.tariff.oneOf.length,2);
+      const tariff=schema.$defs.LegacyApiTariff, actual=f.profile.services[0].tariff;
       assert.deepEqual([...tariff.required].sort(),Object.keys(actual).sort());
       assert.deepEqual([...tariff.properties.api.required].sort(),Object.keys(actual.api).sort());
       assert.equal(tariff.additionalProperties,false);assert.equal(tariff.properties.api.additionalProperties,false);
       assert.equal(tariff.properties.api.properties.method.const,'POST');assert.equal(tariff.properties.api.properties.billing.const,'http_2xx_json');
     }
   }
+});
+
+
+test('schema3 gateway fixture binds mounted descriptor and independent adapter capabilities',async()=>{
+ const schema=JSON.parse(await readFile(new URL('../../../docs/contracts/public-profile.schema.json',import.meta.url),'utf8'));
+ const f=await gatewayPublicProfileFixture();
+ assert.ok(schema.properties.gateway);assert.equal(schema.$defs.ApiBindingV2.additionalProperties,false);
+ const loaded=await loadPublicDeploymentProfile(f.profileUrl,{profileSha256:await f.profileSha256(),fetch:f.fetcher});
+ assert.equal(loaded.profile.schema,3);
 });

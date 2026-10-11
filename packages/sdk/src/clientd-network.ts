@@ -3,6 +3,7 @@
 import { request, type ServerResponse } from 'node:http';
 import { Readable } from 'node:stream';
 import { isAbsolute } from 'node:path';
+import type { GatewayResponse } from './gateway.ts';
 
 export function relayFetch(socketPath: string): typeof fetch {
   if (!isAbsolute(socketPath)) throw new Error('private relay socket required');
@@ -50,4 +51,22 @@ export async function writeNodeResponse(result: Response, response: ServerRespon
     }
     if(!canceled)response.end();
   } finally {response.off('close',cancel);if(canceled)await (canceling??=reader.cancel().catch(()=>{}));}
+}
+
+/** Lossless native gateway response; repeated fields never pass through Headers. */
+export async function writeGatewayResponse(result: GatewayResponse, response: ServerResponse): Promise<void> {
+  if(response.destroyed){await result.body.cancel();return;}
+  const headers=result.headers.filter(([name])=>name!=='cache-control').flatMap(([name,value])=>[name,Buffer.from(value,'base64').toString('latin1')]);
+  headers.push('cache-control','no-store');if(result.trailerNames.length)headers.push('trailer',result.trailerNames.join(', '));let sentHeaders=false;
+  const sendHeaders=()=>{if(!sentHeaders){response.writeHead(result.status,headers);sentHeaders=true;}};
+  const reader=result.body.getReader();let canceled=false,canceling:Promise<void>|undefined;
+  const cancel=()=>{if(!response.writableEnded){canceled=true;canceling??=reader.cancel().catch(()=>{});}};
+  response.on('close',cancel);
+  try {
+    while(!canceled){const next=await reader.read();if(next.done)break;if(response.destroyed){cancel();break;}
+      sendHeaders();if(!response.write(next.value))await new Promise<void>(resolve=>{const done=()=>{response.off('drain',done);response.off('close',done);resolve();};response.once('drain',done);response.once('close',done);});
+    }
+    if(!canceled){const trailers=await result.trailers;await result.completed;sendHeaders();if(trailers.length)response.addTrailers(trailers.map(([name,value]):[string,string]=>[name,Buffer.from(value,'base64').toString('latin1')]));await new Promise<void>((resolve,reject)=>{const finish=()=>{response.off('close',closed);resolve();};const closed=()=>{response.off('finish',finish);reject(Error('native gateway response interrupted'));};response.once('finish',finish);response.once('close',closed);response.end();});await result.confirmDelivery?.();}
+  } catch(error){response.destroy();throw error;}
+  finally {response.off('close',cancel);if(canceled)await(canceling??=reader.cancel().catch(()=>{}));}
 }

@@ -2,6 +2,7 @@ use ed25519_dalek::SigningKey;
 use zkapi_control::receipts::*;
 fn body() -> ReceiptBody {
     ReceiptBody {
+        gateway: None,
         version: "1".into(),
         receipt_id: uuid::Uuid::new_v4().to_string(),
         deployment_id: "local-I05".into(),

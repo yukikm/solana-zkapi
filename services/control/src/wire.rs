@@ -42,6 +42,9 @@ impl<'de> Deserialize<'de> for StrictValue {
             fn expecting(&self, f: &mut fmt::Formatter) -> fmt::Result {
                 f.write_str("strict JSON without duplicate keys or numbers")
             }
+            fn visit_u64<E: de::Error>(self, v: u64) -> std::result::Result<Self::Value, E> {
+                Ok(StrictValue(v.into()))
+            }
             fn visit_bool<E: de::Error>(self, v: bool) -> std::result::Result<Self::Value, E> {
                 Ok(StrictValue(v.into()))
             }
@@ -88,7 +91,45 @@ pub fn strict_parse<T: DeserializeOwned>(bytes: &[u8]) -> Result<T> {
     std::str::from_utf8(bytes).map_err(|_| invalid("UTF-8"))?;
     let value: StrictValue = serde_json::from_slice(bytes)
         .map_err(|_| invalid("JSON syntax, duplicate key or numeric value"))?;
+    validate_numeric_paths(&value.0, &mut Vec::new())?;
     serde_json::from_value(value.0).map_err(|_| invalid("wire fields"))
+}
+// HTTP statuses are the sole JSON-number exception in the new contracts.
+fn validate_numeric_paths(value: &serde_json::Value, path: &mut Vec<String>) -> Result<()> {
+    match value {
+        serde_json::Value::Number(n) => {
+            let tail = path
+                .iter()
+                .rev()
+                .take(3)
+                .map(String::as_str)
+                .collect::<Vec<_>>();
+            if !((tail.first() == Some(&"http_status") && tail.get(1) == Some(&"completion"))
+                || (tail.first() == Some(&"[]")
+                    && tail.get(1) == Some(&"billable_statuses")
+                    && tail.get(2) == Some(&"completion")))
+                || n.as_u64().is_none_or(|n| !(200..=599).contains(&n))
+            {
+                return Err(invalid("numeric wire field"));
+            }
+        }
+        serde_json::Value::Object(m) => {
+            for (k, v) in m {
+                path.push(k.clone());
+                validate_numeric_paths(v, path)?;
+                path.pop();
+            }
+        }
+        serde_json::Value::Array(a) => {
+            path.push("[]".into());
+            for v in a {
+                validate_numeric_paths(v, path)?;
+            }
+            path.pop();
+        }
+        _ => {}
+    }
+    Ok(())
 }
 pub fn jcs<T: Serialize>(value: &T) -> Result<Vec<u8>> {
     serde_jcs::to_vec(value).map_err(|_| invalid("canonical JSON"))
@@ -227,8 +268,11 @@ pub fn api_identifier(value: &str) -> bool {
             .bytes()
             .all(|b| b.is_ascii_lowercase() || b.is_ascii_digit() || b == b'_' || b == b'-')
 }
-pub fn api_path(api: &ApiBinding) -> String {
-    format!("/zkapi/v1/api/{}/{}", api.service, api.operation)
+pub fn api_path(api: &impl ApiEndpoint) -> String {
+    api.endpoint()
+}
+pub fn validate_api_binding(api: &impl ApiEndpoint) -> Result<()> {
+    api.validate()
 }
 pub fn is_api_path(path: &str) -> bool {
     let Some(rest) = path.strip_prefix("/zkapi/v1/api/") else {
@@ -239,7 +283,7 @@ pub fn is_api_path(path: &str) -> bool {
     };
     api_identifier(service) && api_identifier(operation)
 }
-pub fn validate_api_binding(api: &ApiBinding) -> Result<()> {
+fn validate_api_binding_v1(api: &ApiBinding) -> Result<()> {
     origin(&api.origin)?;
     if api.version != "1"
         || !api_identifier(&api.service)
@@ -266,7 +310,7 @@ pub fn scope_valid(
     mode: &Mode,
     provider: &Provider,
     models: &[String],
-    api: Option<&ApiBinding>,
+    api: Option<&VersionedApiBinding>,
 ) -> Result<()> {
     if *provider == Provider::Generic {
         if *mode != Mode::Proxy || !models.is_empty() {
@@ -296,7 +340,7 @@ pub struct QuoteRequest {
         deserialize_with = "optional_value_nonnull",
         skip_serializing_if = "Option::is_none"
     )]
-    pub api: Option<ApiBinding>,
+    pub api: Option<VersionedApiBinding>,
     #[serde(
         default,
         deserialize_with = "optional_nonnull",
@@ -323,7 +367,7 @@ pub struct QuoteBody {
         deserialize_with = "optional_value_nonnull",
         skip_serializing_if = "Option::is_none"
     )]
-    pub api: Option<ApiBinding>,
+    pub api: Option<VersionedApiBinding>,
     pub tariff_hash: String,
     pub cap_micro_usdc: MicroUsdc,
     pub issued_at: String,
@@ -383,6 +427,12 @@ pub struct ClearanceRequest {
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(deny_unknown_fields)]
 pub struct Rate {
+    #[serde(
+        default,
+        deserialize_with = "optional_nonnull",
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub reservation_max_count: Option<String>,
     pub unit: String,
     pub nano_usdc_numerator: String,
     pub unit_denominator: String,
@@ -404,7 +454,7 @@ pub struct Tariff {
         deserialize_with = "optional_value_nonnull",
         skip_serializing_if = "Option::is_none"
     )]
-    pub api: Option<ApiBinding>,
+    pub api: Option<VersionedApiBinding>,
     pub pricing_basis: String,
     pub valid_from: String,
     pub valid_until: String,
@@ -533,7 +583,7 @@ pub fn units<'a>(values: impl Iterator<Item = &'a str>) -> Result<()> {
     Ok(())
 }
 
-fn required_nullable<'de, D: Deserializer<'de>, T: Deserialize<'de>>(
+pub(crate) fn required_nullable<'de, D: Deserializer<'de>, T: Deserialize<'de>>(
     d: D,
 ) -> std::result::Result<Option<T>, D::Error> {
     Option::<T>::deserialize(d)
@@ -618,3 +668,7 @@ pub fn operation_hmac(
     mac.update(&framed);
     Ok(mac.finalize().into_bytes().into())
 }
+
+#[path = "wire_gateway.rs"]
+mod gateway_contract;
+pub use gateway_contract::*;

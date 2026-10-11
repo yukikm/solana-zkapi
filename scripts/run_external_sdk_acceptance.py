@@ -59,10 +59,10 @@ def main() -> None:
     started = time.monotonic()
     source_paths = [*sorted((ROOT / 'packages/sdk/src').glob('*.ts')),
                     *[ROOT / 'packages/sdk' / name for name in ['package.json', 'build.mjs', 'tsconfig.json', 'tsconfig.build.json', 'README.md', 'DISTRIBUTION.md', 'INTERNALS.md', 'LICENSE']],
-                    *[ROOT / 'packages/sdk/test' / name for name in ['client-guidance.test.ts', 'control.test.ts', 'generic-api.test.ts', 'selection.test.ts', 'clientd.test.ts', 'client.test.ts', 'direct-chat-stream.test.ts', 'response-branches.test.ts', 'chat.test.ts', 'clientd-models.test.ts', 'trust.test.ts', 'deployment.test.ts', 'public-profile.test.ts', 'public-profile-fixture.ts', 'api-onboarding-fixture.ts', 'chain-fixture.ts', 'session-snapshot-runtime.ts', 'kit-helpers.ts']],
+                    *[ROOT / 'packages/sdk/test' / name for name in ['client-guidance.test.ts', 'control.test.ts', 'generic-api.test.ts', 'gateway.test.ts', 'gateway-lifecycle.test.ts', 'gateway-public-profile-fixture.ts', 'selection.test.ts', 'clientd.test.ts', 'client.test.ts', 'direct-chat-stream.test.ts', 'response-branches.test.ts', 'chat.test.ts', 'clientd-models.test.ts', 'trust.test.ts', 'deployment.test.ts', 'public-profile.test.ts', 'public-profile-fixture.ts', 'api-onboarding-fixture.ts', 'chain-fixture.ts', 'session-snapshot-runtime.ts', 'kit-helpers.ts']],
                     *sorted((ROOT / 'tools/public-devnet-consumer').glob('*.*')),
                     *sorted((ROOT / 'tests/fixtures/sdk-consumer').glob('*.json')),
-                    ROOT / 'scripts/sdk_consumer_lock.py', ROOT / 'package-lock.json', Path(__file__).resolve()]
+                    ROOT / 'docs/contracts/universal-api-gateway-vectors.json', ROOT / 'scripts/sdk_consumer_lock.py', ROOT / 'package-lock.json', Path(__file__).resolve()]
     source_inputs = {str(path.relative_to(ROOT)): sha(path) for path in source_paths}
     report = {'schema': 1, 'scope': 'Actual npm tarball in an independent temporary application; local fixtures, no live provider or chain actions',
               'public_chain_verified': False, 'public_rpc_verified': False, 'offline': args.offline, 'live_provider_verified': False, 'release_gates_passed': [], 'stages': stages, 'source_inputs': source_inputs}
@@ -146,7 +146,7 @@ def main() -> None:
             run('declarations', ['node', 'node_modules/typescript/bin/tsc', '-p', 'tsconfig.json'], consumer)
             # Reuse source tests but redirect every runtime library import to the
             # installed package. Fixtures are explicit local copies, not imports.
-            test_names = ['client-guidance.test.ts', 'control.test.ts', 'generic-api.test.ts', 'selection.test.ts', 'clientd.test.ts', 'client.test.ts', 'direct-chat-stream.test.ts', 'response-branches.test.ts', 'chat.test.ts', 'clientd-models.test.ts', 'trust.test.ts', 'deployment.test.ts', 'public-profile.test.ts', 'public-profile-fixture.ts', 'api-onboarding-fixture.ts', 'chain-fixture.ts', 'kit-helpers.ts']
+            test_names = ['client-guidance.test.ts', 'control.test.ts', 'generic-api.test.ts', 'gateway.test.ts', 'gateway-lifecycle.test.ts', 'gateway-public-profile-fixture.ts', 'selection.test.ts', 'clientd.test.ts', 'client.test.ts', 'direct-chat-stream.test.ts', 'response-branches.test.ts', 'chat.test.ts', 'clientd-models.test.ts', 'trust.test.ts', 'deployment.test.ts', 'public-profile.test.ts', 'public-profile-fixture.ts', 'api-onboarding-fixture.ts', 'chain-fixture.ts', 'kit-helpers.ts']
             if args.real_provers:
                 test_names.append('session-snapshot-runtime.ts')
             for name in test_names:
@@ -158,6 +158,11 @@ def main() -> None:
                     path = consumer / 'fixtures' / name_in_fixture
                     path.parent.mkdir(parents=True, exist_ok=True)
                     shutil.copyfile(ROOT / name_in_fixture, path)
+                for relative in re.findall(r"new URL\('\.\./\.\./\.\./([^']+)'", content):
+                    fixture_path = consumer / 'fixtures' / relative
+                    fixture_path.parent.mkdir(parents=True, exist_ok=True)
+                    shutil.copyfile(ROOT / relative, fixture_path)
+                    content = content.replace("new URL('../../../" + relative + "'", "new URL('./fixtures/" + relative + "'")
                 assert '../src/' not in content
                 (consumer / name).write_text(content)
             test_output = run('installed-lifecycle-trust', ['node', '--test', '--test-reporter=tap', *[name for name in test_names if name.endswith('.test.ts')]], consumer)
@@ -179,17 +184,19 @@ import { mkdtemp, readFile, stat, realpath, symlink, readdir } from 'node:fs/pro
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { publicProfileFixture } from './public-profile-fixture.ts';
+import { gatewayPublicProfileFixture } from './gateway-public-profile-fixture.ts';
 import { loadPublicDeploymentProfile } from '@zkapi/solana-sdk/public-profile';
 import { jcsBytes, sha256Hex } from '@zkapi/solana-sdk/trust';
 import { installNativeInputs } from './public-consumer/native-inputs.mjs';
 const cases = [
+  {name:'v3 finite gateway / bundle v2 notices',bundleSchema:2,profile:{schema:3,selection:'api'}},
   {name:'v1 inference / bundle v1',bundleSchema:1,profile:{}},
   {name:'v1 inference / bundle v2 notices',bundleSchema:2,profile:{}},
   {name:'v2 API-only / bundle v2 notices',bundleSchema:2,profile:{schema:2,selection:'api',serviceCount:2}},
   {name:'v2 mixed / bundle v2 notices',bundleSchema:2,profile:{schema:2,selection:'mixed',serviceCount:2}},
 ];
 for (const item of cases) test('native '+item.name+' retains authenticated selection and notices without network or financial actions', async () => {
-  const schema=item.bundleSchema, f = await publicProfileFixture(item.profile);
+  const schema=item.bundleSchema, f = item.profile.schema===3 ? await gatewayPublicProfileFixture() : await publicProfileFixture(item.profile);
   const notice=new TextEncoder().encode('Synthetic upstream license notice');
   if(schema===2) {
     const descriptor={...f.descriptor,schema:2,notices:{'runtime.json':'NOTICE.txt'},files:{...f.descriptor.files,
@@ -206,6 +213,7 @@ for (const item of cases) test('native '+item.name+' retains authenticated selec
   const runtimeBytes=await readFile(receipt.runtime), runtime=JSON.parse(runtimeBytes);
   assert.equal(await sha256Hex(runtimeBytes),receipt.runtimeSha256);
   assert.equal(runtime.key_reuse_seconds,60);
+  if(item.profile.schema===3)assert.deepEqual(runtime.gateway,f.profile.gateway);
   assert.equal(runtime.models.length,f.profile.models.length);
   if(item.profile.selection==='api')assert.deepEqual(runtime.models,[]);
   for(const [i,model]of f.profile.models.entries()){
@@ -231,7 +239,7 @@ for (const item of cases) test('native '+item.name+' retains authenticated selec
   const execution=network.routes.filter(route=>route.origin===f.manifest.inference_api_origin);
   assert.deepEqual(execution,f.profile.mode==='proxy'?[
     ...(f.profile.models.length?[{origin:f.manifest.inference_api_origin,prefix:'/v1'}]:[]),
-    ...services.map(({tariff})=>({origin:f.manifest.inference_api_origin,prefix:'/zkapi/v1/api/'+tariff.api.service+'/'+tariff.api.operation})),
+    ...services.map(({tariff})=>({origin:f.manifest.inference_api_origin,prefix:(tariff.api.version==='2'?'/zkapi/v2/execute/':'/zkapi/v1/api/')+tariff.api.service+'/'+tariff.api.operation})),
   ]:[]);
   for(const {tariff}of services)assert.equal(network.routes.some(route=>route.origin===tariff.api.origin),false,'consumer egress must not acquire upstream routes');
   assert.ok(network.routes.some(route=>route.origin===f.manifest.control_api_origin&&route.prefix==='/zkapi/v1'));
@@ -262,7 +270,7 @@ for (const item of cases) test('native '+item.name+' retains authenticated selec
 """)
             native_output = run('public-consumer-install', ['node', '--test', '--test-reporter=tap', 'public-consumer-install.test.mjs'], consumer)
             native_counts = {key: int(value) for key, value in re.findall(r'^# (tests|pass|fail|cancelled|skipped|todo) (\d+)$', native_output, re.MULTILINE)}
-            assert native_counts == {'tests': 4, 'pass': 4, 'fail': 0, 'cancelled': 0, 'skipped': 0, 'todo': 0}
+            assert native_counts == {'tests': 5, 'pass': 5, 'fail': 0, 'cancelled': 0, 'skipped': 0, 'todo': 0}
             report['native_profile_contract_tests'] = native_counts
             (consumer / 'public-consumer.tsconfig.json').write_text(json.dumps({'compilerOptions': {
                 'target': 'ES2023', 'module': 'NodeNext', 'moduleResolution': 'NodeNext', 'strict': True,

@@ -39,7 +39,7 @@ export interface PublicDeploymentPreparationV1 {
   startSlot:number;
   consumer:{id:string;revision:number;model:PublicDeploymentProfile['models'][number];streaming:boolean;tools:boolean};
 }
-export type PublicDeploymentPreparationV2=Omit<PublicDeploymentPreparationV1,'schema'|'consumer'|'privateRpcUrl'|'indexerListen'|'snapshotsDirectory'|'startSlot'> & {schema:2;consumer:StagingConsumer};
+export type PublicDeploymentPreparationV2=Omit<PublicDeploymentPreparationV1,'schema'|'consumer'|'privateRpcUrl'|'indexerListen'|'snapshotsDirectory'|'startSlot'> & {schema:2;consumer:StagingConsumer;gatewayAdapters?:ManifestTrustPolicy['build']['gatewayAdapters']};
 export type PublicDeploymentPreparation=PublicDeploymentPreparationV1|PublicDeploymentPreparationV2;
 const requiredNoticeNames=['Apache-2.0.txt','PROVENANCE.md','ethereum-VENDORED-045b444.md','mingyech-README-8b2d4e3.md','mingyech-setup-README-8b2d4e3.md'] as const;
 const artifactNames=['idl','requestPk','requestVk','withdrawalPk','withdrawalVk','treePk','treeVk','treeSourceBundle','treeVerifierConstants'] as const;
@@ -175,7 +175,7 @@ export async function preparePublicDevnetDeployment(configuration:PublicDeployme
   assert.equal(build.deployment_environment,'devnet');assert.equal(build.setup_profile,'test_only');assert.equal(build.mint,original.mint);assert.equal(build.token_program,original.token_program);
   assert.equal(build.idl_sha256,original.idl_hash);assert.equal(build.program_sha256,await sha256Hex(program));
   for(const field of ['state_key','clearance_key','circuit_profile_hash'])assert.deepEqual(build[field],setup.profile[field]);
-  if(c.schema===2){for(const hash of selectedTariffHashes(c.consumer))assert.ok(original.tariff_hashes.includes(hash),'selected tariff must already be authenticated');await validateClientSelectionPins(c.consumer,original);}else assert.ok(original.tariff_hashes.includes(c.consumer.model.tariff.tariff_hash),'selected tariff must already be authenticated');
+  if(c.schema===2){for(const hash of selectedTariffHashes(c.consumer))assert.ok(original.tariff_hashes.includes(hash),'selected tariff must already be authenticated');await validateClientSelectionPins(c.consumer,original,undefined,assets.trust.build.gatewayAdapters);}else assert.ok(original.tariff_hashes.includes(c.consumer.model.tariff.tariff_hash),'selected tariff must already be authenticated');
   const key=await manifestKey(c.manifestAuthorityKeyPath);
   for(const role of ['admin','upgrade'] as const){const a=original.authorities[role];assert.ok('kind' in a&&a.kind==='devnet_test_single_key');assert.equal(a.authority,key.address,'existing manifest authority required');}
   await verifyFinalizedProgramEvidence(provenance,deployment,program);
@@ -204,7 +204,7 @@ export async function preparePublicDevnetDeployment(configuration:PublicDeployme
   const packager={schema:1,manifest:'public-manifest.json',trust,artifacts:paths,wasm:{path:'input-prover.wasm',sha256:assets.wasmSha256},notices:noticePaths};
   await json('public-assets-config.json',packager);
   const packaged=await packageDeploymentAssets(join(destination,'public-assets-config.json'),join(destination,'assets'));
-  const profile:PublicDeploymentProfile=c.schema===2?{schema:2,...structuredClone(c.consumer),sdkVersions:[PUBLIC_PROFILE_SDK_VERSION],protocolLayoutVersion:2,bundle:{url:sourceUrl,sha256:packaged.bundleSha256},rpcUrl:c.publicOrigin+'/rpc',indexerOrigin:c.publicOrigin,preparationCommitment:'finalized'}:{schema:1,id:c.consumer.id,revision:c.consumer.revision,sdkVersions:[PUBLIC_PROFILE_SDK_VERSION],protocolLayoutVersion:2,
+  const profile:PublicDeploymentProfile=c.schema===2?{schema:c.consumer.gateway?3:2,...structuredClone(c.consumer),sdkVersions:[PUBLIC_PROFILE_SDK_VERSION],protocolLayoutVersion:2,bundle:{url:sourceUrl,sha256:packaged.bundleSha256},rpcUrl:c.publicOrigin+'/rpc',indexerOrigin:c.publicOrigin,preparationCommitment:'finalized'}:{schema:1,id:c.consumer.id,revision:c.consumer.revision,sdkVersions:[PUBLIC_PROFILE_SDK_VERSION],protocolLayoutVersion:2,
     bundle:{url:sourceUrl,sha256:packaged.bundleSha256},rpcUrl:c.publicOrigin+'/rpc',indexerOrigin:c.publicOrigin,mode:'direct_openrouter',
     models:[c.consumer.model],modelCapabilities:{[c.consumer.model.id]:{streaming:c.consumer.streaming,tools:c.consumer.tools}},
     directProviderBases:{direct_openrouter:'https://openrouter.ai/api/v1'},preparationCommitment:'finalized'};
@@ -260,11 +260,11 @@ export interface InitialPublicStagingPreparationV1 extends StagingProvenance {
   startSlot:number;
   consumer:PublicDeploymentPreparationV1['consumer'];
 }
-export type InitialPublicStagingPreparationV2=Omit<InitialPublicStagingPreparationV1,'schema'|'consumer'|'privateRpcUrl'|'indexerListen'|'snapshotsDirectory'|'startSlot'> & {schema:2;consumer:StagingConsumer};
+export type InitialPublicStagingPreparationV2=Omit<InitialPublicStagingPreparationV1,'schema'|'consumer'|'privateRpcUrl'|'indexerListen'|'snapshotsDirectory'|'startSlot'> & {schema:2;consumer:StagingConsumer;gatewayAdapters?:ManifestTrustPolicy['build']['gatewayAdapters']};
 export type InitialPublicStagingPreparation=InitialPublicStagingPreparationV1|InitialPublicStagingPreparationV2;
 export async function stagePublicDevnetDeployment(configuration:InitialPublicStagingPreparation,output:string,options:{validateOnly?:boolean}={}){
   const c=structuredClone(configuration),destination=resolve(output);
-  fields(c,['schema','distributionDecisionPath','distributionDecisionSha256','noticesDirectory','publicSetupDirectory','publicSetupSha256','deploymentPath','deploymentSha256','buildManifestPath','buildManifestSha256','idlPath','programPath','wasmPath','wasmSha256','expected','manifestAuthorityKeyPath','publicOrigin','assetsBaseUrl','profileUrl','consumer',...(c.schema===1?['privateRpcUrl','indexerListen','snapshotsDirectory','startSlot']:[])],['additionalNotices',...provenanceFields]);
+  fields(c,['schema','distributionDecisionPath','distributionDecisionSha256','noticesDirectory','publicSetupDirectory','publicSetupSha256','deploymentPath','deploymentSha256','buildManifestPath','buildManifestSha256','idlPath','programPath','wasmPath','wasmSha256','expected','manifestAuthorityKeyPath','publicOrigin','assetsBaseUrl','profileUrl','consumer',...(c.schema===1?['privateRpcUrl','indexerListen','snapshotsDirectory','startSlot']:[])],['additionalNotices','gatewayAdapters',...provenanceFields]);
   fields(c.expected,['deploymentId','programId','pool']);assert.ok(c.schema===1||c.schema===2);if(c.schema===2){validateStagingConsumer(c.consumer);validatePublicProfileSelection(c.consumer);}
   const provenance=stagingProvenance(c);
   if(!options.validateOnly)await assert.rejects(lstat(destination),{code:'ENOENT'},'output must not exist');
@@ -314,7 +314,7 @@ export async function stagePublicDevnetDeployment(configuration:InitialPublicSta
   assert.equal((parseStrictJson(idl) as any).address,deployment.program_id,'IDL program address');
   assert.equal(await sha256Hex(buildBytes),c.buildManifestSha256);assert.equal(await sha256Hex(wasm),c.wasmSha256);assert.ok(WebAssembly.validate(wasm));
   await verifyFinalizedProgramEvidence(provenance,deployment,program);
-  if(c.schema===2){const hashes=selectedTariffHashes(c.consumer);await validateClientSelectionPins(c.consumer,{tariff_hashes:hashes,cap_micro_usdc:deployment.cap_micro_usdc} as any);}
+  if(c.schema===2){const hashes=selectedTariffHashes(c.consumer);await validateClientSelectionPins(c.consumer,{tariff_hashes:hashes,cap_micro_usdc:deployment.cap_micro_usdc} as any,undefined,c.gatewayAdapters);}
   if(options.validateOnly)return {schema:1,validated:true,capMicroUsdc:deployment.cap_micro_usdc,networkActions:0,transactionActions:0,providerActions:0,serviceActions:0,chainCompatible:false} as any;
   const key=await manifestKey(c.manifestAuthorityKeyPath);assert.equal(key.address,deployment.initializer,'staging manifest authority');
   const authority={kind:'devnet_test_single_key' as const,authority:key.address};
@@ -327,7 +327,7 @@ export async function stagePublicDevnetDeployment(configuration:InitialPublicSta
     artifact_digests:{vault_idl:build.idl_sha256,vault_program:build.program_sha256,devnet_build_manifest:c.buildManifestSha256,public_devnet_profile:c.publicSetupSha256}};
   manifest.manifest_hash=await manifestDigest(manifest);manifest.manifest_signature=Buffer.from(await signBytes(key.keyPair.privateKey,Buffer.from(manifest.manifest_hash,'hex'))).toString('base64');
   const trust:ManifestTrustPolicy={anchor:{kind:'ed25519',publicKey:key.address},expected:{deployment_id:manifest.deployment_id,deployment_environment:'devnet',genesis_hash:deployment.genesis,program_id:deployment.program_id,pool:deployment.pool,mint:deployment.mint,token_program:deployment.token_program,control_api_origin:c.publicOrigin,inference_api_origin:c.publicOrigin},
-    build:{stateKey:build.state_key,clearanceKey:build.clearance_key,circuitProfileHash:build.circuit_profile_hash,idlHash:build.idl_sha256,setupProfile:'test_only',transactionFormats:['v0_buffer','v0_inline_deposit_v1']}};
+    build:{...(c.schema===2&&c.gatewayAdapters?{gatewayAdapters:c.gatewayAdapters}:{}),stateKey:build.state_key,clearanceKey:build.clearance_key,circuitProfileHash:build.circuit_profile_hash,idlHash:build.idl_sha256,setupProfile:'test_only',transactionFormats:['v0_buffer','v0_inline_deposit_v1']}};
   await verifyManifest(jcsBytes(manifest),trust);
   const expected={...c.expected,manifestHash:manifest.manifest_hash};
   const preparedConfig:PublicDeploymentPreparation={schema:c.schema,sourceBundlePath:join(destination,'source-bundle','bundle.json'),sourceBundleSha256:'00'.repeat(32),

@@ -70,7 +70,14 @@ pub fn quote_body_valid(body: &QuoteBody) -> Result<()> {
             .checked_add(120)
             .ok_or(invalid("quote time overflow"))?
         || !(1..=300).contains(&uint(&body.session_ttl_seconds)?)
-        || uint(&body.max_concurrency)? != 4
+        || uint(&body.max_concurrency)?
+            != body
+                .api
+                .as_ref()
+                .and_then(VersionedApiBinding::v2)
+                .map(|api| uint(&api.limits.max_concurrency))
+                .transpose()?
+                .unwrap_or(4)
         || body.cap_micro_usdc == MicroUsdc::ZERO
         || body.deployment_id.is_empty()
     {
@@ -99,6 +106,9 @@ pub fn issue_quote(
     {
         return Err(invalid("tariff selection"));
     }
+    if tariff.version == "3" && calculate_reservation(tariff)? > u128::from(cfg.cap.get()) * 1000 {
+        return Err(invalid("gateway reservation exceeds cap"));
+    }
     let ttl = uint(request.session_ttl_seconds.as_deref().unwrap_or("60"))?;
     if !(1..=300).contains(&ttl) || key.verifying_key().to_bytes() != cfg.quote_key {
         return Err(invalid("quote configuration"));
@@ -119,7 +129,12 @@ pub fn issue_quote(
             .ok_or(invalid("quote time overflow"))?
             .to_string(),
         session_ttl_seconds: ttl.to_string(),
-        max_concurrency: "4".into(),
+        max_concurrency: request
+            .api
+            .as_ref()
+            .and_then(VersionedApiBinding::v2)
+            .map(|api| api.limits.max_concurrency.clone())
+            .unwrap_or_else(|| "4".into()),
         control_api_origin: cfg.control_api_origin.clone(),
         inference_api_origin: cfg.inference_api_origin.clone(),
     };
@@ -241,6 +256,16 @@ pub fn tariff_hash(tariff: &Tariff) -> Result<String> {
     Ok(hex::encode(digest(&tariff_body(tariff)?)?))
 }
 pub fn validate_tariff(tariff: &Tariff) -> Result<()> {
+    if tariff.version == "3" {
+        return validate_tariff_v3(tariff);
+    }
+    if tariff
+        .rates
+        .iter()
+        .any(|r| r.reservation_max_count.is_some())
+    {
+        return Err(invalid("legacy reservation maximum"));
+    }
     hash(&tariff.tariff_hash)?;
     if tariff.tariff_hash != tariff_hash(tariff)?
         || uint(&tariff.version)? == 0
@@ -261,7 +286,12 @@ pub fn validate_tariff(tariff: &Tariff) -> Result<()> {
         {
             return Err(invalid("fixed request tariff"));
         }
-        validate_api_binding(tariff.api.as_ref().ok_or(invalid("missing API binding"))?)?;
+        let api = tariff
+            .api
+            .as_ref()
+            .and_then(VersionedApiBinding::v1)
+            .ok_or(invalid("legacy API binding"))?;
+        validate_api_binding(api)?;
     } else {
         if tariff.provider == Provider::Generic || tariff.api.is_some() {
             return Err(invalid("unexpected API binding"));
@@ -301,6 +331,116 @@ pub fn validate_tariff(tariff: &Tariff) -> Result<()> {
     }
     Ok(())
 }
+fn validate_tariff_v3(tariff: &Tariff) -> Result<()> {
+    hash(&tariff.tariff_hash)?;
+    if tariff.tariff_hash != tariff_hash(tariff)?
+        || tariff.provider != Provider::Generic
+        || !tariff.model.is_empty()
+        || tariff.operator_fee_micro_usdc != "0"
+        || uint(&tariff.valid_from)? >= uint(&tariff.valid_until)?
+        || tariff.rates.is_empty()
+        || tariff.rates.len() > 32
+    {
+        return Err(invalid("gateway tariff"));
+    }
+    let api = tariff
+        .api
+        .as_ref()
+        .and_then(VersionedApiBinding::v2)
+        .ok_or(invalid("gateway tariff binding"))?;
+    validate_api_binding_v2(api)?;
+    let mut previous = "";
+    for rate in &tariff.rates {
+        if !unit_id(&rate.unit)
+            || rate.unit.as_str() <= previous
+            || uint(&rate.nano_usdc_numerator)? > i64::MAX as u64
+            || !(1..=i64::MAX as u64).contains(&uint(&rate.unit_denominator)?)
+            || uint(
+                rate.reservation_max_count
+                    .as_deref()
+                    .ok_or(invalid("missing reservation maximum"))?,
+            )? > i64::MAX as u64
+        {
+            return Err(invalid("gateway tariff rates"));
+        }
+        previous = &rate.unit;
+    }
+    if api.meter.adapter.id == "fixed_http" {
+        if tariff.pricing_basis != "fixed_request"
+            || tariff.rates.len() != 1
+            || tariff.rates[0].unit != "requests"
+            || tariff.rates[0].unit_denominator != "1"
+            || uint(&tariff.rates[0].nano_usdc_numerator)? == 0
+            || tariff.rates[0].reservation_max_count.as_deref() != Some("1")
+        {
+            return Err(invalid("gateway fixed price"));
+        }
+    } else {
+        if tariff.pricing_basis != "fixed_usage_rates" {
+            return Err(invalid("gateway usage price"));
+        }
+        let units: &[&str] = if api.meter.adapter.id == "openai_responses" {
+            &["cache_read_tokens", "input_tokens", "output_tokens"]
+        } else {
+            &[
+                "cache_read_tokens",
+                "cache_write_1h_tokens",
+                "cache_write_5m_tokens",
+                "input_tokens",
+                "output_tokens",
+            ]
+        };
+        if tariff
+            .rates
+            .iter()
+            .map(|r| r.unit.as_str())
+            .collect::<Vec<_>>()
+            != units
+        {
+            return Err(invalid("gateway meter units"));
+        }
+        let c: LlmMeterConfig = serde_json::from_value(api.meter.config.clone())
+            .map_err(|_| invalid("meter config"))?;
+        for rate in &tariff.rates {
+            let bound = if rate.unit == "output_tokens" {
+                &c.output_max_tokens
+            } else {
+                &c.context_max_tokens
+            };
+            if rate.reservation_max_count.as_ref() != Some(bound) {
+                return Err(invalid("gateway meter bounds"));
+            }
+        }
+    }
+    // Recompute without recursion to reject an aggregate outside NUMERIC(38,0).
+    reservation_total(tariff)?;
+    Ok(())
+}
+fn reservation_total(tariff: &Tariff) -> Result<u128> {
+    let mut total = Ratio::<BigUint>::zero();
+    for r in &tariff.rates {
+        total += Ratio::new(
+            BigUint::from(uint(
+                r.reservation_max_count
+                    .as_deref()
+                    .ok_or(invalid("missing reservation maximum"))?,
+            )?) * BigUint::from(uint(&r.nano_usdc_numerator)?),
+            BigUint::from(uint(&r.unit_denominator)?),
+        );
+    }
+    checked_ceil(total)
+}
+/// The full immutable tariff maximum; adapter request estimates cannot reduce it.
+pub fn calculate_reservation(tariff: &Tariff) -> Result<u128> {
+    validate_tariff(tariff)?;
+    if tariff.version == "3" {
+        reservation_total(tariff)
+    } else if tariff.pricing_basis == "fixed_request" {
+        Ok(u128::from(uint(&tariff.rates[0].nano_usdc_numerator)?))
+    } else {
+        Err(invalid("gateway or fixed tariff required"))
+    }
+}
 fn checked_ceil(value: Ratio<BigUint>) -> Result<u128> {
     let (q, r) = (value.numer() / value.denom(), value.numer() % value.denom());
     let rounded = q + BigUint::from(!r.is_zero() as u8);
@@ -325,7 +465,9 @@ pub fn calculate_charge(tariff: &Tariff, usage: &[Usage]) -> Result<u128> {
     if tariff.pricing_basis != "fixed_usage_rates" {
         return Err(invalid("proxy tariff required"));
     }
-    units(usage.iter().map(|u| u.unit.as_str()))?;
+    if tariff.version != "3" {
+        units(usage.iter().map(|u| u.unit.as_str()))?;
+    }
     if usage.len() != tariff.rates.len() {
         return Err(invalid("missing usage"));
     }

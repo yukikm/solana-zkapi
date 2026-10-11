@@ -11,8 +11,9 @@ import { NativeSessionVerifier } from '@zkapi/solana-sdk/control-node';
 import { NativeJournalStore } from '@zkapi/solana-sdk/journal-node';
 import { EncryptedJournal, importJournalKey } from '@zkapi/solana-sdk/journal';
 import { unlockJournalKey, initializeJournalKey } from '@zkapi/solana-sdk/secret-custody';
-import { relayFetch, writeNodeResponse } from '@zkapi/solana-sdk/clientd-network';
-import { ClientDaemon } from '@zkapi/solana-sdk/clientd-bridge';
+import { relayFetch, writeNodeResponse, writeGatewayResponse } from '@zkapi/solana-sdk/clientd-network';
+import type { HeaderPairs } from '@zkapi/solana-sdk/gateway';
+import { ClientDaemon, DaemonConflict } from '@zkapi/solana-sdk/clientd-bridge';
 import { NativeProver } from '@zkapi/solana-sdk/prover-node';
 import { NoteProver } from '@zkapi/solana-sdk/prover';
 import { SolanaWalletChain } from '@zkapi/solana-sdk/wallet-chain';
@@ -20,6 +21,7 @@ import { WalletClient, type WalletRoles } from '@zkapi/solana-sdk/wallet';
 import { connectionTransport, createSolanaRpcWithFetch, type V0Wallet } from '@zkapi/solana-sdk/transport';
 
 import { ConfigurationError, validateConfigurationCommand, validateRuntimeConfiguration } from './runtime-config.ts';
+import { FrontendDelivery, gatewayDeliveryHeader, gatewayDeliveryPath } from './runtime-delivery.ts';
 
 async function main(): Promise<void> {
   const args = process.argv.slice(2);
@@ -67,7 +69,7 @@ async function main(): Promise<void> {
   }
   const rpc=connectionTransport(connection,{preparationCommitment:c.preparation_commitment});
   const wallet=new WalletClient({manifest:m,prover,journal,chain,rpc,wallets,fetch:fetcher});
-  const service=new ClientDaemon({client,journal,noteId:c.note_id,mode:c.mode,models,services,keyReuseSeconds:c.key_reuse_seconds,settlementWaitMs:c.settlement_wait_ms,
+  const service=new ClientDaemon({client,journal,noteId:c.note_id,mode:c.mode,models,services,gateway:c.gateway,keyReuseSeconds:c.key_reuse_seconds,settlementWaitMs:c.settlement_wait_ms,
     prepare:async(model,credentials)=>{
       const selected=models.find(configured=>configured.id===model);if(!selected)throw Error('model not configured');
       const current=await journal.read(c.note_id);if(!current?.value.witness)throw Error('full finalized note required');
@@ -89,10 +91,35 @@ async function main(): Promise<void> {
     // Remote session recovery can leave management available with inference
     // blocked. Trust, custody, finalized-chain and journal failures stay fatal.
     if(await journal.read(c.note_id))await service.start();
-    const server=createServer(async(req,res)=>{const abort=new AbortController();const disconnected=()=>{if(!res.writableEnded)abort.abort();};res.on('close',disconnected);try{let length=0;const chunks:Buffer[]=[];for await(const chunk of req){length+=chunk.length;if(length>1024*1024)throw Error('size');chunks.push(chunk);}const headers=new Headers();for(const[name,value]of Object.entries(req.headers))if(value)headers.set(name,Array.isArray(value)?value.join(','):value);
-      const result=await service.handle(req.method??'',req.url??'',new Uint8Array(Buffer.concat(chunks)),headers,abort.signal);await writeNodeResponse(result,res);
+    const frontendDelivery = new FrontendDelivery();
+    const server=createServer({maxHeaderSize:c.gateway?48*1024:16*1024},async(req,res)=>{const abort=new AbortController();const disconnected=()=>{if(!res.writableEnded)abort.abort();};res.on('close',disconnected);try{let length=0;const chunks:Buffer[]=[];for await(const chunk of req){length+=chunk.length;if(length>1024*1024)throw Error('size');chunks.push(chunk);}const headers=new Headers();for(const[name,value]of Object.entries(req.headers))if(value)headers.set(name,Array.isArray(value)?value.join(','):value);
+      const target=req.url??'', path=target.split('?')[0];
+      const gateway=c.gateway?.mounts.some(m=>m.prefix===''||path===m.prefix||path.startsWith(m.prefix+'/'))
+        && !/^\/(?:admin|zkapi)(?:\/|$)/.test(path) && path!=='/v1/models';
+      const body=new Uint8Array(Buffer.concat(chunks));
+      if(target===gatewayDeliveryPath){
+        const token=req.headers[gatewayDeliveryHeader];
+        const accepted=req.method==='POST'&&body.length===0&&typeof token==='string'&&await frontendDelivery.acknowledge(token);
+        res.writeHead(accepted?204:409);res.end();return;
+      }
+      // A native client can start its next turn immediately after outer EOF,
+      // while the private frontend acknowledgement is still being persisted.
+      // Waiting never clears the SDK hold, and management remains available.
+      if(gateway||req.method==='POST'&&/^\/(?:v1\/|zkapi\/v1\/api\/)/.test(path))await frontendDelivery.waitForAcknowledgement(abort.signal);
+      if(gateway){
+        if(Object.keys(req.trailers).length)throw Error('request trailers forbidden');
+        const rawPairs:HeaderPairs=[];for(let i=0;i<req.rawHeaders.length;i+=2)rawPairs.push([req.rawHeaders[i],Buffer.from(req.rawHeaders[i+1],'latin1').toString('base64')]);
+        const result=await service.handleGateway(req.method??'',target,body,rawPairs,abort.signal);
+        if(result instanceof Response)await writeNodeResponse(result,res);else {
+          const delivery=frontendDelivery.register(async()=>{await result.confirmDelivery?.();});
+          try {
+            await writeGatewayResponse({...result,headers:[...result.headers,[gatewayDeliveryHeader,Buffer.from(delivery.token).toString('base64')]],confirmDelivery:undefined},res);
+            delivery.finish(res.writableFinished);
+          } catch(error) { delivery.finish(false);throw error; }
+        }
+      }else await writeNodeResponse(await service.handle(req.method??'',target,body,headers,abort.signal),res);
       if((await journal.read(c.note_id))?.value.wallet?.status==='active')await service.startIfNeeded();
-    }catch{if(!res.headersSent){res.writeHead(503,{'Content-Type':'application/json'});res.end('{"error":{"code":"recovery_required"}}');}else res.destroy();}finally{res.off('close',disconnected);}});
+    }catch(error){if(!res.headersSent){res.writeHead(error instanceof DaemonConflict?409:503,{'Content-Type':'application/json'});res.end('{"error":{"code":"recovery_required"}}');}else res.destroy();}finally{res.off('close',disconnected);}});
     await new Promise<void>((resolve,reject)=>{server.once('error',reject);server.listen(socketPath,resolve);});await chmod(socketPath,0o600);
     const timer=setInterval(()=>service.maintenance().catch(()=>{}),1000);timer.unref();
     process.stdout.write('READY\n');

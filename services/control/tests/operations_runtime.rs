@@ -186,6 +186,7 @@ async fn dispatcher_one_shot_process_and_restart_fencing() {
         claims_directory: dir.path().into(),
         providers: zkapi_control::provider_runtime::ProviderConfig {
             api: vec![],
+            gateway: vec![],
             dispatcher: None,
             direct: vec![],
             proxy: vec![zkapi_control::provider_runtime::ProxyProviderConfig {
@@ -972,6 +973,7 @@ async fn provider_breaker_reset_requires_terminal_work_and_updates_the_running_r
             let receipt_id = Uuid::new_v4();
             let signed = Receipt::sign(
                 ReceiptBody {
+                    gateway: None,
                     version: "1".into(),
                     receipt_id: receipt_id.to_string(),
                     deployment_id: identity.deployment_id.clone(),

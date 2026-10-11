@@ -136,6 +136,7 @@ fn receipt(
     // The fixture retains expired/future tariffs around the current one.
     let tariff = &app.config.runtime.tariffs[1];
     let body = ReceiptBody {
+        gateway: None,
         version: "1".into(),
         receipt_id: Uuid::new_v4().to_string(),
         deployment_id: app.config.binding.deployment_id.clone(),

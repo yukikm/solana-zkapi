@@ -19,3 +19,10 @@ for the general design and extension requirements. Run the
 [Support](support.md) lists compatibility and preview limits.
 [Architecture](architecture.md) explains the components.
 [Testing](testing.md) lists contributor checks.
+
+The [universal API gateway design](specs/universal-api-gateway.md) and
+[finite HTTP contract](specs/universal-api-gateway-contract.md) specify the initial
+carrier, native Codex/Claude Code connections and metering. Async/duplex features
+are separate extensions. The [finite HTTP guide](getting-started/finite-http-api.md)
+covers the source implementation; public provider acceptance and published
+interfaces remain separately documented above.

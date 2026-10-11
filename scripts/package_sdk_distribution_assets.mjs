@@ -17,9 +17,16 @@ function publicTrust(value) {
   exact(value, ['anchor', 'expected', 'build']);
   exact(value.anchor, value.anchor.kind === 'hash' ? ['kind', 'sha256'] : ['kind', 'publicKey']);
   exact(value.expected, ['deployment_id', 'deployment_environment', 'genesis_hash', 'program_id', 'pool', 'mint', 'token_program', 'control_api_origin', 'inference_api_origin']);
-  exact(value.build, ['stateKey', 'clearanceKey', 'circuitProfileHash', 'idlHash', 'setupProfile'], ['transactionFormats', 'verifiedSetupTranscripts']);
+  exact(value.build, ['stateKey', 'clearanceKey', 'circuitProfileHash', 'idlHash', 'setupProfile'], ['transactionFormats', 'verifiedSetupTranscripts', 'gatewayAdapters']);
   exact(value.build.stateKey, ['x', 'y']); exact(value.build.clearanceKey, ['x', 'y']);
   if (value.build.verifiedSetupTranscripts) exact(value.build.verifiedSetupTranscripts, ['request', 'withdrawal', 'tree']);
+  if (value.build.gatewayAdapters !== undefined) {
+    exact(value.build.gatewayAdapters, ['transport', 'meters']);
+    for (const hashes of Object.values(value.build.gatewayAdapters)) {
+      assert.ok(Array.isArray(hashes) && hashes.length > 0 && hashes.length <= 64);
+      assert.ok(hashes.every((hash, index) => typeof hash === 'string' && /^[0-9a-f]{64}$/.test(hash) && (index === 0 || hashes[index-1] < hash)));
+    }
+  }
   return structuredClone(value);
 }
 

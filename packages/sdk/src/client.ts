@@ -5,6 +5,8 @@ import { decodeRpcAccount, safeRpcNumber } from './solana-rpc.ts';
 import { ClientDaemon } from './clientd-bridge.ts';
 import { ControlClient, validateNoteJournal, verifiedClientBundle, expiryNotice, validateApiService, apiOperationPath,
   PROXY_PRIVACY_NOTICE, DIRECT_OPENROUTER_PRIVACY_NOTICE, DIRECT_PRIVACY_NOTICE, type ClientOptions, type Mode, type NoteJournal, type Quote, type Tariff, type ApiService, type ApiBinding, type ApiTariff } from './control.ts';
+import { validateGatewayInvocation, validateGatewayConfiguration, validateGatewayHashes, gatewayAmount, type GatewayInvocation, type GatewayResult, type GatewayConfiguration } from './gateway.ts';
+export type { ApiBindingV2, GatewayBinding, TariffV3, GatewayTariff, GatewayInvocation, GatewayResult, GatewayConfiguration, HeaderPairs } from './gateway.ts';
 import { ProverSessionVerifier } from './control-prover.ts';
 import { EncryptedJournal, type AtomicJournalStore } from './journal.ts';
 import { NoteProver, type ClientProver } from './prover.ts';
@@ -54,6 +56,7 @@ export interface CreateClientOptions {
   mode: Mode;
   models: readonly ModelConfiguration[];
   services?: readonly ApiService[];
+  gateway?: GatewayConfiguration;
   /** Direct default: reuse the 300-second lease, renewing with 90 seconds left.
    * Set 0 for per-request settlement or 1–300 for a fixed reuse window. */
   keyReuseSeconds?: number;
@@ -110,9 +113,13 @@ export interface ChatRequest {
   stream?: boolean;
   signal?: AbortSignal;
 }
-export interface ApiRequest {
+export interface ApiRequestV1 {
+  version?: undefined;
   operationId: string; service: string; operation: string; body: unknown; signal?: AbortSignal;
 }
+
+export interface ApiRequestV2 extends GatewayInvocation {operationId:string;service:string;operation:string;signal?:AbortSignal}
+export type ApiRequest = ApiRequestV1 | ApiRequestV2;
 
 /** Advanced composition for existing hosts. All components must share one journal,
  * deployment and independently verified configuration. Prefer createZkApiClient. */
@@ -124,6 +131,7 @@ export interface ClientComponents {
   mode: Mode;
   models: readonly ModelConfiguration[];
   services?: readonly ApiService[];
+  gateway?: GatewayConfiguration;
   keyReuseSeconds?: number;
 }
 
@@ -145,12 +153,13 @@ export class ZkApiClient {
     this.services = structuredClone([...(options.services ?? [])]);
     if (this.models.length) validateModelConfigurations(options.mode,this.models);
     validateClientConfiguration(options.mode,this.models,this.services);
+    if(options.gateway)validateGatewayConfiguration(options.gateway,this.services,this.models);
     this.options = { ...options, wallet: { ...options.wallet, wallets: [...options.wallet.wallets] } };
     this.walletClient = new WalletClient(this.options.wallet);
     const reuse = options.keyReuseSeconds ?? (options.mode === 'proxy' ? 0 : 300);
     this.daemon = new ClientDaemon({ client: options.control, journal: options.wallet.journal,
       noteId: options.noteId, mode: options.mode, models: this.models, keyReuseSeconds: reuse,
-      services:this.services,
+      services:this.services,gateway:structuredClone(options.gateway),
       minimumLeaseRemainingSeconds: options.keyReuseSeconds === undefined && options.mode !== 'proxy' ? 90 : 1,
       settlementWaitMs: options.mode === 'proxy' ? 0 : 45_000,
       prepare: async (id, credentials) => {
@@ -190,7 +199,7 @@ export class ZkApiClient {
     const escapeAttempt = escapeOperation?.attempts.find(a => a.signature === (escapeOperation.current ?? emergency?.escape?.signature));
     return { noteId: this.options.noteId, mode: this.options.mode, wallet: w?.status ?? 'empty',
       settledBalanceMicroUsdc: v?.state.balance_micro_usdc ?? '0', authorizationCapMicroUsdc: this.options.wallet.manifest.cap_micro_usdc,
-      canRequest: !this.disposed && !this.busy && w?.status === 'active' && !w.operation && !w.clearance && (!p || this.daemon.canContinue(p)) && !unresolvedEscape
+      canRequest: !this.disposed && !this.busy && w?.status === 'active' && !w.operation && !w.clearance && (!p || this.daemon.canContinue(p)) && !v?.gatewayRecoveryHold && !unresolvedEscape
         && expiry !== null && expiry.severity !== 'expired' && BigInt(v!.state.balance_micro_usdc) >= BigInt(this.options.wallet.manifest.cap_micro_usdc),
       canReconcileUnacceptedAuthorization: !this.disposed && !this.busy && w?.status === 'active' && !w.operation
         && p?.phase === 'send_unknown' && p.operations.length === 0 && p.providerKey === undefined && p.serverState === undefined,
@@ -337,27 +346,37 @@ export class ZkApiClient {
     return this.dispatchResponse(sessionId,signal,()=>this.daemon.infer(path,body,operationId,version,signal));
   }
   /** Execute a registered fixed-price JSON operation through the shared note lifecycle. */
-  requestApi(request: ApiRequest): Promise<Response> {
+  requestApi(request: ApiRequestV2): Promise<GatewayResult>;
+  requestApi(request: ApiRequestV1): Promise<Response>;
+  requestApi(request: ApiRequest): Promise<Response|GatewayResult> {
+    if(request.version==='2'){
+      try{const selected=this.services.find(s=>s.tariff.api.service===request.service&&s.tariff.api.operation===request.operation);if(!selected||selected.tariff.api.version!=='2')throw new ClientActionError('invalid_request','Choose a registered gateway binding.');
+        const invocation=validateGatewayInvocation(selected.tariff.api,{version:request.version,method:request.method,target:request.target,headers:request.headers,body:request.body});
+        const {service,operation,operationId,signal}=request;
+        return this.dispatchResponse('default',signal,()=>this.daemon.requestGateway(service,operation,invocation,operationId,signal));
+      }catch(error){return Promise.reject(error);}
+    }
     let body: Uint8Array;
     try {
       const selected = this.services.find(s=>s.tariff.api.service === request.service && s.tariff.api.operation === request.operation);
-      if (!selected || this.options.mode !== 'proxy' || !/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/.test(request.operationId)) throw new ClientActionError('invalid_request','Choose a registered API operation and a stable operation UUID.');
+      if (!selected || selected.tariff.api.version!=='1' || this.options.mode !== 'proxy' || !/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/.test(request.operationId)) throw new ClientActionError('invalid_request','Choose a registered API operation and a stable operation UUID.');
       body=jcsBytes(request.body);
       if(body.length>Number(selected.tariff.api.request_max_bytes))throw new ClientActionError('invalid_request','Request exceeds this API operation limit.');
     } catch(error) { return Promise.reject(error); }
     const {service,operation,operationId,signal}=request;
     return this.dispatchResponse('default',signal,()=>this.daemon.requestApi(service,operation,body,operationId,signal));
   }
-  private dispatchResponse(sessionId: string, signal: AbortSignal | undefined, dispatch:()=>Promise<Response>):Promise<Response> {
-    return new Promise<Response>((resolve, reject) => {
+  private dispatchResponse<T extends Response|GatewayResult>(sessionId: string, signal: AbortSignal | undefined, dispatch:()=>Promise<T>):Promise<T> {
+    return new Promise<T>((resolve, reject) => {
       const completed = this.action(async () => {
         signal?.throwIfAborted();
+        await this.daemon.waitGatewayDelivery(signal);
         const s = await this.status();
         // action() sets busy, so inspect durable fields directly here.
         const r = await this.options.wallet.journal.read(this.options.noteId);
         const pending = r?.value.pending;
         if (s.wallet !== 'active' || pending && !this.daemon.canContinue(pending) || s.walletOperation || r?.value.wallet?.clearance
-          || r?.value.wallet?.emergencyEscapes?.some(e => e.phase !== 'settled') || !s.expiry || s.expiry.severity === 'expired'
+          || r?.value.gatewayRecoveryHold || r?.value.wallet?.emergencyEscapes?.some(e => e.phase !== 'settled') || !s.expiry || s.expiry.severity === 'expired'
           || BigInt(s.settledBalanceMicroUsdc) < BigInt(s.authorizationCapMicroUsdc)) {
           throw new ClientActionError('not_ready', 'Fund the note or recover its saved operation before a new request.');
         }
@@ -389,7 +408,7 @@ export class ZkApiClient {
             try { await reader.cancel(reason); } finally { release(); await completed; }
           },
         }, { highWaterMark: 0 });
-        resolve(new Response(stream, { status: response.status, statusText: response.statusText, headers: response.headers }));
+        resolve((response instanceof Response ? new Response(stream, { status: response.status, statusText: response.statusText, headers: response.headers }) : {...response,body:stream}) as T);
         await consumed;
       });
       void completed.catch(reject);
@@ -397,7 +416,7 @@ export class ZkApiClient {
   }
 
   /** Explicit recovery may resend the exact saved AUTH, never inference. */
-  recover(): Promise<void> { return this.action(() => this.daemon.start()); }
+  recover(): Promise<void> { return this.action(async()=>{await this.daemon.start();if((await this.options.wallet.journal.read(this.options.noteId))?.value.gatewayRecoveryHold)await this.daemon.management('recover');}); }
   settle(): Promise<void> { return this.action(async () => { await this.daemon.management('close'); }); }
   cancelUnsentAuthorization(): Promise<void> { return this.action(async () => { await this.daemon.management('cancel-unsent'); }); }
   reconcileAbsentOperations(): Promise<void> { return this.action(async () => { await this.daemon.management('reconcile'); }); }
@@ -447,8 +466,9 @@ export function validateClientConfiguration(mode: Mode, models: readonly (Omit<M
  * historical recovery inputs; callers admitting new work supply current time. */
 export async function validateClientSelectionPins(
   selection: { models: readonly {tariff: Tariff}[]; services?: readonly ApiService[] },
-  manifest: Pick<VerifiedManifest, 'tariff_hashes' | 'cap_micro_usdc'>,
+  manifest: Pick<VerifiedManifest, 'tariff_hashes' | 'cap_micro_usdc'> & Partial<Pick<VerifiedManifest,'deployment_environment'>>,
   now?: bigint,
+  gatewayAdapters?: ManifestTrustPolicy['build']['gatewayAdapters'],
 ): Promise<void> {
   if (now !== undefined && (typeof now !== 'bigint' || now < 0n)) throw new Error('invalid selection time');
   for (const [component, entries] of [['models', selection.models], ['services', selection.services ?? []]] as const) {
@@ -459,7 +479,13 @@ export async function validateClientSelectionPins(
         throw new ClientSelectionError(component, 'tariff is not pinned by this deployment');
       if (now !== undefined && (now < BigInt(body.valid_from) || now >= BigInt(body.valid_until)))
         throw new ClientSelectionError(component, 'tariff is not currently valid');
-      if (component === 'services' && BigInt(body.rates[0].nano_usdc_numerator) > BigInt(manifest.cap_micro_usdc) * 1000n)
+      if ('api' in body && body.api.version==='2') {
+        await validateGatewayHashes(body.api);
+        if(!body.api.origin.startsWith('https:')&&manifest.deployment_environment!=='local')throw new ClientSelectionError('services','gateway HTTP requires an explicit synthetic fixture deployment');
+        if(!gatewayAdapters?.transport.includes(body.api.transport.artifact_sha256)||!gatewayAdapters.meters.includes(body.api.meter.adapter.artifact_sha256))throw new ClientSelectionError('services','gateway adapters are not independently installed');
+        if(gatewayAmount((entry.tariff as import('./gateway.ts').TariffV3).rates,(entry.tariff as import('./gateway.ts').TariffV3).rates.map(r=>r.reservation_max_count))>BigInt(manifest.cap_micro_usdc)*1000n)throw new ClientSelectionError('services','gateway reservation exceeds authorization cap');
+      }
+      if (component === 'services' && !('api' in body && body.api.version==='2') && BigInt(body.rates[0].nano_usdc_numerator) > BigInt(manifest.cap_micro_usdc) * 1000n)
         throw new ClientSelectionError(component, 'API price exceeds the authorization cap');
     }
   }
@@ -474,16 +500,17 @@ export class ClientSelectionError extends Error {
 export async function createZkApiClient(options: CreateClientOptions): Promise<ZkApiClient> {
   const d = options.deployment;
   const manifestBytes = new Uint8Array(d.manifest), trust = structuredClone(d.trust), artifacts = structuredClone(d.artifacts);
-  const models = structuredClone([...options.models]), services=structuredClone([...(options.services ?? [])]), mode = options.mode, noteId = options.noteId, keyReuseSeconds = options.keyReuseSeconds;
+  const models = structuredClone([...options.models]), services=structuredClone([...(options.services ?? [])]), gateway=structuredClone(options.gateway), mode = options.mode, noteId = options.noteId, keyReuseSeconds = options.keyReuseSeconds;
   const wallet = options.wallet, storage = { ...options.storage }, engine = options.prover;
   const connection = d.connection, fetcher = d.fetch, indexerOrigin = d.indexerOrigin, preparationCommitment = d.preparationCommitment;
   const directProviderBases = structuredClone(options.directProviderBases), oaVerifier = structuredClone(options.oaVerifier), priorityFeeMicroLamports = options.priorityFeeMicroLamports;
   if (models.length) validateModelConfigurations(mode,models);
   validateClientConfiguration(mode, models, services);
+  if(gateway){validateGatewayConfiguration(gateway,services,models);for(const mount of gateway.mounts){const selected=services.find(s=>s.tariff.api.service===mount.service&&s.tariff.api.operation===mount.operation)!;if(await sha256Hex(jcsBytes(selected.tariff.api))!==mount.binding_hash)throw new ClientSelectionError('services','gateway mount binding mismatch');}}
   if (mode !== 'proxy' && !directProviderBases?.[mode]) throw new Error('independently installed direct provider base required');
   if (mode === 'direct_oa' && !oaVerifier) throw new Error('independently installed OA verifier required');
   const manifest: VerifiedManifest = await verifyManifest(manifestBytes, trust);
-  await validateClientSelectionPins({models,services}, manifest);
+  await validateClientSelectionPins({models,services}, manifest,undefined,trust.build.gatewayAdapters);
   const genesis = await connection.getGenesisHash().send();
   const observed = await connection.getAccountInfo(address(manifest.pool), { commitment: 'finalized', encoding: 'base64' }).send();
   if (!observed.value) throw new Error('finalized PoolConfig unavailable');
@@ -498,7 +525,7 @@ export async function createZkApiClient(options: CreateClientOptions): Promise<Z
   const chain = new SolanaWalletChain(connection, manifest, indexerOrigin, { fetch: fetcher, allowLoopbackHttp, preparationCommitment });
   const client = new ZkApiClient({ wallet: { manifest, prover, journal, chain, rpc: connectionTransport(connection, { preparationCommitment }),
     wallets: [wallet], fetch: fetcher, priorityFeeMicroLamports }, control, store: storage.store, noteId, mode, models,
-    keyReuseSeconds,services });
+    keyReuseSeconds,services,gateway });
   await client.status(); // Fail on corrupt or incompatible storage before returning.
   return client;
 }

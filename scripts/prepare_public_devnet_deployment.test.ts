@@ -241,7 +241,7 @@ async function registrationFixture(t:TestContext){
  const script=`#!${process.execPath}
 import fs from 'node:fs';
 const c=JSON.parse(fs.readFileSync(process.argv[3]));
-console.log(JSON.stringify({schema:1,manifestHash:c.trusted_manifest_hash,tariffHashes:c.tariffs.map(t=>t.tariff_hash).sort(),operations:c.providers.api.map(p=>p.api),signer:{fixture:true,manifestHash:c.trusted_manifest_hash,public_devnet_profile:{file:c.devnet.public_profile_file,sha256:c.devnet.trusted_public_profile_hash}}}));
+console.log(JSON.stringify({schema:1,manifestHash:c.trusted_manifest_hash,tariffHashes:c.tariffs.map(t=>t.tariff_hash).sort(),operations:[...c.providers.api,...(c.providers.gateway??[])].map(p=>p.api),signer:{fixture:true,manifestHash:c.trusted_manifest_hash,public_devnet_profile:{file:c.devnet.public_profile_file,sha256:c.devnet.trusted_public_profile_hash}}}));
 `;
  await writeFile(inspection,script,{mode:0o700});
  const operator={...structuredClone(operatorFixture),inspectionBinary:{path:inspection,sha256:await sha256Hex(Buffer.from(script))}};
@@ -295,4 +295,18 @@ test('registration validation rejects all relative and noncanonical staging path
  patches.push({finalizedProgramVerification:{path:'relative/evidence.json',sha256:'11'.repeat(32)}},{additionalNotices:{'EXTRA.txt':{path:'relative/notice',sha256:'22'.repeat(32),bytes:10}}});
  for(const patch of patches){const bytes=jcsBytes({...f.staging,...patch});await writeFile(f.project.staging.path,bytes);await writeFile(f.configPath,jcsBytes({...f.project,staging:{...f.project.staging,sha256:await sha256Hex(bytes)}}));await assert.rejects(validateRegistration(f.configPath),(error:any)=>error.code==='unsafe_path');}
  await assert.rejects(lstat(f.output),{code:'ENOENT'});
+});
+
+
+test('gateway registration emits and verifies schema3 selection with independent installed adapter pins',async t=>{
+ const f=await registrationFixture(t),vectors=JSON.parse(await readFile('docs/contracts/universal-api-gateway-vectors.json','utf8'));
+ const api=vectors.binding;
+ const service={api,validFrom:'0',validUntil:'9999999999',rates:vectors.tariff.rates,transportArtifactSha256:api.transport.artifact_sha256,meterArtifactSha256:api.meter.adapter.artifact_sha256};
+ const gateway={capabilities:['finite_http_v1'],mounts:[{prefix:'',service:api.service,operation:api.operation,binding_hash:await sha256Hex(jcsBytes(api))}]};
+ await writeFile(f.configPath,jcsBytes({...f.project,schema:2,services:[service],gateway}));
+ const report=await prepareRegistration(f.configPath,f.output);assert.equal(report.complete,true);assert.equal(report.providerActions,0);
+ const verified=await verifyRegistration(f.output,report.inventorySha256);assert.equal(verified.manifestHash,report.manifestHash);
+ const profile=JSON.parse(await readFile(join(f.output,'public/profile.json'),'utf8'));assert.equal(profile.schema,3);assert.deepEqual(profile.gateway,gateway);assert.deepEqual(profile.models,[]);assert.equal(profile.services[0].tariff.version,'3');
+ const control=JSON.parse(await readFile(join(f.output,'private/control.json'),'utf8'));assert.deepEqual(control.providers.api,[]);assert.deepEqual(control.providers.gateway[0].api,api);
+ const bundle=JSON.parse(await readFile(join(f.output,'public/assets/bundle.json'),'utf8'));assert.deepEqual(bundle.trust.build.gatewayAdapters,{transport:[api.transport.artifact_sha256],meters:[api.meter.adapter.artifact_sha256]});
 });

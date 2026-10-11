@@ -1,0 +1,283 @@
+{
+  "scope": "synthetic contract vectors; no runtime or provider acceptance",
+  "version": 2,
+  "proxy_secret_hex": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f",
+  "binding": {
+    "version": "2",
+    "service": "fixture",
+    "operation": "lookup",
+    "mode": "proxy",
+    "transport": {
+      "id": "http_finite",
+      "version": "1",
+      "artifact_sha256": "1111111111111111111111111111111111111111111111111111111111111111"
+    },
+    "origin": "https://fixture.example",
+    "routes": [
+      {
+        "method": "GET",
+        "path": "/v1/lookup"
+      },
+      {
+        "method": "POST",
+        "path": "/v1/lookup"
+      }
+    ],
+    "query": "preserve",
+    "headers": {
+      "request": "end_to_end",
+      "request_reject": [],
+      "response": "end_to_end",
+      "response_reject": [],
+      "trailers": [],
+      "static_request": []
+    },
+    "representation": {
+      "request_media_types": [
+        "*"
+      ],
+      "response_media_types": [
+        "*"
+      ],
+      "request_encoding": "identity",
+      "response_encodings": [
+        "identity"
+      ]
+    },
+    "limits": {
+      "target_bytes": "8192",
+      "header_pairs": "128",
+      "header_bytes": "32768",
+      "request_bytes": "1048576",
+      "response_bytes": "16777216",
+      "decoded_response_bytes": "67108864",
+      "decode_ratio": "64",
+      "parser_bytes": "1048576",
+      "relay_buffer_bytes": "65536",
+      "header_seconds": "30",
+      "idle_seconds": "30",
+      "execution_seconds": "60",
+      "max_concurrency": "1"
+    },
+    "authentication": {
+      "scheme": "none",
+      "policy_id": "fixture"
+    },
+    "privacy": {
+      "identifiers": "allow",
+      "resources": "stateless"
+    },
+    "meter": {
+      "adapter": {
+        "id": "fixed_http",
+        "version": "1",
+        "artifact_sha256": "2222222222222222222222222222222222222222222222222222222222222222"
+      },
+      "resource": null,
+      "config": {
+        "exposure": "operator_upstream_cost"
+      },
+      "config_hash": "7c5674d03a3c54c2e354f91e404d113bfb0f8ad6c8999ec3c9881434edf9c950"
+    },
+    "completion": {
+      "kind": "http_complete",
+      "billable_statuses": [
+        200
+      ]
+    },
+    "recovery": {
+      "policy": "finite_unknown_v1",
+      "reconciliation_seconds": "900"
+    }
+  },
+  "binding_hash": "bd44da6dd8626fcb2ab2f1af6b3752e0df3dddfa108bc9c62f64222224be45a5",
+  "tariff": {
+    "version": "3",
+    "provider": "generic",
+    "api": {
+      "version": "2",
+      "service": "fixture",
+      "operation": "lookup",
+      "mode": "proxy",
+      "transport": {
+        "id": "http_finite",
+        "version": "1",
+        "artifact_sha256": "1111111111111111111111111111111111111111111111111111111111111111"
+      },
+      "origin": "https://fixture.example",
+      "routes": [
+        {
+          "method": "GET",
+          "path": "/v1/lookup"
+        },
+        {
+          "method": "POST",
+          "path": "/v1/lookup"
+        }
+      ],
+      "query": "preserve",
+      "headers": {
+        "request": "end_to_end",
+        "request_reject": [],
+        "response": "end_to_end",
+        "response_reject": [],
+        "trailers": [],
+        "static_request": []
+      },
+      "representation": {
+        "request_media_types": [
+          "*"
+        ],
+        "response_media_types": [
+          "*"
+        ],
+        "request_encoding": "identity",
+        "response_encodings": [
+          "identity"
+        ]
+      },
+      "limits": {
+        "target_bytes": "8192",
+        "header_pairs": "128",
+        "header_bytes": "32768",
+        "request_bytes": "1048576",
+        "response_bytes": "16777216",
+        "decoded_response_bytes": "67108864",
+        "decode_ratio": "64",
+        "parser_bytes": "1048576",
+        "relay_buffer_bytes": "65536",
+        "header_seconds": "30",
+        "idle_seconds": "30",
+        "execution_seconds": "60",
+        "max_concurrency": "1"
+      },
+      "authentication": {
+        "scheme": "none",
+        "policy_id": "fixture"
+      },
+      "privacy": {
+        "identifiers": "allow",
+        "resources": "stateless"
+      },
+      "meter": {
+        "adapter": {
+          "id": "fixed_http",
+          "version": "1",
+          "artifact_sha256": "2222222222222222222222222222222222222222222222222222222222222222"
+        },
+        "resource": null,
+        "config": {
+          "exposure": "operator_upstream_cost"
+        },
+        "config_hash": "7c5674d03a3c54c2e354f91e404d113bfb0f8ad6c8999ec3c9881434edf9c950"
+      },
+      "completion": {
+        "kind": "http_complete",
+        "billable_statuses": [
+          200
+        ]
+      },
+      "recovery": {
+        "policy": "finite_unknown_v1",
+        "reconciliation_seconds": "900"
+      }
+    },
+    "pricing_basis": "fixed_request",
+    "valid_from": "0",
+    "valid_until": "2000000000",
+    "rates": [
+      {
+        "unit": "requests",
+        "nano_usdc_numerator": "250000",
+        "unit_denominator": "1",
+        "reservation_max_count": "1"
+      }
+    ],
+    "operator_fee_micro_usdc": "0",
+    "tariff_hash": "eb69e6a8a96e2bb46df1a3d39bd701a1bc33a12c3ffd82ead0e0a0318d230dc3"
+  },
+  "vectors": [
+    {
+      "name": "empty_get",
+      "input": {
+        "deployment_id": "gateway-synthetic-v2",
+        "pool": "11111111111111111111111111111111",
+        "authorization_id": "00000000-0000-4000-8000-000000000001",
+        "operation_id": "00000000-0000-4000-8000-000000000002",
+        "method": "GET",
+        "target": "/v1/lookup?tag=a&tag=b%2f&empty=",
+        "headers": [],
+        "body_hex": ""
+      },
+      "semantic_header_pairs": [],
+      "parts_hex": [
+        "676174657761792d73796e7468657469632d7632",
+        "0000000000000000000000000000000000000000000000000000000000000000",
+        "00000000000040008000000000000001",
+        "00000000000040008000000000000002",
+        "bd44da6dd8626fcb2ab2f1af6b3752e0df3dddfa108bc9c62f64222224be45a5",
+        "eb69e6a8a96e2bb46df1a3d39bd701a1bc33a12c3ffd82ead0e0a0318d230dc3",
+        "474554",
+        "2f76312f6c6f6f6b75703f7461673d61267461673d6225326626656d7074793d",
+        "5b5d",
+        ""
+      ],
+      "frame_hex": "0019736f6c616e612d7a6b6170692d6f7065726174696f6e2d7632000a00000014676174657761792d73796e7468657469632d76320000002000000000000000000000000000000000000000000000000000000000000000000000001000000000000040008000000000000001000000100000000000004000800000000000000200000020bd44da6dd8626fcb2ab2f1af6b3752e0df3dddfa108bc9c62f64222224be45a500000020eb69e6a8a96e2bb46df1a3d39bd701a1bc33a12c3ffd82ead0e0a0318d230dc300000003474554000000202f76312f6c6f6f6b75703f7461673d61267461673d6225326626656d7074793d000000025b5d00000000",
+      "operation_hmac": "533d2b7aba613900423fdacbdeb3c123b25fcdce99287507c5ed3df3b7826070"
+    },
+    {
+      "name": "binary_post",
+      "input": {
+        "deployment_id": "gateway-synthetic-v2",
+        "pool": "11111111111111111111111111111111",
+        "authorization_id": "00000000-0000-4000-8000-000000000001",
+        "operation_id": "00000000-0000-4000-8000-000000000003",
+        "method": "POST",
+        "target": "/v1/lookup?tag=a&tag=b%2F&empty=",
+        "headers": [
+          [
+            "X-Tag",
+            "IGZpcnN0CQ=="
+          ],
+          [
+            "x-bin",
+            "gP8="
+          ],
+          [
+            "x-tag",
+            "c2Vjb25k"
+          ]
+        ],
+        "body_hex": "00ff10"
+      },
+      "semantic_header_pairs": [
+        [
+          "x-bin",
+          "gP8="
+        ],
+        [
+          "x-tag",
+          "Zmlyc3Q="
+        ],
+        [
+          "x-tag",
+          "c2Vjb25k"
+        ]
+      ],
+      "parts_hex": [
+        "676174657761792d73796e7468657469632d7632",
+        "0000000000000000000000000000000000000000000000000000000000000000",
+        "00000000000040008000000000000001",
+        "00000000000040008000000000000003",
+        "bd44da6dd8626fcb2ab2f1af6b3752e0df3dddfa108bc9c62f64222224be45a5",
+        "eb69e6a8a96e2bb46df1a3d39bd701a1bc33a12c3ffd82ead0e0a0318d230dc3",
+        "504f5354",
+        "2f76312f6c6f6f6b75703f7461673d61267461673d6225324626656d7074793d",
+        "5b5b22782d62696e222c226750383d225d2c5b22782d746167222c225a6d6c796333513d225d2c5b22782d746167222c226332566a6232356b225d5d",
+        "00ff10"
+      ],
+      "frame_hex": "0019736f6c616e612d7a6b6170692d6f7065726174696f6e2d7632000a00000014676174657761792d73796e7468657469632d76320000002000000000000000000000000000000000000000000000000000000000000000000000001000000000000040008000000000000001000000100000000000004000800000000000000300000020bd44da6dd8626fcb2ab2f1af6b3752e0df3dddfa108bc9c62f64222224be45a500000020eb69e6a8a96e2bb46df1a3d39bd701a1bc33a12c3ffd82ead0e0a0318d230dc300000004504f5354000000202f76312f6c6f6f6b75703f7461673d61267461673d6225324626656d7074793d0000003c5b5b22782d62696e222c226750383d225d2c5b22782d746167222c225a6d6c796333513d225d2c5b22782d746167222c226332566a6232356b225d5d0000000300ff10",
+      "operation_hmac": "0c972efb0c4cdc297e4dc9b625d284c57661d9f39afa8c7c66e3c3c7bf79d39a"
+    }
+  ]
+}

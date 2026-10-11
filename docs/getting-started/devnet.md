@@ -15,8 +15,7 @@ Neither path requires your own provider API key or a ZKAPI server.
 
 The installation walkthroughs below retain the recorded **`0.2.0-devnet.8`**
 artifacts and revision-6 profile. Newer immutable releases are
-[SDK `.12`](sdk-streaming-upgrade.md) and
-[native `.10`](https://github.com/yukikm/solana-zkapi/releases/tag/v0.2.0-devnet.10),
+[SDK/native `.13`](gateway-release-upgrade.md),
 which accept this unchanged profile. Follow the selected release's installation
 and verification procedure; keep an existing funded installation and custody.
 

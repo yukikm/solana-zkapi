@@ -4,7 +4,8 @@
 import { lstat, readFile, readdir, realpath } from 'node:fs/promises';
 import { dirname, isAbsolute, join, relative, resolve, sep } from 'node:path';
 import { isIP } from 'node:net';
-import { validateClientConfiguration, validateClientSelectionPins } from '@zkapi/solana-sdk';
+import { validateClientConfiguration, validateClientSelectionPins, type GatewayConfiguration } from '@zkapi/solana-sdk';
+import { validateGatewayConfiguration } from '@zkapi/solana-sdk/gateway';
 import { apiOperationPath, type ApiService, type ApiTariff, type Mode, type Tariff } from '@zkapi/solana-sdk/control';
 import { loadDaemonModels, type DaemonModelSource } from '@zkapi/solana-sdk/clientd-models';
 import { parseStrictJson, sha256Hex, verifyManifest, verifyArtifactBundle,
@@ -17,7 +18,7 @@ export interface RuntimeConfig {
   verifier: { path: string; sha256: string }; prover: { path: string; sha256: string };
   journal: string; custody: string; note_id: string; mode: Mode;
   models: (string | DaemonModelSource)[]; tariff?: string;
-  services?: { tariff: string }[]; key_reuse_seconds?: number; settlement_wait_ms?: number;
+  services?: { tariff: string }[]; gateway?: GatewayConfiguration; key_reuse_seconds?: number; settlement_wait_ms?: number;
   rpc: string; indexer: string; direct_provider_bases?: Partial<Record<'direct_oa' | 'direct_openrouter', string>>;
   preparation_commitment?: TransactionPreparationCommitment;
   oa_verifier?: { base: string; stationId: string };
@@ -87,7 +88,7 @@ export async function verifyNativeDistribution(path: string, expected: string): 
     failure('artifact_verification_failed', 1, 'distribution');
   }
   if (seen.size !== Object.keys(release.files).length) failure('artifact_verification_failed', 1, 'distribution.files');
-  for (const name of ['bin/node', 'apps/clientd/runtime.ts', 'apps/clientd/runtime-config.ts', 'bin/zkapi-client-prover', 'bin/zkapi-client-verify']) {
+  for (const name of ['bin/node', 'apps/clientd/runtime.ts', 'apps/clientd/runtime-config.ts', 'apps/clientd/runtime-delivery.ts', 'bin/zkapi-client-prover', 'bin/zkapi-client-verify']) {
     if (!seen.has(name)) failure('artifact_verification_failed', 1, 'distribution.files');
   }
   return release.files;
@@ -96,7 +97,7 @@ export async function verifyNativeDistribution(path: string, expected: string): 
 export async function validateRuntimeConfiguration(input: unknown, options: { requireCustody?: boolean } = {}) {
   object(input, 'runtime');
   const allowed = new Set(['manifest','policy','artifacts','verifier','prover','journal','custody','note_id','mode','models','tariff','services',
-    'key_reuse_seconds','settlement_wait_ms','rpc','indexer','direct_provider_bases','preparation_commitment','oa_verifier']);
+    'gateway','key_reuse_seconds','settlement_wait_ms','rpc','indexer','direct_provider_bases','preparation_commitment','oa_verifier']);
   if (Object.keys(input).some(key => !allowed.has(key)) || !Array.isArray(input.models)
     || input.services !== undefined && (!Array.isArray(input.services) || input.services.length > 64)) failure('invalid_schema', 2, 'runtime');
   const c = input as unknown as RuntimeConfig;
@@ -120,7 +121,14 @@ export async function validateRuntimeConfiguration(input: unknown, options: { re
   }
   try {
     validateClientConfiguration(c.mode, models, services);
-    await validateClientSelectionPins({ models, services }, m);
+    if (c.gateway) validateGatewayConfiguration(c.gateway, services, models);
+    if (services.some(s => s.tariff.api.version === '2') && !c.gateway) throw Error('gateway mounts required');
+    await validateClientSelectionPins({ models, services }, m, undefined, c.policy.build.gatewayAdapters);
+    for (const mount of c.gateway?.mounts ?? []) {
+      const selected = services.find(s => s.tariff.api.service === mount.service && s.tariff.api.operation === mount.operation)!;
+      const { jcsBytes } = await import('@zkapi/solana-sdk/trust');
+      if (await sha256Hex(jcsBytes(selected.tariff.api as any)) !== mount.binding_hash) throw Error('gateway binding pin mismatch');
+    }
   } catch { return failure('invalid_tariff', 2, 'selection'); }
   const artifacts: any = { additional: Object.create(null) };
   object(c.artifacts, 'artifacts'); object(c.artifacts.additional, 'artifacts.additional');

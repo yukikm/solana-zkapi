@@ -55,6 +55,7 @@ fn tariff(provider: Provider, direct: bool) -> Tariff {
         units
             .into_iter()
             .map(|unit| Rate {
+                reservation_max_count: None,
                 unit: unit.into(),
                 nano_usdc_numerator: "1".into(),
                 unit_denominator: "1".into(),
@@ -145,6 +146,7 @@ async fn all_modes_deposit_infer_settle_withdraw_same_note() -> Result<()> {
     private(&dir.join("provider.key"), b"i10-provider-secret")?;
     let providers = ProviderConfig {
         api: vec![],
+        gateway: vec![],
         dispatcher: None,
         direct: vec![
             DirectConfig::Oa {

@@ -1,15 +1,31 @@
 """Release/source joins against disposable repositories; no financial inputs."""
 import hashlib
 from pathlib import Path
+import re
 import subprocess
 import tempfile
 import unittest
 
-from clientd_release_provenance import VENDOR, verify_committed_sources
+from clientd_release_provenance import COPIED_FILES, ROOT, VENDOR, verify_committed_sources
 
 
 def digest(value):
     return hashlib.sha256(value).hexdigest()
+
+
+class RuntimePackagingTests(unittest.TestCase):
+    def test_runtime_relative_imports_are_packaged_transitively(self):
+        pending, visited = ['apps/clientd/runtime.ts'], set()
+        while pending:
+            name = pending.pop()
+            if name in visited:
+                continue
+            visited.add(name)
+            self.assertIn(name, COPIED_FILES, 'runtime import is absent from the native installation')
+            path = ROOT / name
+            for imported in re.findall(r'(?:from\s*|import\s*\(\s*)[\'\"](\.[^\'\"]+)[\'\"]', path.read_text()):
+                dependency = (path.parent / imported).resolve().relative_to(ROOT).as_posix()
+                pending.append(dependency)
 
 
 class ReleaseSourceTests(unittest.TestCase):

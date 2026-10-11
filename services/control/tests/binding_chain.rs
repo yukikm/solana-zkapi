@@ -585,6 +585,7 @@ fn signed_receipt_must_recompute_frozen_tariff_math() {
     use zkapi_control::receipts::{validate_tariff_math, Receipt, ReceiptBody, UsageUnit};
     let t = tariff();
     let b = ReceiptBody {
+        gateway: None,
         version: "1".into(),
         receipt_id: uuid::Uuid::new_v4().to_string(),
         deployment_id: "i05-local".into(),

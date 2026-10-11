@@ -116,7 +116,32 @@ BEGIN
         DELETE FROM clearances WHERE pool=p AND nullifier=h;
         RAISE EXCEPTION 'clearance deletion allowed' USING ERRCODE='ZX001';
     EXCEPTION WHEN raise_exception THEN NULL; END;
+    -- Additive finite HTTP identity cannot reinterpret legacy operations.
+    BEGIN
+        INSERT INTO operations(pool,request_id,operation_id,request_hmac,endpoint,model,state,reservation_nano,envelope_version)
+            VALUES(p,rid,owner_id,h,'/zkapi/v2/execute/fixture/lookup','','RESERVED',1,2);
+        RAISE EXCEPTION 'v2 operation without binding identity allowed' USING ERRCODE='ZX001';
+    EXCEPTION WHEN check_violation THEN NULL; END;
+    BEGIN
+        INSERT INTO operations(pool,request_id,operation_id,request_hmac,endpoint,model,state,reservation_nano,binding_hash,meter_hash)
+            VALUES(p,rid,owner_id,h,'/v1/responses','fixture','RESERVED',1,h,h);
+        RAISE EXCEPTION 'legacy operation with gateway identity allowed' USING ERRCODE='ZX001';
+    EXCEPTION WHEN check_violation THEN NULL; END;
+    INSERT INTO operations(pool,request_id,operation_id,request_hmac,endpoint,model,state,reservation_nano,envelope_version,binding_hash,meter_hash)
+        VALUES(p,rid,owner_id,h,'/zkapi/v2/execute/fixture/lookup','','RESERVED',1,2,h,h);
+    BEGIN
+        UPDATE operations SET binding_hash=n WHERE pool=p AND request_id=rid AND operation_id=owner_id;
+        RAISE EXCEPTION 'mutable gateway binding allowed' USING ERRCODE='ZX001';
+    EXCEPTION WHEN raise_exception THEN NULL; END;
+    BEGIN
+        UPDATE operations SET meter_hash=n WHERE pool=p AND request_id=rid AND operation_id=owner_id;
+        RAISE EXCEPTION 'mutable gateway meter allowed' USING ERRCODE='ZX001';
+    EXCEPTION WHEN raise_exception THEN NULL; END;
+    BEGIN
+        UPDATE operations SET envelope_version=1,binding_hash=NULL,meter_hash=NULL WHERE pool=p AND request_id=rid AND operation_id=owner_id;
+        RAISE EXCEPTION 'gateway identity downgrade allowed' USING ERRCODE='ZX001';
+    EXCEPTION WHEN raise_exception THEN NULL; END;
 END;
 $$;
 ROLLBACK;
-SELECT 'PASS: 18 negative constraint cases and valid settlement/receipt/clearance paths';
+SELECT 'PASS: 23 negative constraint cases and valid settlement/receipt/clearance paths';

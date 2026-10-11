@@ -11,11 +11,13 @@ not define the scope of ZKAPI's payment protocol. The pinned
 [Ethereum upstream](https://github.com/ethereum/zkapi) likewise describes access
 to AI and other APIs; application adapters determine which requests can run.
 
-The current source adds **registered POST JSON APIs with a fixed price per
-successful request**, using the existing payment lifecycle. Start with
-[the local JSON API tutorial](json-api.md). This is a source/local integration;
-the published `.8` SDK and native package retain their inference interfaces.
-See [Inference API getting started](inference.md) for those integrations.
+The source supports [registered POST JSON APIs](json-api.md) and the
+[finite HTTP gateway](finite-http-api.md), using the existing payment lifecycle.
+The gateway preserves bounded binary requests and finite streamed responses,
+with fixed HTTP or pinned Responses/Messages meters. These are source capabilities;
+[published package and deployment support](../support.md) remains separately
+versioned. See [Inference API getting started](inference.md) for existing inference
+integrations.
 
 ## Identify the roles
 
@@ -81,6 +83,12 @@ that a provider deleted request data. See the [architecture](../architecture.md)
 for these trust boundaries.
 
 ## Integrate another kind of API
+
+The [universal API gateway design](../specs/universal-api-gateway.md) defines
+an extension for methods, queries, provider headers, opaque bodies and streams,
+with metering separate from transport. It is not an available configuration
+option in the current implementation. The procedure below describes current
+integration boundaries.
 
 A data lookup can now use a registered `POST` operation that accepts JSON and
 returns bounded JSON. Its signed descriptor identifies the service, operation,

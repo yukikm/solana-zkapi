@@ -107,6 +107,7 @@ export async function materializeNativeInputs({ assets, selection: options, rpcU
   }
   const runtime = { manifest, policy: options.deployment.trust, artifacts, mode: options.mode,
     models, services, rpc: rpcUrl, indexer: indexerOrigin, key_reuse_seconds: 60,
+    ...(options.gateway ? { gateway: structuredClone(options.gateway) } : {}),
     ...(options.mode === 'direct_openrouter' ? { settlement_wait_ms: 120_000 } : {}),
     ...(preparationCommitment ? { preparation_commitment: preparationCommitment } : {}),
     ...(options.directProviderBases ? { direct_provider_bases: options.directProviderBases } : {}),

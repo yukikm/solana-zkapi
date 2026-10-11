@@ -4,7 +4,7 @@ Import `createZkApiClient` and types from `@zkapi/solana-sdk`. Browser apps norm
 use `createBrowserClient` from `@zkapi/solana-sdk/browser`.
 The [source types](../../packages/sdk/src/client.ts) are the exact contract.
 Published SDK `.8` retains its inference interfaces. The current source also
-adds registered fixed-price POST JSON APIs, marked below; this addition has
+adds registered POST JSON and finite HTTP APIs, marked below; this addition has
 not changed published packages or existing deployment profiles. All adapters
 use the same wallet, journal, authorization and settlement lifecycle.
 
@@ -50,6 +50,7 @@ Use the factory for new apps. No additional financial journal is created.
 | `chat({operationId, sessionId?, model, messages, maxOutputTokens, stream?, signal?})` | Text Chat Completions; returns one-use `Response` |
 | `request({operationId, sessionId?, model, api, body, anthropicVersion?, signal?})` | Native request; `api`: `chat`, `responses`, `messages` |
 | `requestApi({operationId, service, operation, body, signal?})` | Source addition: registered fixed-price POST JSON operation; returns one-use `Response` |
+| `requestApi({version:"2", operationId, service, operation, method, target, headers, body, signal?})` | Source addition: finite HTTP with raw bytes and Base64 header pairs; returns `GatewayResult` with `status`, `body`, `trailers` and `completed` |
 | `settle()` | Ask saved session to close; inspect status afterward |
 | `recover()` | Reconcile/close saved AUTH; never replay inference |
 | `cancelUnsentAuthorization()` | Cancel an AUTH proven locally never sent |
@@ -191,3 +192,6 @@ settled history and settled emergency copies, preserving financial and recovery
 evidence. It returns `{historyOperations, emergencyOperations}` and performs no
 network or wallet action. Active requests and unresolved escape archives remain.
 See [retention and backup limitations](recovery.md#local-request-retention).
+
+The [finite HTTP guide](../getting-started/finite-http-api.md) describes version 2
+invocation and schema 3 capability pins, native mounts and uncertain-operation recovery.

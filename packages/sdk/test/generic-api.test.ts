@@ -8,7 +8,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import bs58 from 'bs58';
 import { ZkApiClient } from '../src/client.ts';
-import { ControlClient, validateNoteJournal, validateApiBinding, apiOperationPath, type ApiBinding, type ApiTariff, type ApiQuote, type NoteJournal, type PreparedSession, type SessionVerifier } from '../src/control.ts';
+import { ControlClient, validateNoteJournal, validateApiBinding, apiOperationPath, type ApiBindingV1 as ApiBinding, type ApiTariffV2 as ApiTariff, type ApiQuote, type NoteJournal, type PreparedSession, type SessionVerifier } from '../src/control.ts';
 import { EncryptedJournal, importJournalKey } from '../src/journal.ts';
 import { NativeJournalStore } from '../src/journal-node.ts';
 import { jcsBytes, sha256Hex, type VerifiedManifest } from '../src/trust.ts';

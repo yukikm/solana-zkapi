@@ -104,6 +104,7 @@ fn undispatched_receipt(
 ) -> ReceiptRecord {
     let id = Uuid::new_v4();
     let body = ReceiptBody {
+        gateway: None,
         version: "1".into(),
         receipt_id: id.to_string(),
         deployment_id: identity.deployment_id.clone(),

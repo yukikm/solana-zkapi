@@ -4,8 +4,8 @@ For installation, funding and application setup, use
 [getting started](../../docs/getting-started/clientd.md).
 See [support](../../docs/support.md) for verified platforms and client compatibility.
 
-The current source Go frontend serves registered POST JSON APIs, inference APIs, SSE and wallet
-management on `127.0.0.1:8787`. [`runtime.ts`](runtime.ts) connects it to the SDK's
+The current source Go frontend serves registered POST JSON and finite HTTP APIs,
+inference APIs, SSE and wallet management on `127.0.0.1:8787`. [`runtime.ts`](runtime.ts) connects it to the SDK's
 `ClientDaemon`, `ControlClient`, `WalletClient` and encrypted journal. Those
 components own authorization, accounting and recovery; Go adds no financial
 state machine. Native prover/verifier processes run offline with pinned binaries
@@ -259,3 +259,6 @@ of the entire device.
 SOCKS5 code adapts the pinned upstream relay; cryptographic helpers reuse its
 proof and successor verification code. Preserve [source provenance](../../vendor/README.md)
 and [third-party notices](../../THIRD_PARTY_NOTICES.md).
+
+Source builds also support authenticated [finite HTTP mounts](../../docs/getting-started/finite-http-api.md)
+from schema 3 profiles, with raw body/header preservation and the same SDK journal.

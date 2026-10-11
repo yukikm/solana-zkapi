@@ -1,13 +1,17 @@
-import { createZkApiClient, type CreateClientOptions } from './client.ts';
+import { createZkApiClient, validateClientSelectionPins, type CreateClientOptions } from './client.ts';
 import { WorkerProver } from './prover-runtime.ts';
 import { openBrowserStorage } from './browser-storage.ts';
-import { sha256Hex } from './trust.ts';
+import { sha256Hex, verifyManifest } from './trust.ts';
+import { validateGatewayConfiguration } from './gateway.ts';
 export { openBrowserStorage, BrowserStorageMissing } from './browser-storage.ts';
 export type { BrowserStoragePersistence } from './browser-storage.ts';
 export { walletStandardAdapter } from './wallet-standard.ts';
 export type { StandardWallet, StandardAccount } from './wallet-standard.ts';
 
 export interface CreateBrowserClientOptions extends Omit<CreateClientOptions, 'prover' | 'storage'> {
+  /** Explicit application transport contract; the v2 framed API exposes octets
+   * and trailers without converting them to a browser Fetch Response. */
+  gatewayCapabilities?: readonly ['finite_http_v1','opaque_header_bytes','response_trailers'];
   storageName: string;
   /** Explicit first-wallet creation; also requests persistent origin storage.
    * Normal reload omits this and does not request storage permission. */
@@ -23,11 +27,17 @@ export async function createBrowserClient(options: CreateBrowserClientOptions) {
   const name = JSON.stringify([options.storageName, expected.deployment_id, expected.pool, options.wallet.publicKey]);
   const wasm = new Uint8Array(options.wasm), sha256 = options.wasmSha256, createWorker = options.createWorker;
   // Snapshot mutable inputs before opening asynchronous custody.
-  const input = { ...options, models: structuredClone(options.models), services:structuredClone(options.services),
+  const input = { ...options, models: structuredClone(options.models), services:structuredClone(options.services), gateway:structuredClone(options.gateway),
     directProviderBases: structuredClone(options.directProviderBases), oaVerifier: structuredClone(options.oaVerifier),
     deployment: { ...options.deployment, manifest: new Uint8Array(options.deployment.manifest),
       trust: structuredClone(options.deployment.trust), artifacts: structuredClone(options.deployment.artifacts) } };
   if (!/^[0-9a-f]{64}$/.test(sha256) || await sha256Hex(wasm) !== sha256) throw new Error('browser WASM hash mismatch');
+  if(input.services?.some(service=>service.tariff.api.version==='2')){
+    if(JSON.stringify(input.gatewayCapabilities)!=='["finite_http_v1","opaque_header_bytes","response_trailers"]')throw Error('explicit browser gateway capabilities required');
+    if(input.gateway)validateGatewayConfiguration(input.gateway,input.services,input.models);
+    const manifest=await verifyManifest(input.deployment.manifest,input.deployment.trust);
+    await validateClientSelectionPins({models:input.models,services:input.services},manifest,undefined,input.deployment.trust.build.gatewayAdapters);
+  }
   const storage = await openBrowserStorage(name, { initialize: input.initializeStorage });
   let engine: WorkerProver | undefined;
   try {

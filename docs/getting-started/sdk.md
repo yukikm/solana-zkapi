@@ -14,7 +14,7 @@ or use [clientd](clientd.md).
 ## 1. Install
 
 These commands reproduce the recorded `.8` installation. For current streaming
-and authorization recovery fixes, use the [SDK `.12` upgrade procedure](sdk-streaming-upgrade.md)
+and authorization recovery fixes, use the [SDK `.13` upgrade procedure](gateway-release-upgrade.md)
 with the same authenticated profile and custody described below.
 
 Use Node **24.19.0** and npm **11.9.0** in your application directory. The download

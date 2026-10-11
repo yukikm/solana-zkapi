@@ -5,21 +5,22 @@ import { mkdir, mkdtemp, readFile, writeFile, readdir, lstat } from 'node:fs/pro
 import { resolve, join, dirname } from 'node:path';
 import { loadPublicDeploymentProfile } from '@zkapi/solana-sdk/public-profile';
 import { sha256Hex } from '@zkapi/solana-sdk/trust';
+import { gatewayPublicProfileFixture } from '../../packages/sdk/test/gateway-public-profile-fixture.ts';
 import { publicProfileFixture } from '../../packages/sdk/test/public-profile-fixture.ts';
 import { validateConfigurationCommand, ConfigurationError } from './runtime-config.ts';
 // Internal installer adapter; public profile provenance is checked by installNativeInputs.
 // @ts-ignore JavaScript installer has no public SDK declaration.
 import { installNativeInputs } from '../../tools/public-devnet-consumer/native-inputs.mjs';
 
-async function fixture(selection: 'legacy' | 'api' | 'mixed') {
-  const f = await publicProfileFixture(selection === 'legacy' ? {} : { schema: 2, selection });
+async function fixture(selection: 'legacy' | 'api' | 'mixed' | 'gateway') {
+  const f = selection === 'gateway' ? await gatewayPublicProfileFixture() : await publicProfileFixture(selection === 'legacy' ? {} : { schema: 2, selection });
   const loaded = await loadPublicDeploymentProfile(f.profileUrl, { profileSha256: await f.profileSha256(), fetch: f.fetcher });
   const parent = resolve('target/native-config-tests'); await mkdir(parent, { recursive: true, mode: 0o700 });
   const root = await mkdtemp(join(parent, 'run-'));
   const receipt = await installNativeInputs(loaded, join(root, 'inputs'), { mode: 'direct' });
   const distribution = join(root, 'install'), files: Record<string,string> = {};
   await mkdir(distribution, { mode: 0o700 });
-  for (const name of ['bin/node','apps/clientd/runtime.ts','apps/clientd/runtime-config.ts','bin/zkapi-client-prover','bin/zkapi-client-verify']) {
+  for (const name of ['bin/node','apps/clientd/runtime.ts','apps/clientd/runtime-config.ts','apps/clientd/runtime-delivery.ts','bin/zkapi-client-prover','bin/zkapi-client-verify']) {
     const bytes = new TextEncoder().encode('offline artifact fixture ' + name), path = join(distribution, name);
     await mkdir(dirname(path), { recursive: true, mode: 0o700 }); await writeFile(path, bytes, { mode: 0o600 }); files[name] = await sha256Hex(bytes);
   }
@@ -31,13 +32,13 @@ async function fixture(selection: 'legacy' | 'api' | 'mixed') {
 }
 
 test('offline native validator accepts API-only, mixed and legacy and creates no custody or network activity', async () => {
-  for (const selection of ['api','mixed','legacy'] as const) {
+  for (const selection of ['api','mixed','legacy','gateway'] as const) {
     const f = await fixture(selection), network = globalThis.fetch; let calls = 0;
     globalThis.fetch = async () => { calls++; throw new Error('unexpected network'); };
     try {
       const result = await validateConfigurationCommand(f.args);
       assert.equal(result.valid, true); assert.equal(result.networkActions, 0); assert.equal(result.custodyInitialized, false);
-      assert.equal(result.models.length, selection === 'api' ? 0 : 1);
+      assert.equal(result.models.length, selection === 'api' || selection === 'gateway' ? 0 : 1);
       assert.equal(result.operations.length, selection === 'legacy' ? 0 : 1);
       assert.equal(calls, 0);
       assert.deepEqual((await readdir(f.root)).sort(), ['inputs','install']);

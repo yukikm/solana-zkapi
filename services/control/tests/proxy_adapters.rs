@@ -70,6 +70,7 @@ fn setup(provider: Provider, cache_mode: CacheMode) -> (ModelProfile, Tariff) {
         rates: units
             .into_iter()
             .map(|unit| Rate {
+                reservation_max_count: None,
                 unit: unit.into(),
                 nano_usdc_numerator: if unit == "output_tokens" { "2" } else { "1" }.into(),
                 unit_denominator: "3".into(),

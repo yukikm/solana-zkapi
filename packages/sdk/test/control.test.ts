@@ -96,6 +96,23 @@ test('two callers cannot prepare two unresolved authorizations for the same note
   assert.equal((await h.journal.read('note'))?.value.pending?.prepared.request.authorization.request_id, requestId);
 });
 
+test('aborted preparation releases the note lock and a late verifier cannot persist authorization', async t => {
+  const h=await setup(t);let enter!:()=>void,release!:()=>void;
+  const entered=new Promise<void>(resolve=>{enter=resolve;}),late=new Promise<void>(resolve=>{release=resolve;});
+  const verifier:SessionVerifier={async prepare(){enter();await late;},async settle(){throw Error('unexpected settlement');}};
+  const controller=new AbortController(), reason=new DOMException('admission timed out','TimeoutError');
+  const preparing=h.clientWith({verifier}).prepare('note',prepared(),field(14),controller.signal);
+  await entered;controller.abort(reason);
+  await assert.rejects(preparing,error=>error===reason);
+  assert.equal((await h.journal.read('note'))!.value.pending,null);
+  // A different explicit request can acquire the released lock even while the
+  // canceled pure verifier is still running. Its exact bytes must survive.
+  const next=prepared();next.request.authorization.request_id='12345678-1234-4123-8123-123456789099';
+  await h.client.prepare('note',next,field(14));release();await Promise.resolve();
+  assert.equal((await h.journal.read('note'))!.value.pending!.exactRequest,JSON.stringify(next.request));
+  assert.equal(h.calls.length,0);
+});
+
 test('authorization response loss recovers only identical proof/body/token, even after restart', async t => {
   const h = await setup(t); await h.client.prepare('note', prepared(), field(14));
   h.setHandler(async () => { throw new Error('response lost'); });
@@ -434,6 +451,24 @@ test('verified successor is committed with old state and transcript before a not
   assert.deepEqual(saved.state, successor()); assert.equal(saved.pending, null); assert.equal(saved.history.length, 1);
   assert.deepEqual(saved.history[0].previous, initial()); assert.deepEqual(saved.history[0].prepared, prepared());
   await assert.rejects(h.client.prepare('note', prepared(), field(14)), /already settled/);
+});
+
+test('canceled settlement verification preserves recovery and cannot commit after its observer deadline',async t=>{
+  const h=await setup(t);await h.client.prepare('note',prepared(),field(14));await h.client.submit('note');
+  h.setHandler(async call=>response(call.url.endsWith('/receipts')?{receipts:[],next_cursor:null}:{...status('proxy','SETTLED'),settlement:settlement()}));
+  let enter!:()=>void,release!:()=>void;
+  const entered=new Promise<void>(resolve=>{enter=resolve;}),late=new Promise<void>(resolve=>{release=resolve;});
+  const verifier:SessionVerifier={async prepare(){throw Error('unexpected prepare');},async settle(){enter();await late;return{...successor(),balance_micro_usdc:'7'};}};
+  t.mock.timers.enable({apis:['setTimeout']});const controller=new AbortController();
+  setTimeout(()=>controller.abort(new DOMException('observation timed out','TimeoutError')),45_000);
+  const closing=h.clientWith({verifier}).close('note',controller.signal);await entered;t.mock.timers.tick(45_000);
+  await assert.rejects(closing,{name:'TimeoutError'});
+  const canceled=(await h.journal.read('note'))!.value;assert.deepEqual(canceled.state,initial());assert.equal(canceled.history.length,0);assert.equal(canceled.pending!.phase,'closing');
+  // The same original AUTH can settle while the canceled pure verifier is
+  // still running. Its eventual return cannot replace the committed result.
+  await h.client.recover('note');const settled=(await h.journal.read('note'))!;release();await Promise.resolve();
+  const after=(await h.journal.read('note'))!;assert.equal(after.revision,settled.revision);assert.deepEqual(after.value.state,successor());assert.equal(after.value.pending,null);assert.equal(after.value.history.length,1);
+  assert.equal(h.calls.filter(c=>c.url.endsWith('/sessions')).length,1);
 });
 
 test('server session identity substitution cannot change the note', async t => {

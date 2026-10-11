@@ -325,13 +325,30 @@ impl App {
                 if operation.state == "RESERVED" {
                     let request: wire::SessionCreate = wire::strict_parse(&s.request_transcript)?;
                     let receipt_id = Uuid::new_v4();
+                    let gateway = request
+                        .quote
+                        .body
+                        .api
+                        .as_ref()
+                        .and_then(wire::VersionedApiBinding::v2)
+                        .map(|api| {
+                            crate::receipts::GatewayReceiptFields::for_operation(
+                                api,
+                                &operation.request_hmac,
+                                None,
+                            )
+                        })
+                        .transpose()?;
                     let b = crate::receipts::ReceiptBody {
-                        version: if request.quote.body.api.is_some() {
+                        version: if gateway.is_some() {
+                            "3"
+                        } else if request.quote.body.api.is_some() {
                             "2"
                         } else {
                             "1"
                         }
                         .into(),
+                        gateway,
                         receipt_id: receipt_id.to_string(),
                         deployment_id: self.config.binding.deployment_id.clone(),
                         pool: self.config.binding.pool.clone(),
@@ -636,7 +653,7 @@ async fn retire_authorization(
         mode: r.authorization.mode.as_str().into(),
         provider: r.quote.body.provider.as_str().into(),
         cap_micro: r.quote.body.cap_micro_usdc.get(),
-        max_concurrency: 4,
+        max_concurrency: wire::uint(&r.quote.body.max_concurrency)? as i16,
     };
     if let Some(s) = a.ledger.retire_authorization(&n).await? {
         return Ok(Json(a.status(&s).await?));
@@ -720,7 +737,7 @@ async fn create_session(
         mode: r.authorization.mode.as_str().into(),
         provider: r.quote.body.provider.as_str().into(),
         cap_micro: r.quote.body.cap_micro_usdc.get(),
-        max_concurrency: 4,
+        max_concurrency: wire::uint(&r.quote.body.max_concurrency)? as i16,
     };
     a.ledger
         .reserve_session(&n, || async {

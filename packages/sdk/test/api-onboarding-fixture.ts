@@ -1,6 +1,6 @@
 /** Synthetic declaration shared by public-format and local execution fixtures.
  * The local adapter substitutes its loopback origin and fresh credential path. */
-import type { ApiBinding } from '../src/control.ts';
+import type { ApiBindingV1 as ApiBinding } from '../src/control.ts';
 
 export interface ApiOnboardingDeclaration {
   api: ApiBinding;

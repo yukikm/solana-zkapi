@@ -239,6 +239,7 @@ const MIGRATIONS: &[(i32, &str)] = &[
         3,
         include_str!("../migrations/0003_authorization_retirement.sql"),
     ),
+    (4, include_str!("../migrations/0004_finite_http.sql")),
 ];
 
 /// Run only with the migration credential. Runtime users have no DDL privileges.
@@ -1022,6 +1023,7 @@ impl Ledger {
         if s.mode != "proxy" {
             return Err(LedgerError::Invalid("proxy_session_required"));
         }
+        let mut gateway_identity: Option<(Hash, Hash)> = None;
         if s.provider == "generic" {
             let body: crate::wire::QuoteBody = crate::wire::strict_parse(&quote_body)
                 .map_err(|_| LedgerError::Invalid("invalid_saved_quote"))?;
@@ -1049,6 +1051,25 @@ impl Ledger {
             let tariff: crate::wire::Tariff = serde_json::from_value(value)
                 .map_err(|_| LedgerError::Invalid("invalid_stored_tariff"))?;
             validate_generic_operation(&body, &tariff, n)?;
+            if let Some(api) = body
+                .api
+                .as_ref()
+                .and_then(crate::wire::VersionedApiBinding::v2)
+            {
+                if s.active_operations
+                    >= crate::wire::uint(&api.limits.max_concurrency)
+                        .map_err(|_| LedgerError::Invalid("invalid_gateway_concurrency"))?
+                        as i16
+                {
+                    return Err(LedgerError::Conflict("concurrency_limit"));
+                }
+                gateway_identity = Some((
+                    crate::wire::digest(api)
+                        .map_err(|_| LedgerError::Invalid("invalid_gateway_binding"))?,
+                    crate::wire::digest(&api.meter)
+                        .map_err(|_| LedgerError::Invalid("invalid_gateway_meter"))?,
+                ));
+            }
         } else {
             if quote.get("api").is_some()
                 || !quote
@@ -1092,7 +1113,12 @@ impl Ledger {
             return Err(LedgerError::Conflict("budget_exhausted"));
         }
         let amount = n.reservation_nano.to_string();
-        tx.execute("INSERT INTO operations(pool,request_id,operation_id,request_hmac,endpoint,model,state,reservation_nano) VALUES($1::bytea,$2,$3,$4::bytea,$5,$6,'RESERVED',$7::text::numeric)",&[&&self.inner.pool[..],&n.request_id,&n.operation_id,&&n.request_hmac[..],&n.endpoint,&n.model,&amount]).await?;
+        let envelope_version: i16 = if gateway_identity.is_some() { 2 } else { 1 };
+        let binding_hash = gateway_identity
+            .as_ref()
+            .map(|(binding, _)| binding.to_vec());
+        let meter_hash = gateway_identity.as_ref().map(|(_, meter)| meter.to_vec());
+        tx.execute("INSERT INTO operations(pool,request_id,operation_id,request_hmac,endpoint,model,state,reservation_nano,envelope_version,binding_hash,meter_hash) VALUES($1::bytea,$2,$3,$4::bytea,$5,$6,'RESERVED',$7::text::numeric,$8,$9::bytea,$10::bytea)",&[&&self.inner.pool[..],&n.request_id,&n.operation_id,&&n.request_hmac[..],&n.endpoint,&n.model,&amount,&envelope_version,&binding_hash,&meter_hash]).await?;
         tx.execute("UPDATE sessions SET reserved_nano=reserved_nano+$3::text::numeric,active_operations=active_operations+1,updated_at=clock_timestamp() WHERE pool=$1 AND request_id=$2",&[&&self.inner.pool[..],&n.request_id,&amount]).await?;
         let op = operation_row(
             &tx.query_one(
@@ -1930,10 +1956,8 @@ fn validate_generic_operation(
             .as_ref()
             .is_none_or(|api| operation.endpoint != crate::wire::api_path(api))
         || operation.reservation_nano
-            != u128::from(
-                crate::wire::uint(&tariff.rates[0].nano_usdc_numerator)
-                    .map_err(|_| LedgerError::Invalid("invalid_stored_tariff"))?,
-            )
+            != crate::quote::calculate_reservation(tariff)
+                .map_err(|_| LedgerError::Invalid("invalid_stored_tariff"))?
     {
         return Err(LedgerError::Invalid("generic_operation_scope_mismatch"));
     }
@@ -1968,7 +1992,7 @@ async fn insert_receipt(
     {
         return Err(LedgerError::Invalid("receipt_identity_mismatch"));
     }
-    let identity=tx.query_one("SELECT p.deployment_id,q.tariff_hash,t.canonical_body,s.provider,s.mode,s.cap_micro,o.model,o.endpoint FROM pools p JOIN sessions s ON s.pool=p.pool JOIN quotes q ON q.pool=s.pool AND q.quote_id=s.quote_id JOIN tariffs t ON t.tariff_hash=q.tariff_hash LEFT JOIN operations o ON o.pool=s.pool AND o.request_id=s.request_id AND o.operation_id=$3 WHERE p.pool=$1 AND s.request_id=$2",&[&&pool[..],&r.request_id,&r.operation_id]).await?;
+    let identity=tx.query_one("SELECT p.deployment_id,q.tariff_hash,t.canonical_body,s.provider,s.mode,s.cap_micro,o.model,o.endpoint,o.request_hmac,o.envelope_version,o.binding_hash,o.meter_hash FROM pools p JOIN sessions s ON s.pool=p.pool JOIN quotes q ON q.pool=s.pool AND q.quote_id=s.quote_id JOIN tariffs t ON t.tariff_hash=q.tariff_hash LEFT JOIN operations o ON o.pool=s.pool AND o.request_id=s.request_id AND o.operation_id=$3 WHERE p.pool=$1 AND s.request_id=$2",&[&&pool[..],&r.request_id,&r.operation_id]).await?;
     if body.deployment_id != identity.get::<_, String>(0)
         || body.tariff_hash != hex::encode(identity.get::<_, Vec<u8>>(1))
     {
@@ -2008,6 +2032,32 @@ async fn insert_receipt(
             != Some(crate::wire::api_path(api).as_str())
         {
             return Err(LedgerError::Invalid("receipt_api_scope_mismatch"));
+        }
+    }
+    if let Some(g) = &body.gateway {
+        if identity.get::<_, Option<i16>>(9) != Some(2)
+            || identity.get::<_, Option<Vec<u8>>>(8).as_deref()
+                != Some(
+                    crate::wire::hash(&g.operation_hmac)
+                        .map_err(|_| LedgerError::Invalid("invalid_receipt_hmac"))?
+                        .as_slice(),
+                )
+            || identity.get::<_, Option<Vec<u8>>>(10).as_deref()
+                != Some(
+                    crate::wire::hash(&g.binding_hash)
+                        .map_err(|_| LedgerError::Invalid("invalid_receipt_binding"))?
+                        .as_slice(),
+                )
+            || identity.get::<_, Option<Vec<u8>>>(11).as_deref()
+                != Some(
+                    crate::wire::hash(&g.meter_hash)
+                        .map_err(|_| LedgerError::Invalid("invalid_receipt_meter"))?
+                        .as_slice(),
+                )
+        {
+            return Err(LedgerError::Invalid(
+                "receipt_operation_commitment_mismatch",
+            ));
         }
     }
     crate::receipts::validate_tariff_math(&body, &tariff)
@@ -2088,11 +2138,12 @@ mod generic_scope_tests {
             version: "2".into(),
             provider: Provider::Generic,
             model: String::new(),
-            api: Some(api.clone()),
+            api: Some(api.clone().into()),
             pricing_basis: "fixed_request".into(),
             valid_from: "1".into(),
             valid_until: "4000000000".into(),
             rates: vec![Rate {
+                reservation_max_count: None,
                 unit: "requests".into(),
                 nano_usdc_numerator: "7000".into(),
                 unit_denominator: "1".into(),
@@ -2107,7 +2158,7 @@ mod generic_scope_tests {
             mode: Mode::Proxy,
             provider: Provider::Generic,
             models: vec![],
-            api: Some(api.clone()),
+            api: Some(api.clone().into()),
             tariff_hash: tariff.tariff_hash.clone(),
             cap_micro_usdc: zkapi_solana_types::MicroUsdc::new(1_000_000).unwrap(),
             issued_at: "100".into(),
@@ -2144,10 +2195,14 @@ mod generic_scope_tests {
         }
         operation.reservation_nano = 7000;
         let mut changed = quote.clone();
-        changed.api.as_mut().unwrap().path = "/other".into();
+        if let crate::wire::VersionedApiBinding::V1(api) = changed.api.as_mut().unwrap() {
+            api.path = "/other".into();
+        }
         assert!(validate_generic_operation(&changed, &tariff, &operation).is_err());
         let mut changed = tariff.clone();
-        changed.api.as_mut().unwrap().origin = "http://127.0.0.1:9091".into();
+        if let crate::wire::VersionedApiBinding::V1(api) = changed.api.as_mut().unwrap() {
+            api.origin = "http://127.0.0.1:9091".into();
+        }
         changed.tariff_hash = crate::quote::tariff_hash(&changed).unwrap();
         assert!(validate_generic_operation(&quote, &changed, &operation).is_err());
     }

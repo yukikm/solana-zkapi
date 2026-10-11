@@ -122,3 +122,54 @@ The JSON API runner creates a unique `target/general-api-local/run-*` directory
 for each run and verifies actual local proofs and Vault SBF execution with
 synthetic provider HTTP and RPC finality. It does not open funded profiles or
 reuse historical journals.
+
+## Finite HTTP gateway source capability
+
+`providers.gateway` registers v2 bindings for
+`POST /zkapi/v2/execute/{service}/{operation}`. Each entry has `api`,
+`transport_artifact_sha256`, `meter_artifact_sha256`, and `credential_file`
+when its authentication policy requires a secret. The source adapter pins are
+SHA-256 of `src/gateway/http.rs` and `src/gateway/meter.rs`, respectively; they
+must equal both the binding and independently provisioned runtime values.
+The dispatcher executable remains independently hash-pinned. LLM registrations
+also pin `fixtures/gateway-meter-mappings.json` through
+`meter.config.provider_contract_sha256`. Runtime downloads are not supported.
+
+Credentials are owner-private files. Bearer/API-key files contain the exact
+header credential; Basic files contain a closed JSON object with `username` and
+`password` strings. Account/tenant replacement requires a new binding. Public
+Devnet gateway configurations require the separate dispatcher and HTTPS; numeric
+loopback HTTP is restricted to synthetic local fixtures.
+
+The carrier preserves raw targets, ordered header octets and body bytes using a
+fresh HTTP/1.1 connection. It performs no redirects, retries or implicit header
+injection. Declared binding trailers are required for completion. The fixed
+meter does not decode opaque representations. LLM meters inspect a bounded
+identity/gzip/zlib-deflate/Brotli shadow stream. An incomplete decoder or missing
+terminal usage leaves accounting unknown even if the HTTP carrier completed.
+
+Admission authenticates before buffering and uses a separate upload deadline of
+`min(header_seconds, 30)` seconds. Execution retains the immutable ledger deadline
+and the existing 610-second dispatcher IPC limit. Lost responses and downstream
+disconnects never permit another upstream send. Every outcome uses the shared
+ledger, v3 receipts and existing sign-once settlement.
+
+Both provider APIs default omitted `service_tier` to `auto`. That selection
+requires `operator_absorbs_unpriced` in the initial mapping. Explicit OpenAI
+`default` and Anthropic `standard_only` select the ordinary tier. Requests are
+never rewritten to add a tier. These rules describe the installed mapping,
+not acceptance of any particular native-client version or public provider.
+
+Synthetic carrier tests run with `cargo test --locked --manifest-path
+services/control/Cargo.toml --test gateway_carrier`. The ignored
+`gateway_http_receipt_hmac_disconnect_unknown_and_no_replay` test in
+`provider_http_runtime` additionally uses disposable PostgreSQL, real request
+proofs, signed settlement and a local SBF-exported account fixture. The fresh
+installed native proof/SBF lifecycle is `python3 scripts/run_general_api.py
+--gateway`; its reports stay under ignored `target/gateway-native-local/`.
+The `--gateway-clients` mode additionally runs pinned Codex and Claude Code
+binaries through the installed native gateway. Each client uses three fresh
+database/custody lifecycles, each ending at the existing three-unknown provider
+circuit breaker; admission is never reset. It distinguishes attempted client
+retries from provider dispatches and records client compatibility separately from
+financial safety. All providers and RPC finality remain local fixtures.

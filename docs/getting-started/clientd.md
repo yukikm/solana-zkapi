@@ -23,8 +23,8 @@ before use.
 ## 1. Download
 
 These commands reproduce the recorded `.8` installation. The newer
-[native `.10` release](https://github.com/yukikm/solana-zkapi/releases/tag/v0.2.0-devnet.10)
-includes timeout and authorization recovery fixes; follow its verification and
+[native `.13` release](gateway-release-upgrade.md)
+includes gateway, timeout and authorization recovery fixes; follow its verification and
 installation guide while retaining existing profiles and custody.
 
 Open Terminal and run this block. It verifies the published `.8` archive and

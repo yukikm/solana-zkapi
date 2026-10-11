@@ -183,7 +183,7 @@ async fn fixed_price_json_deposit_settle_withdraw_preserves_history() -> Result<
         tariffs: tariffs.clone(),
     };
     if onboarding.is_some() {
-        let request = json!({"variant":onboarding,"directory":dir,"manifest":ready["manifest"],"provider":ready["origin"],
+        let request = json!({"variant":onboarding,"gateway":std::env::var_os("ZKAPI_GATEWAY_TEST").is_some(),"nativeAgent":std::env::var("ZKAPI_GATEWAY_CLIENT").ok(),"directory":dir,"manifest":ready["manifest"],"provider":ready["origin"],
             "secondary":ready["secondary"],"controlOrigin":ready["controlOrigin"],"listen":listener.local_addr()?.to_string(),
             "databaseUrl":dispatcher_url,"controld":env!("CARGO_BIN_EXE_controld"),
             "dispatcherd":env!("CARGO_BIN_EXE_dispatcherd"),"signerSocket":signer_socket});
@@ -361,6 +361,15 @@ async fn fixed_price_json_deposit_settle_withdraw_preserves_history() -> Result<
         "Node lifecycle process failed"
     );
     ensure!(report["passed"] == true, "Node lifecycle not passed");
+    let native_agent = std::env::var("ZKAPI_GATEWAY_CLIENT").ok();
+    let native_group = if native_agent.is_some() {
+        let group: u8 = std::env::var("ZKAPI_GATEWAY_CLIENT_GROUP")?.parse()?;
+        ensure!((1..=3).contains(&group), "native agent group");
+        Some(group)
+    } else {
+        None
+    };
+    let native_count = if native_group == Some(1) { 8 } else { 3 };
     let timeout_fault = onboarding
         .as_ref()
         .is_some_and(|v| v.ends_with("upstream_timeout"));
@@ -383,7 +392,9 @@ async fn fixed_price_json_deposit_settle_withdraw_preserves_history() -> Result<
     );
     ensure!(
         (sessions, signed, receipts, attempts, clearances)
-            == if single {
+            == if native_agent.is_some() {
+                (native_count, native_count, native_count, native_count, 1)
+            } else if single {
                 (1, 1, 1, 1, 1)
             } else if onboarding.is_some() {
                 (3, 3, 3, 3, 1)
@@ -394,7 +405,13 @@ async fn fixed_price_json_deposit_settle_withdraw_preserves_history() -> Result<
     );
     ensure!(
         charge
-            == if timeout_fault {
+            == if native_agent.is_some() {
+                if native_group == Some(1) {
+                    "10"
+                } else {
+                    "0"
+                }
+            } else if timeout_fault {
                 "0"
             } else if onboarding.is_some() {
                 "250"
@@ -406,7 +423,9 @@ async fn fixed_price_json_deposit_settle_withdraw_preserves_history() -> Result<
     let claim_count = std::fs::read_dir(&claims)?.count();
     ensure!(
         claim_count
-            == if single {
+            == if native_agent.is_some() {
+                native_count as usize
+            } else if single {
                 1
             } else if onboarding.is_some() {
                 3
@@ -415,6 +434,17 @@ async fn fixed_price_json_deposit_settle_withdraw_preserves_history() -> Result<
             },
         "one immutable claim per explicit upstream execution"
     );
+    if native_agent.is_some() {
+        let row = sql.query_one("SELECT (SELECT count(*) FROM operations WHERE state='WAIVED_OPERATOR_LOSS'),(SELECT count(*) FROM outbox WHERE event_type='PROVIDER_ADMISSION_RESET')", &[]).await?;
+        ensure!(
+            row.get::<_, i64>(0) == 3 && row.get::<_, i64>(1) == 0,
+            "native groups must retain the durable provider breaker without resets"
+        );
+        ensure!(
+            report["provider_circuit_breaker_preserved"] == true,
+            "running provider admission was not suspended after three unknown operations"
+        );
+    }
     for case in report["cases"].as_array().context("case report")? {
         let request_id: Uuid = case["request_id"].as_str().unwrap().parse()?;
         let operation_id: Uuid = case["operation_id"].as_str().unwrap().parse()?;
@@ -444,6 +474,10 @@ async fn fixed_price_json_deposit_settle_withdraw_preserves_history() -> Result<
                 "GENERAL_API_PRIVATE_QUERY",
                 "GENERAL_API_PRIVATE_RESULT",
                 "general-api-fixture-credential",
+                "CODEX_TEXT_FIXTURE_OK",
+                "CODEX_TOOL_FIXTURE_OK",
+                "CLAUDE_CODE_FIXTURE_OK",
+                "CLAUDE_CODE_TOOL_FIXTURE_OK",
             ] {
                 ensure!(
                     !data.contains(secret) && !data.contains(&hex::encode(secret)),

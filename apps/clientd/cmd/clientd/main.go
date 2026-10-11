@@ -164,6 +164,9 @@ func serve(c Config, address *net.TCPAddr, secretInput io.Reader) error {
 	if err != nil {
 		return err
 	}
+	if err = configureGatewayFrontend(frontend, c.RuntimeConfig); err != nil {
+		return err
+	}
 	child := exec.Command(c.Node, c.Runtime, c.RuntimeConfig, sdkSocket, relaySocket)
 	child.Env = []string{"PATH=" + filepath.Dir(c.Node), "RAYON_NUM_THREADS=4"}
 	child.Stderr = io.Discard
@@ -220,7 +223,15 @@ func serve(c Config, address *net.TCPAddr, secretInput io.Reader) error {
 	}
 	server := &http.Server{Handler: frontend, ReadHeaderTimeout: 10 * time.Second, IdleTimeout: 60 * time.Second, MaxHeaderBytes: 16 * 1024}
 	ended := make(chan error, 1)
-	go func() { ended <- server.Serve(listener) }()
+	var ingress net.Listener = listener
+	if len(frontend.GatewayPrefixes) > 0 {
+		server.SetKeepAlivesEnabled(false)
+		server.ConnContext = daemon.GatewayConnContext
+		server.ConnState = daemon.GatewayConnState
+		ingress = daemon.GatewayListener(listener)
+		server.MaxHeaderBytes = daemon.GatewayMaxHeaderBytes
+	}
+	go func() { ended <- server.Serve(ingress) }()
 	interrupt := make(chan os.Signal, 1)
 	signal.Notify(interrupt, syscall.SIGTERM, os.Interrupt)
 	defer signal.Stop(interrupt)

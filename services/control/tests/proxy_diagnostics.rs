@@ -59,6 +59,7 @@ fn prepared(stream: bool) -> proxy::PreparedRequest {
         rates: ["cache_read_tokens", "input_tokens", "output_tokens"]
             .into_iter()
             .map(|unit| Rate {
+                reservation_max_count: None,
                 unit: unit.into(),
                 nano_usdc_numerator: "1".into(),
                 unit_denominator: "1".into(),

@@ -41,6 +41,10 @@ impl PreparedOperation {
 pub fn router(app: Arc<App>) -> Router {
     Router::new()
         .route("/v1/models", get(models))
+        .route(
+            "/zkapi/v2/execute/{service}/{operation}",
+            post(crate::gateway::route::execute),
+        )
         .route("/zkapi/v1/api/{service}/{operation}", post(infer))
         .route("/v1/chat/completions", post(infer))
         .route("/v1/responses", post(infer))
@@ -61,7 +65,7 @@ fn error(path: &str, status: StatusCode, code: &str) -> Response {
     }
     response
 }
-fn operation_headers(response: &mut Response, id: Uuid, operation: Uuid) {
+pub(crate) fn operation_headers(response: &mut Response, id: Uuid, operation: Uuid) {
     response.headers_mut().insert(
         "x-zkapi-operation-id",
         HeaderValue::from_str(&operation.to_string()).unwrap(),
@@ -71,13 +75,13 @@ fn operation_headers(response: &mut Response, id: Uuid, operation: Uuid) {
         HeaderValue::from_str(&format!("/zkapi/v1/sessions/{id}/operations/{operation}")).unwrap(),
     );
 }
-fn single<'a>(headers: &'a HeaderMap, name: &str) -> Option<&'a str> {
+pub(crate) fn single<'a>(headers: &'a HeaderMap, name: &str) -> Option<&'a str> {
     if headers.get_all(name).iter().count() != 1 {
         return None;
     }
     headers.get(name)?.to_str().ok()
 }
-fn boundary(app: &App, headers: &HeaderMap) -> bool {
+pub(crate) fn boundary(app: &App, headers: &HeaderMap) -> bool {
     let Ok(expected) = reqwest::Url::parse(&app.config.binding.inference_api_origin) else {
         return false;
     };
@@ -99,7 +103,10 @@ fn boundary(app: &App, headers: &HeaderMap) -> bool {
     }
     true
 }
-fn credential(headers: &HeaderMap, anthropic: bool) -> wire::Result<wire::ProxyCredential> {
+pub(crate) fn credential(
+    headers: &HeaderMap,
+    anthropic: bool,
+) -> wire::Result<wire::ProxyCredential> {
     let token = match (
         headers.contains_key("authorization"),
         headers.contains_key("x-api-key"),
@@ -255,8 +262,11 @@ async fn infer(
     else {
         return fail(StatusCode::SERVICE_UNAVAILABLE, "tariff_unavailable");
     };
-    let prepared = if let Some(api) = &request.quote.body.api {
-        if path != wire::api_path(api) || !app.api_available(api).await {
+    let prepared = if let Some(binding) = &request.quote.body.api {
+        let Some(api) = binding.v1() else {
+            return fail(StatusCode::BAD_REQUEST, "unsupported_endpoint");
+        };
+        if path != wire::api_path(api) || !app.api_available(binding).await {
             return fail(StatusCode::BAD_REQUEST, "unsupported_endpoint");
         }
         match generic::validate(api, &raw, &tariff) {
@@ -290,7 +300,7 @@ async fn infer(
         .providers
         .api
         .iter()
-        .find(|(binding, _)| request.quote.body.api.as_ref() == Some(binding))
+        .find(|(binding, _)| request.quote.body.api.as_ref().and_then(|a| a.v1()) == Some(binding))
         .map(|(_, a)| a.clone());
     let dispatcher = app.providers.dispatcher.clone();
     if adapter.is_none() && api_adapter.is_none() && dispatcher.is_none() {

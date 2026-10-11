@@ -5,7 +5,7 @@ import { chainFixture, key } from './chain-fixture.ts';
 import { vaultBinding, parseField } from '../src/encoding.ts';
 import { discriminator } from '../src/transport.ts';
 import { circuitProfileDigest, jcsBytes, manifestDigest, sha256Hex, type Manifest } from '../src/trust.ts';
-import type { ApiService } from '../src/control.ts';
+import type { ApiService, ApiTariffV2 } from '../src/control.ts';
 import { PUBLIC_PROFILE_SDK_VERSION, type PublicDeploymentProfile } from '../src/public-profile.ts';
 import type { ApiOnboardingDeclaration } from './api-onboarding-fixture.ts';
 
@@ -19,9 +19,9 @@ export async function publicProfileFixture(options: {schema?:1|2; selection?:'in
   m.vault_binding = await vaultBinding(...[m.genesis_hash,m.program_id,m.pool,m.token_program,m.mint].map(bs58.decode) as [Uint8Array,Uint8Array,Uint8Array,Uint8Array,Uint8Array]);
   const tariffBody = {version:'1',provider:'openrouter',model:'*',pricing_basis:'provider_reported_usd',valid_from:'0',valid_until:'9999999999',rates:[],operator_fee_micro_usdc:'0'};
   const tariff = {...tariffBody,tariff_hash:await sha256Hex(jcsBytes(tariffBody))}; m.tariff_hashes = [tariff.tariff_hash];
-  const services: ApiService[] = [];
+  const services: {tariff:ApiTariffV2}[] = [];
   for (let i = 0; i < (options.selection === 'api' || options.selection === 'mixed' ? options.serviceCount ?? 1 : 0); i++) {
-    const body: Omit<ApiService['tariff'],'tariff_hash'> = {version:'2',provider:'generic',
+    const body: Omit<ApiTariffV2,'tariff_hash'> = {version:'2',provider:'generic',
       api:declaration?structuredClone(declaration.api):{version:'1',service:'weather',operation:'lookup'+i,method:'POST',path:'/lookup',origin:'https://weather.example.com',
         request_max_bytes:'2048',response_max_bytes:'4096',timeout_seconds:'600',billing:'http_2xx_json'},
       pricing_basis:'fixed_request',valid_from:declaration?.validFrom??'0',valid_until:declaration?.validUntil??'9999999999',

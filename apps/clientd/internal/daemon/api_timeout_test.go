@@ -28,7 +28,7 @@ func TestAPIProxyBudgetIncludesPreparationAndExecution(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	transport := server.Backend.(*httputil.ReverseProxy).Transport.(*operationTransport)
+	transport := server.Backend.(*gatewayDeliveryProxy).proxy.(*httputil.ReverseProxy).Transport.(*operationTransport)
 	if transport.api.ResponseHeaderTimeout != 900*time.Second {
 		t.Fatal("API proxy must retain the full native preparation/execution budget")
 	}

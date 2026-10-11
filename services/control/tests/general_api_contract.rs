@@ -24,11 +24,12 @@ fn tariff() -> Tariff {
         version: "2".into(),
         provider: Provider::Generic,
         model: String::new(),
-        api: Some(api()),
+        api: Some(api().into()),
         pricing_basis: "fixed_request".into(),
         valid_from: "1".into(),
         valid_until: "4000000000".into(),
         rates: vec![Rate {
+            reservation_max_count: None,
             unit: "requests".into(),
             nano_usdc_numerator: "7000".into(),
             unit_denominator: "1".into(),
@@ -55,12 +56,13 @@ fn request() -> QuoteRequest {
         mode: Mode::Proxy,
         provider: Provider::Generic,
         models: vec![],
-        api: Some(api()),
+        api: Some(api().into()),
         session_ttl_seconds: None,
     }
 }
 fn receipt() -> ReceiptBody {
     ReceiptBody {
+        gateway: None,
         version: "2".into(),
         receipt_id: uuid::Uuid::new_v4().to_string(),
         deployment_id: "generic-contract-local".into(),
@@ -193,7 +195,9 @@ fn generic_quote_binds_descriptor_without_a_model() {
     invalid.provider = Provider::Openai;
     assert!(issue_quote(&invalid, &t, &cfg, 100, &key).is_err());
     let mut invalid = request();
-    invalid.api.as_mut().unwrap().operation = "other".into();
+    if let VersionedApiBinding::V1(api) = invalid.api.as_mut().unwrap() {
+        api.operation = "other".into();
+    }
     assert!(issue_quote(&invalid, &t, &cfg, 100, &key).is_err());
 }
 

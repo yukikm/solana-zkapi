@@ -1,26 +1,26 @@
 # Support
 
 ZKAPI is a **Devnet preview**. The published SDK is
-[`0.2.0-devnet.12`](releases/direct-stream-preview.md); the native package remains
-[`0.2.0-devnet.10`](https://github.com/yukikm/solana-zkapi/releases/tag/v0.2.0-devnet.10).
-This compatibility summary is based on records through **2026-10-11 JST**.
+[`0.2.0-devnet.13`](releases/universal-api-gateway-preview.md), including the matching
+native package. This compatibility summary is based on records through **2026-10-12 JST**.
 Run [fresh preflight](getting-started/devnet.md) to check a deployment now.
 
 The payment and proof primitives are shared across API use cases. The source
 tree adds registered, fixed-price JSON operations through the same SDK, clientd
 and ledger, with offline registration, API-only schema 2 profiles and native
-discovery/invocation in the unpublished onboarding build. Initial support is proxy POST with bounded JSON requests and
+discovery/invocation. The JSON adapter supports proxy POST with bounded JSON requests and
 responses; a signed descriptor binds the operation, destination and billing rule.
-The source package remains the unpublished `0.2.0-devnet.9-onboarding.0` build;
-its version does not identify either published release. This source capability is
-separate from the published inference clients and the
-existing public deployment. See the [local JSON API tutorial](getting-started/json-api.md),
+The `.13` SDK/native packages also include finite HTTP gateway support. These
+capabilities require matching operator configuration and authenticated selection;
+the existing public deployment remains direct OpenRouter Chat Completions.
+See the [local JSON API tutorial](getting-started/json-api.md),
 [general API integration](getting-started/api-integration.md) and the separate
 [inference tutorials](getting-started/inference.md).
 
 | Area | Supported or observed scope |
 |---|---|
-| General JSON API (source) | Offline registration and local fixed-price POST JSON onboarding. No public provider or released client coverage is implied. Other methods, binary bodies, asynchronous jobs and generic streaming need explicit adapters and billing contracts. |
+| General JSON API | Offline registration and local fixed-price POST JSON onboarding in `.13`. This legacy adapter remains bounded POST JSON; no public provider acceptance is established. |
+| Finite HTTP gateway | `.13` includes version 2 bindings, version 3 tariffs/receipts/profiles and `finite_http_v1` through the same payment lifecycle. Fixed HTTP, Responses and Messages meters; bounded raw requests and finite responses. See the [gateway guide](getting-started/finite-http-api.md). Local installed-runtime checks use real proofs/SBF with synthetic provider/finality inputs; public provider, production and full browser coverage are unverified. |
 | Native package | Apple Silicon, macOS 13.5+. No Apple notarization or verified packages for other platforms. |
 | SDK | Tarball distribution; no npm registry release. Browser custody/proof tests are local; funded browser/Phantom acceptance is unverified. |
 | Public profile | Direct OpenRouter Chat Completions. Model names do not enable other API dialects. |

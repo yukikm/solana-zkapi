@@ -195,11 +195,10 @@ fn main() {
                         );
                         assert!(
                             path.is_absolute()
-                                && path.starts_with(
-                                    root.canonicalize()
-                                        .unwrap()
-                                        .join("target/general-api-local")
-                                )
+                                && ["target/general-api-local", "target/gateway-native-local"]
+                                    .iter()
+                                    .any(|directory| path
+                                        .starts_with(root.canonicalize().unwrap().join(directory)))
                         );
                         assert!(!path
                             .components()
