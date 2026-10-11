@@ -26,7 +26,7 @@ async function setup(t: TestContext, mode: Mode = 'proxy', keyReuseSeconds?: num
   const dir = await mkdtemp(join(tmpdir(), 'zkapi-app-')); t.after(() => rm(dir, { recursive: true, force: true }));
   const store = await NativeJournalStore.open(dir), key = await importJournalKey(new Uint8Array(32).fill(17));
   const makeJournal = () => new EncryptedJournal<NoteJournal>(store, key, { deploymentId: 'app-fixture', pool: 'pool' }, validateNoteJournal);
-  const journal = makeJournal(), signer = generateKeyPairSync('ed25519');
+  const journal = makeJournal(), signer = generateKeyPairSync('ed25519'), retirementSigner = generateKeyPairSync('ed25519');
   const provider = mode === 'direct_oa' ? 'oa' : 'openrouter';
   const models: ModelConfiguration[] = [];
   for (const id of ['first', 'second']) {
@@ -36,12 +36,12 @@ async function setup(t: TestContext, mode: Mode = 'proxy', keyReuseSeconds?: num
   }
   const context = { deployment_id: 'app-fixture', pool: 'pool', vault_binding: field(1), state_key: [field(2), field(3)] as [string, string], cap_micro_usdc: '100',
     control_api_origin: 'https://control.invalid', inference_api_origin: 'https://proxy.invalid', quote_public_key: bs58.encode(signer.publicKey.export({ format: 'der', type: 'spki' }).subarray(-32)),
-    receipt_public_key: bs58.encode(new Uint8Array(32).fill(9)), request_vk_sha256: '22'.repeat(32), tariff_hashes: models.map(m => m.tariff.tariff_hash) };
+    receipt_public_key: bs58.encode(retirementSigner.publicKey.export({format:'der',type:'spki'}).subarray(-32)), request_vk_sha256: '22'.repeat(32), tariff_hashes: models.map(m => m.tariff.tariff_hash) };
   const state = { balance_micro_usdc: '200', balance_blinding: field(3), note_leaf: field(4), commitment: { x: field(5), y: field(6) }, anchor: field(7), state_signature: null };
   await journal.create('note', { schema: 1, state, witness: { secret: field(2), note_id: 1, deposit_micro_usdc: '200', expiry: '9999999999' },
     wallet: { status: 'active', history: [] }, pending: null, history: [] });
   const counts = { quote: 0, proof: 0, auth: 0, sends: 0, closes: 0, settles: 0, wallet: 0, clearance: 0, clearanceVerifications: 0 };
-  const behavior = { lose: false, closeUnavailable: false, closeDraining: false, httpStatus: 200, providerError: '', failVerifier: false, authUnknown: false, stream: false, rejectQuote: false,
+  const behavior = { lose: false, closeUnavailable: false, closeDraining: false, httpStatus: 200, providerError: '', failVerifier: false, authUnknown: false, authConflict: false, stream: false, rejectQuote: false,
     streamFailure: false, streamWaiting: false, clearanceUnavailable: false, invalidClearance: false,
     beforeClearance: undefined as (() => Promise<void>) | undefined, beforeClose: undefined as (() => Promise<void>) | undefined };
   const clearanceSignature = { r_x: field(2), r_y: field(3), s: field(4) };
@@ -70,7 +70,17 @@ async function setup(t: TestContext, mode: Mode = 'proxy', keyReuseSeconds?: num
     if (url.pathname === '/zkapi/v1/sessions') {
       counts.auth++; order.push('AUTH');
       if (behavior.authUnknown) throw Error('AUTH reply lost');
+      if (behavior.authConflict) return new Response(null,{status:409});
       return Response.json({ ...await status(), ...(mode === 'proxy' ? {} : { provider_key: 'SECRET_PROVIDER_KEY', provider_api_origin: 'https://direct.invalid/v1' }) });
+    }
+    if (url.pathname === '/zkapi/v1/sessions/retire') {
+      order.push('retire');
+      const request=JSON.parse(String(init!.body)), q=request.quote;
+      const body={version:'1',kind:'authorization_retired',deployment_id:context.deployment_id,pool:context.pool,
+        request_id:request.authorization.request_id,quote_id:q.body.quote_id,quote_hash:q.quote_hash,
+        request_digest:await sha256Hex(jcsBytes(request)),nullifier:request.public_inputs[8],control_api_origin:context.control_api_origin};
+      const receipt_hash=await sha256Hex(jcsBytes(body));
+      return Response.json({state:'NOT_ACCEPTED',retirement:{body,receipt_hash,signature:sign(null,Buffer.from(receipt_hash,'hex'),retirementSigner.privateKey).toString('base64')}});
     }
     if (url.pathname === '/zkapi/v1/withdraw/clearance') {
       counts.clearance++; await behavior.beforeClearance?.();
@@ -567,4 +577,20 @@ test('application ZDR rejection has actionable error code, retires its key and n
   assert.equal((await response.json()).error.privacyPolicyRelaxed,false);
   assert.equal(f.counts.sends,1);assert.equal(f.counts.closes,1);assert.equal((await f.client.status()).session,null);
   assert.equal(f.metadataReads.length,0);
+});
+
+
+test('explicit recovery of never-admitted AUTH restores canRequest with the same funded note and no wallet action', async t => {
+  const f=await setup(t);const before=(await f.journal.read('note'))!.value;
+  f.behavior.authUnknown=true;await assert.rejects(f.client.chat(chat()));
+  assert.equal((await f.client.status()).canRequest,false);
+  const next=f.restart();f.behavior.authUnknown=false;f.behavior.authConflict=true;
+  await next.recover();
+  const recovered=await next.status(), saved=(await f.journal.read('note'))!.value;
+  assert.equal(recovered.canRequest,true);assert.equal(recovered.settledBalanceMicroUsdc,'200');assert.equal(recovered.noteId,'note');
+  assert.equal(recovered.session,null);assert.deepEqual(saved.state,before.state);assert.deepEqual(saved.witness,before.witness);
+  assert.equal(f.counts.wallet,0);assert.equal(f.counts.clearance,0);assert.equal(f.counts.sends,0);assert.equal(f.counts.settles,0);
+  f.behavior.authConflict=false;await readChatText(await next.chat(chat()));
+  assert.equal(f.counts.sends,1);assert.equal((await next.status()).settledBalanceMicroUsdc,'199');
+  assert.equal((await f.journal.read('note'))!.value.retiredAuthorizations!.length,1);
 });

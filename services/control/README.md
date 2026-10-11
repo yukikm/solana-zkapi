@@ -112,6 +112,11 @@ ZKAPI_DATABASE_URL="$ZKAPI_WRITER_DATABASE_URL" "$zkapi_bin/controld" \
 
 Control routes under `/zkapi/v1` cover config/catalog/tariffs/quotes, sessions/status/close, operations/status, receipts, clearance, and nullifier status. Tree routes stay with the I04 indexer. Provider-facing operation admission/metering are internal adapter contracts; I05 does not expose working provider inference endpoints or distribute real direct keys. Saved session recovery authenticates the original credential and exact request digest; a direct key is never replayed.
 
+`POST /zkapi/v1/sessions/retire` resolves an unaccepted AUTH with an immutable
+request/quote fence and signed receipt, preserving the note for a new request.
+Migration 0003 and matching SDK/gateway support are required; permanent clearance
+is still withdrawal-only. See [the recovery contract](../../docs/specs/api-proxy.md#retiring-a-never-admitted-authorization).
+
 ## Restart and restore
 
 Restart with the same manifest, primary ledger, role-specific keys, and **same independently stored journal**. Before removing a stale Unix socket, the supervisor must establish that its previous signer process has exited and cannot resume. The daemon deliberately neither removes an existing socket nor infers death from a timeout. Remove only that confirmed-dead socket; preserve the journal. Never initialize an empty journal to replace a missing one.

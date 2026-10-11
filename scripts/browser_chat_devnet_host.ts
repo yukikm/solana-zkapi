@@ -57,7 +57,7 @@ export function directControlRelay(options: DirectControlOptions): NonNullable<H
     if (path === '/zkapi/v1/quotes') {
       assert.equal(method, 'POST'); assert.equal(authorization, undefined);
       assert.ok(same(parseStrictJson(data), quoteRequest));
-    } else if (path === '/zkapi/v1/sessions') {
+    } else if (path === '/zkapi/v1/sessions' || path === '/zkapi/v1/sessions/retire') {
       assert.equal(method, 'POST');
       const request = parseStrictJson(data) as any;
       exact(request, ['authorization', 'quote', 'public_inputs', 'proof']);
@@ -90,7 +90,7 @@ export function directControlRelay(options: DirectControlOptions): NonNullable<H
       // The server/SDK verify the proof itself. Reserve the entire allowed lease,
       // not an estimated prompt cost. Never retry forwarding here.
       signal?.throwIfAborted();
-      await budget.reserve(auth.request_id, await sha256Hex(data), allowNewAdmissions !== false && newAdmissionAuthorized !== false);
+      if (!path.endsWith('/retire')) await budget.reserve(auth.request_id, await sha256Hex(data), allowNewAdmissions !== false && newAdmissionAuthorized !== false);
     } else if (path === '/zkapi/v1/withdraw/clearance') {
       assert.equal(method, 'POST'); assert.equal(authorization, undefined);
       const value = parseStrictJson(data) as any; exact(value, ['nullifier']); parseField(value.nullifier);

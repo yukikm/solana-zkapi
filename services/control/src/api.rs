@@ -208,6 +208,7 @@ impl App {
             .route("/zkapi/v1/tariffs/{hash}", get(tariff))
             .route("/zkapi/v1/quotes", post(issue_quote))
             .route("/zkapi/v1/sessions", post(create_session))
+            .route("/zkapi/v1/sessions/retire", post(retire_authorization))
             .route("/zkapi/v1/sessions/{id}", get(session_status))
             .route("/zkapi/v1/sessions/{id}/close", post(close_session))
             .route(
@@ -583,6 +584,53 @@ async fn issue_quote(
         })
         .await?;
     Ok(Json(q))
+}
+/// Exact-AUTH recovery without admission. Never issues a provider key, clears
+/// a note or signs a financial successor. The receipt follows a durable fence.
+async fn retire_authorization(
+    State(a): State<Arc<App>>,
+    headers: HeaderMap,
+    bytes: std::result::Result<Bytes, BytesRejection>,
+) -> Result<Json<Value>> {
+    a.limit().await?;
+    let r: wire::SessionCreate = body(&headers, bytes)?;
+    let v = quote::validate_binding(&r, &credential(&headers)?, &a.config.binding)?;
+    let quote_id = wire::uuid(&r.quote.body.quote_id)?;
+    let saved = a.ledger.quote(quote_id).await?;
+    if saved.canonical_body != v.quote_body
+        || saved.quote_hash != v.quote_hash
+        || saved.signature != wire::base64_exact::<64>(&r.quote.signature)?
+    {
+        return Err(ApiError(StatusCode::CONFLICT, "quote_conflict"));
+    }
+    crypto::verify_request(&r.public_inputs, &v.proof)?;
+    let n = NewSession {
+        request_id: v.request_id,
+        nullifier: *v.nullifier.as_bytes(),
+        quote_id,
+        request_digest: v.digest,
+        request_transcript: v.transcript,
+        control_secret_hash: v.control_hash,
+        proxy_secret_hash: v.proxy_hash,
+        mode: r.authorization.mode.as_str().into(),
+        provider: r.quote.body.provider.as_str().into(),
+        cap_micro: r.quote.body.cap_micro_usdc.get(),
+        max_concurrency: 4,
+    };
+    if let Some(s) = a.ledger.retire_authorization(&n).await? {
+        return Ok(Json(a.status(&s).await?));
+    }
+    let body = json!({
+        "version":"1", "kind":"authorization_retired",
+        "deployment_id":a.config.binding.deployment_id, "pool":a.config.binding.pool,
+        "request_id":r.authorization.request_id, "quote_id":r.quote.body.quote_id,
+        "quote_hash":r.quote.quote_hash, "request_digest":hex::encode(v.digest),
+        "nullifier":r.public_inputs[8], "control_api_origin":a.config.binding.control_api_origin,
+    });
+    let (receipt_hash, signature) = quote::sign_hash(&body, &a.config.receipt_key)?;
+    Ok(Json(
+        json!({"state":"NOT_ACCEPTED", "retirement":{"body":body,"receipt_hash":receipt_hash,"signature":signature}}),
+    ))
 }
 async fn create_session(
     State(a): State<Arc<App>>,

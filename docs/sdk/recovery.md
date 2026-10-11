@@ -26,8 +26,17 @@ It never repeats inference. It may leave settlement pending if the operator is
 unavailable, usage is unresolved, or signature verification fails. Show that
 state; do not label a displayed AI response as verified payment.
 
-An expired, possibly sent AUTH with no observed acceptance or inference can stay
-unresolved after ordinary recovery. `reconcileUnacceptedAuthorization()` uses
+For an unknown AUTH rejected with HTTP 409 (for example an expired quote or
+stale root), updated `recover()` obtains a signed request/quote retirement fence
+from `/zkapi/v1/sessions/retire`. After verifying it, the SDK archives the exact
+original AUTH and preserves the entire private state and balance. A fresh Send
+can obtain new credentials, quote and proof for the same deposit. If admission
+won the race, recovery instead follows the existing session through settlement.
+No inference is resent. Servers without this endpoint, invalid signatures and
+outages leave the original pending AUTH untouched. This is included in SDK `.10`; published `.8`/`.9` clients do not include it.
+
+An expired, possibly sent AUTH on an older server/client can stay unresolved
+after ordinary recovery. `reconcileUnacceptedAuthorization()` uses
 the existing wallet clearance protocol under the same application/note locks.
 Only verified permanent clearance can archive the exact saved AUTH and release
 its pending slot; expiry, an unavailable server or a missing session cannot.

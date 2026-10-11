@@ -47,6 +47,48 @@ AuthorizationBody：`version:"1", deployment_id, pool, request_id, quote_hash, m
 
 digestはSHA256(JCS(SessionCreate))。再送は全フィールドとproofを完全一致させる。受理前の再proveには新request ID/credential/quoteを使い、同じNの受理状態を先に確認する。
 
+## Retiring a never-admitted authorization
+
+`POST /zkapi/v1/sessions/retire` accepts the exact saved SessionCreate and its
+original control token. This is explicit recovery, not inference or a new
+admission. Verify binding, the persisted signed quote and the request proof;
+current root freshness, quote expiry and new-admission availability do not
+prevent retirement. No provider call or financial successor is created.
+
+Under the existing fenced writer and Pool row lock, return the authenticated
+existing session if the identical request was admitted. Otherwise reject any
+conflicting request/quote or reserved nullifier (AUTH or CLEARANCE). Persist an
+immutable `retired_authorizations` row containing the exact canonical transcript,
+request digest, request ID, quote ID and nullifier. The request ID and quote ID
+can never be admitted later. Database insert triggers serialize both retirement
+and session insertion on the Pool row, including late concurrent AUTH. The
+nullifier itself remains unreserved, permitting a fresh quote/proof/credentials
+for the same unchanged private state. A lost retirement response returns the
+same result even after a later request uses the nullifier.
+
+Only after commit, return `state:"NOT_ACCEPTED"` and `retirement` with `body`,
+`receipt_hash` and `signature`. Body has exactly these fields:
+
+```text
+version:"1", kind:"authorization_retired", deployment_id, pool,
+request_id, quote_id, quote_hash, request_digest, nullifier, control_api_origin
+```
+
+The manifest-pinned Ed25519 **receipt key** signs raw SHA256(JCS(body)). This
+attests an immutable admission fence; it is not a balance/clearance signature.
+Clients verify every binding and signature, then atomically archive the original
+pending AUTH, previous state and receipt in the encrypted journal and release
+only the pending slot. Balance, witness, state signature and settlement history
+are unchanged. No request, wallet transaction or provider call is replayed.
+Unsigned errors, 404, elapsed time or absence alone are never sufficient.
+
+This extends the server recovery contract without changing circuits, on-chain
+accounts or deployment keys. It requires migration 0003, updated control/gateway
+and SDK support; old releases remain unchanged. Retain retirement rows in WAL,
+backups and recovery checkpoints just like reservations. Never roll the server
+back to admission code or a database snapshot that lacks acknowledged fences.
+Existing permanent note clearance remains irreversible and withdrawal-only.
+
 ## 3. セッションと署名の状態機械
 
 ```text

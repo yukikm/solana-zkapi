@@ -114,3 +114,7 @@ snapshot downloadはOpenAPIのTreeSnapshotFileをJCS UTF-8（BOM/改行なし）
 cutはfinalized slotの末尾。blockhashとそのslotに対応する信頼済みchain履歴を検証し、active_notesのC/D/expiryから元H_leafで32段treeを再構築してrootと照合する。Pendingはzero leafであり、Pending情報もchain履歴と検証する。単にsnapshot自身のsha256一致をchain正当性と扱わない。slotより後の成功transactionをprotocolの順序でreplayし、最新TreeStateのroot/sequence/next IDおよびNote/Pendingと照合してからpath配信する。RPCがhistorical account読取を提供しない場合はinitializeからの履歴replayを使う。
 
 buffer close/reuseやログ欠落はprotocolの履歴復元規則を使う。履歴不足なら配信停止。snapshotにExitNullifier全件を含めないため、nullifierの未使用判定は引き続き独立RPC照合を必須とする。
+
+## Authorization retirement retention
+
+Retain immutable retired authorization request/quote fences in WAL, backups and restore checkpoints while the Pool operates. Never restore or admit against a snapshot that omits acknowledged fences. See [the recovery contract](api-proxy.md#retiring-a-never-admitted-authorization).

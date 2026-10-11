@@ -302,7 +302,7 @@ export async function startUiHost(options: HostOptions) {
   };
   const gatewayMethod = (path: string): 'GET' | 'POST' | undefined => {
     const notePath = /^\/zkapi\/v1\/tree\/notes\/(0|[1-9][0-9]{0,9})\/(?:path|zero-path)$/.exec(path);
-    if (['/rpc','/zkapi/v1/quotes','/zkapi/v1/sessions','/zkapi/v1/withdraw/clearance'].includes(path)
+    if (['/rpc','/zkapi/v1/quotes','/zkapi/v1/sessions','/zkapi/v1/sessions/retire','/zkapi/v1/withdraw/clearance'].includes(path)
       || new RegExp(`^/zkapi/v1/sessions/${uuidPattern}/close$`).test(path)) return 'POST';
     if (['/relay-status','/zkapi/v1/readiness','/provider-budget','/zkapi/v1/config','/zkapi/v1/catalog','/zkapi/v1/attestation',...(modelDiscovery?['/zkapi/v1/models','/zkapi/v1/client-profile']:[])].includes(path)
       || /^\/zkapi\/v1\/tariffs\/[0-9a-f]{64}$/.test(path)
@@ -440,8 +440,8 @@ export async function startUiHost(options: HostOptions) {
           if (controlPath === '/zkapi/v1/quotes') {
             assert.equal(method, 'POST'); assert.equal(request.headers['content-type'], 'application/json'); assert.equal(request.headers.authorization, undefined);
             assert.ok(same(parseStrictJson(data), quoteRequest));
-          } else if (controlPath === '/zkapi/v1/sessions') {
-            assert.ok(allowNewAdmissions, 'new provider admission suspended');
+          } else if (controlPath === '/zkapi/v1/sessions' || controlPath === '/zkapi/v1/sessions/retire') {
+            assert.ok(controlPath.endsWith('/retire') || allowNewAdmissions, 'new provider admission suspended');
             assert.equal(method, 'POST'); assert.equal(request.headers['content-type'], 'application/json');
             const value = parseStrictJson(data) as any; exactFields(value, ['authorization', 'quote', 'public_inputs', 'proof']);
             const auth = value.authorization, q = value.quote?.body;

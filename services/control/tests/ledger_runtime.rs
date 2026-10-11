@@ -1452,3 +1452,98 @@ async fn delayed_direct_activation_caps_expiry_and_drains_expired_keys() {
         }
     }
 }
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+#[ignore = "requires isolated real PostgreSQL"]
+async fn authorization_retirement_preserves_note_and_fences_late_admission() {
+    let (url, c) = database().await;
+    let identity = identity();
+    let runtime_url = runtime_writer_url(&url, &c).await;
+    let ledger = Ledger::connect(&runtime_url, &identity).await.unwrap();
+    ledger.set_accepting(true).await.unwrap();
+    let tariff = tariff(&ledger).await;
+    let old = new_session(&quote(&ledger, tariff, now(&c).await - 1).await, [81; 32]);
+    ledger.set_accepting(false).await.unwrap();
+    assert!(ledger.retire_authorization(&old).await.unwrap().is_none());
+    assert!(ledger.retire_authorization(&old).await.unwrap().is_none());
+    let counts = c.query_one("SELECT (SELECT count(*) FROM nullifier_reservations),(SELECT count(*) FROM sessions),(SELECT count(*) FROM retired_authorizations)", &[]).await.unwrap();
+    assert_eq!(
+        (
+            counts.get::<_, i64>(0),
+            counts.get::<_, i64>(1),
+            counts.get::<_, i64>(2)
+        ),
+        (0, 0, 1)
+    );
+    assert!(matches!(
+        ledger
+            .reserve_session(&old, || async {
+                panic!("retired request reached admission")
+            })
+            .await,
+        Err(LedgerError::Conflict("authorization_retired"))
+    ));
+    let mut changed = old.clone();
+    changed.request_transcript.push(b' ');
+    changed.request_digest = digest(&changed.request_transcript);
+    assert!(matches!(
+        ledger.retire_authorization(&changed).await,
+        Err(LedgerError::Conflict("idempotency_conflict"))
+    ));
+    // Reopen the writer to prove the fence is durable, not an in-memory status.
+    drop(ledger);
+    tokio::time::sleep(Duration::from_millis(50)).await;
+    let ledger = Ledger::connect(&runtime_url, &identity).await.unwrap();
+    ledger.set_accepting(true).await.unwrap();
+    let next = new_session(
+        &quote(&ledger, tariff, now(&c).await + 120).await,
+        old.nullifier,
+    );
+    ledger
+        .reserve_session(&next, || async { Ok(()) })
+        .await
+        .unwrap();
+    // Lost retirement ACK remains recoverable even after a new AUTH uses N.
+    assert!(ledger.retire_authorization(&old).await.unwrap().is_none());
+    assert_eq!(
+        ledger
+            .retire_authorization(&next)
+            .await
+            .unwrap()
+            .unwrap()
+            .request_id,
+        next.request_id
+    );
+    let runtime = client(&runtime_url).await;
+    let bypass = runtime.execute("INSERT INTO sessions(pool,request_id,nullifier,quote_id,request_digest,request_transcript,control_secret_hash,proxy_secret_hash,mode,provider,state,cap_micro,max_concurrency,writer_epoch) SELECT pool,$1,nullifier,$2,request_digest,request_transcript,control_secret_hash,proxy_secret_hash,mode,provider,'RESERVED',cap_micro,max_concurrency,writer_epoch FROM sessions WHERE request_id=$3", &[&old.request_id,&old.quote_id,&next.request_id]).await.unwrap_err();
+    assert_eq!(
+        bypass.as_db_error().unwrap().message(),
+        "authorization retired"
+    );
+    assert!(runtime
+        .batch_execute("DELETE FROM retired_authorizations")
+        .await
+        .is_err());
+    assert!(runtime
+        .batch_execute("UPDATE retired_authorizations SET request_transcript=''::bytea")
+        .await
+        .is_err());
+    // Race a valid late AUTH with retirement: exactly one outcome wins.
+    for index in 82..90 {
+        let request = new_session(
+            &quote(&ledger, tariff, now(&c).await + 120).await,
+            [index; 32],
+        );
+        let (retired, admitted) = tokio::join!(
+            ledger.retire_authorization(&request),
+            ledger.reserve_session(&request, || async { Ok(()) })
+        );
+        match retired.unwrap() {
+            None => assert!(matches!(
+                admitted,
+                Err(LedgerError::Conflict("authorization_retired"))
+            )),
+            Some(saved) => assert_eq!(saved.request_id, admitted.unwrap().request_id),
+        }
+    }
+}

@@ -277,3 +277,13 @@ test('direct budget status exposes totals only, counts all legacy rows, and exac
   for(const headers of [{origin:'https://foreign.invalid'},{authorization:'private'},{cookie:'private'}, {'sec-fetch-site':'cross-site'}] as Record<string,string>[])assert.equal((await fetch(host.origin+'/provider-budget',{headers})).status,400);
   fail=true;const unavailable=await fetch(host.origin+'/provider-budget');assert.equal(unavailable.status,503);assert.deepEqual(await unavailable.json(),{error:'provider campaign unavailable'});
 });
+
+test('retiring exact AUTH is available during suspension without allocating a trial or forwarding new admission',async()=>{
+  const f=await fixture(),data=Buffer.from(jcsBytes(f.auth));let reserves=0;const calls:string[]=[];
+  const relay=directControlRelay({...f,budget:{async reserve(){reserves++;}},async forward(path,method,headers,body){
+    calls.push(path);assert.equal(method,'POST');assert.equal(headers.authorization,f.authorization);assert.equal(body,data);
+    return {status:200,bytes:Buffer.from('{}')};
+  }});
+  await relay({path:'/zkapi/v1/sessions/retire',method:'POST',authorization:f.authorization,data,allowNewAdmissions:false,newAdmissionAuthorized:false});
+  assert.equal(reserves,0);assert.deepEqual(calls,['/zkapi/v1/sessions/retire']);
+});
