@@ -1,0 +1,32 @@
+{
+  "schema": 1,
+  "target": "devnet-new",
+  "staging": {
+    "path": "/REPLACE/private/staging.json",
+    "sha256": "REPLACE_WITH_INDEPENDENT_SHA256"
+  },
+  "operator": {
+    "path": "/REPLACE/private/operator.json",
+    "sha256": "REPLACE_WITH_INDEPENDENT_SHA256"
+  },
+  "services": [
+    {
+      "api": {
+        "version": "1",
+        "service": "weather",
+        "operation": "lookup",
+        "method": "POST",
+        "origin": "https://weather.example",
+        "path": "/v1/current",
+        "request_max_bytes": "4096",
+        "response_max_bytes": "65536",
+        "timeout_seconds": "30",
+        "billing": "http_2xx_json"
+      },
+      "priceMicroUsdc": "250",
+      "validFrom": "REPLACE_WITH_UNIX_SECONDS",
+      "validUntil": "REPLACE_WITH_UNIX_SECONDS",
+      "credentialFile": "/REPLACE/private/weather-api-key"
+    }
+  ]
+}

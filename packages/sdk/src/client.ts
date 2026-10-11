@@ -13,7 +13,7 @@ import { verifyManifest, jcsBytes, sha256Hex, type ArtifactBundle, type Manifest
 import { WalletClient, type WalletOptions } from './wallet.ts';
 import { SolanaWalletChain } from './wallet-chain.ts';
 import { authorizationSnapshot } from './session-snapshot.ts';
-import { validateDaemonModelPolicy, validateModelRequestCapabilities } from './clientd-models.ts';
+import { validateDaemonModelPolicy, validateModelRequestCapabilities, type DaemonApi } from './clientd-models.ts';
 import { privacyProfile, planClientUpgrade, type PrivacyProfile } from './client-guidance.ts';
 export { privacyProfile, planClientUpgrade, type PrivacyProfile, type UpgradePlan } from './client-guidance.ts';
 export type { ModelAvailability } from './provider-status.ts';
@@ -143,6 +143,7 @@ export class ZkApiClient {
     if (!options.noteId || options.noteId.length > 1024 || !options.wallet.wallets.length) throw new Error('stable note ID and selected wallet required');
     this.models = structuredClone([...options.models]);
     this.services = structuredClone([...(options.services ?? [])]);
+    if (this.models.length) validateModelConfigurations(options.mode,this.models);
     validateClientConfiguration(options.mode,this.models,this.services);
     this.options = { ...options, wallet: { ...options.wallet, wallets: [...options.wallet.wallets] } };
     this.walletClient = new WalletClient(this.options.wallet);
@@ -422,11 +423,49 @@ export function validateModelConfigurations(mode: Mode, models: readonly ModelCo
         : m.provider !== (mode === 'direct_oa' ? 'oa' : 'openrouter') || m.tariff.model !== '*' || m.tariff.pricing_basis !== 'provider_reported_usd')) throw new Error('model, API, mode and tariff must agree');
   }
 }
-function validateClientConfiguration(mode:Mode,models:readonly ModelConfiguration[],services:readonly ApiService[]):void {
-  if(models.length || !services.length)validateModelConfigurations(mode,models);
-  if(services.length && mode!=='proxy')throw new Error('registered API services require explicit proxy mode');
+/** Pure configuration validation. No network, wallet, proof or storage access. */
+export function validateClientConfiguration(mode: Mode, models: readonly (Omit<ModelConfiguration,'apis'> & {apis:readonly DaemonApi[]})[], services: readonly ApiService[] = []): void {
+  if (!['proxy','direct_oa','direct_openrouter'].includes(mode) || !Array.isArray(models) || !Array.isArray(services)
+    || models.length > 32 || services.length > 64 || models.length + services.length === 0) throw new Error('explicit mode and bounded nonempty selection required');
+  if (new Set(models.map(model=>model.id)).size !== models.length) throw new Error('unique model IDs required');
+  for (const model of models) {
+    validateDaemonModelPolicy(mode,model);
+    if (model.tariff.provider !== model.provider || (mode === 'proxy'
+      ? model.tariff.model !== model.id || model.tariff.pricing_basis !== 'fixed_usage_rates'
+      : model.tariff.model !== '*' || model.tariff.pricing_basis !== 'provider_reported_usd')) throw new Error('model, API, mode and tariff must agree');
+  }
+  if(services.length && mode!=='proxy')throw new ClientSelectionError('services','registered API services require explicit proxy mode');
   const paths=new Set<string>();
-  for(const service of services){validateApiService(service);const path=apiOperationPath(service.tariff.api);if(paths.has(path))throw new Error('duplicate API operation');paths.add(path);}
+  for (const service of services) {
+    try { validateApiService(service); } catch { throw new ClientSelectionError('services','invalid API service configuration'); }
+    const path=apiOperationPath(service.tariff.api); if (paths.has(path)) throw new ClientSelectionError('services','duplicate API operation'); paths.add(path);
+  }
+}
+
+/** Authenticates the selection before custody is opened. Omitting now permits
+ * historical recovery inputs; callers admitting new work supply current time. */
+export async function validateClientSelectionPins(
+  selection: { models: readonly {tariff: Tariff}[]; services?: readonly ApiService[] },
+  manifest: Pick<VerifiedManifest, 'tariff_hashes' | 'cap_micro_usdc'>,
+  now?: bigint,
+): Promise<void> {
+  if (now !== undefined && (typeof now !== 'bigint' || now < 0n)) throw new Error('invalid selection time');
+  for (const [component, entries] of [['models', selection.models], ['services', selection.services ?? []]] as const) {
+    for (const entry of entries) {
+      if (component === 'services') { try { validateApiService(entry as ApiService); } catch { throw new ClientSelectionError('services','invalid API service configuration'); } }
+      const { tariff_hash, ...body } = entry.tariff;
+      if (!manifest.tariff_hashes.includes(tariff_hash) || await sha256Hex(jcsBytes(body)) !== tariff_hash)
+        throw new ClientSelectionError(component, 'tariff is not pinned by this deployment');
+      if (now !== undefined && (now < BigInt(body.valid_from) || now >= BigInt(body.valid_until)))
+        throw new ClientSelectionError(component, 'tariff is not currently valid');
+      if (component === 'services' && BigInt(body.rates[0].nano_usdc_numerator) > BigInt(manifest.cap_micro_usdc) * 1000n)
+        throw new ClientSelectionError(component, 'API price exceeds the authorization cap');
+    }
+  }
+}
+export class ClientSelectionError extends Error {
+  readonly component: 'models' | 'services';
+  constructor(component: 'models' | 'services', message: string) { super(message); this.name = 'ClientSelectionError'; this.component = component; }
 }
 
 /** Read-only initialization: authenticate pins/artifacts and finalized PoolConfig.
@@ -438,14 +477,12 @@ export async function createZkApiClient(options: CreateClientOptions): Promise<Z
   const wallet = options.wallet, storage = { ...options.storage }, engine = options.prover;
   const connection = d.connection, fetcher = d.fetch, indexerOrigin = d.indexerOrigin, preparationCommitment = d.preparationCommitment;
   const directProviderBases = structuredClone(options.directProviderBases), oaVerifier = structuredClone(options.oaVerifier), priorityFeeMicroLamports = options.priorityFeeMicroLamports;
+  if (models.length) validateModelConfigurations(mode,models);
   validateClientConfiguration(mode, models, services);
   if (mode !== 'proxy' && !directProviderBases?.[mode]) throw new Error('independently installed direct provider base required');
   if (mode === 'direct_oa' && !oaVerifier) throw new Error('independently installed OA verifier required');
   const manifest: VerifiedManifest = await verifyManifest(manifestBytes, trust);
-  for (const model of [...models,...services]) {
-    const { tariff_hash, ...body } = model.tariff;
-    if (!manifest.tariff_hashes.includes(tariff_hash) || await sha256Hex(jcsBytes(body)) !== tariff_hash) throw new Error('model tariff is not pinned by this deployment');
-  }
+  await validateClientSelectionPins({models,services}, manifest);
   const genesis = await connection.getGenesisHash().send();
   const observed = await connection.getAccountInfo(address(manifest.pool), { commitment: 'finalized', encoding: 'base64' }).send();
   if (!observed.value) throw new Error('finalized PoolConfig unavailable');

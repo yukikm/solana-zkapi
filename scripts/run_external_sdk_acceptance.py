@@ -17,6 +17,7 @@ import subprocess
 import tarfile
 import tempfile
 import time
+from sdk_consumer_lock import materialize, reviewed
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -28,10 +29,14 @@ def sha(path: Path) -> str:
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument('--output', type=Path, default=ROOT / 'target/sdk-distribution')
+    parser.add_argument('--offline', action='store_true', help='Use prepared npm caches only; never resolve or fetch a dependency')
+    parser.add_argument('--prepare-dependencies', action='store_true', help='Populate consumer npm caches from reviewed locks, then stop before acceptance')
     parser.add_argument('--real-provers', action='store_true', help='Require existing real native/WASM artifacts and test them from the isolated consumer')
     parser.add_argument('--asset-bundle', type=Path, help='Verify a separately prepared public asset bundle in the isolated consumer')
     parser.add_argument('--asset-bundle-sha256', help='Independent SHA-256 of the public bundle.json descriptor')
     args = parser.parse_args()
+    if args.offline and args.prepare_dependencies:
+        parser.error('--offline and --prepare-dependencies are separate verification paths')
     if bool(args.asset_bundle) != bool(args.asset_bundle_sha256):
         parser.error('--asset-bundle and --asset-bundle-sha256 must be supplied together')
     output = args.output.resolve()
@@ -41,6 +46,10 @@ def main() -> None:
     resolved_node = shutil.which(selected_node)
     if not resolved_node:
         raise SystemExit('Set ZKAPI_NODE to the pinned Node 24.19.0 executable')
+    selected_npm = os.environ.get('ZKAPI_NPM') or shutil.which('npm')
+    if not selected_npm or not shutil.which(selected_npm):
+        raise SystemExit('Set ZKAPI_NPM to the pinned npm 11.9.0 executable')
+    npm = str(Path(shutil.which(selected_npm)).absolute())
     node = Path(resolved_node).resolve()
     node_dir = node.parent
     env = {**os.environ, 'PATH': str(node_dir) + os.pathsep + os.environ.get('PATH', '')}
@@ -50,12 +59,13 @@ def main() -> None:
     started = time.monotonic()
     source_paths = [*sorted((ROOT / 'packages/sdk/src').glob('*.ts')),
                     *[ROOT / 'packages/sdk' / name for name in ['package.json', 'build.mjs', 'tsconfig.json', 'tsconfig.build.json', 'README.md', 'DISTRIBUTION.md', 'INTERNALS.md', 'LICENSE']],
-                    *[ROOT / 'packages/sdk/test' / name for name in ['client-guidance.test.ts', 'client.test.ts', 'chat.test.ts', 'clientd-models.test.ts', 'trust.test.ts', 'deployment.test.ts', 'public-profile.test.ts', 'public-profile-fixture.ts', 'chain-fixture.ts', 'session-snapshot-runtime.ts', 'kit-helpers.ts']],
+                    *[ROOT / 'packages/sdk/test' / name for name in ['client-guidance.test.ts', 'generic-api.test.ts', 'selection.test.ts', 'client.test.ts', 'chat.test.ts', 'clientd-models.test.ts', 'trust.test.ts', 'deployment.test.ts', 'public-profile.test.ts', 'public-profile-fixture.ts', 'api-onboarding-fixture.ts', 'chain-fixture.ts', 'session-snapshot-runtime.ts', 'kit-helpers.ts']],
                     *sorted((ROOT / 'tools/public-devnet-consumer').glob('*.*')),
-                    Path(__file__).resolve()]
+                    *sorted((ROOT / 'tests/fixtures/sdk-consumer').glob('*.json')),
+                    ROOT / 'scripts/sdk_consumer_lock.py', ROOT / 'package-lock.json', Path(__file__).resolve()]
     source_inputs = {str(path.relative_to(ROOT)): sha(path) for path in source_paths}
     report = {'schema': 1, 'scope': 'Actual npm tarball in an independent temporary application; local fixtures, no live provider or chain actions',
-              'public_chain_verified': False, 'live_provider_verified': False, 'release_gates_passed': [], 'stages': stages, 'source_inputs': source_inputs}
+              'public_chain_verified': False, 'public_rpc_verified': False, 'offline': args.offline, 'live_provider_verified': False, 'release_gates_passed': [], 'stages': stages, 'source_inputs': source_inputs}
 
     def run(name: str, command: list[str], cwd: Path, timeout: int = 300, extra_env: dict | None = None) -> str:
         start = time.monotonic()
@@ -71,7 +81,10 @@ def main() -> None:
     try:
         report['node_version'] = run('node-version', [str(node), '--version'], ROOT).strip()
         assert report['node_version'] == 'v24.19.0', 'pinned Node 24.19.0 is required'
-        run('pack', ['npm', 'pack', '--workspace', '@zkapi/solana-sdk', '--pack-destination', str(output)], ROOT)
+        report['npm_version'] = run('npm-version', [npm, '--version'], ROOT).strip()
+        assert report['npm_version'] == '11.9.0', 'pinned npm 11.9.0 is required'
+        reviewed()
+        run('pack', [npm, 'pack', *(['--offline'] if args.offline else []), '--workspace', '@zkapi/solana-sdk', '--pack-destination', str(output)], ROOT)
         package = json.loads((ROOT / 'packages/sdk/package.json').read_text())
         tarball = output / f"zkapi-solana-sdk-{package['version']}.tgz"
         report['tarball'] = {'file': tarball.name, 'sha256': sha(tarball), 'bytes': tarball.stat().st_size}
@@ -93,10 +106,19 @@ def main() -> None:
             consumer = Path(directory).resolve()
             assert not consumer.is_relative_to(ROOT)
             shutil.copyfile(tarball, consumer / tarball.name)
-            (consumer / 'package.json').write_text(json.dumps({'name': 'independent-zkapi-consumer', 'private': True, 'type': 'module',
-                'dependencies': {'@zkapi/solana-sdk': './' + tarball.name},
-                'devDependencies': {'typescript': '5.9.3', '@types/node': '24.10.0', 'esbuild': '0.28.2'}}, indent=2))
-            run('install', ['npm', 'install', '--ignore-scripts', '--no-audit', '--no-fund'], consumer)
+            report['dependency_lock'] = materialize(consumer, consumer / tarball.name)
+            lock_before = sha(consumer / 'package-lock.json')
+            try:
+                run('install', [npm, 'ci', *(['--offline'] if args.offline else []), '--ignore-scripts', '--no-audit', '--no-fund'], consumer)
+            except RuntimeError as error:
+                raise RuntimeError('Consumer dependency cache unavailable or reviewed installation failed; run the separately documented --prepare-dependencies step with network access before --offline acceptance') from error
+            assert sha(consumer / 'package-lock.json') == lock_before, 'npm changed the reviewed consumer lock'
+            if args.prepare_dependencies:
+                report['passed'] = True
+                report['scope'] = 'Dependency preparation only; no acceptance or release gates executed'
+                report['source_inputs_unchanged'] = source_inputs == {str(path.relative_to(ROOT)): sha(path) for path in source_paths}
+                assert report['source_inputs_unchanged'], 'source changed during dependency preparation'
+                return
             installed = consumer / 'node_modules/@zkapi/solana-sdk'
             assert installed.is_dir() and not installed.is_symlink()
             assert not (installed / 'src').exists()
@@ -124,7 +146,7 @@ def main() -> None:
             run('declarations', ['node', 'node_modules/typescript/bin/tsc', '-p', 'tsconfig.json'], consumer)
             # Reuse source tests but redirect every runtime library import to the
             # installed package. Fixtures are explicit local copies, not imports.
-            test_names = ['client-guidance.test.ts', 'control.test.ts', 'clientd.test.ts', 'client.test.ts', 'chat.test.ts', 'clientd-models.test.ts', 'trust.test.ts', 'deployment.test.ts', 'public-profile.test.ts', 'public-profile-fixture.ts', 'chain-fixture.ts', 'kit-helpers.ts']
+            test_names = ['client-guidance.test.ts', 'control.test.ts', 'generic-api.test.ts', 'selection.test.ts', 'clientd.test.ts', 'client.test.ts', 'chat.test.ts', 'clientd-models.test.ts', 'trust.test.ts', 'deployment.test.ts', 'public-profile.test.ts', 'public-profile-fixture.ts', 'api-onboarding-fixture.ts', 'chain-fixture.ts', 'kit-helpers.ts']
             if args.real_provers:
                 test_names.append('session-snapshot-runtime.ts')
             for name in test_names:
@@ -153,15 +175,21 @@ def main() -> None:
                 'public-consumer/browser.test.mjs'], consumer)
             (consumer / 'public-consumer-install.test.mjs').write_text("""import test from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtemp, readFile, stat, realpath, symlink } from 'node:fs/promises';
+import { mkdtemp, readFile, stat, realpath, symlink, readdir } from 'node:fs/promises';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { publicProfileFixture } from './public-profile-fixture.ts';
 import { loadPublicDeploymentProfile } from '@zkapi/solana-sdk/public-profile';
 import { jcsBytes, sha256Hex } from '@zkapi/solana-sdk/trust';
 import { installNativeInputs } from './public-consumer/native-inputs.mjs';
-for (const schema of [1,2]) test('native schema '+schema+' files retain authenticated notices; no financial sends or overwrite', async () => {
-  const f = await publicProfileFixture();
+const cases = [
+  {name:'v1 inference / bundle v1',bundleSchema:1,profile:{}},
+  {name:'v1 inference / bundle v2 notices',bundleSchema:2,profile:{}},
+  {name:'v2 API-only / bundle v2 notices',bundleSchema:2,profile:{schema:2,selection:'api',serviceCount:2}},
+  {name:'v2 mixed / bundle v2 notices',bundleSchema:2,profile:{schema:2,selection:'mixed',serviceCount:2}},
+];
+for (const item of cases) test('native '+item.name+' retains authenticated selection and notices without network or financial actions', async () => {
+  const schema=item.bundleSchema, f = await publicProfileFixture(item.profile);
   const notice=new TextEncoder().encode('Synthetic upstream license notice');
   if(schema===2) {
     const descriptor={...f.descriptor,schema:2,notices:{'runtime.json':'NOTICE.txt'},files:{...f.descriptor.files,
@@ -177,11 +205,39 @@ for (const schema of [1,2]) test('native schema '+schema+' files retain authenti
   assert.equal(f.calls.length,before); assert.equal(receipt.custodyInitialized,false); assert.equal(receipt.funded,false);
   const runtimeBytes=await readFile(receipt.runtime), runtime=JSON.parse(runtimeBytes);
   assert.equal(await sha256Hex(runtimeBytes),receipt.runtimeSha256);
-  assert.equal(runtime.key_reuse_seconds,60); assert.deepEqual(runtime.models[0].capabilities,{streaming:true,tools:false});
-  assert.equal(runtime.settlement_wait_ms,120000);
-  assert.equal(runtime.models[0].tariff,join(destination,'tariff-0.json'));
+  assert.equal(runtime.key_reuse_seconds,60);
+  assert.equal(runtime.models.length,f.profile.models.length);
+  if(item.profile.selection==='api')assert.deepEqual(runtime.models,[]);
+  for(const [i,model]of f.profile.models.entries()){
+    assert.deepEqual(runtime.models[i].capabilities,f.profile.modelCapabilities[model.id]);
+    assert.equal(runtime.models[i].id,model.id);assert.equal(runtime.models[i].provider,model.provider);assert.deepEqual(runtime.models[i].apis,model.apis);
+    assert.equal(runtime.models[i].tariff,join(destination,'tariff-'+i+'.json'));
+    assert.deepEqual(JSON.parse(await readFile(runtime.models[i].tariff)),model.tariff);
+  }
+  assert.equal(runtime.settlement_wait_ms,f.profile.mode==='direct_openrouter'?120000:undefined);
+  const services=f.profile.services??[];
+  assert.equal(runtime.services.length,services.length);assert.equal(receipt.services.length,services.length);
+  for(const [i,service]of services.entries()){
+    const path=join(destination,'api-tariff-'+i+'.json'),bytes=await readFile(path);
+    assert.deepEqual(runtime.services[i],{tariff:path});assert.deepEqual(JSON.parse(bytes),service.tariff);
+    assert.deepEqual(receipt.services[i],{file:'api-tariff-'+i+'.json',sha256:await sha256Hex(bytes),bytes:bytes.length});
+    assert.equal((await stat(path)).mode & 0o777,0o600);
+  }
   assert.equal(runtime.rpc,f.profile.rpcUrl); assert.equal(runtime.indexer,f.profile.indexerOrigin);
-  assert.deepEqual(runtime.policy,f.trust); assert.equal(runtime.mode,'direct_openrouter');
+  assert.deepEqual(runtime.policy,f.trust); assert.equal(runtime.mode,f.profile.mode);
+  const networkBytes=await readFile(receipt.network),network=JSON.parse(networkBytes);
+  assert.equal(await sha256Hex(networkBytes),receipt.networkSha256);
+  assert.equal(network.mode,'direct');
+  const execution=network.routes.filter(route=>route.origin===f.manifest.inference_api_origin);
+  assert.deepEqual(execution,f.profile.mode==='proxy'?[
+    ...(f.profile.models.length?[{origin:f.manifest.inference_api_origin,prefix:'/v1'}]:[]),
+    ...services.map(({tariff})=>({origin:f.manifest.inference_api_origin,prefix:'/zkapi/v1/api/'+tariff.api.service+'/'+tariff.api.operation})),
+  ]:[]);
+  for(const {tariff}of services)assert.equal(network.routes.some(route=>route.origin===tariff.api.origin),false,'consumer egress must not acquire upstream routes');
+  assert.ok(network.routes.some(route=>route.origin===f.manifest.control_api_origin&&route.prefix==='/zkapi/v1'));
+  assert.notEqual(f.manifest.control_api_origin,f.manifest.inference_api_origin);
+  assert.ok(f.calls.every(call=>call.method==='GET'&&!/quotes|sessions|chat|lookup|weather\\.example/.test(call.url)));
+  assert.equal(f.calls.length,before,'materialization must not create additional network actions');
   assert.equal((await stat(destination)).mode & 0o777,0o700); assert.equal((await stat(receipt.runtime)).mode & 0o777,0o600);
   const noticeIndexBytes=await readFile(receipt.notices), noticeIndex=JSON.parse(noticeIndexBytes);
   assert.equal(await sha256Hex(noticeIndexBytes),receipt.noticesSha256);
@@ -193,7 +249,10 @@ for (const schema of [1,2]) test('native schema '+schema+' files retain authenti
     assert.deepEqual(new Uint8Array(await readFile(noticePath)),notice);
     assert.equal((await stat(noticePath)).mode & 0o777,0o600);
   }
-  assert(!('journal' in runtime)); assert(!('custody' in runtime));
+  assert(!('journal' in runtime)); assert(!('custody' in runtime));assert(!('note_id' in runtime));
+  const outputNames=await readdir(destination);
+  assert.equal(outputNames.filter(name=>/^api-tariff-[0-9]+\\.json$/.test(name)).length,services.length);
+  for(const name of ['journal','custody.json','inference-token','management-token'])assert.equal(outputNames.includes(name),false);
   await assert.rejects(installNativeInputs(loaded,destination,{mode:'direct'}));
   assert.deepEqual(await readFile(receipt.runtime),runtimeBytes);
   await assert.rejects(installNativeInputs({...loaded},join(root,'forged'),{mode:'direct'}));
@@ -201,7 +260,10 @@ for (const schema of [1,2]) test('native schema '+schema+' files retain authenti
   await assert.rejects(installNativeInputs(loaded,join(root,'alias','other'),{mode:'direct'}));
 });
 """)
-            run('public-consumer-install', ['node', '--test', 'public-consumer-install.test.mjs'], consumer)
+            native_output = run('public-consumer-install', ['node', '--test', '--test-reporter=tap', 'public-consumer-install.test.mjs'], consumer)
+            native_counts = {key: int(value) for key, value in re.findall(r'^# (tests|pass|fail|cancelled|skipped|todo) (\d+)$', native_output, re.MULTILINE)}
+            assert native_counts == {'tests': 4, 'pass': 4, 'fail': 0, 'cancelled': 0, 'skipped': 0, 'todo': 0}
+            report['native_profile_contract_tests'] = native_counts
             (consumer / 'public-consumer.tsconfig.json').write_text(json.dumps({'compilerOptions': {
                 'target': 'ES2023', 'module': 'NodeNext', 'moduleResolution': 'NodeNext', 'strict': True,
                 'noEmit': True, 'lib': ['ES2023', 'DOM'], 'types': ['node']},

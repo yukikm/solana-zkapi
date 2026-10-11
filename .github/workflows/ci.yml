@@ -295,9 +295,54 @@ jobs:
           "$zkapi_chrome" --version
           printf 'ZKAPI_TEST_CHROME=%s\n' "$zkapi_chrome" >> "$GITHUB_ENV"
       - run: npm run typecheck && npm test
+      - name: Fast API onboarding contracts
+        run: |
+          npm run build:sdk
+          node --test scripts/api_registration.test.ts scripts/prepare_public_devnet_deployment.test.ts apps/clientd/runtime-config.test.ts tools/public-devnet-consumer/native-inputs.test.mjs
+          python3 -m unittest discover -s scripts -p 'test_sdk_consumer_lock.py'
+          python3 -m unittest discover -s scripts -p 'test_general_api_tools.py'
       - name: Upstream SDK baseline
         working-directory: vendor/ethereum-zkapi
         run: npm ci --ignore-scripts && npm run test:sdk
+
+  general-api-onboarding:
+    # Fresh artifacts and synthetic API/RPC only; no old lifecycle outputs.
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          submodules: recursive
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version-file: .node-version
+      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff
+        with:
+          go-version: '1.25.0'
+          cache: false
+      - name: Prepare installed pinned tools
+        run: |
+          rustup show
+          rustup target add wasm32-unknown-unknown
+          scripts/install_sbf_tools.sh
+          npm install --global npm@11.9.0
+          sudo apt-get update
+          sudo apt-get install --yes postgresql-16
+      - name: Fetch locked dependencies separately
+        run: PATH="/usr/lib/postgresql/16/bin:$PATH" python3 scripts/prepare_general_api_dependencies.py
+      - name: Offline fresh API-only onboarding and legacy conservation
+        run: |
+          PATH="/usr/lib/postgresql/16/bin:$PATH" python3 scripts/run_general_api.py --check-tools
+          PATH="/usr/lib/postgresql/16/bin:$PATH" python3 scripts/run_general_api.py --onboarding
+          PATH="/usr/lib/postgresql/16/bin:$PATH" python3 scripts/run_general_api.py
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: general-api-local-redacted-not-public-acceptance
+          path: |
+            target/general-api-local/run-*/runtime-report.json
+            target/general-api-local/run-*/e2e-*.json
+          if-no-files-found: warn
   go:
     runs-on: ubuntu-24.04
     steps:

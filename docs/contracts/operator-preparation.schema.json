@@ -1,0 +1,435 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://zkapi.example/contracts/operator-preparation.schema.json",
+  "title": "Owner-private new-Devnet operator preparation",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "targetRoot",
+    "inspectionBinary",
+    "control",
+    "dispatcher",
+    "indexer",
+    "signer",
+    "database",
+    "challenger",
+    "inferenceProviders"
+  ],
+  "properties": {
+    "schema": {
+      "const": 1
+    },
+    "targetRoot": {
+      "type": "string",
+      "pattern": "^/",
+      "maxLength": 4096
+    },
+    "inspectionBinary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "path",
+        "sha256"
+      ],
+      "properties": {
+        "path": {
+          "type": "string",
+          "pattern": "^/",
+          "maxLength": 4096
+        },
+        "sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        }
+      }
+    },
+    "control": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "listen",
+        "primaryRpc",
+        "secondaryRpc",
+        "indexerOrigin",
+        "quoteSeedFile",
+        "receiptSeedFile"
+      ],
+      "properties": {
+        "listen": {
+          "type": "string"
+        },
+        "primaryRpc": {
+          "type": "string"
+        },
+        "secondaryRpc": {
+          "type": "string"
+        },
+        "indexerOrigin": {
+          "type": "string"
+        },
+        "quoteSeedFile": {
+          "type": "string",
+          "pattern": "^/",
+          "maxLength": 4096
+        },
+        "receiptSeedFile": {
+          "type": "string",
+          "pattern": "^/",
+          "maxLength": 4096
+        }
+      }
+    },
+    "dispatcher": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "binary",
+        "databaseUrl",
+        "claimsDirectory"
+      ],
+      "properties": {
+        "binary": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "path",
+            "sha256"
+          ],
+          "properties": {
+            "path": {
+              "type": "string",
+              "pattern": "^/",
+              "maxLength": 4096
+            },
+            "sha256": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{64}$"
+            }
+          }
+        },
+        "databaseUrl": {
+          "type": "string"
+        },
+        "claimsDirectory": {
+          "type": "string",
+          "pattern": "^/",
+          "maxLength": 4096
+        }
+      }
+    },
+    "indexer": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "rpcUrl",
+        "startSlot",
+        "listen",
+        "publicOrigin",
+        "snapshotsDirectory"
+      ],
+      "properties": {
+        "rpcUrl": {
+          "type": "string"
+        },
+        "startSlot": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "listen": {
+          "type": "string"
+        },
+        "publicOrigin": {
+          "type": "string"
+        },
+        "snapshotsDirectory": {
+          "type": "string",
+          "pattern": "^/",
+          "maxLength": 4096
+        }
+      }
+    },
+    "signer": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "journal",
+        "socket",
+        "stateSeedFile",
+        "clearanceSeedFile"
+      ],
+      "properties": {
+        "journal": {
+          "type": "string",
+          "pattern": "^/",
+          "maxLength": 4096
+        },
+        "socket": {
+          "type": "string",
+          "pattern": "^/",
+          "maxLength": 4096
+        },
+        "stateSeedFile": {
+          "type": "string",
+          "pattern": "^/",
+          "maxLength": 4096
+        },
+        "clearanceSeedFile": {
+          "type": "string",
+          "pattern": "^/",
+          "maxLength": 4096
+        }
+      }
+    },
+    "database": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "migrationDsnFile",
+        "writerDsnFile",
+        "signerDsnFile"
+      ],
+      "properties": {
+        "migrationDsnFile": {
+          "type": "string",
+          "pattern": "^/",
+          "maxLength": 4096
+        },
+        "writerDsnFile": {
+          "type": "string",
+          "pattern": "^/",
+          "maxLength": 4096
+        },
+        "signerDsnFile": {
+          "type": "string",
+          "pattern": "^/",
+          "maxLength": 4096
+        }
+      }
+    },
+    "challenger": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "rpcUrl",
+        "databaseDsnFile",
+        "journalDirectory",
+        "node",
+        "transportBridge",
+        "feeKeyFile",
+        "payer",
+        "pollSeconds"
+      ],
+      "properties": {
+        "rpcUrl": {
+          "type": "string"
+        },
+        "databaseDsnFile": {
+          "type": "string",
+          "pattern": "^/",
+          "maxLength": 4096
+        },
+        "journalDirectory": {
+          "type": "string",
+          "pattern": "^/",
+          "maxLength": 4096
+        },
+        "node": {
+          "type": "string",
+          "pattern": "^/",
+          "maxLength": 4096
+        },
+        "transportBridge": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "path",
+            "sha256"
+          ],
+          "properties": {
+            "path": {
+              "type": "string",
+              "pattern": "^/",
+              "maxLength": 4096
+            },
+            "sha256": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{64}$"
+            }
+          }
+        },
+        "feeKeyFile": {
+          "type": "string",
+          "pattern": "^/",
+          "maxLength": 4096
+        },
+        "payer": {
+          "type": "string"
+        },
+        "pollSeconds": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 30
+        },
+        "alertSinkDirectory": {
+          "type": "string",
+          "pattern": "^/",
+          "maxLength": 4096
+        },
+        "priorityFee": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "base",
+            "warning",
+            "page",
+            "emergency",
+            "cap"
+          ],
+          "properties": {
+            "base": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 1000000
+            },
+            "warning": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 1000000
+            },
+            "page": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 1000000
+            },
+            "emergency": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 1000000
+            },
+            "cap": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 1000000
+            }
+          }
+        },
+        "archiveBatch": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "max_blocks",
+            "max_bytes"
+          ],
+          "properties": {
+            "max_blocks": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 256
+            },
+            "max_bytes": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 33554432
+            },
+            "rpc_concurrency": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 16
+            }
+          }
+        }
+      }
+    },
+    "inferenceProviders": {
+      "type": "array",
+      "maxItems": 4,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "provider",
+          "credential_file",
+          "local_test_base",
+          "models"
+        ],
+        "properties": {
+          "provider": {
+            "enum": [
+              "openai",
+              "anthropic",
+              "openrouter"
+            ]
+          },
+          "credential_file": {
+            "type": "string",
+            "pattern": "^/",
+            "maxLength": 4096
+          },
+          "local_test_base": {
+            "type": "null"
+          },
+          "models": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "provider",
+                "model",
+                "endpoints",
+                "context_tokens",
+                "max_output_tokens",
+                "cache_mode"
+              ],
+              "properties": {
+                "provider": {
+                  "enum": [
+                    "openai",
+                    "anthropic",
+                    "openrouter"
+                  ]
+                },
+                "model": {
+                  "type": "string"
+                },
+                "endpoints": {
+                  "type": "array",
+                  "minItems": 1,
+                  "uniqueItems": true,
+                  "items": {
+                    "enum": [
+                      "chat_completions",
+                      "responses",
+                      "messages",
+                      "count_tokens"
+                    ]
+                  }
+                },
+                "context_tokens": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 9007199254740991
+                },
+                "max_output_tokens": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 9007199254740991
+                },
+                "cache_mode": {
+                  "enum": [
+                    "inclusive_read",
+                    "inclusive_read_write",
+                    "anthropic_split"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

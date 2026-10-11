@@ -16,7 +16,7 @@ import type { NoteProver } from '../src/prover.ts';
 import { fixtureSigner } from './kit-helpers.ts';
 
 const field=(n:number)=>'0x'+n.toString(16).padStart(64,'0');
-const api:ApiBinding={version:'1',service:'weather',operation:'lookup',method:'POST',path:'/weather/current',origin:'https://weather.invalid',request_max_bytes:'2048',response_max_bytes:'4096',timeout_seconds:'30',billing:'http_2xx_json'};
+const api:ApiBinding={version:'1',service:'weather',operation:'lookup',method:'POST',path:'/weather/current',origin:'https://weather.invalid',request_max_bytes:'2048',response_max_bytes:'4096',timeout_seconds:'600',billing:'http_2xx_json'};
 async function fixture(t:TestContext){
   const dir=await mkdtemp(join(tmpdir(),'zkapi-generic-'));t.after(()=>rm(dir,{recursive:true,force:true}));
   const store=await NativeJournalStore.open(dir),key=await importJournalKey(new Uint8Array(32).fill(13));
@@ -100,4 +100,14 @@ test('generic saved authorization rejects another operation and inference routes
 test('API descriptors reject traversal, arbitrary origins and noninteger limits',()=>{
   for(const changes of [{path:'//other.invalid/'},{path:'/../admin'},{path:'/%2e/admin'},{path:'/api?x=1'},{origin:'https://user:pass@weather.invalid'},{origin:'http://remote.invalid'},{request_max_bytes:'1.5'},{timeout_seconds:'601'}])assert.throws(()=>validateApiBinding({...api,...changes}));
   validateApiBinding({...api,origin:'http://127.0.0.1:12345'});
+});
+
+
+test('600-second API descriptor selects a 660-second frozen-quote execution budget without a retry',async t=>{
+  const f=await fixture(t), budgets:number[]=[];
+  t.mock.method(AbortSignal,'timeout',(milliseconds:number)=>{budgets.push(milliseconds);return new AbortController().signal;});
+  const response=await f.client.requestApi({operationId:crypto.randomUUID(),service:'weather',operation:'lookup',body:{}});
+  await response.text();
+  assert.equal(budgets.filter(ms=>ms===660_000).length,1);assert.equal(budgets.includes(600_000),false);
+  assert.equal(f.counts.sends,1);assert.equal(f.counts.settles,1);
 });

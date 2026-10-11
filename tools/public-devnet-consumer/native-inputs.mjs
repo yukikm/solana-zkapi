@@ -3,6 +3,7 @@
 import { mkdir, realpath, writeFile } from 'node:fs/promises';
 import { isAbsolute, resolve, dirname, basename, join } from 'node:path';
 import { publicProfileClientOptions } from '@zkapi/solana-sdk/public-profile';
+import { apiOperationPath } from '@zkapi/solana-sdk/control';
 import { sha256Hex } from '@zkapi/solana-sdk/trust';
 
 const artifactNames = ['idl', 'requestPk', 'requestVk', 'withdrawalPk', 'withdrawalVk',
@@ -28,7 +29,11 @@ export function nativeNetwork(profile, manifest, { mode, socks5, admissionTokenF
   add(manifest.control_api_origin, '/zkapi/v1');
   add(profile.indexerOrigin, '/zkapi/v1/tree');
   add(profile.rpcUrl);
-  if (profile.mode === 'proxy') add(manifest.inference_api_origin, '/v1');
+  if (profile.mode === 'proxy') {
+    if (profile.models?.length) add(manifest.inference_api_origin, '/v1');
+    for (const service of profile.services ?? [])
+      add(manifest.inference_api_origin, apiOperationPath(service.tariff.api));
+  }
   else {
     const provider = profile.directProviderBases?.[profile.mode];
     if (!provider) throw new Error('explicit provider base required');
@@ -48,6 +53,18 @@ export async function installNativeInputs(loaded, destination, networkOptions) {
   const assets = loaded.assets;
   const manifestView = assets.verifiedManifest;
   const network = nativeNetwork(profile, manifestView, networkOptions);
+  return materializeNativeInputs({ assets, selection: options, rpcUrl: profile.rpcUrl,
+    indexerOrigin: profile.indexerOrigin, preparationCommitment: profile.preparationCommitment,
+    network, receipt: { profileId: profile.id, profileSha256: loaded.profileSha256,
+      bundleSha256: profile.bundle.sha256 } }, destination);
+}
+
+/** Internal filesystem adapter, also used by the explicit test-only local
+ * fixture adapter after it verifies local bundle/manifest/selection pins.
+ * This is not a public SDK profile authentication entry point. */
+export async function materializeNativeInputs({ assets, selection: options, rpcUrl,
+  indexerOrigin, preparationCommitment, network, receipt: sourceReceipt }, destination) {
+  const manifestView = assets.verifiedManifest;
   if (!isAbsolute(destination) || resolve(destination) !== destination) throw new Error('canonical absolute new directory required');
   const parent = await realpath(dirname(destination));
   if (join(parent, basename(destination)) !== destination) throw new Error('symlinked destination parent rejected');
@@ -80,17 +97,25 @@ export async function installNativeInputs(loaded, destination, networkOptions) {
     models.push({ id: model.id, provider: model.provider, apis: model.apis,
       capabilities: model.capabilities, tariff: await write(`tariff-${i}.json`, json(model.tariff)) });
   }
+  const services = [];
+  const serviceFiles = [];
+  for (const [i, service] of (options.services ?? []).entries()) {
+    const bytes = json(service.tariff), name = `api-tariff-${i}.json`;
+    const tariff = await write(name, bytes);
+    services.push({ tariff });
+    serviceFiles.push({ file: name, sha256: await sha256Hex(bytes), bytes: bytes.length });
+  }
   const runtime = { manifest, policy: options.deployment.trust, artifacts, mode: options.mode,
-    models, rpc: profile.rpcUrl, indexer: profile.indexerOrigin, key_reuse_seconds: 60,
+    models, services, rpc: rpcUrl, indexer: indexerOrigin, key_reuse_seconds: 60,
     ...(options.mode === 'direct_openrouter' ? { settlement_wait_ms: 120_000 } : {}),
-    ...(profile.preparationCommitment ? { preparation_commitment: profile.preparationCommitment } : {}),
+    ...(preparationCommitment ? { preparation_commitment: preparationCommitment } : {}),
     ...(options.directProviderBases ? { direct_provider_bases: options.directProviderBases } : {}),
     ...(options.oaVerifier ? { oa_verifier: options.oaVerifier } : {}) };
   const runtimeBytes = json(runtime), networkBytes = json(network);
   const runtimePath = await write('runtime.json', runtimeBytes);
   const networkPath = await write('network.json', networkBytes);
-  const receipt = { schema: 1, profileId: profile.id, profileSha256: loaded.profileSha256,
-    bundleSha256: profile.bundle.sha256, manifestHash: manifestView.manifest_hash,
+  const receipt = { schema: 1, ...sourceReceipt, manifestHash: manifestView.manifest_hash,
+    services: serviceFiles,
     runtime: runtimePath, runtimeSha256: await sha256Hex(runtimeBytes),
     network: networkPath, networkSha256: await sha256Hex(networkBytes),
     notices: noticesPath, noticesSha256: await sha256Hex(noticesBytes),

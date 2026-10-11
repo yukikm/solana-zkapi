@@ -145,9 +145,9 @@ impl App {
     /// Schema migration is a separate command/credential; startup only verifies it.
     pub async fn connect(config: ValidatedConfig, database_url: &str) -> anyhow::Result<Arc<Self>> {
         config.validate_database(database_url)?;
-        let providers = crate::provider_runtime::ProviderRuntime::connect(
+        let providers = crate::provider_runtime::ProviderRuntime::connect_validated(
             &config.runtime.providers,
-            config.runtime.local_test_only,
+            config.provider_policy,
         )
         .await?;
         let chain = ChainClient::new(

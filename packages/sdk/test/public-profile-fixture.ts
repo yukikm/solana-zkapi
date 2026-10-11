@@ -5,9 +5,13 @@ import { chainFixture, key } from './chain-fixture.ts';
 import { vaultBinding, parseField } from '../src/encoding.ts';
 import { discriminator } from '../src/transport.ts';
 import { circuitProfileDigest, jcsBytes, manifestDigest, sha256Hex, type Manifest } from '../src/trust.ts';
+import type { ApiService } from '../src/control.ts';
 import { PUBLIC_PROFILE_SDK_VERSION, type PublicDeploymentProfile } from '../src/public-profile.ts';
+import type { ApiOnboardingDeclaration } from './api-onboarding-fixture.ts';
 
-export async function publicProfileFixture() {
+export async function publicProfileFixture(options: {schema?:1|2; selection?:'inference'|'api'|'mixed'; serviceCount?:number; apiDeclaration?:ApiOnboardingDeclaration} = {}) {
+  const declaration = options.apiDeclaration;
+  if (declaration && (options.schema !== 2 || options.selection !== 'api' || (options.serviceCount ?? 1) !== 1)) throw Error('declared fixture requires exactly one schema-2 API-only operation');
   const f = await chainFixture(), m: { -readonly [K in keyof Manifest]: Manifest[K] } = structuredClone(f.manifest);
   m.deployment_environment = 'devnet'; m.genesis_hash = 'EtWTRABZaYq6iMfeYKouRu166VU2xqa1wcaWoxPkrZBG';
   m.mint = '4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU';
@@ -15,7 +19,22 @@ export async function publicProfileFixture() {
   m.vault_binding = await vaultBinding(...[m.genesis_hash,m.program_id,m.pool,m.token_program,m.mint].map(bs58.decode) as [Uint8Array,Uint8Array,Uint8Array,Uint8Array,Uint8Array]);
   const tariffBody = {version:'1',provider:'openrouter',model:'*',pricing_basis:'provider_reported_usd',valid_from:'0',valid_until:'9999999999',rates:[],operator_fee_micro_usdc:'0'};
   const tariff = {...tariffBody,tariff_hash:await sha256Hex(jcsBytes(tariffBody))}; m.tariff_hashes = [tariff.tariff_hash];
-  const names = ['idl','requestPk','requestVk','withdrawalPk','withdrawalVk','treePk','treeVk','treeSourceBundle','treeVerifierConstants'] as const;
+  const services: ApiService[] = [];
+  for (let i = 0; i < (options.selection === 'api' || options.selection === 'mixed' ? options.serviceCount ?? 1 : 0); i++) {
+    const body: Omit<ApiService['tariff'],'tariff_hash'> = {version:'2',provider:'generic',
+      api:declaration?structuredClone(declaration.api):{version:'1',service:'weather',operation:'lookup'+i,method:'POST',path:'/lookup',origin:'https://weather.example.com',
+        request_max_bytes:'2048',response_max_bytes:'4096',timeout_seconds:'600',billing:'http_2xx_json'},
+      pricing_basis:'fixed_request',valid_from:declaration?.validFrom??'0',valid_until:declaration?.validUntil??'9999999999',
+      rates:[{unit:'requests',nano_usdc_numerator:declaration?(BigInt(declaration.priceMicroUsdc)*1000n).toString():'250000',unit_denominator:'1'}],operator_fee_micro_usdc:'0'};
+    services.push({tariff:{...body,tariff_hash:await sha256Hex(jcsBytes(body))}});
+  }
+  if (options.selection === 'mixed') {
+    tariff.model = 'fixture-model'; tariff.pricing_basis = 'fixed_usage_rates';
+    (tariff.rates as unknown[]) = [{unit:'input_tokens',nano_usdc_numerator:'1',unit_denominator:'1'}, {unit:'output_tokens',nano_usdc_numerator:'1',unit_denominator:'1'}];
+    const {tariff_hash,...body} = tariff; tariff.tariff_hash = await sha256Hex(jcsBytes(body));
+  }
+  m.tariff_hashes = [...(options.selection === 'api' ? [] : [tariff.tariff_hash]), ...services.map(s=>s.tariff.tariff_hash)];
+  const names = ['idl' ,'requestPk','requestVk','withdrawalPk','withdrawalVk','treePk','treeVk','treeSourceBundle','treeVerifierConstants'] as const;
   const files = new Map<string,Uint8Array>();
   const rawArtifacts = Object.fromEntries(await Promise.all(names.map(async name => [name,name === 'idl' ? jcsBytes({address:m.program_id}) : new TextEncoder().encode(name)])));
   const hashes: Record<string,string> = {}; for (const name of names) { hashes[name] = await sha256Hex(rawArtifacts[name]); files.set('https://assets.example.com/'+name+'.bin',rawArtifacts[name]); }
@@ -34,6 +53,13 @@ export async function publicProfileFixture() {
     bundle:{url:'https://assets.example.com/bundle.json',sha256:await sha256Hex(descriptorBytes)},rpcUrl:'https://rpc.example.com/',indexerOrigin:'https://indexer.example.com',
     mode:'direct_openrouter',models:[{id:'fixture-model',provider:'openrouter',apis:['chat'],tariff}],modelCapabilities:{'fixture-model':{streaming:true,tools:false}},
     directProviderBases:{direct_openrouter:'https://provider.example.com/v1'}};
+  if (options.schema === 2) Object.assign(profile,{schema:2,services});
+  if (options.selection === 'api' || options.selection === 'mixed') {
+    profile.mode = 'proxy'; delete profile.directProviderBases;
+    if (options.selection === 'api') { profile.models = []; profile.modelCapabilities = {}; }
+  }
+  const catalog: unknown = {models:profile.models.map(model=>({model:profile.mode === 'proxy'?model.id:'*',provider:model.provider,modes:[profile.mode],endpoints:profile.mode === 'proxy'?['/v1/chat/completions']:[],modalities:['text'],tariff_hash:model.tariff.tariff_hash})),
+    ...(options.schema === 2 ? {apis:services.map(({tariff})=>({api:tariff.api,mode:'proxy',provider:'generic',endpoint:`/zkapi/v1/api/${tariff.api.service}/${tariff.api.operation}`,tariff_hash:tariff.tariff_hash}))} : {})};
   const profileUrl='https://profiles.example.com/devnet-v1.json';
   const poolData=Buffer.from(f.poolData);poolData.set(bs58.decode(m.genesis_hash),10);poolData.set(bs58.decode(m.mint),42);poolData.set(parseField(m.vault_binding),107);poolData.set(Buffer.from(m.circuit_profile_hash,'hex'),358);
   const [tree,bump]=await getProgramDerivedAddress({seeds:[Buffer.from('tree'),getAddressEncoder().encode(address(m.pool))],programAddress:address(m.program_id)});
@@ -41,7 +67,7 @@ export async function publicProfileFixture() {
   const snapshot={schema_version:'1',snapshot:root,active_notes:[],pending_withdrawals:[]};
   const treeData=Buffer.alloc(66);treeData.set(await discriminator('TreeState','account'));treeData[8]=2;treeData[9]=bump;
   const clock=Buffer.alloc(40);clock.writeBigInt64LE(2600n,32);
-  const state={genesis:m.genesis_hash as string,slot:110,catalogAvailable:true,controlManifest:jcsBytes(m),snapshotDigestValid:true};
+  const state={genesis:m.genesis_hash as string,slot:110,catalogAvailable:true,catalog,controlManifest:jcsBytes(m),snapshotDigestValid:true};
   const calls:{url:string;method:string;rpc?:string}[]=[];
   const account=(data:Buffer,owner:string=m.program_id)=>({owner,executable:false,lamports:1,rentEpoch:0,data:[data.toString('base64'),'base64']});
   const fetcher:typeof fetch=async(input,init)=>{
@@ -50,7 +76,7 @@ export async function publicProfileFixture() {
     if(url===profileUrl)return new Response(jcsBytes(profile) as BodyInit);
     if(files.has(url))return new Response(new Uint8Array(files.get(url)!));
     if(url===m.control_api_origin+'/zkapi/v1/config')return new Response(new Uint8Array(state.controlManifest));
-    if(url===m.control_api_origin+'/zkapi/v1/catalog')return Response.json({models:state.catalogAvailable?[{model:'*',provider:'openrouter',modes:['direct_openrouter'],endpoints:[],modalities:['text'],tariff_hash:tariff.tariff_hash}]:[]});
+    if(url===m.control_api_origin+'/zkapi/v1/catalog')return Response.json(state.catalogAvailable ? state.catalog : {models:[]});
     const snapshotBytes=jcsBytes(snapshot),snapshotHash=await sha256Hex(snapshotBytes);
     if(url===profile.indexerOrigin+'/zkapi/v1/tree/snapshot')return Response.json({snapshot:root,sha256:snapshotHash,download_url:profile.indexerOrigin+'/zkapi/v1/tree/snapshots/'+snapshotHash+'.json'});
     if(url===profile.indexerOrigin+'/zkapi/v1/tree/snapshots/'+snapshotHash+'.json')return new Response(state.snapshotDigestValid?new Uint8Array(snapshotBytes):new Uint8Array([0]));
@@ -64,5 +90,5 @@ export async function publicProfileFixture() {
       else throw Error('financial RPC forbidden');return Response.json({jsonrpc:'2.0',id:request.id,result});}
     throw Error('unexpected fixture route');
   };
-  return {profile,profileUrl,profileSha256:()=>sha256Hex(jcsBytes(profile)),manifest:m,trust,descriptor,files,fetcher,calls,poolData,treeData,clock,state,snapshot};
+  return {profile:profile as PublicDeploymentProfile,profileUrl,profileSha256:()=>sha256Hex(jcsBytes(profile)),manifest:m,trust,descriptor,files,fetcher,calls,poolData,treeData,clock,state,snapshot};
 }

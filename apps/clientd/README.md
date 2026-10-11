@@ -87,7 +87,7 @@ promise complete anonymity.
 
 ### Runtime inputs
 
-[`RuntimeConfig`](runtime.ts) defines `runtime.json`:
+[`RuntimeConfig`](runtime-config.ts) defines `runtime.json`:
 
 | Field | Purpose |
 |---|---|

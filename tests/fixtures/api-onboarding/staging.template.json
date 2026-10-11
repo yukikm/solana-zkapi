@@ -1,0 +1,34 @@
+{
+  "schema": 2,
+  "noDeploymentOrFundingOrServiceState": "REPLACE_AFTER_INDEPENDENT_REVIEW",
+  "distributionDecisionPath": "/REPLACE/upstream-setup-distribution.json",
+  "distributionDecisionSha256": "REPLACE_WITH_INDEPENDENT_SHA256",
+  "noticesDirectory": "/REPLACE/upstream-notices",
+  "publicSetupDirectory": "/REPLACE/new-public-setup",
+  "publicSetupSha256": "REPLACE_WITH_INDEPENDENT_SHA256",
+  "deploymentPath": "/REPLACE/new-deployment.json",
+  "deploymentSha256": "REPLACE_WITH_INDEPENDENT_SHA256",
+  "buildManifestPath": "/REPLACE/build-manifest.json",
+  "buildManifestSha256": "REPLACE_WITH_INDEPENDENT_SHA256",
+  "idlPath": "/REPLACE/zkapi_vault.json",
+  "programPath": "/REPLACE/zkapi_vault.so",
+  "wasmPath": "/REPLACE/prover.wasm",
+  "wasmSha256": "REPLACE_WITH_INDEPENDENT_SHA256",
+  "expected": {
+    "deploymentId": "REPLACE_WITH_NEW_DEPLOYMENT_ID",
+    "programId": "REPLACE_WITH_PROGRAM_PUBLIC_KEY",
+    "pool": "REPLACE_WITH_POOL_PUBLIC_KEY"
+  },
+  "manifestAuthorityKeyPath": "/REPLACE/private/manifest-authority.json",
+  "publicOrigin": "https://api.example",
+  "assetsBaseUrl": "https://assets.example/new-deployment/",
+  "profileUrl": "https://assets.example/profiles/new-deployment.json",
+  "consumer": {
+    "id": "weather-devnet",
+    "revision": 1,
+    "mode": "proxy",
+    "models": [],
+    "modelCapabilities": {},
+    "services": []
+  }
+}

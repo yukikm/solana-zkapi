@@ -31,9 +31,14 @@ func NewServer(socket, inference, management string, port int) (*Server, error) 
 	}
 	target, _ := url.Parse("http://sdk.local")
 	p := httputil.NewSingleHostReverseProxy(target)
-	p.Transport = &http.Transport{DialContext: func(ctx context.Context, _, _ string) (net.Conn, error) {
+	transport := &http.Transport{DialContext: func(ctx context.Context, _, _ string) (net.Conn, error) {
 		return (&net.Dialer{}).DialContext(ctx, "unix", socket)
 	}, DisableCompression: true, ResponseHeaderTimeout: 5 * time.Minute}
+	apiTransport := transport.Clone()
+	// This hop includes proof/authorization before the bounded API execution.
+	// Keep its budget aligned with the API command's overall deadline.
+	apiTransport.ResponseHeaderTimeout = 900 * time.Second
+	p.Transport = &operationTransport{ordinary: transport, api: apiTransport}
 	p.FlushInterval = -1
 	p.Director = func(r *http.Request) {
 		r.URL.Scheme = target.Scheme
@@ -49,6 +54,17 @@ func NewServer(socket, inference, management string, port int) (*Server, error) 
 		failure(w, http.StatusServiceUnavailable, "client_state_unavailable")
 	}
 	return &Server{inference, management, port, p}, nil
+}
+
+type operationTransport struct {
+	ordinary, api *http.Transport
+}
+
+func (t *operationTransport) RoundTrip(r *http.Request) (*http.Response, error) {
+	if r.Method == http.MethodPost && r.URL.RawQuery == "" && r.URL.EscapedPath() == r.URL.Path && apiOperationPath.MatchString(r.URL.Path) {
+		return t.api.RoundTrip(r)
+	}
+	return t.ordinary.RoundTrip(r)
 }
 
 func failure(w http.ResponseWriter, status int, code string) {

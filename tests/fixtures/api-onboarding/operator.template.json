@@ -1,0 +1,56 @@
+{
+  "schema": 1,
+  "targetRoot": "/REPLACE/final/new-deployment",
+  "inspectionBinary": {
+    "path": "/REPLACE/local/controld",
+    "sha256": "REPLACE_WITH_INDEPENDENT_SHA256"
+  },
+  "control": {
+    "listen": "127.0.0.1:18887",
+    "primaryRpc": "https://primary-rpc.example/",
+    "secondaryRpc": "https://secondary-rpc.example/",
+    "indexerOrigin": "http://127.0.0.1:18883",
+    "quoteSeedFile": "/REPLACE/private/quote.seed",
+    "receiptSeedFile": "/REPLACE/private/receipt.seed"
+  },
+  "dispatcher": {
+    "binary": {
+      "path": "/REPLACE/final/bin/dispatcherd",
+      "sha256": "REPLACE_WITH_INDEPENDENT_SHA256"
+    },
+    "databaseUrl": "REPLACE_WITH_PRIVATE_UNIX_SOCKET_DSN",
+    "claimsDirectory": "/REPLACE/state/dispatcher"
+  },
+  "indexer": {
+    "rpcUrl": "https://archive-rpc.example/",
+    "startSlot": 0,
+    "listen": "127.0.0.1:18883",
+    "publicOrigin": "https://indexer.example",
+    "snapshotsDirectory": "/REPLACE/state/snapshots"
+  },
+  "signer": {
+    "journal": "/REPLACE/state/signer.journal",
+    "socket": "/REPLACE/state/signer.sock",
+    "stateSeedFile": "/REPLACE/private/state.seed",
+    "clearanceSeedFile": "/REPLACE/private/clearance.seed"
+  },
+  "database": {
+    "migrationDsnFile": "/REPLACE/private/migration.dsn",
+    "writerDsnFile": "/REPLACE/private/writer.dsn",
+    "signerDsnFile": "/REPLACE/private/signer.dsn"
+  },
+  "challenger": {
+    "rpcUrl": "https://archive-rpc.example/",
+    "databaseDsnFile": "/REPLACE/private/challenger.dsn",
+    "journalDirectory": "/REPLACE/state/challenger",
+    "node": "/REPLACE/final/bin/node",
+    "transportBridge": {
+      "path": "/REPLACE/final/challenger-cli.ts",
+      "sha256": "REPLACE_WITH_INDEPENDENT_SHA256"
+    },
+    "feeKeyFile": "/REPLACE/private/challenger-fee.json",
+    "payer": "REPLACE_WITH_CHALLENGER_PUBLIC_KEY",
+    "pollSeconds": 2
+  },
+  "inferenceProviders": []
+}

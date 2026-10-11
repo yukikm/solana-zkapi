@@ -2,7 +2,7 @@
  * listeners, network calls, provider credentials or transactions. */
 import assert from 'node:assert/strict';
 import {test,type TestContext} from 'node:test';
-import {mkdtemp,readFile,writeFile,rm,mkdir,copyFile,lstat,readdir,chmod,symlink} from 'node:fs/promises';
+import {mkdtemp,readFile,writeFile,rm,mkdir,copyFile,lstat,readdir,chmod,symlink,realpath} from 'node:fs/promises';
 import {join} from 'node:path';
 import {tmpdir} from 'node:os';
 import {address,getAddressEncoder,getProgramDerivedAddress,createKeyPairSignerFromPrivateKeyBytes,signBytes} from '@solana/kit';
@@ -226,4 +226,73 @@ test('staging cannot mix undeployed/deployed provenance or accept a reused budge
     {budgetStatePath:'/private/existing-budget.json'},{serviceStateDirectory:'/private/existing-service'}]){
     await assert.rejects(stagePublicDevnetDeployment({...c,...patch} as any,out));await assert.rejects(lstat(out),{code:'ENOENT'});
   }
+});
+
+
+// Public-format synthetic contract path only. The executable below is an explicit
+// inspection-ABI fixture, not controld, proof validation, or live Devnet evidence.
+import {compileApiServices} from './api_registration.ts';
+import {declaration,operatorFixture} from './api_registration-fixture.ts';
+import {validateRegistration,prepareRegistration,verifyRegistration} from './zkapi_api.ts';
+async function registrationFixture(t:TestContext){
+ const f=await fixture(t),legacy=await initialConfig(f),{privateRpcUrl,indexerListen,snapshotsDirectory,startSlot,...rest}=legacy;
+ const staging:any={...rest,schema:2,consumer:{id:'api-only-fixture',revision:1,mode:'proxy',models:[],modelCapabilities:{},services:[]}};
+ const dir=await realpath(f.dir),inspection=join(dir,'inspection-fixture.mjs');
+ const script=`#!${process.execPath}
+import fs from 'node:fs';
+const c=JSON.parse(fs.readFileSync(process.argv[3]));
+console.log(JSON.stringify({schema:1,manifestHash:c.trusted_manifest_hash,tariffHashes:c.tariffs.map(t=>t.tariff_hash).sort(),operations:c.providers.api.map(p=>p.api),signer:{fixture:true,manifestHash:c.trusted_manifest_hash,public_devnet_profile:{file:c.devnet.public_profile_file,sha256:c.devnet.trusted_public_profile_hash}}}));
+`;
+ await writeFile(inspection,script,{mode:0o700});
+ const operator={...structuredClone(operatorFixture),inspectionBinary:{path:inspection,sha256:await sha256Hex(Buffer.from(script))}};
+ const save=async(name:string,value:unknown)=>{const path=join(dir,name),b=jcsBytes(value as any);await writeFile(path,b,{mode:0o600});return{path,sha256:await sha256Hex(b)}};
+ const project={schema:1,target:'devnet-new',staging:await save('registration-staging.json',staging),operator:await save('registration-operator.json',operator),services:[declaration]};
+ const projectPin=await save('api-project.json',project);return{...f,dir,staging,operator,project,configPath:projectPin.path,output:join(dir,'registered')};
+}
+test('schema two API-only staging derives initial tariffs/endpoints and emits no public-builder indexer config',async t=>{
+ const f=await registrationFixture(t),c={...f.staging,consumer:{...f.staging.consumer,services:await compileApiServices([declaration],'1000000')}};
+ await stagePublicDevnetDeployment(c,f.output);const manifest=JSON.parse(await readFile(join(f.output,'prepared/public-manifest.json'),'utf8')),profile=JSON.parse(await readFile(join(f.output,'prepared/consumer-profile.json'),'utf8'));
+ assert.equal(profile.schema,2);assert.deepEqual(profile.models,[]);assert.deepEqual(profile.modelCapabilities,{});assert.equal(profile.services.length,1);assert.deepEqual(manifest.tariff_hashes,[profile.services[0].tariff.tariff_hash]);assert.ok(!manifest.api_endpoints.some((p:string)=>p.startsWith('/v1/')));assert.ok(manifest.api_endpoints.includes('/zkapi/v1/api/weather/lookup'));await assert.rejects(lstat(join(f.output,'prepared/private-indexer.json')),{code:'ENOENT'});
+ const later=JSON.parse(await readFile(join(f.output,'private-preparation-config.json'),'utf8'));later.consumer.services=await compileApiServices([{...declaration,priceMicroUsdc:'251'}],'1000000');await assert.rejects(preparePublicDevnetDeployment(later,join(f.dir,'forbidden-append')),/already be authenticated/);
+});
+test('registration validation reads no signing/provider/DSN contents and rejects conflicting sources',async t=>{
+ const f=await registrationFixture(t),key=f.staging.manifestAuthorityKeyPath;await rm(key);const validated=await validateRegistration(f.configPath);assert.equal(validated.summary.services,1);assert.equal(validated.summary.networkActions,0);await assert.rejects(lstat(f.output),{code:'ENOENT'});
+ const bad={...f.staging,privateRpcUrl:'https://private.example/'};const bytes=jcsBytes(bad);await writeFile(f.project.staging.path,bytes);await writeFile(f.configPath,jcsBytes({...f.project,staging:{...f.project.staging,sha256:await sha256Hex(bytes)}}));await assert.rejects(validateRegistration(f.configPath));
+});
+test('registration complete inventory authenticates exact public/private outputs and preserves deterministic public bytes',async t=>{
+ const f=await registrationFixture(t);const savedFetch=globalThis.fetch;globalThis.fetch=async()=>{throw Error('network forbidden')};t.after(()=>{globalThis.fetch=savedFetch});
+ const report=await prepareRegistration(f.configPath,f.output);assert.equal(report.complete,true);assert.equal(report.chainCompatible,false);assert.equal(report.providerActions,0);const verified=await verifyRegistration(f.output,report.inventorySha256);assert.equal(verified.manifestHash,report.manifestHash);
+ const inventory=JSON.parse(await readFile(join(f.output,'inventory.json'),'utf8'));assert.ok(inventory.files.some((e:any)=>e.path==='private/dispatcher.json'&&e.classification==='private'));assert.ok(!inventory.files.some((e:any)=>e.path==='complete.json'||e.path==='inventory.json'));
+ for(const entry of inventory.files.filter((e:any)=>e.classification==='public')){const b=await readFile(join(f.output,entry.path));assert.ok(!b.includes('PRIVATE_DSN_CANARY'));assert.ok(!b.includes('/destination-private'));assert.ok(!b.includes(f.staging.manifestAuthorityKeyPath));}
+ const second=join(f.dir,'registered-second'),next=await prepareRegistration(f.configPath,second);assert.equal(next.profileSha256,report.profileSha256);assert.equal(next.bundleSha256,report.bundleSha256);assert.equal(next.manifestHash,report.manifestHash);
+ await assert.rejects(verifyRegistration(f.output,'00'.repeat(32)));await writeFile(join(f.output,'unlisted.json'),'{}');await assert.rejects(verifyRegistration(f.output,report.inventorySha256));await rm(join(f.output,'unlisted.json'));await writeFile(join(f.output,'private/control.json'),'{}');await assert.rejects(verifyRegistration(f.output,report.inventorySha256));
+ await assert.rejects(prepareRegistration(f.configPath,f.output),/output_exists/);
+});
+test('failed private inspection leaves incomplete output and no completion marker',async t=>{
+ const f=await registrationFixture(t),broken=Buffer.from('#!'+process.execPath+'\nprocess.exit(1);\n');await writeFile(f.operator.inspectionBinary.path,broken);f.operator.inspectionBinary.sha256=await sha256Hex(broken);const op=jcsBytes(f.operator as any);await writeFile(f.project.operator.path,op);f.project.operator.sha256=await sha256Hex(op);await writeFile(f.configPath,jcsBytes(f.project as any));
+ await assert.rejects(prepareRegistration(f.configPath,f.output));assert.ok((await lstat(f.output)).isDirectory());await assert.rejects(lstat(join(f.output,'complete.json')),{code:'ENOENT'});await assert.rejects(prepareRegistration(f.configPath,f.output),/output_exists/);
+});
+
+test('schema two mixed proxy staging pins the sorted union and only selected inference endpoints',async t=>{
+ const f=await registrationFixture(t),services=await compileApiServices([declaration],'1000000');
+ const body={version:'1',provider:'openai',model:'fixture-model',pricing_basis:'fixed_usage_rates',valid_from:'0',valid_until:'9999999999',rates:[{unit:'cache_read_tokens',nano_usdc_numerator:'1',unit_denominator:'1'},{unit:'input_tokens',nano_usdc_numerator:'2',unit_denominator:'1'},{unit:'output_tokens',nano_usdc_numerator:'3',unit_denominator:'1'}],operator_fee_micro_usdc:'0'};
+ const model={id:'fixture-model',provider:'openai',apis:['responses'],tariff:{...body,tariff_hash:await sha256Hex(jcsBytes(body))}},consumer={...f.staging.consumer,services,models:[model],modelCapabilities:{'fixture-model':{streaming:false,tools:false}}};
+ await stagePublicDevnetDeployment({...f.staging,consumer},f.output);const m=JSON.parse(await readFile(join(f.output,'prepared/public-manifest.json'),'utf8'));assert.deepEqual(m.tariff_hashes,[services[0].tariff.tariff_hash,model.tariff.tariff_hash].sort());assert.ok(m.api_endpoints.includes('/v1/models'));assert.ok(m.api_endpoints.includes('/v1/responses'));assert.ok(!m.api_endpoints.includes('/v1/chat/completions'));assert.ok(!m.api_endpoints.includes('/v1/messages'));
+});
+
+
+test('initial validation rejects misplaced public URLs before signing or output',async t=>{
+ const f=await registrationFixture(t),consumer={...f.staging.consumer,services:await compileApiServices([declaration],'1000000')};await rm(f.staging.manifestAuthorityKeyPath);
+ for(const [patch,reason] of [[{assetsBaseUrl:'https://assets.example/files'},/asset directory URL/],[{profileUrl:f.staging.assetsBaseUrl+'bundle.json'},/profile must be outside/],[{profileUrl:f.staging.assetsBaseUrl+'profile.json'},/profile must be outside/]] as const){
+  await assert.rejects(stagePublicDevnetDeployment({...f.staging,consumer,...patch},f.output,{validateOnly:true}),reason);
+  await assert.rejects(lstat(f.output),{code:'ENOENT'});
+ }
+});
+test('registration validation rejects all relative and noncanonical staging paths without opening signing material',async t=>{
+ const f=await registrationFixture(t);await rm(f.staging.manifestAuthorityKeyPath);
+ const patches:any[]=[];
+ for(const field of ['distributionDecisionPath','noticesDirectory','publicSetupDirectory','deploymentPath','buildManifestPath','idlPath','programPath','wasmPath','manifestAuthorityKeyPath'])for(const path of ['relative/input','/private/../input'])patches.push({[field]:path});
+ patches.push({finalizedProgramVerification:{path:'relative/evidence.json',sha256:'11'.repeat(32)}},{additionalNotices:{'EXTRA.txt':{path:'relative/notice',sha256:'22'.repeat(32),bytes:10}}});
+ for(const patch of patches){const bytes=jcsBytes({...f.staging,...patch});await writeFile(f.project.staging.path,bytes);await writeFile(f.configPath,jcsBytes({...f.project,staging:{...f.project.staging,sha256:await sha256Hex(bytes)}}));await assert.rejects(validateRegistration(f.configPath),(error:any)=>error.code==='unsafe_path');}
+ await assert.rejects(lstat(f.output),{code:'ENOENT'});
 });

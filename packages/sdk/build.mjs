@@ -3,6 +3,9 @@ import { fileURLToPath } from 'node:url';
 import { spawnSync } from 'node:child_process';
 
 const root = fileURLToPath(new URL('.', import.meta.url));
+// Keep source execution and packaged runtime on the exact package version.
+const metadata = JSON.parse(await readFile(new URL('package.json', import.meta.url), 'utf8'));
+await writeFile(new URL('src/version.ts', import.meta.url), `/** Generated from packages/sdk/package.json by build.mjs. */\nexport const SDK_VERSION = ${JSON.stringify(metadata.version)};\n`);
 // Remove stale products so removed source files cannot leak into a new tarball.
 await rm(new URL('dist/', import.meta.url), { recursive: true, force: true });
 const compiler = fileURLToPath(import.meta.resolve('typescript/bin/tsc'));

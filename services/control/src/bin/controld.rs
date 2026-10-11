@@ -18,6 +18,30 @@ async fn run() -> Result<()> {
     let mode = args.next().context(
         "usage: controld migrate | signer-config CONFIG | provision CONFIG | serve CONFIG",
     )?;
+    if mode == "inspect-config" {
+        let path = args.next().context("config path required")?;
+        ensure!(
+            args.next().as_deref() == Some("--input-root"),
+            "input root flag required"
+        );
+        let input = args.next().context("input root required")?;
+        ensure!(
+            args.next().as_deref() == Some("--target-root"),
+            "target root flag required"
+        );
+        let target = args.next().context("target root required")?;
+        ensure!(args.next().is_none(), "unexpected arguments");
+        let bytes = std::fs::read(path)?;
+        let config: RuntimeConfig =
+            serde_json::from_value(zkapi_control::proxy::parse_json(&bytes, 4 * 1024 * 1024)?)?;
+        println!(
+            "{}",
+            serde_json::to_string(
+                &config.inspect(std::path::Path::new(&input), std::path::Path::new(&target))?
+            )?
+        );
+        return Ok(());
+    }
     let url = std::env::var("ZKAPI_DATABASE_URL").context("database environment required")?;
     if mode == "migrate" {
         ledger::migrate(&url).await?;

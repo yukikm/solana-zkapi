@@ -60,6 +60,7 @@ export function validateApiBinding(api: ApiBinding): void {
   object(api);
   requireTrue(Object.keys(api).sort().join(',') === 'billing,method,operation,origin,path,request_max_bytes,response_max_bytes,service,timeout_seconds,version', 'invalid API binding fields');
   requireTrue(api.version === '1' && api.method === 'POST' && api.billing === 'http_2xx_json'
+    && typeof api.service === 'string' && typeof api.operation === 'string'
     && /^[a-z0-9][a-z0-9_-]{0,63}$/.test(api.service) && /^[a-z0-9][a-z0-9_-]{0,63}$/.test(api.operation), 'invalid API binding');
   const origin = new URL(api.origin);
   requireTrue(origin.origin === api.origin && (origin.protocol === 'https:' || origin.protocol === 'http:' && ['127.0.0.1','[::1]','localhost'].includes(origin.hostname)), 'invalid API origin');
@@ -75,6 +76,10 @@ export function validateApiService(service: ApiService): void {
   requireTrue(Object.keys(service).join(',') === 'tariff' && Object.keys(t).sort().join(',') === 'api,operator_fee_micro_usdc,pricing_basis,provider,rates,tariff_hash,valid_from,valid_until,version'
     && t.provider === 'generic' && t.version === '2' && t.pricing_basis === 'fixed_request' && t.operator_fee_micro_usdc === '0'
     && Array.isArray(t.rates) && t.rates.length === 1, 'invalid API tariff');
+  requireTrue(typeof t.tariff_hash === 'string' && /^[0-9a-f]{64}$/.test(t.tariff_hash), 'invalid API tariff hash');
+  for (const time of [t.valid_from,t.valid_until]) requireTrue(typeof time === 'string' && /^(0|[1-9][0-9]*)$/.test(time)
+    && time.length <= 20 && BigInt(time) <= 0xffffffffffffffffn, 'invalid API tariff validity');
+  requireTrue(BigInt(t.valid_until) > BigInt(t.valid_from), 'invalid API tariff validity');
   const rate = t.rates[0]; object(rate);
   requireTrue(Object.keys(rate).sort().join(',') === 'nano_usdc_numerator,unit,unit_denominator'
     && rate.unit === 'requests' && rate.unit_denominator === '1' && typeof rate.nano_usdc_numerator === 'string'
@@ -803,12 +808,13 @@ export class ControlClient {
       if (operation.phase !== 'prepared' || operation.bodyRedacted) throw new ResponseNotReplayable(operationId, this.path(p) + `/operations/${operationId}`);
       const bytes = new Uint8Array(Buffer.from(operation.bodyBase64,'base64'));
       operation.phase = 'send_unknown'; await redactOperations([operation]); await this.save(noteId, r);
-      return { operation: structuredClone(operation), bytes, token: p.prepared.proxy_token, statusPath: this.path(p) + `/operations/${operationId}` };
+      return { operation: structuredClone(operation), bytes, token: p.prepared.proxy_token, statusPath: this.path(p) + `/operations/${operationId}`,
+        timeoutMs: p.prepared.request.quote.body.provider === 'generic' ? 660_000 : 600_000 };
     });
     const response = await (this.options.fetch ?? globalThis.fetch)(this.config.inference_api_origin + dispatch.operation.path, {
       method: 'POST', headers: { Authorization: `Bearer ${dispatch.token}`, 'Content-Type': 'application/json', 'Idempotency-Key': operationId,
         ...(dispatch.operation.anthropicVersion ? { 'anthropic-version': dispatch.operation.anthropicVersion } : {}) },
-      body: dispatch.bytes, redirect: 'error', credentials: 'omit', cache: 'no-store', signal: signal ? AbortSignal.any([signal, AbortSignal.timeout(600_000)]) : AbortSignal.timeout(600_000),
+      body: dispatch.bytes, redirect: 'error', credentials: 'omit', cache: 'no-store', signal: signal ? AbortSignal.any([signal, AbortSignal.timeout(dispatch.timeoutMs)]) : AbortSignal.timeout(dispatch.timeoutMs),
     });
     if (response.status === 409) { await response.body?.cancel(); throw new ResponseNotReplayable(operationId, dispatch.statusPath); }
     // The response stream is passed through once. Usage comes from signed receipts.

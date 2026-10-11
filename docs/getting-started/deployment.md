@@ -1,5 +1,10 @@
 # Create a new Devnet deployment
 
+For a registered POST JSON or mixed proxy API, follow this guide for the new
+setup/build/deployment inputs and use [offline API registration](api-registration.md)
+for schema 2 staging and complete private configuration. The schema 1 example
+below retains the reference direct OpenRouter behavior.
+
 This procedure creates a new Vault program, Pool and public artifact bundle for
 an operator. It supports the reference **direct OpenRouter** deployment with a
 one-USDC session cap. It creates keys and later sends Devnet transactions.
@@ -234,7 +239,9 @@ It makes no chain or provider call. Keep the printed profile/bundle hashes for
 independent publication. Do not rewrite these bytes after the Pool exists.
 
 The emitter currently supports one OpenRouter Chat model and the one-USDC cap.
-It does not generate a proxy/OA consumer profile. Those modes require manual
+The schema 1 path does not generate a proxy/OA consumer profile. The schema 2
+[registration path](api-registration.md) generates API-only/mixed proxy profiles.
+Other modes require manual
 manifest/profile authorship under the [deployment contract](../sdk/deployment.md)
 and independent validation; changing this script's output mode is insufficient.
 
@@ -314,7 +321,8 @@ Keep all wallet/program keypairs outside it. `roles/` contains the four original
 32-byte role seed files.
 
 `inventory.json` is `{ "schema": 1, "files": { "relative/file": "SHA256" } }`
-and must cover every other input file. There is no general
+and must cover every other input file. For API-only/mixed proxy, use [registration](api-registration.md) to generate
+the inventoried files and startup metadata. There is no general
 operator-distribution builder or inventory-generator
 command; assemble and review these inputs manually, or use the explicit daemon
 setup in the operator guide. Never bootstrap an occupied or interrupted state

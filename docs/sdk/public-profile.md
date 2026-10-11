@@ -1,6 +1,6 @@
 # Authenticated public Devnet profiles
 
-A public profile binds the deployment bundle, RPC/indexer routes, mode, models,
+A public profile binds the deployment bundle, RPC/indexer routes, mode, selected models and API services,
 tariffs and request limits. Install its URL and exact SHA-256 from an
 independently authenticated release; a checksum served only beside an untrusted
 file does not authenticate it.
@@ -9,6 +9,11 @@ The API has been available since `.2`. New consumers should use the
 [published `.8` clients and revision-6 profile](../releases/usability-preview.md).
 Existing custody keeps its original profile binding. Profile verification does
 not establish service availability or provider capacity; see [status](../support.md).
+
+The source build `0.2.0-devnet.9-onboarding.0` adds profile schema 2 for registered
+JSON APIs. This is an unpublished development version. New source installations
+use a profile listing that exact SDK version and a fresh namespace; published
+`.8` runtimes and funded profile bindings remain on their original inputs.
 
 ## Load and inspect before opening custody
 
@@ -47,13 +52,15 @@ loopback and reserved local/invalid hosts are excluded from this public format.
 An ordinary DNS name still requires review of its service owner and TLS trust.
 
 Preflight authenticates the current control manifest, checks configured models
-against the operator's catalog, verifies RPC genesis and finalized PoolConfig,
+and API operations against `GET /zkapi/v1/catalog`, verifies RPC genesis and finalized PoolConfig,
 downloads both shared snapshot routes and binds their root/sequence/next-ID to
 the same finalized TreeState/Clock cut. The observed chain clock must be within
 120 seconds of the client clock. An unchanged tree may use an older snapshot
 whose root, sequence and next-ID still match the current finalized tree.
 
-The result names the checks and includes `chainAllowsNewOperations` (the Pool
+The result keeps `models` (empty for API-only) and adds `apis`, whose entries are
+`{service, operation, endpoint, tariffHash}` for the selected operations. It names
+the checks and includes `chainAllowsNewOperations` (the Pool
 pause flag) and `operatorAdmission: 'unverified'`. It does **not** claim signer
 availability, provider credit, subsidy capacity, proof generation, CORS on every
 financial route, or a completed funded lifecycle. The catalog is an availability
@@ -64,7 +71,7 @@ Preflight checks snapshot syntax and finalized headers, while authorization
 still reconstructs the selected membership path in the local pinned prover.
 
 Neither call opens storage, prompts a wallet, initializes custody, requests a
-quote, submits AUTH, sends paid inference, or retries a request. Preflight only
+quote, submits AUTH, executes an API operation or inference, or retries a request. Preflight only
 uses the listed GET routes and `getGenesisHash`, `getAccountInfo`,
 `getMultipleAccounts`, and `getBlock` RPC reads. Errors expose a component name,
 never a server body, URL, credential or private exception. Loading has a
@@ -103,7 +110,8 @@ a Kit RPC client using bounded, credential-free, redirect-refusing transport.
 Each RPC attempt has a 30-second deadline and a 4-MiB response limit. It never
 retries automatically. Supplied custom fetch implementations must honor the
 request's origin, body, abort, credential and redirect policy.
-The profile is recursively frozen; `assets` and `deployment` getters return
+Returned `models`, `services` and nested tariffs are detached copies. The profile
+is recursively frozen; `assets` and `deployment` getters return
 fresh copies so mutations cannot replace the internally authenticated values.
 
 The application must bundle its own trusted module worker from
@@ -126,18 +134,52 @@ The exact supported top-level fields are:
 
 | Field | Contract |
 |---|---|
-| `schema` | Integer `1` |
+| `schema` | Integer `1` (inference) or `2` (selected models and/or API services); `PUBLIC_PROFILE_SCHEMA` is `2` |
 | `id`, `revision` | Lowercase stable profile identifier and positive integer revision |
-| `sdkVersions` | Exact compatible SDK versions; the new-consumer profile selects `0.2.0-devnet.8` |
+| `sdkVersions` | Exact SDK build-version membership; supporting schema 1 does not override an immutable profile's version list |
 | `protocolLayoutVersion` | Integer `2` |
 | `bundle` | `{url, sha256}` of the existing immutable `bundle.json` format |
 | `rpcUrl`, `indexerOrigin` | Reviewed browser-safe HTTPS RPC URL and canonical HTTPS indexer origin |
 | `mode` | `proxy`, `direct_openrouter`, or `direct_oa`; never inferred or switched |
-| `models` | Existing `ModelConfiguration` fields: `id`, optional `label`, `provider`, `apis`, complete `tariff` |
+| `models` | Up to 32 `ModelConfiguration` entries: `id`, optional `label`, `provider`, `apis`, complete `tariff`; schema 1 requires at least one |
+| `services` | Required in schema 2, forbidden in schema 1; up to 64 entries of exactly `{tariff: ApiTariff}` |
 | `modelCapabilities` | Exactly one `{streaming: boolean, tools: boolean}` entry for each model ID |
 | `directProviderBases` | Required only for direct mode, with exactly the selected mode's reviewed provider base |
 | `oaVerifier` | Required only for `direct_oa`: independent `{base, stationId}` |
 | `preparationCommitment` | Optional `confirmed` or `finalized`; financial observations remain finalized |
+
+Schema 2 requires at least one model or service. API-only uses `mode: "proxy"`,
+`models: []`, `modelCapabilities: {}` and nonempty `services`. Mixed selections
+use proxy mode too. Direct mode requires at least one model and `services: []`,
+with the existing independent provider/verifier pins. The exported
+`PublicDeploymentProfile` union discriminates `PublicDeploymentProfileV1` and
+`PublicDeploymentProfileV2`; loading schema 1 preserves its original bytes,
+digest and displayed schema. See the [machine-readable schema](../contracts/public-profile.schema.json).
+
+A service's tariff contains its complete operation descriptor. The loader checks
+unique `(service, operation)` identities, bounded POST JSON and public HTTPS,
+canonical validity times, JCS tariff hashes and authenticated manifest membership.
+Its fixed request price must fit `cap_micro_usdc * 1000` nano-USDC. Historical
+validity may load for recovery; preflight requires every selected tariff to be
+active at the check time. Service failures use the `services` error component.
+The endpoint is derived with `apiOperationPath()`, never supplied separately.
+
+The catalog accepts exactly `{models, apis?}` with at most 256 entries per array.
+It validates every entry and rejects duplicates, including malformed entries
+outside the selection. An omitted `apis` normalizes to `[]` and passes only when
+no selected operation is missing. Selected operations must match the entire
+canonical descriptor, tariff hash and derived endpoint. Extra valid entries are
+not added to client options. Control and execution origins may be separate;
+catalog reads use the control origin while execution retains the authenticated
+manifest's `inference_api_origin` field.
+
+Registration can call `validatePublicProfileSelection()` for the pure public
+selection contract. Native and local configuration use
+`validateClientConfiguration()` and `validateClientSelectionPins()` from the SDK
+root export before custody. These validate inputs without creating an
+authenticated loaded profile; `publicProfileClientOptions()` still requires an
+object returned by the public loader. No local-HTTP escape hatch exists in that
+loader; local financial fixtures use the separate explicit local test path.
 
 The manifest already enumerates genesis/program/Pool/mint, role keys, circuit,
 setup, IDL and artifact identities, capabilities, cap, note TTL, challenge

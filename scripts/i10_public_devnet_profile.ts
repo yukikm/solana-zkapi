@@ -7,6 +7,7 @@ import {createHash} from 'node:crypto';
 import {createKeyPairSignerFromPrivateKeyBytes} from '@solana/kit';
 import {parseField} from '../packages/sdk/src/encoding.ts';
 import {base58PublicKey,jcsBytes,parseStrictJson} from '../packages/sdk/src/trust.ts';
+import {selectedApiEndpoints,type StagingConsumer} from './api_registration.ts';
 
 const FIXTURE_PROFILE='ba688d8a2be7647499c98d52c335c381b86f0471f39fa6539f7d451b76dafca1';
 const FIXTURE_TREE=new Set(['c01b31f6806ce59114fe8befa210967415e20229b0a998018d4955a726fd0f80','9141a035fdba50b13a5776182be029bb23dd15e69cd579c5d6e310b7e2ee5fb7','d4048c4b228fca9ef4342de8f89f96f90f606c9beb74cd3c6606db44925d1bf9']);
@@ -55,7 +56,7 @@ export async function loadPublicDevnetProfile(directory:string,expectedHash:stri
 }
 
 /** Public bootstrap does not read a historical I05 or funded deployment manifest. */
-export function publicDevnetManifestBase(loaded:PublicDevnetProfile):Record<string,any> {
+export function publicDevnetManifestBase(loaded:PublicDevnetProfile,selection?:Pick<StagingConsumer,'models'|'services'>):Record<string,any> {
  const p=loaded.profile;
- return {...loaded.circuit,state_key:p.state_key,clearance_key:p.clearance_key,quote_public_key:p.quote_public_key,receipt_public_key:p.receipt_public_key,decimals:6,transaction_formats:['v0_buffer','v0_inline_deposit_v1'],api_endpoints:['/zkapi/v1/config','/zkapi/v1/catalog','/zkapi/v1/quotes','/zkapi/v1/sessions','/zkapi/v1/withdraw/clearance','/v1/models','/v1/chat/completions','/v1/responses','/v1/messages','/v1/messages/count_tokens'],tariff_hashes:[],db_schema_version:'2'};
+ return {...loaded.circuit,state_key:p.state_key,clearance_key:p.clearance_key,quote_public_key:p.quote_public_key,receipt_public_key:p.receipt_public_key,decimals:6,transaction_formats:['v0_buffer','v0_inline_deposit_v1'],api_endpoints:selection?selectedApiEndpoints(selection):['/zkapi/v1/config','/zkapi/v1/catalog','/zkapi/v1/quotes','/zkapi/v1/sessions','/zkapi/v1/withdraw/clearance','/v1/models','/v1/chat/completions','/v1/responses','/v1/messages','/v1/messages/count_tokens'],tariff_hashes:[],db_schema_version:'2'};
 }

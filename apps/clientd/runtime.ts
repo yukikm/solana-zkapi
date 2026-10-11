@@ -1,37 +1,36 @@
 /** Native runtime for the Go localhost frontend. Start via clientd; secrets are
  * one JSON line on stdin, never command arguments/environment/log output. */
-import { readFile, chmod, lstat } from 'node:fs/promises';
+import { readFile, chmod } from 'node:fs/promises';
 import { createServer } from 'node:http';
 import { createInterface } from 'node:readline';
 import { once } from 'node:events';
 import { address, createKeyPairFromPrivateKeyBytes, getAddressFromPublicKey, getBase64Encoder, partiallySignTransaction } from '@solana/kit';
-import { verifyManifest, parseStrictJson, sha256Hex, jcsBytes, type ArtifactBundle, type ManifestTrustPolicy } from '@zkapi/solana-sdk/trust';
-import { ControlClient, verifiedClientBundle, validateNoteJournal, validateApiService, apiOperationPath, type ApiTariff, type ApiService, type NoteJournal, type Mode, type Tariff } from '@zkapi/solana-sdk/control';
+import { parseStrictJson } from '@zkapi/solana-sdk/trust';
+import { ControlClient, verifiedClientBundle, validateNoteJournal, apiOperationPath, type NoteJournal } from '@zkapi/solana-sdk/control';
 import { NativeSessionVerifier } from '@zkapi/solana-sdk/control-node';
 import { NativeJournalStore } from '@zkapi/solana-sdk/journal-node';
 import { EncryptedJournal, importJournalKey } from '@zkapi/solana-sdk/journal';
 import { unlockJournalKey, initializeJournalKey } from '@zkapi/solana-sdk/secret-custody';
 import { relayFetch, writeNodeResponse } from '@zkapi/solana-sdk/clientd-network';
 import { ClientDaemon } from '@zkapi/solana-sdk/clientd-bridge';
-import { loadDaemonModels, type DaemonModelSource } from '@zkapi/solana-sdk/clientd-models';
 import { NativeProver } from '@zkapi/solana-sdk/prover-node';
 import { NoteProver } from '@zkapi/solana-sdk/prover';
 import { SolanaWalletChain } from '@zkapi/solana-sdk/wallet-chain';
 import { WalletClient, type WalletRoles } from '@zkapi/solana-sdk/wallet';
-import { connectionTransport, createSolanaRpcWithFetch, type V0Wallet, type TransactionPreparationCommitment } from '@zkapi/solana-sdk/transport';
+import { connectionTransport, createSolanaRpcWithFetch, type V0Wallet } from '@zkapi/solana-sdk/transport';
 
-interface RuntimeConfig {
-  manifest: string; policy: ManifestTrustPolicy; artifacts: Record<Exclude<keyof ArtifactBundle,'additional'>,string> & {additional:Record<string,string>};
-  verifier:{path:string;sha256:string}; prover:{path:string;sha256:string};
-  journal:string; custody:string; note_id:string; mode:Mode; models:(string | DaemonModelSource)[]; tariff?:string; key_reuse_seconds?:number; settlement_wait_ms?:number;
-  services?:{tariff:string}[];
-  rpc:string; indexer:string; direct_provider_bases?:Partial<Record<'direct_oa'|'direct_openrouter',string>>;
-  preparation_commitment?:TransactionPreparationCommitment;
-  oa_verifier?:{base:string;stationId:string};
-}
+import { ConfigurationError, validateConfigurationCommand, validateRuntimeConfiguration } from './runtime-config.ts';
+
 async function main(): Promise<void> {
-  const [configPath,socketPath,relaySocket] = process.argv.slice(2);
-  if (!configPath || !socketPath || !relaySocket) throw Error('missing runtime configuration');
+  const args = process.argv.slice(2);
+  if (args.includes('--validate-config')) {
+    try { process.stdout.write(JSON.stringify(await validateConfigurationCommand(args)) + '\n'); }
+    catch (error) { const failure = error instanceof ConfigurationError ? error : new ConfigurationError('invalid_schema', 2);
+      process.stderr.write(JSON.stringify({ schema: 1, error: { code: failure.code, ...(failure.field ? { field: failure.field } : {}) } }) + '\n'); process.exitCode = failure.status; }
+    return;
+  }
+  const [configPath,socketPath,relaySocket] = args;
+  if (args.length !== 3 || !configPath || !socketPath || !relaySocket) throw Error('missing runtime configuration');
   const lines = createInterface({input:process.stdin,crlfDelay:Infinity});
   const [line] = await once(lines,'line') as [string]; lines.close();
   // Go retains its write end after the secret handoff. Supervisor death closes
@@ -41,31 +40,18 @@ async function main(): Promise<void> {
   process.stdin.resume();
   const secret = parseStrictJson(new TextEncoder().encode(line)) as unknown as {passphrase:string;wallet_seed_base64?:string;initialize_key?:boolean};
   const passphrase = new TextEncoder().encode(secret.passphrase); secret.passphrase='';
-  const c = parseStrictJson(new Uint8Array(await readFile(configPath))) as unknown as RuntimeConfig;
-  const raw = secret.initialize_key ? await initializeJournalKey(c.custody,passphrase) : await unlockJournalKey(c.custody,passphrase);passphrase.fill(0);
+  const validated = await validateRuntimeConfiguration(parseStrictJson(new Uint8Array(await readFile(configPath))), { requireCustody: true });
+  const { config: c, manifest: m, models, services, artifacts } = validated;
+  // Complete offline trust/configuration checks before creating or unlocking custody.
+  let raw: Uint8Array;
+  try { raw = secret.initialize_key ? await initializeJournalKey(c.custody,passphrase) : await unlockJournalKey(c.custody,passphrase); }
+  finally { passphrase.fill(0); }
   const key = await importJournalKey(raw); raw.fill(0);
-  const m = await verifyManifest(new Uint8Array(await readFile(c.manifest)),c.policy);
-  const models = c.models?.length || !c.services?.length ? await loadDaemonModels(c,m.tariff_hashes,async path => parseStrictJson(new Uint8Array(await readFile(path))) as unknown as Tariff) : [];
-  const services:ApiService[]=[];
-  for(const configured of c.services ?? []){
-    if(!configured || Object.keys(configured).join(',')!=='tariff' || typeof configured.tariff!=='string')throw Error('API tariff file required');
-    const tariff=parseStrictJson(new Uint8Array(await readFile(configured.tariff))) as unknown as ApiTariff;
-    validateApiService({tariff});const{tariff_hash,...body}=tariff;
-    if(!m.tariff_hashes.includes(tariff_hash)||await sha256Hex(jcsBytes(body))!==tariff_hash)throw Error('API tariff is not pinned by deployment');
-    services.push({tariff});
-  }
-  const artifacts:any = {additional:{}};
-  for (const [name,path] of Object.entries(c.artifacts)) if (name!=='additional') artifacts[name]=new Uint8Array(await readFile(path as string));
-  for (const [name,path] of Object.entries(c.artifacts.additional)) artifacts.additional[name]=new Uint8Array(await readFile(path));
   const fetcher=relayFetch(relaySocket), connection=createSolanaRpcWithFetch(c.rpc,fetcher);
   const observed=await connection.getAccountInfo(address(m.pool),{commitment:'finalized',encoding:'base64'}).send();
   if (!observed.value) throw Error('missing finalized pool');
   const a=observed.value,bundle=await verifiedClientBundle(m,await connection.getGenesisHash().send(),{address:m.pool,owner:a.owner,executable:a.executable,lamports:BigInt(a.lamports),data:new Uint8Array(getBase64Encoder().encode(a.data[0])),slot:BigInt(observed.context.slot),commitment:'finalized'},BigInt(observed.context.slot),artifacts);
   const prover=await NoteProver.create(m,bundle.artifacts,new NativeProver(c.prover.path,c.prover.sha256));
-  // The verifier also checks its executable before every call. Validate the
-  // installation here so a broken pin is fatal before management-only recovery.
-  const verifierInfo=await lstat(c.verifier.path);
-  if(!verifierInfo.isFile() || (verifierInfo.mode & 0o022)!==0 || await sha256Hex(new Uint8Array(await readFile(c.verifier.path)))!==c.verifier.sha256)throw Error('native verifier artifact mismatch');
   const store=await NativeJournalStore.open(c.journal),journal=new EncryptedJournal<NoteJournal>(store,key,{deploymentId:m.deployment_id,pool:m.pool},validateNoteJournal);
   const client=new ControlClient({context:bundle.context,journal,verifier:new NativeSessionVerifier(c.verifier.path,c.verifier.sha256),fetch:fetcher,allowLoopbackHttp:m.deployment_environment==='local',directProviderBases:c.direct_provider_bases,oaVerifier:c.oa_verifier});
   const chain=new SolanaWalletChain(connection,m,c.indexer,{fetch:fetcher,allowLoopbackHttp:m.deployment_environment==='local',preparationCommitment:c.preparation_commitment});

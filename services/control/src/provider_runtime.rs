@@ -52,9 +52,33 @@ impl ProviderConfig {
         Ok(false)
     }
     pub fn validate(&self, tariffs: &[Tariff], local: bool) -> Result<()> {
+        ensure!(
+            local || self.api.is_empty(),
+            "public API requires validated deployment scope"
+        );
         if let Some(dispatcher) = &self.dispatcher {
             dispatcher.validate()?;
         }
+        self.validate_inner(tariffs, local, true)
+    }
+    pub(crate) fn validate_public_inputs(
+        &self,
+        tariffs: &[Tariff],
+        policy: crate::config::ProviderTransportPolicy,
+    ) -> Result<()> {
+        self.validate_inner(tariffs, policy.local(), false)
+    }
+    pub(crate) fn validate_startup(
+        &self,
+        tariffs: &[Tariff],
+        policy: crate::config::ProviderTransportPolicy,
+    ) -> Result<()> {
+        if let Some(dispatcher) = &self.dispatcher {
+            dispatcher.validate()?;
+        }
+        self.validate_inner(tariffs, policy.local(), true)
+    }
+    fn validate_inner(&self, tariffs: &[Tariff], local: bool, private: bool) -> Result<()> {
         let mut apis = Vec::new();
         for config in &self.api {
             crate::generic::validate_origin(&config.api, local)?;
@@ -65,7 +89,7 @@ impl ProviderConfig {
                 tariffs.iter().any(|t| t.api.as_ref() == Some(&config.api)),
                 "API tariff missing"
             );
-            if self.dispatcher.is_none() {
+            if private && self.dispatcher.is_none() {
                 crate::egress::private_file(&config.credential_file)?;
                 let _ = read_credential(&config.credential_file)?;
             }
@@ -78,7 +102,7 @@ impl ProviderConfig {
             );
             seen.push(direct.provider());
             // Client construction validates pinned endpoints and owner-only credentials.
-            if self.dispatcher.is_none() {
+            if private && self.dispatcher.is_none() {
                 let _ = crate::direct::DirectAdapter::new(direct.clone(), local)?;
             }
             ensure!(
@@ -114,7 +138,7 @@ impl ProviderConfig {
             if proxy.local_test_base.is_some() {
                 ensure!(local, "local provider origin forbidden");
             }
-            if self.dispatcher.is_none() {
+            if private && self.dispatcher.is_none() {
                 let _ = read_credential(&proxy.credential_file)?;
             }
         }
@@ -163,6 +187,19 @@ pub struct ProviderRuntime {
 }
 impl ProviderRuntime {
     pub async fn connect(config: &ProviderConfig, local: bool) -> Result<Self> {
+        ensure!(
+            local || config.api.is_empty(),
+            "public API requires validated deployment scope"
+        );
+        Self::connect_inner(config, local).await
+    }
+    pub(crate) async fn connect_validated(
+        config: &ProviderConfig,
+        policy: crate::config::ProviderTransportPolicy,
+    ) -> Result<Self> {
+        Self::connect_inner(config, policy.local()).await
+    }
+    async fn connect_inner(config: &ProviderConfig, local: bool) -> Result<Self> {
         let mut api = Vec::new();
         for p in config.api.iter().filter(|_| config.dispatcher.is_none()) {
             api.push((

@@ -15,6 +15,213 @@ use zkapi_control::{
 fn hash(bytes: &[u8]) -> String {
     hex::encode(wire::sha256(bytes))
 }
+
+#[test]
+fn offline_inspection_reads_public_inputs_without_private_seeds_or_runtime_state() {
+    let dir = tempfile::tempdir().unwrap();
+    let mut config = fixture(dir.path(), true);
+    config.quote_seed_file = dir.path().join("absent-quote.seed");
+    config.receipt_seed_file = dir.path().join("absent-receipt.seed");
+    config.signer_socket = dir.path().join("absent-runtime/signer.sock");
+    let public = config.validate_public_inputs().unwrap();
+    assert_eq!(
+        public.signer.authorization.quote_key,
+        wire::pubkey(config.manifest["quote_public_key"].as_str().unwrap()).unwrap()
+    );
+    assert!(config.clone().validate().is_err());
+    config.manifest["quote_public_key"] = config.manifest["receipt_public_key"].clone();
+    repin(&mut config);
+    assert!(config.validate_public_inputs().is_err());
+}
+
+#[test]
+fn inspection_cli_maps_public_artifacts_without_private_state_and_rejects_unsafe_paths() {
+    let directory = tempfile::tempdir().unwrap();
+    let root = directory.path().canonicalize().unwrap();
+    let mut config = fixture(&root, true);
+    let target = Path::new("/not-mounted/zkapi-target");
+    let public = root.join("public/assets");
+    let provenance = root.join("provenance");
+    std::fs::create_dir_all(&public).unwrap();
+    std::fs::create_dir_all(&provenance).unwrap();
+    let devnet = config.devnet.as_mut().unwrap();
+    for (source, relative) in [
+        (&mut devnet.idl_file, "public/assets/idl.json"),
+        (&mut devnet.program_file, "public/assets/vault.so"),
+        (&mut devnet.build_manifest_file, "provenance/build.json"),
+    ] {
+        std::fs::copy(&*source, root.join(relative)).unwrap();
+        *source = target.join(relative);
+    }
+    config.quote_seed_file = Path::new("/PRIVATE-SEED-CANARY/quote.seed").into();
+    config.receipt_seed_file = Path::new("/PRIVATE-SEED-CANARY/receipt.seed").into();
+    config.signer_socket = Path::new("/PRIVATE-RUNTIME-CANARY/signer.sock").into();
+    config.providers.dispatcher = Some(zkapi_control::egress::ClientConfig {
+        binary: "/PRIVATE-BINARY-CANARY/dispatcherd".into(),
+        binary_sha256: "12".repeat(32),
+        config_file: "/PRIVATE-CONFIG-CANARY/dispatcher.json".into(),
+    });
+    let inspected = config.inspect(&root, target).unwrap();
+    assert_eq!(inspected["schema"], 1);
+    assert_eq!(inspected["manifestHash"], config.trusted_manifest_hash);
+    let config_file = root.join("inspect.json");
+    std::fs::write(&config_file, serde_json::to_vec(&config).unwrap()).unwrap();
+    let output = std::process::Command::new(env!("CARGO_BIN_EXE_controld"))
+        .args([
+            "inspect-config",
+            config_file.to_str().unwrap(),
+            "--input-root",
+            root.to_str().unwrap(),
+            "--target-root",
+            target.to_str().unwrap(),
+        ])
+        .env_remove("ZKAPI_DATABASE_URL")
+        .output()
+        .unwrap();
+    assert!(
+        output.status.success(),
+        "{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    assert_eq!(
+        serde_json::from_slice::<Value>(&output.stdout).unwrap(),
+        inspected
+    );
+    for canary in [
+        "PRIVATE-SEED-CANARY",
+        "PRIVATE-RUNTIME-CANARY",
+        "PRIVATE-BINARY-CANARY",
+        "PRIVATE-CONFIG-CANARY",
+    ] {
+        assert!(!String::from_utf8_lossy(&output.stdout).contains(canary));
+        assert!(!String::from_utf8_lossy(&output.stderr).contains(canary));
+    }
+    assert!(config.inspect(&root.join("."), target).is_err());
+    assert!(config
+        .inspect(&root, Path::new("/not-mounted/./zkapi-target"))
+        .is_err());
+    for path in [
+        "/outside/public/idl.json",
+        "/not-mounted/zkapi-target/private/idl.json",
+        "/not-mounted/zkapi-target/public/../private/idl.json",
+        "/not-mounted/zkapi-target/public/./assets/idl.json",
+    ] {
+        let mut malformed = config.clone();
+        malformed.devnet.as_mut().unwrap().idl_file = path.into();
+        assert!(malformed.inspect(&root, target).is_err(), "{path}");
+    }
+    std::fs::rename(public.join("idl.json"), public.join("idl-real.json")).unwrap();
+    std::os::unix::fs::symlink("idl-real.json", public.join("idl.json")).unwrap();
+    assert!(config.inspect(&root, target).is_err());
+}
+
+#[test]
+fn generic_transport_policy_requires_authenticated_scope_and_isolated_dispatcher() {
+    let dir = tempfile::tempdir().unwrap();
+    let mut config = fixture(dir.path(), true);
+    config.enable_local_adapter = false;
+    let api = json!({"version":"1","service":"weather","operation":"lookup","method":"POST",
+        "origin":"https://weather.example.com","path":"/lookup","request_max_bytes":"4096",
+        "response_max_bytes":"65536","timeout_seconds":"600","billing":"http_2xx_json"});
+    let mut tariff: zkapi_control::wire::Tariff =
+        serde_json::from_value(json!({"version":"2","provider":"generic",
+        "api":api,"pricing_basis":"fixed_request","valid_from":"1","valid_until":"4000000000",
+        "rates":[{"unit":"requests","nano_usdc_numerator":"250000","unit_denominator":"1"}],
+        "operator_fee_micro_usdc":"0","tariff_hash":"00".repeat(32)}))
+        .unwrap();
+    tariff.tariff_hash = zkapi_control::quote::tariff_hash(&tariff).unwrap();
+    config.manifest["tariff_hashes"] = json!([tariff.tariff_hash]);
+    config.tariffs = vec![tariff];
+    config.providers = serde_json::from_value(
+        json!({"api":[{"api":api,"credential_file":"/not-mounted/provider.key"}]}),
+    )
+    .unwrap();
+    repin(&mut config);
+    assert!(
+        config.validate_public_inputs().is_err(),
+        "a public API cannot run in control"
+    );
+    config.providers.dispatcher = Some(zkapi_control::egress::ClientConfig {
+        binary: "/not-mounted/dispatcherd".into(),
+        binary_sha256: "12".repeat(32),
+        config_file: "/not-mounted/dispatcher.json".into(),
+    });
+    config.validate_public_inputs().unwrap();
+    let mut unpinned = config.clone();
+    unpinned.trusted_manifest_hash = "00".repeat(32);
+    assert!(unpinned.validate_public_inputs().is_err());
+    for origin in [
+        "http://127.0.0.1:8080",
+        "https://127.0.0.1",
+        "http://weather.example.com",
+    ] {
+        let mut changed = config.clone();
+        changed.providers.api[0].api.origin = origin.into();
+        changed.tariffs[0].api = Some(changed.providers.api[0].api.clone());
+        changed.tariffs[0].tariff_hash =
+            zkapi_control::quote::tariff_hash(&changed.tariffs[0]).unwrap();
+        changed.manifest["tariff_hashes"] = json!([changed.tariffs[0].tariff_hash]);
+        repin(&mut changed);
+        assert!(changed.validate_public_inputs().is_err(), "{origin}");
+    }
+}
+#[test]
+fn generic_dispatcher_independently_derives_public_and_local_transport_scope() {
+    let directory = tempfile::tempdir().unwrap();
+    let runtime = fixture(directory.path(), true);
+    let api: zkapi_control::wire::ApiBinding = serde_json::from_value(json!({
+        "version":"1", "service":"weather", "operation":"lookup", "method":"POST", "path":"/lookup",
+        "origin":"https://weather.example.com", "request_max_bytes":"1024", "response_max_bytes":"1024",
+        "timeout_seconds":"600", "billing":"http_2xx_json"
+    })).unwrap();
+    let mut config = zkapi_control::egress::ServiceConfig {
+        local_test_only: false,
+        devnet: Some(zkapi_control::egress::DevnetProviderScope {
+            deployment: runtime.devnet.unwrap(),
+            manifest: runtime.manifest,
+            trusted_manifest_hash: runtime.trusted_manifest_hash,
+        }),
+        database_url: "host=/not-mounted/database user=fixture dbname=fixture".into(),
+        pool: [72; 32],
+        claims_directory: "/not-mounted/claims".into(),
+        providers: serde_json::from_value(
+            json!({"api":[{"api":api,"credential_file":"/not-mounted/provider.key"}]}),
+        )
+        .unwrap(),
+    };
+    config.validate_scope().unwrap();
+    let mut ambiguous = config.clone();
+    ambiguous.local_test_only = true;
+    assert!(ambiguous.validate_scope().is_err());
+    let mut unscoped = config.clone();
+    unscoped.devnet = None;
+    assert!(unscoped.validate_scope().is_err());
+    let mut unpinned = config.clone();
+    unpinned.devnet.as_mut().unwrap().trusted_manifest_hash = "00".repeat(32);
+    assert!(unpinned.validate_scope().is_err());
+    for origin in [
+        "http://127.0.0.1:1234",
+        "https://127.0.0.1",
+        "http://weather.example.com",
+    ] {
+        let mut changed = config.clone();
+        changed.providers.api[0].api.origin = origin.into();
+        assert!(changed.validate_scope().is_err(), "{origin}");
+    }
+    config.local_test_only = true;
+    config.devnet = None;
+    config.providers.api[0].api.origin = "http://127.0.0.1:1234".into();
+    config.validate_scope().unwrap();
+    for origin in [
+        "http://localhost:1234",
+        "https://127.0.0.1",
+        "https://weather.example.com",
+    ] {
+        config.providers.api[0].api.origin = origin.into();
+        assert!(config.validate_scope().is_err(), "{origin}");
+    }
+}
+
 fn repin(config: &mut RuntimeConfig) {
     let mut body = config.manifest.clone();
     body.as_object_mut().unwrap().remove("manifest_hash");

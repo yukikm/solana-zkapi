@@ -18,6 +18,7 @@ needed for the changed component. Commands below run from the repository root.
 | Operations and restore | `python3 scripts/run_i09_operations.py` |
 | Compact deposits | `python3 scripts/run_single_deposit_acceptance.py` |
 | Fixed-price JSON API lifecycle | `python3 scripts/run_general_api.py` |
+| Installed SDK/native API onboarding | `python3 scripts/run_general_api.py --onboarding` |
 
 Rust/SBF suites need pinned tools, proof artifacts and component prerequisites.
 See the [clientd](../apps/clientd/README.md), [control](../services/control/README.md),
@@ -36,7 +37,24 @@ current Vault ELF in LiteSVM. Provider responses and RPC finality are fixtures;
 proof verification, settlement signatures and SBF token movements are real
 local execution. Each run retains its own report in
 `target/general-api-local/run-*`. See the [JSON API guide](getting-started/json-api.md)
-for pinned tools and proof-artifact prerequisites.
+for pinned tools and proof-artifact prerequisites. Both commands generate their
+own authenticated test tree key and circuit source archive; historical run
+directories are not prerequisites.
+
+Before either command, run `python3 scripts/run_general_api.py --check-tools`
+for a read-only inventory of the installed pinned tools. Prepare dependency
+caches separately with `python3 scripts/prepare_general_api_dependencies.py`.
+This fetches locked npm, Cargo and Go dependencies, starts no services and
+installs no toolchains. Lifecycle commands use these caches offline and fail if
+a required dependency is missing.
+
+The onboarding command builds SDK and native distributions and installs the SDK
+in a fresh consumer outside the checkout. It runs independent SDK and native
+lifecycles for normal responses, response loss after persisted usage, and
+upstream timeout. It also checks public profile formats with injected HTTPS
+fixtures. That contract evidence is separate from local proof/SBF execution;
+neither verifies a live provider, public RPC, or release gate. The no-argument
+runner retains the separate mixed inference/API history regression.
 
 Generated reports are ignored local outputs; CI may retain them as artifacts.
 Fresh clones must not require old run reports. Stable regression data belongs in

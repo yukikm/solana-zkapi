@@ -2,20 +2,23 @@
  * custody, signs, submits AUTH, requests a quote, or sends inference. */
 import { address } from '@solana/kit';
 import { loadDeploymentAssets, type LoadedDeploymentAssets } from './deployment.ts';
-import { validateModelConfigurations, type ClientDeployment, type CreateClientOptions, type ModelConfiguration, type Mode } from './client.ts';
+import { validateModelConfigurations, validateClientConfiguration, validateClientSelectionPins, ClientSelectionError, type ClientDeployment, type CreateClientOptions, type ModelConfiguration, type Mode } from './client.ts';
 import { inspectSessionSnapshot } from './session-snapshot.ts';
 import { createSolanaRpcWithFetch } from './solana.ts';
 import { decodeRpcAccount } from './solana-rpc.ts';
 import { jcsBytes, parseStrictJson, sha256Hex, verifyArtifactBundle, verifyManifest, verifyPoolConfig, type VerifiedManifest } from './trust.ts';
 
-export const PUBLIC_PROFILE_SCHEMA = 1;
-export const PUBLIC_PROFILE_SDK_VERSION = '0.2.0-devnet.8';
+import { validateApiBinding, validateApiService, apiOperationPath, type ApiService, type ApiBinding } from './control.ts';
+import { SDK_VERSION } from './version.ts';
+
+export const PUBLIC_PROFILE_SCHEMA = 2;
+export const PUBLIC_PROFILE_SUPPORTED_SCHEMAS = Object.freeze([1, 2] as const);
+export const PUBLIC_PROFILE_SDK_VERSION = SDK_VERSION;
 const DEVNET_GENESIS = 'EtWTRABZaYq6iMfeYKouRu166VU2xqa1wcaWoxPkrZBG';
 const DEVNET_USDC = '4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU';
 const TOKEN_PROGRAM = 'TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA';
 const MAX_RESPONSE = 4 * 1024 * 1024;
-export interface PublicDeploymentProfile {
-  schema: 1;
+interface PublicDeploymentProfileBase {
   id: string;
   revision: number;
   sdkVersions: readonly string[];
@@ -30,6 +33,9 @@ export interface PublicDeploymentProfile {
   oaVerifier?: CreateClientOptions['oaVerifier'];
   preparationCommitment?: 'confirmed' | 'finalized';
 }
+export interface PublicDeploymentProfileV1 extends PublicDeploymentProfileBase { schema: 1 }
+export interface PublicDeploymentProfileV2 extends PublicDeploymentProfileBase { schema: 2; services: readonly ApiService[] }
+export type PublicDeploymentProfile = PublicDeploymentProfileV1 | PublicDeploymentProfileV2;
 export interface LoadedPublicDeploymentProfile {
   readonly profile: PublicDeploymentProfile;
   readonly profileSha256: string;
@@ -46,7 +52,7 @@ export interface PublicProfileOptions {
   signal?: AbortSignal;
   timeoutMs?: number;
 }
-export type PublicProfileComponent = 'profile' | 'compatibility' | 'assets' | 'models' | 'rpc' | 'pool' | 'control' | 'catalog' | 'snapshot';
+export type PublicProfileComponent = 'profile' | 'compatibility' | 'assets' | 'models' | 'services' | 'rpc' | 'pool' | 'control' | 'catalog' | 'snapshot';
 export class PublicProfileError extends Error {
   readonly component: PublicProfileComponent;
   constructor(component: PublicProfileComponent) {
@@ -84,10 +90,10 @@ function deepFreeze<T>(value: T): T {
   return value;
 }
 function validateProfile(value: unknown): PublicDeploymentProfile {
-  fields(value, ['schema','id','revision','sdkVersions','protocolLayoutVersion','bundle','rpcUrl','indexerOrigin','mode','models','modelCapabilities'],
+  object(value);
+  requireValue(PUBLIC_PROFILE_SUPPORTED_SCHEMAS.includes(value.schema));
+  fields(value, ['schema','id','revision','sdkVersions','protocolLayoutVersion','bundle','rpcUrl','indexerOrigin','mode','models','modelCapabilities', ...(value.schema === 2 ? ['services'] : [])],
     ['directProviderBases','oaVerifier','preparationCommitment']);
-  requireValue(value.schema === 1 && typeof value.id === 'string' && /^[a-z0-9][a-z0-9-]{0,79}$/.test(value.id)
-    && Number.isSafeInteger(value.revision) && value.revision > 0);
   requireValue(Array.isArray(value.sdkVersions) && value.sdkVersions.length > 0 && value.sdkVersions.length <= 16
     && value.sdkVersions.every((v: unknown) => typeof v === 'string' && /^[0-9]+\.[0-9]+\.[0-9]+(?:-[a-zA-Z0-9.-]+)?$/.test(v))
     && new Set(value.sdkVersions).size === value.sdkVersions.length);
@@ -95,7 +101,19 @@ function validateProfile(value: unknown): PublicDeploymentProfile {
   fields(value.bundle,['url','sha256']); publicUrl(value.bundle.url); digest(value.bundle.sha256);
   publicUrl(value.rpcUrl); publicUrl(value.indexerOrigin,true);
   requireValue(value.preparationCommitment === undefined || ['finalized','confirmed'].includes(value.preparationCommitment));
-  requireValue(Array.isArray(value.models) && value.models.length > 0 && value.models.length <= 32);
+  validateProfileSelection(value);
+  return deepFreeze(value as PublicDeploymentProfile);
+}
+/** Pure public selection contract for registration before signing or custody.
+ * This validates configuration only; it never authenticates a loaded profile. */
+export function validatePublicProfileSelection(value: unknown): void {
+  fields(value,['id','revision','mode','models','modelCapabilities','services'],['directProviderBases','oaVerifier']);
+  validateProfileSelection({...value,schema:2});
+}
+function validateProfileSelection(value: Record<string, any>): void {
+  requireValue(typeof value.id === 'string' && /^[a-z0-9][a-z0-9-]{0,79}$/.test(value.id)
+    && Number.isSafeInteger(value.revision) && value.revision > 0);
+  requireValue(Array.isArray(value.models) && (value.schema === 2 || value.models.length > 0) && value.models.length <= 32);
   fields(value.modelCapabilities, value.models.map((m: any) => m?.id));
   for (const m of value.models) {
     fields(m,['id','provider','apis','tariff'],['label']);
@@ -118,7 +136,15 @@ function validateProfile(value: unknown): PublicDeploymentProfile {
     requireValue(!selected.includes('cache_write_tokens') || !selected.some((u: string) => u === 'cache_write_1h_tokens' || u === 'cache_write_5m_tokens'));
     requireValue(value.mode === 'proxy' ? selected.includes('input_tokens') && selected.includes('output_tokens') : t.rates.length === 0);
   }
-  validateModelConfigurations(value.mode, value.models);
+  if (value.schema === 2) {
+    try {
+      requireValue(Array.isArray(value.services) && value.services.length <= 64);
+      for (const service of value.services) { validateApiService(service); publicUrl(service.tariff.api.origin, true); }
+      requireValue(value.services.length === 0 || value.mode === 'proxy');
+    } catch { throw new PublicProfileError('services'); }
+  }
+  try { if (value.models.length) validateModelConfigurations(value.mode,value.models); validateClientConfiguration(value.mode, value.models, value.schema === 2 ? value.services : []); }
+  catch (error) { throw new PublicProfileError(error instanceof ClientSelectionError ? error.component : 'models'); }
   if (value.mode === 'proxy') requireValue(value.directProviderBases === undefined && value.oaVerifier === undefined);
   else {
     fields(value.directProviderBases,[value.mode]); publicUrl(value.directProviderBases[value.mode]);
@@ -128,8 +154,7 @@ function validateProfile(value: unknown): PublicDeploymentProfile {
       requireValue(!value.oaVerifier.base.endsWith('/') && typeof value.oaVerifier.stationId === 'string' && /^[\x21-\x7e]{1,200}$/.test(value.oaVerifier.stationId));
     } else requireValue(value.oaVerifier === undefined);
   }
-  return deepFreeze(value as PublicDeploymentProfile);
-}
+ }
 async function abortable<T>(pending: Promise<T>, signal: AbortSignal): Promise<T> {
   if (signal.aborted) { void pending.catch(() => {}); throw Error('aborted'); }
   let stop!: () => void;
@@ -161,7 +186,7 @@ function deadline(timeoutMs: number | undefined, caller: AbortSignal | undefined
 function cloneAssets(a: LoadedDeploymentAssets): LoadedDeploymentAssets {
   return {...a,manifest:new Uint8Array(a.manifest),trust:structuredClone(a.trust),artifacts:structuredClone(a.artifacts),wasm:new Uint8Array(a.wasm),notices:structuredClone(a.notices)};
 }
-function clientParts(profile: PublicDeploymentProfile, assets: LoadedDeploymentAssets, fetcher: typeof fetch): Pick<CreateClientOptions,'deployment'|'mode'|'models'|'directProviderBases'|'oaVerifier'> {
+function clientParts(profile: PublicDeploymentProfile, assets: LoadedDeploymentAssets, fetcher: typeof fetch): Pick<CreateClientOptions,'deployment'|'mode'|'models'|'services'|'directProviderBases'|'oaVerifier'> {
   const safeFetch: typeof fetch = (url,init) => fetcher(url,{...init,credentials:'omit',redirect:'error',cache:'no-store'});
   const rpcFetch: typeof fetch = async (url,init) => {
     const bound = deadline(30_000,init?.signal ?? undefined,30_000);
@@ -171,7 +196,7 @@ function clientParts(profile: PublicDeploymentProfile, assets: LoadedDeploymentA
   };
   return {deployment:{manifest:new Uint8Array(assets.manifest),trust:structuredClone(assets.trust),artifacts:structuredClone(assets.artifacts),
     connection:createSolanaRpcWithFetch(profile.rpcUrl,rpcFetch),indexerOrigin:profile.indexerOrigin,fetch:safeFetch,preparationCommitment:profile.preparationCommitment},
-  mode:profile.mode,models:profile.models.map(m => ({...structuredClone(m),capabilities:structuredClone(profile.modelCapabilities[m.id])})),
+  mode:profile.mode,services:structuredClone(profile.schema === 2 ? [...profile.services] : []),models:profile.models.map(m => ({...structuredClone(m),capabilities:structuredClone(profile.modelCapabilities[m.id])})),
   ...(profile.directProviderBases ? {directProviderBases:structuredClone(profile.directProviderBases)} : {}),
   ...(profile.oaVerifier ? {oaVerifier:structuredClone(profile.oaVerifier)} : {})};
 }
@@ -185,12 +210,9 @@ async function validateAssets(profile: PublicDeploymentProfile, assets: LoadedDe
   requireValue(await sha256Hex(assets.wasm) === assets.wasmSha256 && WebAssembly.validate(new Uint8Array(assets.wasm)));
   return m;
 }
-async function validateModelPins(profile: PublicDeploymentProfile, manifest: VerifiedManifest, now?: bigint) {
-  for (const model of profile.models) {
-    const {tariff_hash,...body} = model.tariff;
-    requireValue(manifest.tariff_hashes.includes(tariff_hash) && await sha256Hex(jcsBytes(body)) === tariff_hash);
-    if (now !== undefined) requireValue(now >= BigInt(model.tariff.valid_from) && now < BigInt(model.tariff.valid_until));
-  }
+async function validateSelectionPins(profile: PublicDeploymentProfile, manifest: VerifiedManifest, now?: bigint) {
+  try { await validateClientSelectionPins({models:profile.models,services:profile.schema === 2 ? profile.services : []},manifest,now); }
+  catch (error) { throw error instanceof ClientSelectionError ? new PublicProfileError(error.component) : error; }
 }
 /** A profile's exact digest authenticates its bundle digest and therefore the
  * bundle's existing ManifestTrustPolicy. No trust key is learned from /config. */
@@ -204,7 +226,7 @@ export async function loadPublicDeploymentProfile(url: string | URL, options: Pu
     requireValue(await sha256Hex(bytes) === expected);
     const profile = validateProfile(parseStrictJson(bytes)); component = 'assets';
     const assets = await loadDeploymentAssets(profile.bundle.url,{bundleSha256:profile.bundle.sha256,fetch:fetcher,signal:bound.signal,timeoutMs:options.timeoutMs ?? 180_000});
-    const manifest = await validateAssets(profile,assets); component = 'models'; await validateModelPins(profile,manifest);
+    const manifest = await validateAssets(profile,assets); component = 'models'; await validateSelectionPins(profile,manifest);
     bound.signal.throwIfAborted();
     const stored = {profile,assets:cloneAssets(assets),fetcher,hash:expected};
     const result = Object.freeze({profile,profileSha256:expected,get assets() { return cloneAssets(stored.assets); },
@@ -217,10 +239,44 @@ export function publicProfileClientOptions(loaded: LoadedPublicDeploymentProfile
   const stored = loadedProfiles.get(loaded); if (!stored) throw new PublicProfileError('profile');
   return clientParts(stored.profile,stored.assets,stored.fetcher);
 }
+interface CatalogModel { model: string; provider: string; modes: Mode[]; endpoints: string[]; modalities: string[]; tariff_hash: string }
+interface CatalogApi { api: ApiBinding; mode: 'proxy'; provider: 'generic'; endpoint: string; tariff_hash: string }
+function uniqueStrings(value: unknown, allowed: readonly string[], nonempty = true): asserts value is string[] {
+  requireValue(Array.isArray(value) && (!nonempty || value.length > 0) && value.every(v => typeof v === 'string' && allowed.includes(v))
+    && new Set(value).size === value.length);
+}
+function validateCatalog(value: unknown): { models: CatalogModel[]; apis: CatalogApi[] } {
+  fields(value,['models'],['apis']);
+  requireValue(Array.isArray(value.models) && value.models.length <= 256);
+  requireValue(value.apis === undefined || Array.isArray(value.apis) && value.apis.length <= 256);
+  const identities = new Set<string>();
+  const add = (identity: string) => { requireValue(!identities.has(identity)); identities.add(identity); };
+  for (const entry of value.models) {
+    fields(entry,['model','provider','modes','endpoints','modalities','tariff_hash']);
+    requireValue(typeof entry.model === 'string' && /^[\x21-\x7e]{1,200}$/.test(entry.model));
+    requireValue(['openai','anthropic','openrouter','oa'].includes(entry.provider)); digest(entry.tariff_hash);
+    uniqueStrings(entry.modes,['proxy','direct_oa','direct_openrouter']); uniqueStrings(entry.modalities,['text']);
+    const allowed = entry.provider === 'anthropic' ? ['/v1/messages','/v1/messages/count_tokens']
+      : entry.provider === 'openrouter' ? ['/v1/chat/completions'] : ['/v1/chat/completions','/v1/responses'];
+    uniqueStrings(entry.endpoints,allowed,false);
+    for (const mode of entry.modes) {
+      requireValue(mode === 'proxy' ? entry.model !== '*' && entry.provider !== 'oa' && entry.endpoints.length > 0
+        : entry.model === '*' && entry.provider === (mode === 'direct_oa' ? 'oa' : 'openrouter'));
+      add(JSON.stringify(['model',entry.model,entry.provider,mode,entry.tariff_hash]));
+    }
+  }
+  for (const entry of value.apis ?? []) {
+    fields(entry,['api','mode','provider','endpoint','tariff_hash']); validateApiBinding(entry.api); publicUrl(entry.api.origin,true);
+    digest(entry.tariff_hash); requireValue(entry.mode === 'proxy' && entry.provider === 'generic' && entry.endpoint === apiOperationPath(entry.api));
+    add(JSON.stringify(['api',entry.api.service,entry.api.operation,entry.tariff_hash]));
+  }
+  return {models:value.models,apis:value.apis ?? []};
+}
 export interface PublicPreflightOptions { fetch?: typeof fetch; signal?: AbortSignal; timeoutMs?: number; nowSeconds?: bigint }
 export interface PublicPreflightResult {
   profileId: string; profileSha256: string; deploymentId: string; pool: string; manifestHash: string;
   slot: string; paused: boolean; chainAllowsNewOperations: boolean; operatorAdmission: 'unverified'; models: readonly string[];
+  apis: readonly { service: string; operation: string; endpoint: string; tariffHash: string }[];
   snapshot: Awaited<ReturnType<typeof inspectSessionSnapshot>>;
   checks: readonly string[];
 }
@@ -234,7 +290,7 @@ export async function preflightPublicDeployment(loaded: LoadedPublicDeploymentPr
     bound = deadline(options.timeoutMs,options.signal,60_000); const signal = bound.signal;
     component = 'assets'; const m = await validateAssets(profile,assets);
     const now = options.nowSeconds ?? BigInt(Math.floor(Date.now()/1000)); requireValue(typeof now === 'bigint' && now >= 0n);
-    component = 'models'; await validateModelPins(profile,m,now);
+    component = 'models'; await validateSelectionPins(profile,m,now);
     const readonlyFetch: typeof fetch = async (input,init) => {
       const url = String(input), method = init?.method ?? 'GET';
       if (url === profile.rpcUrl) {
@@ -257,19 +313,23 @@ export async function preflightPublicDeployment(loaded: LoadedPublicDeploymentPr
     const serverManifest = await verifyManifest(await responseBytes(await readonlyFetch(m.control_api_origin+'/zkapi/v1/config'),1024*1024,signal),assets.trust);
     requireValue(serverManifest.manifest_hash === m.manifest_hash);
     component = 'catalog'; const catalog: unknown = parseStrictJson(await responseBytes(await readonlyFetch(m.control_api_origin+'/zkapi/v1/catalog'),1024*1024,signal));
-    fields(catalog,['models']); requireValue(Array.isArray(catalog.models) && catalog.models.length <= 256);
+    const validatedCatalog = validateCatalog(catalog);
     const apiPaths = {chat:'/v1/chat/completions',responses:'/v1/responses',messages:'/v1/messages'};
-    for (const model of profile.models) requireValue(catalog.models.some((entry: any) => entry && entry.model === (profile.mode === 'proxy' ? model.id : '*')
+    for (const model of profile.models) requireValue(validatedCatalog.models.some((entry: any) => entry && entry.model === (profile.mode === 'proxy' ? model.id : '*')
       && entry.provider === model.provider && entry.tariff_hash === model.tariff.tariff_hash && Array.isArray(entry.modes) && entry.modes.includes(profile.mode)
       && Array.isArray(entry.modalities) && entry.modalities.includes('text')
       && (profile.mode !== 'proxy' || Array.isArray(entry.endpoints) && model.apis.every(api => entry.endpoints.includes(apiPaths[api])))));
+    for (const service of profile.schema === 2 ? profile.services : []) requireValue(validatedCatalog.apis.some(entry =>
+      entry.tariff_hash === service.tariff.tariff_hash && entry.endpoint === apiOperationPath(service.tariff.api)
+      && new TextDecoder().decode(jcsBytes(entry.api)) === new TextDecoder().decode(jcsBytes(service.tariff.api))));
     component = 'snapshot';
     requireValue(checked.slot <= BigInt(Number.MAX_SAFE_INTEGER));
     const snapshot = await abortable(inspectSessionSnapshot(rpc,m,profile.indexerOrigin,readonlyFetch,Number(checked.slot)),signal);
     const skew = now-BigInt(snapshot.clock); requireValue(skew >= -120n && skew <= 120n);
     signal.throwIfAborted();
     return {profileId:profile.id,profileSha256:stored.hash,deploymentId:m.deployment_id,pool:m.pool,manifestHash:m.manifest_hash,slot:String(snapshot.slot),
-      paused:snapshot.paused,chainAllowsNewOperations:!snapshot.paused,operatorAdmission:'unverified',models:profile.models.map(v=>v.id),snapshot,
+      paused:snapshot.paused,chainAllowsNewOperations:!snapshot.paused,operatorAdmission:'unverified',models:profile.models.map(v=>v.id),
+      apis:(profile.schema === 2 ? profile.services : []).map(({tariff})=>({service:tariff.api.service,operation:tariff.api.operation,endpoint:apiOperationPath(tariff.api),tariffHash:tariff.tariff_hash})),snapshot,
       checks:['profile','assets','manifest','tariffs','genesis','finalized_pool','control_config','catalog','shared_snapshot','chain_clock']};
   } catch (error) { throw error instanceof PublicProfileError ? error : new PublicProfileError(component); }
   finally { bound?.close(); }

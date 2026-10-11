@@ -320,6 +320,7 @@ export class ClientDaemon {
       if (method === 'GET' && path === '/zkapi/v1/apis') return json({apis:this.o.services!.map(s=>s.tariff.api)});
       if (method === 'GET' && path === '/admin/status') return json(await this.status());
       if (method === 'GET' && path === '/admin/upgrade-plan') return json(planClientUpgrade(await this.status()));
+      if (method === 'GET' && path === '/admin/model-availability' && this.o.models.length === 0) return json({error:{code:'unsupported_for_profile'}},400);
       if (method === 'GET' && path === '/admin/model-availability') return json(await this.o.client.checkModelAvailability(this.o.mode,this.o.models.map(m=>typeof m === 'string'?m:m.id),signal));
       if (method === 'POST' && ['/admin/close','/admin/recover','/admin/reconcile','/admin/cancel-unsent','/admin/purge-settled-bodies','/admin/wallet'].includes(path)) return json(await this.management(path.slice(7) as 'close'|'recover'|'reconcile'|'cancel-unsent'|'purge-settled-bodies'|'wallet',bytes.length?parseStrictJson(bytes):undefined));
       if (method === 'POST' && routes.has(path)) return await this.infer(path,bytes,headers.get('Idempotency-Key') ?? undefined,headers.get('anthropic-version') ?? '',signal);

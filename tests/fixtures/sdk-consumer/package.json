@@ -1,0 +1,13 @@
+{
+  "name": "independent-zkapi-consumer",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "@zkapi/solana-sdk": "file:./zkapi-sdk.tgz"
+  },
+  "devDependencies": {
+    "typescript": "5.9.3",
+    "@types/node": "24.10.0",
+    "esbuild": "0.28.2"
+  }
+}

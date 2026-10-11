@@ -17,6 +17,7 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"regexp"
 	"strconv"
 	"strings"
 	"syscall"
@@ -48,6 +49,7 @@ type PinnedCA struct {
 }
 type Relay struct {
 	client          *http.Client
+	apiClient       *http.Client
 	routes          []Route
 	admissionOrigin string
 	admissionToken  string
@@ -190,7 +192,10 @@ func New(config Config) (*Relay, error) {
 		tlsConfig.RootCAs = roots
 	}
 	t := &http.Transport{Proxy: nil, DialContext: dial, TLSClientConfig: tlsConfig, TLSHandshakeTimeout: 20 * time.Second, ResponseHeaderTimeout: 60 * time.Second, DisableCompression: true, ForceAttemptHTTP2: true}
-	return &Relay{client: &http.Client{Transport: t, Timeout: 10 * time.Minute, CheckRedirect: func(_ *http.Request, _ []*http.Request) error { return http.ErrUseLastResponse }}, routes: append([]Route(nil), config.Routes...), admissionOrigin: admissionOrigin, admissionToken: admissionToken}, nil
+	apiTransport := t.Clone()
+	apiTransport.ResponseHeaderTimeout = 660 * time.Second
+	apiClient := &http.Client{Transport: apiTransport, Timeout: 660 * time.Second, CheckRedirect: func(_ *http.Request, _ []*http.Request) error { return http.ErrUseLastResponse }}
+	return &Relay{client: &http.Client{Transport: t, Timeout: 10 * time.Minute, CheckRedirect: func(_ *http.Request, _ []*http.Request) error { return http.ErrUseLastResponse }}, apiClient: apiClient, routes: append([]Route(nil), config.Routes...), admissionOrigin: admissionOrigin, admissionToken: admissionToken}, nil
 }
 
 func (e *Relay) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -229,7 +234,13 @@ func (e *Relay) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		out.Header.Set("X-Zkapi-Admission", e.admissionToken)
 	}
 	out.ContentLength = r.ContentLength
-	response, err := e.client.Do(out)
+	client := e.client
+	// Only an explicitly configured concrete operation receives the generic API
+	// execution budget. Caller headers cannot select a longer timeout.
+	if e.isRegisteredOperation(r.Method, u.Scheme+"://"+u.Host, u.Path) {
+		client = e.apiClient
+	}
+	response, err := client.Do(out)
 	if err != nil {
 		http.Error(w, "network unavailable; no direct fallback or retry", 503)
 		return
@@ -262,4 +273,18 @@ func (e *Relay) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
+}
+
+var registeredOperationPath = regexp.MustCompile(`^/zkapi/v1/api/[a-z0-9][a-z0-9_-]{0,63}/[a-z0-9][a-z0-9_-]{0,63}$`)
+
+func (e *Relay) isRegisteredOperation(method, origin, path string) bool {
+	if method != http.MethodPost || !registeredOperationPath.MatchString(path) {
+		return false
+	}
+	for _, route := range e.routes {
+		if route.Origin == origin && route.Prefix == path {
+			return true
+		}
+	}
+	return false
 }

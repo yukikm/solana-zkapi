@@ -3501,6 +3501,37 @@
         ],
         "additionalProperties": false
       },
+      "ApiCatalogEntry": {
+        "type": "object",
+        "properties": {
+          "api": {
+            "$ref": "#/components/schemas/ApiBinding"
+          },
+          "mode": {
+            "type": "string",
+            "const": "proxy"
+          },
+          "provider": {
+            "type": "string",
+            "const": "generic"
+          },
+          "endpoint": {
+            "type": "string"
+          },
+          "tariff_hash": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          }
+        },
+        "required": [
+          "api",
+          "mode",
+          "provider",
+          "endpoint",
+          "tariff_hash"
+        ],
+        "additionalProperties": false
+      },
       "Catalog": {
         "type": "object",
         "properties": {
@@ -3508,7 +3539,15 @@
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/CatalogEntry"
-            }
+            },
+            "maxItems": 256
+          },
+          "apis": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ApiCatalogEntry"
+            },
+            "maxItems": 256
           }
         },
         "required": [

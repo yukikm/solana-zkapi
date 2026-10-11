@@ -1,6 +1,6 @@
 {
   "name": "@zkapi/solana-sdk",
-  "version": "0.2.0-devnet.8",
+  "version": "0.2.0-devnet.9-onboarding.0",
   "private": true,
   "type": "module",
   "exports": {
@@ -147,7 +147,7 @@
   ],
   "scripts": {
     "build": "node build.mjs",
-    "prepack": "npm run build"
+    "prepack": "node build.mjs"
   },
   "devDependencies": {
     "typescript": "5.9.3",

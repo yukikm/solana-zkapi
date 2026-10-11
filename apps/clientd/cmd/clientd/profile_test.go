@@ -12,6 +12,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 )
 
 func profileFixture(t *testing.T) ([]string, string, string) {
@@ -28,8 +29,14 @@ func profileFixture(t *testing.T) ([]string, string, string) {
 	for _, name := range []string{"bin/clientd", "bin/node", "apps/clientd/runtime.ts", "bin/zkapi-client-prover", "bin/zkapi-client-verify"} {
 		p := filepath.Join(install, name)
 		os.MkdirAll(filepath.Dir(p), 0700)
-		os.WriteFile(p, []byte(name), 0600)
-		s := sha256.Sum256([]byte(name))
+		data := []byte(name)
+		if name == "bin/node" {
+			// Deliberate process stub: these tests verify Go's pinned validator ABI.
+			// Runtime contract tests separately exercise the actual Node validator.
+			data = []byte("#!/bin/sh\nprintf '%s\\n' '{\"schema\":1,\"valid\":true,\"manifestHash\":\"" + strings.Repeat("a", 64) + "\",\"mode\":\"direct_openrouter\",\"models\":[\"model/chat\"],\"operations\":[],\"custodyInitialized\":false,\"networkActions\":0}'\n")
+		}
+		os.WriteFile(p, data, 0700)
+		s := sha256.Sum256(data)
 		files[name] = hex.EncodeToString(s[:])
 	}
 	release := filepath.Join(install, "release.json")
@@ -208,7 +215,7 @@ func TestProfileRequestSeparatesCredentialsAndDoesNotFollowRedirect(t *testing.T
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		calls++
 		want := strings.TrimSpace(string(management))
-		if r.URL.Path == "/v1/models" {
+		if r.URL.Path == "/v1/models" || r.URL.Path == "/zkapi/v1/apis" {
 			want = strings.TrimSpace(string(inference))
 		}
 		if r.Header.Get("Authorization") != "Bearer "+want {
@@ -238,7 +245,7 @@ func TestProfileRequestSeparatesCredentialsAndDoesNotFollowRedirect(t *testing.T
 	c, _ := readProfile(profile)
 	c.Listen = strings.TrimPrefix(server.URL, "http://")
 	writePrivate(filepath.Join(profile, "config.json"), c)
-	for _, action := range []string{"status", "models", "upgrade-plan", "model-availability", "purge-settled-bodies"} {
+	for _, action := range []string{"status", "models", "apis", "upgrade-plan", "model-availability", "purge-settled-bodies"} {
 		if err := profileCommand([]string{"request", profile, action}, nil, io.Discard); err != nil {
 			t.Fatal(err)
 		}
@@ -246,7 +253,7 @@ func TestProfileRequestSeparatesCredentialsAndDoesNotFollowRedirect(t *testing.T
 	if err := profileCommand([]string{"request", profile, "close"}, nil, io.Discard); err == nil {
 		t.Fatal("redirect accepted")
 	}
-	if calls != 6 {
+	if calls != 7 {
 		t.Fatal("request replayed")
 	}
 }
@@ -286,5 +293,152 @@ func TestSetupDisablesOpenClawProviderRetriesInAgentSettings(t *testing.T) {
 	}
 	if json.Unmarshal(raw, &settings) != nil || !bytes.Contains(raw, []byte(`"maxRetries": 0`)) {
 		t.Fatal("retry policy missing")
+	}
+}
+
+func replaceValidator(t *testing.T, args []string, script string) {
+	t.Helper()
+	root := filepath.Dir(args[4])
+	node := filepath.Join(root, "bin/node")
+	if err := os.WriteFile(node, []byte("#!/bin/sh\n"+script+"\n"), 0700); err != nil {
+		t.Fatal(err)
+	}
+	raw, _ := os.ReadFile(args[4])
+	var release map[string]json.RawMessage
+	json.Unmarshal(raw, &release)
+	var files map[string]string
+	json.Unmarshal(release["files"], &files)
+	raw, _ = os.ReadFile(node)
+	sum := sha256.Sum256(raw)
+	files["bin/node"] = hex.EncodeToString(sum[:])
+	release["files"], _ = json.Marshal(files)
+	writePrivate(args[4], release)
+	raw, _ = os.ReadFile(args[4])
+	sum = sha256.Sum256(raw)
+	args[6] = hex.EncodeToString(sum[:])
+}
+func TestSetupRejectsInvalidValidatorABIWithoutCreatingProfile(t *testing.T) {
+	for _, script := range []string{"exit 2", "printf '%s' '{}'", "printf '%s' '{\"valid\":true}'", "printf '%s' 'SECRET_CANARY' >&2; exit 1", "printf '%s' '{'", "printf '%s' '{\"schema\":1,\"valid\":true,\"manifestHash\":\"" + strings.Repeat("a", 64) + "\",\"mode\":\"proxy\",\"models\":[],\"operations\":[],\"custodyInitialized\":false,\"networkActions\":0}'"} {
+		args, profile, _ := profileFixture(t)
+		replaceValidator(t, args, script)
+		var output bytes.Buffer
+		err := profileCommand(args, nil, &output)
+		if err == nil || strings.Contains(err.Error(), "SECRET_CANARY") || output.Len() != 0 {
+			t.Fatalf("invalid or private validator result accepted: %v", err)
+		}
+		if _, err := os.Stat(profile); !os.IsNotExist(err) {
+			t.Fatal("failed validator created profile")
+		}
+	}
+}
+func TestSetupAPIOnlySkipsOpenClawAndReturnsAPIBase(t *testing.T) {
+	args, profile, runtime := profileFixture(t)
+	raw, _ := os.ReadFile(runtime)
+	var configuration map[string]any
+	json.Unmarshal(raw, &configuration)
+	configuration["models"] = []any{}
+	configuration["mode"] = "proxy"
+	configuration["services"] = []any{map[string]string{"tariff": "/reviewed/api.json"}}
+	writePrivate(runtime, configuration)
+	raw, _ = os.ReadFile(runtime)
+	sum := sha256.Sum256(raw)
+	args[10] = hex.EncodeToString(sum[:])
+	replaceValidator(t, args, "printf '%s\\n' '{\"schema\":1,\"valid\":true,\"manifestHash\":\""+strings.Repeat("a", 64)+"\",\"mode\":\"proxy\",\"models\":[],\"operations\":[{\"service\":\"catalog\",\"operation\":\"lookup\",\"endpoint\":\"/zkapi/v1/api/catalog/lookup\",\"tariffHash\":\""+strings.Repeat("b", 64)+"\"}],\"custodyInitialized\":false,\"networkActions\":0}'")
+	var out bytes.Buffer
+	if err := profileCommand(args, nil, &out); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(filepath.Join(profile, "openclaw-agent")); !os.IsNotExist(err) {
+		t.Fatal("API-only OpenClaw files created")
+	}
+	if !strings.Contains(out.String(), `"api_base_url":"http://127.0.0.1:8787/zkapi/v1"`) {
+		t.Fatal("API base missing")
+	}
+}
+func TestServicePathsRequireClosedCanonicalContainer(t *testing.T) {
+	for _, service := range []string{`null`, `{}`, `[{"tariff":"relative"}]`, `[{"tariff":"/a/../b"}]`, `[{"tariff":"/api","secret":"canary"}]`, `[{}]`} {
+		var runtime map[string]json.RawMessage
+		json.Unmarshal([]byte(`{"artifacts":{},"models":[],"services":`+service+`}`), &runtime)
+		if validateDeploymentPaths(runtime) == nil {
+			t.Fatal("accepted unsafe service container", service)
+		}
+	}
+}
+func TestAPICommandValidatesBeforeDispatchAndSendsExactlyOnce(t *testing.T) {
+	args, profile, _ := profileFixture(t)
+	if err := profileCommand(args, nil, io.Discard); err != nil {
+		t.Fatal(err)
+	}
+	c, _ := readProfile(profile)
+	tariff := filepath.Join(profile, "api.json")
+	writePrivate(tariff, map[string]any{"api": map[string]string{"service": "catalog", "operation": "lookup", "request_max_bytes": "64", "response_max_bytes": "32", "timeout_seconds": "600"}})
+	writePrivate(c.RuntimeConfig, map[string]any{"models": []any{}, "services": []any{map[string]string{"tariff": tariff}}})
+	token, _ := privateRead(filepath.Join(profile, "inference-token"), 128)
+	calls := 0
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		calls++
+		if r.URL.Path != "/zkapi/v1/api/catalog/lookup" || r.Method != "POST" || r.Header.Get("Authorization") != "Bearer "+strings.TrimSpace(string(token)) || r.Header.Get("Idempotency-Key") != "00112233-4455-4677-8899-aabbccddeeff" {
+			t.Error("wrong API request")
+		}
+		io.WriteString(w, `{"ok":true}`)
+	}))
+	defer server.Close()
+	c.Listen = strings.TrimPrefix(server.URL, "http://")
+	command := []string{profile, "--service", "catalog", "--operation", "lookup", "--operation-id", "00112233-4455-4677-8899-aabbccddeeff"}
+	for _, body := range []string{"{", strings.Repeat(" ", 65), `{"query":`} {
+		if profileAPIRequest(c, command, strings.NewReader(body), io.Discard, io.Discard) == nil {
+			t.Fatal("invalid body accepted")
+		}
+	}
+	for _, id := range []string{"", "00112233-4455-1677-8899-aabbccddeeff"} {
+		bad := append([]string{}, command...)
+		bad[6] = id
+		if profileAPIRequest(c, bad, strings.NewReader("{}"), io.Discard, io.Discard) == nil {
+			t.Fatal("invalid identity accepted")
+		}
+	}
+	if calls != 0 {
+		t.Fatal("invalid request dispatched")
+	}
+	var out, diagnostic bytes.Buffer
+	if err := profileAPIRequest(c, command, strings.NewReader("{}"), &out, &diagnostic); err != nil {
+		t.Fatal(err)
+	}
+	if calls != 1 || out.String() != `{"ok":true}` || strings.Contains(diagnostic.String(), strings.TrimSpace(string(token))) {
+		t.Fatal("API replayed or disclosed token")
+	}
+	if newLocalHTTPClient(apiRequestTimeout).Timeout != 15*time.Minute || apiDiscoveryTimeout != 30*time.Second {
+		t.Fatal("generic deadline changed")
+	}
+}
+
+func TestNativeHTTPDeadlineCoversResponseConsumptionWithoutReplay(t *testing.T) {
+	calls := 0
+	canceled := make(chan struct{}, 1)
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		calls++
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(200)
+		w.(http.Flusher).Flush()
+		<-r.Context().Done()
+		canceled <- struct{}{}
+	}))
+	defer server.Close()
+	response, err := newLocalHTTPClient(20 * time.Millisecond).Get(server.URL)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, err = io.ReadAll(response.Body)
+	response.Body.Close()
+	if err == nil {
+		t.Fatal("body consumption outlived overall deadline")
+	}
+	select {
+	case <-canceled:
+	case <-time.After(time.Second):
+		t.Fatal("deadline did not cancel request")
+	}
+	if calls != 1 {
+		t.Fatal("uncertain API request replayed")
 	}
 }

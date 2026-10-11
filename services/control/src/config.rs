@@ -223,11 +223,29 @@ impl DevnetConfig {
         Ok(public_profile)
     }
 }
+/// Derived only after authenticating the deployment's public inputs.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) enum ProviderTransportPolicy {
+    LocalFixture,
+    PublicDevnet,
+}
+impl ProviderTransportPolicy {
+    pub(crate) fn local(self) -> bool {
+        self == Self::LocalFixture
+    }
+}
+pub struct PublicValidatedConfig {
+    pub trusted: TrustedPool,
+    pub binding: BindingConfig,
+    pub signer: SignerConfig,
+    pub(crate) provider_policy: ProviderTransportPolicy,
+}
 pub struct ValidatedConfig {
     pub runtime: RuntimeConfig,
     pub trusted: TrustedPool,
     pub binding: BindingConfig,
     pub signer: SignerConfig,
+    pub(crate) provider_policy: ProviderTransportPolicy,
     pub quote_key: SigningKey,
     pub receipt_key: SigningKey,
 }
@@ -264,7 +282,82 @@ fn read_key(path: &Path) -> Result<SigningKey> {
     Ok(key)
 }
 impl RuntimeConfig {
-    pub fn validate(self) -> Result<ValidatedConfig> {
+    /// Inspect staged public artifacts at a different preparation root. The
+    /// resolver is deliberately limited to generated public/provenance files;
+    /// private key and runtime references are never opened or relocated.
+    pub fn inspect(&self, input_root: &Path, target_root: &Path) -> Result<Value> {
+        fn canonical_path(path: &Path) -> Result<()> {
+            ensure!(
+                path.is_absolute()
+                    && path.components().all(|c| matches!(
+                        c,
+                        std::path::Component::RootDir | std::path::Component::Normal(_)
+                    )),
+                "canonical absolute path required"
+            );
+            ensure!(
+                path.to_str().is_some_and(|s| s
+                    .split('/')
+                    .skip(1)
+                    .all(|part| !part.is_empty() && part != "." && part != "..")),
+                "canonical path required"
+            );
+            Ok(())
+        }
+        canonical_path(input_root)?;
+        canonical_path(target_root)?;
+        let resolve = |path: &Path| -> Result<PathBuf> {
+            canonical_path(path)?;
+            let relative = path
+                .strip_prefix(target_root)
+                .context("public input outside target root")?;
+            ensure!(
+                relative.starts_with("public") || relative.starts_with("provenance"),
+                "public input path required"
+            );
+            let result = input_root.join(relative);
+            let mut current = PathBuf::new();
+            for part in result.components() {
+                current.push(part.as_os_str());
+                let metadata = std::fs::symlink_metadata(&current)?;
+                ensure!(
+                    !metadata.file_type().is_symlink(),
+                    "symlink in public input path"
+                );
+            }
+            ensure!(
+                std::fs::metadata(&result)?.is_file(),
+                "regular public input required"
+            );
+            Ok(result)
+        };
+        let mut mapped = self.clone();
+        if let Some(devnet) = &mut mapped.devnet {
+            devnet.idl_file = resolve(&devnet.idl_file)?;
+            devnet.program_file = resolve(&devnet.program_file)?;
+            devnet.build_manifest_file = resolve(&devnet.build_manifest_file)?;
+            if let Some(file) = &mut devnet.public_profile_file {
+                *file = resolve(file)?;
+            }
+        }
+        let public = mapped.validate_public_inputs()?;
+        let mut signer = public.signer;
+        if let Some(pin) = &mut signer.public_devnet_profile {
+            pin.file = self
+                .devnet
+                .as_ref()
+                .and_then(|d| d.public_profile_file.clone())
+                .context("profile destination")?;
+        }
+        Ok(
+            serde_json::json!({"schema":1, "manifestHash":self.trusted_manifest_hash,
+            "tariffHashes": self.tariffs.iter().map(|t| &t.tariff_hash).collect::<Vec<_>>(),
+            "operations": self.providers.api.iter().map(|p| &p.api).collect::<Vec<_>>(), "signer": signer}),
+        )
+    }
+    /// Authenticates only public configuration. Never reads seeds, credentials,
+    /// database state, runtime directories or destination binaries.
+    pub fn validate_public_inputs(&self) -> Result<PublicValidatedConfig> {
         ensure!(
             self.local_test_only && self.listen.ip().is_loopback(),
             "I05 test artifacts require explicit local configuration and loopback listener"
@@ -325,51 +418,24 @@ impl RuntimeConfig {
         } else {
             TrustedPool::from_manifest(&self.manifest)?
         };
-        if self.devnet.is_some() {
-            use std::os::unix::fs::PermissionsExt;
-            ensure!(
-                self.signer_socket.is_absolute(),
-                "absolute local signer socket required"
-            );
-            let parent = std::fs::symlink_metadata(
-                self.signer_socket
-                    .parent()
-                    .context("signer socket parent")?,
-            )?;
-            ensure!(
-                parent.is_dir() && parent.permissions().mode() & 0o077 == 0,
-                "devnet signer socket parent must be owner-only"
-            );
-            // Validate transport policy before reading any signing key. Actual
-            // genesis/PoolConfig checks remain on the existing live RPC path.
-            crate::chain::ChainClient::new(
-                self.primary_rpc.clone(),
-                self.secondary_rpc.clone(),
-                self.indexer_origin.clone(),
-                trusted.clone(),
-            )?;
-        }
+        // Constructor checks URL/chain scope only; no DNS, HTTP or database IO.
+        crate::chain::ChainClient::new(
+            self.primary_rpc.clone(),
+            self.secondary_rpc.clone(),
+            self.indexer_origin.clone(),
+            trusted.clone(),
+        )?;
         ensure!(
             self.manifest["db_schema_version"] == "2",
             "ledger schema version"
-        );
-        let quote_key = read_key(&self.quote_seed_file)?;
-        let receipt_key = read_key(&self.receipt_seed_file)?;
-        ensure!(
-            quote_key.verifying_key() != receipt_key.verifying_key(),
-            "quote and receipt keys must differ"
         );
         let get = |name: &str| {
             self.manifest[name]
                 .as_str()
                 .context("missing manifest field")
         };
-        ensure!(
-            wire::pubkey(get("quote_public_key")?)? == quote_key.verifying_key().to_bytes()
-                && wire::pubkey(get("receipt_public_key")?)?
-                    == receipt_key.verifying_key().to_bytes(),
-            "manifest signing key mismatch"
-        );
+        let quote_public = wire::pubkey(get("quote_public_key")?)?;
+        let receipt_public = wire::pubkey(get("receipt_public_key")?)?;
         wire::origin(get("control_api_origin")?)?;
         wire::origin(get("inference_api_origin")?)?;
         let binding = BindingConfig {
@@ -380,7 +446,7 @@ impl RuntimeConfig {
             cap: trusted.cap_micro_usdc,
             control_api_origin: get("control_api_origin")?.into(),
             inference_api_origin: get("inference_api_origin")?.into(),
-            quote_key: quote_key.verifying_key().to_bytes(),
+            quote_key: quote_public,
         };
         let signer = SignerConfig {
             public_devnet_profile: self.devnet.as_ref().and_then(|devnet| {
@@ -404,7 +470,7 @@ impl RuntimeConfig {
                 x: *trusted.clearance_key[0].as_bytes(),
                 y: *trusted.clearance_key[1].as_bytes(),
             },
-            receipt_key: receipt_key.verifying_key().to_bytes(),
+            receipt_key: receipt_public,
         };
         // Validate the independently pinned signer boundary before any service starts.
         signer.validate()?;
@@ -439,13 +505,67 @@ impl RuntimeConfig {
                 );
             }
         }
+        let provider_policy = if self.devnet.is_some() {
+            ensure!(
+                self.providers.api.is_empty() || self.providers.dispatcher.is_some(),
+                "public API provider requires an isolated dispatcher"
+            );
+            ProviderTransportPolicy::PublicDevnet
+        } else {
+            ProviderTransportPolicy::LocalFixture
+        };
         self.providers
-            .validate(&self.tariffs, self.local_test_only)?;
-        Ok(ValidatedConfig {
-            runtime: self,
+            .validate_public_inputs(&self.tariffs, provider_policy)?;
+        Ok(PublicValidatedConfig {
             trusted,
             binding,
             signer,
+            provider_policy,
+        })
+    }
+
+    pub fn validate(self) -> Result<ValidatedConfig> {
+        let public = self.validate_public_inputs()?;
+        let trusted = public.trusted;
+        if self.devnet.is_some() {
+            use std::os::unix::fs::PermissionsExt;
+            ensure!(
+                self.signer_socket.is_absolute(),
+                "absolute local signer socket required"
+            );
+            let parent = std::fs::symlink_metadata(
+                self.signer_socket
+                    .parent()
+                    .context("signer socket parent")?,
+            )?;
+            ensure!(
+                parent.is_dir() && parent.permissions().mode() & 0o077 == 0,
+                "devnet signer socket parent must be owner-only"
+            );
+            // Validate transport policy before reading any signing key. Actual
+            // genesis/PoolConfig checks remain on the existing live RPC path.
+            crate::chain::ChainClient::new(
+                self.primary_rpc.clone(),
+                self.secondary_rpc.clone(),
+                self.indexer_origin.clone(),
+                trusted.clone(),
+            )?;
+        }
+        let quote_key = read_key(&self.quote_seed_file)?;
+        let receipt_key = read_key(&self.receipt_seed_file)?;
+        ensure!(
+            quote_key.verifying_key().to_bytes() == public.binding.quote_key
+                && receipt_key.verifying_key().to_bytes() == public.signer.receipt_key,
+            "manifest signing key mismatch"
+        );
+        self.providers
+            .validate_startup(&self.tariffs, public.provider_policy)?;
+        Ok(ValidatedConfig {
+            runtime: self,
+            trusted,
+            binding: public.binding,
+            signer: public.signer,
+            provider_policy: public.provider_policy,
             quote_key,
             receipt_key,
         })

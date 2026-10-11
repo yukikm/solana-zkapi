@@ -7,7 +7,8 @@ Run [fresh preflight](getting-started/devnet.md) to check a deployment now.
 
 The payment and proof primitives are shared across API use cases. The source
 tree adds registered, fixed-price JSON operations through the same SDK, clientd
-and ledger. Initial support is proxy POST with bounded JSON requests and
+and ledger, with offline registration, API-only schema 2 profiles and native
+discovery/invocation in the unpublished onboarding build. Initial support is proxy POST with bounded JSON requests and
 responses; a signed descriptor binds the operation, destination and billing rule.
 This source capability is separate from the published `.8` clients and the
 existing public deployment. See the [local JSON API tutorial](getting-started/json-api.md),
@@ -16,7 +17,7 @@ existing public deployment. See the [local JSON API tutorial](getting-started/js
 
 | Area | Supported or observed scope |
 |---|---|
-| General JSON API (source) | Local fixed-price POST JSON integration. No public provider or released client coverage is implied. Other methods, binary bodies, asynchronous jobs and generic streaming need explicit adapters and billing contracts. |
+| General JSON API (source) | Offline registration and local fixed-price POST JSON onboarding. No public provider or released client coverage is implied. Other methods, binary bodies, asynchronous jobs and generic streaming need explicit adapters and billing contracts. |
 | Native package | Apple Silicon, macOS 13.5+. No Apple notarization or verified packages for other platforms. |
 | SDK | Tarball distribution; no npm registry release. Browser custody/proof tests are local; funded browser/Phantom acceptance is unverified. |
 | Public profile | Direct OpenRouter Chat Completions. Model names do not enable other API dialects. |

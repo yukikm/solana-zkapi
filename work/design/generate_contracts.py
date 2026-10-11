@@ -215,7 +215,10 @@ sch['Manifest']['allOf'] = [
 sch['Manifest']['description'] = 'Layout 2 only; profile digest and artifact hashes are verified semantically against the signed manifest and actual PoolConfig. Transcript presence does not establish ceremony validity. See tree-transition section 5.'
 sch['CatalogEntry'] = obj({'model':S,'provider':PROVIDER,'modes':array(MODE),
     'endpoints':array(S),'modalities':array(S),'tariff_hash':H})
-sch['Catalog'] = obj({'models':array(ref('CatalogEntry'))})
+sch['ApiCatalogEntry'] = obj({'api':ref('ApiBinding'),'mode':{'type':'string','const':'proxy'},
+    'provider':{'type':'string','const':'generic'},'endpoint':S,'tariff_hash':H})
+sch['Catalog'] = obj({'models':array(ref('CatalogEntry'),maxItems=256),
+    'apis':array(ref('ApiCatalogEntry'),maxItems=256)}, required=['models'])
 sch['TariffRate'] = obj({'unit':{'type':'string','enum':UNITS+['requests']},'nano_usdc_numerator':U,'unit_denominator':POS})
 sch['Tariff'] = obj({'tariff_hash':H,'version':U,'provider':PROVIDER,'model':S,'api':ref('ApiBinding'),
     'pricing_basis':{'type':'string','enum':['provider_reported_usd','fixed_usage_rates','fixed_request']},

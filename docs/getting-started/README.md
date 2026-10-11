@@ -10,7 +10,9 @@ fits your service. This project is a **Devnet preview**; check
 - [API integration and the payment lifecycle](api-integration.md) — client,
   provider and operator roles; funding, authorization, usage and settlement.
 - [Fixed-price JSON API](json-api.md) — run the local deposit, request,
-  settlement and withdrawal lifecycle using the source SDK.
+  settlement and withdrawal lifecycle using installed source-built SDK/native artifacts.
+- [Register a JSON API](api-registration.md) — compile one operation declaration into
+  a new schema 2 profile and private operator configuration without network actions.
 - [Integrate another kind of API](api-integration.md#integrate-another-kind-of-api)
   — define request validation, pricing, usage evidence and recovery, and extend
   the existing SDK and service contracts.

@@ -10,7 +10,9 @@ SOL pays network fees; balances use integer micro-USDC.
 ZKAPI's payment lifecycle is independent of the API's application domain.
 This source tree includes registered, fixed-price JSON operations and inference
 adapters. Both reuse the same wallet, authorization, accounting and settlement.
-The JSON API integration is a local development capability; published `.8`
+Source onboarding adds an offline registration compiler, API-only public profiles
+and native invocation. See [JSON API onboarding](docs/getting-started/json-api.md)
+and [new-Devnet registration](docs/getting-started/api-registration.md). Published `.8`
 packages and the existing public deployment retain their recorded inference scope.
 
 ## Get started
@@ -23,6 +25,7 @@ integration concepts, inference tutorials and operator procedures.
 |---|---|
 | Understand how ZKAPI fits an API | [API integration](docs/getting-started/api-integration.md) |
 | Verify a fixed-price JSON API locally | [JSON API tutorial](docs/getting-started/json-api.md) |
+| Register a POST JSON API for a new deployment | [Offline registration](docs/getting-started/api-registration.md) |
 | Extend ZKAPI to another API | [Integration requirements](docs/getting-started/api-integration.md#integrate-another-kind-of-api) |
 | Use the implemented inference APIs | [Inference API getting started](docs/getting-started/inference.md) |
 | Add inference to an application | [Inference SDK tutorial](docs/getting-started/sdk.md) |

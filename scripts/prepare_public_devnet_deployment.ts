@@ -10,13 +10,15 @@ import {signBytes,getProgramDerivedAddress} from '@solana/kit';
 import bs58 from 'bs58';
 import {vaultBinding} from '../packages/sdk/src/encoding.ts';
 import {loadDeploymentAssets} from '../packages/sdk/src/deployment.ts';
-import {loadPublicDeploymentProfile,PUBLIC_PROFILE_SDK_VERSION,type PublicDeploymentProfile} from '../packages/sdk/src/public-profile.ts';
+import {loadPublicDeploymentProfile,validatePublicProfileSelection,PUBLIC_PROFILE_SDK_VERSION,type PublicDeploymentProfile} from '../packages/sdk/src/public-profile.ts';
 import {jcsBytes,manifestDigest,parseStrictJson,sha256Hex,verifyManifest,verifyEd25519,type ManifestTrustPolicy} from '../packages/sdk/src/trust.ts';
 import {loadPublicDevnetProfile,publicDevnetManifestBase,PROFILE_FIELDS} from './i10_public_devnet_profile.ts';
 import {signerFromSecret,parseAddress} from './solana-kit.ts';
 import {packageDeploymentAssets} from './package_sdk_distribution_assets.mjs';
+import {validateStagingConsumer,selectedTariffHashes,selectedApiEndpoints,type StagingConsumer} from './api_registration.ts';
+import {validateClientSelectionPins} from '../packages/sdk/src/client.ts';
 
-export interface PublicDeploymentPreparation {
+export interface PublicDeploymentPreparationV1 {
   schema:1;
   sourceBundlePath:string;
   sourceBundleSha256:string;
@@ -37,6 +39,8 @@ export interface PublicDeploymentPreparation {
   startSlot:number;
   consumer:{id:string;revision:number;model:PublicDeploymentProfile['models'][number];streaming:boolean;tools:boolean};
 }
+export type PublicDeploymentPreparationV2=Omit<PublicDeploymentPreparationV1,'schema'|'consumer'|'privateRpcUrl'|'indexerListen'|'snapshotsDirectory'|'startSlot'> & {schema:2;consumer:StagingConsumer};
+export type PublicDeploymentPreparation=PublicDeploymentPreparationV1|PublicDeploymentPreparationV2;
 const requiredNoticeNames=['Apache-2.0.txt','PROVENANCE.md','ethereum-VENDORED-045b444.md','mingyech-README-8b2d4e3.md','mingyech-setup-README-8b2d4e3.md'] as const;
 const artifactNames=['idl','requestPk','requestVk','withdrawalPk','withdrawalVk','treePk','treeVk','treeSourceBundle','treeVerifierConstants'] as const;
 function fields(value:any,required:readonly string[],optional:readonly string[]=[]){
@@ -49,6 +53,11 @@ function publicUrl(value:string,origin=false){
     && !['localhost','local','internal','invalid'].some(x=>h===x||h.endsWith('.'+x))&&!h.startsWith('[')&&!/^\d+(?:\.\d+){3}$/.test(h),'public HTTPS hostname required');
   assert.equal(origin?u.origin:u.href,value,'canonical public URL required');return u;
 }
+function publicLocations(c:{publicOrigin:string;assetsBaseUrl:string;profileUrl:string}){
+  publicUrl(c.publicOrigin,true);publicUrl(c.assetsBaseUrl);publicUrl(c.profileUrl);
+  assert.ok(c.assetsBaseUrl.endsWith('/'),'asset directory URL must end in /');
+  assert.ok(c.profileUrl!==c.assetsBaseUrl+'bundle.json'&&!c.profileUrl.startsWith(c.assetsBaseUrl),'profile must be outside asset directory');
+}
 async function bytes(path:string,maximum=512*1024*1024){
   const s=await lstat(path);assert.ok(s.isFile()&&!s.isSymbolicLink()&&s.size>0&&s.size<=maximum,'bounded regular file required');
   const b=await readFile(path);assert.ok(b.length<=maximum);return new Uint8Array(b);
@@ -57,12 +66,11 @@ async function pinnedJson(path:string,hash:string){
   assert.match(hash,/^[0-9a-f]{64}$/);const b=await bytes(path,1024*1024);assert.equal(await sha256Hex(b),hash,'independent input hash mismatch');return JSON.parse(JSON.stringify(parseStrictJson(b))) as any;
 }
 function validate(c:PublicDeploymentPreparation){
-  fields(c,['schema','sourceBundlePath','sourceBundleSha256','sourceDeploymentPath','sourceDeploymentSha256','publicSetupDirectory','publicSetupSha256','stagingDeclarationPath','stagingDeclarationSha256','expected','manifestAuthorityKeyPath','publicOrigin','assetsBaseUrl','profileUrl','privateRpcUrl','indexerListen','snapshotsDirectory','startSlot','consumer']);
-  assert.equal(c.schema,1);fields(c.expected,['deploymentId','programId','pool','manifestHash']);
-  fields(c.consumer,['id','revision','model','streaming','tools']);
-  publicUrl(c.publicOrigin,true);publicUrl(c.assetsBaseUrl);publicUrl(c.profileUrl);
-  assert.ok(c.assetsBaseUrl.endsWith('/'),'asset directory URL must end in /');
-  assert.ok(c.profileUrl!==c.assetsBaseUrl+'bundle.json'&&!c.profileUrl.startsWith(c.assetsBaseUrl),'profile must be outside asset directory');
+  fields(c,['schema','sourceBundlePath','sourceBundleSha256','sourceDeploymentPath','sourceDeploymentSha256','publicSetupDirectory','publicSetupSha256','stagingDeclarationPath','stagingDeclarationSha256','expected','manifestAuthorityKeyPath','publicOrigin','assetsBaseUrl','profileUrl','consumer',...(c.schema===1?['privateRpcUrl','indexerListen','snapshotsDirectory','startSlot']:[])]);
+  assert.ok(c.schema===1||c.schema===2);fields(c.expected,['deploymentId','programId','pool','manifestHash']);
+  if(c.schema===2){validateStagingConsumer(c.consumer);validatePublicProfileSelection(c.consumer);}else fields(c.consumer,['id','revision','model','streaming','tools']);
+  publicLocations(c);
+  if(c.schema===2)return;
   const rpc=new URL(c.privateRpcUrl);assert.ok(rpc.protocol==='https:'&&!rpc.username&&!rpc.password&&!rpc.hash,'private HTTPS RPC required');
   assert.match(c.indexerListen,/^127\.0\.0\.1:[0-9]{1,5}$/);const port=Number(c.indexerListen.split(':')[1]);assert.ok(port>=1024&&port<=65535);
   assert.equal(resolve(c.snapshotsDirectory),c.snapshotsDirectory,'absolute snapshot directory required');
@@ -167,7 +175,7 @@ export async function preparePublicDevnetDeployment(configuration:PublicDeployme
   assert.equal(build.deployment_environment,'devnet');assert.equal(build.setup_profile,'test_only');assert.equal(build.mint,original.mint);assert.equal(build.token_program,original.token_program);
   assert.equal(build.idl_sha256,original.idl_hash);assert.equal(build.program_sha256,await sha256Hex(program));
   for(const field of ['state_key','clearance_key','circuit_profile_hash'])assert.deepEqual(build[field],setup.profile[field]);
-  assert.ok(original.tariff_hashes.includes(c.consumer.model.tariff.tariff_hash),'selected tariff must already be authenticated');
+  if(c.schema===2){for(const hash of selectedTariffHashes(c.consumer))assert.ok(original.tariff_hashes.includes(hash),'selected tariff must already be authenticated');await validateClientSelectionPins(c.consumer,original);}else assert.ok(original.tariff_hashes.includes(c.consumer.model.tariff.tariff_hash),'selected tariff must already be authenticated');
   const key=await manifestKey(c.manifestAuthorityKeyPath);
   for(const role of ['admin','upgrade'] as const){const a=original.authorities[role];assert.ok('kind' in a&&a.kind==='devnet_test_single_key');assert.equal(a.authority,key.address,'existing manifest authority required');}
   await verifyFinalizedProgramEvidence(provenance,deployment,program);
@@ -196,7 +204,7 @@ export async function preparePublicDevnetDeployment(configuration:PublicDeployme
   const packager={schema:1,manifest:'public-manifest.json',trust,artifacts:paths,wasm:{path:'input-prover.wasm',sha256:assets.wasmSha256},notices:noticePaths};
   await json('public-assets-config.json',packager);
   const packaged=await packageDeploymentAssets(join(destination,'public-assets-config.json'),join(destination,'assets'));
-  const profile:PublicDeploymentProfile={schema:1,id:c.consumer.id,revision:c.consumer.revision,sdkVersions:[PUBLIC_PROFILE_SDK_VERSION],protocolLayoutVersion:2,
+  const profile:PublicDeploymentProfile=c.schema===2?{schema:2,...structuredClone(c.consumer),sdkVersions:[PUBLIC_PROFILE_SDK_VERSION],protocolLayoutVersion:2,bundle:{url:sourceUrl,sha256:packaged.bundleSha256},rpcUrl:c.publicOrigin+'/rpc',indexerOrigin:c.publicOrigin,preparationCommitment:'finalized'}:{schema:1,id:c.consumer.id,revision:c.consumer.revision,sdkVersions:[PUBLIC_PROFILE_SDK_VERSION],protocolLayoutVersion:2,
     bundle:{url:sourceUrl,sha256:packaged.bundleSha256},rpcUrl:c.publicOrigin+'/rpc',indexerOrigin:c.publicOrigin,mode:'direct_openrouter',
     models:[c.consumer.model],modelCapabilities:{[c.consumer.model.id]:{streaming:c.consumer.streaming,tools:c.consumer.tools}},
     directProviderBases:{direct_openrouter:'https://openrouter.ai/api/v1'},preparationCommitment:'finalized'};
@@ -211,7 +219,7 @@ export async function preparePublicDevnetDeployment(configuration:PublicDeployme
   assert.equal(loaded.assets.verifiedManifest.manifest_hash,manifest.manifest_hash);
   assert.deepEqual({...loaded.assets.notices},{...assets.notices},'all authenticated notice bytes must survive repackage');
   await put('consumer-profile.json',profileBytes);
-  await json('private-indexer.json',{rpc_url:c.privateRpcUrl,program_id:manifest.program_id,pool:manifest.pool,genesis_hash:manifest.genesis_hash,circuit_profile_hash:manifest.circuit_profile_hash,
+  if(c.schema===1)await json('private-indexer.json',{rpc_url:c.privateRpcUrl,program_id:manifest.program_id,pool:manifest.pool,genesis_hash:manifest.genesis_hash,circuit_profile_hash:manifest.circuit_profile_hash,
     start_slot:c.startSlot,listen:c.indexerListen,public_origin:c.publicOrigin,snapshots_directory:c.snapshotsDirectory});
   const report={schema:1,kind:'predeployment_public_origin_preparation',sourceBundleSha256:c.sourceBundleSha256,publicSetupSha256:c.publicSetupSha256,
     stagingDeclarationSha256:c.stagingDeclarationSha256,sourceDeploymentSha256:c.sourceDeploymentSha256,sourceManifestHash:original.manifest_hash,manifestHash:manifest.manifest_hash,
@@ -224,7 +232,7 @@ export async function preparePublicDevnetDeployment(configuration:PublicDeployme
 /** Initial staging authoring uses only independently pinned public build/setup
  * inputs and the explicit manifest-authority key. It never reads a transaction
  * wallet, discovers .env, queries a chain, or declares a Pool initialized. */
-export interface InitialPublicStagingPreparation extends StagingProvenance {
+export interface InitialPublicStagingPreparationV1 extends StagingProvenance {
   schema:1;
   distributionDecisionPath:string;
   distributionDecisionSha256:string;
@@ -250,15 +258,17 @@ export interface InitialPublicStagingPreparation extends StagingProvenance {
   indexerListen:string;
   snapshotsDirectory:string;
   startSlot:number;
-  consumer:PublicDeploymentPreparation['consumer'];
+  consumer:PublicDeploymentPreparationV1['consumer'];
 }
-export async function stagePublicDevnetDeployment(configuration:InitialPublicStagingPreparation,output:string){
+export type InitialPublicStagingPreparationV2=Omit<InitialPublicStagingPreparationV1,'schema'|'consumer'|'privateRpcUrl'|'indexerListen'|'snapshotsDirectory'|'startSlot'> & {schema:2;consumer:StagingConsumer};
+export type InitialPublicStagingPreparation=InitialPublicStagingPreparationV1|InitialPublicStagingPreparationV2;
+export async function stagePublicDevnetDeployment(configuration:InitialPublicStagingPreparation,output:string,options:{validateOnly?:boolean}={}){
   const c=structuredClone(configuration),destination=resolve(output);
-  fields(c,['schema','distributionDecisionPath','distributionDecisionSha256','noticesDirectory','publicSetupDirectory','publicSetupSha256','deploymentPath','deploymentSha256','buildManifestPath','buildManifestSha256','idlPath','programPath','wasmPath','wasmSha256','expected','manifestAuthorityKeyPath','publicOrigin','assetsBaseUrl','profileUrl','privateRpcUrl','indexerListen','snapshotsDirectory','startSlot','consumer'],['additionalNotices',...provenanceFields]);
-  fields(c.expected,['deploymentId','programId','pool']);assert.equal(c.schema,1);
+  fields(c,['schema','distributionDecisionPath','distributionDecisionSha256','noticesDirectory','publicSetupDirectory','publicSetupSha256','deploymentPath','deploymentSha256','buildManifestPath','buildManifestSha256','idlPath','programPath','wasmPath','wasmSha256','expected','manifestAuthorityKeyPath','publicOrigin','assetsBaseUrl','profileUrl','consumer',...(c.schema===1?['privateRpcUrl','indexerListen','snapshotsDirectory','startSlot']:[])],['additionalNotices',...provenanceFields]);
+  fields(c.expected,['deploymentId','programId','pool']);assert.ok(c.schema===1||c.schema===2);if(c.schema===2){validateStagingConsumer(c.consumer);validatePublicProfileSelection(c.consumer);}
   const provenance=stagingProvenance(c);
-  await assert.rejects(lstat(destination),{code:'ENOENT'},'output must not exist');
-  publicUrl(c.publicOrigin,true);publicUrl(c.assetsBaseUrl);publicUrl(c.profileUrl);
+  if(!options.validateOnly)await assert.rejects(lstat(destination),{code:'ENOENT'},'output must not exist');
+  publicLocations(c);
   const setup=await loadPublicDevnetProfile(c.publicSetupDirectory,c.publicSetupSha256);
   const decision=await pinnedJson(c.distributionDecisionPath,c.distributionDecisionSha256);
   assert.equal(decision.schema,1);assert.equal(decision.selected_license,'Apache-2.0');
@@ -304,6 +314,8 @@ export async function stagePublicDevnetDeployment(configuration:InitialPublicSta
   assert.equal((parseStrictJson(idl) as any).address,deployment.program_id,'IDL program address');
   assert.equal(await sha256Hex(buildBytes),c.buildManifestSha256);assert.equal(await sha256Hex(wasm),c.wasmSha256);assert.ok(WebAssembly.validate(wasm));
   await verifyFinalizedProgramEvidence(provenance,deployment,program);
+  if(c.schema===2){const hashes=selectedTariffHashes(c.consumer);await validateClientSelectionPins(c.consumer,{tariff_hashes:hashes,cap_micro_usdc:deployment.cap_micro_usdc} as any);}
+  if(options.validateOnly)return {schema:1,validated:true,capMicroUsdc:deployment.cap_micro_usdc,networkActions:0,transactionActions:0,providerActions:0,serviceActions:0,chainCompatible:false} as any;
   const key=await manifestKey(c.manifestAuthorityKeyPath);assert.equal(key.address,deployment.initializer,'staging manifest authority');
   const authority={kind:'devnet_test_single_key' as const,authority:key.address};
   const manifest:any={...publicDevnetManifestBase(setup),deployment_id:c.expected.deploymentId,deployment_environment:'devnet',genesis_hash:deployment.genesis,
@@ -311,17 +323,17 @@ export async function stagePublicDevnetDeployment(configuration:InitialPublicSta
     control_api_origin:c.publicOrigin,inference_api_origin:c.publicOrigin,proving_keys_base_url:c.assetsBaseUrl,
     note_ttl_seconds:deployment.ttl_seconds,challenge_seconds:deployment.challenge_seconds,cap_micro_usdc:deployment.cap_micro_usdc,
     idl_hash:build.idl_sha256,vault_binding:await vaultBinding(...[deployment.genesis,deployment.program_id,deployment.pool,deployment.token_program,deployment.mint].map(bs58.decode) as [Uint8Array,Uint8Array,Uint8Array,Uint8Array,Uint8Array]),
-    authorities:{admin:authority,upgrade:authority},tariff_hashes:[c.consumer.model.tariff.tariff_hash],
+    authorities:{admin:authority,upgrade:authority},...(c.schema===2?{api_endpoints:selectedApiEndpoints(c.consumer),tariff_hashes:selectedTariffHashes(c.consumer)}:{tariff_hashes:[c.consumer.model.tariff.tariff_hash]}),
     artifact_digests:{vault_idl:build.idl_sha256,vault_program:build.program_sha256,devnet_build_manifest:c.buildManifestSha256,public_devnet_profile:c.publicSetupSha256}};
   manifest.manifest_hash=await manifestDigest(manifest);manifest.manifest_signature=Buffer.from(await signBytes(key.keyPair.privateKey,Buffer.from(manifest.manifest_hash,'hex'))).toString('base64');
   const trust:ManifestTrustPolicy={anchor:{kind:'ed25519',publicKey:key.address},expected:{deployment_id:manifest.deployment_id,deployment_environment:'devnet',genesis_hash:deployment.genesis,program_id:deployment.program_id,pool:deployment.pool,mint:deployment.mint,token_program:deployment.token_program,control_api_origin:c.publicOrigin,inference_api_origin:c.publicOrigin},
     build:{stateKey:build.state_key,clearanceKey:build.clearance_key,circuitProfileHash:build.circuit_profile_hash,idlHash:build.idl_sha256,setupProfile:'test_only',transactionFormats:['v0_buffer','v0_inline_deposit_v1']}};
   await verifyManifest(jcsBytes(manifest),trust);
   const expected={...c.expected,manifestHash:manifest.manifest_hash};
-  const preparedConfig:PublicDeploymentPreparation={schema:1,sourceBundlePath:join(destination,'source-bundle','bundle.json'),sourceBundleSha256:'00'.repeat(32),
+  const preparedConfig:PublicDeploymentPreparation={schema:c.schema,sourceBundlePath:join(destination,'source-bundle','bundle.json'),sourceBundleSha256:'00'.repeat(32),
     sourceDeploymentPath:join(destination,'deployment.json'),sourceDeploymentSha256:c.deploymentSha256,publicSetupDirectory:c.publicSetupDirectory,publicSetupSha256:c.publicSetupSha256,
     stagingDeclarationPath:join(destination,'staging-declaration.json'),stagingDeclarationSha256:'00'.repeat(32),expected,manifestAuthorityKeyPath:c.manifestAuthorityKeyPath,
-    publicOrigin:c.publicOrigin,assetsBaseUrl:c.assetsBaseUrl,profileUrl:c.profileUrl,privateRpcUrl:c.privateRpcUrl,indexerListen:c.indexerListen,snapshotsDirectory:c.snapshotsDirectory,startSlot:c.startSlot,consumer:c.consumer};
+    publicOrigin:c.publicOrigin,assetsBaseUrl:c.assetsBaseUrl,profileUrl:c.profileUrl,...(c.schema===1?{privateRpcUrl:c.privateRpcUrl,indexerListen:c.indexerListen,snapshotsDirectory:c.snapshotsDirectory,startSlot:c.startSlot}:{}),consumer:c.consumer} as PublicDeploymentPreparation;
   validate(preparedConfig);
   await mkdir(destination,{mode:0o700});
   const put=async(name:string,value:Uint8Array)=>{const path=join(destination,name);await writeFile(path,value,{flag:'wx',mode:0o600});return path;};

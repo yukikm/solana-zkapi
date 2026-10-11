@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"crypto/rand"
 	"crypto/sha256"
 	"encoding/hex"
@@ -12,9 +13,13 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"os/exec"
 	"path/filepath"
+	"regexp"
+	"strconv"
 	"strings"
 	"time"
+	"unicode/utf8"
 
 	"solana-zkapi/clientd/internal/daemon"
 	"solana-zkapi/clientd/internal/egress"
@@ -22,7 +27,8 @@ import (
 
 const commandHelp = `usage: clientd setup --profile DIR --distribution /install/release.json --sha256 TRUSTED_SHA256 --runtime-config /reviewed/runtime.json --runtime-sha256 TRUSTED_SHA256 --network-config /reviewed/network.json
        clientd run /absolute/profile (passphrase and optional wallet_seed_base64/initialize_key JSON on stdin)
-       clientd request /absolute/profile status|upgrade-plan|model-availability|models|close|recover|reconcile|cancel-unsent|purge-settled-bodies|wallet (POST body JSON on stdin for wallet/reconcile)
+       clientd request /absolute/profile status|upgrade-plan|model-availability|models|apis|close|recover|reconcile|cancel-unsent|purge-settled-bodies|wallet (POST body JSON on stdin for wallet/reconcile)
+       clientd api /absolute/profile --service ID --operation ID --operation-id UUIDV4 (JSON on stdin)
        clientd openclaw-config /absolute/profile --model ID --context-window N --max-tokens N
        clientd serve /absolute/config.json (full secrets JSON on stdin)`
 
@@ -165,6 +171,8 @@ func profileCommand(args []string, input io.Reader, output io.Writer) error {
 			}
 		}()
 		return runConfig(c, bytes.NewReader(raw))
+	case "api":
+		return profileAPIRequest(c, args[1:], input, output, os.Stderr)
 	case "request":
 		return profileRequest(c, args[1:], input, output)
 	case "openclaw-config":
@@ -186,7 +194,7 @@ func setupProfile(args []string, output io.Writer) error {
 	if f.Parse(args) != nil || f.NArg() != 0 {
 		return errors.New(commandHelp)
 	}
-	if !filepath.IsAbs(*profile) || !filepath.IsAbs(*runtimePath) || !filepath.IsAbs(*networkPath) {
+	if !canonicalAbsolute(*profile) || !canonicalAbsolute(*runtimePath) || !canonicalAbsolute(*networkPath) || !canonicalAbsolute(*release) {
 		return errors.New("absolute setup paths required")
 	}
 	if _, err := listenAddress(*listen); err != nil {
@@ -215,7 +223,7 @@ func setupProfile(args []string, output io.Writer) error {
 	// A copied deployment must be relocatable only through explicitly reviewed
 	// absolute paths. Trust policy/artifact bytes are never derived from a server.
 	var manifestPath string
-	if json.Unmarshal(runtime["manifest"], &manifestPath) != nil || !filepath.IsAbs(manifestPath) {
+	if json.Unmarshal(runtime["manifest"], &manifestPath) != nil || !canonicalAbsolute(manifestPath) {
 		return errors.New("absolute reviewed manifest required")
 	}
 	if err := validateDeploymentPaths(runtime); err != nil {
@@ -248,12 +256,18 @@ func setupProfile(args []string, output io.Writer) error {
 			return errors.New("release is missing clientd artifacts")
 		}
 	}
+	validated, err := validateInstalledConfiguration(installed, *release, *pin, *runtimePath, *runtimePin)
+	if err != nil {
+		return err
+	}
 	root := filepath.Clean(*profile)
 	parent, err := filepath.EvalSymlinks(filepath.Dir(root))
 	if err != nil {
 		return errors.New("profile parent must already exist")
 	}
-	root = filepath.Join(parent, filepath.Base(root))
+	if filepath.Join(parent, filepath.Base(root)) != root {
+		return errors.New("canonical profile parent required")
+	}
 	if err = os.Mkdir(root, 0700); err != nil {
 		return errors.New("profile already exists or cannot be created; never reset an existing profile")
 	}
@@ -262,11 +276,13 @@ func setupProfile(args []string, output io.Writer) error {
 	if err = os.Mkdir(filepath.Join(root, "journal"), 0700); err != nil {
 		return err
 	}
-	if err = os.Mkdir(filepath.Join(root, "openclaw-agent"), 0700); err != nil {
-		return err
-	}
-	if err = writePrivate(filepath.Join(root, "openclaw-agent", "settings.json"), map[string]any{"retry": map[string]any{"provider": map[string]int{"maxRetries": 0}}}); err != nil {
-		return err
+	if len(validated.Models) > 0 {
+		if err = os.Mkdir(filepath.Join(root, "openclaw-agent"), 0700); err != nil {
+			return err
+		}
+		if err = writePrivate(filepath.Join(root, "openclaw-agent", "settings.json"), map[string]any{"retry": map[string]any{"provider": map[string]int{"maxRetries": 0}}}); err != nil {
+			return err
+		}
 	}
 	assign := func(key string, v any) { runtime[key], _ = json.Marshal(v) }
 	assign("journal", filepath.Join(root, "journal"))
@@ -295,20 +311,20 @@ func setupProfile(args []string, output io.Writer) error {
 	if err = writePrivate(filepath.Join(root, "config.json"), c); err != nil {
 		return err
 	}
-	return json.NewEncoder(output).Encode(map[string]any{"profile": root, "base_url": "http://" + *listen + "/v1", "custody_initialized": false, "funded": false, "next": "run this profile with initialize_key:true exactly once; supply passphrase and wallet seed only on stdin"})
+	return json.NewEncoder(output).Encode(map[string]any{"profile": root, "base_url": "http://" + *listen + "/v1", "api_base_url": "http://" + *listen + "/zkapi/v1", "custody_initialized": false, "funded": false, "next": "run this profile with initialize_key:true exactly once; supply passphrase and wallet seed only on stdin"})
 }
 func profileRequest(c Config, args []string, input io.Reader, output io.Writer) error {
 	if len(args) != 2 {
 		return errors.New(commandHelp)
 	}
-	routes := map[string]string{"status": "/admin/status", "upgrade-plan": "/admin/upgrade-plan", "model-availability": "/admin/model-availability", "models": "/v1/models", "close": "/admin/close", "recover": "/admin/recover", "reconcile": "/admin/reconcile", "cancel-unsent": "/admin/cancel-unsent", "purge-settled-bodies": "/admin/purge-settled-bodies", "wallet": "/admin/wallet"}
+	routes := map[string]string{"status": "/admin/status", "upgrade-plan": "/admin/upgrade-plan", "model-availability": "/admin/model-availability", "models": "/v1/models", "apis": "/zkapi/v1/apis", "close": "/admin/close", "recover": "/admin/recover", "reconcile": "/admin/reconcile", "cancel-unsent": "/admin/cancel-unsent", "purge-settled-bodies": "/admin/purge-settled-bodies", "wallet": "/admin/wallet"}
 	route, ok := routes[args[1]]
 	if !ok {
 		return errors.New("unsupported local request")
 	}
 	method := "POST"
 	body := []byte("{}")
-	if args[1] == "status" || args[1] == "models" || args[1] == "upgrade-plan" || args[1] == "model-availability" {
+	if args[1] == "status" || args[1] == "models" || args[1] == "apis" || args[1] == "upgrade-plan" || args[1] == "model-availability" {
 		method = "GET"
 		body = nil
 	} else if args[1] == "purge-settled-bodies" {
@@ -321,7 +337,7 @@ func profileRequest(c Config, args []string, input io.Reader, output io.Writer) 
 		}
 	}
 	name := "management-token"
-	if args[1] == "models" {
+	if args[1] == "models" || args[1] == "apis" {
 		name = "inference-token"
 	}
 	token, err := privateRead(filepath.Join(args[0], name), 128)
@@ -336,7 +352,11 @@ func profileRequest(c Config, args []string, input io.Reader, output io.Writer) 
 	request.Header.Set("Content-Type", "application/json")
 	// No redirect, proxy, transport reuse, or mutation retry. An interrupted wallet
 	// request is inspected with status/advance through the existing SDK journal.
-	client := http.Client{Timeout: 5 * time.Minute, Transport: &http.Transport{Proxy: nil, DisableKeepAlives: true}, CheckRedirect: func(_ *http.Request, _ []*http.Request) error { return http.ErrUseLastResponse }}
+	timeout := 5 * time.Minute
+	if args[1] == "apis" {
+		timeout = apiDiscoveryTimeout
+	}
+	client := newLocalHTTPClient(timeout)
 	response, err := client.Do(request)
 	if err != nil {
 		return errors.New("local request failed; inspect status before further action")
@@ -415,7 +435,7 @@ func openClawConfig(c Config, args []string, output io.Writer) error {
 func validateDeploymentPaths(runtime map[string]json.RawMessage) error {
 	absolute := func(raw json.RawMessage) bool {
 		var path string
-		return json.Unmarshal(raw, &path) == nil && filepath.IsAbs(path)
+		return json.Unmarshal(raw, &path) == nil && canonicalAbsolute(path)
 	}
 	var artifacts map[string]json.RawMessage
 	if json.Unmarshal(runtime["artifacts"], &artifacts) != nil {
@@ -451,5 +471,224 @@ func validateDeploymentPaths(runtime map[string]json.RawMessage) error {
 			}
 		}
 	}
+	if raw, present := runtime["services"]; present {
+		var services []json.RawMessage
+		if bytes.Equal(bytes.TrimSpace(raw), []byte("null")) || json.Unmarshal(raw, &services) != nil || len(services) > 64 {
+			return errors.New("invalid service paths")
+		}
+		for _, raw := range services {
+			var service struct {
+				Tariff string `json:"tariff"`
+			}
+			if jsonDecode(raw, &service) != nil || !canonicalAbsolute(service.Tariff) {
+				return errors.New("canonical absolute service tariff required")
+			}
+		}
+	}
 	return nil
+}
+
+func canonicalAbsolute(path string) bool {
+	return filepath.IsAbs(path) && filepath.Clean(path) == path && !strings.ContainsAny(path, "\x00\r\n")
+}
+
+type validationSummary struct {
+	Schema       int      `json:"schema"`
+	Valid        bool     `json:"valid"`
+	ManifestHash string   `json:"manifestHash"`
+	Mode         string   `json:"mode"`
+	Models       []string `json:"models"`
+	Operations   []struct {
+		Service    string `json:"service"`
+		Operation  string `json:"operation"`
+		Endpoint   string `json:"endpoint"`
+		TariffHash string `json:"tariffHash"`
+	} `json:"operations"`
+	CustodyInitialized bool `json:"custodyInitialized"`
+	NetworkActions     int  `json:"networkActions"`
+}
+type boundedCapture struct {
+	bytes.Buffer
+	limit int
+}
+
+func (b *boundedCapture) Write(p []byte) (int, error) {
+	if len(p) > b.limit-b.Len() {
+		return 0, errors.New("validator output exceeds bound")
+	}
+	return b.Buffer.Write(p)
+}
+func validateInstalledConfiguration(installed, release, pin, runtime, runtimePin string) (validationSummary, error) {
+	var summary validationSummary
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
+	defer cancel()
+	command := exec.CommandContext(ctx, filepath.Join(installed, "bin/node"), filepath.Join(installed, "apps/clientd/runtime.ts"),
+		"--validate-config", "--distribution", release, "--distribution-sha256", pin, "--runtime-config", runtime, "--runtime-sha256", runtimePin)
+	command.Env = []string{"PATH=" + filepath.Join(installed, "bin")}
+	stdout, stderr := boundedCapture{limit: 64 * 1024}, boundedCapture{limit: 64 * 1024}
+	command.Stdout, command.Stderr = &stdout, &stderr // nil stdin is closed, no secret handoff.
+	if command.Run() != nil || stderr.Len() != 0 {
+		return summary, errors.New("offline runtime validation failed; profile was not created")
+	}
+	var fields map[string]json.RawMessage
+	if jsonDecode(stdout.Bytes(), &fields) != nil || len(fields) != 8 {
+		return summary, errors.New("invalid offline validation result")
+	}
+	for _, name := range []string{"schema", "valid", "manifestHash", "mode", "models", "operations", "custodyInitialized", "networkActions"} {
+		if len(fields[name]) == 0 || string(fields[name]) == "null" {
+			return summary, errors.New("incomplete offline validation result")
+		}
+	}
+	if jsonDecode(stdout.Bytes(), &summary) != nil || summary.Schema != 1 || !summary.Valid || summary.CustodyInitialized || summary.NetworkActions != 0 ||
+		!sha256Pattern.MatchString(summary.ManifestHash) || (summary.Mode != "proxy" && summary.Mode != "direct_oa" && summary.Mode != "direct_openrouter") ||
+		len(summary.Models)+len(summary.Operations) == 0 || len(summary.Operations) > 64 {
+		return summary, errors.New("invalid offline validation result")
+	}
+	for i, model := range summary.Models {
+		if model == "" || i > 0 && summary.Models[i-1] >= model {
+			return summary, errors.New("invalid offline model summary")
+		}
+	}
+	lastService, lastOperation := "", ""
+	for i, operation := range summary.Operations {
+		key := operation.Service + "/" + operation.Operation
+		if !apiIdentity.MatchString(operation.Service) || !apiIdentity.MatchString(operation.Operation) || i > 0 && (operation.Service < lastService || operation.Service == lastService && operation.Operation <= lastOperation) ||
+			operation.Endpoint != "/zkapi/v1/api/"+key || !sha256Pattern.MatchString(operation.TariffHash) {
+			return summary, errors.New("invalid offline operation summary")
+		}
+		lastService, lastOperation = operation.Service, operation.Operation
+	}
+	if len(summary.Operations) > 0 && summary.Mode != "proxy" {
+		return summary, errors.New("invalid offline mode summary")
+	}
+	return summary, nil
+}
+
+var apiIdentity = regexp.MustCompile(`^[a-z0-9][a-z0-9_-]{0,63}$`)
+var uuidV4 = regexp.MustCompile(`^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$`)
+var sha256Pattern = regexp.MustCompile(`^[0-9a-f]{64}$`)
+
+const apiRequestTimeout = 900 * time.Second
+const apiDiscoveryTimeout = 30 * time.Second
+
+func profileAPIRequest(c Config, args []string, input io.Reader, output, diagnostics io.Writer) error {
+	f := flag.NewFlagSet("api", flag.ContinueOnError)
+	f.SetOutput(io.Discard)
+	service := f.String("service", "", "registered service")
+	operation := f.String("operation", "", "registered operation")
+	id := f.String("operation-id", "", "stable UUIDv4")
+	if len(args) < 1 || len(args[1:]) != 6 || f.Parse(args[1:]) != nil || f.NArg() != 0 || !apiIdentity.MatchString(*service) || !apiIdentity.MatchString(*operation) || !uuidV4.MatchString(*id) {
+		return errors.New("explicit registered service, operation and UUIDv4 required")
+	}
+	requestMax, responseMax, err := apiResponseBounds(c.RuntimeConfig, *service, *operation)
+	if err != nil {
+		return err
+	}
+	body, err := io.ReadAll(io.LimitReader(input, requestMax+1))
+	if err != nil || int64(len(body)) > requestMax || !utf8.Valid(body) || !json.Valid(body) {
+		return errors.New("bounded API request JSON required")
+	}
+	token, err := privateRead(filepath.Join(args[0], "inference-token"), 128)
+	if err != nil {
+		return err
+	}
+	defer clear(token)
+	request, err := http.NewRequest("POST", "http://"+c.Listen+"/zkapi/v1/api/"+*service+"/"+*operation, bytes.NewReader(body))
+	if err != nil {
+		return err
+	}
+	request.Header.Set("Authorization", "Bearer "+strings.TrimSpace(string(token)))
+	request.Header.Set("Content-Type", "application/json")
+	request.Header.Set("Idempotency-Key", *id)
+	client := newLocalHTTPClient(apiRequestTimeout)
+	response, err := client.Do(request)
+	if err != nil {
+		fmt.Fprintf(diagnostics, "operation %s: unknown outcome; inspect status and recover the same operation; no automatic retry\n", *id)
+		return errors.New("API transport failed; outcome is uncertain")
+	}
+	defer response.Body.Close()
+	fmt.Fprintf(diagnostics, "operation %s: HTTP %d; inspect status for signed settlement\n", *id, response.StatusCode)
+	bound := responseMax
+	if response.StatusCode < 200 || response.StatusCode >= 300 {
+		bound = 1024 * 1024
+	}
+	result, err := io.ReadAll(io.LimitReader(response.Body, bound+1))
+	if err != nil || int64(len(result)) > bound {
+		return errors.New("API response incomplete or exceeds bound; inspect status and recover; do not retry")
+	}
+	if _, err = output.Write(result); err != nil {
+		return err
+	}
+	if response.StatusCode < 200 || response.StatusCode >= 300 {
+		return errors.New("API returned an error; inspect status before further action; no automatic retry")
+	}
+	return nil
+}
+func newLocalHTTPClient(timeout time.Duration) *http.Client {
+	return &http.Client{Timeout: timeout, Transport: &http.Transport{Proxy: nil, DisableKeepAlives: true},
+		CheckRedirect: func(_ *http.Request, _ []*http.Request) error { return http.ErrUseLastResponse }}
+}
+func apiResponseBounds(runtimePath, service, operation string) (int64, int64, error) {
+	raw, err := privateRead(runtimePath, 1024*1024)
+	if err != nil {
+		return 0, 0, err
+	}
+	var runtime struct {
+		Services []struct {
+			Tariff string `json:"tariff"`
+		} `json:"services"`
+	}
+	if json.Unmarshal(raw, &runtime) != nil || len(runtime.Services) > 64 {
+		return 0, 0, errors.New("invalid registered API configuration")
+	}
+	for _, selected := range runtime.Services {
+		if !canonicalAbsolute(selected.Tariff) {
+			return 0, 0, errors.New("invalid registered tariff path")
+		}
+		raw, err := readBoundedRegular(selected.Tariff, 1024*1024)
+		if err != nil {
+			return 0, 0, errors.New("registered tariff unavailable")
+		}
+		var tariff struct {
+			API struct {
+				Service     string `json:"service"`
+				Operation   string `json:"operation"`
+				RequestMax  string `json:"request_max_bytes"`
+				ResponseMax string `json:"response_max_bytes"`
+			} `json:"api"`
+		}
+		if json.Unmarshal(raw, &tariff) != nil {
+			return 0, 0, errors.New("invalid registered tariff")
+		}
+		if tariff.API.Service == service && tariff.API.Operation == operation {
+			req, e1 := strconv.ParseInt(tariff.API.RequestMax, 10, 64)
+			res, e2 := strconv.ParseInt(tariff.API.ResponseMax, 10, 64)
+			if e1 != nil || e2 != nil || req < 1 || req > 1024*1024 || res < 1 || res > 1024*1024 {
+				return 0, 0, errors.New("invalid registered API bounds")
+			}
+			return req, res, nil
+		}
+	}
+	return 0, 0, errors.New("API operation is not configured")
+}
+
+func readBoundedRegular(path string, limit int64) ([]byte, error) {
+	info, err := os.Lstat(path)
+	if err != nil || !info.Mode().IsRegular() || info.Size() > limit {
+		return nil, errors.New("bounded regular file required")
+	}
+	file, err := os.Open(path)
+	if err != nil {
+		return nil, errors.New("file unavailable")
+	}
+	defer file.Close()
+	actual, err := file.Stat()
+	if err != nil || !os.SameFile(info, actual) {
+		return nil, errors.New("file changed")
+	}
+	data, err := io.ReadAll(io.LimitReader(file, limit+1))
+	if err != nil || int64(len(data)) > limit {
+		return nil, errors.New("file exceeds bound")
+	}
+	return data, nil
 }

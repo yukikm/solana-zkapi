@@ -11,7 +11,7 @@ VENDOR = 'vendor/ethereum-zkapi'
 BUILD_INPUTS_PATH = 'share/zkapi-clientd/build-inputs.json'
 NOTICE_INDEX_PATH = 'share/zkapi-clientd/third-party/dependencies.json'
 COPIED_FILES = (
-    'THIRD_PARTY_NOTICES.md', 'apps/clientd/runtime.ts', 'scripts/clientd_secrets.py',
+    'THIRD_PARTY_NOTICES.md', 'apps/clientd/runtime.ts', 'apps/clientd/runtime-config.ts', 'scripts/clientd_secrets.py',
     'apps/clientd/README.md', 'docs/getting-started/clientd.md', 'docs/sdk/recovery.md',
     'docs/sdk/public-profile.md', 'docs/getting-started/devnet.md', 'docs/releases/usability-preview.md',
     'tools/public-devnet-consumer/cli.mjs', 'tools/public-devnet-consumer/native-inputs.mjs',
@@ -23,7 +23,9 @@ COPIED_FILES = (
 )
 EXTRA_INPUTS = (*COPIED_FILES, 'LICENSE', 'packages/sdk/LICENSE',
                 'packages/sdk/README.md', 'packages/sdk/DISTRIBUTION.md',
-                'packages/sdk/INTERNALS.md')
+                'packages/sdk/INTERNALS.md', 'scripts/sdk_consumer_lock.py',
+                'tests/fixtures/clientd-runtime/package.json',
+                'tests/fixtures/clientd-runtime/package-lock.json')
 
 
 def source_snapshot():

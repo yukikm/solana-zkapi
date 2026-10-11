@@ -9,6 +9,14 @@ to build and initialize your program, Pool, signing keys, proof artifacts and
 manifest. Downloading a consumer profile does not provide private operator
 inputs. See [support](../support.md) for supported scope.
 
+For registered POST JSON or mixed proxy selections, use
+[offline API registration](api-registration.md). It renders complete private
+configuration and a reviewed frontend route description for a **new** deployment.
+Keep its inventory intact; initialize/start services explicitly using the paths
+and DSN-file mappings in `private/startup.json`. The manual field references below
+also document existing inference deployments and recovery; they do not authorize
+regenerating an existing funded installation.
+
 ## 1. Prepare the host and build
 
 Use the pinned [toolchains](../../CONTRIBUTING.md), PostgreSQL 16, a persistent

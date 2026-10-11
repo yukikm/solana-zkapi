@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { nativeNetwork } from './native-inputs.mjs';
 
 const manifest = { control_api_origin: 'https://control.example.com', inference_api_origin: 'https://proxy.example.com' };
-const base = { rpcUrl: 'https://rpc.example.com/rpc', indexerOrigin: 'https://indexer.example.com' };
+const base = { models: [{ id: 'inference' }], rpcUrl: 'https://rpc.example.com/rpc', indexerOrigin: 'https://indexer.example.com' };
 
 test('direct OpenRouter transport preserves actual provider base, without adding a second v1', () => {
   const network = nativeNetwork({ ...base, mode: 'direct_openrouter',
@@ -42,4 +42,14 @@ test('native admission references only a private file and the authenticated cont
   for (const admissionTokenFile of ['', 'relative', '/private/../invitation', '/private/invitation\n', 42])
     assert.throws(() => nativeNetwork({ ...base, mode: 'proxy' }, manifest, { mode: 'direct', admissionTokenFile }));
   assert.equal(Object.hasOwn(nativeNetwork({ ...base, mode: 'proxy' }, manifest, { mode: 'direct' }), 'admission'), false);
+});
+
+
+test('API-only routes name exact proxy operations and never upstream hosts', () => {
+  const profile = { ...base, mode: 'proxy', models: [], services: [{ tariff: {
+    api: { service: 'weather', operation: 'lookup', origin: 'https://upstream.example.com' },
+  } }] };
+  const network = nativeNetwork(profile, manifest, { mode: 'direct' });
+  assert.deepEqual(network.routes.at(-1), { origin: manifest.inference_api_origin, prefix: '/zkapi/v1/api/weather/lookup' });
+  assert.equal(network.routes.some(route => route.prefix === '/v1' || route.origin === 'https://upstream.example.com'), false);
 });

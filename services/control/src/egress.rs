@@ -46,17 +46,20 @@ impl ServiceConfig {
     /// Offline validation only; financial egress still requires the immutable
     /// ledger attempt, exclusive claim and final database fence below.
     pub fn validate_scope(&self) -> Result<()> {
+        self.provider_policy().map(|_| ())
+    }
+    fn provider_policy(&self) -> Result<crate::config::ProviderTransportPolicy> {
         ensure!(
             self.providers.dispatcher.is_none(),
             "nested dispatcher forbidden"
         );
         crate::operations::local_database(&self.database_url)?;
-        for api in &self.providers.api {
-            generic::validate_origin(&api.api, self.local_test_only)?;
-        }
         if self.local_test_only {
             ensure!(self.devnet.is_none(), "ambiguous provider test profile");
-            return Ok(());
+            for api in &self.providers.api {
+                generic::validate_origin(&api.api, true)?;
+            }
+            return Ok(crate::config::ProviderTransportPolicy::LocalFixture);
         }
         let scope = self
             .devnet
@@ -98,7 +101,10 @@ impl ServiceConfig {
             // real usage drain interval. Construction performs no HTTP call.
             let _ = direct::DirectAdapter::new(direct.clone(), false)?;
         }
-        Ok(())
+        for api in &self.providers.api {
+            generic::validate_origin(&api.api, false)?;
+        }
+        Ok(crate::config::ProviderTransportPolicy::PublicDevnet)
     }
 }
 #[derive(Serialize, Deserialize)]
@@ -455,7 +461,7 @@ async fn checkpoint(
     Ok(cp)
 }
 pub async fn serve(c: ServiceConfig, request: Request) -> Result<()> {
-    c.validate_scope()?;
+    let provider_policy = c.provider_policy()?;
     let (db, connection) = tokio_postgres::connect(&c.database_url, tokio_postgres::NoTls).await?;
     tokio::spawn(async move {
         let _ = connection.await;
@@ -549,7 +555,7 @@ pub async fn serve(c: ServiceConfig, request: Request) -> Result<()> {
                 checked.reservation_nano.to_string() == reservation_nano,
                 "API immutable reservation"
             );
-            let adapter = generic::HttpAdapter::connect(cfg, c.local_test_only).await?;
+            let adapter = generic::HttpAdapter::connect(cfg, provider_policy.local()).await?;
             authorize(&db, &c, &p, &attempt).await?;
             let (tx, mut rx) = mpsc::channel(32);
             let dispatch = adapter.dispatch_once(checked, Some(tx));

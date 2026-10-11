@@ -6,6 +6,7 @@ funded profiles, historical journals, provider secrets or public RPC settings.
 Keeps every run and report under ignored target/general-api-local. Requires
 already installed pinned tools and authenticated local test proof prerequisites.
 """
+import argparse
 import datetime
 import fcntl
 import hashlib
@@ -21,6 +22,8 @@ import time
 
 ROOT = Path(__file__).resolve().parents[1]
 OUT = ROOT / 'target/general-api-local'
+from general_api_tools import inspect_tools, sbf_build_invocation
+from sdk_consumer_lock import materialize
 
 
 def now():
@@ -40,15 +43,28 @@ def executable(name, candidates):
     raise RuntimeError(f'{name}: install the documented pinned tool or select an existing executable')
 
 
-def validate(result):
-    for name in ('passed', 'encrypted_journal', 'legacy_history_unchanged', 'lost_finalized_send_recovered',
+def validate(result, api_only=False, variant="legacy"):
+    fault = variant.split("-",1)[1] if "-" in variant else None
+    if api_only:
+        if result.get('generated_frontend_verified') is not True:
+            raise RuntimeError('generated frontend and restricted RPC routes not verified')
+        required = ('native_commands_executed', 'offline_configuration_validated') if variant.startswith('native') else ('installed_sdk', 'api_only')
+        if any(result.get(name) is not True for name in required):
+            raise RuntimeError('installed API-only client validation missing')
+        if variant.startswith('native') and fault != 'upstream_timeout' and result.get('custody_preserved_on_restart') is not True:
+            raise RuntimeError('native restart changed custody')
+    for name in ('passed', 'encrypted_journal',
                  'request_proof_verified', 'receipts_verified', 'signed_successor_verified',
                  'request_body_has_no_model', 'duplicates_not_replayed', 'invalid_requests_no_egress',
-                 'restarted_journal_recovery', 'balance_conservation', 'separate_signer_process',
+                 'balance_conservation', 'separate_signer_process',
                  'separate_dispatcher_process'):
         if result.get(name) is not True:
             raise RuntimeError('missing lifecycle invariant: ' + name)
-    if result.get('provider_calls') != {'legacy': 1, 'success': 1, 'http_error': 1, 'invalid_json': 1}:
+    if fault != 'upstream_timeout' and result.get('restarted_journal_recovery') is not True:
+        raise RuntimeError('original journal restart not verified')
+    if not api_only and any(result.get(name) is not True for name in ('legacy_history_unchanged','lost_finalized_send_recovered')):
+        raise RuntimeError('legacy history or exact transaction recovery not verified')
+    if result.get('provider_calls') != ({'success':1} if fault=='lost_response' else {'upstream_timeout':1} if fault=='upstream_timeout' else {'success': 1, 'http_error': 1, 'invalid_json': 1} if api_only else {'legacy': 1, 'success': 1, 'http_error': 1, 'invalid_json': 1}):
         raise RuntimeError('unexpected upstream calls or automatic replay')
     if (result.get('automatic_api_replays') != 0 or result.get('live_provider_verified') is not False
             or result.get('public_rpc_verified') is not False or result.get('release_gates_passed') != []):
@@ -57,7 +73,7 @@ def validate(result):
     if any(not isinstance(value, str) or not re.fullmatch(r'0|[1-9][0-9]*', value) for value in amounts):
         raise RuntimeError('noncanonical integer financial units')
     deposit, withdrawal, charge = map(int, amounts)
-    if (deposit, withdrawal, charge) != (5_000_000, 4_999_749, 251) or deposit != withdrawal + charge:
+    if (deposit, withdrawal, charge) != ((5_000_000,5_000_000,0) if fault=='upstream_timeout' else (5_000_000, 4_999_750, 250) if api_only else (5_000_000, 4_999_749, 251)) or deposit != withdrawal + charge:
         raise RuntimeError('deposit/withdrawal/charge conservation failed')
     chain = result['chain']
     if (not chain['rows'] or any(row['error'] is not None for row in chain['rows'])
@@ -66,40 +82,48 @@ def validate(result):
             or chain['treasury_micro_usdc'] != charge):
         raise RuntimeError('actual Vault balances or transaction limits failed')
     cases = result.get('cases', [])
-    if len(cases) != 3 or {case['variant'] for case in cases} != {'success', 'http_error', 'invalid_json'}:
+    expected_cases = {'success'} if fault=='lost_response' else {'upstream_timeout'} if fault=='upstream_timeout' else {'success','http_error','invalid_json'}
+    if len(cases) != len(expected_cases) or {case['variant'] for case in cases} != expected_cases:
         raise RuntimeError('API lifecycle cases missing')
     if any(case.get('receipt_verified') is not True for case in cases):
         raise RuntimeError('unverified receipt')
 
 
-def execute():
+def execute(onboarding=False):
     run_dir = Path(tempfile.mkdtemp(prefix='run-', dir=OUT))
     start = time.monotonic()
     report = {'schema': 1, 'passed': False, 'started_at_utc': now(),
               'run_directory': str(run_dir.relative_to(ROOT)),
-              'scope': 'Local fixed-price JSON API, retained legacy inference history, real proofs and Vault SBF; synthetic API/RPC finality',
+              'scope': ('Installed API-only SDK/native clients with generated configuration and routes' if onboarding else 'Fixed-price JSON API with retained legacy inference history') + '; real local proofs and Vault SBF, synthetic provider/RPC finality',
               'public_rpc_verified': False, 'live_provider_verified': False,
               'release_gates_passed': [], 'stages': []}
     env = {key: os.environ[key] for key in ('HOME', 'PATH', 'TMPDIR', 'TEMP', 'TMP', 'LANG', 'LC_ALL',
            'RUSTUP_HOME', 'CARGO_HOME', 'SDKROOT', 'DEVELOPER_DIR') if key in os.environ}
     try:
-        nodes = [ROOT / 'target/i08-toolchain/bin/node', *sorted((ROOT / 'target/toolchains').glob('node-v24.19.0-*/bin/node')), 'node']
-        node = executable('ZKAPI_NODE', nodes)
-        sbf = executable('ZKAPI_SBF', [ROOT / 'target/toolchains/sbf/bin/cargo-build-sbf', 'cargo-build-sbf'])
-        env.update(ZKAPI_NODE=node, ZKAPI_GENERAL_API_RUN_DIR=str(run_dir), RAYON_NUM_THREADS='4', CARGO_NET_OFFLINE='true')
-        env['PATH'] = os.pathsep.join([str(Path(node).parent), str(Path(sbf).parent), env.get('PATH', '')])
-        for binary in ('cargo', 'rustc', 'initdb', 'pg_ctl', 'psql'):
-            if not shutil.which(binary, path=env['PATH']):
-                raise RuntimeError('missing installed local test tool: ' + binary)
+        inventory = inspect_tools(ROOT)
+        report['tool_inventory'] = inventory
+        if not inventory['passed']:
+            raise RuntimeError('missing/mismatched tools; run --check-tools for every requirement')
+        selected = inventory['executables']
+        node, sbf = selected['node'], selected['sbf']
+        tool_links = run_dir / 'tools'
+        tool_links.mkdir(mode=0o700)
+        for name in ('node', 'npm', 'go', 'tar', 'initdb', 'pg_ctl', 'psql', 'rustc', 'cargo'):
+            (tool_links / name).symlink_to(selected[name])
+        env.update(ZKAPI_NODE=node, ZKAPI_NPM=selected['npm'], ZKAPI_GO=selected['go'],
+                   ZKAPI_GENERAL_API_RUN_DIR=str(run_dir), RAYON_NUM_THREADS='4',
+                   CARGO_NET_OFFLINE='true', GOPROXY='off', GOTOOLCHAIN='local',
+                   RUSTC=selected['rustc'], CARGO=selected['cargo'])
+        env['PATH'] = os.pathsep.join([str(tool_links), str(Path(sbf).parent), env.get('PATH', '')])
 
-        def run(name, args, timeout=1800):
+        def run(name, args, timeout=1800, cwd=ROOT, environment=None):
             log = run_dir / (name + '.log')
             row = {'name': name, 'argv': list(map(str, args)), 'started_at_utc': now(), 'log': str(log.relative_to(ROOT))}
             report['stages'].append(row)
             before = time.monotonic()
             print('$ ' + ' '.join(row['argv']), flush=True)
             with log.open('w') as output:
-                process = subprocess.Popen(row['argv'], cwd=ROOT, env=env, stdout=output, stderr=subprocess.STDOUT, start_new_session=True)
+                process = subprocess.Popen(row['argv'], cwd=cwd, env=env if environment is None else environment, stdout=output, stderr=subprocess.STDOUT, start_new_session=True)
                 try:
                     row['exit_code'] = process.wait(timeout=timeout)
                 except BaseException:
@@ -116,6 +140,19 @@ def execute():
             print(name + ': passed', flush=True)
             return log.read_text().strip()
 
+        source_dirs = ('packages/sdk/src','packages/sdk/test','services/control/src','services/control/tests','services/control/migrations',
+                       'apps/clientd','programs/zkapi-vault/src','crates','scripts','tools/public-devnet-consumer',
+                       'tests/fixtures','tests/svm/src','docs/contracts')
+        excluded = {'target','node_modules','dist','__pycache__'}
+        suffixes = {'.rs','.ts','.mjs','.js','.py','.sh','.json','.go','.toml','.lock','.mod','.sum','.md','.bin','.vk'}
+        files = {p for directory in source_dirs for p in (ROOT/directory).rglob('*')
+                 if p.is_file() and not excluded.intersection(p.relative_to(ROOT).parts) and p.suffix in suffixes}
+        files.update(ROOT/name for name in ('package.json','package-lock.json','Cargo.toml','Cargo.lock','rust-toolchain.toml','.node-version',
+                     'packages/sdk/package.json','packages/sdk/build.mjs','packages/sdk/tsconfig.json','packages/sdk/tsconfig.build.json',
+                     'services/control/Cargo.toml','services/control/Cargo.lock','tests/svm/Cargo.toml','tests/svm/Cargo.lock',
+                     'programs/zkapi-vault/Cargo.toml','programs/zkapi-vault/Cargo.lock'))
+        baseline = {str(path.relative_to(ROOT)): sha(path) for path in sorted(files)}
+        report['source_input_sha256'] = baseline
         node_version = run('node-version', [node, '--version'])
         if node_version != 'v' + (ROOT / '.node-version').read_text().strip():
             raise RuntimeError('pinned Node required; set ZKAPI_NODE')
@@ -126,33 +163,74 @@ def execute():
         if sbf_version.splitlines()[0] != 'cargo-build-sbf 4.1.0':
             raise RuntimeError('pinned cargo-build-sbf 4.1.0 required')
         report['tools'] = {'node': node_version, 'rust': rust_version, 'sbf': sbf_version}
-        prerequisites = {'target/i09-challenger/test-tree.pk': 'python3 scripts/run_i09_challenger.py',
-                         'target/i08-wallet/circuit-source.tar': 'python3 scripts/run_i08_wallet.py'}
-        for path, command in prerequisites.items():
-            if not (ROOT / path).is_file():
-                raise RuntimeError('missing authenticated local test input ' + path + '; reproduce prerequisites with ' + command)
-        report['prerequisite_sha256'] = {path: sha(ROOT / path) for path in prerequisites}
-        files = []
-        for directory in ('packages/sdk/src', 'services/control/src', 'services/control/migrations',
-                          'apps/clientd/companion/src', 'apps/clientd/prover/src', 'programs/zkapi-vault/src', 'crates'):
-            files.extend(p for p in (ROOT / directory).rglob('*') if p.is_file() and 'target' not in p.relative_to(ROOT).parts)
-        files.extend(ROOT / path for path in ('packages/sdk/test/general-api-e2e.ts', 'services/control/tests/general_api_e2e.rs',
-                     'scripts/run_general_api.py', 'tests/svm/src/bin/wallet.rs', 'docs/contracts/zkapi_vault.json',
-                     'services/control/Cargo.lock', 'apps/clientd/companion/Cargo.lock', 'apps/clientd/prover/Cargo.lock', 'tests/svm/Cargo.lock'))
-        baseline = {str(path.relative_to(ROOT)): sha(path) for path in sorted(set(files))}
-        report['source_input_sha256'] = baseline
+        prerequisites = run_dir / 'prerequisites'
+        prerequisites.mkdir(mode=0o700)
+        run('pinned-upstream', ['python3', 'scripts/check_upstream.py'])
+        run('source-archive', ['bash', 'scripts/build_i02_source.sh', prerequisites / 'circuit-source.tar'])
+        run('tree-test-key', ['cargo', 'run', '--locked', '--offline', '--release', '-p', 'zkapi-tree-prover',
+                             '--example', 'test_setup', '--', prerequisites / 'test-tree.pk'])
+        profile = json.loads((ROOT / 'tests/fixtures/layout2/profile.json').read_text())
+        expected = {'test-tree.pk': profile['tree_proof_artifacts']['pk_hash'],
+                    'circuit-source.tar': profile['tree_proof_artifacts']['source_bundle_hash']}
+        for name, digest in expected.items():
+            if sha(prerequisites / name) != digest:
+                raise RuntimeError('pinned test prerequisite mismatch: ' + name)
+        for name in ('request', 'withdrawal'):
+            for extension in ('pk', 'vk'):
+                if sha(ROOT / f'vendor/ethereum-zkapi/protocol/setup/v2/{name}.{extension}') != profile[f'{name}_{extension}_hash']:
+                    raise RuntimeError('upstream proof artifact pin mismatch')
+        for name, pin in [('test-tree.vk','vk_hash'), ('tree-vk-wire.bin','verifier_constants_hash')]:
+            if sha(ROOT / 'tests/fixtures/layout2' / name) != profile['tree_proof_artifacts'][pin]:
+                raise RuntimeError('tree public artifact pin mismatch')
+        report['prerequisite_sha256'] = {str((prerequisites / name).relative_to(ROOT)): digest for name,digest in expected.items()}
+        env.update(ZKAPI_TEST_TREE_PK=str(prerequisites / 'test-tree.pk'),
+                   ZKAPI_TEST_SOURCE_ARCHIVE=str(prerequisites / 'circuit-source.tar'))
         run('control-build', ['cargo', 'build', '--locked', '--offline', '--manifest-path', 'services/control/Cargo.toml', '--bins'])
         run('verifier-build', ['cargo', 'build', '--locked', '--offline', '--manifest-path', 'apps/clientd/companion/Cargo.toml'])
         run('prover-build', ['cargo', 'build', '--locked', '--offline', '--release', '--manifest-path', 'apps/clientd/prover/Cargo.toml', '--bin', 'zkapi-client-prover'])
         run('svm-build', ['cargo', 'build', '--locked', '--offline', '--manifest-path', 'tests/svm/Cargo.toml', '--bin', 'wallet'])
         elf_dir = run_dir / 'sbf'
-        build = run('vault-sbf-build', ['cargo', 'build-sbf', '--manifest-path', 'programs/zkapi-vault/Cargo.toml',
-                    '--tools-version', 'v1.54', '--arch', 'v0', '--features', 'sbf-entrypoint', '--sbf-out-dir', str(elf_dir), '--', '--locked', '--offline'])
+        sbf_command, sbf_environment = sbf_build_invocation(inventory, 'programs/zkapi-vault/Cargo.toml', elf_dir, env)
+        build = run('vault-sbf-build', sbf_command, environment=sbf_environment)
         if re.search(r'stack offset.*exceed|stack frame size.*exceed', build, re.IGNORECASE):
             raise RuntimeError('SBF stack limit exceeded')
-        env['ZKAPI_TEST_VAULT_ELF'] = str(elf_dir / 'zkapi_vault.so')
+        env.update(ZKAPI_TEST_VAULT_ELF=str(elf_dir / 'zkapi_vault.so'),
+                   ZKAPI_TEST_SVM=str(ROOT / 'tests/svm/target/debug/wallet'),
+                   ZKAPI_TEST_NATIVE_PROVER=str(ROOT / 'apps/clientd/prover/target/release/zkapi-client-prover'),
+                   ZKAPI_TEST_VERIFIER=str(ROOT / 'apps/clientd/companion/target/debug/zkapi-client-verify'))
         report['vault_elf_sha256'] = sha(elf_dir / 'zkapi_vault.so')
         run('sdk-types', [node, 'node_modules/typescript/bin/tsc', '--noEmit', '-p', 'packages/sdk/tsconfig.json'])
+        if onboarding:
+            run('wasm-build', ['cargo','build','--locked','--offline','--release','--manifest-path','apps/clientd/prover/Cargo.toml','--target','wasm32-unknown-unknown','--lib'])
+            env['ZKAPI_TEST_WASM_PROVER'] = str(ROOT / 'apps/clientd/prover/target/wasm32-unknown-unknown/release/zkapi_client_prover.wasm')
+            env['ZKAPI_TEST_WASM'] = env['ZKAPI_TEST_WASM_PROVER']
+            run('sdk-distribution', ['python3','scripts/run_external_sdk_acceptance.py','--offline','--output',run_dir/'sdk-distribution'])
+            native = run_dir / 'native-distribution'
+            run('native-distribution', ['python3','scripts/build_clientd_distribution.py','--offline','--output',native,
+                '--prover',env['ZKAPI_TEST_NATIVE_PROVER'],'--verifier',env['ZKAPI_TEST_VERIFIER']])
+            env['ZKAPI_TEST_NATIVE_INSTALLATION'] = str(native)
+            consumer = Path(tempfile.mkdtemp(prefix='zkapi-onboarding-consumer-')).resolve()
+            report['external_consumer'] = str(consumer)
+            version = json.loads((ROOT/'packages/sdk/package.json').read_text())['version']
+            tarball = run_dir/'sdk-distribution'/f'zkapi-solana-sdk-{version}.tgz'
+            copied = consumer / tarball.name
+            shutil.copyfile(tarball,copied)
+            report['consumer_lock'] = materialize(consumer,copied)
+            run('installed-sdk-offline', ['npm','ci','--offline','--ignore-scripts','--no-audit','--no-fund'],cwd=consumer)
+            for name in ['general-api-e2e.ts','native-onboarding.ts','kit-helpers.ts','wallet-fixture.ts']:
+                content=(ROOT/'packages/sdk/test'/name).read_text()
+                content=re.sub(r"(['\"])\.\./src/([a-z0-9-]+)\.ts\1",lambda m:"'@zkapi/solana-sdk"+('' if m[2]=='client' else '/'+m[2])+"'",content)
+                content=content.replace("../../../scripts/api_registration.ts","./api-registration.ts")
+                if '../src/' in content: raise RuntimeError('source import escaped installed acceptance boundary')
+                (consumer/name).write_text(content)
+            content=(ROOT/'scripts/api_registration.ts').read_text()
+            content=re.sub(r"(['\"])\.\./packages/sdk/src/([a-z0-9-]+)\.ts\1",lambda m:"'@zkapi/solana-sdk"+('' if m[2]=='client' else '/'+m[2])+"'",content)
+            (consumer/'api-registration.ts').write_text(content)
+            env['ZKAPI_TEST_LIFECYCLE_SCRIPT']=str(consumer/'general-api-e2e.ts')
+            distribution = json.loads((run_dir/'sdk-distribution/results.json').read_text())
+            report['public_format_fixtures'] = {'scope': 'Injected HTTPS/Devnet-format responses, distinct from local chain execution',
+                'installed_tests': distribution['installed_tests'], 'native_profile_contract_tests': distribution['native_profile_contract_tests'],
+                'live_provider_verified': False, 'public_rpc_verified': False}
         with tempfile.TemporaryDirectory(prefix='zkapi-generic-', dir='/tmp') as directory:
             work = Path(directory)
             data, socket = run_dir / 'postgres', work / 'socket'
@@ -167,12 +245,20 @@ def execute():
                     "SELECT current_setting('fsync'),current_setting('full_page_writes'),current_setting('synchronous_commit')"])
                 if durability != 'on|on|on':
                     raise RuntimeError('disposable database durability settings changed')
-                output = run('general-api-e2e', ['cargo', 'test', '--locked', '--offline', '--manifest-path', 'services/control/Cargo.toml',
-                             '--features', 'i10-acceptance', '--test', 'general_api_e2e', '--', '--ignored', '--nocapture'], timeout=900)
-                if 'test result: ok. 1 passed; 0 failed; 0 ignored;' not in output:
-                    raise RuntimeError('actual local lifecycle test did not execute')
-                result = json.loads((run_dir / 'e2e-results.json').read_text())
-                validate(result)
+                variants = ['sdk','native','sdk-lost_response','native-lost_response','sdk-upstream_timeout','native-upstream_timeout'] if onboarding else ['legacy']
+                report['lifecycles'] = {}
+                for variant in variants:
+                    if variant != 'legacy': env['ZKAPI_ONBOARDING_VARIANT'] = variant
+                    output = run('general-api-' + variant, ['cargo', 'test', '--locked', '--offline', '--manifest-path', 'services/control/Cargo.toml',
+                                 '--features', 'i10-acceptance', '--test', 'general_api_e2e', '--', '--ignored', '--nocapture'], timeout=1500)
+                    if 'test result: ok. 1 passed; 0 failed; 0 ignored;' not in output:
+                        raise RuntimeError('actual local lifecycle test did not execute')
+                    result = json.loads((run_dir / 'e2e-results.json').read_text())
+                    validate(result, api_only=onboarding, variant=variant)
+                    if onboarding and result.get('separate_control_process') is not True:
+                        raise RuntimeError('real controld process required')
+                    report['lifecycles'][variant] = result
+                    (run_dir / ('e2e-' + variant + '.json')).write_text(json.dumps(result,indent=2)+'\n')
                 report['lifecycle'] = result
             finally:
                 if running:
@@ -194,7 +280,15 @@ def execute():
 
 
 if __name__ == '__main__':
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--check-tools', action='store_true', help='Read-only installed-tool inventory; creates no run directory')
+    parser.add_argument('--onboarding', action='store_true', help='Fresh generated configuration and installed SDK/native acceptance')
+    args = parser.parse_args()
+    if args.check_tools:
+        result = inspect_tools(ROOT)
+        print(json.dumps(result, indent=2))
+        raise SystemExit(0 if result['passed'] else 1)
     OUT.mkdir(parents=True, exist_ok=True, mode=0o700)
     with (OUT / 'runner.lock').open('w') as lock:
         fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
-        execute()
+        execute(args.onboarding)
