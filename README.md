@@ -16,6 +16,26 @@ and [new-Devnet registration](docs/getting-started/api-registration.md).
 See the [`.13` release and upgrade guide](docs/releases/universal-api-gateway-preview.md).
 The existing public deployment retains its direct OpenRouter inference selection.
 
+## How it works
+
+![Solana ZKAPI direct flow: your app calls the local client, which proves payment to the control service, receives a capped provider key and calls the API provider directly. The Solana Vault holds deposited USDC; the client verifies signed settlement before reusing the balance or withdrawing.](docs/assets/how-it-works.svg)
+
+Deposit USDC through the client to fund a private note. The client generates a
+local ZK proof to authorize a capped session. The control service verifies the
+proof and obtains a restricted provider key; API requests and responses then
+travel directly between the client and provider. The public Devnet profile
+shown here uses **OpenRouter Chat Completions**.
+
+After the session closes, the client verifies the signed charge and updated
+note state before another authorization or withdrawal. See the
+[payment lifecycle](docs/getting-started/api-integration.md#follow-one-payment-lifecycle)
+for the complete flow.
+
+In direct mode, requests go to the selected provider. In proxy mode, the
+operator also receives request and response content. ZK proofs do not make
+that content private from its recipients, prove API response correctness or
+provide network anonymity.
+
 ## Get started
 
 Start with **[API integration and the payment lifecycle](docs/getting-started/api-integration.md)**.
@@ -40,11 +60,6 @@ supports Apple Silicon Macs; its installation guide is explicitly for macOS.
 The SDK is distributed as a tarball. The
 [reference chat app](https://github.com/yukikm/solana-zkapi-client) is an inference
 application maintained separately.
-
-In direct mode, requests go to the selected provider. In proxy mode, the
-operator also receives request and response content. ZK proofs do not make
-that content private from its recipients, prove API response correctness or
-provide network anonymity.
 
 ## Public Devnet addresses
 

@@ -1,0 +1,71 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="620" viewBox="0 0 1200 620" role="img" aria-labelledby="title description">
+  <title id="title">How Solana ZKAPI works in direct mode</title>
+  <desc id="description">Fund a private note by depositing USDC through the local client into the Solana Vault. 1: Your app calls the ZKAPI client. 2: The client sends a zero-knowledge payment proof to the control service, which verifies it and reserves a usage cap. 3: The service obtains a restricted provider key and returns it to the client. 4: API requests and responses travel directly between the client and provider. The service manages the key and reads provider usage. 5: After the session closes, the client verifies signed settlement before reusing the balance or withdrawing USDC. The public Devnet preview uses OpenRouter Chat Completions. This diagram does not show proxy mode.</desc>
+  <defs>
+    <marker id="arrow-gray" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M 1 1 L 9 5 L 1 9 Z" fill="#64748b"/>
+    </marker>
+    <marker id="arrow-purple" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M 1 1 L 9 5 L 1 9 Z" fill="#7051c2"/>
+    </marker>
+    <marker id="arrow-green" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M 1 1 L 9 5 L 1 9 Z" fill="#087f6b"/>
+    </marker>
+  </defs>
+
+  <rect width="1200" height="620" rx="20" fill="#ffffff"/>
+  <g font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif">
+    <text x="40" y="54" fill="#172033" font-size="26" font-weight="700">Direct mode on Solana</text>
+    <rect x="992" y="24" width="168" height="38" rx="19" fill="#f1f5f9"/>
+    <text x="1076" y="49" text-anchor="middle" fill="#475569" font-size="18" font-weight="600">Devnet preview</text>
+
+    <!-- The app uses a local client; request content takes the direct path. -->
+    <path d="M 250 175 H 350" fill="none" stroke="#64748b" stroke-width="2.5" marker-end="url(#arrow-gray)"/>
+    <text x="300" y="154" text-anchor="middle" fill="#475569" font-size="21" font-weight="600">1 · Call</text>
+    <path d="M 632 175 H 908" fill="none" stroke="#087f6b" stroke-width="2.5" marker-start="url(#arrow-green)" marker-end="url(#arrow-green)"/>
+    <text x="770" y="146" text-anchor="middle" fill="#087f6b" font-size="21" font-weight="600">4 · Requests + responses</text>
+
+    <!-- Funding and withdrawal use the on-chain Vault through the client. -->
+    <path d="M 225 398 L 385 228" fill="none" stroke="#64748b" stroke-width="2" stroke-dasharray="5 6" marker-start="url(#arrow-gray)" marker-end="url(#arrow-gray)"/>
+    <text x="70" y="302" fill="#475569" font-size="21" font-weight="600">Deposit / withdraw</text>
+    <text x="70" y="328" fill="#64748b" font-size="19">USDC on Solana</text>
+
+    <!-- Authorization contains no prompt or response body. -->
+    <path d="M 487 228 V 398" fill="none" stroke="#7051c2" stroke-width="2.5" marker-end="url(#arrow-purple)"/>
+    <text x="470" y="293" text-anchor="end" fill="#7051c2" font-size="21" font-weight="600">2 · ZK proof</text>
+    <text x="470" y="319" text-anchor="end" fill="#64748b" font-size="19">Authorize a cap</text>
+    <path d="M 596 398 V 228" fill="none" stroke="#7051c2" stroke-width="2.5" marker-end="url(#arrow-purple)"/>
+    <text x="614" y="293" fill="#7051c2" font-size="21" font-weight="600">3 · Capped key</text>
+    <text x="614" y="319" fill="#64748b" font-size="19">For direct API calls</text>
+
+    <!-- The operator obtains and retires keys and captures provider usage. -->
+    <path d="M 800 420 L 1034 228" fill="none" stroke="#64748b" stroke-width="2" marker-start="url(#arrow-gray)" marker-end="url(#arrow-gray)"/>
+    <text x="951" y="330" fill="#475569" font-size="20">Manage key</text>
+    <text x="951" y="356" fill="#475569" font-size="20">Read usage</text>
+
+    <rect x="40" y="122" width="210" height="106" rx="12" fill="#f8fafc" stroke="#cbd5e1" stroke-width="1.5"/>
+    <text x="145" y="165" text-anchor="middle" fill="#172033" font-size="25" font-weight="700">Your app</text>
+    <text x="145" y="196" text-anchor="middle" fill="#475569" font-size="18">Compatible API client</text>
+
+    <rect x="350" y="122" width="280" height="106" rx="12" fill="#f7f3ff" stroke="#a78bdc" stroke-width="1.5"/>
+    <text x="490" y="165" text-anchor="middle" fill="#172033" font-size="25" font-weight="700">ZKAPI client</text>
+    <text x="490" y="196" text-anchor="middle" fill="#475569" font-size="18">clientd or SDK · local proofs</text>
+
+    <rect x="910" y="122" width="250" height="106" rx="12" fill="#effaf6" stroke="#83bdad" stroke-width="1.5"/>
+    <text x="1035" y="165" text-anchor="middle" fill="#172033" font-size="25" font-weight="700">API provider</text>
+    <text x="1035" y="196" text-anchor="middle" fill="#475569" font-size="18">OpenRouter · public preview</text>
+
+    <rect x="40" y="398" width="278" height="106" rx="12" fill="#f8fafc" stroke="#94a3b8" stroke-width="1.5" stroke-dasharray="6 5"/>
+    <text x="179" y="441" text-anchor="middle" fill="#172033" font-size="25" font-weight="700">Solana USDC Vault</text>
+    <text x="179" y="472" text-anchor="middle" fill="#475569" font-size="19">Holds deposited USDC</text>
+
+    <rect x="415" y="398" width="385" height="106" rx="12" fill="#f7f3ff" stroke="#a78bdc" stroke-width="1.5"/>
+    <text x="607.5" y="441" text-anchor="middle" fill="#172033" font-size="25" font-weight="700">ZKAPI control service</text>
+    <text x="607.5" y="472" text-anchor="middle" fill="#475569" font-size="19">Verifies proofs · reserves usage · settles</text>
+
+    <path d="M 40 548 H 1160" stroke="#e2e8f0" stroke-width="1.5"/>
+    <circle cx="56" cy="580" r="16" fill="#7051c2"/>
+    <text x="56" y="587" text-anchor="middle" fill="#ffffff" font-size="20" font-weight="700">5</text>
+    <text x="86" y="587" fill="#334155" font-size="21">Verify signed settlement, then reuse your balance or withdraw USDC.</text>
+  </g>
+</svg>
