@@ -5,8 +5,9 @@
 use super::*;
 use crate::canonical;
 use serde::{Deserialize, Serialize};
+use std::io::{self, Write};
 
-const MAX_BYTES: usize = 256 * 1024 * 1024;
+const MAX_BYTES: usize = 512 * 1024 * 1024;
 const DOMAIN: &str = "zkapi-indexer-private-replay-v1";
 
 #[derive(Serialize, Deserialize)]
@@ -61,6 +62,76 @@ fn require(ok: bool) -> Result<()> {
         Err(Error::Snapshot)
     }
 }
+
+// Count before allocating the output, so a valid large checkpoint does not
+// temporarily require a geometrically grown output buffer. Both passes have
+// the same hard limit; no output is returned after a partial/failed write.
+struct LimitedWriter<W> {
+    inner: W,
+    length: usize,
+    limit: usize,
+}
+impl<W: Write> Write for LimitedWriter<W> {
+    fn write(&mut self, bytes: &[u8]) -> io::Result<usize> {
+        let next = self
+            .length
+            .checked_add(bytes.len())
+            .filter(|next| *next <= self.limit)
+            .ok_or_else(|| io::Error::other("checkpoint size limit"))?;
+        self.inner.write_all(bytes)?;
+        self.length = next;
+        Ok(bytes.len())
+    }
+
+    fn flush(&mut self) -> io::Result<()> {
+        self.inner.flush()
+    }
+}
+fn serialize_bounded(value: &impl Serialize, limit: usize) -> Result<Vec<u8>> {
+    let mut counter = LimitedWriter {
+        inner: io::sink(),
+        length: 0,
+        limit,
+    };
+    serde_json::to_writer(&mut counter, value).map_err(|_| Error::Snapshot)?;
+    let mut bytes = Vec::new();
+    bytes
+        .try_reserve_exact(counter.length)
+        .map_err(|_| Error::Snapshot)?;
+    let mut output = LimitedWriter {
+        inner: bytes,
+        length: 0,
+        limit: counter.length,
+    };
+    serde_json::to_writer(&mut output, value).map_err(|_| Error::Snapshot)?;
+    require(output.length == counter.length)?;
+    Ok(output.inner)
+}
+
+// Keep the exact legacy JSON-byte equality check without allocating another
+// checkpoint-sized canonical buffer alongside the parsed private state.
+struct ExactWriter<'a> {
+    remaining: &'a [u8],
+}
+impl Write for ExactWriter<'_> {
+    fn write(&mut self, bytes: &[u8]) -> io::Result<usize> {
+        if self.remaining.get(..bytes.len()) != Some(bytes) {
+            return Err(io::Error::other("noncanonical checkpoint"));
+        }
+        self.remaining = &self.remaining[bytes.len()..];
+        Ok(bytes.len())
+    }
+
+    fn flush(&mut self) -> io::Result<()> {
+        Ok(())
+    }
+}
+fn require_canonical(value: &impl Serialize, bytes: &[u8]) -> Result<()> {
+    let mut output = ExactWriter { remaining: bytes };
+    serde_json::to_writer(&mut output, value).map_err(|_| Error::Snapshot)?;
+    require(output.remaining.is_empty())
+}
+
 fn ordered<T: Ord>(items: impl IntoIterator<Item = T>) -> bool {
     let mut previous = None;
     for item in items {
@@ -220,10 +291,11 @@ impl Indexer {
     /// Serialize complete private state at the current accepted block. The
     /// caller persists this atomically with its protected archive-prefix anchor.
     /// Unlike public snapshots this also retains unexecuted buffer generations,
-    /// spent nullifiers and every accepted block digest. A halted index cannot
-    /// be saved. Readiness is deliberately not persisted.
+    /// spent nullifiers and every accepted block digest. A halted index or an
+    /// offline projected replay cannot be saved in this legacy full-block format.
+    /// Readiness is deliberately not persisted.
     pub fn checkpoint_bytes(&self) -> Result<Vec<u8>> {
-        require(!self.halted)?;
+        require(!self.halted && !self.projected_evidence)?;
         let (slot, blockhash) = self.checkpoint.ok_or(Error::Unavailable)?;
         let saved = Saved {
             domain: DOMAIN.into(),
@@ -268,9 +340,7 @@ impl Indexer {
             block_transitions: self.block_transitions.clone(),
         };
         saved.validate()?;
-        let bytes = serde_json::to_vec(&saved).map_err(|_| Error::Snapshot)?;
-        require(bytes.len() <= MAX_BYTES)?;
-        Ok(bytes)
+        serialize_bounded(&saved, MAX_BYTES)
     }
 
     /// Restore trusted local replay state bound to an independently authenticated
@@ -291,10 +361,16 @@ impl Indexer {
             saved.program == program
                 && saved.pool == pool
                 && saved.slot == expected_slot
-                && saved.blockhash == expected_blockhash
-                && serde_json::to_vec(&saved).map_err(|_| Error::Snapshot)? == bytes,
+                && saved.blockhash == expected_blockhash,
         )?;
+        require_canonical(&saved, bytes)?;
         let tree = saved.validate()?;
+        let coverage_digest = saved
+            .blocks
+            .iter()
+            .fold(coverage_start(), |previous, (slot, _)| {
+                coverage_next(previous, *slot)
+            });
         let blocks = saved
             .blocks
             .into_iter()
@@ -344,6 +420,8 @@ impl Indexer {
             outstanding: saved.outstanding,
             checkpoint: Some((saved.slot, saved.blockhash)),
             blocks,
+            coverage_digest,
+            projected_evidence: false,
             ready: false,
             halted: false,
             last_transition: saved.last_transition,

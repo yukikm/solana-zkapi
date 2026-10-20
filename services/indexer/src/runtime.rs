@@ -1,6 +1,6 @@
 //! Finalized archive polling and public, read-only tree endpoints.
 //! Start at or before pool initialization; incomplete archive/account views fail closed.
-use crate::{discriminator, rpc, Bytes32, ChainState, Indexer, Note, Pending};
+use crate::{discriminator, rpc, snapshot::ReadView, Bytes32, ChainState, Indexer, Note, Pending};
 use axum::{
     extract::{Path, State},
     http::{header, StatusCode},
@@ -32,8 +32,14 @@ pub struct Config {
     pub listen: String,
     pub public_origin: String,
     pub snapshots_directory: PathBuf,
+    /// Refresh delay only; finalized reconciliation and HTTP wait bounds stay fixed.
+    #[serde(default = "default_poll_seconds")]
+    pub poll_seconds: u64,
 }
-fn key(text: &str) -> Result<Bytes32> {
+fn default_poll_seconds() -> u64 {
+    2
+}
+pub(crate) fn key(text: &str) -> Result<Bytes32> {
     Ok(bs58::decode(text)
         .into_vec()?
         .try_into()
@@ -42,17 +48,17 @@ fn key(text: &str) -> Result<Bytes32> {
 fn b58(bytes: &Bytes32) -> String {
     bs58::encode(bytes).into_string()
 }
-fn pda(program: &Bytes32, seeds: &[&[u8]]) -> (Bytes32, u8) {
+pub(crate) fn pda(program: &Bytes32, seeds: &[&[u8]]) -> (Bytes32, u8) {
     let (key, bump) = Pubkey::find_program_address(seeds, &Pubkey::new_from_array(*program));
     (key.to_bytes(), bump)
 }
-fn array<const N: usize>(raw: &[u8], at: usize) -> Result<[u8; N]> {
+pub(crate) fn array<const N: usize>(raw: &[u8], at: usize) -> Result<[u8; N]> {
     Ok(raw.get(at..at + N).ok_or("short account")?.try_into()?)
 }
-fn u64_at(raw: &[u8], at: usize) -> Result<u64> {
+pub(crate) fn u64_at(raw: &[u8], at: usize) -> Result<u64> {
     Ok(u64::from_le_bytes(array(raw, at)?))
 }
-fn check_account(raw: &[u8], name: &str, len: usize, bump: u8) -> Result<()> {
+pub(crate) fn check_account(raw: &[u8], name: &str, len: usize, bump: u8) -> Result<()> {
     if raw.len() != len
         || raw[..8] != discriminator("account", name)
         || raw[8] != 2
@@ -62,7 +68,7 @@ fn check_account(raw: &[u8], name: &str, len: usize, bump: u8) -> Result<()> {
     }
     Ok(())
 }
-fn decode_note(raw: &[u8], id: u32, status: u8, bump: u8) -> Result<Note> {
+pub(crate) fn decode_note(raw: &[u8], id: u32, status: u8, bump: u8) -> Result<Note> {
     check_account(raw, "Note", 63, bump)?;
     if u32::from_le_bytes(array(raw, 10)?) != id || raw[62] != status {
         return Err("note status/id mismatch".into());
@@ -76,7 +82,7 @@ fn decode_note(raw: &[u8], id: u32, status: u8, bump: u8) -> Result<Note> {
     note.leaf()?;
     Ok(note)
 }
-fn decode_pending(raw: &[u8], note: Note, bump: u8) -> Result<Pending> {
+pub(crate) fn decode_pending(raw: &[u8], note: Note, bump: u8) -> Result<Pending> {
     check_account(raw, "PendingWithdrawal", 123, bump)?;
     if raw[10] != 1 {
         return Err("missing pending withdrawal".into());
@@ -131,6 +137,7 @@ pub struct ArchiveRpc {
     client: reqwest::Client,
     url: String,
     retry_not_before: Arc<tokio::sync::Mutex<tokio::time::Instant>>,
+    usage: zkapi_rpc_metrics::RpcUsage,
 }
 fn rate_limit_delay(headers: &reqwest::header::HeaderMap) -> Duration {
     // Only bounded delta-seconds are accepted. Missing, malformed and HTTP-date
@@ -246,6 +253,7 @@ impl ArchiveRpc {
                 .build()?,
             url,
             retry_not_before: Arc::new(tokio::sync::Mutex::new(tokio::time::Instant::now())),
+            usage: zkapi_rpc_metrics::RpcUsage::new(zkapi_rpc_metrics::Component::Archive),
         })
     }
     async fn wait_rate_limit(&self) {
@@ -260,6 +268,8 @@ impl ArchiveRpc {
     pub async fn call(&self, method: &str, params: Value) -> Result<Value> {
         self.wait_rate_limit().await;
         let started = std::time::Instant::now();
+        self.usage
+            .record(method, params[1]["transactionDetails"] == "full");
         let response = self
             .client
             .post(&self.url)
@@ -336,6 +346,9 @@ impl ArchiveRpc {
                 diagnostic.emit();
                 "RPC result unavailable".into()
             })
+    }
+    pub fn usage(&self) -> Value {
+        self.usage.snapshot()
     }
     async fn accounts(
         &self,
@@ -482,7 +495,11 @@ impl ArchiveRpc {
         next_slot: &mut u64,
     ) -> Result<()> {
         index.ready = false;
-        self.catch_up(index, next_slot).await?;
+        if index.replay_state().is_err() {
+            // Bootstrap the inventory from complete history. Warm refreshes
+            // use the finalized account context as their one exact target.
+            self.catch_up(index, next_slot).await?;
+        }
         let cut = self.capture_chain(cfg, &index.replay_state()?).await?;
         self.catch_up_to(index, next_slot, cut.slot).await?;
         let observed = self.observe_cut(cfg, &index.replay_state()?, &cut).await?;
@@ -586,7 +603,7 @@ impl ArchiveRpc {
     }
 }
 struct Published {
-    index: Indexer,
+    index: ReadView,
     available: bool,
     refreshing: bool,
 }
@@ -730,6 +747,9 @@ async fn serve_source(
     cfg: Config,
     mut archive: Option<Box<dyn FinalizedArchiveSource>>,
 ) -> Result<()> {
+    if !(1..=10).contains(&cfg.poll_seconds) {
+        return Err("indexer poll_seconds must be between 1 and 10".into());
+    }
     let program = key(&cfg.program_id)?;
     let pool = key(&cfg.pool)?;
     key(&cfg.genesis_hash)?;
@@ -768,7 +788,7 @@ async fn serve_source(
     let listener = tokio::net::TcpListener::bind(&cfg.listen).await?;
     let config = Arc::new(cfg);
     let state = Arc::new(RwLock::new(Published {
-        index: Indexer::new(program, pool),
+        index: Indexer::new(program, pool).read_view(),
         available: false,
         refreshing: false,
     }));
@@ -789,7 +809,7 @@ async fn serve_source(
             None => config.start_slot,
         };
         let mut index = restored.unwrap_or_else(|| Indexer::new(program, pool));
-        let mut checkpoint_saved: Option<std::time::Instant> = None;
+        let mut checkpoint_completed: Option<std::time::Instant> = None;
         let mut archive_refresh = ArchiveRefresh::default();
         loop {
             {
@@ -811,7 +831,7 @@ async fn serve_source(
             };
             if result.is_ok() {
                 *state.write().await = Published {
-                    index: index.clone(),
+                    index: index.read_view(),
                     available: true,
                     refreshing: false,
                 };
@@ -834,17 +854,21 @@ async fn serve_source(
             // Cache even a valid partial prefix waiting for the writer/RPC. It
             // is never a public snapshot, and restoration remains unavailable
             // until the existing finalized account checks succeed again.
-            if checkpoint_saved.is_none_or(|at| at.elapsed() >= Duration::from_secs(60))
-                && index.replay_state().is_ok()
+            if index.replay_state().is_ok()
+                && archive_refresh
+                    .checkpoint_save_due(checkpoint_completed, std::time::Instant::now())
             {
-                checkpoint_saved = Some(std::time::Instant::now());
                 if let Some(source) = archive.as_ref() {
-                    if source.save_indexer(&index).is_err() {
+                    if archive_source::save_private_checkpoint(&mut checkpoint_completed, || {
+                        source.save_indexer(&index)
+                    })
+                    .is_err()
+                    {
                         eprintln!("indexer private replay checkpoint unavailable");
                     }
                 }
             }
-            tokio::time::sleep(Duration::from_secs(2)).await;
+            tokio::time::sleep(Duration::from_secs(config.poll_seconds)).await;
         }
     });
     let app = Router::new()
@@ -1031,6 +1055,7 @@ mod http_tests {
                 std::process::id(),
                 NEXT.fetch_add(1, Ordering::Relaxed)
             )),
+            poll_seconds: 2,
         };
         (index, config)
     }
@@ -1042,7 +1067,7 @@ mod http_tests {
         let (_updated, changes) = watch::channel(());
         let shared = HttpState {
             state: Arc::new(RwLock::new(Published {
-                index,
+                index: index.read_view(),
                 available: true,
                 refreshing: false,
             })),
@@ -1104,7 +1129,7 @@ mod http_tests {
         let (_updated, changes) = watch::channel(());
         let shared = HttpState {
             state: Arc::new(RwLock::new(Published {
-                index,
+                index: index.read_view(),
                 available: false,
                 refreshing: false,
             })),
@@ -1166,7 +1191,7 @@ mod http_tests {
         let (_updated, changes) = watch::channel(());
         let shared = HttpState {
             state: Arc::new(RwLock::new(Published {
-                index,
+                index: index.read_view(),
                 available: result.is_ok(),
                 refreshing: false,
             })),
@@ -1191,7 +1216,7 @@ mod http_tests {
         let (updated, changes) = watch::channel(());
         let shared = HttpState {
             state: Arc::new(RwLock::new(Published {
-                index,
+                index: index.read_view(),
                 available: false,
                 refreshing: true,
             })),
@@ -1242,7 +1267,7 @@ mod http_tests {
         let (updated, changes) = watch::channel(());
         let shared = HttpState {
             state: Arc::new(RwLock::new(Published {
-                index,
+                index: index.read_view(),
                 available: false,
                 refreshing: true,
             })),
@@ -1262,7 +1287,7 @@ mod http_tests {
             assert!(!shared.state.read().await.available);
         }
         *shared.state.write().await = Published {
-            index: fresh,
+            index: fresh.read_view(),
             available: true,
             refreshing: false,
         };
@@ -1278,7 +1303,7 @@ mod http_tests {
         let (updated, changes) = watch::channel(());
         let shared = HttpState {
             state: Arc::new(RwLock::new(Published {
-                index,
+                index: index.read_view(),
                 available: false,
                 refreshing: true,
             })),
@@ -1326,7 +1351,7 @@ mod http_tests {
             let (updated, changes) = watch::channel(());
             let shared = HttpState {
                 state: Arc::new(RwLock::new(Published {
-                    index,
+                    index: index.read_view(),
                     available: false,
                     refreshing: true,
                 })),
@@ -1365,7 +1390,7 @@ mod http_tests {
         let (updated, changes) = watch::channel(());
         let shared = HttpState {
             state: Arc::new(RwLock::new(Published {
-                index,
+                index: index.read_view(),
                 available: false,
                 refreshing: true,
             })),
@@ -1397,7 +1422,7 @@ mod http_tests {
         let (updated, changes) = watch::channel(());
         let shared = HttpState {
             state: Arc::new(RwLock::new(Published {
-                index,
+                index: index.read_view(),
                 available: false,
                 refreshing: true,
             })),

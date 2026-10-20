@@ -13,9 +13,9 @@ or use [clientd](clientd.md).
 
 ## 1. Install
 
-These commands reproduce the recorded `.8` installation. For current streaming
-and authorization recovery fixes, use the [SDK `.13` upgrade procedure](gateway-release-upgrade.md)
-with the same authenticated profile and custody described below.
+These commands install `.13` for the new current-state Devnet Pool. Use a new
+browser storage name and the new profile pins below. Existing journals retain
+their original Pool binding.
 
 Use Node **24.19.0** and npm **11.9.0** in your application directory. The download
 example below uses a POSIX shell and `curl` (Linux or macOS), with Node for
@@ -25,17 +25,17 @@ checksum verification.
 (
   set -eu
   curl --fail --location --proto '=https' --proto-redir '=https' \
-    --output zkapi-solana-sdk-0.2.0-devnet.8.tgz \
-    https://github.com/yukikm/solana-zkapi/releases/download/v0.2.0-devnet.8/zkapi-solana-sdk-0.2.0-devnet.8.tgz
+    --output zkapi-solana-sdk-0.2.0-devnet.13.tgz \
+    https://github.com/yukikm/solana-zkapi/releases/download/v0.2.0-devnet.13/zkapi-solana-sdk-0.2.0-devnet.13.tgz
   node --input-type=module -e '
     import { createHash } from "node:crypto";
     import { readFileSync } from "node:fs";
-    const file = "zkapi-solana-sdk-0.2.0-devnet.8.tgz";
-    const expected = "cd9226f4526c0b3561a557e4c7beb4f495dcbad6c995c624f4c442b6621414da";
+    const file = "zkapi-solana-sdk-0.2.0-devnet.13.tgz";
+    const expected = "e6e7668e1d37938f67f8865673aba1a11f27b975d3715a376ac24a6dcfa8a8a9";
     if (createHash("sha256").update(readFileSync(file)).digest("hex") !== expected)
       throw new Error("SDK checksum mismatch");
   '
-  npm install --save-exact ./zkapi-solana-sdk-0.2.0-devnet.8.tgz @solana/kit@8.4.0
+  npm install --save-exact ./zkapi-solana-sdk-0.2.0-devnet.13.tgz @solana/kit@8.4.0
 )
 ```
 
@@ -49,9 +49,9 @@ Save `deployment.ts` in your application:
 
 ```ts
 export const profileUrl =
-  'https://d366buuvadnp3.cloudfront.net/releases/public-devnet-20261008-a/profile-sdk-0.2.0-devnet.8-r6.json';
+  'https://d366buuvadnp3.cloudfront.net/releases/public-devnet-20261021-state-v1/profile.json';
 export const profileSha256 =
-  'ec10c1ab41bb5105222d3e25c7e1eba6b96b1b397abd0f854657030269992a77';
+  '5e15d66c6f45265951cf1f8dd6cc0dae6574c4b8dd6756f828f7543ecaa97b9a';
 ```
 
 Save `preflight.ts` beside it:
@@ -94,7 +94,7 @@ export async function openZkApi(
   selectedAccount: StandardAccount,
   initializeStorage = false,
 ) {
-  const storageName = 'my-zkapi-app-v1';
+  const storageName = 'my-zkapi-state-20261021';
   const binding = JSON.stringify([storageName, selectedAccount.address]);
   const installed = localStorage.getItem(binding);
   if (installed === null && !initializeStorage)

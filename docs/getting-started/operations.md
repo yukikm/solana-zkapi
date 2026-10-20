@@ -179,6 +179,10 @@ The owner-only configuration uses these fields (see
 - `rpc_url` and `indexer_origin`: numeric loopback HTTP origins in this local
   implementation. No DNS, ambient proxy, redirect, URL credentials or query
   parameters are accepted. Public-network deployment remains gated.
+- `independent_chain_probes`: defaults to `false` for the current-state PoC.
+  Ordinary monitoring reads the state owner's local `/health` without Solana
+  calls. Set `true` only for explicit independent chain diagnostics; those reads
+  count toward the RPC budget.
 - `signer_socket`: the existing owner-only signer or local mutual-TLS client
   bridge socket. The health RPC performs the existing read-only reconciliation
   and authenticates its configuration digest; it never signs a new message.
@@ -196,11 +200,19 @@ An absent/hidden/non-synchronous replica pages as unavailable; it cannot become
 zero flush lag. Active attempts page while admission is disabled (recovery),
 while the ordinary live-attempt gauge alone does not page.
 
-Every poll gathers ledger unknown/loss/recovery counters, finalized RPC genesis,
-slot and block identity, the indexer root, finalized fee balance, and Pool/Tree/
-USDC vault accounts from one `getMultipleAccounts` finalized bank. It authenticates
-account ownership/layout/PDA/mint/authority and tests `vault.amount >=
-outstanding_deposits`. The signer reports all rejected immutable signing requests
+Every poll gathers ledger unknown/loss/recovery counters. The default current-state
+mode checks the local owner's Pool, genesis, policy, readiness and maximum
+30-second state age. It reports `current_state_age_seconds`; the owner has already
+verified current principal against the Vault. It does not invent independent slot
+lag or fee-payer balance. Dashboard summaries expose `root_lag_slots` as `null`
+in this mode.
+
+Explicit independent chain probes read finalized RPC genesis, slot and block
+identity, the indexer root, finalized fee balance, and Pool/Tree/USDC Vault accounts
+from one `getMultipleAccounts` finalized bank. They authenticate account
+ownership/layout/PDA/mint/authority and test `vault.amount >= outstanding_deposits`.
+Dashboard summaries expose `current_state_age_seconds` as `null` in this mode.
+The signer reports all rejected immutable signing requests
 as `signer_refused_requests_total`; emergency alerts deliberately cover message
 conflicts as well as other refusals. Challenger deadline, proof failure and root
 reproof counters come from its durable journal-backed health export. Missing,

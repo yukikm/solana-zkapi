@@ -233,6 +233,7 @@ async fn all_modes_deposit_infer_settle_withdraw_same_note() -> Result<()> {
     let config = RuntimeConfig {
         devnet: None,
         local_test_only: true,
+        background_recovery_seconds: 2,
         listen: listener.local_addr()?,
         trusted_manifest_hash: hex::encode(hash),
         manifest: manifest.clone(),

@@ -355,12 +355,9 @@ impl Dashboard {
                 && health.sources.get("chain").is_some_and(|s| s == "ready"),
             "chain monitoring unavailable"
         );
-        let lag = health
-            .sample
-            .measurements
-            .get("root_slot_lag")
-            .context("root lag unavailable")?;
-        wire::uint(lag)?;
+        let lag = health.sample.measurements.get("root_slot_lag");
+        let age = health.sample.measurements.get("current_state_age_seconds");
+        wire::uint(lag.or(age).context("state age unavailable")?)?;
         let mut connection = self.db.lock().await;
         let db = connection
             .build_transaction()
@@ -381,7 +378,7 @@ impl Dashboard {
         Ok(
             serde_json::json!({"active_sessions":counts.get::<_,i64>(0).to_string(),
             "pending_settlements":counts.get::<_,i64>(1).to_string(), "charged_micro_usdc":charged,
-            "root_lag_slots":lag,"unknown_operations":unknown.to_string()}),
+            "root_lag_slots":lag,"current_state_age_seconds":age,"unknown_operations":unknown.to_string()}),
         )
     }
 }
@@ -518,8 +515,27 @@ pub fn evaluate_health(
     previous: Option<&HealthSample>,
     now: u64,
 ) -> Result<Vec<Alert>> {
-    let policy: serde_json::Value =
+    evaluate_health_mode(sample, previous, now, false)
+}
+pub fn evaluate_health_mode(
+    sample: &HealthSample,
+    previous: Option<&HealthSample>,
+    now: u64,
+    current_state: bool,
+) -> Result<Vec<Alert>> {
+    let mut policy: serde_json::Value =
         serde_json::from_str(include_str!("../../../deploy/operations/monitoring.json"))?;
+    if current_state {
+        let metrics = policy["metrics"]
+            .as_object_mut()
+            .context("monitoring policy")?;
+        metrics.remove("root_slot_lag");
+        metrics.remove("fee_payer_lamports");
+        metrics.insert(
+            "current_state_age_seconds".into(),
+            serde_json::json!({"page_above":30}),
+        );
+    }
     let metrics = policy["metrics"].as_object().context("monitoring policy")?;
     ensure!(
         sample.measurements.keys().all(|m| metrics.contains_key(m)),

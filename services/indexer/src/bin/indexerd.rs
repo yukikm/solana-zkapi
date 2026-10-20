@@ -5,5 +5,5 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         .nth(1)
         .ok_or("usage: indexerd CONFIG.json")?;
     let config = serde_json::from_slice(&std::fs::read(path)?)?;
-    zkapi_indexer::runtime::serve(config).await
+    zkapi_indexer::current_state::service::serve(config).await
 }

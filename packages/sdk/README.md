@@ -27,6 +27,13 @@ The package is distributed as a tarball, with `private: true` to disable npm
 registry publication. Node integrations use Node 24.19.0; browser integrations
 bundle the browser entry points.
 
+The current-state Devnet rollout keeps the published `.13` client runtime.
+Its SDK source changes are confined to the internal challenger recovery bridge,
+which is installed with the server and is not a public package export. Operators
+must deploy that bridge with the matching challenger; see
+[fresh PoC setup](../../docs/getting-started/poc-state-sync.md).
+Clients select the new authenticated profile and a new journal explicitly.
+
 The SDK uses `@solana/kit` 8.4.0. Install Kit explicitly if your app imports it,
 and read the [migration guide](../../docs/sdk/kit-migration.md) when upgrading
 from the first preview.

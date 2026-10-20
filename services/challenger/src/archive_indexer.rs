@@ -245,6 +245,7 @@ mod tests {
                 listen: "127.0.0.1:0".into(),
                 public_origin: "https://example.invalid".into(),
                 snapshots_directory,
+                poll_seconds: 2,
             },
         }
     }

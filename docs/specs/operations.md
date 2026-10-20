@@ -105,10 +105,18 @@ priority fee.
 For a 24-hour challenge window, target detection-to-send within five minutes:
 warn at 60 seconds, page at five minutes, and treat one hour remaining as urgent.
 
-Checkpoints contain slot, blockhash, transaction signature, outer instruction
-index, CPI execution index and tree sequence. Replay archive history in sequence
-and compare with program TreeState. Bind provider receipts to request transcripts;
-retain challenge RP/proof after settlement.
+The fresh-PoC [current-state runtime](pool-history-acquisition.md) reconstructs
+the tree from finalized accounts, checkpoints AccountCutRef and keys jobs by
+permanent Pending nullifier. The retained legacy library validates full history
+using slot, blockhash, transaction/instruction/CPI position and tree sequence.
+It does not claim historical transition coverage. Both paths bind provider
+receipts to request transcripts and retain challenge RP/proof after settlement.
+
+The [fresh PoC reset](../getting-started/poc-state-sync.md) has an explicit owner
+waiver for the old test installation's compatibility and state. Its new Pool and
+empty services do not need an old archive or financial-state migration. That
+reset exception does not permit clearing the new Pool's reservations or Unknown
+attempts during ordinary recovery.
 
 ## Retention and recovery
 
@@ -195,15 +203,24 @@ or trailing newline. Verify SHA-256 over all downloaded bytes. Require
 by note_id, reject duplicates and overlap, require every ID<next_note_id and
 next_note_id<=2^32. Omit Closed notes without reusing their IDs.
 
-The snapshot cut is the end of a finalized slot. Verify blockhash and trusted
-chain history for that slot. Rebuild the original 32-level tree from active
-C/D/expiry and compare root. Pending leaves are zero; verify Pending against
-chain history too. Matching the snapshot's own hash does not establish chain
-correctness.
+The snapshot cut is the end of a finalized slot. Rebuild the original 32-level
+tree from active C/D/expiry and compare root. Pending leaves are zero. Matching
+the snapshot's own hash does not establish chain correctness.
 
-Replay later successful transactions in protocol order, then compare current
-root/sequence/next ID and Note/Pending before serving paths. Where historical
-accounts are unavailable, replay from initialization. Follow the protocol's
-buffer close/reuse and missing-log rules; stop serving if history is insufficient.
-Snapshots omit the complete ExitNullifier set, so independent RPC checks remain
-required for unused-nullifier decisions.
+For the fresh-PoC `account_state_poc_v1` runtime, validate the complete allocated
+Note/Pending inventory, current account bindings, principal, Clock and selected
+transaction-free block header under the
+[current-state acquisition contract](pool-history-acquisition.md). Publish only
+the resulting verified current view. This mode trusts finalized RPC account data
+and the pinned program semantics; it does not establish historical coverage.
+
+The explicit legacy replay/archive utilities instead verify blockhash and trusted
+chain history for the cut, including Pending transitions. Replay later successful
+transactions in protocol order, then compare current root/sequence/next ID and
+Note/Pending before serving paths. Where historical accounts are unavailable,
+replay from initialization. Follow the protocol's buffer close/reuse and missing-log
+rules; stop serving if history is insufficient. These legacy requirements are not
+a history fallback for current-state synchronization.
+
+Both snapshot paths omit the complete ExitNullifier set, so independent RPC checks
+remain required for unused-nullifier decisions.

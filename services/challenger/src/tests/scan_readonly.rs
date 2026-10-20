@@ -288,7 +288,7 @@ async fn native_scan_discovers_and_advances_archive_without_recovering_unknown_e
     let mut journal = Journal::open(&config.journal_directory, trust.pool()).unwrap();
     assert_eq!(journal.archive_tail().unwrap().slot, 16);
     assert_eq!(
-        journal.checkpoint().unwrap().position.slot,
+        journal.checkpoint().unwrap().slot(),
         16,
         "discovery must checkpoint its SELECT-only evidence read"
     );

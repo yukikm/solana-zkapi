@@ -1282,6 +1282,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "zkapi-rpc-metrics"
+version = "0.1.0"
+dependencies = [
+ "serde_json",
+]
+
+[[package]]
 name = "zkapi-solana-crypto"
 version = "0.1.0"
 dependencies = [

@@ -64,7 +64,8 @@ try {
   } else if (input.command === 'recover') {
     const url = new URL(input.rpcUrl);
     if (url.protocol !== 'https:' && !(url.protocol === 'http:' && ['127.0.0.1', '[::1]'].includes(url.hostname))) throw new Error('RPC transport');
-    result = await recoverChallengeOnConnection(input.attempt as Attempt, createSolanaRpc(String(input.rpcUrl)));
+    if (input.resend !== undefined && typeof input.resend !== 'boolean') throw new Error('resend policy');
+    result = await recoverChallengeOnConnection(input.attempt as Attempt, createSolanaRpc(String(input.rpcUrl)), input.resend ?? true);
   } else throw new Error('command');
   process.stdout.write(JSON.stringify(result));
 } catch { process.stderr.write('challenger transport failed\n'); process.exitCode = 1; }

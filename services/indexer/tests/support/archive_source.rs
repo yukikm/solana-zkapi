@@ -64,6 +64,45 @@ fn assert_no_full_reads(calls: &[Value]) {
 }
 
 #[tokio::test]
+async fn warm_archive_refresh_uses_only_fresh_accounts_and_independent_anchor() {
+    let fixture = Fixture::load(true);
+    let serving = fixture.clone();
+    let server = mock(move |q| serving.response(&q)).await;
+    let mut local = Local::new(&fixture);
+    let mut index = Indexer::new(key(&fixture.cfg.program_id), key(&fixture.cfg.pool));
+    let mut next = fixture.cfg.start_slot;
+    let mut state = ArchiveRefresh::default();
+    server
+        .rpc
+        .refresh_from_archive(&fixture.cfg, &mut index, &mut next, &mut local, &mut state)
+        .await
+        .unwrap();
+    server.calls.lock().unwrap().clear();
+    for _ in 0..2 {
+        server
+            .rpc
+            .refresh_from_archive(&fixture.cfg, &mut index, &mut next, &mut local, &mut state)
+            .await
+            .unwrap();
+        assert!(index.is_ready());
+    }
+    let calls = server.calls.lock().unwrap();
+    assert_eq!(
+        calls
+            .iter()
+            .map(|q| q["method"].as_str().unwrap())
+            .collect::<Vec<_>>(),
+        vec![
+            "getMultipleAccounts",
+            "getBlock",
+            "getMultipleAccounts",
+            "getBlock"
+        ]
+    );
+    assert_no_full_reads(&calls);
+}
+
+#[tokio::test]
 async fn typed_archive_new_account_inventory_is_recaptured_without_replaying_history() {
     for (before, after) in [("deposit-1", "deposit-2"), ("deposit-2", "initiate_escape")] {
         let near = Fixture::load_at(before);

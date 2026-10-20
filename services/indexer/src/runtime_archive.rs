@@ -40,6 +40,18 @@ pub trait FinalizedArchiveSource: Send {
 }
 
 const MAX_CUT_AGE: Duration = Duration::from_secs(30);
+const CHECKPOINT_INTERVAL: Duration = Duration::from_secs(300);
+
+// A failed best-effort save also receives a full cooldown. Record completion,
+// not its start, so a long synchronous save cannot make another immediately due.
+pub(super) fn save_private_checkpoint(
+    completed: &mut Option<Instant>,
+    save: impl FnOnce() -> ArchiveSourceResult<()>,
+) -> ArchiveSourceResult<()> {
+    let result = save();
+    *completed = Some(Instant::now());
+    result
+}
 
 // Only these authenticated-prefix waits may keep an HTTP readiness wait open.
 // A source/RPC error with identical text must never acquire this classification.
@@ -57,6 +69,22 @@ pub struct ArchiveRefresh {
 }
 
 impl ArchiveRefresh {
+    /// A synchronous private-cache save must not consume a still-live account
+    /// cut's reconciliation budget. Deferral neither renews that cut nor moves
+    /// the checkpoint completion clock. Expired cuts remain subject to the normal
+    /// discard/replay checks; saving a partial prefix never makes it ready.
+    pub(super) fn checkpoint_save_due(&self, previous: Option<Instant>, now: Instant) -> bool {
+        if self
+            .cut
+            .as_ref()
+            .is_some_and(|(_, captured)| now.saturating_duration_since(*captured) <= MAX_CUT_AGE)
+            || previous.is_some_and(|at| now.saturating_duration_since(at) < CHECKPOINT_INTERVAL)
+        {
+            return false;
+        }
+        true
+    }
+
     /// Numeric observation only. Cleared/expired cuts remain absent; this
     /// never recaptures a bank, refreshes the source or alters retry progress.
     pub(super) fn failure_diagnostic(
@@ -141,7 +169,7 @@ impl ArchiveRefresh {
 
 impl ArchiveRpc {
     /// One bounded attempt. Incomplete local history returns unavailable; the
-    /// server waits two seconds before trying the same target/cut again. RPC
+    /// server waits the configured delay before trying the same target/cut again. RPC
     /// errors preserve the applied prefix and never trigger full-block fallback.
     pub async fn refresh_from_archive(
         &self,
@@ -156,11 +184,17 @@ impl ArchiveRpc {
         let target = match progress.target {
             Some(target) => target,
             None => {
-                let tip = self
-                    .call("getSlot", json!([{"commitment":"finalized"}]))
-                    .await?
-                    .as_u64()
-                    .ok_or("invalid finalized slot")?;
+                // A restored/replayed prefix already supplies the inventory.
+                // Capture a fresh finalized bank directly instead of sampling
+                // a separate tip first. Cold startup retains the original join.
+                let tip = match index.replay_state() {
+                    Ok(state) => state.slot,
+                    Err(_) => self
+                        .call("getSlot", json!([{"commitment":"finalized"}]))
+                        .await?
+                        .as_u64()
+                        .ok_or("invalid finalized slot")?,
+                };
                 progress.target = Some(tip);
                 tip
             }
@@ -263,6 +297,7 @@ mod tests {
                 listen: "127.0.0.1:0".into(),
                 public_origin: "https://indexer.example".into(),
                 snapshots_directory: PathBuf::new(),
+                poll_seconds: 2,
             },
             Indexer::new([1; 32], [2; 32]),
             ArchiveRefresh {
@@ -394,5 +429,91 @@ mod tests {
         assert_eq!(state.target, Some(12));
         assert!(state.cut.is_none());
         assert!(!state.failed);
+    }
+
+    fn captured_refresh(captured: Instant) -> ArchiveRefresh {
+        ArchiveRefresh {
+            target: Some(10),
+            cut: Some((
+                AccountCut {
+                    slot: 12,
+                    program: [0; 32],
+                    values: BTreeMap::new(),
+                    raw_accounts: BTreeMap::new(),
+                },
+                captured,
+            )),
+            failed: false,
+        }
+    }
+
+    #[test]
+    fn live_cut_defers_due_cache_without_moving_completion_or_capture() {
+        let captured = Instant::now();
+        let state = captured_refresh(captured);
+        for previous in [None, Some(captured - CHECKPOINT_INTERVAL)] {
+            assert!(!state.checkpoint_save_due(previous, captured));
+            assert!(!state.checkpoint_save_due(previous, captured + MAX_CUT_AGE));
+            assert_eq!(state.cut.as_ref().unwrap().1, captured);
+            assert_eq!(state.cut.as_ref().unwrap().0.slot(), 12);
+            assert_eq!(state.target, Some(10));
+        }
+    }
+
+    #[test]
+    fn expired_cut_allows_due_partial_cache_without_renewing_or_discarding_cut() {
+        let captured = Instant::now();
+        let state = captured_refresh(captured);
+        let expired = captured + MAX_CUT_AGE + Duration::from_nanos(1);
+        assert!(state.checkpoint_save_due(None, expired));
+        assert_eq!(state.cut.as_ref().unwrap().1, captured);
+        assert_eq!(state.cut.as_ref().unwrap().0.slot(), 12);
+        assert_eq!(state.target, Some(10));
+        // Eligibility itself never records an attempt or discards the old cut.
+        assert!(state.checkpoint_save_due(None, expired));
+    }
+
+    #[test]
+    fn completed_cut_keeps_first_attempt_and_full_interval_after_long_save() {
+        let captured = Instant::now();
+        let mut state = captured_refresh(captured);
+        assert!(!state.checkpoint_save_due(None, captured));
+        state.cut = None;
+        let started = captured + Duration::from_secs(1);
+        assert!(state.checkpoint_save_due(None, started));
+        // Simulate a long save. The next deadline is completion + 300 seconds,
+        // even when the save itself has already consumed an entire interval.
+        let completed = started + Duration::from_secs(360);
+        assert!(!state.checkpoint_save_due(Some(completed), completed));
+        assert!(!state.checkpoint_save_due(Some(completed), completed + Duration::from_secs(299)));
+        assert!(state.checkpoint_save_due(Some(completed), completed + CHECKPOINT_INTERVAL));
+    }
+
+    #[test]
+    fn successful_and_failed_save_attempts_record_completion_and_cool_down() {
+        use std::cell::Cell;
+        for fails in [false, true] {
+            let before = Instant::now();
+            let returned_at = Cell::new(None);
+            let calls = Cell::new(0);
+            let mut completed = None;
+            let result = save_private_checkpoint(&mut completed, || {
+                calls.set(calls.get() + 1);
+                returned_at.set(Some(Instant::now()));
+                if fails {
+                    Err("fixture cache failure".into())
+                } else {
+                    Ok(())
+                }
+            });
+            assert_eq!(calls.get(), 1);
+            assert_eq!(result.is_err(), fails);
+            let finished = completed.unwrap();
+            assert!(finished >= before && finished >= returned_at.get().unwrap());
+            assert!(finished <= Instant::now());
+            let state = ArchiveRefresh::default();
+            assert!(!state.checkpoint_save_due(completed, finished + Duration::from_secs(299)));
+            assert!(state.checkpoint_save_due(completed, finished + CHECKPOINT_INTERVAL));
+        }
     }
 }

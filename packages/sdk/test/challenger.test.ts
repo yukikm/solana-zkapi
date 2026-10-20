@@ -58,6 +58,85 @@ test('expired or forged challenger receipts never authorize replacement; finaliz
   assert.equal(recovery.state === 'rejected' && recovery.needsNewProof, true);
   const corrupt = structuredClone(attempt); corrupt.wireHex = '00' + corrupt.wireHex.slice(2); await assert.rejects(recoverChallenge(corrupt, rpc));
 });
+test('identity-fenced challenger recovery observes exact attempts without broadcasting', async () => {
+  const plan = await challengePlan(input), rpc = new Rpc();
+  const attempt = await signChallengeStep(input, plan.steps.length - 1, blockhash, await challengerWallet(signer.secretKey));
+  await recoverChallenge(attempt, rpc, false);
+  assert.equal(rpc.sent.length, 0);
+  rpc.receipt = { signature: attempt.signature, message: new Uint8Array(decodeTransaction(Buffer.from(attempt.wireHex, 'hex')).messageBytes), slot: 20, err: null };
+  assert.deepEqual(await recoverChallenge(attempt, rpc, false), { state: 'finalized', slot: 20 });
+  assert.equal(rpc.sent.length, 0);
+});
+test('native challenger recovery propagates the receipt-only fence through the RPC adapter', async t => {
+  const plan = await challengePlan(input);
+  const attempt = await signChallengeStep(input, plan.steps.length - 1, blockhash, await challengerWallet(signer.secretKey));
+  const calls: string[] = [];
+  let finalized = false;
+  const server = createServer(async (req, res) => {
+    const chunks: Buffer[] = [];
+    for await (const chunk of req) chunks.push(Buffer.from(chunk));
+    const request = JSON.parse(Buffer.concat(chunks).toString('utf8'));
+    calls.push(request.method);
+    let result: unknown;
+    switch (request.method) {
+      case 'getSignatureStatuses':
+        assert.deepEqual(request.params[0], [attempt.signature]);
+        result = { context: { slot: 20 }, value: [null] };
+        break;
+      case 'getTransaction':
+        assert.equal(request.params[0], attempt.signature);
+        // Kit omits the RPC's default finalized commitment on the wire.
+        assert.equal(request.params[1].commitment ?? 'finalized', 'finalized');
+        result = finalized ? { slot: 20, meta: { err: null }, transaction: [Buffer.from(attempt.wireHex, 'hex').toString('base64'), 'base64'], version: 0 } : null;
+        break;
+      case 'getBlockHeight': result = 10; break;
+      case 'sendTransaction':
+        assert.equal(request.params[0], Buffer.from(attempt.wireHex, 'hex').toString('base64'));
+        result = attempt.signature;
+        break;
+      case 'getBlock':
+        assert.equal(request.params[0], 20);
+        assert.equal(request.params[1].transactionDetails, 'none');
+        result = { blockhash: blockhash.blockhash, previousBlockhash: blockhash.blockhash, parentSlot: 19, blockTime: null, blockHeight: 20 };
+        break;
+      default: throw new Error('unexpected fixture RPC');
+    }
+    res.setHeader('Content-Type', 'application/json');
+    res.end(JSON.stringify({ jsonrpc: '2.0', id: request.id, result }));
+  });
+  server.listen(0, '127.0.0.1');
+  await once(server, 'listening');
+  t.after(() => new Promise<void>(resolve => {
+    server.closeAllConnections();
+    server.close(() => resolve());
+  }));
+  const rpcUrl = `http://127.0.0.1:${(server.address() as { port: number }).port}`;
+  const run = (resend: unknown) => new Promise<{ code: number | null; stdout: string; stderr: string }>((resolve, reject) => {
+    const child = spawn(process.execPath, [new URL('../src/challenger-cli.ts', import.meta.url).pathname], { stdio: ['pipe', 'pipe', 'pipe'], timeout: 10_000 });
+    let stdout = '', stderr = '';
+    child.on('error', reject);
+    child.stdout.on('data', value => stdout += value);
+    child.stderr.on('data', value => stderr += value);
+    child.on('close', code => resolve({ code, stdout, stderr }));
+    child.stdin.end(JSON.stringify({ command: 'recover', attempt, rpcUrl, resend }));
+  });
+  const observed = await run(false);
+  assert.equal(observed.code, 0, observed.stderr);
+  assert.deepEqual(JSON.parse(observed.stdout), { result: { state: 'pending' } });
+  assert.deepEqual(calls.splice(0), ['getSignatureStatuses', 'getTransaction', 'getBlockHeight']);
+  const invalid = await run('false');
+  assert.equal(invalid.code, 1);
+  assert.equal(invalid.stderr, 'challenger transport failed\n');
+  assert.deepEqual(calls, []);
+  const allowed = await run(true);
+  assert.equal(allowed.code, 0, allowed.stderr);
+  assert.deepEqual(calls.splice(0), ['getSignatureStatuses', 'getTransaction', 'getBlockHeight', 'sendTransaction']);
+  finalized = true;
+  const receipt = await run(false);
+  assert.equal(receipt.code, 0, receipt.stderr);
+  assert.deepEqual(JSON.parse(receipt.stdout), { result: { state: 'finalized', slot: 20 }, slot: 20, blockhash: blockhash.blockhash });
+  assert.deepEqual(calls, ['getSignatureStatuses', 'getTransaction', 'getBlock']);
+});
 test('native challenger bridge signs without RPC and rejects public fee keys with redacted diagnostics', () => {
   const directory = mkdtempSync(join(tmpdir(), 'zkapi-challenger-'));
   try {

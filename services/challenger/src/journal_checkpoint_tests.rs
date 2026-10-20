@@ -20,6 +20,138 @@ fn clear_reads() {
     PAYLOAD_READS.with(|r| r.borrow_mut().clear());
 }
 #[test]
+fn checkpoint_v1_envelope_bytes_remain_compatible() {
+    let (root, _) = saved(4);
+    let path = root.path().join(NAME);
+    let (metadata, state) = read_cache(&path).unwrap();
+    let encoded = serde_json::to_vec(&metadata).unwrap();
+    let mut expected = MAGIC.to_vec();
+    expected.extend_from_slice(&(encoded.len() as u64).to_be_bytes());
+    expected.extend_from_slice(&encoded);
+    expected.extend_from_slice(&(state.len() as u64).to_be_bytes());
+    expected.extend_from_slice(&state);
+    expected.extend_from_slice(&sha(&expected));
+    assert_eq!(fs::read(path).unwrap(), expected);
+}
+
+#[test]
+fn checkpoint_part_length_bounds_remain_finite_before_payload_allocation() {
+    for (former, limit) in [
+        (64 * 1024 * 1024, META_LIMIT),
+        (256 * 1024 * 1024, STATE_LIMIT),
+    ] {
+        for (count, accepted) in [
+            (0, false),
+            (former + 1, true),
+            (limit, true),
+            (limit + 1, false),
+            (u64::MAX, false),
+        ] {
+            // Only a declared length is present. Rejection must not read or allocate
+            // the claimed payload, even when its length is maliciously large.
+            let mut reader = std::io::Cursor::new(count.to_be_bytes());
+            let result = read_count(&mut reader, &mut Sha256::new(), limit);
+            assert_eq!(result.is_ok(), accepted, "length {count}, limit {limit}");
+            if accepted {
+                assert_eq!(result.unwrap() as u64, count);
+            }
+        }
+    }
+}
+
+#[test]
+fn checkpoint_metadata_above_former_limit_roundtrips_in_native_and_offline_codecs() {
+    let (root, _) = saved(4);
+    let original_cache = fs::read(root.path().join(NAME)).unwrap();
+    let original_journal = fs::read(root.path().join("journal.json")).unwrap();
+    let (mut metadata, state) = read_cache(&root.path().join(NAME)).unwrap();
+    let reference = metadata.references[0].clone();
+    let stamp = metadata.chunk_stamps[0].clone();
+    let base_bytes = serde_json::to_vec(&metadata).unwrap().len();
+    let added_bytes = serde_json::to_vec(&reference).unwrap().len()
+        + serde_json::to_vec(&stamp).unwrap().len()
+        + 2;
+    let former_limit = 64 * 1024 * 1024;
+    let count = (former_limit - base_bytes) / added_bytes + 2;
+    // Exercise the actual large metadata codec without manufacturing hundreds
+    // of thousands of files. Repeated references are deliberately not a valid
+    // archive; normal shape/file authentication remains covered separately.
+    metadata.references.resize(count, reference);
+    metadata.chunk_stamps.resize(count, stamp);
+    let path = root.path().join("large-codec-cache");
+    write_cache(&path, &metadata, &state).unwrap();
+    assert!(fs::metadata(&path).unwrap().len() > former_limit as u64);
+    assert!(fs::metadata(&path).unwrap().len() < META_LIMIT);
+    let (restored, restored_state) = read_cache(&path).unwrap();
+    assert_eq!(restored.references, metadata.references);
+    assert_eq!(restored.chunk_stamps, metadata.chunk_stamps);
+    assert_eq!(restored.head, metadata.head);
+    assert_eq!(restored.binding, metadata.binding);
+    assert_eq!(restored.anchor, metadata.anchor);
+    assert_eq!(restored_state, state);
+    let scripts = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../scripts");
+    let result = std::process::Command::new("python3")
+        .arg("-c")
+        .arg(
+            "import sys; from pathlib import Path; sys.path.insert(0, sys.argv[1]); \
+             from revalidate_archive_checkpoint import decode_cache; \
+             meta, state = decode_cache(Path(sys.argv[2]).read_bytes()); \
+             assert len(meta['references']) == int(sys.argv[3]); \
+             assert len(meta['chunk_stamps']) == int(sys.argv[3]); \
+             assert state == b'runtime codec bytes'",
+        )
+        .arg(scripts)
+        .arg(&path)
+        .arg(count.to_string())
+        .output()
+        .unwrap();
+    assert!(result.status.success(), "{:?}", result.stderr);
+    assert_eq!(fs::read(root.path().join(NAME)).unwrap(), original_cache);
+    assert_eq!(
+        fs::read(root.path().join("journal.json")).unwrap(),
+        original_journal
+    );
+}
+
+#[test]
+fn checkpoint_state_above_former_limit_roundtrips_in_native_and_offline_codecs() {
+    let (root, _) = saved(4);
+    let original_cache = fs::read(root.path().join(NAME)).unwrap();
+    let original_journal = fs::read(root.path().join("journal.json")).unwrap();
+    let (mut metadata, _) = read_cache(&root.path().join(NAME)).unwrap();
+    // The archive envelope intentionally treats runtime codec bytes as opaque;
+    // Scanner/Indexer validate those codecs separately before restoring state.
+    let state = vec![b'A'; 256 * 1024 * 1024 + 1];
+    metadata.state_sha256 = sha(&state);
+    let path = root.path().join("large-state-codec-cache");
+    write_cache(&path, &metadata, &state).unwrap();
+    let (_, restored) = read_cache(&path).unwrap();
+    assert_eq!(restored, state);
+    drop(restored);
+    let scripts = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../scripts");
+    let result = std::process::Command::new("python3")
+        .arg("-c")
+        .arg(
+            "import sys; from pathlib import Path; sys.path.insert(0, sys.argv[1]); \
+             from revalidate_archive_checkpoint import decode_cache; \
+             meta, state = decode_cache(Path(sys.argv[2]).read_bytes()); \
+             assert len(state) == int(sys.argv[3]); \
+             assert state[:1] == state[-1:] == b'A'",
+        )
+        .arg(scripts)
+        .arg(&path)
+        .arg(state.len().to_string())
+        .output()
+        .unwrap();
+    assert!(result.status.success(), "{:?}", result.stderr);
+    assert_eq!(fs::read(root.path().join(NAME)).unwrap(), original_cache);
+    assert_eq!(
+        fs::read(root.path().join("journal.json")).unwrap(),
+        original_journal
+    );
+}
+
+#[test]
 fn checkpoint_restart_reads_anchor_only_and_preserves_current_unknown_jobs() {
     let (root, _) = saved(514);
     let original = fs::read(root.path().join("journal.json")).unwrap();

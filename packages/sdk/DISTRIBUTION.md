@@ -77,10 +77,11 @@ retain exact request bodies, including conversation context.
 
 ## Building a tarball from a reviewed checkout
 
-Source builds use the version in `packages/sdk/package.json`. The current
-`0.2.0-devnet.9-onboarding.0` build combines unpublished JSON API onboarding with
-the published recovery and streaming fixes; it does not reproduce the immutable
-`.12` release. From the repository root, install the pinned build dependencies and run:
+Source builds use the version in `packages/sdk/package.json`. A development
+tarball can differ from the immutable `.13` release, including internal operator
+modules and documentation. Use the published asset and its independent checksum
+when installing that release. From the repository root, install the pinned build
+dependencies and run:
 
 ```sh
 npm ci

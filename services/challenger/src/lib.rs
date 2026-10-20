@@ -2,6 +2,7 @@
 //! No provider capability and no control ledger writer are owned by this crate.
 pub mod archive_indexer;
 pub mod journal;
+pub mod projection_archive;
 pub mod read_model;
 pub mod runtime;
 pub mod scan;
@@ -193,11 +194,7 @@ impl PreparedChallenge {
         if pending.nullifier != evidence.nullifier || view.now >= pending.deadline {
             return Err(bad("Pending nullifier/deadline"));
         }
-        let generation = view
-            .generations
-            .get(&note_id)
-            .ok_or(bad("Pending generation absent"))?
-            .clone();
+        view.ensure_fresh()?;
         let circuit = zkapi_tree_prover::prepare(
             TreeRequest {
                 vault: *view.trust.pool.vault_binding.as_bytes(),
@@ -212,13 +209,7 @@ impl PreparedChallenge {
         )
         .map_err(|_| bad("current zero path"))?;
         Ok(Self {
-            job: journal::JobIdentity {
-                pool: view.trust.pool(),
-                note_id,
-                nullifier: pending.nullifier,
-                deadline: pending.deadline,
-                generation,
-            },
+            job: view.identity(note_id)?,
             evidence,
             circuit,
             context: binding::Context {

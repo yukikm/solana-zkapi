@@ -22,6 +22,10 @@ use tokio::io::{AsyncReadExt, AsyncWriteExt};
 #[derive(Clone, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct Config {
+    /// Expensive independent checks are explicit diagnostics, never default
+    /// background monitoring for the current-state PoC.
+    #[serde(default)]
+    pub independent_chain_probes: bool,
     pub local_test_only: bool,
     pub database_url: String,
     pub trusted: crate::chain::TrustedPool,
@@ -116,6 +120,12 @@ struct Collector {
 }
 impl Collector {
     async fn rpc(&self, method: &str, params: Value) -> Result<Value> {
+        static USAGE: std::sync::OnceLock<zkapi_rpc_metrics::RpcUsage> = std::sync::OnceLock::new();
+        USAGE
+            .get_or_init(|| {
+                zkapi_rpc_metrics::RpcUsage::new(zkapi_rpc_metrics::Component::Monitoring)
+            })
+            .record(method, false);
         let response = self
             .http
             .post(&self.config.rpc_url)
@@ -182,6 +192,38 @@ impl Collector {
         Ok(out)
     }
     async fn chain(&self) -> Result<BTreeMap<String, String>> {
+        if !self.config.independent_chain_probes {
+            let h = bounded_json(
+                self.http
+                    .get(format!(
+                        "{}/health",
+                        self.config.indexer_origin.trim_end_matches('/')
+                    ))
+                    .send()
+                    .await?
+                    .error_for_status()?,
+            )
+            .await?;
+            let at = h["observed_at"]
+                .as_u64()
+                .context("state owner observation")?;
+            let age = h["age_ms"].as_u64().context("state owner age")?;
+            ensure!(
+                h["ready"] == true
+                    && h["policy"] == "account_state_poc_v1"
+                    && h["pool"] == self.config.trusted.pool
+                    && h["genesis"] == self.config.trusted.genesis_hash
+                    && at <= now()?
+                    && now()?.saturating_sub(at) <= 30
+                    && age <= 30_000,
+                "state owner unavailable"
+            );
+            return Ok(BTreeMap::from([
+                ("current_state_age_seconds".into(), (age / 1000).to_string()),
+                // The owner publishes ready only after current principal/Vault reconciliation.
+                ("escrow_invariant_violation".into(), "0".into()),
+            ]));
+        }
         let t = &self.config.trusted;
         ensure!(
             self.rpc("getGenesisHash", json!([])).await? == t.genesis_hash,
@@ -471,8 +513,12 @@ pub async fn collect(config: &Config, previous: Option<&Report>) -> Result<Repor
         );
     }
     let previous = previous.filter(|p| p.schema == 1 && p.pool == report.pool);
-    report.alerts =
-        crate::operations::evaluate_health(&report.sample, previous.map(|p| &p.sample), now()?)?;
+    report.alerts = crate::operations::evaluate_health_mode(
+        &report.sample,
+        previous.map(|p| &p.sample),
+        now()?,
+        !config.independent_chain_probes,
+    )?;
     if previous.is_some_and(|p| {
         p.source_instances.get("signer").is_some_and(|old| {
             report

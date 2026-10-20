@@ -63,17 +63,19 @@ application maintained separately.
 
 ## Public Devnet addresses
 
-Deployment: `public-devnet-20261008-a`. All explorer links below use **Solana Devnet**.
+Deployment: `public-devnet-20261021-state-v1`. All explorer links below use **Solana Devnet**.
 
 | Account | Address |
 |---|---|
 | Vault program | [2sXbYtY2NbyGm1GeCETkkjAa5LxWCA8v8aj2ePW3yVDH](https://explorer.solana.com/address/2sXbYtY2NbyGm1GeCETkkjAa5LxWCA8v8aj2ePW3yVDH?cluster=devnet) |
-| Pool | [Cx8DbA49UCuASoc3goLCU9ro25eWVtcGMbvfPPJsSQzV](https://explorer.solana.com/address/Cx8DbA49UCuASoc3goLCU9ro25eWVtcGMbvfPPJsSQzV?cluster=devnet) |
-| Vault (USDC token account) | [8SDDE1VZ7TDZ13N8yRmrZYnWuwFbuBoD6oWCgTb12R2S](https://explorer.solana.com/address/8SDDE1VZ7TDZ13N8yRmrZYnWuwFbuBoD6oWCgTb12R2S?cluster=devnet) |
+| Pool | [2zAKvvfiV1RZtWw71EYthWVrR3ZiWgmy92DS75JpmG8R](https://explorer.solana.com/address/2zAKvvfiV1RZtWw71EYthWVrR3ZiWgmy92DS75JpmG8R?cluster=devnet) |
+| Vault (USDC token account) | [H2rvp4whEZV7AnTSLbvsBsY8RbFCVjcesEdaouS3ve2y](https://explorer.solana.com/address/H2rvp4whEZV7AnTSLbvsBsY8RbFCVjcesEdaouS3ve2y?cluster=devnet) |
 | USDC mint | [4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU](https://explorer.solana.com/address/4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU?cluster=devnet) |
 
-Program, Pool and mint are pinned in the [public manifest](https://d366buuvadnp3.cloudfront.net/releases/public-devnet-20261008-a/assets/manifest.json);
-the Vault is the Pool's derived USDC token account. Deposit through
+Program, Pool and mint are pinned in the [public manifest](https://d366buuvadnp3.cloudfront.net/releases/public-devnet-20261021-state-v1/assets/manifest.json);
+the Vault is the Pool's derived USDC token account. This fresh PoC uses
+[current-account synchronization](docs/getting-started/poc-state-sync.md) and new
+client journals. Deposit through
 [clientd](docs/getting-started/clientd.md) or the [SDK](docs/getting-started/sdk.md):
 a direct token transfer to the Vault does not create a ZKAPI note.
 

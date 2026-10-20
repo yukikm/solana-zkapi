@@ -2,7 +2,9 @@
 //! state-machine tests. No test here claims a new live transaction or provider.
 mod archive_batch;
 mod coherent_cut;
+mod current_state;
 mod devnet;
+mod projection;
 mod scan_readonly;
 mod shutdown;
 
@@ -109,7 +111,7 @@ fn evidence(trust: &Trust) -> Evidence {
     }
 }
 fn checkpoint(sequence: u64) -> Checkpoint {
-    Checkpoint {
+    Checkpoint::History {
         position: Position {
             slot: 20 + sequence,
             transaction_index: 0,
@@ -143,6 +145,7 @@ fn view(trust: Trust, evidence: &Evidence) -> FinalizedView {
         deadline: 3_000_086_400,
     };
     FinalizedView {
+        current: None,
         trust,
         state: ChainState {
             slot: 23,
@@ -462,7 +465,7 @@ fn pending_identity_cannot_be_rekeyed_around_an_unknown_attempt() {
             ..identity.clone()
         },
         JobIdentity {
-            generation: checkpoint(4),
+            generation: Some(checkpoint(4)),
             ..identity.clone()
         },
     ] {
@@ -576,7 +579,7 @@ fn reopening_legacy_checksummed_jobs_rechecks_identity_invariants() {
             "same-nullifier" | "same-sequence" => {
                 let mut alias = state.jobs[&id].clone();
                 if case == "same-nullifier" {
-                    alias.identity.generation = checkpoint(2);
+                    alias.identity.generation = Some(checkpoint(2));
                 } else {
                     alias.identity.nullifier = zkapi_layout2::integer(42);
                     alias.evidence.nullifier = alias.identity.nullifier;
@@ -597,7 +600,11 @@ fn reopening_legacy_checksummed_jobs_rechecks_identity_invariants() {
             "transcript-digest" => state.jobs.get_mut(&id).unwrap().evidence.transcript.push(0),
             "missing-checkpoint" => state.checkpoint = None,
             "old-checkpoint" => state.checkpoint = Some(checkpoint(2)),
-            "forked-checkpoint" => state.checkpoint.as_mut().unwrap().blockhash = [42; 32],
+            "forked-checkpoint" => {
+                if let Checkpoint::History { blockhash, .. } = state.checkpoint.as_mut().unwrap() {
+                    *blockhash = [42; 32]
+                }
+            }
             _ => unreachable!(),
         }
         rewrite(state);
@@ -637,14 +644,20 @@ fn journal_rejects_forked_or_pre_pending_payload_checkpoints() {
     stale.checkpoint = checkpoint(2);
     assert!(journal.save_payload(&id, stale).is_err());
     let mut forked = payload.clone();
-    forked.checkpoint.blockhash = [99; 32];
+    if let Checkpoint::History { blockhash, .. } = &mut forked.checkpoint {
+        *blockhash = [99; 32];
+    }
     assert!(journal.save_payload(&id, forked).is_err());
     journal.save_payload(&id, payload).unwrap();
     let mut forked = checkpoint(3);
-    forked.position.signature = "zz-another-transaction-at-the-same-index".into();
+    if let Checkpoint::History { position, .. } = &mut forked {
+        position.signature = "zz-another-transaction-at-the-same-index".into();
+    }
     assert!(journal.enqueue_cut(forked, vec![], 11).is_err());
     let mut forked = checkpoint(3);
-    forked.tree_sequence += 1;
+    if let Checkpoint::History { tree_sequence, .. } = &mut forked {
+        *tree_sequence += 1;
+    }
     assert!(journal.enqueue_cut(forked, vec![], 11).is_err());
     assert_eq!(journal.checkpoint(), Some(&checkpoint(3)));
 }
@@ -838,7 +851,7 @@ fn finalized_scanner_replays_actual_sbf_archive_and_rejects_account_cut_mismatch
     let prepared = PreparedChallenge::from_finalized(&view, 0, e).unwrap();
     assert_eq!(payload(&prepared, &trust).len(), 1252);
     assert_eq!(
-        prepared.job.generation.position.slot,
+        prepared.job.generation.as_ref().unwrap().slot(),
         cut["slot"].as_u64().unwrap()
     );
     let mut wrong = state;
@@ -846,9 +859,43 @@ fn finalized_scanner_replays_actual_sbf_archive_and_rejects_account_cut_mismatch
     assert!(scan.reconcile(&wrong, pool_account).is_err());
 }
 
+fn test_tree_key(trust: &Trust) -> Vec<u8> {
+    use rand::SeedableRng;
+    static KEY: std::sync::OnceLock<Vec<u8>> = std::sync::OnceLock::new();
+    KEY.get_or_init(|| {
+        let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
+        let out = root.join("target/i09-challenger");
+        std::fs::create_dir_all(&out).unwrap();
+        let cache = out.join("test-tree.pk");
+        if cache.exists() {
+            std::fs::read(&cache).unwrap()
+        } else {
+            // Recreate I02's same public TEST ONLY setup, never a new production key.
+            let legacy: Value = serde_json::from_slice(
+                &std::fs::read(root.join("tests/fixtures/tree/tree-0-0.json")).unwrap(),
+            )
+            .unwrap();
+            let circuit = TreeCircuit {
+                public: std::array::from_fn(|i| f(&legacy["public_inputs"][i]).to_field()),
+                siblings: std::array::from_fn(|i| f(&legacy["siblings"][i]).to_field()),
+            };
+            let mut rng = rand::rngs::StdRng::seed_from_u64(0x49303254524545);
+            let key = ark_groth16::Groth16::<Bn254>::generate_random_parameters_with_reduction(
+                circuit, &mut rng,
+            )
+            .unwrap();
+            let mut bytes = Vec::new();
+            key.serialize_compressed(&mut bytes).unwrap();
+            assert_eq!(sha(&bytes), trust.tree_pk_hash);
+            std::fs::write(&cache, &bytes).unwrap();
+            bytes
+        }
+    })
+    .clone()
+}
+
 #[test]
 fn generates_a_new_real_challenge_proof_using_pinned_test_setup() {
-    use rand::SeedableRng;
     let (trust, _) = trust_and_manifest();
     let e = evidence(&trust);
     let v = view(trust.clone(), &e);
@@ -856,30 +903,7 @@ fn generates_a_new_real_challenge_proof_using_pinned_test_setup() {
     let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
     let out = root.join("target/i09-challenger");
     std::fs::create_dir_all(&out).unwrap();
-    let cache = out.join("test-tree.pk");
-    let pk_bytes = if cache.exists() {
-        std::fs::read(&cache).unwrap()
-    } else {
-        // Recreate I02's same public TEST ONLY setup, never a new production key.
-        let legacy: Value = serde_json::from_slice(
-            &std::fs::read(root.join("tests/fixtures/tree/tree-0-0.json")).unwrap(),
-        )
-        .unwrap();
-        let circuit = TreeCircuit {
-            public: std::array::from_fn(|i| f(&legacy["public_inputs"][i]).to_field()),
-            siblings: std::array::from_fn(|i| f(&legacy["siblings"][i]).to_field()),
-        };
-        let mut rng = rand::rngs::StdRng::seed_from_u64(0x49303254524545);
-        let key = ark_groth16::Groth16::<Bn254>::generate_random_parameters_with_reduction(
-            circuit, &mut rng,
-        )
-        .unwrap();
-        let mut bytes = Vec::new();
-        key.serialize_compressed(&mut bytes).unwrap();
-        assert_eq!(sha(&bytes), trust.tree_pk_hash);
-        std::fs::write(&cache, &bytes).unwrap();
-        bytes
-    };
+    let pk_bytes = test_tree_key(&trust);
     let pk = trust.load_tree_key(&pk_bytes).unwrap();
     let mut corrupt = pk_bytes.clone();
     corrupt[0] ^= 1;
@@ -1502,8 +1526,8 @@ fn private_scanner_checkpoint_roundtrip_and_binding_refusals() {
     assert!(scan::Scanner::restore_checkpoint(trust, &oversized, sha(&oversized), anchor).is_err());
 }
 
-#[test]
-fn runtime_restart_saves_private_checkpoint_without_mutating_unknown_attempt() {
+#[tokio::test]
+async fn runtime_restart_saves_private_checkpoint_without_mutating_unknown_attempt() {
     let temp = tempfile::tempdir().unwrap();
     let root = temp.path().canonicalize().unwrap();
     let (trust, manifest) = trust_and_manifest();
@@ -1573,8 +1597,11 @@ fn runtime_restart_saves_private_checkpoint_without_mutating_unknown_attempt() {
     Journal::migrate_v1_to_segmented(&config.journal_directory, trust.pool()).unwrap();
     let before = std::fs::read(config.journal_directory.join("journal.json")).unwrap();
     for _ in 0..2 {
-        let runtime = runtime::Runtime::open(config.clone(), false).unwrap();
+        let mut runtime = runtime::Runtime::open(config.clone(), false).unwrap();
         assert_eq!(runtime.journal.archive_len(), 3);
+        // A nonempty recovery must still contact/authenticate RPC. Failure
+        // leaves the exact unknown bytes intact and never reaches the bridge.
+        assert!(runtime.recover().await.is_err());
         assert_eq!(
             runtime.journal.jobs().next().unwrap().1.attempts[0].outcome,
             Outcome::Unknown

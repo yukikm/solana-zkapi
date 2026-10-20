@@ -21,11 +21,18 @@ num-bigint = "=0.4.8"
 thiserror = "=2.0.18"
 zkapi-poseidon = { path = "../../crates/zkapi-poseidon" }
 zkapi-layout2 = { path = "../../crates/zkapi-layout2" }
+zkapi-rpc-metrics = { path = "../../crates/zkapi-rpc-metrics" }
+zkapi-control = { path = "../control" }
+libc = "=0.2.190"
+fs2 = "=0.4.3"
 
 axum = "=0.8.9"
-tokio = { version = "=1.52.0", features = ["macros", "rt-multi-thread", "net", "sync", "time", "signal"] }
+tokio = { version = "=1.52.0", features = ["macros", "rt-multi-thread", "net", "sync", "time", "signal", "io-util"] }
 reqwest = { version = "=0.12.28", default-features = false, features = ["json", "rustls-tls"] }
 solana-pubkey = { version = "=2.4.0", features = ["curve25519"] }
+
+[dev-dependencies]
+tempfile = "=3.27.0"
 
 [profile.test]
 opt-level = 2

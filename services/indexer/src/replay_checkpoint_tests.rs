@@ -354,3 +354,93 @@ fn checkpoint_before_pool_initialization_resumes_and_never_restores_readiness() 
     assert!(!restored.is_ready());
     assert!(Indexer::new(PROGRAM, POOL).checkpoint_bytes().is_err());
 }
+
+#[test]
+fn checkpoint_encoding_matches_legacy_for_private_payload_and_active_state() {
+    let check = |index: &Indexer| {
+        let bytes = index.checkpoint_bytes().unwrap();
+        let saved: Saved = serde_json::from_slice(&bytes).unwrap();
+        assert_eq!(bytes, serde_json::to_vec(&saved).unwrap());
+        assert_eq!(bytes.capacity(), bytes.len());
+        require_canonical(&saved, &bytes).unwrap();
+    };
+    check(&initial());
+    let (mut index, suffix) = buffer_fixture();
+    check(&index);
+    for next in suffix {
+        index.apply_block(&next).unwrap();
+        check(&index);
+    }
+}
+
+#[test]
+fn bounded_encoding_enforces_exact_limit_and_checked_arithmetic() {
+    for value in ["", "a", "escaped \" \\ \n and 日本語"] {
+        let legacy = serde_json::to_vec(value).unwrap();
+        assert_eq!(serialize_bounded(&value, legacy.len()).unwrap(), legacy);
+        assert!(serialize_bounded(&value, legacy.len() - 1).is_err());
+    }
+    let mut output = LimitedWriter {
+        inner: Vec::new(),
+        length: 0,
+        limit: 3,
+    };
+    output.write_all(b"abc").unwrap();
+    assert!(output.write_all(b"d").is_err());
+    assert_eq!(output.length, 3);
+    assert_eq!(output.inner, b"abc");
+    let mut overflow = LimitedWriter {
+        inner: io::sink(),
+        length: usize::MAX,
+        limit: usize::MAX,
+    };
+    assert!(overflow.write_all(b"x").is_err());
+    assert_eq!(overflow.length, usize::MAX);
+}
+
+#[test]
+fn canonical_comparison_requires_every_byte_and_complete_consumption() {
+    let value = "a\n日本語";
+    let bytes = serde_json::to_vec(value).unwrap();
+    require_canonical(&value, &bytes).unwrap();
+    for end in 0..bytes.len() {
+        assert!(require_canonical(&value, &bytes[..end]).is_err());
+    }
+    for position in 0..bytes.len() {
+        let mut changed = bytes.clone();
+        changed[position] ^= 1;
+        assert!(require_canonical(&value, &changed).is_err());
+    }
+    let mut trailing = bytes;
+    trailing.push(b' ');
+    assert!(require_canonical(&value, &trailing).is_err());
+    assert!(require_canonical(&"a", br#""\u0061""#).is_err());
+    let mut chunked = ExactWriter { remaining: b"abc" };
+    chunked.write_all(b"a").unwrap();
+    assert!(chunked.write_all(b"bd").is_err());
+    assert_eq!(chunked.remaining, b"bc");
+    chunked.write_all(b"bc").unwrap();
+    assert!(chunked.remaining.is_empty());
+}
+
+#[test]
+fn restore_rejects_noncanonical_or_malformed_input_with_matching_checksum() {
+    let index = initial();
+    let bytes = index.checkpoint_bytes().unwrap();
+    let saved: Saved = serde_json::from_slice(&bytes).unwrap();
+    let mut variants = vec![
+        serde_json::to_vec_pretty(&saved).unwrap(),
+        bytes[..bytes.len() - 1].to_vec(),
+        [&bytes[..bytes.len() - 1], b",\"unknown\":0}"].concat(),
+        [&bytes[..bytes.len() - 1], b",\"slot\":1}"].concat(),
+    ];
+    variants.push(
+        String::from_utf8(bytes)
+            .unwrap()
+            .replacen("zkapi", "\\u007akapi", 1)
+            .into_bytes(),
+    );
+    for bad in variants {
+        assert!(Indexer::restore_checkpoint(&bad, sha(&bad), PROGRAM, POOL, 1, [1; 32]).is_err());
+    }
+}

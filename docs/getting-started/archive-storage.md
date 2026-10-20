@@ -1,5 +1,10 @@
 # Retained archive storage and disk exhaustion
 
+This guide covers the retained legacy full-history utilities. The implemented
+[fresh PoC design](../specs/pool-history.md) acquires current accounts and does not
+require this archive, its conversion or its restart caches. Normal daemon commands
+require current-state config v2; only explicit archive utilities use this guide.
+
 A full archive volume can stop the chain follower and also prevent PostgreSQL
 from serving requests when both share a filesystem. An empty control catalog
 is not sufficient evidence of an OpenRouter outage: provider admission reads
@@ -80,6 +85,25 @@ binding, reference-chain, anchor and state-codec checks still apply on restart;
 an invalid cache still falls back to cold validation. Fresh finalized chain
 reconciliation and public preflight are still required. A cache candidate is
 not evidence of current chain readiness and contains no financial journal state.
+
+Private v1 restart caches accept at most 256 MiB of metadata and 512 MiB of
+runtime state. The metadata contains every retained chunk reference and file
+stamp; runtime state includes every accepted block digest. The former 64 MiB
+metadata and 256 MiB state bounds could leave an older cache in place while the
+archive continued growing. Raising these bounds preserves the same format,
+checksums, custody checks and complete-history authentication. The offline
+revalidation tool uses the same bound. Existing caches remain readable; older
+binaries reject caches exceeding their metadata or state bounds and take their normal
+cold-validation path, without rolling back the archive or financial journal.
+
+This is finite restart-cache capacity, not archive compaction or a total process
+memory bound. Metadata serialization and parsing still use an additional JSON
+buffer; the scanner also wraps a separate copy of the indexer's encoded state.
+Saving retains the previous cache until atomic replacement and requires
+space for a complete candidate (at most 768 MiB plus framing), in addition to
+the previous cache and retained archive. Monitor cache size, successful saves,
+memory and free disk space as the archive grows; reaching the new bound again
+leaves the previous cache intact and makes the uncached suffix longer to replay.
 
 ## Catch-up read concurrency
 

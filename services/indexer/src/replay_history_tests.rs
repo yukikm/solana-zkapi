@@ -27,6 +27,7 @@ fn full_clone_reference(index: &mut Indexer, block: &FinalizedBlock) -> Result<(
     match candidate.apply(block) {
         Ok(()) => {
             candidate.blocks.insert(block.slot, digest);
+            candidate.coverage_digest = coverage_next(index.coverage_digest, block.slot);
             candidate.checkpoint = Some((block.slot, block.blockhash));
             *index = candidate;
             Ok(())

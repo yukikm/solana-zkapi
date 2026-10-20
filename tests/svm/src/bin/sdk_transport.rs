@@ -118,6 +118,11 @@ fn execute(
     );
     tx.verify_and_hash_message()
         .expect("SDK Ed25519 signatures must verify");
+    // Synthetic finalized envelope slots must agree with the actual bank Clock
+    // exported below. This does not claim public-cluster finality.
+    let mut clock = w.svm.get_sysvar::<Clock>();
+    clock.slot = blocks.len() as u64 + 1;
+    w.svm.set_sysvar(&clock);
     let result = w.svm.send_transaction(tx.clone());
     let (ok, meta, error) = match &result {
         Ok(m) => (true, m, None),
@@ -145,7 +150,7 @@ fn execute(
 }
 fn account_snapshot(w: &World) -> Value {
     let tree = w.state::<TreeState>(w.tree);
-    let mut keys = vec![w.pool, w.tree];
+    let mut keys = vec![w.pool, w.tree, w.vault, solana_sdk::sysvar::clock::id()];
     for id in 0..tree.next_note_id {
         keys.push(w.note(u32::try_from(id).unwrap()));
         keys.push(w.pending(u32::try_from(id).unwrap()));

@@ -327,6 +327,17 @@ async fn check_archive_batches(policy: Option<runtime::ArchiveBatchPolicy>, segm
         .unwrap()
         .iter()
         .any(|v| v["method"] == "getBlocks"));
+    calls.lock().unwrap().clear();
+    assert_eq!(daemon.scan().await.unwrap().state, view.state);
+    assert_eq!(
+        calls
+            .lock()
+            .unwrap()
+            .iter()
+            .map(|q| q["method"].as_str().unwrap())
+            .collect::<Vec<_>>(),
+        vec!["getGenesisHash", "getMultipleAccounts", "getBlock"]
+    );
     for fault in ["header", "mint", "owner", "sequence"] {
         mode.lock().unwrap().fault = fault;
         assert!(daemon.scan().await.is_err(), "accepted {fault}");

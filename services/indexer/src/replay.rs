@@ -1,3 +1,4 @@
+use crate::projection::{BlockHeader, ProjectedBlock};
 use crate::{
     discriminator, sha, tree::Tree, u64_field, Bytes32, Error, Event, FinalizedBlock, Instruction,
     Note, Pending, Position, Reader, Result,
@@ -52,6 +53,10 @@ pub struct Indexer {
     pub(crate) outstanding: u64,
     pub(crate) checkpoint: Option<(u64, Bytes32)>,
     blocks: BTreeMap<u64, Bytes32>,
+    // Storage identities are deliberately separate from semantic coverage. A
+    // projection has its own identity and cannot masquerade as a full block.
+    coverage_digest: Bytes32,
+    projected_evidence: bool,
     pub(crate) ready: bool,
     pub(crate) halted: bool,
     pub last_transition: Option<Position>,
@@ -73,6 +78,8 @@ impl Indexer {
             outstanding: 0,
             checkpoint: None,
             blocks: BTreeMap::new(),
+            coverage_digest: coverage_start(),
+            projected_evidence: false,
             ready: false,
             halted: false,
             last_transition: None,
@@ -90,6 +97,71 @@ impl Indexer {
             return Err(Error::Unfinalized);
         }
         let digest = sha(&serde_json::to_vec(block).map_err(|_| Error::History)?);
+        self.apply_evidence(
+            &BlockHeader::from(block),
+            digest,
+            false,
+            block
+                .transactions
+                .iter()
+                .enumerate()
+                .map(|(i, tx)| (i as u64, tx)),
+        )
+    }
+    /// Offline shadow/export entry point. Validate the original complete block
+    /// using exactly the ordinary replay before discarding unrelated payloads.
+    pub fn validate_and_project(&mut self, block: &FinalizedBlock) -> Result<ProjectedBlock> {
+        self.apply_block(block)?;
+        match ProjectedBlock::from_validated(block, self.program, self.pool) {
+            Ok(projected) => Ok(projected),
+            Err(error) => {
+                self.halt();
+                Err(error)
+            }
+        }
+    }
+    /// Replay locally authenticated, fully validated projection evidence. The
+    /// checksum is not provider completeness proof; offline export must also
+    /// verify_source against the retained original block and compare all state.
+    /// Projected state cannot be exported as a legacy full-block checkpoint.
+    pub fn apply_projected(&mut self, block: &ProjectedBlock) -> Result<()> {
+        if self.halted {
+            return Err(Error::Unavailable);
+        }
+        if let Err(error) = block.validate().and_then(|()| {
+            if block.program == self.program && block.pool == self.pool {
+                Ok(())
+            } else {
+                Err(Error::History)
+            }
+        }) {
+            self.halt();
+            return Err(error);
+        }
+        self.apply_evidence(
+            &block.header(),
+            block.digest,
+            true,
+            block
+                .transactions
+                .iter()
+                .map(|tx| (u64::from(tx.original_index), &tx.transaction)),
+        )
+    }
+    fn apply_evidence<'a>(
+        &mut self,
+        block: &BlockHeader,
+        digest: Bytes32,
+        projected: bool,
+        transactions: impl IntoIterator<Item = (u64, &'a crate::Transaction)>,
+    ) -> Result<()> {
+        if self.halted {
+            return Err(Error::Unavailable);
+        }
+        if !block.finalized {
+            self.halt();
+            return Err(Error::Unfinalized);
+        }
         if let Some(previous) = self.blocks.get(&block.slot) {
             if previous == &digest {
                 return Ok(());
@@ -114,16 +186,19 @@ impl Indexer {
             outstanding: self.outstanding,
             checkpoint: self.checkpoint,
             blocks: BTreeMap::new(),
+            coverage_digest: self.coverage_digest,
+            projected_evidence: self.projected_evidence || projected,
             ready: false,
             halted: self.halted,
             last_transition: self.last_transition.clone(),
             block_transitions: Vec::new(),
         };
-        let result = candidate.apply(block);
+        let result = candidate.apply_indexed(block, transactions);
         match result {
             Ok(()) => {
                 candidate.blocks = std::mem::take(&mut self.blocks);
                 candidate.blocks.insert(block.slot, digest);
+                candidate.coverage_digest = coverage_next(self.coverage_digest, block.slot);
                 candidate.checkpoint = Some((block.slot, block.blockhash));
                 *self = candidate;
                 Ok(())
@@ -146,14 +221,112 @@ impl Indexer {
     pub fn block_transitions(&self) -> &[(Position, Event)] {
         &self.block_transitions
     }
+    /// Domain-separated semantic shadow comparison, including non-root-changing
+    /// transitions, live buffers/generations, nullifiers, deployment and coverage.
+    /// The Merkle root commits the complete logical tree; active records are also
+    /// included independently. Only storage-format identity/provenance is omitted.
+    /// Ordered accepted slots have an incremental commitment, so this does not
+    /// copy or rehash the ever-growing accepted-block map on every block.
+    pub fn semantic_digest(&self) -> Result<Bytes32> {
+        #[derive(serde::Serialize)]
+        struct Semantic<'a> {
+            domain: &'static str,
+            program: Bytes32,
+            pool: Bytes32,
+            config: Option<(Bytes32, u64, u64)>,
+            root: Bytes32,
+            active: &'a BTreeMap<u32, Note>,
+            pending: &'a BTreeMap<u32, Pending>,
+            exits: &'a BTreeSet<Bytes32>,
+            buffers: Vec<SemanticBuffer<'a>>,
+            sequence: u64,
+            next_note_id: u64,
+            outstanding: u64,
+            checkpoint: Option<(u64, Bytes32)>,
+            accepted_block_count: usize,
+            coverage_digest: Bytes32,
+            ready: bool,
+            halted: bool,
+            last_transition: &'a Option<Position>,
+            block_transitions: &'a [(Position, Event)],
+        }
+        #[derive(serde::Serialize)]
+        struct SemanticBuffer<'a> {
+            address: Bytes32,
+            generation: &'a Position,
+            uploader: Bytes32,
+            rent_payer: Bytes32,
+            op: u8,
+            len: usize,
+            digest: Bytes32,
+            expires: u64,
+            bytes: &'a [u8],
+            sealed: bool,
+        }
+        let state = Semantic {
+            domain: "zkapi-replay-semantics-v1",
+            program: self.program,
+            pool: self.pool,
+            config: self
+                .config
+                .as_ref()
+                .map(|c| (c.binding, c.ttl, c.challenge)),
+            root: self.tree.root(),
+            active: &self.active,
+            pending: &self.pending,
+            exits: &self.exits,
+            buffers: self
+                .buffers
+                .iter()
+                .map(|(address, b)| SemanticBuffer {
+                    address: *address,
+                    generation: &b.generation,
+                    uploader: b.uploader,
+                    rent_payer: b.rent_payer,
+                    op: b.op as u8,
+                    len: b.len,
+                    digest: b.digest,
+                    expires: b.expires,
+                    bytes: &b.bytes,
+                    sealed: b.sealed,
+                })
+                .collect(),
+            sequence: self.sequence,
+            next_note_id: self.next_note_id,
+            outstanding: self.outstanding,
+            checkpoint: self.checkpoint,
+            accepted_block_count: self.blocks.len(),
+            coverage_digest: self.coverage_digest,
+            ready: self.ready,
+            halted: self.halted,
+            last_transition: &self.last_transition,
+            block_transitions: &self.block_transitions,
+        };
+        Ok(sha(&serde_json::to_vec(&state).map_err(|_| Error::History)?))
+    }
+    #[cfg(test)]
     fn apply(&mut self, block: &FinalizedBlock) -> Result<()> {
+        self.apply_indexed(
+            &BlockHeader::from(block),
+            block
+                .transactions
+                .iter()
+                .enumerate()
+                .map(|(i, tx)| (i as u64, tx)),
+        )
+    }
+    fn apply_indexed<'a>(
+        &mut self,
+        block: &BlockHeader,
+        transactions: impl IntoIterator<Item = (u64, &'a crate::Transaction)>,
+    ) -> Result<()> {
         if let Some((slot, hash)) = self.checkpoint {
             if block.slot <= slot || block.parent_slot != slot || block.previous_blockhash != hash {
                 return Err(Error::History);
             }
         }
         let mut signatures = BTreeSet::new();
-        for (tx_index, tx) in block.transactions.iter().enumerate() {
+        for (tx_index, tx) in transactions {
             if !signatures.insert(&tx.signature) {
                 return Err(Error::History);
             }
@@ -239,14 +412,7 @@ impl Indexer {
             || is("seal_payload")
             || is("close_payload");
         let execute = is("execute_payload");
-        let pool_index = if buffer_op {
-            1
-        } else if execute {
-            3
-        } else {
-            0
-        };
-        if key(pool_index)? != self.pool {
+        if crate::projection::instruction_pool(ix)? != self.pool {
             return Ok(());
         }
         if self.config.is_none() {
@@ -611,8 +777,10 @@ impl Indexer {
     }
     /// Must be supplied from authenticated finalized TreeState AND all live
     /// Note/Pending accounts at this same end-of-slot cut (or trusted full replay).
+    /// Offline projected evidence is deliberately ineligible for publication.
     pub fn reconcile(&mut self, state: &ChainState) -> Result<()> {
         let matches = !self.halted
+            && !self.projected_evidence
             && self.config.is_some()
             && self.checkpoint == Some((state.slot, state.blockhash))
             && state.root == self.tree.root()
@@ -644,6 +812,13 @@ impl Indexer {
             pending: self.pending.clone(),
         })
     }
+}
+
+fn coverage_start() -> Bytes32 {
+    sha(b"zkapi-replay-semantic-coverage-v1\0")
+}
+fn coverage_next(previous: Bytes32, slot: u64) -> Bytes32 {
+    sha(&[previous.as_slice(), &slot.to_le_bytes()].concat())
 }
 
 #[cfg(test)]

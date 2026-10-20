@@ -8,7 +8,7 @@ use crate::{
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::collections::BTreeMap;
-use zkapi_indexer::{tree::Tree, ChainState, FinalizedBlock, Indexer};
+use zkapi_indexer::{projection::ProjectedBlock, tree::Tree, ChainState, FinalizedBlock, Indexer};
 
 #[cfg_attr(not(test), derive(Clone))]
 pub struct Scanner {
@@ -34,7 +34,7 @@ impl Clone for Scanner {
     }
 }
 const CHECKPOINT_MAGIC: &[u8; 8] = b"ZKSCAN01";
-const MAX_CHECKPOINT_BYTES: usize = 256 * 1024 * 1024;
+const MAX_CHECKPOINT_BYTES: usize = 512 * 1024 * 1024;
 const MAX_CHECKPOINT_HEADER: usize = 16 * 1024 * 1024;
 #[derive(Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -45,6 +45,7 @@ struct SavedScanner {
     index_sha256: Hash,
 }
 pub struct FinalizedView {
+    pub(crate) current: Option<zkapi_indexer::current_state::VerifiedPoolState>,
     pub(crate) trust: Trust,
     pub(crate) state: ChainState,
     pub(crate) generations: BTreeMap<u32, Checkpoint>,
@@ -134,13 +135,21 @@ impl Scanner {
         for (id, generation) in header.generations {
             if previous.is_some_and(|old| old >= id)
                 || !state.pending.contains_key(&id)
-                || generation.position.slot > anchor.slot
-                || generation.tree_sequence == 0
-                || generation.tree_sequence > state.sequence
-                || generation.position.signature.is_empty()
-                || generation.position.signature.len() > 128
-                || (generation.position.slot == anchor.slot
-                    && generation.blockhash != anchor.blockhash)
+                || generation.slot() > anchor.slot
+                || generation.sequence() == 0
+                || generation.sequence() > state.sequence
+                || generation
+                    .position()
+                    .ok_or(bad("history generation required"))?
+                    .signature
+                    .is_empty()
+                || generation
+                    .position()
+                    .ok_or(bad("history generation required"))?
+                    .signature
+                    .len()
+                    > 128
+                || (generation.slot() == anchor.slot && generation.blockhash() != anchor.blockhash)
             {
                 return Err(bad("scanner checkpoint generation"));
             }
@@ -162,16 +171,65 @@ impl Scanner {
         self.index
             .apply_block(block)
             .map_err(|_| bad("finalized archive replay"))?;
-        if prior_slot.is_some_and(|slot| block.slot <= slot) {
+        self.advance_generations(prior_slot, block.slot, block.blockhash, block.block_time)
+    }
+    /// Offline projection only: the complete original block is validated before
+    /// any transaction is omitted. This does not commit a journal or create jobs.
+    pub fn project_finalized(&mut self, block: &FinalizedBlock) -> Result<ProjectedBlock> {
+        let prior_slot = self.index.replay_state().ok().map(|state| state.slot);
+        let projected = self
+            .index
+            .validate_and_project(block)
+            .map_err(|_| bad("full block projection validation"))?;
+        self.advance_generations(prior_slot, block.slot, block.blockhash, block.block_time)?;
+        Ok(projected)
+    }
+    /// Replay explicitly typed offline evidence with its original transaction
+    /// positions. Source completeness belongs to the authenticated export, not
+    /// the projection hash. Normal financial transport is not involved.
+    pub fn apply_projected(&mut self, block: &ProjectedBlock) -> Result<()> {
+        let prior_slot = self.index.replay_state().ok().map(|state| state.slot);
+        self.index
+            .apply_projected(block)
+            .map_err(|_| bad("projected archive replay"))?;
+        self.advance_generations(prior_slot, block.slot, block.blockhash, block.block_time)
+    }
+    /// Compare the complete replay semantics, including Pending generations and
+    /// time. Unlike a public root, this also binds the indexer's open buffers,
+    /// exit nullifiers and ordered coverage. Format-specific digests are excluded.
+    pub fn projection_digest(&self) -> Result<Hash> {
+        let index = self
+            .index
+            .semantic_digest()
+            .map_err(|_| bad("projection semantic state"))?;
+        Ok(sha(&serde_json::to_vec(&(
+            "zkapi-scanner-projection-semantics-v1",
+            self.trust.manifest_hash,
+            self.now,
+            self.generations.iter().collect::<Vec<_>>(),
+            index,
+        ))?))
+    }
+    pub fn projection_equivalent(&self, other: &Self) -> Result<bool> {
+        Ok(self.projection_digest()? == other.projection_digest()?)
+    }
+    fn advance_generations(
+        &mut self,
+        prior_slot: Option<u64>,
+        slot: u64,
+        blockhash: Hash,
+        block_time: u64,
+    ) -> Result<()> {
+        if prior_slot.is_some_and(|old| slot <= old) {
             return Ok(());
         }
         for (position, event) in self.index.block_transitions() {
             if event.op == 2 {
                 self.generations.insert(
                     event.note_id,
-                    Checkpoint {
+                    Checkpoint::History {
                         position: position.clone(),
-                        blockhash: block.blockhash,
+                        blockhash,
                         tree_sequence: event.sequence,
                     },
                 );
@@ -180,7 +238,7 @@ impl Scanner {
         let state = self.index.replay_state().map_err(|_| bad("replay state"))?;
         self.generations
             .retain(|id, _| state.pending.contains_key(id));
-        self.now = block.block_time;
+        self.now = block_time;
         Ok(())
     }
     pub fn replay_state(&self) -> Result<ChainState> {
@@ -220,6 +278,7 @@ impl Scanner {
             return Err(bad("tree/Pending generation evidence"));
         }
         Ok(FinalizedView {
+            current: None,
             trust: self.trust.clone(),
             state: accounts.clone(),
             generations: self.generations.clone(),
@@ -230,6 +289,78 @@ impl Scanner {
     }
 }
 impl FinalizedView {
+    pub fn from_current(
+        trust: Trust,
+        state: zkapi_indexer::current_state::VerifiedPoolState,
+    ) -> Result<Self> {
+        zkapi_control::chain::validate_pool_account(
+            &trust.pool,
+            state.pool_account(),
+            state.cut().slot,
+        )
+        .map_err(|_| bad("current PoolConfig"))?;
+        if state.cut().deployment != trust.manifest_hash
+            || state.cut().pool != trust.pool()
+            || state.cut().program
+                != zkapi_control::wire::pubkey(&trust.pool.program_id)
+                    .map_err(|_| bad("current program"))?
+            || state.cut().genesis
+                != zkapi_control::wire::pubkey(&trust.pool.genesis_hash)
+                    .map_err(|_| bad("current genesis"))?
+        {
+            return Err(bad("current deployment"));
+        }
+        Ok(Self {
+            trust,
+            state: state.chain().clone(),
+            generations: BTreeMap::new(),
+            tree: state.tree().clone(),
+            now: state.cut().block_time,
+            paused: state.paused(),
+            current: Some(state),
+        })
+    }
+    pub(crate) fn identity(&self, id: u32) -> Result<crate::journal::JobIdentity> {
+        let p = self.state.pending.get(&id).ok_or(bad("Pending absent"))?;
+        let (generation, current) = if let Some(state) = &self.current {
+            let c = state.cut();
+            (
+                None,
+                Some(crate::journal::CurrentPending {
+                    deployment: c.deployment,
+                    genesis: c.genesis,
+                    program: c.program,
+                    pending: p.clone(),
+                }),
+            )
+        } else {
+            (
+                Some(
+                    self.generations
+                        .get(&id)
+                        .ok_or(bad("Pending generation"))?
+                        .clone(),
+                ),
+                None,
+            )
+        };
+        Ok(crate::journal::JobIdentity {
+            pool: self.trust.pool(),
+            note_id: id,
+            nullifier: p.nullifier,
+            deadline: p.deadline,
+            generation,
+            current,
+        })
+    }
+    pub(crate) fn matches(&self, job: &crate::journal::JobIdentity) -> bool {
+        self.identity(job.note_id).is_ok_and(|id| id == *job)
+    }
+    pub(crate) fn ensure_fresh(&self) -> Result<()> {
+        self.current.as_ref().map_or(Ok(()), |s| {
+            s.ensure_fresh().map_err(|_| bad("current view expired"))
+        })
+    }
     pub fn now(&self) -> u64 {
         self.now
     }

@@ -157,7 +157,12 @@ sch['Health'] = obj({'status': {'type':'string','enum':['ok','degraded']}, 'acce
 sch['NullifierStatus'] = obj({'nullifier':F,'state':{'type':'string','enum':[
     'unused','authorized','cleared','exit_consumed','unknown']}})
 sch['DashboardSummary'] = obj({'active_sessions':U,'pending_settlements':U,
-    'charged_micro_usdc':U,'root_lag_slots':U,'unknown_operations':U})
+    'charged_micro_usdc':U,
+    'root_lag_slots':{**U,'type':['string','null'],
+        'description':'Independent finalized slot lag when explicit chain probes are enabled; null for current-state monitoring.'},
+    'current_state_age_seconds':{**U,'type':['string','null'],
+        'description':'Age of the verified current state reported by the shared owner; null for independent chain probes.'},
+    'unknown_operations':U})
 sch['DashboardEvent'] = obj({'timestamp':U,'kind':S,'request_id':ID,
     'state':S,'charge_micro_usdc':U},['timestamp','kind','state'])
 sch['DashboardEvents'] = obj({'events':array(ref('DashboardEvent')),'next_cursor':{'type':['string','null']}})

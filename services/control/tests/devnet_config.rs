@@ -17,6 +17,31 @@ fn hash(bytes: &[u8]) -> String {
 }
 
 #[test]
+fn recovery_cadence_defaults_and_limits_are_validated_before_private_inputs() {
+    let dir = tempfile::tempdir().unwrap();
+    let mut cfg = fixture(dir.path(), false);
+    cfg.quote_seed_file = dir.path().join("absent-quote.seed");
+    let mut encoded = serde_json::to_value(&cfg).unwrap();
+    encoded
+        .as_object_mut()
+        .unwrap()
+        .remove("background_recovery_seconds");
+    let restored: RuntimeConfig = serde_json::from_value(encoded).unwrap();
+    assert_eq!(restored.background_recovery_seconds, 2);
+    for seconds in [1, 2, 10] {
+        cfg.background_recovery_seconds = seconds;
+        cfg.validate_public_inputs().unwrap();
+    }
+    for seconds in [0, 11, u64::MAX] {
+        cfg.background_recovery_seconds = seconds;
+        assert_eq!(
+            cfg.validate_public_inputs().err().unwrap().to_string(),
+            "background_recovery_seconds must be between 1 and 10"
+        );
+    }
+}
+
+#[test]
 fn offline_inspection_reads_public_inputs_without_private_seeds_or_runtime_state() {
     let dir = tempfile::tempdir().unwrap();
     let mut config = fixture(dir.path(), true);
@@ -438,6 +463,7 @@ fn fixture(dir: &Path, devnet: bool) -> RuntimeConfig {
     }
     let mut config = RuntimeConfig {
         local_test_only: true,
+        background_recovery_seconds: 2,
         devnet: None,
         listen: "127.0.0.1:0".parse().unwrap(),
         manifest,

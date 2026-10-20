@@ -459,15 +459,12 @@ impl App {
             self.ledger.set_accepting(false).await?;
             return Err(unavailable());
         }
-        // Chain health gates new work, not completion of already accepted work.
-        // Keep recovering frozen settlement/clearance targets during an outage.
-        let chain_health = self.chain.startup().await;
+        // Real admission performs fresh independent chain observations. Idle
+        // ledger recovery must not perform genesis/Pool/root RPC probes.
         let old_owner = crate::provider_runtime::abandoned_owner_exists(&self.ledger)
             .await
             .map_err(|_| unavailable())?;
-        self.ledger
-            .set_accepting(chain_health.is_ok() && !old_owner)
-            .await?;
+        self.ledger.set_accepting(!old_owner).await?;
         for s in self.ledger.pending_sessions().await? {
             let _ = self.advance(s.request_id).await;
         }
@@ -487,7 +484,6 @@ impl App {
                 .save_clearance_signature(c.nullifier, &signature)
                 .await?;
         }
-        chain_health?;
         Ok(())
     }
 }

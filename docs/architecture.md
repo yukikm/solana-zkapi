@@ -30,7 +30,7 @@ flowchart LR
 | `apps/clientd/` | Loopback API and native prover using the SDK journal |
 | `programs/zkapi-vault/` | USDC custody, proof verification and atomic state transitions |
 | `services/control/` | Authorization, direct/proxy adapters, ledger and signing services |
-| `services/indexer/` | Finalized tree history and snapshots |
+| `services/indexer/` | Finalized current accounts, verified tree and snapshots |
 | `services/challenger/` | Challenge escaped states using retained authorizations |
 | `crates/` | Circuit bindings, proof encoding, tree transitions and shared types |
 | `vendor/ethereum-zkapi/` | Pinned request/withdrawal circuits, Poseidon and setup inputs |
@@ -58,6 +58,15 @@ The pinned development setup is not a production ceremony.
 
 ## Specifications
 
+- [Pool-scoped state synchronization](specs/pool-history.md): selected fresh-PoC
+  design and [current-state acquisition contract](specs/pool-history-acquisition.md).
+  One reader reconstructs the current tree and Pending inventory from finalized
+  accounts, with no full-block history scan or buffer-history replay. It adapts
+  Ethereum's deployment-scoped acquisition and verified-state approach, with an
+  explicit change from historical replay to current-state verification. Old state
+  compatibility is not required for this PoC; see [fresh setup](getting-started/poc-state-sync.md).
+  Source binaries implement config v2/current accounts and challenger journal v3;
+  deployment requires a fresh setup. Offline replay/projection remains separate.
 - [Universal API gateway design](specs/universal-api-gateway.md): separate
   general API transport from metering while retaining the existing payment core.
   The [finite HTTP contract](specs/universal-api-gateway-contract.md) defines the

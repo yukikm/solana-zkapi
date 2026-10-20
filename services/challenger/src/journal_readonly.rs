@@ -88,6 +88,12 @@ impl FileStamp {
         }
     }
     pub(super) fn at(path: &Path) -> Result<Self> {
+        #[cfg(test)]
+        METADATA_READS.with(|reads| {
+            if let Some(reads) = &mut *reads.borrow_mut() {
+                reads.push(path.to_owned());
+            }
+        });
         // Continuity checks inspect metadata only. Reopening every already
         // authenticated chunk adds several syscalls per file, per check, and
         // can exhaust the HTTP wait budget on a growing archive. lstat captures
@@ -116,6 +122,8 @@ impl FileStamp {
 pub(super) type Observations = BTreeMap<PathBuf, FileStamp>;
 #[cfg(test)]
 thread_local! { pub(super) static READS: std::cell::RefCell<Vec<PathBuf>> = const { std::cell::RefCell::new(Vec::new()) }; }
+#[cfg(test)]
+thread_local! { static METADATA_READS: std::cell::RefCell<Option<Vec<PathBuf>>> = const { std::cell::RefCell::new(None) }; }
 
 // No second parser: these hooks wrap the writer's existing JSON/checksum/chain
 // validation, recording file identity around the same open file descriptor.
@@ -274,12 +282,16 @@ impl ReadOnlyArchive {
             .first()
             .map(|block| (block.slot, block.parent_slot)))
     }
-    pub(super) fn verify_files(&self) -> Result<()> {
+    fn verify_directories(&self) -> Result<()> {
         if DirectoryStamp::at(&self.directory)? != self.root_identity
             || DirectoryStamp::at(&self.directory.join(ARCHIVE_DIR))? != self.archive_identity
         {
             return Err(Error::Conflict("verified archive directory changed"));
         }
+        Ok(())
+    }
+    pub(super) fn verify_files(&self) -> Result<()> {
+        self.verify_directories()?;
         for (path, before) in &self.observations {
             if &FileStamp::at(path)? != before {
                 return Err(Error::Conflict("verified archive file changed"));
@@ -289,6 +301,13 @@ impl ReadOnlyArchive {
     }
     pub fn archive_len(&self) -> u64 {
         self.archive.len()
+    }
+    /// Digest of the authenticated fixed v2 head captured by this reader. This
+    /// identifies retained evidence, not a fresh account cut or a finality proof.
+    pub fn head_digest(&self) -> Result<Hash> {
+        let mut bytes = b"ZKAPI-FULL-ARCHIVE-HEAD-V2\0".to_vec();
+        bytes.extend_from_slice(&serde_json::to_vec(&self.archive.head)?);
+        Ok(sha(&bytes))
     }
     pub fn archive_tail(&self) -> Option<ArchiveTail> {
         self.archive.tail()
@@ -369,7 +388,10 @@ impl ReadOnlyArchive {
         };
         // No partial installation, including when the writer atomically adds a
         // still newer head while this fixed extension is being validated.
-        self.verify_files()?;
+        // This complete candidate map retains every old observation and adds
+        // the new chunks. Its final sweep rechecks the old prefix as well; a
+        // separate old-only sweep here would repeat those same metadata reads.
+        self.verify_directories()?;
         for (path, stamp) in &observations {
             if &FileStamp::at(path)? != stamp {
                 return Err(Error::Conflict("verified archive file changed"));

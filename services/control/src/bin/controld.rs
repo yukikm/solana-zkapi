@@ -110,10 +110,13 @@ async fn run() -> Result<()> {
     }
     ensure!(mode == "serve", "unsupported command");
     let listen = config.runtime.listen;
+    let recovery_seconds = config.runtime.background_recovery_seconds;
     let app = App::connect(config, &url).await?;
     let worker = app.clone();
     tokio::spawn(async move {
-        let mut tick = tokio::time::interval(std::time::Duration::from_secs(2));
+        let mut tick = tokio::time::interval(std::time::Duration::from_secs(recovery_seconds));
+        // A slow RPC must not queue a burst of redundant recovery checks.
+        tick.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Skip);
         loop {
             tick.tick().await;
             if worker.recover().await.is_err() {

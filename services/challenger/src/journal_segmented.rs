@@ -772,6 +772,9 @@ fn require_archive_headroom(available: u64) -> Result<()> {
     }
     Ok(())
 }
+pub(super) fn ensure_archive_headroom(root: &Path) -> Result<()> {
+    require_archive_headroom(fs2::available_space(archive_directory(root)?)?)
+}
 fn append_chunks(
     root: &Path,
     head: &Head,

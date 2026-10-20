@@ -34,13 +34,13 @@ export async function recoverChallenge(attempt: Attempt, rpc: TransportRpc, rese
 /** RPC result, including a rejected receipt, is authenticated against exact v0
  * message/signature by I04. Only the block fetched at that finalized receipt's
  * slot is used as the outcome anchor. */
-export async function recoverChallengeOnConnection(attempt: Attempt, connection: Rpc<SolanaRpcApi>) {
+export async function recoverChallengeOnConnection(attempt: Attempt, connection: Rpc<SolanaRpcApi>, resend = true) {
   let receiptSlot: number | undefined;
   const underlying = connectionTransport(connection);
   const rpc: TransportRpc = { ...underlying, finalizedReceipt: async signature => {
     const receipt = await underlying.finalizedReceipt(signature); receiptSlot = receipt?.slot; return receipt;
   } };
-  const result = await recoverChallenge(attempt, rpc);
+  const result = await recoverChallenge(attempt, rpc, resend);
   if (result.state !== 'finalized' && result.state !== 'rejected') return { result };
   if (receiptSlot === undefined) throw new Error('finalized receipt missing');
   const block = await connection.getBlock(BigInt(receiptSlot), { commitment: 'finalized', transactionDetails: 'none', maxSupportedTransactionVersion: 1, rewards: false }).send();

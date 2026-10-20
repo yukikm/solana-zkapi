@@ -21,8 +21,9 @@ import struct
 from compress_archive_chunks import original_bytes
 
 MAGIC = b'ZKAPI-ARCHIVE-CHECKPOINT-V1\n'
-META_LIMIT = 64 * 1024 * 1024
-STATE_LIMIT = 256 * 1024 * 1024
+# Match the native v1 cache reader/writer; the format and custody checks remain.
+META_LIMIT = 256 * 1024 * 1024
+STATE_LIMIT = 512 * 1024 * 1024
 
 
 def strict_json(raw):

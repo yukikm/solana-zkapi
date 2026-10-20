@@ -3186,9 +3186,20 @@
             "description": "Unsigned integer decimal string; enforce semantic bounds in specs."
           },
           "root_lag_slots": {
-            "type": "string",
+            "type": [
+              "string",
+              "null"
+            ],
             "pattern": "^(0|[1-9][0-9]*)$",
-            "description": "Unsigned integer decimal string; enforce semantic bounds in specs."
+            "description": "Independent finalized slot lag when explicit chain probes are enabled; null for current-state monitoring."
+          },
+          "current_state_age_seconds": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "pattern": "^(0|[1-9][0-9]*)$",
+            "description": "Age of the verified current state reported by the shared owner; null for independent chain probes."
           },
           "unknown_operations": {
             "type": "string",
@@ -3201,6 +3212,7 @@
           "pending_settlements",
           "charged_micro_usdc",
           "root_lag_slots",
+          "current_state_age_seconds",
           "unknown_operations"
         ],
         "additionalProperties": false

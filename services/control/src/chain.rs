@@ -509,6 +509,7 @@ pub struct ChainClient {
     secondary: String,
     indexer: String,
     pub trusted: TrustedPool,
+    bootstrap: std::sync::Arc<tokio::sync::Mutex<bool>>,
 }
 impl ChainClient {
     pub fn new(
@@ -564,9 +565,19 @@ impl ChainClient {
             secondary,
             indexer,
             trusted,
+            bootstrap: std::sync::Arc::new(tokio::sync::Mutex::new(false)),
         })
     }
     async fn rpc(&self, url: &str, method: &str, params: Value) -> Result<Value> {
+        use zkapi_rpc_metrics::{Component, RpcUsage};
+        static PRIMARY: std::sync::OnceLock<RpcUsage> = std::sync::OnceLock::new();
+        static SECONDARY: std::sync::OnceLock<RpcUsage> = std::sync::OnceLock::new();
+        let usage = if url == self.primary {
+            PRIMARY.get_or_init(|| RpcUsage::new(Component::ControlPrimary))
+        } else {
+            SECONDARY.get_or_init(|| RpcUsage::new(Component::ControlSecondary))
+        };
+        usage.record(method, false);
         let response = self
             .client
             .post(url)
@@ -592,15 +603,27 @@ impl ChainClient {
             .unwrap_or_else(|_| Err(unavailable("chain observation deadline")))
     }
     async fn startup_once(&self) -> Result<()> {
+        *self.bootstrap.lock().await = false;
+        self.authenticate_endpoints().await?;
+        let root = self.current_root().await?;
+        if self.pool_at(uint(&root.slot)?).await?.paused {
+            return Err(ValidationError::Conflict("pool paused"));
+        }
+        Ok(())
+    }
+    /// One bootstrap per configured client. Failure is retried only by startup
+    /// or real request work; idle recovery never polls Solana for this.
+    async fn authenticate_endpoints(&self) -> Result<()> {
+        let mut verified = self.bootstrap.lock().await;
+        if *verified {
+            return Ok(());
+        }
         for url in [&self.primary, &self.secondary] {
             if self.rpc(url, "getGenesisHash", json!([])).await? != self.trusted.genesis_hash {
                 return Err(ValidationError::TrustMismatch("RPC genesis"));
             }
         }
-        let root = self.current_root().await?;
-        if self.pool_at(uint(&root.slot)?).await?.paused {
-            return Err(ValidationError::Conflict("pool paused"));
-        }
+        *verified = true;
         Ok(())
     }
     pub async fn current_root(&self) -> Result<Root> {
@@ -695,11 +718,15 @@ impl ChainClient {
         expected_root: Option<FieldElement>,
         require_live: bool,
     ) -> Result<ChainObservation> {
+        self.authenticate_endpoints().await?;
         // Each attempt starts from a fresh root and fresh independent account
         // reads. Do not call current_root's retry wrapper inside this deadline.
         let root = self.current_root_once().await?;
         let min = uint(&root.slot)?;
         let (address, _) = exit_address(&self.trusted, nullifier)?;
+        // Preserve the finalized Pool and confirmed exit commitments. Each
+        // backend has at most one account per commitment, so combining these
+        // reads into one getMultipleAccounts would change the safety boundary.
         let (pool, primary, secondary) = tokio::try_join!(
             self.pool_at(min),
             self.account(&self.primary, &address, "confirmed", min),

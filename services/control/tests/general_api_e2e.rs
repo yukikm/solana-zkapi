@@ -169,6 +169,7 @@ async fn fixed_price_json_deposit_settle_withdraw_preserves_history() -> Result<
     let mut config = RuntimeConfig {
         devnet: None,
         local_test_only: true,
+        background_recovery_seconds: 2,
         listen: listener.local_addr()?,
         trusted_manifest_hash: hex::encode(hash),
         manifest: manifest.clone(),

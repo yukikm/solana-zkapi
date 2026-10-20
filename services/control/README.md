@@ -4,6 +4,14 @@ The control service owns authorization, USDC reservations, quotes, receipts and
 session recovery. Provider adapters use the same PostgreSQL ledger. The separate
 signer verifies immutable settlement targets and retains an append-only journal.
 
+The implemented [current-state PoC runtime](../../docs/specs/pool-history-acquisition.md)
+removes idle recovery-loop chain probes and shares indexer acquisition. Actual
+admissions retain fresh dual-backend checks; endpoint genesis authentication is
+cached after success. Monitoring defaults to local indexer health
+(`independent_chain_probes:false`), with state age instead of independent slot lag
+and fee-payer balance. Explicit deep probes still cost RPC.
+See [fresh setup and local verification](../../docs/getting-started/poc-state-sync.md).
+
 For installation and startup, follow [Run a ZKAPI operator](../../docs/getting-started/proxy-operator.md).
 For models and credentials, use [inference provider setup](../../docs/getting-started/api-provider.md)
 and the [adapter reference](PROVIDERS.md).
@@ -48,6 +56,12 @@ automatically replayable.
 | `enable_local_adapter` | Enables only the synthetic local adapter; use `false` for real providers |
 | `providers` | Direct/proxy inference adapters, registered `api` operations and optional pinned dispatcher process |
 | `tariffs` | Exact signed-quote tariff inputs, with hashes listed in the manifest |
+| `background_recovery_seconds` | Background recovery interval, 1–10 seconds, default 2; request-time checks remain fresh |
+
+See [RPC budgeting](../../docs/getting-started/rpc-budget.md) for a ten-second
+background profile and secret-free method counters. Missed recovery ticks are
+skipped after slow calls; the ledger, Unknown outcomes and authorization checks
+retain their existing semantics.
 
 Devnet configuration verifies build, IDL, program and setup bindings. It requires
 Unix-socket database connections and authenticated public service origins.

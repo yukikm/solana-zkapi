@@ -158,6 +158,88 @@ impl Fixture {
 }
 
 #[tokio::test]
+async fn empty_recovery_does_not_contact_rpc_or_change_retained_history() {
+    let fixture = Fixture::new(64, 64).await;
+    let mut runtime = Runtime::open(fixture.config.clone(), false).unwrap();
+    let before = runtime.scanner.checkpoint_bytes().unwrap();
+    // This fixture only permits archive reads. Even a genesis request fails.
+    assert_eq!(runtime.recover().await.unwrap(), 0);
+    assert_eq!(runtime.recover().await.unwrap(), 0);
+    assert_eq!(runtime.rpc.usage()["attempts"], json!({}));
+    assert_eq!(runtime.scanner.checkpoint_bytes().unwrap(), before);
+    fixture.assert_prefix(&runtime, 64);
+    assert_eq!(runtime.journal.jobs().count(), 0);
+}
+
+#[tokio::test]
+async fn failed_archive_persistence_stops_rpc_until_reopen_and_preserves_committed_prefix() {
+    let fixture = Fixture::new(64, 4).await;
+    let mut runtime = Runtime::open(fixture.config.clone(), false).unwrap();
+    let head = fixture.config.journal_directory.join("journal.json");
+    let retained_head = fixture.config.journal_directory.join("retained-head.json");
+    let original = std::fs::read(&head).unwrap();
+    // Fail after the fetched chunk is published but before its head can commit.
+    // Retain the original head; the failed chunk must remain an unused orphan.
+    std::fs::rename(&head, &retained_head).unwrap();
+    std::fs::create_dir(&head).unwrap();
+    assert!(runtime.catch_up_to(72).await.is_err());
+    fixture.assert_prefix(&runtime, 64);
+    assert_eq!(
+        runtime.rpc.usage()["attempts"],
+        json!({"getBlocks":1,"getBlock_full":4})
+    );
+    std::fs::remove_dir(&head).unwrap();
+    std::fs::rename(&retained_head, &head).unwrap();
+    let attempts = runtime.rpc.usage()["attempts"].clone();
+    for _ in 0..3 {
+        assert!(matches!(
+            runtime.catch_up_to(72).await,
+            Err(Error::Conflict(
+                "journal requires reopen after failed persistence"
+            ))
+        ));
+        assert!(matches!(
+            runtime.scan().await,
+            Err(Error::Conflict(
+                "journal requires reopen after failed persistence"
+            ))
+        ));
+        assert_eq!(runtime.rpc.usage()["attempts"], attempts);
+        assert_eq!(std::fs::read(&head).unwrap(), original);
+        fixture.assert_prefix(&runtime, 64);
+    }
+    drop(runtime);
+    let mut runtime = Runtime::open(fixture.config.clone(), false).unwrap();
+    fixture.assert_prefix(&runtime, 64);
+    runtime.catch_up_to(72).await.unwrap();
+    fixture.assert_prefix(&runtime, 72);
+    assert_eq!(runtime.journal.jobs().count(), 0);
+}
+
+#[tokio::test]
+async fn unavailable_archive_storage_stops_rpc_before_fetch_without_poisoning_history() {
+    let fixture = Fixture::new(64, 64).await;
+    let mut runtime = Runtime::open(fixture.config.clone(), false).unwrap();
+    let archive = fixture.config.journal_directory.join("archive-v2");
+    let retained = fixture.config.journal_directory.join("retained-archive");
+    let head = fixture.config.journal_directory.join("journal.json");
+    let original = std::fs::read(&head).unwrap();
+    std::fs::rename(&archive, &retained).unwrap();
+    for _ in 0..3 {
+        assert!(runtime.scan().await.is_err());
+        assert!(runtime.catch_up_to(68).await.is_err());
+        assert_eq!(runtime.rpc.usage()["attempts"], json!({}));
+        assert_eq!(std::fs::read(&head).unwrap(), original);
+    }
+    std::fs::rename(&retained, &archive).unwrap();
+    fixture.assert_prefix(&runtime, 64);
+    // No persistence was attempted. Once storage is available, the unchanged
+    // handle can resume from the same durable cursor without a reset.
+    runtime.catch_up_to(68).await.unwrap();
+    fixture.assert_prefix(&runtime, 68);
+}
+
+#[tokio::test]
 async fn missing_finalized_tail_retries_only_suffix_at_the_original_target() {
     let fixture = Fixture::new(64, 64).await;
     *fixture.omitted_ranges.lock().unwrap() = 2;

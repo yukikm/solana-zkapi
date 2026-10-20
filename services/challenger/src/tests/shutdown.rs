@@ -116,7 +116,9 @@ async fn native_signals_interrupt_slow_rpc_without_changing_journal() {
         drop(runtime::Runtime::open(config.clone(), true).unwrap());
         let path = config.journal_directory.join("journal.json");
         let before = std::fs::read(&path).unwrap();
-        let mut child = child(&config, "recover");
+        // Empty recovery is now offline; scan still performs an authenticated
+        // genesis read, so it exercises cancellation of the same RPC wait.
+        let mut child = child(&config, "scan-direct");
         tokio::time::timeout(Duration::from_secs(10), reached.notified())
             .await
             .unwrap();

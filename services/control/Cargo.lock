@@ -3109,6 +3109,7 @@ dependencies = [
  "zkapi-core",
  "zkapi-layout2",
  "zkapi-proof",
+ "zkapi-rpc-metrics",
  "zkapi-solana-crypto",
  "zkapi-solana-types",
  "zkapi-tree-prover",
@@ -3161,6 +3162,13 @@ dependencies = [
  "sha3",
  "zkapi-core",
  "zkapi-types",
+]
+
+[[package]]
+name = "zkapi-rpc-metrics"
+version = "0.1.0"
+dependencies = [
+ "serde_json",
 ]
 
 [[package]]

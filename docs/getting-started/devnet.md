@@ -13,29 +13,29 @@ Neither path requires your own provider API key or a ZKAPI server.
 
 ## 2. Use the published inputs
 
-The installation walkthroughs below retain the recorded **`0.2.0-devnet.8`**
-artifacts and revision-6 profile. Newer immutable releases are
-[SDK/native `.13`](gateway-release-upgrade.md),
-which accept this unchanged profile. Follow the selected release's installation
-and verification procedure; keep an existing funded installation and custody.
+The current Pool uses `public-devnet-20261021-state-v1` and the immutable
+[SDK/native `.13` release](gateway-release-upgrade.md). Create a new client profile
+and journal for this Pool. Earlier profiles authenticate the retired Pool and
+must not be edited to point at this one; keep their recovery material separately.
+See [current-state setup](poc-state-sync.md) for the intentional PoC reset.
 
 | Input | Download |
 |---|---|
-| Public profile | [profile-sdk-0.2.0-devnet.8-r6.json](https://d366buuvadnp3.cloudfront.net/releases/public-devnet-20261008-a/profile-sdk-0.2.0-devnet.8-r6.json) |
-| SDK | [zkapi-solana-sdk-0.2.0-devnet.8.tgz](https://github.com/yukikm/solana-zkapi/releases/download/v0.2.0-devnet.8/zkapi-solana-sdk-0.2.0-devnet.8.tgz) |
-| clientd, macOS ARM64 | [zkapi-clientd-0.2.0-devnet.8-darwin-arm64.tar.gz](https://github.com/yukikm/solana-zkapi/releases/download/v0.2.0-devnet.8/zkapi-clientd-0.2.0-devnet.8-darwin-arm64.tar.gz) |
+| Public profile | [profile.json](https://d366buuvadnp3.cloudfront.net/releases/public-devnet-20261021-state-v1/profile.json) |
+| SDK | [zkapi-solana-sdk-0.2.0-devnet.13.tgz](https://github.com/yukikm/solana-zkapi/releases/download/v0.2.0-devnet.13/zkapi-solana-sdk-0.2.0-devnet.13.tgz) |
+| clientd, macOS ARM64 | [zkapi-clientd-0.2.0-devnet.13-darwin-arm64.tar.gz](https://github.com/yukikm/solana-zkapi/releases/download/v0.2.0-devnet.13/zkapi-clientd-0.2.0-devnet.13-darwin-arm64.tar.gz) |
 
 SHA-256 pins, in the same order:
 
 ```text
-profile: ec10c1ab41bb5105222d3e25c7e1eba6b96b1b397abd0f854657030269992a77
-SDK:     cd9226f4526c0b3561a557e4c7beb4f495dcbad6c995c624f4c442b6621414da
-clientd: 14154d038bc0e79347076b9983754eeca2fbde78159be21e5ca7b0cddca632ac
+profile: 5e15d66c6f45265951cf1f8dd6cc0dae6574c4b8dd6756f828f7543ecaa97b9a
+SDK:     e6e7668e1d37938f67f8865673aba1a11f27b975d3715a376ac24a6dcfa8a8a9
+clientd: 7232ae83cb18842eb6e759683bf47931a039b87e121c4427c90253db09998656
 ```
 
 The extracted native `release.json` pin is
-`20c194668cbb9b13fecf8170c709fb03dd055bbd1b67b93b6e652dcfe7d118be`.
-Verify pins through the authenticated [release](https://github.com/yukikm/solana-zkapi/releases/tag/v0.2.0-devnet.8),
+`5c6a730af8ae1a533d4ad5d745a6869b6795025ee7e8f51ec7b061ec8100f97e`.
+Verify pins through the authenticated [release](https://github.com/yukikm/solana-zkapi/releases/tag/v0.2.0-devnet.13),
 separately from the downloaded artifacts. Native support is Apple Silicon,
 macOS 13.5 or newer; the archive is not Apple notarized.
 

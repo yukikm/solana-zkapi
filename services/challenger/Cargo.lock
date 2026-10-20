@@ -3071,6 +3071,7 @@ dependencies = [
  "ark-serialize 0.5.0",
  "axum",
  "base64 0.22.1",
+ "bs58",
  "flate2",
  "fs2",
  "hex",
@@ -3081,6 +3082,7 @@ dependencies = [
  "serde_jcs",
  "serde_json",
  "sha2 0.10.9",
+ "solana-pubkey",
  "tempfile",
  "thiserror 2.0.18",
  "tokio",
@@ -3136,6 +3138,7 @@ dependencies = [
  "zkapi-core",
  "zkapi-layout2",
  "zkapi-proof",
+ "zkapi-rpc-metrics",
  "zkapi-solana-crypto",
  "zkapi-solana-types",
  "zkapi-types",
@@ -3160,7 +3163,9 @@ dependencies = [
  "axum",
  "base64 0.22.1",
  "bs58",
+ "fs2",
  "hex",
+ "libc",
  "num-bigint",
  "reqwest",
  "serde",
@@ -3170,8 +3175,10 @@ dependencies = [
  "solana-pubkey",
  "thiserror 2.0.18",
  "tokio",
+ "zkapi-control",
  "zkapi-layout2",
  "zkapi-poseidon",
+ "zkapi-rpc-metrics",
 ]
 
 [[package]]
@@ -3210,6 +3217,13 @@ dependencies = [
  "sha3",
  "zkapi-core",
  "zkapi-types",
+]
+
+[[package]]
+name = "zkapi-rpc-metrics"
+version = "0.1.0"
+dependencies = [
+ "serde_json",
 ]
 
 [[package]]

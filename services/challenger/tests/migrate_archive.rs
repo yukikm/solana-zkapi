@@ -123,7 +123,10 @@ async fn cli_migration_is_explicit_offline_and_preserves_exact_v1_and_archive() 
     drop(Journal::initialize(&config.journal_directory, pool).unwrap());
     let initial = std::fs::read(config.journal_directory.join("journal.json")).unwrap();
     let status = invoke(&config, "status").await;
-    assert!(status.status.success());
+    assert!(
+        !status.status.success(),
+        "normal commands require current-state config v2; legacy input must not fall back"
+    );
     assert_eq!(
         std::fs::read(config.journal_directory.join("journal.json")).unwrap(),
         initial

@@ -261,6 +261,69 @@ fn readonly_archive_incremental_refresh_reads_only_new_chunks_and_never_adopts_o
 }
 
 #[test]
+fn readonly_archive_extension_checks_old_metadata_before_and_after_without_duplicate_sweep() {
+    let (root, mut writer) = fixture(3);
+    let mut reader = ReadOnlyArchive::open(root.path(), POOL).unwrap();
+    let old_paths: Vec<_> = reader.observations.keys().cloned().collect();
+    writer.append_archive_batch(vec![block(4)]).unwrap();
+    METADATA_READS.with(|reads| *reads.borrow_mut() = Some(Vec::new()));
+    assert!(reader.refresh().unwrap());
+    let reads = METADATA_READS.with(|reads| reads.borrow_mut().take().unwrap());
+    for path in old_paths {
+        assert_eq!(
+            reads.iter().filter(|observed| **observed == path).count(),
+            2,
+            "each old file requires both boundary checks, without a third sweep"
+        );
+    }
+    assert_eq!(reader.archive_len(), 4);
+    assert_eq!(
+        collect(&reader, 1, 4),
+        (1..=4).map(block).collect::<Vec<_>>()
+    );
+}
+
+#[test]
+fn readonly_archive_extension_rejects_old_prefix_changes_during_new_chunk_read() {
+    for replace in [false, true] {
+        let (root, mut writer) = fixture(3);
+        let mut reader = ReadOnlyArchive::open(root.path(), POOL).unwrap();
+        let old_head = reader.archive.head.clone();
+        let old_observations = reader.observations.clone();
+        let old_path = chunk_path(
+            &root.path().join(ARCHIVE_DIR),
+            old_head.tail.as_ref().unwrap(),
+        );
+        writer.append_archive_batch(vec![block(4)]).unwrap();
+        let (_, next_head) = head(root.path());
+        // refresh_head's initial full-prefix verification runs before this
+        // deterministic hook at the first new immutable chunk open.
+        BEFORE_REGULAR_OPEN.with(|hook| {
+            *hook.borrow_mut() = Some(Box::new(move || {
+                let mut bytes = fs::read(&old_path).unwrap();
+                if replace {
+                    let next = old_path.with_extension("same-bytes.next");
+                    fs::write(&next, bytes).unwrap();
+                    fs::rename(next, old_path).unwrap();
+                } else {
+                    bytes.push(b' ');
+                    fs::write(old_path, bytes).unwrap();
+                }
+            }));
+        });
+        assert!(matches!(
+            reader.refresh_head(next_head),
+            Err(Error::Conflict("verified archive file changed"))
+        ));
+        assert!(BEFORE_REGULAR_OPEN.with(|hook| hook.borrow().is_none()));
+        assert_eq!(reader.archive.head, old_head);
+        assert_eq!(reader.observations, old_observations);
+        assert_eq!(reader.archive_len(), 3);
+        assert_eq!(reader.archive_tail(), Some(ArchiveTail::from(&block(3))));
+    }
+}
+
+#[test]
 fn readonly_archive_rejects_rollback_rewritten_prefix_and_changed_legacy_identity() {
     let (root, mut writer) = fixture(3);
     let (initial_state, initial_head) = head(root.path());

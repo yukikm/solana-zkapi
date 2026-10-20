@@ -43,8 +43,15 @@ Code and Codex. Their current request formats have limitations for normal use.
 2. [Set up the operator services](proxy-operator.md) with the adapter and tariff
    for your integration; the supplied [provider setup](api-provider.md) covers inference.
 3. For the supplied public gateway, use the [gateway configuration](gateway.md).
-4. Set up [monitoring and recovery](operations.md), [backup and restart](backup-and-restart.md),
-   and [archive storage](archive-storage.md).
+4. For source-built current binaries, use [fresh PoC setup](poc-state-sync.md).
+   Config v2 removes history acquisition and requires a new Pool/journal setup.
+   Verify measured all-process RPC cost against the provider allowance.
+5. Set up [monitoring and recovery](operations.md) and [backup and restart](backup-and-restart.md).
+   [Archive storage](archive-storage.md) and the older [RPC budget calculator](rpc-budget.md)
+   describe retained legacy utilities.
+
+[Pool-specific history projection](pool-history-projection.md) is an optional
+offline utility for retained archives, not a prerequisite for the new PoC.
 
 Existing operators adding signed authorization retirement must follow the
 [server recovery upgrade procedure](authorization-recovery-upgrade.md).

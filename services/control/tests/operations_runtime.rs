@@ -395,8 +395,13 @@ async fn dashboard_acl_redaction_and_restore_witness() {
             }
             if expected == 200 && path.ends_with("summary") {
                 assert_eq!(value["root_lag_slots"], "7");
-                for amount in value.as_object().unwrap().values() {
-                    assert!(wire::uint(amount.as_str().expect("dashboard integer string")).is_ok());
+                assert!(value["current_state_age_seconds"].is_null());
+                for (field, amount) in value.as_object().unwrap() {
+                    if field != "current_state_age_seconds" {
+                        assert!(
+                            wire::uint(amount.as_str().expect("dashboard integer string")).is_ok()
+                        );
+                    }
                 }
             }
             if let Some(events) = value["events"].as_array() {
@@ -453,6 +458,23 @@ async fn dashboard_acl_redaction_and_restore_witness() {
             .status(),
         503
     );
+    let mut current = health.clone();
+    current["sample"]["measurements"] = json!({"current_state_age_seconds":"9"});
+    private(&health_path, &serde_json::to_vec(&current).unwrap());
+    let current = app
+        .clone()
+        .oneshot(request("/admin/v1/dashboard/summary"))
+        .await
+        .unwrap();
+    assert_eq!(current.status(), 200);
+    let current: serde_json::Value = serde_json::from_slice(
+        &axum::body::to_bytes(current.into_body(), 65536)
+            .await
+            .unwrap(),
+    )
+    .unwrap();
+    assert!(current["root_lag_slots"].is_null());
+    assert_eq!(current["current_state_age_seconds"], "9");
     private(&health_path, &serde_json::to_vec(&health).unwrap());
     for i in 0..51 {
         sql.execute("INSERT INTO outbox(pool,dedup_key,event_type,metadata) VALUES($1::bytea,$2,'REVIEW_EVENT',$3)", &[&&identity.pool[..], &format!("review-event-{i}"), &json!({"secret":"PRIVATE_EVENT_CANARY"})]).await.unwrap();

@@ -21,6 +21,9 @@ use zkapi_indexer::{
     runtime::{ArchiveRpc, Config as IndexConfig},
     Position,
 };
+#[path = "runtime_current.rs"]
+mod current;
+pub use current::{read_current_config, run_current, CurrentConfig, CurrentSource};
 
 #[derive(Clone, Deserialize, Serialize)]
 #[serde(deny_unknown_fields)]
@@ -184,6 +187,7 @@ impl Config {
             listen: String::new(),
             public_origin: String::new(),
             snapshots_directory: self.journal_directory.clone(),
+            poll_seconds: 2,
         }
     }
 }
@@ -261,6 +265,7 @@ async fn bridge_supervised(
 }
 
 pub struct Runtime {
+    current: Option<current::CurrentRuntime>,
     config: Config,
     pub journal: Journal,
     scanner: Scanner,
@@ -269,6 +274,7 @@ pub struct Runtime {
     shutdown: Option<Shutdown>,
     checkpoint_binding: Hash,
     checkpoint_saved: Option<Instant>,
+    reconciled_scan: bool,
 }
 impl Runtime {
     pub fn open(config: Config, initialize: bool) -> Result<Self> {
@@ -334,6 +340,7 @@ impl Runtime {
         }
         let rpc = ArchiveRpc::new(config.rpc_url.clone()).map_err(|_| bad("RPC config"))?;
         let mut runtime = Self {
+            current: None,
             config,
             journal,
             scanner,
@@ -342,6 +349,7 @@ impl Runtime {
             shutdown,
             checkpoint_binding,
             checkpoint_saved: None,
+            reconciled_scan: false,
         };
         // A valid durable prefix is useful even when the next RPC is unavailable.
         // It remains a candidate: restoring it never restores readiness.
@@ -349,6 +357,9 @@ impl Runtime {
         Ok(runtime)
     }
     fn save_replay_checkpoint(&mut self) {
+        if self.current.is_some() {
+            return;
+        }
         if self
             .checkpoint_saved
             .is_some_and(|at| at.elapsed() < Duration::from_secs(60))
@@ -384,23 +395,46 @@ impl Runtime {
             .await?
             .map_err(|_| bad("RPC unavailable"))
     }
-    async fn bridge(&self, input: Value) -> Result<Value> {
+    async fn bridge(&self, mut input: Value) -> Result<Value> {
+        if self.current.is_some() {
+            match input["command"].as_str() {
+                Some("prepare" | "prepare-close" | "refresh") => {
+                    self.verify_send_identity().await?
+                }
+                Some("recover") => {
+                    input["resend"] = json!(
+                        input["resend"] != false && self.verify_send_identity().await.is_ok()
+                    );
+                }
+                _ => (),
+            }
+        }
         bridge_supervised(&self.config, input, self.shutdown.as_ref()).await
     }
     /// Every restart restores authenticated history and then authenticates the current
     /// genesis, block anchor, PoolConfig, Note, Pending and tree account cut.
     pub async fn scan(&mut self) -> Result<FinalizedView> {
+        if self.current.is_some() {
+            return self.current_scan(false).await;
+        }
+        self.checkpoint_stop()?;
+        self.journal.ensure_archive_fetch_ready()?;
         if self.rpc_call("getGenesisHash", json!([])).await?.as_str()
             != Some(&self.trust.pool.genesis_hash)
         {
             return Err(bad("RPC genesis mismatch"));
         }
-        let tip = self
-            .rpc_call("getSlot", json!([{"commitment":"finalized"}]))
-            .await?
-            .as_u64()
-            .ok_or(bad("RPC slot"))?;
-        self.catch_up_to(tip).await?;
+        // The first scan needs an up-to-date inventory. After reconciliation,
+        // the finalized account response itself chooses the next target: a
+        // separate getSlot/catch-up would only chase the bank twice per scan.
+        if !self.reconciled_scan {
+            let tip = self
+                .rpc_call("getSlot", json!([{"commitment":"finalized"}]))
+                .await?
+                .as_u64()
+                .ok_or(bad("RPC slot"))?;
+            self.catch_up_to(tip).await?;
+        }
         let cfg = self.config.index(&self.trust);
         let cut = interruptible(
             self.shutdown.as_ref(),
@@ -422,7 +456,9 @@ impl Runtime {
         let pool = cut
             .account(&self.trust.pool())
             .map_err(|_| bad("RPC captured PoolConfig"))?;
-        self.scanner.reconcile(&accounts, &pool)
+        let view = self.scanner.reconcile(&accounts, &pool)?;
+        self.reconciled_scan = true;
+        Ok(view)
     }
     async fn catch_up_to(&mut self, tip: u64) -> Result<()> {
         self.catch_up_with_tail_wait(tip, Duration::from_secs(10))
@@ -456,6 +492,7 @@ impl Runtime {
         }
     }
     async fn catch_up_once(&mut self, tip: u64) -> Result<bool> {
+        self.journal.ensure_archive_fetch_ready()?;
         let batch = self.config.archive_batch.unwrap_or_default();
         let tail = self.journal.archive_tail();
         let mut next = tail.map_or(self.config.start_slot, |b| b.slot.saturating_add(1));
@@ -463,6 +500,7 @@ impl Runtime {
             return Err(bad("RPC rollback"));
         }
         while next <= tip {
+            self.journal.ensure_archive_fetch_ready()?;
             let end = next.saturating_add(999).min(tip);
             let slots = self
                 .rpc_call("getBlocks", json!([next,end,{"commitment":"finalized"}]))
@@ -478,6 +516,7 @@ impl Runtime {
                     .ok_or(bad("RPC block range"))?
                     .chunks(concurrency)
                 {
+                    self.journal.ensure_archive_fetch_ready()?;
                     let mut ordered = Vec::with_capacity(window.len());
                     for slot in window {
                         let slot = slot.as_u64().ok_or(bad("RPC slot"))?;
@@ -562,7 +601,7 @@ impl Runtime {
         let minimum_pending_deadline = self
             .journal
             .jobs()
-            .filter(|(_, j)| !j.complete)
+            .filter(|(_, j)| !j.complete && !j.pending_absent)
             .map(|(_, j)| j.identity.deadline)
             .min();
         let health = json!({"schema":1,"pool":self.trust.pool.pool,"observed_at":observed_at,"ready":ready,"oldest_detection_to_send_seconds":summary.oldest_detection_to_send_seconds,"minimum_pending_deadline":minimum_pending_deadline,"proof_failure_total":summary.proof_failure_total,"root_conflict_reproves_total":summary.root_conflict_reproves_total,"metrics":summary});
@@ -592,7 +631,10 @@ impl Runtime {
         Ok(())
     }
     pub fn checkpoint(&self, view: &FinalizedView) -> Checkpoint {
-        Checkpoint {
+        if let Some(s) = &view.current {
+            return Checkpoint::Accounts(s.cut().clone());
+        }
+        Checkpoint::History {
             position: Position {
                 slot: view.slot(),
                 transaction_index: u32::MAX,
@@ -612,35 +654,44 @@ impl Runtime {
         let mut candidates = Vec::new();
         for (id, nullifier) in view.pending() {
             self.checkpoint_stop()?;
+            let identity = view.identity(id)?;
+            if let Some((_, known)) = self
+                .journal
+                .jobs()
+                .find(|(_, job)| job.identity.nullifier == nullifier)
+            {
+                if known.identity != identity {
+                    return Err(bad("immutable Pending changed"));
+                }
+                candidates.push((identity, known.evidence.clone()));
+                continue;
+            }
             if let Some(evidence) =
                 interruptible(self.shutdown.as_ref(), repository.auth(nullifier)).await??
             {
-                let pending = &view.state.pending[&id];
-                let generation = view
-                    .generations
-                    .get(&id)
-                    .ok_or(bad("Pending generation"))?
-                    .clone();
-                candidates.push((
-                    crate::journal::JobIdentity {
-                        pool: self.trust.pool(),
-                        note_id: id,
-                        nullifier,
-                        deadline: pending.deadline,
-                        generation,
-                    },
-                    evidence,
-                ));
+                candidates.push((identity, evidence));
             }
         }
-        self.journal
-            .enqueue_cut(self.checkpoint(view), candidates, now())
+        if let Some(s) = &view.current {
+            self.journal.enqueue_current(
+                s.cut().clone(),
+                candidates,
+                now(),
+                view.pending().map(|(_, n)| n).collect(),
+            )
+        } else {
+            self.journal
+                .enqueue_cut(self.checkpoint(view), candidates, now())
+        }
     }
     fn plan(&self, job: &crate::journal::Job, payload: &Payload) -> Result<Value> {
-        let block_time = self
-            .journal
-            .archive_block_time(payload.checkpoint.position.slot)?
-            .ok_or(bad("payload clock absent"))?;
+        let block_time = match &payload.checkpoint {
+            Checkpoint::Accounts(c) => c.block_time,
+            Checkpoint::History { .. } => self
+                .journal
+                .archive_block_time(payload.checkpoint.slot())?
+                .ok_or(bad("payload clock absent"))?,
+        };
         let nonce = sha(&[job.identity.id().as_bytes(), &payload.digest].concat());
         let fee = self.config.priority_fee.as_ref().map_or(0, |policy| {
             policy.price(job.discovered_at, block_time, job.identity.deadline)
@@ -663,7 +714,7 @@ impl Runtime {
             }
         }
         Ok(
-            json!({"programId":self.trust.pool.program_id,"pool":self.trust.pool.pool,"mint":self.trust.pool.mint,"payer":self.config.payer,"noteId":job.identity.note_id,"payloadHex":hex::encode(&payload.bytes),"nonceHex":hex::encode(nonce),"expires":block_time.saturating_add(3600).min(job.identity.deadline).to_string(),"slot":payload.checkpoint.position.slot,"sequence":payload.checkpoint.tree_sequence.to_string(),"priorityFeeMicroLamports":fee.to_string()}),
+            json!({"programId":self.trust.pool.program_id,"pool":self.trust.pool.pool,"mint":self.trust.pool.mint,"payer":self.config.payer,"noteId":job.identity.note_id,"payloadHex":hex::encode(&payload.bytes),"nonceHex":hex::encode(nonce),"expires":block_time.saturating_add(3600).min(job.identity.deadline).to_string(),"slot":payload.checkpoint.slot(),"sequence":payload.checkpoint.sequence().to_string(),"priorityFeeMicroLamports":fee.to_string()}),
         )
     }
     pub async fn prove(&mut self, view: &FinalizedView) -> Result<usize> {
@@ -676,7 +727,12 @@ impl Runtime {
         let mut count = 0;
         for (id, job) in jobs {
             self.checkpoint_stop()?;
-            if job.complete || job.attempts.iter().any(|a| a.outcome == Outcome::Unknown) {
+            if job.complete
+                || job.pending_absent
+                || view.now >= job.identity.deadline
+                || !view.matches(&job.identity)
+                || job.attempts.iter().any(|a| a.outcome == Outcome::Unknown)
+            {
                 continue;
             }
             if let Some(current) = job.payloads.last() {
@@ -700,12 +756,8 @@ impl Runtime {
                     continue;
                 }
             }
-            if view.now >= job.identity.deadline
-                || view.generations.get(&job.identity.note_id) != Some(&job.identity.generation)
-            {
-                continue;
-            }
             self.checkpoint_stop()?;
+            view.ensure_fresh()?;
             let pk = self
                 .trust
                 .load_tree_key(&std::fs::read(&self.config.tree_pk)?)?;
@@ -796,7 +848,12 @@ impl Runtime {
             )?;
             return Ok(true);
         }
-        let blockhash=self.rpc_call("getLatestBlockhash",json!([{"commitment":"finalized","minContextSlot":payload.checkpoint.position.slot}])).await?;
+        let blockhash = self
+            .rpc_call(
+                "getLatestBlockhash",
+                json!([{"commitment":"finalized","minContextSlot":payload.checkpoint.slot()}]),
+            )
+            .await?;
         let value=self.bridge(json!({"command":"prepare-close","attempt":transport,"keyFile":self.config.fee_key_file,"blockhash":blockhash["value"]})).await?;
         let attempt = signed_attempt(&value, payload.digest, payload.buffer)?;
         self.journal.save_v0_attempt(id, attempt, value)?;
@@ -831,7 +888,7 @@ impl Runtime {
     /// Only I04's finalized-expired monotonic-upload reconciliation can refresh
     /// upload bytes; it can never authorize a new execute/close signature.
     pub async fn recover(&mut self) -> Result<usize> {
-        self.authenticate_rpc().await?;
+        self.checkpoint_stop()?;
         let unknown: Vec<_> = self
             .journal
             .jobs()
@@ -842,10 +899,18 @@ impl Runtime {
                     .map(move |a| (id.to_owned(), a.clone()))
             })
             .collect();
+        // An empty recovery has no transport or financial work. Do not spend
+        // two extra identity reads per idle run iteration. Every nonempty
+        // recovery still authenticates before it can invoke the send bridge.
+        if unknown.is_empty() {
+            return Ok(0);
+        }
+        self.authenticate_rpc().await?;
         let mut resolved = 0;
         for (id, attempt) in unknown {
             self.checkpoint_stop()?;
-            if attempt.stage == Stage::Execute {
+            let allow_send = self.verify_send_identity().await.is_ok();
+            if attempt.stage == Stage::Execute && allow_send {
                 self.journal.record_execute_send(&id, now())?;
             }
             let transport = self
@@ -854,13 +919,49 @@ impl Runtime {
                 .ok_or(bad("validated v0 record absent"))?;
             let reply = self
                 .bridge(
-                    json!({"command":"recover","rpcUrl":self.config.rpc_url,"attempt":transport}),
+                    json!({"command":"recover","rpcUrl":self.config.rpc_url,"attempt":transport,"resend":allow_send}),
                 )
                 .await?;
             let state = reply["result"]["state"]
                 .as_str()
                 .ok_or(bad("transport recovery result"))?;
             if state == "expired_reconcile_required" && attempt.stage == Stage::Upload {
+                if !allow_send {
+                    continue;
+                }
+                // Receipt inspection remains available without the state owner.
+                // A replacement signature requires a fresh, still-live Pending,
+                // even for a standalone recovery command after downtime.
+                if self.current.is_some() {
+                    let job = self
+                        .journal
+                        .jobs()
+                        .find_map(|(key, job)| (key == id).then_some(job))
+                        .ok_or(bad("recovery job absent"))?;
+                    if job.pending_absent {
+                        continue;
+                    }
+                    let view = match self.current_scan(true).await {
+                        Ok(view) => view,
+                        Err(error @ (Error::Interrupted | Error::BridgeCleanup)) => {
+                            return Err(error)
+                        }
+                        Err(_) => continue,
+                    };
+                    if !view.matches(&job.identity) || view.now >= job.identity.deadline {
+                        continue;
+                    }
+                    match self.verify_send_identity().await {
+                        Ok(()) => (),
+                        Err(error @ (Error::Interrupted | Error::BridgeCleanup)) => {
+                            return Err(error)
+                        }
+                        Err(_) => continue,
+                    }
+                    if view.ensure_fresh().is_err() {
+                        continue;
+                    }
+                }
                 // Missing buffers, unavailable signing keys and inconclusive
                 // RPC leave this attempt Unknown. They never permit recreate.
                 let reconciled = match self.bridge( json!({"command":"refresh","rpcUrl":self.config.rpc_url,"attempt":transport,"keyFile":self.config.fee_key_file})).await { Ok(value) => value, Err(error @ (Error::Interrupted | Error::BridgeCleanup)) => return Err(error), Err(_) => continue };
@@ -945,6 +1046,7 @@ impl Runtime {
         for (id, job) in jobs {
             self.checkpoint_stop()?;
             if job.complete
+                || job.pending_absent
                 || view.now >= job.identity.deadline
                 || job.attempts.iter().any(|a| a.outcome == Outcome::Unknown)
             {
@@ -964,9 +1066,10 @@ impl Runtime {
             {
                 continue;
             }
-            if view.generations.get(&job.identity.note_id) != Some(&job.identity.generation) {
+            if !view.matches(&job.identity) {
                 continue;
             }
+            view.ensure_fresh()?;
             let plan = self.plan(&job, payload)?;
             let blockhash = self
                 .rpc_call(
@@ -1001,6 +1104,10 @@ impl Runtime {
                     _ => {}
                 }
             }
+            // Blockhash/identity reads may have consumed the observation's
+            // freshness budget. Check again immediately before signing.
+            self.verify_send_identity().await?;
+            view.ensure_fresh()?;
             let mut value = self.bridge( json!({"command":"prepare","plan":plan,"stepIndex":step_index,"keyFile":self.config.fee_key_file,"blockhash":blockhash["value"]})).await?;
             value["stepIndex"] = json!(step_index);
             let attempt = signed_attempt(&value, payload.digest, payload.buffer)?;
@@ -1034,6 +1141,7 @@ fn signed_attempt(value: &Value, payload_digest: Hash, buffer: Hash) -> Result<A
 #[derive(Serialize)]
 pub struct Metrics {
     pub pending_jobs: usize,
+    pub absent_jobs: usize,
     pub unknown_signatures: usize,
     pub complete_jobs: usize,
     pub regenerated_proofs: usize,
@@ -1050,9 +1158,20 @@ pub struct Metrics {
     pub root_conflict_reproves_total: usize,
 }
 pub fn metrics(journal: &Journal, at: u64) -> Metrics {
-    let tail = journal.archive_tail();
+    let tail = journal
+        .checkpoint()
+        .and_then(|c| match c {
+            Checkpoint::Accounts(a) => Some(crate::journal::ArchiveTail {
+                slot: a.slot,
+                blockhash: a.blockhash,
+                block_time: a.block_time,
+            }),
+            _ => None,
+        })
+        .or_else(|| journal.archive_tail());
     let mut m = Metrics {
         pending_jobs: 0,
+        absent_jobs: 0,
         unknown_signatures: 0,
         complete_jobs: 0,
         regenerated_proofs: 0,
@@ -1063,20 +1182,26 @@ pub fn metrics(journal: &Journal, at: u64) -> Metrics {
         finalized_slot: tail.map(|b| b.slot),
         finalized_lag_seconds: tail.map(|b| at.saturating_sub(b.block_time)),
         undelivered_alerts: journal.alerts().filter(|a| !a.delivered).count(),
-        oldest_detection_to_send_seconds: journal.jobs().filter(|(_,j)|!j.complete).map(|(_,j)|j.first_execute_send_at.unwrap_or(at).saturating_sub(j.discovered_at)).max().unwrap_or(0),
+        oldest_detection_to_send_seconds: journal.jobs().filter(|(_,j)|!j.complete && !j.pending_absent).map(|(_,j)|j.first_execute_send_at.unwrap_or(at).saturating_sub(j.discovered_at)).max().unwrap_or(0),
         proof_failure_total: journal.proof_failure_total(),
         root_conflict_reproves_total: journal.jobs().map(|(_,j)|j.payloads.windows(2).filter(|pair|j.attempts.iter().any(|a|a.payload_digest==pair[0].digest && matches!(&a.outcome,Outcome::FinalizedFailure{error,..} if error=="stale_proof"))).count()).sum(),
         minimum_deadline_remaining_seconds: journal
             .jobs()
-            .filter(|(_, j)| !j.complete)
+            .filter(|(_, j)| !j.complete && !j.pending_absent)
             .map(|(_, j)| j.identity.deadline.saturating_sub(at))
             .min(),
     };
     for (_, job) in journal.jobs() {
         if job.complete {
             m.complete_jobs += 1;
+        } else if job.pending_absent {
+            m.absent_jobs += 1;
         } else {
             m.pending_jobs += 1;
+        }
+        if !job.complete
+            && (!job.pending_absent || job.attempts.iter().any(|a| a.outcome == Outcome::Unknown))
+        {
             m.oldest_unresolved_seconds = m
                 .oldest_unresolved_seconds
                 .max(at.saturating_sub(job.discovered_at));
@@ -1165,12 +1290,28 @@ async fn run_command(runtime: &mut Runtime, command: &str) -> Result<()> {
             if command != "scan" {
                 runtime.recover().await?;
             }
-            let view = runtime.scan().await?;
+            let mut view = runtime.scan().await?;
             runtime.discover(&view, &mut repository).await?;
             if command != "scan" {
+                if runtime.current.is_some()
+                    && runtime
+                        .journal
+                        .jobs()
+                        .any(|(_, j)| !j.complete && !j.pending_absent)
+                {
+                    view = runtime.current_scan(true).await?;
+                }
                 runtime.prove(&view).await?;
             }
             if command == "run" || command == "once" {
+                if runtime.current.is_some()
+                    && runtime
+                        .journal
+                        .jobs()
+                        .any(|(_, j)| !j.complete && !j.pending_absent)
+                {
+                    view = runtime.current_scan(true).await?;
+                }
                 runtime.prepare_next(&view).await?;
                 runtime.recover().await?;
             }

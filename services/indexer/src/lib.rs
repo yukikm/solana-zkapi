@@ -1,6 +1,8 @@
 //! Finalized Vault history replay. RPC data is a trust boundary: callers must
 //! fetch finalized blocks from their configured archive and independently verify
 //! the account checkpoint. This crate never treats a snapshot hash as a chain anchor.
+pub mod current_state;
+pub mod projection;
 pub mod replay;
 pub mod rpc;
 pub mod runtime;

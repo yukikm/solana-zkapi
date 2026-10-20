@@ -134,15 +134,36 @@ impl SnapshotPending {
         })
     }
 }
-impl Indexer {
-    pub fn program(&self) -> Bytes32 {
-        self.program
-    }
-    pub fn pool(&self) -> Bytes32 {
-        self.pool
-    }
+/// Immutable HTTP payload state for one reconciled cut. It deliberately owns
+/// no accepted-block digests, exit set, payload buffers or replay/checkpoint
+/// machinery. Runtime availability and freshness gates still control publication.
+#[derive(Clone, Debug)]
+pub struct ReadView {
+    pool: Bytes32,
+    tree: Tree,
+    active: BTreeMap<u32, Note>,
+    pending: BTreeMap<u32, Pending>,
+    sequence: u64,
+    next_note_id: u64,
+    checkpoint: Option<(u64, Bytes32)>,
+    ready: bool,
+}
+
+// Share the exact public encoders between an Indexer and its immutable view.
+// Borrowing these fields does not materialize or copy any retained history.
+struct SnapshotState<'a> {
+    pool: Bytes32,
+    tree: &'a Tree,
+    active: &'a BTreeMap<u32, Note>,
+    pending: &'a BTreeMap<u32, Pending>,
+    sequence: u64,
+    next_note_id: u64,
+    checkpoint: Option<(u64, Bytes32)>,
+    ready: bool,
+}
+impl SnapshotState<'_> {
     pub fn root(&self) -> Result<RootView> {
-        if !self.is_ready() {
+        if !self.ready {
             return Err(Error::Unavailable);
         }
         let (slot, blockhash) = self.checkpoint.ok_or(Error::Unavailable)?;
@@ -194,6 +215,108 @@ impl Indexer {
     }
     pub fn snapshot_bytes(&self) -> Result<Vec<u8>> {
         serde_jcs::to_vec(&self.snapshot()?).map_err(|_| Error::Snapshot)
+    }
+}
+
+impl ReadView {
+    /// Only the current-account verifier can supply this type. No replay flags
+    /// or historical execution positions are manufactured for account evidence.
+    pub fn from_current(state: &crate::current_state::VerifiedPoolState) -> Self {
+        let chain = state.chain();
+        Self {
+            pool: state.pool(),
+            tree: state.tree().clone(),
+            active: chain.active.clone(),
+            pending: chain.pending.clone(),
+            sequence: chain.sequence,
+            next_note_id: chain.next_note_id,
+            checkpoint: Some((chain.slot, chain.blockhash)),
+            ready: true,
+        }
+    }
+    fn snapshot_state(&self) -> SnapshotState<'_> {
+        SnapshotState {
+            pool: self.pool,
+            tree: &self.tree,
+            active: &self.active,
+            pending: &self.pending,
+            sequence: self.sequence,
+            next_note_id: self.next_note_id,
+            checkpoint: self.checkpoint,
+            ready: self.ready,
+        }
+    }
+    pub fn is_ready(&self) -> bool {
+        self.ready
+    }
+    pub fn root(&self) -> Result<RootView> {
+        self.snapshot_state().root()
+    }
+    pub fn path(&self, id: u32) -> Result<PathView> {
+        self.snapshot_state().path(id)
+    }
+    pub fn zero_path(&self, id: u32) -> Result<PathView> {
+        self.snapshot_state().zero_path(id)
+    }
+    pub fn snapshot(&self) -> Result<TreeSnapshotFile> {
+        self.snapshot_state().snapshot()
+    }
+    pub fn snapshot_bytes(&self) -> Result<Vec<u8>> {
+        self.snapshot_state().snapshot_bytes()
+    }
+}
+
+impl Indexer {
+    pub fn program(&self) -> Bytes32 {
+        self.program
+    }
+    pub fn pool(&self) -> Bytes32 {
+        self.pool
+    }
+    /// Copy only data required by root/path/public-snapshot responses. Private
+    /// replay history and restart checkpoint ownership stay with this Indexer.
+    /// An unavailable index yields an unavailable view; this never reconciles.
+    pub fn read_view(&self) -> ReadView {
+        ReadView {
+            pool: self.pool,
+            tree: self.tree.clone(),
+            active: self.active.clone(),
+            pending: self.pending.clone(),
+            sequence: self.sequence,
+            next_note_id: self.next_note_id,
+            checkpoint: self.checkpoint,
+            ready: self.is_ready(),
+        }
+    }
+    fn snapshot_state(&self) -> SnapshotState<'_> {
+        SnapshotState {
+            pool: self.pool,
+            tree: &self.tree,
+            active: &self.active,
+            pending: &self.pending,
+            sequence: self.sequence,
+            next_note_id: self.next_note_id,
+            checkpoint: self.checkpoint,
+            ready: self.is_ready(),
+        }
+    }
+    pub fn root(&self) -> Result<RootView> {
+        self.snapshot_state().root()
+    }
+    /// Active note membership only; pending/deposit zero witnesses use zero_path.
+    pub fn path(&self, id: u32) -> Result<PathView> {
+        self.snapshot_state().path(id)
+    }
+    /// An authenticated Pending zero leaf or the one current deposit ID.
+    /// Closed historical IDs and TreeFull's 2^32 sentinel cannot become deposits.
+    pub fn zero_path(&self, id: u32) -> Result<PathView> {
+        self.snapshot_state().zero_path(id)
+    }
+    pub fn snapshot(&self) -> Result<TreeSnapshotFile> {
+        self.snapshot_state().snapshot()
+    }
+    pub fn snapshot_bytes(&self) -> Result<Vec<u8>> {
+        self.snapshot_state().snapshot_bytes()
     }
     /// Requires a separately trusted, reconciled replay at the snapshot's exact
     /// end-of-slot cut. Pending data, slot/blockhash and counters are all compared.
@@ -307,6 +430,33 @@ mod tests {
         assert!(restored.path(u32::MAX).is_ok());
         assert!(restored.zero_path(u32::MAX).is_err());
         assert!(restored.zero_path(5).is_ok());
+    }
+    #[test]
+    fn public_read_view_preserves_exact_wire_and_captured_cut() {
+        let mut index = full_tree_cut();
+        let view = index.read_view();
+        let bytes = index.snapshot_bytes().unwrap();
+        assert_eq!(view.root(), index.root());
+        assert_eq!(view.snapshot(), index.snapshot());
+        assert_eq!(view.snapshot_bytes().unwrap(), bytes);
+        for id in [0, 5, u32::MAX] {
+            assert_eq!(view.path(id), index.path(id));
+            assert_eq!(view.zero_path(id), index.zero_path(id));
+        }
+        // The published cut remains immutable while the worker advances or
+        // withdraws readiness. Runtime gates decide whether it may be served.
+        index.ready = false;
+        index.active.clear();
+        index.pending.clear();
+        index.tree = Tree::new();
+        index.checkpoint = Some((124, [10; 32]));
+        assert_eq!(view.snapshot_bytes().unwrap(), bytes);
+        assert!(index.read_view().root().is_err());
+        assert!(index.read_view().snapshot_bytes().is_err());
+        index.ready = true;
+        index.halted = true;
+        assert!(!index.read_view().is_ready());
+        assert!(index.read_view().root().is_err());
     }
     #[test]
     fn snapshots_reject_duplicates_overlap_unsorted_ids_and_noncanonical_wire() {

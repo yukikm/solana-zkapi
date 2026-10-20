@@ -170,6 +170,7 @@ fn local_config(dir: &Path, primary: String, secondary: String, indexer: String)
     RuntimeConfig {
         devnet: None,
         local_test_only: true,
+        background_recovery_seconds: 2,
         listen: "127.0.0.1:0".parse().unwrap(),
         manifest,
         trusted_manifest_hash: hash,
@@ -192,6 +193,7 @@ struct Fixture {
     _signer: ChildGuard,
     monitoring: zkapi_control::monitoring::Config,
     monitoring_fault: Arc<AtomicUsize>,
+    rpc_calls: Arc<AtomicUsize>,
     _directory: tempfile::TempDir,
     tasks: Vec<tokio::task::JoinHandle<()>>,
 }
@@ -237,10 +239,12 @@ async fn fixture_app_for_mode(
     let mut tasks = vec![];
     let mut rpc = vec![];
     let monitoring_fault = Arc::new(AtomicUsize::new(0));
+    let rpc_calls = Arc::new(AtomicUsize::new(0));
     for _ in 0..2 {
         let c = chain.clone();
         let fault = monitoring_fault.clone();
-        let (origin,task)=serve(Router::new().route("/",post(move|Json(r):Json<Value>|{let c=c.clone();let fault=fault.load(Ordering::SeqCst);async move {
+        let calls = rpc_calls.clone();
+        let (origin,task)=serve(Router::new().route("/",post(move|Json(r):Json<Value>|{let c=c.clone();let fault=fault.load(Ordering::SeqCst);calls.fetch_add(1,Ordering::SeqCst);async move {
             let result=match r["method"].as_str().unwrap() {
                 "getGenesisHash" => json!(bs58::encode([if fault==1 {9}else{0};32]).into_string()),
                 "getSlot" => json!(if fault==4 {200}else{100}),
@@ -262,13 +266,46 @@ async fn fixture_app_for_mode(
         tasks.push(task);
     }
     let c = chain.clone();
-    let (indexer, task) = serve(Router::new().route(
-        "/zkapi/v1/tree/root",
-        get(move || {
-            let c = c.clone();
-            async move { Json(c["root"].clone()) }
-        }),
-    ))
+    let health_chain = chain.clone();
+    let health_fault = monitoring_fault.clone();
+    let (indexer, task) = serve(
+        Router::new()
+            .route(
+                "/zkapi/v1/tree/root",
+                get(move || {
+                    let c = c.clone();
+                    async move { Json(c["root"].clone()) }
+                }),
+            )
+            .route(
+                "/health",
+                get(move || {
+                    let c = health_chain.clone();
+                    let fault = health_fault.load(Ordering::SeqCst);
+                    async move {
+                        let now = zkapi_control::monitoring::now().unwrap();
+                        let mut health = json!({
+                            "ready":true,"policy":"account_state_poc_v1","pool":c["pool"],
+                            "genesis":bs58::encode([0;32]).into_string(),
+                            "observed_at":now,"age_ms":100
+                        });
+                        match fault {
+                            5 => health["ready"] = false.into(),
+                            6 => health["policy"] = "historical_replay".into(),
+                            7 => health["pool"] = bs58::encode([9; 32]).into_string().into(),
+                            8 => health["genesis"] = bs58::encode([9; 32]).into_string().into(),
+                            9 => health["observed_at"] = (now + 60).into(),
+                            10 => health["observed_at"] = (now - 31).into(),
+                            11 => health["age_ms"] = 30_001.into(),
+                            12 => health["age_ms"] = Value::Null,
+                            13 => health["observed_at"] = Value::Null,
+                            _ => {}
+                        }
+                        Json(health)
+                    }
+                }),
+            ),
+    )
     .await;
     tasks.push(task);
     let mut config = local_config(dir, rpc[0].clone(), rpc[1].clone(), indexer);
@@ -507,6 +544,7 @@ async fn fixture_app_for_mode(
         )?,
     );
     let monitoring = zkapi_control::monitoring::Config {
+        independent_chain_probes: true,
         local_test_only: true,
         database_url: url.clone(),
         trusted: zkapi_control::chain::TrustedPool::from_manifest(&config.manifest)?,
@@ -532,9 +570,70 @@ async fn fixture_app_for_mode(
         _signer: signer,
         monitoring,
         monitoring_fault,
+        rpc_calls,
         _directory: directory,
         tasks,
     })
+}
+#[tokio::test]
+#[ignore = "requires disposable PostgreSQL and local SBF chain export"]
+async fn current_state_idle_recovery_and_monitoring_make_zero_rpc_calls() -> Result<()> {
+    let (origin, provider) = serve(Router::new()).await;
+    let f = fixture_app(&origin, false).await?;
+    let baseline = f.rpc_calls.load(Ordering::SeqCst);
+    for _ in 0..20 {
+        assert!(f.app.recover().await.is_ok());
+    }
+    assert_eq!(f.rpc_calls.load(Ordering::SeqCst), baseline);
+    let mut config = f.monitoring.clone();
+    config.independent_chain_probes = false;
+    let report = zkapi_control::monitoring::collect(&config, None).await?;
+    assert_eq!(report.sources["chain"], "ready");
+    assert_eq!(report.sample.measurements["current_state_age_seconds"], "0");
+    assert!(!report
+        .sample
+        .measurements
+        .contains_key("fee_payer_lamports"));
+    assert!(!report.sample.measurements.contains_key("root_slot_lag"));
+    assert_eq!(f.rpc_calls.load(Ordering::SeqCst), baseline);
+    assert!(report.alerts.iter().all(|alert| {
+        !matches!(
+            alert.metric.as_str(),
+            "current_state_age_seconds" | "root_slot_lag" | "fee_payer_lamports"
+        )
+    }));
+    // The local owner is still a trust/freshness boundary. Invalid health must
+    // page as missing, never as zero lag, and must not trigger a hidden RPC probe.
+    for fault in 5..=13 {
+        f.monitoring_fault.store(fault, Ordering::SeqCst);
+        let unavailable = zkapi_control::monitoring::collect(&config, Some(&report)).await?;
+        assert_eq!(unavailable.sources["chain"], "unavailable", "fault {fault}");
+        assert!(!unavailable
+            .sample
+            .measurements
+            .contains_key("current_state_age_seconds"));
+        assert!(!unavailable
+            .sample
+            .measurements
+            .contains_key("escrow_invariant_violation"));
+        assert!(unavailable.alerts.iter().any(|alert| {
+            alert.metric == "current_state_age_seconds"
+                && alert.severity == "page"
+                && alert.reason == "missing_measurement"
+        }));
+        assert_eq!(f.rpc_calls.load(Ordering::SeqCst), baseline);
+    }
+    f.monitoring_fault.store(0, Ordering::SeqCst);
+    // A real request still performs fresh dual-backend observations.
+    let request_inputs = &fixture()["auth"]["request"]["public_inputs"];
+    let nullifier: zkapi_solana_types::FieldElement =
+        request_inputs[8].as_str().unwrap().parse()?;
+    f.app.chain.observe(nullifier).await?;
+    // Finalized Pool + confirmed exit on primary, confirmed exit on secondary.
+    // Endpoint genesis was authenticated once at startup and is not polled here.
+    assert_eq!(f.rpc_calls.load(Ordering::SeqCst) - baseline, 3);
+    provider.abort();
+    Ok(())
 }
 async fn open_proxy(f: &Fixture, client: &reqwest::Client) -> Result<(Uuid, String, String)> {
     let quote:wire::Quote=serde_json::from_value(response(client.post(format!("{}/zkapi/v1/quotes",f.origin)).json(&json!({"mode":"proxy","provider":"openai","models":["provider-test"],"session_ttl_seconds":"300"})),200).await)?;

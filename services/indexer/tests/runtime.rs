@@ -142,6 +142,7 @@ impl Fixture {
             listen: "127.0.0.1:0".into(),
             public_origin: "http://127.0.0.1".into(),
             snapshots_directory: root.join("target/i04/runtime-snapshots"),
+            poll_seconds: 2,
         };
         Self {
             cfg,
@@ -217,6 +218,99 @@ impl Fixture {
         *v = json!(STANDARD.encode(raw));
     }
 }
+#[tokio::test]
+async fn warm_refresh_reads_a_new_account_cut_and_anchor_without_redundant_tip_queries() {
+    let fixture = Fixture::load(true);
+    let serving = Arc::new(Mutex::new(fixture.clone()));
+    let replies = serving.clone();
+    let server = mock(move |q| {
+        let f = replies.lock().unwrap();
+        if q["method"] == "getMultipleAccounts" {
+            f.captured_response(&q)
+        } else {
+            f.response(&q)
+        }
+    })
+    .await;
+    let mut index = Indexer::new(key(&fixture.cfg.program_id), key(&fixture.cfg.pool));
+    let mut next = fixture.cfg.start_slot;
+    server
+        .rpc
+        .refresh(&fixture.cfg, &mut index, &mut next)
+        .await
+        .unwrap();
+    server.calls.lock().unwrap().clear();
+    serving.lock().unwrap().add_empty_block();
+    server
+        .rpc
+        .refresh(&fixture.cfg, &mut index, &mut next)
+        .await
+        .unwrap();
+    assert_eq!(
+        index.replay_state().unwrap(),
+        serving.lock().unwrap().expected
+    );
+    assert!(index.is_ready());
+    {
+        let calls = server.calls.lock().unwrap();
+        assert_eq!(
+            calls
+                .iter()
+                .map(|q| q["method"].as_str().unwrap())
+                .collect::<Vec<_>>(),
+            vec!["getMultipleAccounts", "getBlocks", "getBlock", "getBlock"]
+        );
+        assert_eq!(calls[2]["params"][1]["transactionDetails"], "full");
+        assert_eq!(calls[3]["params"][1]["transactionDetails"], "none");
+    }
+    server.calls.lock().unwrap().clear();
+    // Even at the same slot, altered accounts must be freshly read and rejected.
+    let tree = pda(
+        key(&fixture.cfg.program_id),
+        &[b"tree", &key(&fixture.cfg.pool)],
+    )
+    .0;
+    serving
+        .lock()
+        .unwrap()
+        .mutate_account(tree, |raw| raw[10..42].fill(0));
+    assert!(server
+        .rpc
+        .refresh(&fixture.cfg, &mut index, &mut next)
+        .await
+        .is_err());
+    assert!(!index.is_ready());
+    assert!(server
+        .calls
+        .lock()
+        .unwrap()
+        .iter()
+        .any(|q| q["method"] == "getMultipleAccounts"));
+}
+
+#[tokio::test]
+async fn poll_config_is_backward_compatible_and_rejects_unbounded_delay_before_rpc() {
+    let fixture = Fixture::load(false);
+    let cfg = &fixture.cfg;
+    let encoded = json!({"rpc_url":cfg.rpc_url,"program_id":cfg.program_id,
+        "pool":cfg.pool,"genesis_hash":cfg.genesis_hash,
+        "circuit_profile_hash":cfg.circuit_profile_hash,"start_slot":cfg.start_slot,
+        "listen":cfg.listen,"public_origin":cfg.public_origin,
+        "snapshots_directory":cfg.snapshots_directory});
+    let mut cfg: Config = serde_json::from_value(encoded).unwrap();
+    assert_eq!(cfg.poll_seconds, 2);
+    for seconds in [0, 11, u64::MAX] {
+        cfg.poll_seconds = seconds;
+        assert_eq!(
+            zkapi_indexer::runtime::serve(cfg.clone())
+                .await
+                .unwrap_err()
+                .to_string(),
+            "indexer poll_seconds must be between 1 and 10"
+        );
+    }
+}
+
 #[tokio::test]
 async fn actual_anchor_account_bytes_reconcile_active_and_pending_with_all_offsets() {
     for pending in [false, true] {
@@ -631,7 +725,7 @@ async fn new_note_or_pending_inventory_retries_after_replay_without_publishing_p
             .unwrap();
         assert!(index.is_ready());
         assert_eq!(index.replay_state().unwrap(), expected);
-        assert_eq!(polls.load(Ordering::SeqCst), 2);
+        assert_eq!(polls.load(Ordering::SeqCst), 1);
     }
 }
 

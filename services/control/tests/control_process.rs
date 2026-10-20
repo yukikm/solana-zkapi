@@ -197,6 +197,7 @@ fn local_config(dir: &Path, primary: String, secondary: String, indexer: String)
     RuntimeConfig {
         devnet: None,
         local_test_only: true,
+        background_recovery_seconds: 2,
         listen: "127.0.0.1:0".parse().unwrap(),
         manifest,
         trusted_manifest_hash: hash,

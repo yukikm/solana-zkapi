@@ -45,10 +45,10 @@ fn seed(root: &Path, count: u64, bytes: usize) -> Vec<FinalizedBlock> {
     // Storage-valid synthetic signed-attempt/transport metadata. No claim that
     // these fixture signatures, proofs, or transaction bytes validate on chain.
     journal.update(|state| {
-        let checkpoint = Checkpoint { position: Position { slot: 1, transaction_index: 0,
+        let checkpoint = Checkpoint::History { position: Position { slot: 1, transaction_index: 0,
             signature: "synthetic-cut".into(), outer_instruction: 0, invocation_index: 0 },
             blockhash: block(1, 0).blockhash, tree_sequence: 1 };
-        let identity = JobIdentity { pool: POOL, note_id: 0, nullifier: [74; 32], deadline: 100, generation: checkpoint.clone() };
+        let identity = JobIdentity { pool: POOL, note_id: 0, nullifier: [74; 32], deadline: 100, generation: Some(checkpoint.clone()), current: None };
         let transcript = b"synthetic storage evidence".to_vec();
         let evidence = Evidence { pool: POOL, request_id: uuid::Uuid::nil(), nullifier: identity.nullifier,
             transcript_digest: sha(&transcript), transcript };
@@ -58,8 +58,8 @@ fn seed(root: &Path, count: u64, bytes: usize) -> Vec<FinalizedBlock> {
         state.transport.insert(attempt.signature.clone(), json!({"signature":attempt.signature,"wireHex":"0405",
             "planDigest":hex::encode(payload.digest),"buffer":zkapi_indexer::snapshot::key(payload.buffer),
             "kind":"execute","plan":{"operation":"challenge_escape"}}));
-        state.jobs.insert(identity.id(), Job { identity, evidence, discovered_at: 1,
-            payloads: vec![payload], attempts: vec![attempt], complete: false, first_execute_send_at: Some(2) });
+        state.jobs.insert(identity.id(), Job { identity, evidence, discovered_at: 1, first_observation: None,
+            payloads: vec![payload], attempts: vec![attempt], complete: false, pending_absent: false, first_execute_send_at: Some(2) });
         state.checkpoint = Some(checkpoint);
         state.proof_failure_total = 7;
         Ok(())
@@ -240,6 +240,7 @@ fn segmented_every_append_failure_preserves_memory_poisons_and_never_adopts_orph
         assert!(journal.record_proof_failure().is_err());
         assert!(journal.append_archive_batch(vec![]).is_err());
         assert!(journal.enqueue_alerts(0).is_err());
+        assert!(journal.ensure_archive_fetch_ready().is_err());
         drop(journal);
         let mut reopened = Journal::open(root.path(), POOL).unwrap();
         let activated = ["head_after_rename", "head_after_dirsync"].contains(&point);

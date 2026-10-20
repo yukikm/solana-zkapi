@@ -5,6 +5,14 @@ ZKAPI is a **Devnet preview**. The published SDK is
 native package. This compatibility summary is based on records through **2026-10-12 JST**.
 Run [fresh preflight](getting-started/devnet.md) to check a deployment now.
 
+The public backend switched to [current-state PoC synchronization](getting-started/poc-state-sync.md)
+on 2026-10-21 JST, using config v2, a fresh Pool and new signer/challenger journals.
+Use the [new profile pins](getting-started/devnet.md) with a new client journal.
+The verified Vault program and proving assets are reused. Existing SDK/native
+`.13` release assets remain unchanged; this rollout installs server binaries and
+the matching server-side challenger bridge. Earlier profiles and journals bind
+the retired Pool and are retained separately.
+
 The payment and proof primitives are shared across API use cases. The source
 tree adds registered, fixed-price JSON operations through the same SDK, clientd
 and ledger, with offline registration, API-only schema 2 profiles and native
@@ -23,9 +31,10 @@ See the [local JSON API tutorial](getting-started/json-api.md),
 | Finite HTTP gateway | `.13` includes version 2 bindings, version 3 tariffs/receipts/profiles and `finite_http_v1` through the same payment lifecycle. Fixed HTTP, Responses and Messages meters; bounded raw requests and finite responses. See the [gateway guide](getting-started/finite-http-api.md). Local installed-runtime checks use real proofs/SBF with synthetic provider/finality inputs; public provider, production and full browser coverage are unverified. |
 | Native package | Apple Silicon, macOS 13.5+. No Apple notarization or verified packages for other platforms. |
 | SDK | Tarball distribution; no npm registry release. Browser custody/proof tests are local; funded browser/Phantom acceptance is unverified. |
-| Public profile | Direct OpenRouter Chat Completions. Model names do not enable other API dialects. |
+| Public profile | Fresh `public-devnet-20261021-state-v1` Pool, using direct OpenRouter Chat Completions. Model names do not enable other API dialects. |
+| Current-state synchronization | Fresh Devnet deposit, restart without the cache or old history access, and signed-clearance withdrawal verified. Batched current-account/header reads; no historical enumeration. Live challenge sends and new paid inference were not exercised by this rollout. |
 | Public output limit | Up to 4,096 output tokens per response under the current [application usage policy](getting-started/devnet.md#5-use-and-recover), subject to a lower model limit. This is not a token bound in the authenticated profile or direct backend. |
-| OpenClaw | Selected text and read-tool continuation cases succeeded using a bounded settlement adapter. The current `.8` configuration has not had a new funded lifecycle test. |
+| OpenClaw | Selected text and read-tool continuation cases succeeded using a bounded settlement adapter. No new OpenClaw lifecycle was run for the current Pool. |
 | Claude Desktop | A simple local fixture connection test passed. Real Chat is rejected by query/body validation. |
 | Claude Code | Requests hit query, metadata and beta-header compatibility limits. |
 | Codex | Responses requests hit unsupported fields and custom tool formats. |

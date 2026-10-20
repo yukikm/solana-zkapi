@@ -38,15 +38,50 @@ impl From<&zkapi_indexer::FinalizedBlock> for ArchiveTail {
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(deny_unknown_fields)]
-pub struct Checkpoint {
-    pub position: Position,
-    pub blockhash: Hash,
-    pub tree_sequence: u64,
+pub enum Checkpoint {
+    History {
+        position: Position,
+        blockhash: Hash,
+        tree_sequence: u64,
+    },
+    Accounts(zkapi_indexer::current_state::AccountCutRef),
 }
 impl Checkpoint {
+    pub fn slot(&self) -> u64 {
+        match self {
+            Self::History { position, .. } => position.slot,
+            Self::Accounts(c) => c.slot,
+        }
+    }
+    pub fn blockhash(&self) -> Hash {
+        match self {
+            Self::History { blockhash, .. } => *blockhash,
+            Self::Accounts(c) => c.blockhash,
+        }
+    }
+    pub fn sequence(&self) -> u64 {
+        match self {
+            Self::History { tree_sequence, .. } => *tree_sequence,
+            Self::Accounts(c) => c.sequence,
+        }
+    }
+    pub fn position(&self) -> Option<&Position> {
+        match self {
+            Self::History { position, .. } => Some(position),
+            Self::Accounts(_) => None,
+        }
+    }
     /// Signatures identify transactions; they are not an ordering field. At a
     /// shared slot/transaction index they must agree even if their strings sort.
-    fn follows(&self, previous: &Self) -> bool {
+    pub(crate) fn follows(&self, previous: &Self) -> bool {
+        if let (Self::Accounts(c), Self::Accounts(p)) = (self, previous) {
+            return c.follows(p);
+        }
+        let (Some(current_position), Some(previous_position)) =
+            (self.position(), previous.position())
+        else {
+            return false;
+        };
         let position = |p: &Position| {
             (
                 p.slot,
@@ -55,15 +90,23 @@ impl Checkpoint {
                 p.invocation_index,
             )
         };
-        position(&self.position) >= position(&previous.position)
-            && self.tree_sequence >= previous.tree_sequence
-            && (self.position.slot != previous.position.slot
-                || (self.blockhash == previous.blockhash
-                    && (self.position.transaction_index != previous.position.transaction_index
-                        || self.position.signature == previous.position.signature)))
-            && (position(&self.position) != position(&previous.position)
-                || self.tree_sequence == previous.tree_sequence)
+        position(current_position) >= position(previous_position)
+            && self.sequence() >= previous.sequence()
+            && (self.slot() != previous.slot()
+                || (self.blockhash() == previous.blockhash()
+                    && (current_position.transaction_index != previous_position.transaction_index
+                        || current_position.signature == previous_position.signature)))
+            && (position(current_position) != position(previous_position)
+                || self.sequence() == previous.sequence())
     }
+}
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(deny_unknown_fields)]
+pub struct CurrentPending {
+    pub deployment: Hash,
+    pub genesis: Hash,
+    pub program: Hash,
+    pub pending: zkapi_indexer::Pending,
 }
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(deny_unknown_fields)]
@@ -72,13 +115,40 @@ pub struct JobIdentity {
     pub note_id: u32,
     pub nullifier: Hash,
     pub deadline: u64,
-    pub generation: Checkpoint,
+    pub generation: Option<Checkpoint>,
+    pub current: Option<CurrentPending>,
 }
 impl JobIdentity {
     pub fn id(&self) -> String {
+        if let Some(current) = &self.current {
+            return hex::encode(sha(&[
+                b"zkapi-pending-job-v2\0".as_slice(),
+                &current.genesis,
+                &current.program,
+                &self.pool,
+                &self.note_id.to_be_bytes(),
+                &self.nullifier,
+            ]
+            .concat()));
+        }
         hex::encode(sha(
             &serde_json::to_vec(self).expect("serializable identity")
         ))
+    }
+    fn observed_by(&self, cut: &Checkpoint) -> bool {
+        match (&self.generation, &self.current, cut) {
+            (Some(g), None, Checkpoint::History { .. }) => cut.follows(g),
+            (None, Some(c), Checkpoint::Accounts(a)) => {
+                c.deployment == a.deployment
+                    && c.genesis == a.genesis
+                    && c.program == a.program
+                    && self.pool == a.pool
+                    && self.note_id == c.pending.note.id
+                    && self.nullifier == c.pending.nullifier
+                    && self.deadline == c.pending.deadline
+            }
+            _ => false,
+        }
     }
 }
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
@@ -136,9 +206,14 @@ pub struct Job {
     pub identity: JobIdentity,
     pub evidence: Evidence,
     pub discovered_at: u64,
+    /// The durable first account observation is separate from stable job identity.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub first_observation: Option<Checkpoint>,
     pub payloads: Vec<Payload>,
     pub attempts: Vec<Attempt>,
     pub complete: bool,
+    #[serde(default)]
+    pub pending_absent: bool,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub first_execute_send_at: Option<u64>,
 }
@@ -201,6 +276,20 @@ impl State {
     /// The checksum protects bytes, not semantics. Apply the same invariants to
     /// recovered v1 files and new updates, including files from earlier writers.
     fn validate_job_identities(&self) -> Result<()> {
+        if self.version == 3
+            && (!self.archive.is_empty()
+                || self
+                    .checkpoint
+                    .as_ref()
+                    .is_some_and(|c| !matches!(c, Checkpoint::Accounts(_)))
+                || self.jobs.values().any(|j| {
+                    j.identity.generation.is_some()
+                        || j.identity.current.is_none()
+                        || !matches!(j.first_observation, Some(Checkpoint::Accounts(_)))
+                }))
+        {
+            return Err(Error::Conflict("current journal contains history"));
+        }
         let mut nullifiers = BTreeSet::new();
         let mut generations = BTreeSet::new();
         let mut signatures = BTreeSet::new();
@@ -224,9 +313,28 @@ impl State {
                 || !self
                     .checkpoint
                     .as_ref()
-                    .is_some_and(|cut| cut.follows(&identity.generation))
+                    .is_some_and(|cut| identity.observed_by(cut))
             {
                 return Err(Error::Conflict("job evidence identity"));
+            }
+            if let Some(first) = &job.first_observation {
+                if !identity.observed_by(first)
+                    || !self
+                        .checkpoint
+                        .as_ref()
+                        .is_some_and(|cut| cut.follows(first))
+                    || job.payloads.iter().any(|p| {
+                        !identity.observed_by(&p.checkpoint)
+                            || !p.checkpoint.follows(first)
+                            || sha(&p.bytes) != p.digest
+                    })
+                    || job
+                        .payloads
+                        .windows(2)
+                        .any(|pair| !pair[1].checkpoint.follows(&pair[0].checkpoint))
+                {
+                    return Err(Error::Conflict("current job observation/payload"));
+                }
             }
             if job
                 .attempts
@@ -288,7 +396,10 @@ impl State {
             // N is permanently consumed; one tree sequence identifies one
             // Pending creation. Neither can be an alias for a second job.
             if !nullifiers.insert(identity.nullifier)
-                || !generations.insert(identity.generation.tree_sequence)
+                || identity
+                    .generation
+                    .as_ref()
+                    .is_some_and(|g| !generations.insert(g.sequence()))
             {
                 return Err(Error::Conflict("Pending generation already journaled"));
             }
@@ -301,14 +412,18 @@ impl State {
                 .jobs
                 .get(&absence.job_id)
                 .ok_or(Error::Conflict("buffer absence job"))?;
-            if !job.payloads.iter().any(|p| {
-                hex::encode(p.buffer) == *buffer && absence.slot >= p.checkpoint.position.slot
-            }) || !job
-                .attempts
+            if !job
+                .payloads
                 .iter()
-                .rev()
-                .find(|a| hex::encode(a.buffer) == *buffer && a.stage != Stage::CloseBuffer)
-                .is_some_and(|a| failure_precedes_observation(a, absence.slot, absence.blockhash))
+                .any(|p| hex::encode(p.buffer) == *buffer && absence.slot >= p.checkpoint.slot())
+                || !job
+                    .attempts
+                    .iter()
+                    .rev()
+                    .find(|a| hex::encode(a.buffer) == *buffer && a.stage != Stage::CloseBuffer)
+                    .is_some_and(|a| {
+                        failure_precedes_observation(a, absence.slot, absence.blockhash)
+                    })
             {
                 return Err(Error::Conflict("buffer absence without definite failure"));
             }
@@ -409,7 +524,7 @@ impl Journal {
                 || !job
                     .payloads
                     .iter()
-                    .any(|p| p.buffer == buffer && slot >= p.checkpoint.position.slot)
+                    .any(|p| p.buffer == buffer && slot >= p.checkpoint.slot())
             {
                 return Err(Error::Conflict("absence requires definite failure"));
             }
@@ -658,6 +773,26 @@ impl Journal {
             poisoned: false,
         })
     }
+    /// Fresh account-state journal, using the same atomic writer and recovery
+    /// machinery. It never imports or opens a history journal as current state.
+    pub fn initialize_current(directory: &Path, pool: Hash) -> Result<Self> {
+        let mut journal = Self::initialize(directory, pool)?;
+        journal.update(|s| {
+            s.version = 3;
+            Ok(())
+        })?;
+        Ok(journal)
+    }
+    pub fn open_current(directory: &Path, pool: Hash) -> Result<Self> {
+        let journal = Self::open(directory, pool)?;
+        if journal.state.version != 3
+            || !journal.state.archive.is_empty()
+            || journal.segmented.is_some()
+        {
+            return Err(Error::Conflict("current-state journal required"));
+        }
+        Ok(journal)
+    }
     pub fn open(directory: &Path, pool: Hash) -> Result<Self> {
         Self::open_checkpointed(directory, pool, None).map(|(journal, _)| journal)
     }
@@ -683,7 +818,7 @@ impl Journal {
         envelope.state.validate_job_identities()?;
         let mut restored = None;
         let archive = match (envelope.state.version, &envelope.segmented) {
-            (1, None) if envelope.digest == state_digest(&envelope.state)? => None,
+            (1 | 3, None) if envelope.digest == state_digest(&envelope.state)? => None,
             (2, Some(head))
                 if envelope.state.archive.is_empty()
                     && envelope.digest == segmented::digest(&envelope.state, head)? =>
@@ -726,6 +861,16 @@ impl Journal {
         }
         Ok(())
     }
+    /// Refuse archive RPC work that this handle cannot durably retain.
+    /// This local admission check does not replace the check at persistence:
+    /// storage can change while a bounded read window is in flight.
+    pub(crate) fn ensure_archive_fetch_ready(&self) -> Result<()> {
+        self.ensure_writable()?;
+        if self.segmented.is_some() {
+            segmented::ensure_archive_headroom(&self.directory)?;
+        }
+        Ok(())
+    }
     fn update<T>(&mut self, f: impl FnOnce(&mut State) -> Result<T>) -> Result<T> {
         self.ensure_writable()?;
         let mut next = self.state.clone();
@@ -751,6 +896,27 @@ impl Journal {
         candidates: Vec<(JobIdentity, Evidence)>,
         now: u64,
     ) -> Result<()> {
+        self.enqueue_observation(checkpoint, candidates, now, None)
+    }
+    pub fn enqueue_current(
+        &mut self,
+        cut: zkapi_indexer::current_state::AccountCutRef,
+        candidates: Vec<(JobIdentity, Evidence)>,
+        now: u64,
+        live: BTreeSet<Hash>,
+    ) -> Result<()> {
+        if self.state.version != 3 {
+            return Err(Error::Conflict("current journal required"));
+        }
+        self.enqueue_observation(Checkpoint::Accounts(cut), candidates, now, Some(live))
+    }
+    fn enqueue_observation(
+        &mut self,
+        checkpoint: Checkpoint,
+        candidates: Vec<(JobIdentity, Evidence)>,
+        now: u64,
+        live: Option<BTreeSet<Hash>>,
+    ) -> Result<()> {
         self.update(|s| {
             if let Some(old) = &s.checkpoint {
                 if !checkpoint.follows(old) {
@@ -770,12 +936,21 @@ impl Journal {
                             identity,
                             evidence,
                             discovered_at: now,
+                            first_observation: matches!(checkpoint, Checkpoint::Accounts(_))
+                                .then(|| checkpoint.clone()),
                             payloads: Vec::new(),
                             attempts: Vec::new(),
                             complete: false,
+                            pending_absent: false,
                             first_execute_send_at: None,
                         },
                     );
+                }
+            }
+            if let Some(live) = live {
+                for job in s.jobs.values_mut() {
+                    // This is observation, not a terminal transaction outcome.
+                    job.pending_absent = !live.contains(&job.identity.nullifier);
                 }
             }
             s.checkpoint = Some(checkpoint);
@@ -790,7 +965,13 @@ impl Journal {
             if job.complete || job.attempts.iter().any(|a| a.outcome == Outcome::Unknown) {
                 return Err(Error::Conflict("resolve old signature first"));
             }
-            if !payload.checkpoint.follows(&job.identity.generation) {
+            if !job.identity.observed_by(&payload.checkpoint)
+                || job
+                    .first_observation
+                    .as_ref()
+                    .is_some_and(|first| !payload.checkpoint.follows(first))
+                || job.pending_absent
+            {
                 return Err(Error::Conflict(
                     "payload checkpoint predates or forks Pending",
                 ));
@@ -874,6 +1055,17 @@ impl Journal {
             if job.attempts.iter().any(|a| a.outcome == Outcome::Unknown) {
                 return Err(Error::Conflict("resolve old signature first"));
             }
+            if job.pending_absent
+                && (attempt.stage != Stage::CloseBuffer
+                    || !job
+                        .attempts
+                        .iter()
+                        .rev()
+                        .find(|old| old.buffer == attempt.buffer && old.stage != Stage::CloseBuffer)
+                        .is_some_and(|old| matches!(old.outcome, Outcome::FinalizedFailure { .. })))
+            {
+                return Err(Error::Conflict("Pending absent"));
+            }
             let payload = job
                 .payloads
                 .last()
@@ -910,6 +1102,9 @@ impl Journal {
             let job = s.jobs.get_mut(id).ok_or(Error::Conflict("job absent"))?;
             if job.complete {
                 return Err(Error::Conflict("job complete"));
+            }
+            if job.pending_absent && replacement.is_some() {
+                return Err(Error::Conflict("Pending absent"));
             }
             let old = job
                 .attempts
@@ -979,7 +1174,9 @@ pub enum Alert {
     None,
 }
 pub fn alert(job: &Job, now: u64) -> Alert {
-    if job.complete {
+    if job.complete
+        || (job.pending_absent && !job.attempts.iter().any(|a| a.outcome == Outcome::Unknown))
+    {
         Alert::None
     } else if job.identity.deadline.saturating_sub(now) <= 3600 {
         Alert::Emergency

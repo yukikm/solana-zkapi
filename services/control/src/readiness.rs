@@ -331,6 +331,10 @@ async fn rpc_once(
     method: &str,
     params: &Value,
 ) -> Result<Value, RpcReadFailure> {
+    static USAGE: std::sync::OnceLock<zkapi_rpc_metrics::RpcUsage> = std::sync::OnceLock::new();
+    USAGE
+        .get_or_init(|| zkapi_rpc_metrics::RpcUsage::new(zkapi_rpc_metrics::Component::Readiness))
+        .record(method, false);
     let id = uuid::Uuid::new_v4().to_string();
     let response = client
         .post(url)

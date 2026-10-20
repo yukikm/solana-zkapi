@@ -50,6 +50,12 @@ pub struct RuntimeConfig {
     #[serde(default)]
     pub providers: crate::provider_runtime::ProviderConfig,
     pub tariffs: Vec<Tariff>,
+    /// Background recovery cadence; never caches per-authorization chain reads.
+    #[serde(default = "default_recovery_seconds")]
+    pub background_recovery_seconds: u64,
+}
+fn default_recovery_seconds() -> u64 {
+    2
 }
 #[derive(Clone, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -358,6 +364,10 @@ impl RuntimeConfig {
     /// Authenticates only public configuration. Never reads seeds, credentials,
     /// database state, runtime directories or destination binaries.
     pub fn validate_public_inputs(&self) -> Result<PublicValidatedConfig> {
+        ensure!(
+            (1..=10).contains(&self.background_recovery_seconds),
+            "background_recovery_seconds must be between 1 and 10"
+        );
         ensure!(
             self.local_test_only && self.listen.ip().is_loopback(),
             "I05 test artifacts require explicit local configuration and loopback listener"

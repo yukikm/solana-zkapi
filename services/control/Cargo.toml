@@ -29,6 +29,7 @@ name = "i10_faults"
 required-features = ["i10-acceptance"]
 
 [dependencies]
+zkapi-rpc-metrics = { path = "../../crates/zkapi-rpc-metrics" }
 anyhow = "=1.0.104"
 async-compression = { version = "=0.4.36", features = ["tokio", "gzip", "zlib", "brotli"] }
 webpki-roots = "=1.0.9"

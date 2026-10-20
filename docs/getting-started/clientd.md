@@ -22,12 +22,10 @@ before use.
 
 ## 1. Download
 
-These commands reproduce the recorded `.8` installation. The newer
-[native `.13` release](gateway-release-upgrade.md)
-includes gateway, timeout and authorization recovery fixes; follow its verification and
-installation guide while retaining existing profiles and custody.
+These commands install the immutable `.13` release and create fresh state for
+`public-devnet-20261021-state-v1`. Earlier funded profiles remain separate.
 
-Open Terminal and run this block. It verifies the published `.8` archive and
+Open Terminal and run this block. It verifies the published `.13` archive and
 installation manifest, then installs under `~/Applications/ZKAPI` without sudo.
 Obtain these checksums through this repository's trusted release channel.
 
@@ -35,7 +33,7 @@ Obtain these checksums through this repository's trusted release channel.
 (
   set -eu
   ZKAPI_BASE="$HOME/Applications/ZKAPI"
-  ZKAPI_INSTALL="$ZKAPI_BASE/zkapi-clientd-0.2.0-devnet.8-darwin-arm64"
+  ZKAPI_INSTALL="$ZKAPI_BASE/zkapi-clientd-0.2.0-devnet.13-darwin-arm64"
   [ "$(uname -s)" = Darwin ] && [ "$(uname -m)" = arm64 ] || {
     echo 'This package requires an Apple Silicon Mac.' >&2; exit 1;
   }
@@ -46,13 +44,13 @@ Obtain these checksums through this repository's trusted release channel.
   ZKAPI_DOWNLOAD=$(mktemp -d "$ZKAPI_BASE/target/download.XXXXXX")
   curl --fail --location --proto '=https' --proto-redir '=https' \
     --output "$ZKAPI_DOWNLOAD/clientd.tar.gz" \
-    'https://github.com/yukikm/solana-zkapi/releases/download/v0.2.0-devnet.8/zkapi-clientd-0.2.0-devnet.8-darwin-arm64.tar.gz'
+    'https://github.com/yukikm/solana-zkapi/releases/download/v0.2.0-devnet.13/zkapi-clientd-0.2.0-devnet.13-darwin-arm64.tar.gz'
   printf '%s  %s\n' \
-    '14154d038bc0e79347076b9983754eeca2fbde78159be21e5ca7b0cddca632ac' \
+    '7232ae83cb18842eb6e759683bf47931a039b87e121c4427c90253db09998656' \
     "$ZKAPI_DOWNLOAD/clientd.tar.gz" | shasum -a 256 -c -
   tar -xzf "$ZKAPI_DOWNLOAD/clientd.tar.gz" -C "$ZKAPI_BASE"
   printf '%s  %s\n' \
-    '20c194668cbb9b13fecf8170c709fb03dd055bbd1b67b93b6e652dcfe7d118be' \
+    '5c6a730af8ae1a533d4ad5d745a6869b6795025ee7e8f51ec7b061ec8100f97e' \
     "$ZKAPI_INSTALL/release.json" | shasum -a 256 -c -
   "$ZKAPI_INSTALL/bin/clientd" --help
 )
@@ -67,9 +65,9 @@ Set these paths in **each Terminal window** used below:
 
 ```sh
 ZKAPI_BASE="$HOME/Applications/ZKAPI"
-ZKAPI_INSTALL="$ZKAPI_BASE/zkapi-clientd-0.2.0-devnet.8-darwin-arm64"
-ZKAPI_INPUTS="$ZKAPI_BASE/deployment-devnet8"
-ZKAPI_PROFILE="$ZKAPI_BASE/profile-devnet8"
+ZKAPI_INSTALL="$ZKAPI_BASE/zkapi-clientd-0.2.0-devnet.13-darwin-arm64"
+ZKAPI_INPUTS="$ZKAPI_BASE/deployment-state-20261021"
+ZKAPI_PROFILE="$ZKAPI_BASE/profile-state-20261021"
 ```
 
 Download the pinned deployment assets, run read-only preflight and create local
@@ -83,8 +81,8 @@ credentials:
   }
   "$ZKAPI_INSTALL/bin/node" \
     "$ZKAPI_INSTALL/tools/public-devnet-consumer/cli.mjs" install-native \
-    --profile-url 'https://d366buuvadnp3.cloudfront.net/releases/public-devnet-20261008-a/profile-sdk-0.2.0-devnet.8-r6.json' \
-    --profile-sha256 'ec10c1ab41bb5105222d3e25c7e1eba6b96b1b397abd0f854657030269992a77' \
+    --profile-url 'https://d366buuvadnp3.cloudfront.net/releases/public-devnet-20261021-state-v1/profile.json' \
+    --profile-sha256 '5e15d66c6f45265951cf1f8dd6cc0dae6574c4b8dd6756f828f7543ecaa97b9a' \
     --output "$ZKAPI_INPUTS" --runtime-network direct
   ZKAPI_RUNTIME_SHA=$("$ZKAPI_INSTALL/bin/node" -e \
     'const fs = require("node:fs"); process.stdout.write(JSON.parse(fs.readFileSync(process.argv[1], "utf8")).runtimeSha256)' \
@@ -92,7 +90,7 @@ credentials:
   "$ZKAPI_INSTALL/bin/clientd" setup \
     --profile "$ZKAPI_PROFILE" \
     --distribution "$ZKAPI_INSTALL/release.json" \
-    --sha256 '20c194668cbb9b13fecf8170c709fb03dd055bbd1b67b93b6e652dcfe7d118be' \
+    --sha256 '5c6a730af8ae1a533d4ad5d745a6869b6795025ee7e8f51ec7b061ec8100f97e' \
     --runtime-config "$ZKAPI_INPUTS/runtime.json" \
     --runtime-sha256 "$ZKAPI_RUNTIME_SHA" \
     --network-config "$ZKAPI_INPUTS/network.json"
@@ -201,7 +199,7 @@ For the public Devnet profile:
 | API format | Chat Completions (`POST /v1/chat/completions`) |
 | Provider route | OpenRouter, through the authenticated public profile |
 | Base URL | `http://127.0.0.1:8787/v1` |
-| API key | Contents of `profile-devnet8/inference-token` |
+| API key | Contents of `profile-state-20261021/inference-token` |
 | Model | An exact ID from the `models` command |
 | Maximum output | 4,096 tokens, or the selected model's lower limit |
 
