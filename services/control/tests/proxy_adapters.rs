@@ -334,6 +334,85 @@ fn proxy_normalizes_inclusive_exclusive_cache_and_reasoning_without_double_charg
 }
 
 #[test]
+fn proxy_anthropic_nullable_empty_breakdowns_preserve_explicit_token_counts() {
+    let (profile, tariff) = setup(Provider::Anthropic, CacheMode::AnthropicSplit);
+    let mut u = anthropic_usage();
+    u["cache_creation_input_tokens"] = json!(0);
+    u.as_object_mut().unwrap().remove("cache_creation");
+    let expected = proxy::normalize_usage(Endpoint::Messages, &profile, &u).unwrap();
+    let expected_charge = profile.calculate_charge(&tariff, &expected).unwrap();
+    u["cache_creation"] = Value::Null;
+    u["server_tool_use"] = Value::Null;
+    let actual = proxy::normalize_usage(Endpoint::Messages, &profile, &u).unwrap();
+    assert_eq!(actual, expected);
+    assert_eq!(
+        profile.calculate_charge(&tariff, &actual).unwrap(),
+        expected_charge
+    );
+
+    let start = json!({"type":"message_start","message":{"id":"msg-empty-breakdowns","usage":u}});
+    let delta = json!({"type":"message_delta","usage":{"output_tokens":3,"cache_creation":null,"server_tool_use":null}});
+    let wire = format!("data: {start}\n\ndata: {delta}\n\ndata: {{\"type\":\"message_stop\"}}\n\n");
+    let mut meter = SseMeter::new(Endpoint::Messages, profile);
+    meter.push(wire.as_bytes()).unwrap();
+    assert_eq!(meter.finish().unwrap().0, expected);
+}
+
+#[test]
+fn proxy_anthropic_nullable_breakdowns_never_fill_missing_or_unpriced_usage() {
+    let (profile, _) = setup(Provider::Anthropic, CacheMode::AnthropicSplit);
+    let mut empty = anthropic_usage();
+    empty["cache_creation_input_tokens"] = json!(0);
+    empty["cache_creation"] = Value::Null;
+    empty["server_tool_use"] = Value::Null;
+    for field in [
+        "input_tokens",
+        "output_tokens",
+        "cache_read_input_tokens",
+        "cache_creation_input_tokens",
+    ] {
+        for missing in [false, true] {
+            let mut u = empty.clone();
+            if missing {
+                u.as_object_mut().unwrap().remove(field);
+            } else {
+                u[field] = Value::Null;
+            }
+            assert!(
+                proxy::normalize_usage(Endpoint::Messages, &profile, &u).is_err(),
+                "{field}"
+            );
+        }
+    }
+    for (field, invalid) in [
+        ("cache_creation_input_tokens", json!(1)),
+        (
+            "cache_creation",
+            json!({"ephemeral_5m_input_tokens":1,"ephemeral_1h_input_tokens":0}),
+        ),
+        (
+            "cache_creation",
+            json!({"ephemeral_5m_input_tokens":null,"ephemeral_1h_input_tokens":0}),
+        ),
+        ("server_tool_use", json!({"web_search_requests":1})),
+        ("server_tool_use", json!({"web_fetch_requests":null})),
+        ("server_tool_use", json!({"future_tool_requests":0})),
+        ("server_tool_use", json!([])),
+        ("service_tier", Value::Null),
+        ("service_tier", json!("priority")),
+        ("inference_geo", Value::Null),
+        ("inference_geo", json!("us")),
+    ] {
+        let mut u = empty.clone();
+        u[field] = invalid;
+        assert!(
+            proxy::normalize_usage(Endpoint::Messages, &profile, &u).is_err(),
+            "{field}"
+        );
+    }
+}
+
+#[test]
 fn proxy_anthropic_thinking_details_are_nullable_bounded_and_never_double_charged() {
     let (profile, tariff) = setup(Provider::Anthropic, CacheMode::AnthropicSplit);
     for details in [
@@ -614,7 +693,7 @@ fn proxy_anthropic_sse_nullable_deltas_preserve_observed_input_and_cache() {
     let start =
         json!({"type":"message_start","message":{"id":"msg-nullable","usage":anthropic_usage()}});
     let cumulative = json!({"type":"message_delta","usage":{"input_tokens":8,"cache_read_input_tokens":5,"cache_creation_input_tokens":6,"cache_creation":{"ephemeral_5m_input_tokens":3,"ephemeral_1h_input_tokens":3},"output_tokens":4}});
-    let delta = json!({"type":"message_delta","usage":{"output_tokens":5,"input_tokens":null,"cache_read_input_tokens":null,"cache_creation_input_tokens":null,"server_tool_use":null}});
+    let delta = json!({"type":"message_delta","usage":{"output_tokens":5,"input_tokens":null,"cache_read_input_tokens":null,"cache_creation_input_tokens":null,"cache_creation":null,"server_tool_use":null}});
     let wire = format!("data: {start}\n\ndata: {cumulative}\n\ndata: {delta}\n\ndata: {{\"type\":\"message_stop\"}}\n\n");
     let mut meter = SseMeter::new(Endpoint::Messages, profile);
     meter.push(wire.as_bytes()).unwrap();
@@ -622,6 +701,23 @@ fn proxy_anthropic_sse_nullable_deltas_preserve_observed_input_and_cache() {
     assert_eq!(
         usage.iter().map(|u| u.count.as_str()).collect::<Vec<_>>(),
         ["5", "3", "3", "8", "5"]
+    );
+}
+
+#[test]
+fn proxy_anthropic_sse_null_cache_breakdown_preserves_contradictory_observations() {
+    let (profile, _) = setup(Provider::Anthropic, CacheMode::AnthropicSplit);
+    let mut usage = anthropic_usage();
+    usage["cache_creation_input_tokens"] = json!(0);
+    usage["cache_creation"] = json!({"ephemeral_5m_input_tokens":1,"ephemeral_1h_input_tokens":0});
+    let start =
+        json!({"type":"message_start","message":{"id":"msg-null-cache-breakdown","usage":usage}});
+    let delta = json!({"type":"message_delta","usage":{"output_tokens":3,"cache_creation":null}});
+    let wire = format!("data: {start}\n\ndata: {delta}\n\ndata: {{\"type\":\"message_stop\"}}\n\n");
+    let mut meter = SseMeter::new(Endpoint::Messages, profile);
+    assert!(
+        meter.push(wire.as_bytes()).is_err() || meter.finish().is_err(),
+        "null cache breakdown erased contradictory observed TTL counts"
     );
 }
 

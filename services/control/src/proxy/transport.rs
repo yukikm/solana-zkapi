@@ -64,6 +64,13 @@ pub enum DispatchStage {
     JsonDecode,
     ProviderError,
     UsageSchema,
+    UsageKeys,
+    UsageServiceTier,
+    UsageInferenceGeo,
+    UsageServerTools,
+    UsageTokenCounts,
+    UsageOutputDetails,
+    UsageCacheBreakdown,
     ProviderIdentity,
     StreamFrame,
     StreamTerminal,
@@ -368,10 +375,11 @@ impl HttpAdapter {
                 let _ = n;
                 observation.usage = Some(zero_usage(&request.profile));
             } else {
-                observation.usage = Some(super::normalize_usage(
+                observation.usage = Some(super::usage::normalize_usage_with_stage(
                     request.endpoint,
                     &request.profile,
                     value.get("usage").ok_or(ProxyError::UsageUnknown)?,
+                    &mut observation.diagnostic.stage,
                 )?);
                 observation.diagnostic.stage = DispatchStage::ProviderIdentity;
                 if let Some(id) = value

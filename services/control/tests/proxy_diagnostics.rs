@@ -38,40 +38,168 @@ async fn handler(State(f): State<Fixture>) -> Response {
     response.body(Body::from(f.body)).unwrap()
 }
 fn prepared(stream: bool) -> proxy::PreparedRequest {
+    prepared_for(Provider::Openai, stream)
+}
+fn prepared_for(provider: Provider, stream: bool) -> proxy::PreparedRequest {
+    let anthropic = provider == Provider::Anthropic;
+    let endpoint = if anthropic {
+        Endpoint::Messages
+    } else {
+        Endpoint::ChatCompletions
+    };
     let profile = ModelProfile {
-        provider: Provider::Openai,
+        provider: provider.clone(),
         model: "fixture-model".into(),
-        endpoints: vec![Endpoint::ChatCompletions],
+        endpoints: vec![endpoint],
         context_tokens: 100,
         max_output_tokens: 50,
-        cache_mode: CacheMode::InclusiveRead,
+        cache_mode: if anthropic {
+            CacheMode::AnthropicSplit
+        } else {
+            CacheMode::InclusiveRead
+        },
+    };
+    let units: &[&str] = if anthropic {
+        &[
+            "cache_read_tokens",
+            "cache_write_1h_tokens",
+            "cache_write_5m_tokens",
+            "input_tokens",
+            "output_tokens",
+        ]
+    } else {
+        &["cache_read_tokens", "input_tokens", "output_tokens"]
     };
     let mut tariff = Tariff {
         api: None,
         tariff_hash: String::new(),
         version: "1".into(),
-        provider: Provider::Openai,
+        provider,
         model: "fixture-model".into(),
         pricing_basis: "fixed_usage_rates".into(),
         valid_from: "0".into(),
         valid_until: "9999999999".into(),
         operator_fee_micro_usdc: "0".into(),
-        rates: ["cache_read_tokens", "input_tokens", "output_tokens"]
-            .into_iter()
+        rates: units
+            .iter()
             .map(|unit| Rate {
                 reservation_max_count: None,
-                unit: unit.into(),
+                unit: (*unit).into(),
                 nano_usdc_numerator: "1".into(),
                 unit_denominator: "1".into(),
             })
             .collect(),
     };
     tariff.tariff_hash = quote::tariff_hash(&tariff).unwrap();
-    proxy::validate(Endpoint::ChatCompletions, &serde_json::to_vec(&json!({"model":"fixture-model",
-        "messages":[{"role":"user","content":"PRIVATE_PROMPT_CANARY"}],"max_completion_tokens":10,"stream":stream})).unwrap(), &profile, &tariff).unwrap()
+    let mut body = json!({"model":"fixture-model",
+        "messages":[{"role":"user","content":"PRIVATE_PROMPT_CANARY"}],"stream":stream});
+    body[if anthropic {
+        "max_tokens"
+    } else {
+        "max_completion_tokens"
+    }] = json!(10);
+    proxy::validate(
+        endpoint,
+        &serde_json::to_vec(&body).unwrap(),
+        &profile,
+        &tariff,
+    )
+    .unwrap()
 }
 fn usage() -> Value {
     json!({"prompt_tokens":2,"completion_tokens":1,"total_tokens":3,"prompt_tokens_details":{"cached_tokens":0}})
+}
+
+#[tokio::test]
+async fn anthropic_json_usage_diagnostics_are_fixed_private_and_never_retry() {
+    let base = json!({"input_tokens":2,"output_tokens":1,"cache_read_input_tokens":0,
+        "cache_creation_input_tokens":0,"cache_creation":null,"server_tool_use":null});
+    let cases = [
+        ("complete", "server_tool_use", Value::Null),
+        (
+            "usage_keys",
+            "PRIVATE_FIELD_CANARY",
+            json!("PRIVATE_VALUE_CANARY"),
+        ),
+        (
+            "usage_service_tier",
+            "service_tier",
+            json!("PRIVATE_TIER_CANARY"),
+        ),
+        (
+            "usage_inference_geo",
+            "inference_geo",
+            json!("PRIVATE_GEO_CANARY"),
+        ),
+        (
+            "usage_server_tools",
+            "server_tool_use",
+            json!({"PRIVATE_TOOL_CANARY":0}),
+        ),
+        ("usage_token_counts", "input_tokens", Value::Null),
+        (
+            "usage_output_details",
+            "output_tokens_details",
+            json!({"thinking_tokens":2}),
+        ),
+        (
+            "usage_cache_breakdown",
+            "cache_creation_input_tokens",
+            json!(1),
+        ),
+    ];
+    for (stage, field, value) in cases {
+        let mut usage = base.clone();
+        usage[field] = value;
+        let count = Arc::new(AtomicUsize::new(0));
+        let fixture = Fixture {
+            status: 200,
+            content_type: "application/json",
+            encoding: None,
+            body: serde_json::to_vec(&json!({"id":"PRIVATE_PROVIDER_ID_CANARY",
+                "content":[{"type":"text","text":"PRIVATE_RESPONSE_CANARY"}],"usage":usage}))
+            .unwrap(),
+            delay: Duration::ZERO,
+            count: count.clone(),
+        };
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let origin = format!("http://{}", listener.local_addr().unwrap());
+        let server = tokio::spawn(async move {
+            axum::serve(
+                listener,
+                Router::new().fallback(post(handler)).with_state(fixture),
+            )
+            .await
+            .unwrap();
+        });
+        let adapter = HttpAdapter::local_fixture(
+            Provider::Anthropic,
+            &origin,
+            ServiceCredential::new("PRIVATE_CREDENTIAL_CANARY".into()).unwrap(),
+            Duration::from_secs(2),
+        )
+        .unwrap();
+        let result = adapter
+            .dispatch_once(prepared_for(Provider::Anthropic, false), None)
+            .await;
+        let event = result.diagnostic_event();
+        assert_eq!(event["stage"], stage);
+        assert_eq!(event["http_status"], 200);
+        assert_eq!(event["completed"], stage == "complete");
+        assert_eq!(event["timed_out"], false);
+        assert_eq!(result.usage.is_some(), stage == "complete");
+        assert_eq!(event.as_object().unwrap().len(), 6);
+        assert!(!event.to_string().contains("PRIVATE_"));
+        assert_eq!(
+            count.load(Ordering::SeqCst),
+            1,
+            "no automatic provider retry"
+        );
+        let decoded: proxy::DispatchObservation =
+            serde_json::from_value(serde_json::to_value(&result).unwrap()).unwrap();
+        assert_eq!(decoded.diagnostic_event(), event);
+        server.abort();
+    }
 }
 
 #[tokio::test]

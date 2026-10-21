@@ -1,4 +1,4 @@
-use super::{CacheMode, Endpoint, ModelProfile, ProxyError, Result};
+use super::{CacheMode, DispatchStage, Endpoint, ModelProfile, ProxyError, Result};
 use crate::wire::Usage;
 use serde_json::{Map, Value};
 
@@ -77,10 +77,23 @@ pub fn normalize_usage(
     profile: &ModelProfile,
     usage: &Value,
 ) -> Result<Vec<Usage>> {
+    normalize_usage_with_stage(endpoint, profile, usage, &mut DispatchStage::UsageSchema)
+}
+
+/// The non-streaming transport records only these fixed stages on rejection.
+/// No provider field names, values or error strings enter the diagnostic.
+pub(super) fn normalize_usage_with_stage(
+    endpoint: Endpoint,
+    profile: &ModelProfile,
+    usage: &Value,
+    stage: &mut DispatchStage,
+) -> Result<Vec<Usage>> {
+    *stage = DispatchStage::UsageSchema;
     if profile.cache_mode == CacheMode::AnthropicSplit {
         if endpoint != Endpoint::Messages {
             return Err(ProxyError::UsageUnknown);
         }
+        *stage = DispatchStage::UsageKeys;
         keys(
             usage,
             &[
@@ -95,19 +108,24 @@ pub fn normalize_usage(
                 "inference_geo",
             ],
         )?;
+        *stage = DispatchStage::UsageServiceTier;
         if usage
             .get("service_tier")
             .is_some_and(|v| v.as_str() != Some("standard"))
         {
             return Err(ProxyError::UsageUnknown);
         }
+        *stage = DispatchStage::UsageInferenceGeo;
         if usage
             .get("inference_geo")
             .is_some_and(|v| v.as_str() != Some("global"))
         {
             return Err(ProxyError::UsageUnknown);
         }
-        if let Some(tools) = usage.get("server_tool_use") {
+        *stage = DispatchStage::UsageServerTools;
+        // Anthropic's response type allows null here. Hosted tools are rejected
+        // by request validation, and any reported nonzero tool count still fails.
+        if let Some(tools) = usage.get("server_tool_use").filter(|v| !v.is_null()) {
             keys(tools, &["web_search_requests", "web_fetch_requests"])?;
             if optional_zero(tools, "web_search_requests")? != 0
                 || optional_zero(tools, "web_fetch_requests")? != 0
@@ -115,12 +133,18 @@ pub fn normalize_usage(
                 return Err(ProxyError::UsageUnknown);
             }
         }
+        *stage = DispatchStage::UsageTokenCounts;
         let input = count(usage, "input_tokens")?;
         let output = count(usage, "output_tokens")?;
-        anthropic_output_details(object(usage)?)?;
         let read = count(usage, "cache_read_input_tokens")?;
         let creation = count(usage, "cache_creation_input_tokens")?;
-        let (short, long) = if let Some(c) = usage.get("cache_creation") {
+        sum(sum(input, read)?, creation)?;
+        *stage = DispatchStage::UsageOutputDetails;
+        anthropic_output_details(object(usage)?)?;
+        *stage = DispatchStage::UsageCacheBreakdown;
+        // An absent/nullable breakdown proves no TTL quantities only when the
+        // authoritative creation counter explicitly reports zero.
+        let (short, long) = if let Some(c) = usage.get("cache_creation").filter(|v| !v.is_null()) {
             keys(
                 c,
                 &["ephemeral_5m_input_tokens", "ephemeral_1h_input_tokens"],
@@ -137,7 +161,6 @@ pub fn normalize_usage(
         if sum(short, long)? != creation {
             return Err(ProxyError::UsageUnknown);
         }
-        sum(sum(input, read)?, creation)?;
         return Ok(value(&[
             ("cache_read_tokens", read),
             ("cache_write_1h_tokens", long),
@@ -415,15 +438,15 @@ impl SseMeter {
                             self.output_observed = true;
                         }
                         for (k, val) in object(u)? {
-                            // The native delta schema makes these fields
-                            // nullable. Null reports no new observation; it
-                            // must not erase the message_start counters.
+                            // Null delta fields report no new observation;
+                            // they must not erase observed counters or breakdowns.
                             if val.is_null()
                                 && matches!(
                                     k.as_str(),
                                     "input_tokens"
                                         | "cache_read_input_tokens"
                                         | "cache_creation_input_tokens"
+                                        | "cache_creation"
                                         | "server_tool_use"
                                         | "output_tokens_details"
                                 )

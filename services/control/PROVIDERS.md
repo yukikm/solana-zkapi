@@ -141,6 +141,33 @@ modalities, hosted tools, response history/background execution and unknown
 metering parameters are rejected before egress. Anthropic version is pinned to
 `2023-06-01`.
 
+The legacy Anthropic meter requires explicit integer input, output, cache-read
+and cache-creation token counts. It accepts the documented nullable
+`server_tool_use` field, while any reported nonzero hosted-tool count remains
+unsupported. A missing or null `cache_creation` breakdown is accepted only when
+the explicit cache-creation total is zero; a positive total requires both TTL
+counts and an exact sum. Missing or null billable counters never become zero.
+These rules follow the nullable response structures in Anthropic's
+[Usage type](https://github.com/anthropics/anthropic-sdk-python/blob/main/src/anthropic/types/usage.py).
+In streaming responses, a null cache-creation breakdown in a later usage delta
+preserves the previously observed breakdown; it cannot erase inconsistent usage.
+The adapter still rejects a supplied `service_tier` other than `standard` or
+`inference_geo` other than `global`, including null values: this profile does not
+infer pricing from unavailable tier or geography observations. Its stricter
+metering contract is not a claim of full Anthropic response compatibility.
+
+For non-streaming Anthropic JSON responses, bounded `provider_dispatch` events
+distinguish `usage_keys`, `usage_service_tier`, `usage_inference_geo`,
+`usage_server_tools`, `usage_token_counts`, `usage_output_details` and
+`usage_cache_breakdown` rejection stages. Missing usage remains `usage_schema`;
+stream parsing retains its existing frame/terminal stages. Events contain only
+fixed stages, HTTP status, elapsed time and completion/timeout flags, without
+provider values, response content, request IDs or credentials. A historical
+`usage_schema` event alone cannot identify which field failed. Rejection still
+leaves usage unknown and does not authorize a replacement request.
+These diagnostic stages are serialized on private dispatcher IPC; deploy matching
+control/dispatcher binaries together and update the configured dispatcher hash.
+
 Every inference request needs `Idempotency-Key: UUIDv4` and its session's
 `Bearer zkp1.<request UUID>.<base64url secret>` token. Anthropic routes also accept
 that token in `x-api-key`, but never together with Authorization. Set Host to the
