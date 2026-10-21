@@ -28,7 +28,7 @@ See the [local JSON API tutorial](getting-started/json-api.md),
 | Area | Supported or observed scope |
 |---|---|
 | General JSON API | Offline registration and local fixed-price POST JSON onboarding in `.13`. This legacy adapter remains bounded POST JSON; no public provider acceptance is established. |
-| Finite HTTP gateway | `.13` includes version 2 bindings, version 3 tariffs/receipts/profiles and `finite_http_v1` through the same payment lifecycle. Fixed HTTP, Responses and Messages meters; bounded raw requests and finite responses. See the [gateway guide](getting-started/finite-http-api.md). Local installed-runtime checks use real proofs/SBF with synthetic provider/finality inputs; public provider, production and full browser coverage are unverified. |
+| Finite HTTP gateway | `.13` includes version 2 bindings, version 3 tariffs/receipts/profiles and `finite_http_v1` through the same payment lifecycle. Fixed HTTP, Responses and Messages meters; bounded raw requests and finite responses. See the [gateway guide](getting-started/finite-http-api.md). Local installed-runtime checks use real proofs/SBF with synthetic provider/finality inputs. Selected real Anthropic text, Read-tool and conversation-continuation cases completed through a local proxy and dedicated public Devnet Pools with signed metered SDK settlement; the one-shot lifecycle also completed withdrawal. Broader provider, production and full browser coverage remain unverified. |
 | Native package | Apple Silicon, macOS 13.5+. No Apple notarization or verified packages for other platforms. |
 | SDK | Tarball distribution; no npm registry release. Browser custody/proof tests are local; funded browser/Phantom acceptance is unverified. |
 | Public profile | Fresh `public-devnet-20261021-state-v1` Pool, using direct OpenRouter Chat Completions. Model names do not enable other API dialects. |
@@ -36,7 +36,7 @@ See the [local JSON API tutorial](getting-started/json-api.md),
 | Public output limit | Up to 4,096 output tokens per response under the current [application usage policy](getting-started/devnet.md#5-use-and-recover), subject to a lower model limit. This is not a token bound in the authenticated profile or direct backend. |
 | OpenClaw | Selected text and read-tool continuation cases succeeded using a bounded settlement adapter. No new OpenClaw lifecycle was run for the current Pool. |
 | Claude Desktop | A simple local fixture connection test passed. Real Chat is rejected by query/body validation. |
-| Claude Code | Requests hit query, metadata and beta-header compatibility limits. |
+| Claude Code | 2.1.220 passed selected streamed-text, Read-tool and subsequent-turn tests through the finite HTTP gateway using synthetic providers and local proof/SBF settlement; a capability-error retry is fenced before another provider dispatch. Selected live Haiku 4.5 streamed-text, Read-tool round-trip and same-conversation continuation cases also completed with signed metered SDK settlement through a local proxy and dedicated public Devnet Pools, using a bounded settlement adapter between requests. Full tool and coding-agent coverage remain unverified. Each new session requires a balance at least equal to the manifest cap. The legacy Messages adapter still rejects query, metadata and beta headers. See [the Claude Code guide](getting-started/claude-code.md). |
 | Codex | Responses requests hit unsupported fields and custom tool formats. |
 | Recovery | Selected native interrupted-stream recovery, withdrawal and emergency escape cases succeeded. |
 
