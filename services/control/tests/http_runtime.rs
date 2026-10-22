@@ -18,7 +18,7 @@ use std::{
     path::{Path, PathBuf},
     process::{Child, Command, Stdio},
     sync::{
-        atomic::{AtomicBool, Ordering},
+        atomic::{AtomicBool, AtomicUsize, Ordering},
         Arc,
     },
     time::{Duration, SystemTime, UNIX_EPOCH},
@@ -300,22 +300,26 @@ async fn http_real_proof_process_signer_successor_and_vault_fixture() -> Result<
     let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
     let chain: Value = serde_json::from_slice(&std::fs::read(root.join("target/i05/chain.json"))?)?;
     let ready = Arc::new(AtomicBool::new(true));
+    let chain_calls = Arc::new(AtomicUsize::new(0));
     let mut tasks = vec![];
     let mut rpc = vec![];
     for _ in 0..2 {
         let c = chain.clone();
-        let router=Router::new().route("/",post(move|Json(r):Json<Value>|{let c=c.clone();async move{let result=if r["method"]=="getGenesisHash"{json!(bs58::encode([0;32]).into_string())}else{json!({"context":{"slot":100},"value":if r["params"][0]==c["pool"]{c["pool_account"].clone()}else{Value::Null}})};Json(json!({"jsonrpc":"2.0","id":1,"result":result}))}}));
+        let calls = chain_calls.clone();
+        let router=Router::new().route("/",post(move|Json(r):Json<Value>|{let c=c.clone();calls.fetch_add(1, Ordering::SeqCst);async move{let result=if r["method"]=="getGenesisHash"{json!(bs58::encode([0;32]).into_string())}else{json!({"context":{"slot":100},"value":if r["params"][0]==c["pool"]{c["pool_account"].clone()}else{Value::Null}})};Json(json!({"jsonrpc":"2.0","id":1,"result":result}))}}));
         let (origin, task) = serve(router).await;
         rpc.push(origin);
         tasks.push(task);
     }
     let is_ready = ready.clone();
+    let calls = chain_calls.clone();
     let c = chain.clone();
     let (indexer, task) = serve(Router::new().route(
         "/zkapi/v1/tree/root",
         get(move || {
             let c = c.clone();
             let r = is_ready.clone();
+            calls.fetch_add(1, Ordering::SeqCst);
             async move {
                 (
                     if r.load(Ordering::SeqCst) {
@@ -480,13 +484,10 @@ async fn http_real_proof_process_signer_successor_and_vault_fixture() -> Result<
         409,
     )
     .await;
-    // Accepted recovery ignores unavailable indexer; fresh acceptance remains fail closed.
+    // Accepted recovery and exact retries do not poll an unavailable indexer.
     ready.store(false, Ordering::SeqCst);
-    assert!(app.recover().await.is_err());
-    assert!(!sql
-        .query_one("SELECT accepting FROM pools", &[])
-        .await?
-        .get::<_, bool>(0));
+    let calls_before_recovery = chain_calls.load(Ordering::SeqCst);
+    app.recover().await.expect("offline ledger recovery");
     response(
         client
             .post(&sessions)
@@ -495,6 +496,7 @@ async fn http_real_proof_process_signer_successor_and_vault_fixture() -> Result<
         200,
     )
     .await;
+    assert_eq!(chain_calls.load(Ordering::SeqCst), calls_before_recovery);
     ready.store(true, Ordering::SeqCst);
     app.recover().await.expect("healthy chain recovery");
     let status = format!("{sessions}/{id}");
@@ -676,8 +678,10 @@ async fn http_real_proof_process_signer_successor_and_vault_fixture() -> Result<
     app.ledger.reserve_operation(&abandoned).await?;
     app.ledger.close(id).await?;
     ready.store(false, Ordering::SeqCst);
-    assert!(app.recover().await.is_err());
+    let calls_before_settlement = chain_calls.load(Ordering::SeqCst);
+    app.recover().await.expect("offline settlement recovery");
     assert_eq!(app.ledger.session(id).await?.state, "SETTLED");
+    assert_eq!(chain_calls.load(Ordering::SeqCst), calls_before_settlement);
     let closed = response(
         client
             .post(format!("{status}/close"))
@@ -733,9 +737,37 @@ async fn http_real_proof_process_signer_successor_and_vault_fixture() -> Result<
         )
         .await,
     )?;
-    let (a2, _) = authorization(&q2);
+    let (a2, next_token) = authorization(&q2);
     let next_request = bound_request(a2, q2, state.clone());
     assert_ne!(next_request.public_inputs[8], request.public_inputs[8]);
+    // Recovery's local admission policy is not a substitute for fresh chain checks.
+    // A valid successor proof must still fail before any durable reservation.
+    ready.store(false, Ordering::SeqCst);
+    app.recover()
+        .await
+        .expect("offline recovery before new AUTH");
+    let rejected = response(
+        client
+            .post(&sessions)
+            .header("authorization", &next_token)
+            .json(&next_request),
+        503,
+    )
+    .await;
+    assert_eq!(rejected["error"]["code"], "chain_unavailable");
+    assert_eq!(
+        sql.query_one("SELECT count(*) FROM sessions", &[])
+            .await?
+            .get::<_, i64>(0),
+        1
+    );
+    assert_eq!(
+        sql.query_one("SELECT count(*) FROM nullifier_reservations", &[])
+            .await?
+            .get::<_, i64>(0),
+        1
+    );
+    ready.store(true, Ordering::SeqCst);
     let clearance_url = format!("{origin}/zkapi/v1/withdraw/clearance");
     let clear = response(
         client
@@ -838,8 +870,8 @@ async fn http_real_proof_process_signer_successor_and_vault_fixture() -> Result<
     }
     let journal = std::fs::read_to_string(dir.path().join("journal"))?;
     ensure!(!journal.contains(&token));
-    // Restart during a chain outage: the API can recover durable targets while
-    // admission stays disabled. A fresh RPC trust mismatch remains fatal.
+    // Restart during a chain outage recovers durable targets; new requests still
+    // require fresh chain observations even after local recovery succeeds.
     let pending_nullifier = field_bytes(Fr::from(999u64));
     let pending_message = signer::clearance_message(app.config.signer.binding, pending_nullifier)?;
     app.ledger
@@ -860,7 +892,28 @@ async fn http_real_proof_process_signer_successor_and_vault_fixture() -> Result<
         .query_one("SELECT accepting FROM pools", &[])
         .await?
         .get::<_, bool>(0));
-    assert!(recovered_app.recover().await.is_err());
+    recovered_app
+        .recover()
+        .await
+        .expect("restart recovers durable targets offline");
+    let (recovered_origin, recovered_http_task) = serve(recovered_app.router()).await;
+    let rejected = response(
+        client
+            .post(format!("{recovered_origin}/zkapi/v1/sessions"))
+            .header("authorization", &next_token)
+            .json(&next_request),
+        503,
+    )
+    .await;
+    assert_eq!(rejected["error"]["code"], "chain_unavailable");
+    assert_eq!(
+        sql.query_one("SELECT count(*) FROM sessions", &[])
+            .await?
+            .get::<_, i64>(0),
+        1
+    );
+    recovered_http_task.abort();
+    let _ = recovered_http_task.await;
     let recovered_clearance = recovered_app
         .ledger
         .reserve_clearance(
