@@ -1,13 +1,27 @@
 #!/usr/bin/env python3
-"""Offline native integration using disposable I04/I05/I09-derived inputs and PG.
-Prerequisites: local I04/I05/I09 fixtures, control/debug and challenger/debug +
-release builds, pinned Node, and PostgreSQL tools in PATH. No user key or RPC.
+"""Historical archive launcher regression with disposable I04/I05/I09 inputs.
+Prerequisites: local fixtures, control/debug, challenger/debug + release builds,
+the explicit legacy-archive-fixture examples in both profiles, pinned Node, and
+PostgreSQL tools in PATH. No user key or RPC. Current config v2 CLI coverage is
+in services/challenger/tests/current_cli.rs; no production fallback is enabled.
 """
 import argparse, json, os, pathlib, shutil, sys, tempfile, subprocess
 ROOT=pathlib.Path(__file__).resolve().parents[1]
 sys.path.insert(0,str(ROOT/'scripts'))
 import run_i10_devnet_backend as backend
 import run_i10_devnet_challenger as launcher
+
+class ArchiveFixtureChallenger(launcher.Challenger):
+ def __init__(self,args):
+  super().__init__(args)
+  # Verify the launcher's build selection, then explicitly substitute the
+  # test-only archive entrypoint. The historical launcher emits legacy config.
+  assert self.binary==ROOT/'services/challenger/target'/self.profile/'challengerd'
+  self.binary=self.binary.parent/'examples/legacy_archive_fixture'
+  assert self.binary.is_file(), 'build the explicit legacy-archive-fixture example'
+  self.report['native_entrypoint']='legacy_archive_fixture'
+  self.report['fixture_source_sha256']=backend.digest(ROOT/'services/challenger/examples/legacy_archive_fixture.rs')
+
 os.umask(0o077)
 os.environ['SOLANA_DEVNET_RPC']='https://primary.invalid'
 os.environ['SOLANA_DEVNET_SECONDARY_RPC']='https://secondary.invalid'
@@ -31,7 +45,7 @@ try:
  a=launcher.arguments(common)
  backend.private_directory(a.output)
  def prepare():
-  c=launcher.Challenger(a)
+  c=ArchiveFixtureChallenger(a)
   try:c.prepare()
   finally:c.close()
   return c
@@ -42,23 +56,29 @@ try:
  pathlib.Path.read_bytes=protected
  prepare();results.append('first_prepare_native_init_and_select_only_role')
  prepare();results.append('repeat_prepare_native_status_preserves_journal')
+ # Normal production commands must still reject this historical configuration.
+ production=ROOT/'services/challenger/target/debug/challengerd'
+ rejected=subprocess.run([str(production),'status',str(a.output/'config.json')],cwd=ROOT,env=b.env,
+                         stdout=subprocess.PIPE,stderr=subprocess.PIPE)
+ assert rejected.returncode!=0, 'production CLI accepted legacy archive config'
+ results.append('production_cli_rejects_legacy_archive_configuration')
  # The actual native parser must continue rejecting a substituted artifact.
  idl=args.deployment/'vault-idl.json';saved_idl=idl.read_bytes();idl.write_bytes(saved_idl+b' ')
  try:
-  subprocess.run([str(ROOT/'services/challenger/target/debug/challengerd'),'status',str(a.output/'config.json')],cwd=ROOT,env=b.env,stdout=subprocess.PIPE,stderr=subprocess.PIPE,check=True)
+  subprocess.run([str(ROOT/'services/challenger/target/debug/examples/legacy_archive_fixture'),'status',str(a.output/'config.json')],cwd=ROOT,env=b.env,stdout=subprocess.PIPE,stderr=subprocess.PIPE,check=True)
   raise AssertionError('native trust accepted substituted IDL bytes')
  except subprocess.CalledProcessError:results.append('actual_native_rejects_substituted_idl_hash')
  finally:idl.write_bytes(saved_idl)
  release_args=launcher.arguments(common+['--release'])
- release=launcher.Challenger(release_args)
- assert release.binary==ROOT/'services/challenger/target/release/challengerd'
+ release=ArchiveFixtureChallenger(release_args)
+ assert release.binary==ROOT/'services/challenger/target/release/examples/legacy_archive_fixture'
  try:release.prepare()
  finally:release.close()
  assert release.report['build_profile']=='release'
  assert release.report['binary_sha256']==backend.digest(release.binary)
  assert {'services/challenger/src/journal.rs','services/challenger/src/scan.rs'}<=set(release.report['source_sha256'])
  results.append('explicit_release_selection_and_actual_binary_source_hashes')
- c=launcher.Challenger(a)
+ c=ArchiveFixtureChallenger(a)
  c.prepare()
  try:
   c.sql('BEGIN; SET TRANSACTION READ WRITE; UPDATE public.pools SET accepting=accepting WHERE false; ROLLBACK',reader=True)
@@ -123,7 +143,7 @@ try:
  assert all(backend.digest(ROOT/name)==digest for name,digest in fixture['input_sha256'].items())
  assert all(backend.digest(args.deployment/name)==digest for name,digest in fixture['output_sha256'].items())
  results.append('original_inputs_and_disposable_fixture_pins_unchanged')
- print(json.dumps({'passed':True,'checks':results,'fixture':fixture,'scope':'disposable local PG and native init/status only; no network or fee key read'}))
+ print(json.dumps({'passed':True,'checks':results,'fixture':fixture,'scope':'disposable local PG and explicit legacy archive fixture init/status only; no network or fee key read'}))
 finally:
  pathlib.Path.read_bytes=original if 'original' in locals() else pathlib.Path.read_bytes
  assert b.close()

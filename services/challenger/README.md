@@ -160,9 +160,12 @@ Cold validation is synchronous and occurs before the HTTP listener and its Ctrl-
 ## Reproduce
 
 For the new runtime use [local verification](../../docs/getting-started/poc-state-sync.md#local-verification).
-The retained archive/SBF suite below is reference coverage; its historical native
-CLI configurations need the corresponding legacy binary and do not configure
-normal v2 daemon commands.
+The retained archive/SBF suite below is reference coverage. Its historical
+process fixtures use the `legacy_archive_fixture` Cargo example, built explicitly
+with `--features legacy-archive-fixture`. This harness calls the retained archive
+runtime; normal `challengerd` commands continue to require config v2.
+The harness allows offline `init`/`status` trust checks and restricts `once`/`recover`
+to local profiles with numeric-loopback HTTP RPC. It is not a deployment binary.
 
 
 ```sh
@@ -171,7 +174,7 @@ bash scripts/run_i04.sh
 python3 scripts/run_i09_challenger.py
 ```
 
-The runner executes native tests with fsync-enabled disposable PostgreSQL/SELECT-only evidence, SDK challenger signing/recovery tests, fresh native CLI processes at every upload step, readonly-DB discovery, lost response, confirmed execute hold, finalized recovery without the fee key, and the actual Vault SBF harness. Artifacts under `target/i09-challenger/` include `runtime-report.json`, `runtime.log`, `daemon-performance.json`, `native-cli-results.json`, `proof-generation.json`, `generated-challenge.bin`, `svm-results.json`, and the known-test-entropy `test-tree.pk`. The report records exact commands, counts, source/lock/binary and input/output SHA-256 hashes. Old proof/performance/SBF reports are removed before a run.
+The runner executes native tests with fsync-enabled disposable PostgreSQL/SELECT-only evidence, SDK challenger signing/recovery tests, fresh archive fixture processes at every upload step, readonly-DB discovery, lost response, confirmed execute hold, finalized recovery without the fee key, and the actual Vault SBF harness. Its 17 restart checks launch the same harness through `ZKAPI_LEGACY_CHALLENGER_TEST_HARNESS`. Artifacts under `target/i09-challenger/` include `runtime-report.json`, `runtime.log`, `daemon-performance.json`, `native-cli-results.json`, `proof-generation.json`, `generated-challenge.bin`, `svm-results.json`, and the known-test-entropy `test-tree.pk`. The report records exact commands, counts, source/lock/harness-binary and input/output SHA-256 hashes. Old proof/performance/SBF reports are removed before a run. Current-state CLI acceptance remains covered separately by `tests/current_cli.rs`.
 
 ## Trust and journal contracts
 
