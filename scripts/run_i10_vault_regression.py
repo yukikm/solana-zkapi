@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Run current-code I04 regression, restoring only its three historical outputs.
+"""Run current-code I04 regression while preserving its historical evidence.
 
 Fresh reports and original-byte backups remain under a unique target directory.
 The child process group must stop before any historical evidence is restored.
@@ -21,6 +21,11 @@ EVIDENCE_OUTPUTS = (
     'I04-buffer-svm-results.json',
     'I04-summary.json',
 )
+FRESH_REPORTS = {
+    'source-reproducibility.json': 'target/i02b/source-reproducibility.json',
+    'I04-buffer-svm-results.json': 'docs/evidence/I04-buffer-svm-results.json',
+    'I04-summary.json': 'docs/evidence/I04-summary.json',
+}
 ARTIFACTS = (
     'target/i04-sbf/zkapi_vault.so', 'target/i04-sbf-wrong/zkapi_vault.so',
     'target/i04/sdk-svm-history.json', 'target/i04/indexer-results.json',
@@ -41,6 +46,8 @@ def source_snapshot():
         ROOT / name for name in (
             'scripts/run_i10_vault_regression.py', 'scripts/run_i04.sh',
             'scripts/check_upstream.py', 'scripts/check_i02_reproducibility.py',
+            'scripts/build_i02_source.sh', 'scripts/check_i02_source_lock.py',
+            'tests/fixtures/layout2/source/Cargo.lock', 'Cargo.lock',
             'scripts/check_i04_results.py', 'scripts/check_vault_idl.py',
             'scripts/test_check_vault_idl.py', 'package.json', 'package-lock.json',
             'rust-toolchain.toml', 'docs/contracts/zkapi_vault.json',
@@ -178,24 +185,26 @@ def main():
                     process.wait(timeout=5)
                 except BaseException as retry_error:
                     report['errors'].append({'stage': 'cleanup_retry', 'type': type(retry_error).__name__})
-        for path, (content, mode) in originals.items():
+        for name, source in FRESH_REPORTS.items():
+            path = ROOT / source
             try:
                 if path.is_file():
-                    saved = directory / path.name
+                    saved = directory / name
                     fresh = path.read_bytes()
                     saved.write_bytes(fresh)
-                    report['fresh_reports'][path.name] = {
+                    report['fresh_reports'][name] = {
                         'path': str(saved.relative_to(ROOT)), 'sha256': sha(saved),
-                        'changed_from_historical': fresh != content,
                         'written_during_run': path.stat().st_mtime_ns >= start_ns,
                     }
+                    if path in originals:
+                        report['fresh_reports'][name]['changed_from_historical'] = fresh != originals[path][0]
             except BaseException as error:
-                report['errors'].append({'stage': 'save_report', 'file': path.name, 'type': type(error).__name__})
-            finally:
-                try:
-                    restore(path, content, mode)
-                except BaseException as error:
-                    report['errors'].append({'stage': 'restore', 'file': path.name, 'type': type(error).__name__})
+                report['errors'].append({'stage': 'save_report', 'file': name, 'type': type(error).__name__})
+        for path, (content, mode) in originals.items():
+            try:
+                restore(path, content, mode)
+            except BaseException as error:
+                report['errors'].append({'stage': 'restore', 'file': path.name, 'type': type(error).__name__})
         try:
             report['historical_evidence_preserved'] = len(originals) == len(EVIDENCE_OUTPUTS) and all(
                 (p.is_file() and p.read_bytes() == content) if content is not None else not p.exists()
@@ -214,7 +223,7 @@ def main():
             and report.get('sources_unchanged', False)
             and len(report.get('artifact_sha256', {})) == len(ARTIFACTS)
             and all(report['fresh_reports'].get(name, {}).get('written_during_run', False)
-                    for name in EVIDENCE_OUTPUTS)
+                    for name in FRESH_REPORTS)
         )
         report['elapsed_seconds'] = round(time.monotonic() - start, 3)
         report['finished_at_utc'] = datetime.datetime.now(datetime.timezone.utc).isoformat()

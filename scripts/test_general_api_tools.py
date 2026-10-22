@@ -139,6 +139,18 @@ class ToolInventoryTests(unittest.TestCase):
         self.assertIn('never installs', requirements['rustc']['guidance'])
         self.assert_read_only(result)
 
+    def test_python_must_support_the_circuit_lock_toml_parser(self):
+        for version, accepted in [('Python 3.10.16', False), ('Python 3.11.0', True),
+                                  ('Python 3.13.14', True)]:
+            with self.subTest(version=version):
+                self.accesses.clear()
+                self.versions['python3'] = version + '\n'
+                result = inspect_tools(ROOT)
+                self.assertEqual(result['passed'], accepted)
+                if not accepted:
+                    self.assertEqual(self.requirements(result)['python']['required'], 'Python 3.11+')
+                self.assert_read_only(result)
+
     def test_unavailable_rustup_also_avoids_proxy_toolchain_download(self):
         for failure in [FileNotFoundError('not installed'), subprocess.TimeoutExpired('rustup', 15)]:
             with self.subTest(failure=type(failure).__name__):

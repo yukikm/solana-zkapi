@@ -15,6 +15,7 @@ jobs:
           python3 scripts/check_design.py
           python3 -m unittest discover -s scripts -p 'test_check_evidence.py'
           python3 -m unittest discover -s scripts -p 'test_i02_source_lock.py'
+          python3 -m unittest discover -s scripts -p 'test_i10_vault_regression.py'
       - name: Install pinned Rust
         run: rustup show
       - name: Rust checks and real proof compatibility (host)
