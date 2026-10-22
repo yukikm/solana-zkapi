@@ -14,6 +14,7 @@ jobs:
           python3 scripts/check_upstream.py
           python3 scripts/check_design.py
           python3 -m unittest discover -s scripts -p 'test_check_evidence.py'
+          python3 -m unittest discover -s scripts -p 'test_i02_source_lock.py'
       - name: Install pinned Rust
         run: rustup show
       - name: Rust checks and real proof compatibility (host)
@@ -67,7 +68,7 @@ jobs:
             target/i02-transactions/*.bin
             docs/evidence/I02B-svm-results.json
             docs/evidence/I02B-summary.json
-            docs/evidence/I02B-reproducibility.json
+            target/i02b/source-reproducibility.json
             target/i02b/sbf/*.so
             target/i02b/sbf-wrong/*.so
             target/i02b/circuit-source.tar

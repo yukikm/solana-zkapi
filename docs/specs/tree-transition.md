@@ -189,6 +189,13 @@ PK/VK hashes cover entire distributed files. Tree verifier constants encode
 `alpha G1(64) || beta G2(128) || gamma G2(128) || delta G2(128) || IC[0..11] G1(12*64)`:
 canonical BE, Solana G2 c1,c0 order, non-negated alpha/IC. The source hash covers
 exact archive bytes containing circuit source, Cargo.lock and hash constants.
+The archive's `Cargo.lock` comes from the immutable
+[circuit source fixture](../../tests/fixtures/layout2/README.md). Before building
+the archive, compare the current workspace's full `zkapi-tree-prover` dependency
+closure with that fixture, including versions, sources, checksums and resolved
+dependency edges. Unrelated workspace packages do not change the archive;
+circuit dependency drift requires explicit source/profile review. This preserves
+the existing archive bytes and does not change circuit, setup or deployment pins.
 
 Embed the same profile in the program and PoolConfig. Clients and servers reject
 mismatches among signed manifest, actual pool and distributed artifacts. A new
