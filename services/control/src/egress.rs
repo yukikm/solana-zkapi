@@ -563,7 +563,8 @@ pub async fn serve(c: ServiceConfig, request: Request) -> Result<()> {
                 direct::DiagnosticStage::Dispatcher,
                 direct::DiagnosticReason::InternalError,
             );
-            emit(Event::Failure { diagnostic }).await
+            emit(Event::Failure { diagnostic }).await?;
+            Err(error)
         }
         result => result,
     }
