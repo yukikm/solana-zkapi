@@ -1,8 +1,10 @@
 //! Direct provider leases. No method retries issuance; recovery only observes the
 //! original request. Runtime keys are never serialized into the control ledger.
+mod diagnostic;
 mod oa;
 mod openrouter;
 mod runtime;
+pub use diagnostic::*;
 pub use runtime::{DirectRuntime, Finalization};
 
 use anyhow::{ensure, Context, Result};
@@ -128,6 +130,8 @@ pub struct Checkpoint {
     pub observation: Option<UsageObservation>,
     pub usage: Option<DirectUsage>,
     pub deleted: bool,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub recovery: Option<RecoveryStatus>,
 }
 #[derive(Clone)]
 pub struct DirectAdapter {
@@ -157,6 +161,14 @@ impl DirectAdapter {
                 None,
             )
             .await
+            .map_err(|error| {
+                Diagnostic::from_error(
+                    &error,
+                    DiagnosticStage::Dispatcher,
+                    DiagnosticReason::DispatcherUnavailable,
+                )
+                .into()
+            })
     }
     pub async fn create_for_attempt(
         &self,
@@ -171,7 +183,14 @@ impl DirectAdapter {
                 intent: intent.clone(),
                 attempt: attempt.clone(),
             })
-            .await?;
+            .await
+            .map_err(|error| {
+                Diagnostic::from_error(
+                    &error,
+                    DiagnosticStage::Dispatcher,
+                    DiagnosticReason::DispatcherUnavailable,
+                )
+            })?;
         Ok(CreatedKey {
             runtime_key: v["runtime_key"].as_str().context("key unavailable")?.into(),
             reference: serde_json::from_value(v["reference"].clone())?,
@@ -390,21 +409,34 @@ impl DirectAdapter {
                 .header("content-type", "application/json")
                 .body(body);
         }
-        let mut response = request
-            .send()
-            .await
-            .map_err(|_| anyhow::anyhow!("direct provider transport unavailable"))?;
+        let mut response = request.send().await.map_err(|error| {
+            Diagnostic::unknown(
+                DiagnosticStage::Request,
+                if error.is_timeout() {
+                    DiagnosticReason::Timeout
+                } else {
+                    DiagnosticReason::TransportError
+                },
+                None,
+            )
+        })?;
         let status = response.status();
         let mut bytes = Vec::new();
-        while let Some(chunk) = response
-            .chunk()
-            .await
-            .map_err(|_| anyhow::anyhow!("direct provider body unavailable"))?
-        {
-            ensure!(
-                bytes.len() + chunk.len() <= 1024 * 1024,
-                "direct provider response too large"
-            );
+        while let Some(chunk) = response.chunk().await.map_err(|_| {
+            Diagnostic::unknown(
+                DiagnosticStage::Response,
+                DiagnosticReason::ResponseBodyUnavailable,
+                Some(status.as_u16()),
+            )
+        })? {
+            if bytes.len() + chunk.len() > 1024 * 1024 {
+                return Err(Diagnostic::unknown(
+                    DiagnosticStage::Response,
+                    DiagnosticReason::ResponseTooLarge,
+                    Some(status.as_u16()),
+                )
+                .into());
+            }
             bytes.extend_from_slice(&chunk);
         }
         Ok((status, bytes))

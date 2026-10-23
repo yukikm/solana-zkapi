@@ -5,9 +5,9 @@ TypeScript declarations, so your application does not need TypeScript source
 loading or access to the zkAPI repository. Registry publication is disabled with
 `private: true`; no package under this name on npm is endorsed by this project.
 
-Download `zkapi-solana-sdk-0.2.0-devnet.14.tgz` and `release-manifest.json` from
-[SDK/native `.14`](https://github.com/yukikm/solana-zkapi/releases/tag/v0.2.0-devnet.14).
-Follow the [release authentication procedure](../../docs/getting-started/node-security-upgrade.md#authenticate-the-published-release)
+Download `zkapi-solana-sdk-0.2.0-devnet.15.tgz` and `release-manifest.json` from
+[SDK/native `.15`](https://github.com/yukikm/solana-zkapi/releases/tag/v0.2.0-devnet.15).
+Follow the [release authentication procedure](../../docs/getting-started/direct-recovery-upgrade.md#authenticate-and-install)
 to verify the immutable release and asset attestations, then compare the tarball
 with the digest in that authenticated manifest and install:
 
@@ -15,13 +15,13 @@ with the digest in that authenticated manifest and install:
 node --input-type=module -e '
   import { createHash } from "node:crypto";
   import { readFileSync } from "node:fs";
-  const file = "zkapi-solana-sdk-0.2.0-devnet.14.tgz";
+  const file = "zkapi-solana-sdk-0.2.0-devnet.15.tgz";
   const release = JSON.parse(readFileSync("release-manifest.json", "utf8"));
-  if (release.version !== "0.2.0-devnet.14" ||
+  if (release.version !== "0.2.0-devnet.15" ||
       createHash("sha256").update(readFileSync(file)).digest("hex") !== release.assets[file].sha256)
     throw new Error("SDK release checksum mismatch");
 '
-npm install --save-exact ./zkapi-solana-sdk-0.2.0-devnet.14.tgz @solana/kit@8.4.0
+npm install --save-exact ./zkapi-solana-sdk-0.2.0-devnet.15.tgz @solana/kit@8.4.0
 ```
 
 Retain earlier `.13` artifacts and existing profile/custody bindings.

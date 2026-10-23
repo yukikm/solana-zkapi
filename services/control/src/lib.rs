@@ -1,6 +1,7 @@
 //! Prompt-free control plane and persistent, single-writer financial ledger.
 pub mod api;
 pub mod chain;
+pub mod claims_storage;
 pub mod config;
 pub mod crypto;
 pub mod direct;

@@ -51,9 +51,14 @@ export function directControlRelay(options: DirectControlOptions): NonNullable<H
     const secret = Buffer.from(match[2], 'base64url'); assert.equal(secret.length, 32); assert.equal(secret.toString('base64url'), match[2]);
     return secret;
   };
-  return async ({path, method, authorization, data, allowNewAdmissions, newAdmissionAuthorized, signal}) => {
+  return async ({path, method, authorization, recoveryDiagnostics, data, allowNewAdmissions, newAdmissionAuthorized, signal}) => {
     assert.ok(!path.includes('#') && !path.includes('%') && !path.includes('\\'));
     const headers: Record<string, string> = {};
+    if (recoveryDiagnostics !== undefined) {
+      assert.equal(recoveryDiagnostics, '1');
+      assert.ok(path === '/zkapi/v1/sessions' || path.startsWith('/zkapi/v1/sessions/'));
+      headers['x-zkapi-recovery-diagnostics'] = '1';
+    }
     if (path === '/zkapi/v1/quotes') {
       assert.equal(method, 'POST'); assert.equal(authorization, undefined);
       assert.ok(same(parseStrictJson(data), quoteRequest));

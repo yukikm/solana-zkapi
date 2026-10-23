@@ -244,6 +244,36 @@ cannot establish delivery, never redeliver. Recovery of a direct session whose
 client journal lacks the key sends idempotent close and waits for settlement.
 GET status remains read-only. Proxy 202 responses may be polled for activation.
 
+### Direct issuance diagnostics
+
+Clients request structured observations with `X-Zkapi-Recovery-Diagnostics: 1`
+on session creation, retirement, status and close. The gateway forwards this
+bounded header and permits it in browser preflight. Responses without the opt-in
+retain the legacy field set; older SDKs reject unknown fields. `last_error_code`
+remains a fixed reason code for legacy clients.
+
+An unresolved issuance may include `recovery` with `reason_code`,
+`requires_operator_action`, the original `issuance` diagnostic and the latest
+failed `lookup` diagnostic. Reasons distinguish `issuance_unknown`,
+`provider_key_absent` and `provider_lookup_failed`. Diagnostics use closed enums
+for `stage`, `reason_code` and `issuance_certainty`, plus an optional HTTP status.
+They contain no provider response text, credential, key reference, URL, request
+payload or raw dispatcher stderr. The dispatcher sends typed diagnostic frames
+over its existing private pipe; arbitrary process errors stay suppressed.
+
+The existing durable direct checkpoint retains the first issuance diagnostic
+across restarts and later lookups. A successful empty lookup means the key was
+not found by that observation. It does not prove nonissuance, zero usage or a
+safe retry. It leaves `ISSUANCE_UNKNOWN` and requests operator investigation.
+A failed lookup leaves the same financial fence and records the lookup failure
+separately. Finding a key follows the existing disable/usage/delete/settlement
+path without returning a key to the client or issuing another one.
+
+Diagnostics are advisory and never sufficient settlement evidence, including
+`issuance_certainty: "not_sent"`. No new financial transition, automatic waiver,
+inference retry or nullifier release is introduced. Old checkpoints without
+diagnostics remain readable and report an unknown original cause.
+
 ### Single writer and signer journal
 
 A dedicated PostgreSQL connection holds the per-pool advisory lock and executes

@@ -26,6 +26,37 @@ It never repeats inference. It may leave settlement pending if the operator is
 unavailable, usage is unresolved, or signature verification fails. Show that
 state; do not label a displayed AI response as verified payment.
 
+SDK `.15` returns a `RecoveryResult` from `recover()` and `ClientDaemon.start()`:
+`outcome` is `completed`, `pending` or `failed`; `reasonCode` is a bounded safe
+code, and `sessionId`, `serverState` and `recovery` describe the saved session.
+An optional `httpStatus` identifies a failed control request. Fatal local journal
+integrity or concurrency errors still throw. `completed` means the session and
+gateway delivery hold are cleared; it does not assert that a separate wallet
+operation completed. Always inspect `status().canRequest` before enabling Send.
+
+```ts
+const result = await client.recover();
+const status = await client.status();
+if (result.outcome === 'pending') {
+  // Show result.reasonCode and keep the existing session/journal.
+} else if (result.outcome === 'failed') {
+  // Show a safe recovery failure; do not display "Payment checked".
+}
+// Enable an explicit new Send only when status.canRequest is true.
+```
+
+`status().session.serverState` preserves `ISSUANCE_UNKNOWN` even when the local
+phase is `closing`. `session.recovery` distinguishes `provider_key_absent`
+(operator investigation required) from `provider_lookup_failed` (the lookup
+could not complete). Its `issuance` and `lookup` fields contain only bounded
+diagnostics. Missing diagnostics from an old server or historical attempt mean
+the cause is unknown. A successful status lookup is not successful settlement.
+These observations survive reopening the same encrypted journal.
+
+Install the matching control service and gateway before using the new browser
+SDK: its session requests opt into diagnostics through a CORS-allowed header.
+See [the recovery upgrade procedure](../getting-started/direct-recovery-upgrade.md).
+
 For an unknown AUTH rejected with HTTP 409 (for example an expired quote or
 stale root), updated `recover()` obtains a signed request/quote retirement fence
 from `/zkapi/v1/sessions/retire`. After verifying it, the SDK archives the exact

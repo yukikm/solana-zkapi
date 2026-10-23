@@ -189,6 +189,9 @@ enum Event {
     Result {
         value: serde_json::Value,
     },
+    Failure {
+        diagnostic: direct::Diagnostic,
+    },
 }
 
 pub fn private_file(path: &Path) -> Result<()> {
@@ -216,7 +219,8 @@ impl ClientConfig {
         Ok(())
     }
     /// Only transient authenticated pipes carry prompt/response or one-time keys.
-    /// Errors discard all child diagnostics. No retry exists on this channel.
+    /// Only closed typed diagnostics cross on failure; raw stderr stays discarded.
+    /// No retry exists on this channel.
     pub async fn call(
         &self,
         request: Request,
@@ -266,6 +270,10 @@ impl ClientConfig {
                     }
                     Event::Result { value } => {
                         break value;
+                    }
+                    Event::Failure { diagnostic } => {
+                        ensure!(diagnostic.validate(), "invalid dispatcher diagnostic");
+                        return Err(diagnostic.into());
                     }
                     Event::Head {
                         status,
@@ -466,22 +474,48 @@ async fn authorize(
         os::unix::fs::{OpenOptionsExt, PermissionsExt},
     };
     ensure!(
-        std::fs::symlink_metadata(&c.claims_directory)?.is_dir()
-            && std::fs::metadata(&c.claims_directory)?.permissions().mode() & 0o077 == 0,
+        std::fs::symlink_metadata(&c.claims_directory)
+            .map_err(claim_storage_error)?
+            .is_dir()
+            && std::fs::metadata(&c.claims_directory)
+                .map_err(claim_storage_error)?
+                .permissions()
+                .mode()
+                & 0o077
+                == 0,
         "private claim directory required"
     );
     let mut f = std::fs::OpenOptions::new()
         .write(true)
         .create_new(true)
         .mode(0o600)
-        .open(c.claims_directory.join(a.attempt_id.to_string()))?;
-    f.write_all(&serde_jcs::to_vec(a)?)?;
-    f.sync_all()?;
-    std::fs::File::open(&c.claims_directory)?.sync_all()?;
+        .open(c.claims_directory.join(a.attempt_id.to_string()))
+        .map_err(claim_storage_error)?;
+    f.write_all(&serde_jcs::to_vec(a)?)
+        .map_err(claim_storage_error)?;
+    f.sync_all().map_err(claim_storage_error)?;
+    std::fs::File::open(&c.claims_directory)
+        .map_err(claim_storage_error)?
+        .sync_all()
+        .map_err(claim_storage_error)?;
     // Recheck after the durable claim. A denied attempt still cannot be retried.
     let live:bool=db.query_one("SELECT p.writer_epoch=$3 AND p.accepting AND a.finished_at IS NULL AND a.fenced_at IS NULL FROM dispatch_attempts a JOIN pools p ON p.pool=a.pool WHERE a.pool=$1 AND a.attempt_id=$2",&[&&c.pool[..],&a.attempt_id,&a.writer_epoch]).await?.get(0);
     ensure!(live, "dispatcher fenced before egress");
     Ok(())
+}
+fn claim_storage_error(error: std::io::Error) -> direct::Diagnostic {
+    let mut diagnostic = direct::Diagnostic::unknown(
+        direct::DiagnosticStage::Dispatcher,
+        direct::DiagnosticReason::ClaimStorageUnavailable,
+        None,
+    );
+    // This worker has not called the provider. An existing one-use claim can
+    // belong to an earlier sender, so it never establishes nonissuance. Even
+    // not_sent here is diagnostic only, never an authorization to bill zero.
+    if error.kind() != std::io::ErrorKind::AlreadyExists {
+        diagnostic.issuance_certainty = direct::IssuanceCertainty::NotSent;
+    }
+    diagnostic
 }
 async fn checkpoint(
     db: &tokio_postgres::Client,
@@ -518,6 +552,23 @@ async fn checkpoint(
     Ok(cp)
 }
 pub async fn serve(c: ServiceConfig, request: Request) -> Result<()> {
+    let direct_action = !matches!(
+        &request.action,
+        Action::Proxy { .. } | Action::Api { .. } | Action::Gateway { .. }
+    );
+    match serve_inner(c, request).await {
+        Err(error) if direct_action => {
+            let diagnostic = direct::Diagnostic::from_error(
+                &error,
+                direct::DiagnosticStage::Dispatcher,
+                direct::DiagnosticReason::InternalError,
+            );
+            emit(Event::Failure { diagnostic }).await
+        }
+        result => result,
+    }
+}
+async fn serve_inner(c: ServiceConfig, request: Request) -> Result<()> {
     let provider_policy = c.provider_policy()?;
     let (db, connection) = tokio_postgres::connect(&c.database_url, tokio_postgres::NoTls).await?;
     tokio::spawn(async move {
@@ -905,6 +956,33 @@ pub async fn serve(c: ServiceConfig, request: Request) -> Result<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn claim_storage_diagnostics_are_bounded_and_duplicate_claims_stay_unknown() {
+        for kind in [
+            std::io::ErrorKind::PermissionDenied,
+            std::io::ErrorKind::ReadOnlyFilesystem,
+            std::io::ErrorKind::NotFound,
+        ] {
+            let diagnostic = claim_storage_error(std::io::Error::new(kind, "PRIVATE_PATH_CANARY"));
+            assert_eq!(
+                diagnostic.issuance_certainty,
+                direct::IssuanceCertainty::NotSent
+            );
+            assert_eq!(
+                diagnostic.reason_code,
+                direct::DiagnosticReason::ClaimStorageUnavailable
+            );
+            assert!(!serde_json::to_string(&diagnostic)
+                .unwrap()
+                .contains("CANARY"));
+        }
+        let duplicate = claim_storage_error(std::io::ErrorKind::AlreadyExists.into());
+        assert_eq!(
+            duplicate.issuance_certainty,
+            direct::IssuanceCertainty::Unknown
+        );
+    }
 
     /// Exercise real Tokio stdout buffering and kernel pipe delivery in an
     /// isolated child. A new stdout handle per unflushed frame used to reorder

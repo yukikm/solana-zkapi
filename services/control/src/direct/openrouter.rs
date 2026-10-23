@@ -57,13 +57,28 @@ impl DirectAdapter {
         let (status, bytes) = self
             .request(Method::POST, self.or_url(), Some(body), true)
             .await?;
-        ensure!(
-            status.is_success(),
-            "OpenRouter issuance response uncertain"
-        );
-        let response: CreateEnvelope = serde_json::from_slice(&bytes)
-            .map_err(|_| anyhow::anyhow!("invalid OpenRouter issuance response"))?;
-        valid_ref(&response.data.hash)?;
+        if !status.is_success() {
+            return Err(Diagnostic::unknown(
+                DiagnosticStage::Response,
+                DiagnosticReason::HttpRejected,
+                Some(status.as_u16()),
+            )
+            .into());
+        }
+        let response: CreateEnvelope = serde_json::from_slice(&bytes).map_err(|_| {
+            Diagnostic::unknown(
+                DiagnosticStage::Decode,
+                DiagnosticReason::ResponseInvalid,
+                Some(status.as_u16()),
+            )
+        })?;
+        valid_ref(&response.data.hash).map_err(|_| {
+            Diagnostic::unknown(
+                DiagnosticStage::Validation,
+                DiagnosticReason::ResponseInvalid,
+                Some(status.as_u16()),
+            )
+        })?;
         let applied_limit = response
             .data
             .limit
@@ -104,18 +119,50 @@ impl DirectAdapter {
         loop {
             let url = format!("{}?offset={offset}&include_disabled=true", self.or_url());
             let (status, bytes) = self.request(Method::GET, url, None, true).await?;
-            ensure!(status.is_success(), "OpenRouter recovery unavailable");
-            let page: ListEnvelope = serde_json::from_slice(&bytes)
-                .map_err(|_| anyhow::anyhow!("invalid OpenRouter recovery response"))?;
+            if !status.is_success() {
+                return Err(Diagnostic::unknown(
+                    DiagnosticStage::Response,
+                    DiagnosticReason::HttpRejected,
+                    Some(status.as_u16()),
+                )
+                .into());
+            }
+            let page: ListEnvelope = serde_json::from_slice(&bytes).map_err(|_| {
+                Diagnostic::unknown(
+                    DiagnosticStage::Decode,
+                    DiagnosticReason::ResponseInvalid,
+                    Some(status.as_u16()),
+                )
+            })?;
             if page.data.is_empty() {
                 return Ok(found);
             }
             offset += page.data.len();
-            ensure!(offset <= 10_000, "OpenRouter recovery pagination limit");
+            if offset > 10_000 {
+                return Err(Diagnostic::unknown(
+                    DiagnosticStage::Validation,
+                    DiagnosticReason::RecoveryLimit,
+                    Some(status.as_u16()),
+                )
+                .into());
+            }
             for key in page.data {
                 if key.name == intent.name() {
-                    valid_ref(&key.hash)?;
-                    ensure!(found.is_none(), "ambiguous OpenRouter issuance recovery");
+                    valid_ref(&key.hash).map_err(|_| {
+                        Diagnostic::unknown(
+                            DiagnosticStage::Validation,
+                            DiagnosticReason::ResponseInvalid,
+                            Some(status.as_u16()),
+                        )
+                    })?;
+                    if found.is_some() {
+                        return Err(Diagnostic::unknown(
+                            DiagnosticStage::Validation,
+                            DiagnosticReason::RecoveryAmbiguous,
+                            Some(status.as_u16()),
+                        )
+                        .into());
+                    }
                     // Even a misconfigured cap/expiry must be recoverable for
                     // revocation. Recovery can never activate this key.
                     found = Some(KeyReference {

@@ -333,10 +333,14 @@ test('restart keeps admin reachable for explicit absent-operation reconciliation
 });
 test('restart outage keeps inference blocked until explicit recovery closes the previous session',async t=>{
   const f=await fixture(t,'direct_oa');await(await f.service.infer('/v1/responses',body)).text();f.controlUnavailable();
-  const resumed=f.restart();await resumed.start();assert.equal((await resumed.status() as any).recovery_required,true);
+  const resumed=f.restart(),failed=await resumed.start();
+  assert.equal(failed.outcome,'failed');assert.equal(failed.reasonCode,'control_unavailable');assert.equal(failed.httpStatus,503);
+  assert.equal((await resumed.status() as any).recovery_required,true);
   assert.equal((await resumed.handle('POST','/admin/recover',new Uint8Array(),new Headers())).status,400);assert.equal((await resumed.status() as any).recovery_required,true);
+  assert.equal((await resumed.status() as any).recovery.outcome,'failed');
   f.controlUnavailable(false);await resumed.startIfNeeded();await resumed.maintenance();await assert.rejects(resumed.infer('/v1/responses',body),DaemonConflict);assert.equal(f.counts().sends,1);
   const recovered=await resumed.handle('POST','/admin/recover',new Uint8Array(),new Headers());assert.equal(recovered.status,200);assert.equal((await recovered.json()).recovery_required,false);assert.equal((await f.journal.read('note'))!.value.pending,null);
+  assert.equal((await resumed.start()).outcome,'completed');
   await(await resumed.infer('/v1/responses',body)).text();assert.deepEqual(f.counts(),{creates:2,closes:1,sends:2});
 });
 test('startup rejects a tampered encrypted journal before contacting control',async t=>{

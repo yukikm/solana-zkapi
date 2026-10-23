@@ -99,13 +99,50 @@ sch['ProviderKeyVerification'] = obj({
 sch['ProviderKeyVerification']['description'] = ('Initial OA key-delivery evidence. The client must validate '
     'the verifier and station against independently configured pins and submit the exact key/signatures '
     'to that verifier before provider use. Server verification does not replace client verification.')
+sch['DirectRecoveryDiagnostic'] = {'type': 'object',
+ 'additionalProperties': False,
+ 'required': ['stage', 'reason_code', 'issuance_certainty'],
+ 'description': 'Bounded observation only. Never authorizes reissuance or zero-charge settlement. '
+                'Raw provider bodies and dispatcher stderr are excluded.',
+ 'properties': {'stage': {'type': 'string',
+                          'enum': ['request',
+                                   'response',
+                                   'decode',
+                                   'validation',
+                                   'dispatcher',
+                                   'internal']},
+                'reason_code': {'type': 'string',
+                                'enum': ['transport_error',
+                                         'timeout',
+                                         'http_rejected',
+                                         'response_body_unavailable',
+                                         'response_too_large',
+                                         'response_invalid',
+                                         'recovery_ambiguous',
+                                         'recovery_limit',
+                                         'dispatcher_unavailable',
+                                         'claim_storage_unavailable',
+                                         'internal_error']},
+                'http_status': {'type': 'integer', 'minimum': 100, 'maximum': 599},
+                'issuance_certainty': {'type': 'string', 'enum': ['unknown', 'not_sent']}}}
+sch['DirectRecoveryStatus'] = {'type': 'object',
+ 'additionalProperties': False,
+ 'required': ['reason_code', 'requires_operator_action'],
+ 'properties': {'reason_code': {'type': 'string',
+                                'enum': ['issuance_unknown',
+                                         'provider_key_absent',
+                                         'provider_lookup_failed']},
+                'requires_operator_action': {'type': 'boolean'},
+                'issuance': {'$ref': '#/components/schemas/DirectRecoveryDiagnostic'},
+                'lookup': {'$ref': '#/components/schemas/DirectRecoveryDiagnostic'}}}
 session_props = {'request_id': ID, 'mode': MODE,
     'state': {'type':'string','enum':['RESERVED','ISSUING','ISSUANCE_UNKNOWN','ACTIVE',
         'DRAINING','RECONCILING','SIGN_PENDING','SETTLED']},
     'cap_micro_usdc': U, 'issued_at': U, 'expires_at': U,
     'settlement': ref('Settlement'), 'provider_key': S, 'provider_api_origin': S,
     'provider_key_verification': ref('ProviderKeyVerification'),
-    'last_error_code': S}
+    'last_error_code': S, 'recovery': {**ref('DirectRecoveryStatus'),
+        'description': 'Returned only with X-Zkapi-Recovery-Diagnostics: 1. Missing on older services. Not financial evidence.'}}
 sch['SessionCreated'] = obj(session_props, ['request_id','mode','state','cap_micro_usdc'])
 sch['SessionCreated']['allOf'] = [
     {'if':{'required':['provider_key_verification']},
@@ -321,6 +358,11 @@ retired = add('/zkapi/v1/sessions/retire','post','retireUnacceptedAuthorization'
 retired['responses']['200']['content']['application/json']['schema'] = {'oneOf':[ref('SessionStatus'),ref('AuthorizationRetired')]}
 add('/zkapi/v1/sessions/{request_id}','get','sessionStatus','SessionStatus',auth='ControlToken',params=[request_param])
 add('/zkapi/v1/sessions/{request_id}/close','post','closeSession','SessionStatus',auth='ControlToken',params=[request_param],code='202')
+for path, method in [('/zkapi/v1/sessions','post'),('/zkapi/v1/sessions/retire','post'),
+                     ('/zkapi/v1/sessions/{request_id}','get'),('/zkapi/v1/sessions/{request_id}/close','post')]:
+    paths[path][method].setdefault('parameters', []).append({
+        **parameter('X-Zkapi-Recovery-Diagnostics', {'type':'string','enum':['1']}, 'header', False),
+        'description':'Opt into bounded direct issuance/recovery observations. Without this header the legacy closed response shape is retained.'})
 add('/zkapi/v1/sessions/{request_id}/operations/{operation_id}','get','operationStatus','OperationStatus',
     auth='ControlToken',params=[request_param,parameter('operation_id',ID)])
 add('/zkapi/v1/sessions/{request_id}/receipts','get','sessionReceipts','ReceiptPage',

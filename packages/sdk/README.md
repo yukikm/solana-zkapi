@@ -1,5 +1,7 @@
 # Solana zkAPI SDK
 
+SDK/native `.15` adds [explicit direct recovery diagnostics](../../docs/getting-started/direct-recovery-upgrade.md) while preserving existing custody and signed settlement.
+
 An SDK for USDC-funded API usage on Solana. It handles wallet operations, local
 proofs, encrypted storage, authorization and signed settlement. Applications own
 their UI, request/response data and provider selection.

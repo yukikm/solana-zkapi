@@ -25,8 +25,8 @@ See [current-state setup](poc-state-sync.md) for the intentional PoC reset.
 | Input | Download |
 |---|---|
 | Public profile | [profile.json](https://d366buuvadnp3.cloudfront.net/releases/public-devnet-20261021-state-v1/profile.json) |
-| SDK | [zkapi-solana-sdk-0.2.0-devnet.14.tgz](https://github.com/yukikm/solana-zkapi/releases/download/v0.2.0-devnet.14/zkapi-solana-sdk-0.2.0-devnet.14.tgz) |
-| clientd, macOS ARM64 | [zkapi-clientd-0.2.0-devnet.14-darwin-arm64.tar.gz](https://github.com/yukikm/solana-zkapi/releases/download/v0.2.0-devnet.14/zkapi-clientd-0.2.0-devnet.14-darwin-arm64.tar.gz) |
+| SDK | [zkapi-solana-sdk-0.2.0-devnet.15.tgz](https://github.com/yukikm/solana-zkapi/releases/download/v0.2.0-devnet.15/zkapi-solana-sdk-0.2.0-devnet.15.tgz) |
+| clientd, macOS ARM64 | [zkapi-clientd-0.2.0-devnet.15-darwin-arm64.tar.gz](https://github.com/yukikm/solana-zkapi/releases/download/v0.2.0-devnet.15/zkapi-clientd-0.2.0-devnet.15-darwin-arm64.tar.gz) |
 
 The public profile SHA-256 remains:
 

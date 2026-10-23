@@ -13,8 +13,17 @@ async fn run() -> anyhow::Result<()> {
     zkapi_control::egress::private_file(std::path::Path::new(&path))?;
     let config: zkapi_control::egress::ServiceConfig =
         serde_json::from_slice(&std::fs::read(path)?)?;
-    if std::env::args_os().nth(2).as_deref() == Some(std::ffi::OsStr::new("--check-config")) {
+    if let Some(option) = std::env::args_os().nth(2) {
+        anyhow::ensure!(
+            std::env::args_os().nth(3).is_none(),
+            "unexpected dispatcher argument"
+        );
         config.validate_scope()?;
+        if option == "--check-storage" {
+            zkapi_control::claims_storage::check(&config.claims_directory)?;
+        } else {
+            anyhow::ensure!(option == "--check-config", "unknown dispatcher option");
+        }
         return Ok(());
     }
     let mut input = Vec::new();

@@ -158,6 +158,8 @@ export interface PendingSession {
   prepared: PreparedSession; exactRequest: string; phase: 'prepared' | 'send_unknown' | 'active' | 'closing';
   /** Legacy readable field; new ControlClient writes omit it. Usable keys are memory-only. */
   providerKey?: string; serverState?: string; operations: Operation[];
+  /** Bounded server observations only; never proof of nonissuance or settlement. */
+  recovery?: SessionRecovery;
   /** Evidence, not a persisted assertion of trust or a replacement for a live key. */
   oaKeyVerification?: { evidence: OaKeyVerification; expiresAt: string };
   /** Preserve close intent while an unacknowledged create still needs exact POST recovery. */
@@ -190,6 +192,35 @@ export interface SessionStatus {
   issued_at?: string; expires_at?: string; settlement?: Settlement;
   provider_key?: string; provider_api_origin?: string; last_error_code?: string;
   provider_key_verification?: OaKeyVerification;
+  recovery?: SessionRecovery;
+}
+export interface IssuanceDiagnostic {
+  stage: 'request' | 'response' | 'decode' | 'validation' | 'dispatcher' | 'internal';
+  reason_code: 'transport_error' | 'timeout' | 'http_rejected' | 'response_body_unavailable' | 'response_too_large' | 'response_invalid' | 'recovery_ambiguous' | 'recovery_limit' | 'dispatcher_unavailable' | 'claim_storage_unavailable' | 'internal_error';
+  http_status?: number;
+  issuance_certainty: 'unknown' | 'not_sent';
+}
+export interface SessionRecovery {
+  reason_code: 'issuance_unknown' | 'provider_key_absent' | 'provider_lookup_failed';
+  requires_operator_action: boolean;
+  issuance?: IssuanceDiagnostic;
+  lookup?: IssuanceDiagnostic;
+}
+function validateSessionRecovery(value: unknown): asserts value is SessionRecovery {
+  object(value);
+  requireTrue(Object.keys(value).every(k => ['reason_code', 'requires_operator_action', 'issuance', 'lookup'].includes(k))
+    && ['issuance_unknown', 'provider_key_absent', 'provider_lookup_failed'].includes(value.reason_code as string)
+    && typeof value.requires_operator_action === 'boolean', 'invalid session recovery');
+  for (const diagnostic of [value.issuance, value.lookup]) {
+    if (diagnostic === undefined) continue;
+    object(diagnostic);
+    requireTrue(Object.keys(diagnostic).every(k => ['stage', 'reason_code', 'http_status', 'issuance_certainty'].includes(k))
+      && ['request', 'response', 'decode', 'validation', 'dispatcher', 'internal'].includes(diagnostic.stage as string)
+      && ['transport_error', 'timeout', 'http_rejected', 'response_body_unavailable', 'response_too_large', 'response_invalid', 'recovery_ambiguous', 'recovery_limit', 'dispatcher_unavailable', 'claim_storage_unavailable', 'internal_error'].includes(diagnostic.reason_code as string)
+      && ['unknown', 'not_sent'].includes(diagnostic.issuance_certainty as string)
+      && (diagnostic.http_status === undefined || typeof diagnostic.http_status === 'number' && Number.isInteger(diagnostic.http_status) && diagnostic.http_status >= 100 && diagnostic.http_status <= 599),
+    'invalid issuance diagnostic');
+  }
 }
 const states = new Set(['RESERVED', 'ISSUING', 'ISSUANCE_UNKNOWN', 'ACTIVE', 'DRAINING', 'RECONCILING', 'SIGN_PENDING', 'SETTLED']);
 const routes = new Set(['/v1/chat/completions', '/v1/responses', '/v1/messages', '/v1/messages/count_tokens']);
@@ -206,6 +237,8 @@ function pendingSession(p: PendingSession): void {
   object(p); object(p.prepared);
   requireTrue(['prepared', 'send_unknown', 'active', 'closing'].includes(p.phase) && Array.isArray(p.operations), 'invalid session phase');
   requireTrue(p.closeRequested === undefined || typeof p.closeRequested === 'boolean', 'invalid close intent');
+  requireTrue(p.serverState === undefined || states.has(p.serverState), 'invalid saved server state');
+  if (p.recovery !== undefined) validateSessionRecovery(p.recovery);
   uuid(p.prepared.request.authorization.request_id);
   requireTrue(JSON.stringify(p.prepared.request) === p.exactRequest, 'saved authorization bytes changed');
   requireTrue(typeof p.prepared.control_token === 'string' && (typeof p.prepared.proxy_token === 'string' || p.prepared.proxy_token === null), 'missing credentials');
@@ -540,7 +573,9 @@ export class ControlClient {
   private fetch(path: string, method: string, token: string, body?: string, signal?: AbortSignal): Promise<Response> {
     requireTrue(path.startsWith('/zkapi/v1/') && !path.includes('://'), 'invalid control path');
     return (this.options.fetch ?? globalThis.fetch)(this.config.control_api_origin + path, {
-      method, headers: { Authorization: `Bearer ${token}`, ...(body === undefined ? {} : { 'Content-Type': 'application/json' }) }, body,
+      method, headers: { Authorization: `Bearer ${token}`,
+        ...(/^\/zkapi\/v1\/sessions(?:\/[0-9a-f-]{36}(?:\/close)?|\/retire)?$/.test(path) ? { 'X-Zkapi-Recovery-Diagnostics': '1' } : {}),
+        ...(body === undefined ? {} : { 'Content-Type': 'application/json' }) }, body,
       redirect: 'error', credentials: 'omit', cache: 'no-store', signal: signal ? AbortSignal.any([signal, AbortSignal.timeout(120_000)]) : AbortSignal.timeout(120_000),
     });
   }
@@ -591,8 +626,9 @@ export class ControlClient {
     const response = await this.fetch(this.path(p) + '/close', 'POST', p.prepared.control_token, undefined, signal);
     if (!response.ok) throw new ControlHttpError(response.status);
     const closed = await this.json(response); object(closed);
-    // No recursive polling. A later explicit recover resumes a pending close.
-    if (closed.state === 'SETTLED') return this.accept(noteId, r, closed, false, signal);
+    // Validate and retain pending close observations too, including issuance
+    // diagnostics. Do not recursively close/poll a nonterminal close response.
+    return this.accept(noteId, r, closed, false, signal, true);
   }
   /** Optional cancellation bounds this call's transport only; it never changes
    * the client's transport or the lifetime of a later inference/close call. */
@@ -797,18 +833,23 @@ export class ControlClient {
       p.phase = 'closing'; r = await this.save(noteId, r);
       const response = await this.fetch(this.path(p) + '/close', 'POST', p.prepared.control_token,undefined,signal);
       if (!response.ok) throw new ControlHttpError(response.status);
-      return this.accept(noteId, r, await this.json(response), false,signal);
+      return this.accept(noteId, r, await this.json(response), false,signal,true);
     });
   }
-  private async accept(noteId: string, r: JournalRecord<NoteJournal>, raw: unknown, initial: boolean, signal?: AbortSignal): Promise<SessionStatus> {
+  private async accept(noteId: string, r: JournalRecord<NoteJournal>, raw: unknown, initial: boolean, signal?: AbortSignal, closingResponse = false): Promise<SessionStatus> {
     object(raw); const status = raw as unknown as SessionStatus; const p = r.value.pending!;
     const q = p.prepared.request.quote.body;
     const emergency=r.value.wallet?.emergencyEscapes?.find(e=>e.phase!=='settled');
     requireTrue(!emergency||emergency.phase==='challenged'&&p.phase==='closing'&&p.closeRequested===true, 'emergency escape requires finalized challenge reconciliation');
-    requireTrue(Object.keys(raw).every(k => ['request_id','mode','state','cap_micro_usdc','issued_at','expires_at','settlement','provider_key','provider_api_origin','provider_key_verification','last_error_code'].includes(k)), 'unknown session field');
+    requireTrue(Object.keys(raw).every(k => ['request_id','mode','state','cap_micro_usdc','issued_at','expires_at','settlement','provider_key','provider_api_origin','provider_key_verification','last_error_code','recovery'].includes(k)), 'unknown session field');
     requireTrue(status.request_id === p.prepared.request.authorization.request_id && status.mode === q.mode
       && status.cap_micro_usdc === q.cap_micro_usdc && states.has(status.state), 'session identity mismatch');
     p.serverState = status.state;
+    if (status.recovery !== undefined) {
+      requireTrue(q.mode !== 'proxy' && status.state !== 'SETTLED', 'unexpected session recovery');
+      validateSessionRecovery(status.recovery);
+      p.recovery = structuredClone(status.recovery);
+    } else delete p.recovery;
     requireTrue(status.provider_key_verification === undefined || initial && q.mode === 'direct_oa' && status.provider_key !== undefined, 'unexpected OA evidence');
     if (status.provider_key !== undefined) {
       requireTrue(initial && p.prepared.request.authorization.mode !== 'proxy' && status.state === 'ACTIVE'
@@ -874,7 +915,7 @@ export class ControlClient {
     if (q.mode === 'direct_oa' && p.providerKey && !p.oaKeyVerification) this.discardDirectKey(p);
     const closeRequired = p.closeRequested === true || p.phase === 'closing' || q.mode !== 'proxy' && !p.providerKey;
     p.phase = closeRequired ? 'closing' : 'active'; r = await this.save(noteId, r);
-    if (closeRequired) {
+    if (closeRequired && !closingResponse) {
       // Losing a direct key is not permission to issue another key or change mode.
       const closed = await this.closePending(noteId, r, signal); if (closed) return closed;
     }

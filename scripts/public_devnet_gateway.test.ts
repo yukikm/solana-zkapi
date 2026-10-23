@@ -61,6 +61,30 @@ test('public gateway loads pinned profile and bundle offline without UI, budget,
   await assert.rejects(loadGatewayPublicProfile({...config,rpcUrl:'http://rpc.example.com/'}));
 });
 
+test('browser recovery diagnostics negotiate through CORS without changing legacy responses or admitting work',async t=>{
+  const inputs: Array<Parameters<NonNullable<HostOptions['controlRelay']>>[0]> = [];
+  const h=await host(t,{controlRelay:async input=>{
+    inputs.push(input);return{status:200,bytes:Buffer.from(JSON.stringify({state:'ISSUANCE_UNKNOWN',
+      ...(input.recoveryDiagnostics ? {recovery:{reason_code:'provider_key_absent',requires_operator_action:true}} : {})}))};
+  }});
+  const path='/zkapi/v1/sessions/12345678-1234-4123-8123-123456789012';
+  const preflight=await call(h.base,path,'OPTIONS',{origin:browserOrigin,'access-control-request-method':'GET',
+    'access-control-request-headers':'authorization, x-zkapi-recovery-diagnostics'});
+  assert.equal(preflight.status,204);assert.match(String(preflight.headers['access-control-allow-headers']),/x-zkapi-recovery-diagnostics/);
+  assert.equal(inputs.length,0);
+  const headers={origin:browserOrigin,authorization:'Bearer fixture'};
+  const legacy=await call(h.base,path,'GET',headers);assert.equal(legacy.status,200);assert.equal(JSON.parse(legacy.body).recovery,undefined);
+  const updated=await call(h.base,path,'GET',{...headers,'x-zkapi-recovery-diagnostics':'1'});
+  assert.equal(updated.status,200);assert.equal(JSON.parse(updated.body).recovery.reason_code,'provider_key_absent');
+  assert.equal(inputs[0].recoveryDiagnostics,undefined);assert.equal(inputs[1].recoveryDiagnostics,'1');
+  assert.ok(inputs.every(input=>input.allowNewAdmissions===false&&input.method==='GET'));
+  for(const value of ['2','1, 1','private diagnostic'])
+    assert.equal((await call(h.base,path,'GET',{...headers,'x-zkapi-recovery-diagnostics':value})).status,400);
+  assert.equal((await call(h.base,'/zkapi/v1/config','OPTIONS',{origin:browserOrigin,'access-control-request-method':'GET',
+    'access-control-request-headers':'x-zkapi-recovery-diagnostics'})).status,400);
+  assert.equal(inputs.length,2);
+});
+
 test('model expansion is independently pinned and does not replace the grant profile',async t=>{
   const {config,f,directory}=await installedFixture(t),loaded=await loadGatewayPublicProfile(config);
   const original=structuredClone(config);

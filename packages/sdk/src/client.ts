@@ -2,7 +2,9 @@
  * Only the encrypted NoteJournal owns financial state. No inference retries. */
 import { address, type Rpc, type SolanaRpcApi } from '@solana/kit';
 import { decodeRpcAccount, safeRpcNumber } from './solana-rpc.ts';
-import { ClientDaemon } from './clientd-bridge.ts';
+import { ClientDaemon, type RecoveryResult } from './clientd-bridge.ts';
+export type { RecoveryResult, RecoveryReasonCode } from './clientd-bridge.ts';
+export type { SessionRecovery, IssuanceDiagnostic } from './control.ts';
 import { ControlClient, validateNoteJournal, verifiedClientBundle, expiryNotice, validateApiService, apiOperationPath,
   PROXY_PRIVACY_NOTICE, DIRECT_OPENROUTER_PRIVACY_NOTICE, DIRECT_PRIVACY_NOTICE, type ClientOptions, type Mode, type NoteJournal, type Quote, type Tariff, type ApiService, type ApiBinding, type ApiTariff } from './control.ts';
 import { validateGatewayInvocation, validateGatewayConfiguration, validateGatewayHashes, gatewayAmount, type GatewayInvocation, type GatewayResult, type GatewayConfiguration } from './gateway.ts';
@@ -79,7 +81,8 @@ export interface ClientStatus {
   canReconcileChallengedEscape: boolean;
   emergencyEscape: { phase: 'escaping' | 'challenged' | 'settled' } | null;
   busy: boolean;
-  session: { id: string; phase: string; operations: { id: string; phase: string }[] } | null;
+  session: { id: string; phase: string; serverState: string | null; recovery: RecoveryResult['recovery']; operations: { id: string; phase: string }[] } | null;
+  recovery: RecoveryResult;
   walletOperation: { kind: string; phase: string; signature: string | null; destinationOwner: string | null } | null;
   expiry: ReturnType<typeof expiryNotice> | null;
   lastSettlement: { chargeMicroUsdc: string; operationIds: string[] } | null;
@@ -216,7 +219,9 @@ export class ZkApiClient {
       emergencyEscape: emergency ? { phase: emergency.phase } : null,
       busy: this.busy,
       session: p ? { id: p.prepared.request.authorization.request_id, phase: p.phase,
+        serverState: p.serverState ?? null, recovery: p.recovery ? structuredClone(p.recovery) : null,
         operations: p.operations.map(o => ({ id: o.id, phase: o.phase })) } : null,
+      recovery: this.daemon.recoveryStatus(v),
       walletOperation: w?.operation ? { kind: w.operation.kind, phase: w.operation.phase, signature: w.operation.current ?? null,
         destinationOwner: w.operation.destinationOwner ?? null } : null,
       expiry, lastSettlement: last ? { chargeMicroUsdc: last.settlement.charge_micro_usdc, operationIds: last.operations.map(o => o.id) } : null,
@@ -415,8 +420,9 @@ export class ZkApiClient {
     });
   }
 
-  /** Explicit recovery may resend the exact saved AUTH, never inference. */
-  recover(): Promise<void> { return this.action(async()=>{await this.daemon.start();if((await this.options.wallet.journal.read(this.options.noteId))?.value.gatewayRecoveryHold)await this.daemon.management('recover');}); }
+  /** Explicit recovery may resend the exact saved AUTH, never inference.
+   * Inspect outcome; a normal return can still be pending or failed. */
+  recover(): Promise<RecoveryResult> { return this.action(() => this.daemon.recover()); }
   settle(): Promise<void> { return this.action(async () => { await this.daemon.management('close'); }); }
   cancelUnsentAuthorization(): Promise<void> { return this.action(async () => { await this.daemon.management('cancel-unsent'); }); }
   reconcileAbsentOperations(): Promise<void> { return this.action(async () => { await this.daemon.management('reconcile'); }); }

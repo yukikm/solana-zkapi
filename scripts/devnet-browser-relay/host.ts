@@ -196,7 +196,7 @@ export interface HostOptions {
   directProviderOrigin?: 'https://openrouter.ai';
   /** Only /control is delegated, after the same loopback/origin/header/write guards.
    * The installed application must enforce its exact native routes and budget. */
-  controlRelay?: (input: {path: string; method: 'GET' | 'POST'; authorization?: string; data: Buffer; allowNewAdmissions?: boolean; newAdmissionAuthorized?: boolean; signal?: AbortSignal}) => Promise<UpstreamReply>;
+  controlRelay?: (input: {path: string; method: 'GET' | 'POST'; authorization?: string; recoveryDiagnostics?: '1'; data: Buffer; allowNewAdmissions?: boolean; newAdmissionAuthorized?: boolean; signal?: AbortSignal}) => Promise<UpstreamReply>;
   directBudget?: () => Promise<UiDirectProviderBudget | OperatorFundedStatus>;
   /** Public consumer profile and configured Chat models, with no provider request. */
   modelDiscovery?: {profileUrl:string;profileSha256:string;models:readonly {id:string;label:string;capabilities:{streaming:boolean;tools:boolean}}[]};
@@ -327,7 +327,7 @@ export async function startUiHost(options: HostOptions) {
       let path = request.url ?? '', newAdmissionAuthorized = !publicApi || !requireInvitation;
       if (publicApi) {
         for (const name of ['cookie','proxy-authorization','x-api-key','anthropic-version','idempotency-key','x-forwarded-host','x-forwarded-for','x-forwarded-proto']) assert.equal(request.headers[name], undefined);
-        for (const name of ['host','origin','authorization','content-type','x-zkapi-admission']) assert.ok(request.rawHeaders.filter((v,i) => i % 2 === 0 && v.toLowerCase() === name).length <= 1);
+        for (const name of ['host','origin','authorization','content-type','x-zkapi-admission','x-zkapi-recovery-diagnostics']) assert.ok(request.rawHeaders.filter((v,i) => i % 2 === 0 && v.toLowerCase() === name).length <= 1);
         const invitation = request.headers['x-zkapi-admission'];
         if (invitation !== undefined) assert.ok(path === '/zkapi/v1/sessions' && request.method === 'POST', 'invitation is only accepted on AUTH');
         if (requireInvitation && typeof invitation === 'string' && /^[A-Za-z0-9_-]{43}$/.test(invitation) && admissionTokenSha256 !== undefined) {
@@ -360,7 +360,8 @@ export async function startUiHost(options: HostOptions) {
           assert.ok(browserOrigin && request.headers['access-control-request-method'] === method && !request.headers.authorization);
           assert.ok(!request.headers['transfer-encoding'] && (!request.headers['content-length'] || request.headers['content-length'] === '0'));
           const requested = String(request.headers['access-control-request-headers'] ?? '').toLowerCase().split(',').map(v => v.trim()).filter(Boolean);
-          const allowedHeaders = ['authorization','content-type', ...(path === '/zkapi/v1/sessions' ? ['x-zkapi-admission'] : [])];
+          const allowedHeaders = ['authorization','content-type', ...(path === '/zkapi/v1/sessions' ? ['x-zkapi-admission'] : []),
+            ...(path === '/zkapi/v1/sessions' || path.startsWith('/zkapi/v1/sessions/') ? ['x-zkapi-recovery-diagnostics'] : [])];
           assert.ok(new Set(requested).size === requested.length && requested.every(v => allowedHeaders.includes(v)));
           response.setHeader('access-control-allow-methods',method); response.setHeader('access-control-allow-headers',allowedHeaders.join(', '));
           response.setHeader('access-control-max-age','300'); response.statusCode=204; response.end(); return;
@@ -418,8 +419,14 @@ export async function startUiHost(options: HostOptions) {
         }
         const data = await body(request);
         if (data.length) assert.equal(request.headers['content-type'], 'application/json');
+        const recoveryDiagnostics = request.headers['x-zkapi-recovery-diagnostics'];
+        if (recoveryDiagnostics !== undefined) {
+          assert.equal(recoveryDiagnostics, '1');
+          assert.ok(path === '/control/zkapi/v1/sessions' || path.startsWith('/control/zkapi/v1/sessions/'));
+          assert.equal(request.rawHeaders.filter((v,i) => i % 2 === 0 && v.toLowerCase() === 'x-zkapi-recovery-diagnostics').length, 1);
+        }
         const result = safeReply(await controlRelay({path: path.slice('/control'.length), method: request.method,
-          authorization: request.headers.authorization, data, allowNewAdmissions, newAdmissionAuthorized, signal}));
+          authorization: request.headers.authorization, ...(recoveryDiagnostics === '1' ? {recoveryDiagnostics} : {}), data, allowNewAdmissions, newAdmissionAuthorized, signal}));
         response.statusCode = result.status; response.setHeader('content-type', 'application/json'); response.end(result.bytes); return;
       }
       if (path.startsWith('/control/') || path.startsWith('/inference/')) {
@@ -442,6 +449,11 @@ export async function startUiHost(options: HostOptions) {
           const controlPath = path.slice('/control'.length), method = request.method;
           assert.equal(request.headers['idempotency-key'], undefined);
           const headers: Record<string,string> = {};
+          if (request.headers['x-zkapi-recovery-diagnostics'] !== undefined) {
+            assert.equal(request.headers['x-zkapi-recovery-diagnostics'], '1');
+            assert.ok(controlPath === '/zkapi/v1/sessions' || controlPath.startsWith('/zkapi/v1/sessions/'));
+            headers['x-zkapi-recovery-diagnostics'] = '1';
+          }
           if (controlPath === '/zkapi/v1/quotes') {
             assert.equal(method, 'POST'); assert.equal(request.headers['content-type'], 'application/json'); assert.equal(request.headers.authorization, undefined);
             assert.ok(same(parseStrictJson(data), quoteRequest));

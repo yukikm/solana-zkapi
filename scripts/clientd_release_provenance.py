@@ -13,6 +13,7 @@ NOTICE_INDEX_PATH = 'share/zkapi-clientd/third-party/dependencies.json'
 COPIED_FILES = (
     'THIRD_PARTY_NOTICES.md', 'apps/clientd/runtime.ts', 'apps/clientd/runtime-config.ts', 'apps/clientd/runtime-delivery.ts', 'scripts/clientd_secrets.py',
     'apps/clientd/README.md', 'docs/getting-started/clientd.md', 'docs/sdk/recovery.md',
+    'docs/getting-started/direct-recovery-upgrade.md', 'docs/releases/direct-recovery-preview.md',
     'docs/getting-started/finite-http-api.md', 'docs/specs/universal-api-gateway.md',
     'docs/getting-started/gateway-release-upgrade.md', 'docs/releases/universal-api-gateway-preview.md',
     'docs/specs/universal-api-gateway-contract.md', 'docs/contracts/universal-api-gateway.schema.json',

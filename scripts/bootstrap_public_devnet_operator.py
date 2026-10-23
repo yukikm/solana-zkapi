@@ -18,6 +18,7 @@ import shutil
 import stat
 import subprocess
 import time
+from check_dispatcher_storage_binding import check_binding
 
 STATE = Path('/srv/zka')
 APP = Path('/opt/zkapi')
@@ -225,6 +226,7 @@ def initialize(root, expected):
         'trusted_manifest_hash':manifest['manifest_hash']}, 'database_url':dsn['provider'],
         'pool':key(manifest['pool']), 'claims_directory':str(STATE / 'dispatcher'), 'providers':providers}
     save(STATE / 'runtime/dispatcher.json', dispatcher, 'zka-runtime')
+    check_binding(dispatcher, [Path('/etc/systemd/system/zka-control.service').read_text()])
     frontend = json.loads(json.dumps(providers))
     frontend['direct'][0]['credential_file'] = str(STATE / 'runtime/credential-not-mounted-in-control')
     frontend['dispatcher'] = {'binary':str(APP / 'bin/dispatcherd'),
