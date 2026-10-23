@@ -15,7 +15,7 @@ lifecycle. See [support](../support.md).
 ## 1. Install OpenClaw
 
 If you already have version `2026.9.8`, use it. Otherwise, with
-[Node 24.19.0](https://nodejs.org/en/download/archive/v24.19.0) and npm 11.9.0
+[Node 24.22.1](https://nodejs.org/en/download/archive/v24.22.1) and npm 11.19.1
 installed, install it into a separate directory:
 
 ```sh

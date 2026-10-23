@@ -5,6 +5,9 @@ Start with the general integration guide, then choose the implementation that
 fits your service. This project is a **Devnet preview**; check
 [support](../support.md) for current capabilities.
 
+For the Node.js security update, use the [SDK/native `.14` upgrade procedure](node-security-upgrade.md).
+It preserves authenticated profile bytes and existing custody; authenticate the release assets before installing.
+
 ## Integrate an API
 
 - [API integration and the payment lifecycle](api-integration.md) — client,

@@ -94,8 +94,8 @@ def execute():
         env['ZKAPI_NODE'] = node
         env['RAYON_NUM_THREADS'] = '4'
         node_version = subprocess.check_output([node, '--version'], cwd=ROOT, env=env, text=True).strip()
-        if node_version != 'v24.19.0':
-            raise RuntimeError(f'Node v24.19.0 required, got {node_version}; set ZKAPI_NODE')
+        if node_version != 'v24.22.1':
+            raise RuntimeError(f'Node v24.22.1 required, got {node_version}; set ZKAPI_NODE')
         sbf_version = subprocess.check_output([sbf, '--version'], cwd=ROOT, env=env, text=True).splitlines()[0]
         if sbf_version != 'cargo-build-sbf 4.1.0':
             raise RuntimeError('cargo-build-sbf 4.1.0 required: ' + sbf_version)

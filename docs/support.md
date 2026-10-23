@@ -1,9 +1,16 @@
 # Support
 
-ZKAPI is a **Devnet preview**. The published SDK is
-[`0.2.0-devnet.13`](releases/universal-api-gateway-preview.md), including the matching
-native package. This compatibility summary is based on records through **2026-10-12 JST**.
+ZKAPI is a **Devnet preview**. The current SDK/native release is
+[`0.2.0-devnet.14`](releases/node-security-preview.md). Its Node security update
+has local validation on **2026-10-23 JST**; provider and client lifecycle
+compatibility below retains the earlier evidence through **2026-10-12 JST**.
 Run [fresh preflight](getting-started/devnet.md) to check a deployment now.
+
+SDK/native `.14` uses Node 24.22.1 LTS. Source SDK and isolated installed-package
+checks pass locally; these results do not establish hosted CI or fresh paid
+provider acceptance. Use the
+[security upgrade procedure](getting-started/node-security-upgrade.md); retain
+the immutable `.13` artifacts and existing funded custody.
 
 The public backend switched to [current-state PoC synchronization](getting-started/poc-state-sync.md)
 on 2026-10-21 JST, using config v2, a fresh Pool and new signer/challenger journals.

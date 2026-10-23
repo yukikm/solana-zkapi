@@ -23,11 +23,16 @@ installation alone does not enable a deployed capability. Existing schema 1
 profiles listing SDK `.8` through `.12` remain readable without changing their
 bytes, hashes or custody bindings. See
 [downloads and verification](../../docs/getting-started/devnet.md).
+SDK `.14` updates Node to 24.22.1 LTS and accepts `.13` profiles in
+schemas 1, 2 and 3 without changing their authenticated bytes. Existing legacy
+schema 1 compatibility is retained. See the [security release notes](../../docs/releases/node-security-preview.md)
+and [upgrade procedure](../../docs/getting-started/node-security-upgrade.md) for authenticated
+installation and validation scope.
 The package is distributed as a tarball, with `private: true` to disable npm
-registry publication. Node integrations use Node 24.19.0; browser integrations
+registry publication. Node integrations use Node 24.22.1; browser integrations
 bundle the browser entry points.
 
-The current-state Devnet rollout keeps the published `.13` client runtime.
+The October 21 current-state Devnet rollout retained the published `.13` client runtime.
 Its SDK source changes are confined to the internal challenger recovery bridge,
 which is installed with the server and is not a public package export. Operators
 must deploy that bridge with the matching challenger; see

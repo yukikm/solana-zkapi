@@ -19,6 +19,8 @@ for the general design and extension requirements. Run the
 [Support](support.md) lists compatibility and preview limits.
 [Architecture](architecture.md) explains the components.
 [Testing](testing.md) lists contributor checks.
+The [Node security upgrade guide](getting-started/node-security-upgrade.md) covers
+the `.14` runtime update, authenticated artifacts and custody preservation.
 
 The [universal API gateway design](specs/universal-api-gateway.md) and
 [finite HTTP contract](specs/universal-api-gateway-contract.md) specify the initial

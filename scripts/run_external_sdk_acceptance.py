@@ -45,10 +45,10 @@ def main() -> None:
     selected_node = os.environ.get('ZKAPI_NODE') or (str(bundled_node) if bundled_node.is_file() else 'node')
     resolved_node = shutil.which(selected_node)
     if not resolved_node:
-        raise SystemExit('Set ZKAPI_NODE to the pinned Node 24.19.0 executable')
+        raise SystemExit('Set ZKAPI_NODE to the pinned Node 24.22.1 executable')
     selected_npm = os.environ.get('ZKAPI_NPM') or shutil.which('npm')
     if not selected_npm or not shutil.which(selected_npm):
-        raise SystemExit('Set ZKAPI_NPM to the pinned npm 11.9.0 executable')
+        raise SystemExit('Set ZKAPI_NPM to the pinned npm 11.19.1 executable')
     npm = str(Path(shutil.which(selected_npm)).absolute())
     node = Path(resolved_node).resolve()
     node_dir = node.parent
@@ -80,9 +80,9 @@ def main() -> None:
 
     try:
         report['node_version'] = run('node-version', [str(node), '--version'], ROOT).strip()
-        assert report['node_version'] == 'v24.19.0', 'pinned Node 24.19.0 is required'
+        assert report['node_version'] == 'v24.22.1', 'pinned Node 24.22.1 is required'
         report['npm_version'] = run('npm-version', [npm, '--version'], ROOT).strip()
-        assert report['npm_version'] == '11.9.0', 'pinned npm 11.9.0 is required'
+        assert report['npm_version'] == '11.19.1', 'pinned npm 11.19.1 is required'
         reviewed()
         run('pack', [npm, 'pack', *(['--offline'] if args.offline else []), '--workspace', '@zkapi/solana-sdk', '--pack-destination', str(output)], ROOT)
         package = json.loads((ROOT / 'packages/sdk/package.json').read_text())

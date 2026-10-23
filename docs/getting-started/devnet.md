@@ -4,6 +4,9 @@ Use this deployment to try Solana ZKAPI with test USDC. You need a wallet,
 Devnet SOL for fees, and Devnet USDC for the note. The operator pays the real
 provider bill. Check [support](../support.md) and fresh preflight before funding.
 
+The [`.14` Node security upgrade](node-security-upgrade.md) supplies Node 24.22.1
+and retains the existing authenticated deployment profile and custody bindings.
+
 ## 1. Choose a client
 
 - [clientd](clientd.md): install the local daemon, then connect an AI client.
@@ -14,7 +17,7 @@ Neither path requires your own provider API key or a ZKAPI server.
 ## 2. Use the published inputs
 
 The current Pool uses `public-devnet-20261021-state-v1` and the immutable
-[SDK/native `.13` release](gateway-release-upgrade.md). Create a new client profile
+[SDK/native `.14` release](node-security-upgrade.md). Create a new client profile
 and journal for this Pool. Earlier profiles authenticate the retired Pool and
 must not be edited to point at this one; keep their recovery material separately.
 See [current-state setup](poc-state-sync.md) for the intentional PoC reset.
@@ -22,21 +25,22 @@ See [current-state setup](poc-state-sync.md) for the intentional PoC reset.
 | Input | Download |
 |---|---|
 | Public profile | [profile.json](https://d366buuvadnp3.cloudfront.net/releases/public-devnet-20261021-state-v1/profile.json) |
-| SDK | [zkapi-solana-sdk-0.2.0-devnet.13.tgz](https://github.com/yukikm/solana-zkapi/releases/download/v0.2.0-devnet.13/zkapi-solana-sdk-0.2.0-devnet.13.tgz) |
-| clientd, macOS ARM64 | [zkapi-clientd-0.2.0-devnet.13-darwin-arm64.tar.gz](https://github.com/yukikm/solana-zkapi/releases/download/v0.2.0-devnet.13/zkapi-clientd-0.2.0-devnet.13-darwin-arm64.tar.gz) |
+| SDK | [zkapi-solana-sdk-0.2.0-devnet.14.tgz](https://github.com/yukikm/solana-zkapi/releases/download/v0.2.0-devnet.14/zkapi-solana-sdk-0.2.0-devnet.14.tgz) |
+| clientd, macOS ARM64 | [zkapi-clientd-0.2.0-devnet.14-darwin-arm64.tar.gz](https://github.com/yukikm/solana-zkapi/releases/download/v0.2.0-devnet.14/zkapi-clientd-0.2.0-devnet.14-darwin-arm64.tar.gz) |
 
-SHA-256 pins, in the same order:
+The public profile SHA-256 remains:
 
 ```text
-profile: 5e15d66c6f45265951cf1f8dd6cc0dae6574c4b8dd6756f828f7543ecaa97b9a
-SDK:     e6e7668e1d37938f67f8865673aba1a11f27b975d3715a376ac24a6dcfa8a8a9
-clientd: 7232ae83cb18842eb6e759683bf47931a039b87e121c4427c90253db09998656
+5e15d66c6f45265951cf1f8dd6cc0dae6574c4b8dd6756f828f7543ecaa97b9a
 ```
 
-The extracted native `release.json` pin is
-`5c6a730af8ae1a533d4ad5d745a6869b6795025ee7e8f51ec7b061ec8100f97e`.
-Verify pins through the authenticated [release](https://github.com/yukikm/solana-zkapi/releases/tag/v0.2.0-devnet.13),
-separately from the downloaded artifacts. Native support is Apple Silicon,
+Obtain package digests from the authenticated `.14` `release-manifest.json`:
+`assets[filename].sha256` identifies each archive, and
+`native.installation_manifest_sha256` identifies the extracted `release.json`.
+Use [release and asset verification](node-security-upgrade.md#authenticate-the-published-release)
+before trusting those fields. The [SDK](sdk.md) and [clientd](clientd.md)
+quickstarts perform these checks. This avoids deriving an expected digest from
+the same unverified archive being installed. Native support is Apple Silicon,
 macOS 13.5 or newer; the archive is not Apple notarized.
 
 Keep an existing funded installation's original profile, artifacts, wallet and

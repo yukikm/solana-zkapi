@@ -53,7 +53,7 @@ for source, target in [(NODE,'bin/node'),(args.verifier or 'apps/clientd/compani
 # This removes source-tree/workspace and browser demo dependencies at runtime.
 npm = os.environ.get('ZKAPI_NPM') or shutil.which('npm')
 if not npm or not shutil.which(npm):
-    raise RuntimeError('Set ZKAPI_NPM to the pinned npm 11.9.0 executable')
+    raise RuntimeError('Set ZKAPI_NPM to the pinned npm 11.19.1 executable')
 npm = str(Path(shutil.which(npm)).absolute())
 pack_dir = OUT / 'vendor'
 pack_dir.mkdir(exist_ok=True)
@@ -66,8 +66,8 @@ source_lock_bytes = (ROOT / 'package-lock.json').read_bytes()
 lock_evidence = materialize(OUT, OUT / archive, 'clientd-runtime')
 lock_before = (OUT / 'package-lock.json').read_bytes()
 npm_env = {**os.environ, 'PATH':str(Path(NODE).parent)+os.pathsep+os.environ.get('PATH','')}
-if subprocess.check_output([npm,'--version'],env=npm_env,text=True).strip() != '11.9.0':
-    raise RuntimeError('pinned npm 11.9.0 required')
+if subprocess.check_output([npm,'--version'],env=npm_env,text=True).strip() != '11.19.1':
+    raise RuntimeError('pinned npm 11.19.1 required')
 try:
     subprocess.run([npm, 'ci', *(['--offline'] if args.offline else []), '--ignore-scripts', '--bin-links=false', '--omit=dev', '--no-audit', '--no-fund'], cwd=OUT, check=True, env=npm_env)
 except subprocess.CalledProcessError as error:

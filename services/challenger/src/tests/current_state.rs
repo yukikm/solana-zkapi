@@ -278,7 +278,7 @@ async fn current_runtime_scan_restart_and_identity_fenced_unknown_recovery() {
                 .arg("node")
                 .output()
                 .unwrap();
-            assert!(output.status.success(), "put pinned Node 24.19.0 on PATH");
+            assert!(output.status.success(), "put pinned Node 24.22.1 on PATH");
             std::path::PathBuf::from(String::from_utf8(output.stdout).unwrap().trim())
         });
     let common = runtime::Config {
