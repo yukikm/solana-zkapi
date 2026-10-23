@@ -15,7 +15,7 @@ frontend. A provider running its own proxy takes both responsibilities.
 
 ## Prepare the source and reviewed inputs
 
-Use pinned Node 24.19.0/npm 11.9.0 and the Rust toolchain in
+Use pinned Node 24.22.1/npm 11.19.1 and the Rust toolchain in
 [Contributing](../../CONTRIBUTING.md). Build the SDK and control binaries from the
 same reviewed checkout:
 

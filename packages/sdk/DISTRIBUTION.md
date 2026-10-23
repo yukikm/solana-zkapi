@@ -5,19 +5,30 @@ TypeScript declarations, so your application does not need TypeScript source
 loading or access to the zkAPI repository. Registry publication is disabled with
 `private: true`; no package under this name on npm is endorsed by this project.
 
-Download `zkapi-solana-sdk-0.2.0-devnet.13.tgz` from the
-[published SDK release](https://github.com/yukikm/solana-zkapi/releases/tag/v0.2.0-devnet.13).
-Verify it against the independently obtained SHA-256 in the
-[SDK/native upgrade guide](../../docs/getting-started/gateway-release-upgrade.md), then install:
+Download `zkapi-solana-sdk-0.2.0-devnet.14.tgz` and `release-manifest.json` from
+[SDK/native `.14`](https://github.com/yukikm/solana-zkapi/releases/tag/v0.2.0-devnet.14).
+Follow the [release authentication procedure](../../docs/getting-started/node-security-upgrade.md#authenticate-the-published-release)
+to verify the immutable release and asset attestations, then compare the tarball
+with the digest in that authenticated manifest and install:
 
 ```sh
-shasum -a 256 zkapi-solana-sdk-0.2.0-devnet.13.tgz
-npm install --save-exact ./zkapi-solana-sdk-0.2.0-devnet.13.tgz @solana/kit@8.4.0
+node --input-type=module -e '
+  import { createHash } from "node:crypto";
+  import { readFileSync } from "node:fs";
+  const file = "zkapi-solana-sdk-0.2.0-devnet.14.tgz";
+  const release = JSON.parse(readFileSync("release-manifest.json", "utf8"));
+  if (release.version !== "0.2.0-devnet.14" ||
+      createHash("sha256").update(readFileSync(file)).digest("hex") !== release.assets[file].sha256)
+    throw new Error("SDK release checksum mismatch");
+'
+npm install --save-exact ./zkapi-solana-sdk-0.2.0-devnet.14.tgz @solana/kit@8.4.0
 ```
+
+Retain earlier `.13` artifacts and existing profile/custody bindings.
 
 Read the [Kit API migration guide](../../docs/sdk/kit-migration.md) when upgrading
 from the first preview. Keep the tarball and your application's lockfile. Node integrations use Node
-24.19.0 (the validated Node 24 release); browser applications bundle the browser
+24.22.1 (the pinned Node 24 security release); browser applications bundle the browser
 entry points for a modern browser with Web Crypto, Workers, IndexedDB and Web
 Locks. Node's native SQLite journal is available through the separate
 `@zkapi/solana-sdk/journal-node` entry point. Browser imports do not include Node

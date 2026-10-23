@@ -14,6 +14,9 @@ SDK/native `.13` adds an offline registration compiler, API-only public profiles
 and native invocation. See [JSON API onboarding](docs/getting-started/json-api.md)
 and [new-Devnet registration](docs/getting-started/api-registration.md).
 See the [`.13` release and upgrade guide](docs/releases/universal-api-gateway-preview.md).
+The [`.14` security update](docs/releases/node-security-preview.md) upgrades Node
+to 24.22.1 LTS while retaining existing profile and custody bindings; see its
+[installation procedure](docs/getting-started/node-security-upgrade.md).
 The existing public deployment retains its direct OpenRouter inference selection.
 
 ## How it works

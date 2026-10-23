@@ -10,8 +10,8 @@ def inspect_tools(root):
     root = Path(root)
     found, errors, versions = {}, [], {}
     specs = {
-        'node': ('ZKAPI_NODE', [root / 'target/i08-toolchain/bin/node', *sorted((root / 'target/toolchains').glob('node-v24.19.0-*/bin/node')), 'node'], ['--version'], 'v24.19.0'),
-        'npm': ('ZKAPI_NPM', [root / 'target/i08-toolchain/bin/npm', 'npm'], ['--version'], '11.9.0'),
+        'node': ('ZKAPI_NODE', [root / 'target/i08-toolchain/bin/node', *sorted((root / 'target/toolchains').glob('node-v24.22.1-*/bin/node')), 'node'], ['--version'], 'v24.22.1'),
+        'npm': ('ZKAPI_NPM', [root / 'target/i08-toolchain/bin/npm', 'npm'], ['--version'], '11.19.1'),
         'go': ('ZKAPI_GO', [root / 'target/toolchains/go/bin/go', 'go'], ['version'], 'go1.25.0'),
         'sbf': ('ZKAPI_SBF', [root / 'target/toolchains/sbf/bin/cargo-build-sbf', 'cargo-build-sbf'], ['--version'], 'cargo-build-sbf 4.1.0'),
         'rustc': (None, ['rustc'], ['--version'], 'rustc 1.90.0'),

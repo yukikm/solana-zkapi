@@ -27,7 +27,9 @@ a checksum downloaded from the same untrusted source is insufficient authenticat
 
 ## Update an SDK application
 
-Use Node 24.19.0 and npm 11.9.0. Copy the verified SDK archive into the
+The original release used Node 24.19.0 and npm 11.9.0. For the current
+security update, follow the [Node security upgrade guide](node-security-upgrade.md).
+Copy the verified SDK archive into the
 application's vendor directory without overwriting earlier artifacts, then:
 
 ```sh

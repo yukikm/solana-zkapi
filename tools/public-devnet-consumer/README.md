@@ -10,7 +10,9 @@ the authenticated profile, exact downloads, access policy and service status.
 
 ## Install and diagnose
 
-Use Node 24.19.0. Verify the tarball digest through the release's
+Use Node 24.22.1. The [`.14` security upgrade](../../docs/getting-started/node-security-upgrade.md)
+retains `.13` profile bytes and the existing legacy schema 1 compatibility.
+Verify the tarball digest through the release's
 authenticated channel, then install that exact file:
 
 ```sh

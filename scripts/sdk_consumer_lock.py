@@ -14,7 +14,7 @@ import tarfile
 
 ROOT = Path(__file__).resolve().parents[1]
 KINDS = ('sdk-consumer', 'clientd-runtime')
-ACCEPTANCE_DEPENDENCIES = {'typescript': '5.9.3', '@types/node': '24.10.0', 'esbuild': '0.28.2'}
+ACCEPTANCE_DEPENDENCIES = {'typescript': '5.9.3', '@types/node': '24.19.2', 'esbuild': '0.28.2'}
 
 
 def sha(path: Path) -> str:

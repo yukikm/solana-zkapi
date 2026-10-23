@@ -3,6 +3,8 @@
 For installation, funding and application setup, use
 [getting started](../../docs/getting-started/clientd.md).
 See [support](../../docs/support.md) for verified platforms and client compatibility.
+The [`.14` security upgrade](../../docs/getting-started/node-security-upgrade.md)
+packages Node 24.22.1 in a separate installation; it does not rebind funded profiles.
 
 The current source Go frontend serves registered POST JSON and finite HTTP APIs,
 inference APIs, SSE and wallet management on `127.0.0.1:8787`. [`runtime.ts`](runtime.ts) connects it to the SDK's
@@ -16,7 +18,7 @@ forward arbitrary caller-selected URLs.
 
 ## Build and verify
 
-Use Node 24.19.0, npm 11.9.0, Go 1.25.0 and Rust 1.90.0. From the repository root:
+Use Node 24.22.1, npm 11.19.1, Go 1.25.0 and Rust 1.90.0. From the repository root:
 
 ```sh
 npm ci --ignore-scripts

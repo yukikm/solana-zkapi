@@ -1,5 +1,8 @@
 # SDK reference
 
+For runtime security updates and unchanged profile bindings, see the
+[SDK/native `.14` upgrade guide](../getting-started/node-security-upgrade.md).
+
 The SDK provides USDC custody, local proofs, usage authorization, signed
 settlement and recovery for API integrations. Start with
 [General API integration](../getting-started/api-integration.md) to understand

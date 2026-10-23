@@ -7,7 +7,7 @@ Public documentation and examples are English.
 ## Local checks
 
 Use the versions pinned in `package.json` and `rust-toolchain.toml`:
-Node 24.19.0, npm 11.9.0 and Rust 1.90.0.
+Node 24.22.1, npm 11.19.1 and Rust 1.90.0.
 
 ```sh
 git submodule update --init --recursive

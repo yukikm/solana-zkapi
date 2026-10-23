@@ -17,8 +17,8 @@ PLATFORM_FILES = [
     'llvm/bin/llvm-objcopy', 'llvm/bin/llvm-readelf',
 ]
 PINNED_VERSIONS = {
-    'node': 'v24.19.0\n',
-    'npm': '11.9.0\n',
+    'node': 'v24.22.1\n',
+    'npm': '11.19.1\n',
     'go': 'go version go1.25.0 fixture/arm64\n',
     'cargo-build-sbf': 'cargo-build-sbf 4.1.0\nplatform-tools v1.54\n',
     'rustc': 'rustc 1.90.0 (fixture 2025-09-18)\n',
@@ -202,7 +202,7 @@ class ToolInventoryTests(unittest.TestCase):
 
     def test_version_and_wasm_mismatches_are_aggregated_with_other_tools_found(self):
         self.versions['node'] = 'v24.18.0\n'
-        self.versions['npm'] = '11.9.0-unreviewed\n'
+        self.versions['npm'] = '11.19.1-unreviewed\n'
         self.versions['cargo-build-sbf'] = 'cargo-build-sbf 4.1.0\nplatform-tools v1.53\n'
         self.rust_targets = 'aarch64-apple-darwin\n'
         result = inspect_tools(ROOT)

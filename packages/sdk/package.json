@@ -1,6 +1,6 @@
 {
   "name": "@zkapi/solana-sdk",
-  "version": "0.2.0-devnet.13",
+  "version": "0.2.0-devnet.14",
   "private": true,
   "type": "module",
   "exports": {
@@ -137,7 +137,7 @@
   },
   "description": "Solana USDC-funded API client with local proofs and durable settlement recovery",
   "engines": {
-    "node": ">=24.19.0 <25"
+    "node": ">=24.22.1 <25"
   },
   "main": "./dist/client.js",
   "types": "./dist/client.d.ts",
@@ -155,7 +155,7 @@
   },
   "devDependencies": {
     "typescript": "5.9.3",
-    "@types/node": "24.10.0"
+    "@types/node": "24.19.2"
   },
   "license": "MIT",
   "repository": {
