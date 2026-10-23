@@ -854,7 +854,7 @@ and use the separate new-Devnet staging procedure.
 
 ### Independent prerequisites
 
-The fresh path requires installed pinned Node 24.19.0, npm 11.9.0, Rust 1.90.0,
+The fresh path requires installed pinned Node 24.22.1, npm 11.19.1, Rust 1.90.0,
 Go 1.25.0 for native acceptance, cargo-build-sbf 4.1.0/platform-tools v1.54,
 the Rust WASM target, PostgreSQL tools, Python and GNU tar. Chromium is not a
 prerequisite for native/API onboarding. Preserve existing tool-selection

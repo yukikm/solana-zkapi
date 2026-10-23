@@ -6,7 +6,8 @@ see the [getting-started index](README.md) for ZKAPI's broader API model.
 
 clientd manages local inference, funding and settlement. These installation
 commands are for **Apple Silicon, macOS 13.5+** and use the ready-built package.
-It includes Node and the proof binaries. You need Terminal and Python 3; no
+It includes Node and the proof binaries. You need Terminal, Python 3 and an authenticated GitHub CLI with immutable
+release verification support; no
 repository checkout, npm, Go or Rust is required. The package is not Apple
 signed or notarized.
 
@@ -20,44 +21,67 @@ funded installation, profile and journal unchanged; see
 [upgrades](../releases/usability-preview.md). Check [support](../support.md)
 before use.
 
+The [`.14` Node security upgrade](node-security-upgrade.md) supplies Node 24.22.1
+and retains the existing authenticated deployment profile and custody bindings.
+
 ## 1. Download
 
-These commands install the immutable `.13` release and create fresh state for
+These commands install the immutable `.14` release and create fresh state for
 `public-devnet-20261021-state-v1`. Earlier funded profiles remain separate.
 
-Open Terminal and run this block. It verifies the published `.13` archive and
-installation manifest, then installs under `~/Applications/ZKAPI` without sudo.
-Obtain these checksums through this repository's trusted release channel.
+Open Terminal and run this block. It authenticates the `.14` release and its
+assets, verifies archive and installation digests from the release manifest,
+then installs under `~/Applications/ZKAPI` without sudo.
 
 ```sh
 (
   set -eu
   ZKAPI_BASE="$HOME/Applications/ZKAPI"
-  ZKAPI_INSTALL="$ZKAPI_BASE/zkapi-clientd-0.2.0-devnet.13-darwin-arm64"
+  ZKAPI_RELEASE="$ZKAPI_BASE/releases/v0.2.0-devnet.14"
+  ZKAPI_INSTALL="$ZKAPI_BASE/zkapi-clientd-0.2.0-devnet.14-darwin-arm64"
   [ "$(uname -s)" = Darwin ] && [ "$(uname -m)" = arm64 ] || {
     echo 'This package requires an Apple Silicon Mac.' >&2; exit 1;
   }
-  [ ! -e "$ZKAPI_INSTALL" ] || {
-    echo 'Installation exists. Preserve it; do not overwrite.' >&2; exit 1;
+  [ ! -e "$ZKAPI_INSTALL" ] && [ ! -e "$ZKAPI_RELEASE" ] || {
+    echo 'Installation or download exists. Preserve it; do not overwrite.' >&2; exit 1;
   }
-  mkdir -p "$ZKAPI_BASE/target"
-  ZKAPI_DOWNLOAD=$(mktemp -d "$ZKAPI_BASE/target/download.XXXXXX")
-  curl --fail --location --proto '=https' --proto-redir '=https' \
-    --output "$ZKAPI_DOWNLOAD/clientd.tar.gz" \
-    'https://github.com/yukikm/solana-zkapi/releases/download/v0.2.0-devnet.13/zkapi-clientd-0.2.0-devnet.13-darwin-arm64.tar.gz'
-  printf '%s  %s\n' \
-    '7232ae83cb18842eb6e759683bf47931a039b87e121c4427c90253db09998656' \
-    "$ZKAPI_DOWNLOAD/clientd.tar.gz" | shasum -a 256 -c -
-  tar -xzf "$ZKAPI_DOWNLOAD/clientd.tar.gz" -C "$ZKAPI_BASE"
-  printf '%s  %s\n' \
-    '5c6a730af8ae1a533d4ad5d745a6869b6795025ee7e8f51ec7b061ec8100f97e' \
-    "$ZKAPI_INSTALL/release.json" | shasum -a 256 -c -
+  mkdir -p "$ZKAPI_RELEASE"
+  cd "$ZKAPI_RELEASE"
+  gh release download v0.2.0-devnet.14 --repo yukikm/solana-zkapi \
+    --pattern release-manifest.json --pattern zkapi-clientd-0.2.0-devnet.14-darwin-arm64.tar.gz
+  gh release verify v0.2.0-devnet.14 --repo yukikm/solana-zkapi
+  gh release verify-asset v0.2.0-devnet.14 release-manifest.json --repo yukikm/solana-zkapi
+  gh release verify-asset v0.2.0-devnet.14 zkapi-clientd-0.2.0-devnet.14-darwin-arm64.tar.gz --repo yukikm/solana-zkapi
+  python3 - <<'VERIFY_ARCHIVE'
+import hashlib, json
+from pathlib import Path
+release = json.loads(Path('release-manifest.json').read_text())
+archive = Path('zkapi-clientd-0.2.0-devnet.14-darwin-arm64.tar.gz')
+assert release['version'] == '0.2.0-devnet.14'
+assert hashlib.sha256(archive.read_bytes()).hexdigest() == release['assets'][archive.name]['sha256']
+print('Native archive verified')
+VERIFY_ARCHIVE
+  tar -xzf zkapi-clientd-0.2.0-devnet.14-darwin-arm64.tar.gz -C "$ZKAPI_BASE"
+  python3 - "$ZKAPI_INSTALL" <<'VERIFY_INSTALLATION'
+import hashlib, json, sys
+from pathlib import Path
+release = json.loads(Path('release-manifest.json').read_text())
+root = Path(sys.argv[1])
+assert hashlib.sha256((root / 'release.json').read_bytes()).hexdigest() == release['native']['installation_manifest_sha256']
+manifest = json.loads((root / 'release.json').read_text())
+for name, digest in manifest['files'].items():
+    assert hashlib.sha256((root / name).read_bytes()).hexdigest() == digest, name
+print('Native installation verified')
+VERIFY_INSTALLATION
+  test "$("$ZKAPI_INSTALL/bin/node" --version)" = v24.22.1
   "$ZKAPI_INSTALL/bin/clientd" --help
 )
 ```
 
-Continue only after both checksums print `OK` and clientd prints its usage.
-If macOS blocks execution, inspect the error; do not disable Gatekeeper.
+Continue only after release/asset authentication and both verification messages
+succeed and clientd prints its usage. Keep the authenticated release manifest in
+its download directory. If macOS blocks execution, inspect the error; do not
+disable Gatekeeper.
 
 ## 2. Create a profile
 
@@ -65,7 +89,8 @@ Set these paths in **each Terminal window** used below:
 
 ```sh
 ZKAPI_BASE="$HOME/Applications/ZKAPI"
-ZKAPI_INSTALL="$ZKAPI_BASE/zkapi-clientd-0.2.0-devnet.13-darwin-arm64"
+ZKAPI_RELEASE="$ZKAPI_BASE/releases/v0.2.0-devnet.14"
+ZKAPI_INSTALL="$ZKAPI_BASE/zkapi-clientd-0.2.0-devnet.14-darwin-arm64"
 ZKAPI_INPUTS="$ZKAPI_BASE/deployment-state-20261021"
 ZKAPI_PROFILE="$ZKAPI_BASE/profile-state-20261021"
 ```
@@ -79,6 +104,15 @@ credentials:
   [ ! -e "$ZKAPI_INPUTS" ] && [ ! -e "$ZKAPI_PROFILE" ] || {
     echo 'Setup files exist. Preserve them; do not repeat setup.' >&2; exit 1;
   }
+  gh release verify-asset v0.2.0-devnet.14 "$ZKAPI_RELEASE/release-manifest.json" --repo yukikm/solana-zkapi
+  ZKAPI_INSTALL_SHA=$(python3 - "$ZKAPI_RELEASE/release-manifest.json" <<'INSTALL_PIN'
+import json, sys
+from pathlib import Path
+release = json.loads(Path(sys.argv[1]).read_text())
+assert release['version'] == '0.2.0-devnet.14'
+print(release['native']['installation_manifest_sha256'])
+INSTALL_PIN
+  )
   "$ZKAPI_INSTALL/bin/node" \
     "$ZKAPI_INSTALL/tools/public-devnet-consumer/cli.mjs" install-native \
     --profile-url 'https://d366buuvadnp3.cloudfront.net/releases/public-devnet-20261021-state-v1/profile.json' \
@@ -90,7 +124,7 @@ credentials:
   "$ZKAPI_INSTALL/bin/clientd" setup \
     --profile "$ZKAPI_PROFILE" \
     --distribution "$ZKAPI_INSTALL/release.json" \
-    --sha256 '5c6a730af8ae1a533d4ad5d745a6869b6795025ee7e8f51ec7b061ec8100f97e' \
+    --sha256 "$ZKAPI_INSTALL_SHA" \
     --runtime-config "$ZKAPI_INPUTS/runtime.json" \
     --runtime-sha256 "$ZKAPI_RUNTIME_SHA" \
     --network-config "$ZKAPI_INPUTS/network.json"

@@ -50,7 +50,7 @@ selecting proxy mode does not resolve this.
 
 Do not fund a note for this configuration check or strip fields to force it
 through admission. Contributors can run the repository's synthetic probe from
-the repository root with Node 24.19.0 and Go 1.25.0. Replace both executable
+the repository root with Node 24.22.1 and Go 1.25.0. Replace both executable
 paths with your own installations:
 
 ```sh

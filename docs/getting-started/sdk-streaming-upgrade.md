@@ -9,7 +9,9 @@ packages and does not authorize paid inference or transactions.
 
 ## Install the reviewed archive
 
-Use Node 24.19.0 and npm 11.9.0. Download the exact
+The original release used Node 24.19.0 and npm 11.9.0. For the current
+security update, follow the [Node security upgrade guide](node-security-upgrade.md).
+Download the exact
 [SDK archive](https://github.com/yukikm/solana-zkapi/releases/download/v0.2.0-devnet.12/zkapi-solana-sdk-0.2.0-devnet.12.tgz)
 and [SHA256SUMS](https://github.com/yukikm/solana-zkapi/releases/download/v0.2.0-devnet.12/SHA256SUMS)
 into a new directory. Follow the

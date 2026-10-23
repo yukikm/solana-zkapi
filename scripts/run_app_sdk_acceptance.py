@@ -40,7 +40,7 @@ def main():
     node = os.environ.get('ZKAPI_NODE') or (str(bundled_node) if bundled_node.is_file() else 'node')
     node = shutil.which(node)
     if not node:
-        raise SystemExit('Set ZKAPI_NODE to the pinned Node 24.19.0 executable')
+        raise SystemExit('Set ZKAPI_NODE to the pinned Node 24.22.1 executable')
     env = {k: os.environ[k] for k in ('HOME', 'PATH', 'TMPDIR', 'LANG', 'LC_ALL', 'ZKAPI_TEST_CHROME') if k in os.environ}
     env['ZKAPI_NODE'] = node
     env['PATH'] = str(Path(node).parent) + os.pathsep + env.get('PATH', '')
@@ -51,8 +51,8 @@ def main():
     start = time.monotonic()
     try:
         version = subprocess.check_output([node, '--version'], text=True, env=env).strip()
-        if version != 'v24.19.0':
-            raise RuntimeError('Node 24.19.0 required; observed ' + version)
+        if version != 'v24.22.1':
+            raise RuntimeError('Node 24.22.1 required; observed ' + version)
         report['node_version'] = version
         before = snapshot()
         tsc = str(ROOT / 'node_modules/typescript/bin/tsc')

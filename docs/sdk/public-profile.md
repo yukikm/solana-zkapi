@@ -6,7 +6,7 @@ independently authenticated release; a checksum served only beside an untrusted
 file does not authenticate it.
 
 The API has been available since `.2`. New consumers should use the
-[published `.13` clients](../releases/universal-api-gateway-preview.md) with the
+[`.14` clients](../releases/node-security-preview.md) with the
 authenticated selection for their deployment.
 Existing custody keeps its original profile binding. Profile verification does
 not establish service availability or provider capacity; see [status](../support.md).
@@ -16,6 +16,11 @@ schema 3 for finite HTTP. These profiles must explicitly list `.13`. For legacy
 schema 1 only, `.13` also accepts authenticated profiles listing `.8`, `.9`,
 `.10`, `.11` or `.12`, retaining their original bytes and hash. Compatibility
 does not enable gateway capabilities or replace existing custody bindings.
+
+SDK `.14` also accepts profiles listing `.13` in schemas 1, 2 and 3,
+and retains the earlier schema 1 compatibility. This is a compatibility rule in
+the client: profile bytes, their SHA-256 and custody bindings remain unchanged.
+See the [security upgrade](../getting-started/node-security-upgrade.md) for installation and verification.
 
 ## Load and inspect before opening custody
 
@@ -140,7 +145,7 @@ The exact supported top-level fields are:
 |---|---|
 | `schema` | Integer `1` (inference) or `2` (selected models and/or API services); `PUBLIC_PROFILE_SCHEMA` is `2` |
 | `id`, `revision` | Lowercase stable profile identifier and positive integer revision |
-| `sdkVersions` | Exact SDK build-version membership; supporting schema 1 does not override an immutable profile's version list |
+| `sdkVersions` | Exact SDK build versions, subject only to the explicitly documented release compatibility rules above; profile bytes remain immutable |
 | `protocolLayoutVersion` | Integer `2` |
 | `bundle` | `{url, sha256}` of the existing immutable `bundle.json` format |
 | `rpcUrl`, `indexerOrigin` | Reviewed browser-safe HTTPS RPC URL and canonical HTTPS indexer origin |

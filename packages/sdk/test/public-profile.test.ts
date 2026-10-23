@@ -20,7 +20,19 @@ test('legacy inference SDK profile compatibility preserves exact authenticated b
     assert(f.calls.every(call=>call.method==='GET'));assert(!f.calls.some(call=>/quotes|sessions|notes/.test(call.url)));
   }
 });
-test('API profile schemas require explicit current SDK membership before fetching assets',async()=>{
+test('security runtime update preserves .13 profiles and exact pins across all supported schemas',async()=>{
+  for(const schema of [1,2,3]){
+    const f=schema===3?await gatewayPublicProfileFixture():schema===2?await publicProfileFixture({schema:2,selection:'api'}):await publicProfileFixture();
+    f.profile.sdkVersions=['0.2.0-devnet.13'];
+    const original=jcsBytes(f.profile),pin=await f.profileSha256();
+    const loaded=await loadPublicDeploymentProfile(f.profileUrl,{profileSha256:pin,installedProfileSha256:pin,fetch:f.fetcher});
+    assert.equal(loaded.profile.schema,schema);assert.equal(loaded.profileSha256,pin);
+    assert.deepEqual(jcsBytes(loaded.profile),original);assert.deepEqual(jcsBytes(f.profile),original);
+    assert(f.calls.every(call=>call.method==='GET'));assert(!f.calls.some(call=>/quotes|sessions|notes/.test(call.url)));
+    await assert.rejects(loadPublicDeploymentProfile(f.profileUrl,{profileSha256:pin,installedProfileSha256:'00'.repeat(32),fetch:f.fetcher}),component('profile'));
+  }
+});
+test('API profile schemas require explicit compatible SDK membership before fetching assets',async()=>{
   for(const version of [...legacyVersions,'0.2.0-devnet.9-onboarding.0'])for(const schema of [2,3]){
     const f=schema===3?await gatewayPublicProfileFixture():await publicProfileFixture({schema:2,selection:'api'});
     f.profile.sdkVersions=[version];

@@ -118,7 +118,7 @@ jobs:
         run: |
           rustup show
           scripts/install_sbf_tools.sh
-          npm install --global npm@11.9.0
+          npm install --global npm@11.19.1
           npm ci --ignore-scripts
       - name: Require the hosted runner's real Chrome
         run: |
@@ -219,7 +219,7 @@ jobs:
         run: |
           rustup show
           scripts/install_sbf_tools.sh
-          npm install --global npm@11.9.0
+          npm install --global npm@11.19.1
           npm ci --ignore-scripts
           sudo apt-get update
           sudo apt-get install --yes postgresql-16 openssl
@@ -286,7 +286,7 @@ jobs:
         with:
           node-version-file: .node-version
       - name: Pinned npm
-        run: npm install --global npm@11.9.0
+        run: npm install --global npm@11.19.1
       - run: npm ci --ignore-scripts
       - name: Require the hosted runner's real Chrome
         run: |
@@ -325,7 +325,7 @@ jobs:
           rustup show
           rustup target add wasm32-unknown-unknown
           scripts/install_sbf_tools.sh
-          npm install --global npm@11.9.0
+          npm install --global npm@11.19.1
           sudo apt-get update
           sudo apt-get install --yes postgresql-16
       - name: Fetch locked dependencies separately

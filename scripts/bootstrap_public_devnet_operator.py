@@ -118,7 +118,7 @@ def initialize(root, expected):
     cfg = verified_inputs(root, expected)
     for name in ('controld', 'signerd', 'dispatcherd', 'indexerd', 'challengerd'):
         require(digest(APP / 'bin' / name) == cfg['binary_sha256'][name])
-    require(run([str(APP / 'node/bin/node'), '--version']).strip() == b'v24.19.0')
+    require(run([str(APP / 'node/bin/node'), '--version']).strip() == b'v24.22.1')
     manifest = json.loads((root / 'public/assets/manifest.json').read_bytes())
     require(manifest['manifest_hash'] == cfg['manifest_sha256'])
     require(manifest['control_api_origin'] == cfg['public_origin'])
