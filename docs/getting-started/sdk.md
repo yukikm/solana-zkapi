@@ -14,9 +14,11 @@ or use [clientd](clientd.md).
 The [`.14` Node security upgrade](node-security-upgrade.md) supplies Node 24.22.1
 and retains the existing authenticated deployment profile and custody bindings.
 
+SDK `.15` adds [explicit recovery outcomes and issuance diagnostics](direct-recovery-upgrade.md).
+
 ## 1. Install
 
-These commands install `.14` for the new current-state Devnet Pool. Use a new
+These commands install `.15` for the new current-state Devnet Pool. Use a new
 browser storage name and the new profile pins below. Existing journals retain
 their original Pool binding.
 
@@ -27,22 +29,22 @@ verification support, and Node for checksum verification. Use a new directory.
 ```sh
 (
   set -eu
-  gh release download v0.2.0-devnet.14 --repo yukikm/solana-zkapi \
-    --pattern release-manifest.json --pattern zkapi-solana-sdk-0.2.0-devnet.14.tgz
-  gh release verify v0.2.0-devnet.14 --repo yukikm/solana-zkapi
-  gh release verify-asset v0.2.0-devnet.14 release-manifest.json --repo yukikm/solana-zkapi
-  gh release verify-asset v0.2.0-devnet.14 zkapi-solana-sdk-0.2.0-devnet.14.tgz --repo yukikm/solana-zkapi
+  gh release download v0.2.0-devnet.15 --repo yukikm/solana-zkapi \
+    --pattern release-manifest.json --pattern zkapi-solana-sdk-0.2.0-devnet.15.tgz
+  gh release verify v0.2.0-devnet.15 --repo yukikm/solana-zkapi
+  gh release verify-asset v0.2.0-devnet.15 release-manifest.json --repo yukikm/solana-zkapi
+  gh release verify-asset v0.2.0-devnet.15 zkapi-solana-sdk-0.2.0-devnet.15.tgz --repo yukikm/solana-zkapi
   node --input-type=module -e '
     import { createHash } from "node:crypto";
     import { readFileSync } from "node:fs";
-    const file = "zkapi-solana-sdk-0.2.0-devnet.14.tgz";
+    const file = "zkapi-solana-sdk-0.2.0-devnet.15.tgz";
     const release = JSON.parse(readFileSync("release-manifest.json", "utf8"));
-    if (release.version !== "0.2.0-devnet.14") throw new Error("Wrong release");
+    if (release.version !== "0.2.0-devnet.15") throw new Error("Wrong release");
     const expected = release.assets[file].sha256;
     if (createHash("sha256").update(readFileSync(file)).digest("hex") !== expected)
       throw new Error("SDK checksum mismatch");
   '
-  npm install --save-exact ./zkapi-solana-sdk-0.2.0-devnet.14.tgz @solana/kit@8.4.0
+  npm install --save-exact ./zkapi-solana-sdk-0.2.0-devnet.15.tgz @solana/kit@8.4.0
 )
 ```
 

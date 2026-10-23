@@ -1,5 +1,7 @@
 # SDK reference
 
+SDK/native `.15` adds [explicit direct recovery diagnostics](../getting-started/direct-recovery-upgrade.md) while preserving existing custody and signed settlement.
+
 For runtime security updates and unchanged profile bindings, see the
 [SDK/native `.14` upgrade guide](../getting-started/node-security-upgrade.md).
 

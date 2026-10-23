@@ -24,12 +24,14 @@ before use.
 The [`.14` Node security upgrade](node-security-upgrade.md) supplies Node 24.22.1
 and retains the existing authenticated deployment profile and custody bindings.
 
+SDK/native `.15` adds [explicit recovery outcomes and issuance diagnostics](direct-recovery-upgrade.md).
+
 ## 1. Download
 
-These commands install the immutable `.14` release and create fresh state for
+These commands install the immutable `.15` release and create fresh state for
 `public-devnet-20261021-state-v1`. Earlier funded profiles remain separate.
 
-Open Terminal and run this block. It authenticates the `.14` release and its
+Open Terminal and run this block. It authenticates the `.15` release and its
 assets, verifies archive and installation digests from the release manifest,
 then installs under `~/Applications/ZKAPI` without sudo.
 
@@ -37,8 +39,8 @@ then installs under `~/Applications/ZKAPI` without sudo.
 (
   set -eu
   ZKAPI_BASE="$HOME/Applications/ZKAPI"
-  ZKAPI_RELEASE="$ZKAPI_BASE/releases/v0.2.0-devnet.14"
-  ZKAPI_INSTALL="$ZKAPI_BASE/zkapi-clientd-0.2.0-devnet.14-darwin-arm64"
+  ZKAPI_RELEASE="$ZKAPI_BASE/releases/v0.2.0-devnet.15"
+  ZKAPI_INSTALL="$ZKAPI_BASE/zkapi-clientd-0.2.0-devnet.15-darwin-arm64"
   [ "$(uname -s)" = Darwin ] && [ "$(uname -m)" = arm64 ] || {
     echo 'This package requires an Apple Silicon Mac.' >&2; exit 1;
   }
@@ -47,21 +49,21 @@ then installs under `~/Applications/ZKAPI` without sudo.
   }
   mkdir -p "$ZKAPI_RELEASE"
   cd "$ZKAPI_RELEASE"
-  gh release download v0.2.0-devnet.14 --repo yukikm/solana-zkapi \
-    --pattern release-manifest.json --pattern zkapi-clientd-0.2.0-devnet.14-darwin-arm64.tar.gz
-  gh release verify v0.2.0-devnet.14 --repo yukikm/solana-zkapi
-  gh release verify-asset v0.2.0-devnet.14 release-manifest.json --repo yukikm/solana-zkapi
-  gh release verify-asset v0.2.0-devnet.14 zkapi-clientd-0.2.0-devnet.14-darwin-arm64.tar.gz --repo yukikm/solana-zkapi
+  gh release download v0.2.0-devnet.15 --repo yukikm/solana-zkapi \
+    --pattern release-manifest.json --pattern zkapi-clientd-0.2.0-devnet.15-darwin-arm64.tar.gz
+  gh release verify v0.2.0-devnet.15 --repo yukikm/solana-zkapi
+  gh release verify-asset v0.2.0-devnet.15 release-manifest.json --repo yukikm/solana-zkapi
+  gh release verify-asset v0.2.0-devnet.15 zkapi-clientd-0.2.0-devnet.15-darwin-arm64.tar.gz --repo yukikm/solana-zkapi
   python3 - <<'VERIFY_ARCHIVE'
 import hashlib, json
 from pathlib import Path
 release = json.loads(Path('release-manifest.json').read_text())
-archive = Path('zkapi-clientd-0.2.0-devnet.14-darwin-arm64.tar.gz')
-assert release['version'] == '0.2.0-devnet.14'
+archive = Path('zkapi-clientd-0.2.0-devnet.15-darwin-arm64.tar.gz')
+assert release['version'] == '0.2.0-devnet.15'
 assert hashlib.sha256(archive.read_bytes()).hexdigest() == release['assets'][archive.name]['sha256']
 print('Native archive verified')
 VERIFY_ARCHIVE
-  tar -xzf zkapi-clientd-0.2.0-devnet.14-darwin-arm64.tar.gz -C "$ZKAPI_BASE"
+  tar -xzf zkapi-clientd-0.2.0-devnet.15-darwin-arm64.tar.gz -C "$ZKAPI_BASE"
   python3 - "$ZKAPI_INSTALL" <<'VERIFY_INSTALLATION'
 import hashlib, json, sys
 from pathlib import Path
@@ -89,8 +91,8 @@ Set these paths in **each Terminal window** used below:
 
 ```sh
 ZKAPI_BASE="$HOME/Applications/ZKAPI"
-ZKAPI_RELEASE="$ZKAPI_BASE/releases/v0.2.0-devnet.14"
-ZKAPI_INSTALL="$ZKAPI_BASE/zkapi-clientd-0.2.0-devnet.14-darwin-arm64"
+ZKAPI_RELEASE="$ZKAPI_BASE/releases/v0.2.0-devnet.15"
+ZKAPI_INSTALL="$ZKAPI_BASE/zkapi-clientd-0.2.0-devnet.15-darwin-arm64"
 ZKAPI_INPUTS="$ZKAPI_BASE/deployment-state-20261021"
 ZKAPI_PROFILE="$ZKAPI_BASE/profile-state-20261021"
 ```
@@ -104,12 +106,12 @@ credentials:
   [ ! -e "$ZKAPI_INPUTS" ] && [ ! -e "$ZKAPI_PROFILE" ] || {
     echo 'Setup files exist. Preserve them; do not repeat setup.' >&2; exit 1;
   }
-  gh release verify-asset v0.2.0-devnet.14 "$ZKAPI_RELEASE/release-manifest.json" --repo yukikm/solana-zkapi
+  gh release verify-asset v0.2.0-devnet.15 "$ZKAPI_RELEASE/release-manifest.json" --repo yukikm/solana-zkapi
   ZKAPI_INSTALL_SHA=$(python3 - "$ZKAPI_RELEASE/release-manifest.json" <<'INSTALL_PIN'
 import json, sys
 from pathlib import Path
 release = json.loads(Path(sys.argv[1]).read_text())
-assert release['version'] == '0.2.0-devnet.14'
+assert release['version'] == '0.2.0-devnet.15'
 print(release['native']['installation_manifest_sha256'])
 INSTALL_PIN
   )

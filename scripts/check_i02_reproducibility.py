@@ -8,9 +8,13 @@ import shutil
 import subprocess
 import tarfile
 import tempfile
+import tomllib
+
+from check_i02_source_lock import PINNED_LOCK
 
 ROOT = Path(__file__).resolve().parents[1]
 BUILDER = Path('scripts/build_i02_source.sh')
+LOCK_CHECKER = Path('scripts/check_i02_source_lock.py')
 CIRCUIT = Path('crates/zkapi-tree-prover/src/circuit.rs')
 
 
@@ -43,6 +47,9 @@ def main():
             checkout = temp / name
             (checkout / BUILDER).parent.mkdir(parents=True)
             shutil.copyfile(ROOT / BUILDER, checkout / BUILDER)
+            shutil.copyfile(ROOT / LOCK_CHECKER, checkout / LOCK_CHECKER)
+            (checkout / PINNED_LOCK).parent.mkdir(parents=True)
+            shutil.copyfile(ROOT / PINNED_LOCK, checkout / PINNED_LOCK)
             # Reverse creation order to ensure enumeration order is irrelevant.
             for member in reversed(members):
                 destination = checkout / member.name
@@ -58,6 +65,29 @@ def main():
             cases.append({'case': name, 'file_mode': oct(file_mode),
                           'directory_mode': oct(dir_mode), 'mtime': mtime,
                           'archive_identical': True})
+
+        # Workspace-only dependency additions and updates must not repin a circuit.
+        workspace_lock = checkout / 'Cargo.lock'
+        original_lock = workspace_lock.read_bytes()
+        for version in ('0.1.0', '0.2.0'):
+            workspace_lock.write_bytes(original_lock + (
+                '\n[[package]]\nname = "unrelated-observer"\n'
+                f'version = "{version}"\ndependencies = ["serde_json"]\n'
+            ).encode())
+            assert build(checkout, temp / f'unrelated-{version}.tar') == reference
+        workspace_lock.write_bytes(original_lock)
+
+        # The snapshot is not permission to silently use changed prover dependencies.
+        lock = tomllib.loads(original_lock.decode())
+        checksum = next(p['checksum'] for p in lock['package'] if p['name'] == 'ark-bn254')
+        workspace_lock.write_bytes(original_lock.replace(checksum.encode(), b'0' * 64))
+        changed_dependency = subprocess.run(
+            ['bash', str(checkout / BUILDER), str(temp / 'changed-dependency.tar')],
+            capture_output=True, check=False)
+        assert changed_dependency.returncode != 0
+        assert b'circuit dependency drift' in changed_dependency.stderr
+        assert not (temp / 'changed-dependency.tar').exists()
+        workspace_lock.write_bytes(original_lock)
 
         # Metadata is ignored, but actual circuit changes and missing sources must not be.
         source = checkout / CIRCUIT
@@ -75,11 +105,12 @@ def main():
     result = {'scope': 'source archive metadata regression; not a runtime or release gate',
               'archive_sha256': archive_hash, 'profile_hash': profile_hash, 'cases': cases,
               'canonical_headers_verified': True, 'source_change_changes_archive': True,
-              'missing_source_rejected': True, 'pinned_profile_matches': True}
-    output = ROOT / 'docs/evidence/I02B-reproducibility.json'
+              'missing_source_rejected': True, 'pinned_profile_matches': True,
+              'unrelated_workspace_changes_ignored': True, 'circuit_dependency_drift_rejected': True}
+    output = ROOT / 'target/i02b/source-reproducibility.json'
     output.parent.mkdir(parents=True, exist_ok=True)
     output.write_text(json.dumps(result, indent=2) + '\n')
-    print('PASS: 3 checkout metadata variants produce identical pinned archive/profile; content changes detected; missing sources fail')
+    print('PASS: checkout metadata and unrelated dependencies preserve the pinned archive/profile; circuit dependency drift and missing sources fail; source changes detected')
 
 
 if __name__ == '__main__':

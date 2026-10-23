@@ -16,6 +16,19 @@ import type {Tariff} from '../packages/sdk/src/control.ts';
 
 const id = '12345678-1234-4123-8123-123456789012';
 const field = '0x' + '00'.repeat(31) + '01';
+
+test('direct relay forwards only the explicit bounded recovery diagnostic opt-in',async()=>{
+  const f=await fixture(), forwarded:Record<string,string>[]=[];
+  const relay=directControlRelay({...f,budget:{kind:'operator-funded'},async forward(_path,_method,headers){
+    forwarded.push(headers);return{status:200,bytes:Buffer.from('{}')};
+  }});
+  const input={path:'/zkapi/v1/sessions/'+id,method:'GET' as const,authorization:f.authorization,data:Buffer.alloc(0)};
+  await relay(input);await relay({...input,recoveryDiagnostics:'1'});
+  assert.deepEqual(forwarded,[{authorization:f.authorization},{'x-zkapi-recovery-diagnostics':'1',authorization:f.authorization}]);
+  await assert.rejects(relay({...input,recoveryDiagnostics:'2' as '1'}));
+  await assert.rejects(relay({...input,path:'/zkapi/v1/config',recoveryDiagnostics:'1'}));
+  assert.equal(forwarded.length,2);
+});
 async function fixture() {
   const keys = generateKeyPairSync('ed25519'), secret = Buffer.alloc(32, 17);
   const tariff = {tariff_hash:'aa'.repeat(32),provider:'openrouter',model:'*'} as Tariff;

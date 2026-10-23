@@ -990,7 +990,9 @@ async fn rpc_daemon_replays_durable_history_and_reconciles_restart_forks_and_cut
                         if mode == 4 {
                             values[0]["owner"] = json!(zkapi_indexer::snapshot::key([42; 32]));
                         }
-                        json!({"context":{"slot":tip},"value":values})
+                        // Warm scans choose their target from this account cut,
+                        // rather than querying getSlot again.
+                        json!({"context":{"slot":if mode == 2 { tip - 1 } else { tip }},"value":values})
                     }
                     _ => panic!("unexpected RPC method"),
                 };
@@ -1038,7 +1040,18 @@ async fn rpc_daemon_replays_durable_history_and_reconciles_restart_forks_and_cut
         .unwrap();
     let blocks = daemon.journal.archive_len();
     assert!(blocks > 1);
+    let journal_file = config.journal_directory.join("journal.json");
+    let saved_journal = std::fs::read(&journal_file).unwrap();
     drop(daemon);
+    // A cold restart still checks getSlot before capturing the account cut.
+    mode.store(2, Ordering::SeqCst);
+    requested.lock().unwrap().clear();
+    let mut daemon = runtime::Runtime::open(config.clone(), false).unwrap();
+    assert!(daemon.scan().await.is_err(), "accepted cold RPC rollback");
+    assert_eq!(*requested.lock().unwrap(), ["getGenesisHash", "getSlot"]);
+    assert_eq!(std::fs::read(&journal_file).unwrap(), saved_journal);
+    drop(daemon);
+    mode.store(0, Ordering::SeqCst);
     requested.lock().unwrap().clear();
     let mut daemon = runtime::Runtime::open(config, false).unwrap();
     let restored = daemon.scan().await.unwrap();
@@ -1048,7 +1061,19 @@ async fn rpc_daemon_replays_durable_history_and_reconciles_restart_forks_and_cut
     assert!(!requested.lock().unwrap().iter().any(|m| m == "getBlocks"));
     for fault in 1..=4 {
         mode.store(fault, Ordering::SeqCst);
+        requested.lock().unwrap().clear();
         assert!(daemon.scan().await.is_err(), "accepted fault {fault}");
+        let requests = requested.lock().unwrap();
+        assert!(!requests.iter().any(|m| m == "getSlot"));
+        let fault_method = match fault {
+            1 => "getGenesisHash",
+            2 | 4 => "getMultipleAccounts",
+            3 => "getBlock",
+            _ => unreachable!(),
+        };
+        assert!(requests.iter().any(|m| m == fault_method));
+        assert_eq!(daemon.journal.archive_len(), blocks);
+        assert_eq!(std::fs::read(&journal_file).unwrap(), saved_journal);
     }
     mode.store(0, Ordering::SeqCst);
     assert!(daemon.scan().await.is_ok());

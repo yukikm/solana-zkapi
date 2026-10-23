@@ -1,6 +1,7 @@
 """Read-only inventory of already-installed tools for isolated API acceptance."""
 import os
 from pathlib import Path
+import re
 import shutil
 import subprocess
 
@@ -16,7 +17,7 @@ def inspect_tools(root):
         'rustc': (None, ['rustc'], ['--version'], 'rustc 1.90.0'),
         'cargo': (None, ['cargo'], ['--version'], 'cargo 1.90.0'),
         'tar': ('ZKAPI_GNU_TAR', ['gtar', 'tar'], ['--version'], 'GNU tar'),
-        'python': (None, ['python3'], ['--version'], 'Python 3.'),
+        'python': (None, ['python3'], ['--version'], 'Python 3.11+'),
         **{name: (None, [name], ['--version'], 'PostgreSQL') for name in ['initdb', 'pg_ctl', 'psql']},
     }
     node_candidates = specs['node'][1]
@@ -57,6 +58,9 @@ def inspect_tools(root):
                 matches = value == expected if name in ['node', 'npm'] else expected in value
                 if name == 'sbf':
                     matches = matches and 'platform-tools v1.54' in value
+                if name == 'python':
+                    version = re.fullmatch(r'Python 3\.(\d+)\.\d+', value)
+                    matches = version is not None and int(version[1]) >= 11
                 if not matches:
                     failures.append(value.splitlines()[0])
                     continue

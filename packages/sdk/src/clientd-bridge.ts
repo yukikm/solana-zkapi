@@ -1,7 +1,7 @@
 /** Thin localhost application over the ONE ControlClient state machine.
  * Go forwards authenticated requests here over a private Unix socket. */
 import { Buffer } from 'buffer';
-import { ControlClient, createCredentials, expiryNotice, apiOperationPath, isApiOperationPath, validateApiService, PROXY_PRIVACY_NOTICE, DIRECT_OPENROUTER_PRIVACY_NOTICE, DIRECT_PRIVACY_NOTICE, type ApiService, type ApiBinding, type Mode, type NoteJournal, type PreparedSession } from './control.ts';
+import { ControlClient, createCredentials, expiryNotice, apiOperationPath, isApiOperationPath, validateApiService, PROXY_PRIVACY_NOTICE, DIRECT_OPENROUTER_PRIVACY_NOTICE, DIRECT_PRIVACY_NOTICE, type ApiService, type ApiBinding, type Mode, type NoteJournal, type PreparedSession, type SessionRecovery } from './control.ts';
 import { JournalConflictError, JournalIntegrityError, type EncryptedJournal } from './journal.ts';
 import { directRequestBytes } from './direct-request.ts';
 import { privacyProfile, planClientUpgrade } from './client-guidance.ts';
@@ -34,12 +34,32 @@ function transientSettlementError(error: unknown): boolean {
   return error instanceof ControlHttpError && (error.status === 408 || error.status === 429 || error.status >= 500)
     || error instanceof DOMException && error.name === 'TimeoutError';
 }
+export type RecoveryReasonCode = SessionRecovery['reason_code'] | 'authorization_pending' | 'settlement_pending'
+  | 'gateway_delivery_pending' | 'control_unavailable' | 'control_request_rejected' | 'recovery_failed';
+/** Result of session recovery, not proof of zero usage or wallet completion.
+ * A completed result requires the journal's session and delivery hold to clear. */
+export interface RecoveryResult {
+  outcome: 'completed' | 'pending' | 'failed';
+  reasonCode: RecoveryReasonCode | null;
+  sessionId: string | null;
+  serverState: string | null;
+  recovery: SessionRecovery | null;
+  httpStatus?: number;
+}
+type RecoveryFailure = { reasonCode: 'control_unavailable' | 'control_request_rejected' | 'recovery_failed'; httpStatus?: number };
+function recoveryFailure(error: unknown): RecoveryFailure {
+  if (error instanceof ControlHttpError) return {
+    reasonCode: transientSettlementError(error) ? 'control_unavailable' : 'control_request_rejected', httpStatus: error.status,
+  };
+  return { reasonCode: error instanceof DOMException && ['TimeoutError', 'AbortError'].includes(error.name) ? 'control_unavailable' : 'recovery_failed' };
+}
 export class ClientDaemon {
   private readonly o: DaemonOptions; private readonly reuse: number; private readonly settlementWait: number;
   private readonly stoppingController = new AbortController();
   private completedDirectResponse?: { requestId: string; operationIds: Set<string> };
   private lease?: { requestId: string; until: bigint; expiresAt: bigint };
   private invalidated = false;
+  private lastRecoveryFailure?: RecoveryFailure;
   private serial: Promise<unknown> = Promise.resolve(); private inflight = 0; private stopping = false; private started = false; private recoveryRequired = false; private idleWaiters: (()=>void)[] = [];
   constructor(options: DaemonOptions) {
     this.o = {...options,models:structuredClone(options.models),services:structuredClone(options.services ?? []),gateway:structuredClone(options.gateway)}; this.reuse = options.keyReuseSeconds ?? 60;
@@ -132,11 +152,24 @@ export class ClientDaemon {
       throw new DaemonConflict();
     } finally { clearTimeout(timer); }
   }
-  async start(): Promise<void> {
-    await this.exclusive(async()=>{
+  /** Local projection only. Server diagnostics never authorize financial changes. */
+  recoveryStatus(value: NoteJournal | undefined): RecoveryResult {
+    const pending = value?.pending;
+    const base = { sessionId: pending?.prepared.request.authorization.request_id ?? null,
+      serverState: pending?.serverState ?? null, recovery: pending?.recovery ? structuredClone(pending.recovery) : null };
+    if (!pending && !value?.gatewayRecoveryHold) return { ...base, outcome: 'completed', reasonCode: null };
+    if (this.lastRecoveryFailure) return { ...base, outcome: 'failed', ...this.lastRecoveryFailure };
+    return { ...base, outcome: 'pending', reasonCode: pending
+      ? pending.recovery?.reason_code ?? (pending.serverState === 'ISSUANCE_UNKNOWN' ? 'issuance_unknown'
+        : ['prepared', 'send_unknown'].includes(pending.phase) ? 'authorization_pending' : 'settlement_pending')
+      : 'gateway_delivery_pending' };
+  }
+  async start(): Promise<RecoveryResult> {
+    return this.exclusive(async()=>{
       // A restart recovers and closes the old session before accepting NEW work.
       // An unknown create may need its exact authorization POST, never inference.
       this.started = false;
+      this.lastRecoveryFailure = undefined;
       this.completedDirectResponse = undefined;
       this.lease = undefined; this.invalidated = false;
       const r = await this.record();
@@ -147,16 +180,31 @@ export class ClientDaemon {
           // recovery reachable. Local journal corruption/concurrency is fatal.
           if(error instanceof JournalIntegrityError || error instanceof JournalConflictError)throw error;
           await this.record();
+          this.lastRecoveryFailure = recoveryFailure(error);
           this.recoveryRequired = true; return false;
         }
       };
       if (r.value.pending) {
-        if(!await recover(()=>this.o.client.recover(this.o.noteId)))return;
-        if((await this.record()).value.pending && !await recover(()=>this.o.client.close(this.o.noteId)))return;
+        if(!await recover(()=>this.o.client.recover(this.o.noteId)))return this.recoveryStatus((await this.record()).value);
+        if((await this.record()).value.pending && !await recover(()=>this.o.client.close(this.o.noteId)))return this.recoveryStatus((await this.record()).value);
       }
       const recovered=(await this.record()).value;this.recoveryRequired = recovered.pending !== null||!!recovered.gatewayRecoveryHold;
       this.started = !this.recoveryRequired;
+      return this.recoveryStatus(recovered);
     });
+  }
+  async recover(): Promise<RecoveryResult> {
+    const result = await this.start();
+    if (result.outcome === 'failed') return result;
+    if ((await this.record()).value.gatewayRecoveryHold) {
+      try { await this.management('recover'); }
+      catch (error) {
+        if (error instanceof JournalIntegrityError || error instanceof JournalConflictError) throw error;
+        this.lastRecoveryFailure = recoveryFailure(error);
+        this.recoveryRequired = true;
+      }
+    }
+    return this.recoveryStatus((await this.record()).value);
   }
   async startIfNeeded(): Promise<void> { if (!this.started && !this.recoveryRequired) await this.start(); }
   async maintenance(waitForSettlement = false): Promise<void> {
@@ -197,12 +245,14 @@ export class ClientDaemon {
     const record = await this.o.journal.read(this.o.noteId);
     const privacy = privacyProfile(this.o.mode,this.reuse);
     if (!record) return { mode:this.o.mode, balance_micro_usdc:'0', phase:'unfunded', in_flight:this.inflight, recovery_required:false,
+      server_state:null, recovery:this.recoveryStatus(undefined),
       unresolved_operations:[], key_reuse_seconds:this.reuse, journal_head:null, privacy_notice:this.o.mode === 'proxy' ? PROXY_PRIVACY_NOTICE : this.o.mode === 'direct_openrouter' ? DIRECT_OPENROUTER_PRIVACY_NOTICE : DIRECT_PRIVACY_NOTICE,
       privacy, wallet_status:'unfunded', wallet_operation:null, wallet_emergency_escape:null };
     const {value,head} = record;
     const witness = (value as NoteJournal & { witness?: {expiry:string} }).witness;
     const emergency=value.wallet?.emergencyEscapes?.find(e=>e.phase!=='settled'),closed=value.wallet?.status==='closed';
     return { mode:this.o.mode, balance_micro_usdc:value.state.balance_micro_usdc, phase:value.pending?.phase ?? (closed?'closed':emergency?'emergency_escape':'ready'), in_flight:this.inflight, recovery_required:(!closed||!!value.pending)&&(this.recoveryRequired||!!value.gatewayRecoveryHold||!!emergency),
+      server_state:value.pending?.serverState ?? null, recovery:this.recoveryStatus(value),
       unresolved_operations:value.pending?.operations.filter(o=>o.phase==='send_unknown').map(o=>({id:o.id,response_replayable:false})) ?? [],
       key_reuse_seconds:this.reuse, journal_head:head, privacy_notice:this.o.mode === 'proxy' ? PROXY_PRIVACY_NOTICE : this.o.mode === 'direct_openrouter' ? DIRECT_OPENROUTER_PRIVACY_NOTICE : DIRECT_PRIVACY_NOTICE,
       privacy, wallet_status:value.wallet?.status ?? 'legacy_import', wallet_operation:value.wallet?.operation ? {kind:value.wallet.operation.kind,phase:value.wallet.operation.phase} : null,
@@ -217,17 +267,25 @@ export class ClientDaemon {
         return this.o.client.purgeSettledRequestBodies(this.o.noteId);
       }
       if (action === 'wallet') { if (!this.o.wallet) throw new Error('wallet adapter unavailable'); return this.o.wallet(body); }
-      if ((await this.record()).value.pending) {
-        if (action === 'reconcile') await this.o.client.reconcileAbsentOperations(this.o.noteId); else if (action === 'cancel-unsent') await this.o.client.cancelUnsent(this.o.noteId); else if (action === 'recover') await this.o.client.recover(this.o.noteId); else await this.o.client.close(this.o.noteId);
+      this.lastRecoveryFailure = undefined;
+      try {
+        if ((await this.record()).value.pending) {
+          if (action === 'reconcile') await this.o.client.reconcileAbsentOperations(this.o.noteId); else if (action === 'cancel-unsent') await this.o.client.cancelUnsent(this.o.noteId); else if (action === 'recover') await this.o.client.recover(this.o.noteId); else await this.o.client.close(this.o.noteId);
+        }
+        if(action==='recover'&&(await this.record()).value.gatewayRecoveryHold){if((await this.record()).value.pending)await this.o.client.close(this.o.noteId);if(!(await this.record()).value.pending)await this.o.client.recoverGatewayDelivery(this.o.noteId);}
+        if(this.recoveryRequired) {
+          // Recovered pre-restart sessions must close before new inference; never
+          // reuse their upstream key or replay their uncertain operations.
+          if(action === 'recover' && (await this.record()).value.pending)await this.o.client.close(this.o.noteId);
+          const recovered=(await this.record()).value;if(!recovered.pending&&!recovered.gatewayRecoveryHold) { this.recoveryRequired = false; this.started = true; }
+        }
+        return this.status();
+      } catch (error) {
+        if (error instanceof JournalIntegrityError || error instanceof JournalConflictError) throw error;
+        this.lastRecoveryFailure = recoveryFailure(error);
+        this.recoveryRequired = true;
+        throw error;
       }
-      if(action==='recover'&&(await this.record()).value.gatewayRecoveryHold){if((await this.record()).value.pending)await this.o.client.close(this.o.noteId);if(!(await this.record()).value.pending)await this.o.client.recoverGatewayDelivery(this.o.noteId);}
-      if(this.recoveryRequired) {
-        // Recovered pre-restart sessions must close before new inference; never
-        // reuse their upstream key or replay their uncertain operations.
-        if(action === 'recover' && (await this.record()).value.pending)await this.o.client.close(this.o.noteId);
-        const recovered=(await this.record()).value;if(!recovered.pending&&!recovered.gatewayRecoveryHold) { this.recoveryRequired = false; this.started = true; }
-      }
-      return this.status();
     });
   }
   async infer(path: string, bytes: Uint8Array, operationId: string|undefined = undefined, anthropicVersion = '', signal?: AbortSignal): Promise<Response> {

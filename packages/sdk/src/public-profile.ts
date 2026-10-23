@@ -103,8 +103,8 @@ function validateProfile(value: unknown): PublicDeploymentProfile {
     && value.sdkVersions.every((v: unknown) => typeof v === 'string' && /^[0-9]+\.[0-9]+\.[0-9]+(?:-[a-zA-Z0-9.-]+)?$/.test(v))
     && new Set(value.sdkVersions).size === value.sdkVersions.length);
   const compatible = value.sdkVersions.includes(PUBLIC_PROFILE_SDK_VERSION)
-    // .14 changes the Node runtime, not the authenticated .13 API contract.
-    || value.sdkVersions.includes('0.2.0-devnet.13')
+    // Recovery diagnostics preserve the authenticated .13/.14 API selections.
+    || value.sdkVersions.some((version: string) => ['0.2.0-devnet.13','0.2.0-devnet.14'].includes(version))
     || value.schema === 1 && value.sdkVersions.some((version: string) => LEGACY_PROFILE_SDK_VERSIONS.has(version));
   if (!compatible || value.protocolLayoutVersion !== 2) throw new PublicProfileError('compatibility');
   fields(value.bundle,['url','sha256']); publicUrl(value.bundle.url); digest(value.bundle.sha256);

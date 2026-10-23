@@ -1146,6 +1146,116 @@ async fn direct_http_one_time_key_and_durable_usage_before_lost_delete() -> Resu
     Ok(())
 }
 
+/// Exercises the same path through the one-use dispatcher when
+/// ZKAPI_TEST_SEPARATE_DISPATCHER is set; all upstream calls are local fixtures.
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+#[ignore = "requires disposable PostgreSQL and actual SBF export; scripts/run_i05.sh"]
+async fn direct_issuance_diagnostics_are_durable_negotiated_and_never_release_unknown() -> Result<()>
+{
+    let creates = Arc::new(AtomicUsize::new(0));
+    let rejected = Arc::new(std::sync::atomic::AtomicBool::new(false));
+    let create_count = creates.clone();
+    let lookup_rejected = rejected.clone();
+    let (upstream, task) = serve(
+        Router::new().route(
+            "/api/v1/keys",
+            post(move || {
+                let creates = create_count.clone();
+                async move {
+                    creates.fetch_add(1, Ordering::SeqCst);
+                    (
+                        axum::http::StatusCode::PAYMENT_REQUIRED,
+                        Json(json!({"error":"PRIVATE_PROVIDER_RESPONSE_CANARY"})),
+                    )
+                }
+            })
+            .get(move || {
+                let rejected = lookup_rejected.clone();
+                async move {
+                    if rejected.load(Ordering::SeqCst) {
+                        (
+                            axum::http::StatusCode::UNAUTHORIZED,
+                            Json(json!({"error":"PRIVATE_LOOKUP_CANARY"})),
+                        )
+                    } else {
+                        (axum::http::StatusCode::OK, Json(json!({"data":[]})))
+                    }
+                }
+            }),
+        ),
+    )
+    .await;
+    let mut fixture = fixture_app(&upstream, true).await?;
+    fixture.tasks.push(task);
+    let (request, control) = direct_request(&fixture).await?;
+    let id = wire::uuid(&request.authorization.request_id)?;
+    let client = reqwest::Client::new();
+    let create = || {
+        client
+            .post(format!("{}/zkapi/v1/sessions", fixture.origin))
+            .header("authorization", &control)
+            .json(&request)
+    };
+    let initial = response(create().header("X-Zkapi-Recovery-Diagnostics", "1"), 201).await;
+    assert_eq!(initial["state"], "ISSUANCE_UNKNOWN");
+    assert_eq!(initial["recovery"]["issuance"]["http_status"], 402);
+    assert_eq!(
+        initial["recovery"]["issuance"]["reason_code"],
+        "http_rejected"
+    );
+    assert_eq!(
+        initial["recovery"]["issuance"]["issuance_certainty"],
+        "unknown"
+    );
+    fixture
+        .app
+        .advance(id)
+        .await
+        .map_err(|_| anyhow::anyhow!("unknown recovery failed"))?;
+    let status = || {
+        client
+            .get(format!("{}/zkapi/v1/sessions/{id}", fixture.origin))
+            .header("authorization", &control)
+    };
+    let legacy = response(status(), 200).await;
+    assert!(legacy.get("recovery").is_none());
+    assert_eq!(legacy["last_error_code"], "provider_key_absent");
+    let absent = response(status().header("X-Zkapi-Recovery-Diagnostics", "1"), 200).await;
+    assert_eq!(absent["recovery"]["reason_code"], "provider_key_absent");
+    assert_eq!(absent["recovery"]["requires_operator_action"], true);
+    rejected.store(true, Ordering::SeqCst);
+    fixture
+        .app
+        .advance(id)
+        .await
+        .map_err(|_| anyhow::anyhow!("failed lookup recovery failed"))?;
+    let failed = response(status().header("X-Zkapi-Recovery-Diagnostics", "1"), 200).await;
+    assert_eq!(failed["recovery"]["reason_code"], "provider_lookup_failed");
+    assert_eq!(failed["recovery"]["lookup"]["http_status"], 401);
+    assert_eq!(
+        failed["recovery"]["issuance"],
+        initial["recovery"]["issuance"]
+    );
+    let duplicate = response(create(), 200).await;
+    assert!(duplicate.get("recovery").is_none());
+    assert_eq!(duplicate["state"], "ISSUANCE_UNKNOWN");
+    assert!(duplicate.get("settlement").is_none());
+    assert_eq!(creates.load(Ordering::SeqCst), 1);
+    let checkpoint = fixture.app.ledger.direct_checkpoint(id).await?.unwrap();
+    assert!(checkpoint["reference"].is_null());
+    assert!(checkpoint["usage"].is_null());
+    for value in [checkpoint, initial, absent, failed] {
+        for secret in [
+            "PRIVATE_PROVIDER_RESPONSE_CANARY",
+            "PRIVATE_LOOKUP_CANARY",
+            "fixture-provider-secret",
+        ] {
+            assert!(!value.to_string().contains(secret));
+        }
+    }
+    Ok(())
+}
+
 struct OaDirectFixture {
     fixture: Fixture,
     evidence: Arc<tokio::sync::Mutex<Value>>,

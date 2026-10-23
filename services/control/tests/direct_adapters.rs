@@ -20,6 +20,9 @@ struct Fixture {
     disabled: bool,
     deleted: bool,
     fail_create: bool,
+    drop_create_response: bool,
+    hide_key: bool,
+    fail_list: bool,
     fail_delete: bool,
     missing_usage: bool,
     usage_raw: Option<String>,
@@ -35,7 +38,7 @@ async fn create(
     State(state): State<Shared>,
     headers: HeaderMap,
     Json(body): Json<Value>,
-) -> impl IntoResponse {
+) -> axum::response::Response {
     assert_eq!(
         headers.get("authorization").unwrap(),
         "Bearer management-secret"
@@ -49,19 +52,49 @@ async fn create(
         return (
             StatusCode::BAD_GATEWAY,
             Json(json!({"error":"provider-secret-canary"})),
-        );
+        )
+            .into_response();
+    }
+    if s.drop_create_response {
+        use futures_util::StreamExt;
+        // The key already exists in provider state. Flush headers and a partial
+        // body, then fail the HTTP stream instead of returning an error status.
+        let partial = futures_util::stream::once(async {
+            Ok::<_, std::io::Error>(axum::body::Bytes::from_static(
+                br#"{"key":"runtime-key-canary","data":"#,
+            ))
+        });
+        let lost = futures_util::stream::once(async {
+            tokio::time::sleep(std::time::Duration::from_millis(20)).await;
+            Err::<axum::body::Bytes, _>(std::io::Error::other("synthetic response loss"))
+        });
+        return (
+            StatusCode::CREATED,
+            axum::body::Body::from_stream(partial.chain(lost)),
+        )
+            .into_response();
     }
     (
         StatusCode::CREATED,
         Json(json!({"data":key_data(&s),"key":"runtime-key-canary"})),
     )
+        .into_response()
 }
-async fn list(State(state): State<Shared>, uri: axum::http::Uri) -> Json<Value> {
+async fn list(State(state): State<Shared>, uri: axum::http::Uri) -> impl IntoResponse {
     let mut s = state.lock().unwrap();
     s.events.push("list".into());
     assert!(uri.query().unwrap().contains("include_disabled=true"));
-    Json(
-        json!({"data":if uri.query().unwrap().starts_with("offset=0&") && s.body.is_some() {vec![key_data(&s)]}else{vec![]}}),
+    if s.fail_list {
+        return (
+            StatusCode::UNAUTHORIZED,
+            Json(json!({"error":"provider-secret-canary"})),
+        );
+    }
+    (
+        StatusCode::OK,
+        Json(
+            json!({"data":if uri.query().unwrap().starts_with("offset=0&") && s.body.is_some() && !s.hide_key {vec![key_data(&s)]}else{vec![]}}),
+        ),
     )
 }
 async fn disable(
@@ -199,6 +232,11 @@ async fn openrouter_lost_issuance_is_read_only_recovery_and_usage_is_strict() {
     let intent = intent();
     let error = adapter.create_key(&intent).await.err().unwrap();
     assert!(!error.to_string().contains("canary"));
+    let diagnostic = error.downcast_ref::<Diagnostic>().unwrap();
+    assert_eq!(diagnostic.stage, DiagnosticStage::Response);
+    assert_eq!(diagnostic.reason_code, DiagnosticReason::HttpRejected);
+    assert_eq!(diagnostic.http_status, Some(502));
+    assert_eq!(diagnostic.issuance_certainty, IssuanceCertainty::Unknown);
     let reference = adapter.recover_key(&intent).await.unwrap().unwrap();
     adapter.disable_key(&reference).await.unwrap();
     state.lock().unwrap().missing_usage = true;
@@ -639,7 +677,7 @@ async fn direct_ledger_persists_final_usage_before_ambiguous_delete_and_restart(
 #[ignore = "requires isolated PostgreSQL"]
 async fn direct_ledger_unknown_recovery_never_reissues_or_returns_plaintext() {
     let state = Arc::new(Mutex::new(Fixture {
-        fail_create: true,
+        drop_create_response: true,
         ..Default::default()
     }));
     let (_dir, adapter, task) = openrouter_fixture(state.clone(), 0).await;
@@ -653,12 +691,104 @@ async fn direct_ledger_unknown_recovery_never_reissues_or_returns_plaintext() {
         .unwrap()
         .is_none());
     assert_eq!(ledger.session(id).await.unwrap().state, "ISSUANCE_UNKNOWN");
+    let before = ledger.direct_checkpoint(id).await.unwrap().unwrap();
+    assert_eq!(before["recovery"]["issuance"]["http_status"], 201);
+    assert_eq!(
+        before["recovery"]["issuance"]["reason_code"],
+        "response_body_unavailable"
+    );
+    assert_eq!(
+        before["recovery"]["issuance"]["issuance_certainty"],
+        "unknown"
+    );
+    assert!(!before.to_string().contains("runtime-key-canary"));
     assert!(runtime.reconcile(&ledger, id).await.unwrap().is_some());
     assert_eq!(ledger.session(id).await.unwrap().state, "DRAINING");
     let events = &state.lock().unwrap().events;
     assert_eq!(events.iter().filter(|e| *e == "create").count(), 1);
     assert!(events.contains(&"disable".into()));
     assert!(events.contains(&"delete".into()));
+    task.abort();
+}
+
+#[tokio::test]
+#[ignore = "requires isolated PostgreSQL"]
+async fn direct_absent_and_failed_lookup_preserve_issuance_evidence_across_restart() {
+    let state = Arc::new(Mutex::new(Fixture {
+        fail_create: true,
+        hide_key: true,
+        ..Default::default()
+    }));
+    let (_dir, adapter, task) = openrouter_fixture(state.clone(), 0).await;
+    let runtime = DirectRuntime::new(adapter.clone());
+    let (ledger, url, identity) = direct_ledger().await;
+    let intent = reserve_direct(&ledger).await;
+    let id = intent.request_id;
+    assert!(runtime
+        .issue(&ledger, intent.clone(), Uuid::new_v4(), || async { Ok(()) })
+        .await
+        .unwrap()
+        .is_none());
+    assert!(runtime.reconcile(&ledger, id).await.unwrap().is_none());
+    let absent = ledger.direct_checkpoint(id).await.unwrap().unwrap();
+    assert_eq!(absent["recovery"]["reason_code"], "provider_key_absent");
+    assert_eq!(absent["recovery"]["requires_operator_action"], true);
+    assert_eq!(absent["recovery"]["issuance"]["http_status"], 502);
+    assert!(absent["usage"].is_null());
+    assert_eq!(ledger.session(id).await.unwrap().state, "ISSUANCE_UNKNOWN");
+    drop(runtime);
+    drop(ledger);
+    tokio::task::yield_now().await;
+    let ledger = zkapi_control::ledger::Ledger::connect(&url, &identity)
+        .await
+        .unwrap();
+    let runtime = DirectRuntime::new(adapter);
+    assert_eq!(ledger.direct_checkpoint(id).await.unwrap().unwrap(), absent);
+    state.lock().unwrap().fail_list = true;
+    assert!(runtime.reconcile(&ledger, id).await.unwrap().is_none());
+    let failed = ledger.direct_checkpoint(id).await.unwrap().unwrap();
+    assert_eq!(failed["recovery"]["reason_code"], "provider_lookup_failed");
+    assert_eq!(failed["recovery"]["lookup"]["http_status"], 401);
+    assert_eq!(
+        failed["recovery"]["issuance"],
+        absent["recovery"]["issuance"]
+    );
+    assert!(failed["usage"].is_null());
+    assert_eq!(ledger.session(id).await.unwrap().state, "ISSUANCE_UNKNOWN");
+    assert!(runtime
+        .issue(&ledger, intent, Uuid::new_v4(), || async { Ok(()) })
+        .await
+        .unwrap()
+        .is_none());
+    for secret in [
+        "provider-secret-canary",
+        "runtime-key-canary",
+        "management-secret",
+    ] {
+        assert!(!failed.to_string().contains(secret));
+    }
+    let events = state.lock().unwrap().events.clone();
+    assert_eq!(events.iter().filter(|event| *event == "create").count(), 1);
+    assert!(events
+        .iter()
+        .all(|event| event == "create" || event == "list"));
+    // Delayed discovery retires the original key through the existing usage path.
+    {
+        let mut fixture = state.lock().unwrap();
+        fixture.fail_list = false;
+        fixture.hide_key = false;
+    }
+    assert!(runtime.reconcile(&ledger, id).await.unwrap().is_some());
+    assert_eq!(
+        state
+            .lock()
+            .unwrap()
+            .events
+            .iter()
+            .filter(|event| *event == "create")
+            .count(),
+        1
+    );
     task.abort();
 }
 #[tokio::test]

@@ -148,6 +148,47 @@ test('close of an unknown create preserves exact authorization recovery and dura
   await assert.rejects(h.client.prepareOperation('note', operationId, '/v1/responses', new TextEncoder().encode('{"model":"fixture-model","store":false}')), /proxy session required/);
 });
 
+test('nonterminal close retains safe issuance diagnostics without recursive polling or financial release', async t => {
+  const h = await setup(t); await h.client.prepare('note', prepared('direct_openrouter'), field(14));
+  const recovery = { reason_code: 'provider_key_absent', requires_operator_action: true,
+    issuance: { stage: 'response', reason_code: 'http_rejected', http_status: 403, issuance_certainty: 'unknown' } };
+  h.setHandler(async call => {
+    assert.equal(new Headers(call.init.headers).get('X-Zkapi-Recovery-Diagnostics'), '1');
+    return response({ ...status('direct_openrouter', 'ISSUANCE_UNKNOWN'), ...(call.url.endsWith('/close') ? { recovery } : {}) });
+  });
+  const received = await h.client.submit('note');
+  assert.deepEqual(structuredClone(received.recovery), recovery); assert.equal(h.calls.length, 2);
+  const saved = (await h.journal.read('note'))!.value;
+  assert.deepEqual(saved.pending?.recovery, recovery); assert.equal(saved.pending?.serverState, 'ISSUANCE_UNKNOWN');
+  assert.deepEqual(saved.state, initial()); assert.equal(saved.history.length, 0); assert.equal(h.verified.settlements.length, 0);
+  await h.restart().recover('note');
+  assert.equal(h.calls.length, 4); assert.deepEqual((await h.journal.read('note'))!.value.pending?.recovery, recovery);
+});
+
+test('recovery diagnostics reject unbounded text, malformed statuses and unknown fields before persistence', async t => {
+  const good = { reason_code: 'provider_key_absent', requires_operator_action: true,
+    issuance: { stage: 'response', reason_code: 'http_rejected', http_status: 403, issuance_certainty: 'unknown' } };
+  for (const recovery of [
+    { ...good, message: 'PRIVATE_PROVIDER_BODY' },
+    { ...good, reason_code: 'PRIVATE_PROVIDER_BODY' },
+    { ...good, requires_operator_action: 'true' },
+    { ...good, issuance: { ...good.issuance, reason_code: 'PRIVATE_PROVIDER_BODY' } },
+    { ...good, issuance: { ...good.issuance, stage: 'PRIVATE_PROVIDER_BODY' } },
+    { ...good, issuance: { ...good.issuance, http_status: 600 } },
+    { ...good, issuance: { ...good.issuance, http_status: '403' } },
+    { ...good, issuance: { ...good.issuance, issuance_certainty: 'not_issued' } },
+    { ...good, lookup: { ...good.issuance, raw: 'PRIVATE_PROVIDER_BODY' } },
+  ]) {
+    const h = await setup(t); await h.client.prepare('note', prepared('direct_openrouter'), field(14));
+    h.setHandler(async () => response({ ...status('direct_openrouter', 'ISSUANCE_UNKNOWN'), recovery }));
+    await assert.rejects(h.client.submit('note'), /invalid (session recovery|issuance diagnostic)/);
+    const saved = (await h.journal.read('note'))!.value;
+    assert.equal(saved.pending?.recovery, undefined); assert.equal(saved.pending?.phase, 'send_unknown');
+    assert.deepEqual(saved.state, initial()); assert.equal(JSON.stringify(saved).includes('PRIVATE_PROVIDER_BODY'), false);
+    assert.equal(h.calls.length, 1); assert.equal(h.verified.settlements.length, 0);
+  }
+});
+
 test('closing an unknown direct create withholds a newly delivered key and resumes close after response loss', async t => {
   const h = await setup(t); await h.client.prepare('note', prepared('direct_oa'), field(14));
   h.setHandler(async () => { throw new Error('create response lost'); });

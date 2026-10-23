@@ -266,7 +266,21 @@
               }
             }
           }
-        }
+        },
+        "parameters": [
+          {
+            "name": "X-Zkapi-Recovery-Diagnostics",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "1"
+              ]
+            },
+            "description": "Opt into bounded direct issuance/recovery observations. Without this header the legacy closed response shape is retained."
+          }
+        ]
       }
     },
     "/zkapi/v1/sessions/retire": {
@@ -316,7 +330,21 @@
               }
             }
           }
-        }
+        },
+        "parameters": [
+          {
+            "name": "X-Zkapi-Recovery-Diagnostics",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "1"
+              ]
+            },
+            "description": "Opt into bounded direct issuance/recovery observations. Without this header the legacy closed response shape is retained."
+          }
+        ]
       }
     },
     "/zkapi/v1/sessions/{request_id}": {
@@ -360,6 +388,18 @@
               "format": "uuid",
               "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
             }
+          },
+          {
+            "name": "X-Zkapi-Recovery-Diagnostics",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "1"
+              ]
+            },
+            "description": "Opt into bounded direct issuance/recovery observations. Without this header the legacy closed response shape is retained."
           }
         ]
       }
@@ -405,6 +445,18 @@
               "format": "uuid",
               "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
             }
+          },
+          {
+            "name": "X-Zkapi-Recovery-Diagnostics",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "1"
+              ]
+            },
+            "description": "Opt into bounded direct issuance/recovery observations. Without this header the legacy closed response shape is retained."
           }
         ]
       }
@@ -2164,6 +2216,84 @@
         "additionalProperties": false,
         "description": "Initial OA key-delivery evidence. The client must validate the verifier and station against independently configured pins and submit the exact key/signatures to that verifier before provider use. Server verification does not replace client verification."
       },
+      "DirectRecoveryDiagnostic": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "stage",
+          "reason_code",
+          "issuance_certainty"
+        ],
+        "description": "Bounded observation only. Never authorizes reissuance or zero-charge settlement. Raw provider bodies and dispatcher stderr are excluded.",
+        "properties": {
+          "stage": {
+            "type": "string",
+            "enum": [
+              "request",
+              "response",
+              "decode",
+              "validation",
+              "dispatcher",
+              "internal"
+            ]
+          },
+          "reason_code": {
+            "type": "string",
+            "enum": [
+              "transport_error",
+              "timeout",
+              "http_rejected",
+              "response_body_unavailable",
+              "response_too_large",
+              "response_invalid",
+              "recovery_ambiguous",
+              "recovery_limit",
+              "dispatcher_unavailable",
+              "claim_storage_unavailable",
+              "internal_error"
+            ]
+          },
+          "http_status": {
+            "type": "integer",
+            "minimum": 100,
+            "maximum": 599
+          },
+          "issuance_certainty": {
+            "type": "string",
+            "enum": [
+              "unknown",
+              "not_sent"
+            ]
+          }
+        }
+      },
+      "DirectRecoveryStatus": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "reason_code",
+          "requires_operator_action"
+        ],
+        "properties": {
+          "reason_code": {
+            "type": "string",
+            "enum": [
+              "issuance_unknown",
+              "provider_key_absent",
+              "provider_lookup_failed"
+            ]
+          },
+          "requires_operator_action": {
+            "type": "boolean"
+          },
+          "issuance": {
+            "$ref": "#/components/schemas/DirectRecoveryDiagnostic"
+          },
+          "lookup": {
+            "$ref": "#/components/schemas/DirectRecoveryDiagnostic"
+          }
+        }
+      },
       "SessionCreated": {
         "type": "object",
         "properties": {
@@ -2222,6 +2352,10 @@
           },
           "last_error_code": {
             "type": "string"
+          },
+          "recovery": {
+            "$ref": "#/components/schemas/DirectRecoveryStatus",
+            "description": "Returned only with X-Zkapi-Recovery-Diagnostics: 1. Missing on older services. Not financial evidence."
           }
         },
         "required": [
@@ -2326,6 +2460,10 @@
           },
           "last_error_code": {
             "type": "string"
+          },
+          "recovery": {
+            "$ref": "#/components/schemas/DirectRecoveryStatus",
+            "description": "Returned only with X-Zkapi-Recovery-Diagnostics: 1. Missing on older services. Not financial evidence."
           }
         },
         "required": [

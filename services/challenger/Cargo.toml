@@ -7,6 +7,14 @@ publish = false
 
 [workspace]
 
+[features]
+# Explicit legacy process-fixture coverage; never a production daemon entry point.
+legacy-archive-fixture = []
+
+[[example]]
+name = "legacy_archive_fixture"
+required-features = ["legacy-archive-fixture"]
+
 [dependencies]
 ark-bn254 = "=0.5.0"
 ark-groth16 = "=0.5.0"

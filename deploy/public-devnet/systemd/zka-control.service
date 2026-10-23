@@ -28,6 +28,7 @@ KillMode=control-group
 User=zka-runtime
 Group=zka-runtime
 WorkingDirectory=/opt/zkapi
+ExecStartPre=/opt/zkapi/bin/dispatcherd /srv/zka/runtime/dispatcher.json --check-storage
 ExecStart=/opt/zkapi/bin/controld serve /srv/zka/runtime/control.json
 ReadWritePaths=/srv/zka/dispatcher
 # Shared UID remains a preview limitation; these paths prevent ordinary secret reads.

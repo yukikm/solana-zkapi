@@ -82,10 +82,28 @@ impl DirectAdapter {
             .await?;
         // Even HTTP 4xx/429 is not sufficient to declare no issuance. Conservatively
         // retain UNKNOWN and use issuer recovery; never retry request_key.
-        ensure!(status.is_success(), "OA issuance response uncertain");
-        let response: Created = serde_json::from_slice(&bytes)
-            .map_err(|_| anyhow::anyhow!("invalid OA issuance response"))?;
-        valid_ref(&response.key_hash)?;
+        if !status.is_success() {
+            return Err(Diagnostic::unknown(
+                DiagnosticStage::Response,
+                DiagnosticReason::HttpRejected,
+                Some(status.as_u16()),
+            )
+            .into());
+        }
+        let response: Created = serde_json::from_slice(&bytes).map_err(|_| {
+            Diagnostic::unknown(
+                DiagnosticStage::Decode,
+                DiagnosticReason::ResponseInvalid,
+                Some(status.as_u16()),
+            )
+        })?;
+        valid_ref(&response.key_hash).map_err(|_| {
+            Diagnostic::unknown(
+                DiagnosticStage::Validation,
+                DiagnosticReason::ResponseInvalid,
+                Some(status.as_u16()),
+            )
+        })?;
         let DirectConfig::Oa {
             verifier_base,
             inference_base,
@@ -171,9 +189,21 @@ impl DirectAdapter {
                 true,
             )
             .await?;
-        ensure!(status.is_success(), "OA recovery unavailable");
-        let response: Recovered = serde_json::from_slice(&bytes)
-            .map_err(|_| anyhow::anyhow!("invalid OA recovery response"))?;
+        if !status.is_success() {
+            return Err(Diagnostic::unknown(
+                DiagnosticStage::Response,
+                DiagnosticReason::HttpRejected,
+                Some(status.as_u16()),
+            )
+            .into());
+        }
+        let response: Recovered = serde_json::from_slice(&bytes).map_err(|_| {
+            Diagnostic::unknown(
+                DiagnosticStage::Decode,
+                DiagnosticReason::ResponseInvalid,
+                Some(status.as_u16()),
+            )
+        })?;
         ensure!(
             response.source == "oa_org"
                 && response.version == 1

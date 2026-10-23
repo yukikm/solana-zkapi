@@ -1,6 +1,7 @@
 //! Bounded I10 delayed-finality/restart stress over the existing real-proof,
-//! signed-v0 challenger. RPC outcomes are synthetic; actual Vault execution is
-//! covered independently by the I09 SBF runner. This is one job, not queue load.
+//! signed-v0 archive runtime through an explicit test-only process harness.
+//! RPC outcomes are synthetic; actual Vault execution is covered independently
+//! by the I09 SBF runner. This is one job, not queue load or current-state CLI coverage.
 use axum::{extract::State, http::StatusCode, routing::post, Json, Router};
 use serde_json::{json, Value};
 use std::{
@@ -49,9 +50,11 @@ async fn forward(
 }
 
 async fn recover_process(config_file: &Path) {
+    let harness = std::env::var_os("ZKAPI_LEGACY_CHALLENGER_TEST_HARNESS")
+        .expect("run scripts/run_i09_challenger.py to build the archive fixture harness");
     let output = tokio::time::timeout(
         std::time::Duration::from_secs(60),
-        tokio::process::Command::new(env!("CARGO_BIN_EXE_challengerd"))
+        tokio::process::Command::new(harness)
             .arg("recover")
             .arg(config_file)
             .env_clear()
@@ -286,7 +289,7 @@ async fn repeated_status_outages_and_process_restarts_preserve_unknown_execute()
     let report = json!({
         "schema": 1,
         "passed": true,
-        "scope": "One real-RP/tree-proof job, real signed v0, 17 fresh challengerd processes; synthetic finalized RPC outcomes and virtual discovery age; separate I09 actual Vault SBF acceptance",
+        "scope": "One real-RP/tree-proof job, real signed v0, 17 fresh legacy archive fixture processes; synthetic finalized RPC outcomes and virtual discovery age; separate I09 actual Vault SBF acceptance",
         "jobs": 1,
         "fresh_process_recoveries": process_steps,
         "injected_status_503": rejected_status_calls.load(Ordering::SeqCst),

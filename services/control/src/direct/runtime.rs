@@ -55,6 +55,7 @@ impl DirectRuntime {
             observation: None,
             usage: None,
             deleted: false,
+            recovery: None,
         };
         save(ledger, id, None, &checkpoint).await?;
         let attempt = ledger.begin_direct_issuance(id, owner, &live_check).await?;
@@ -73,7 +74,16 @@ impl DirectRuntime {
             .await;
         let mut created = match created {
             Ok(created) => created,
-            Err(_) => {
+            Err(error) => {
+                let previous = checkpoint.clone();
+                let mut recovery = RecoveryStatus::unknown();
+                recovery.issuance = Some(Diagnostic::from_error(
+                    &error,
+                    DiagnosticStage::Internal,
+                    DiagnosticReason::InternalError,
+                ));
+                checkpoint.recovery = Some(recovery);
+                save(ledger, id, Some(&previous), &checkpoint).await?;
                 ledger.mark_issuance_unknown(id).await?;
                 ledger
                     .finish_attempt(
@@ -147,8 +157,35 @@ impl DirectRuntime {
             return Ok(None);
         }
         if checkpoint.reference.is_none() {
-            let Some(reference) = self.adapter.recover_key(&checkpoint.intent).await? else {
-                return Ok(None);
+            let reference = match self.adapter.recover_key(&checkpoint.intent).await {
+                Ok(Some(reference)) => reference,
+                observation => {
+                    let previous = checkpoint.clone();
+                    let recovery = checkpoint
+                        .recovery
+                        .get_or_insert_with(RecoveryStatus::unknown);
+                    match observation {
+                        Ok(None) => {
+                            recovery.reason_code = RecoveryReason::ProviderKeyAbsent;
+                            recovery.requires_operator_action = true;
+                            recovery.lookup = None;
+                        }
+                        Err(error) => {
+                            recovery.reason_code = RecoveryReason::ProviderLookupFailed;
+                            recovery.requires_operator_action = false;
+                            recovery.lookup = Some(Diagnostic::from_error(
+                                &error,
+                                DiagnosticStage::Internal,
+                                DiagnosticReason::InternalError,
+                            ));
+                        }
+                        Ok(Some(_)) => unreachable!(),
+                    }
+                    // An absent key and a failed lookup are distinct observations;
+                    // neither proves nonissuance or authorizes financial progress.
+                    save(ledger, id, Some(&previous), &checkpoint).await?;
+                    return Ok(None);
+                }
             };
             let previous = checkpoint.clone();
             checkpoint.reference = Some(reference);

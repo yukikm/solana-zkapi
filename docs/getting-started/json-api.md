@@ -15,7 +15,7 @@ synthetic note for this tutorial.
 
 Use a Unix environment with the pinned Node 24.22.1, npm 11.19.1, Rust 1.90.0,
 Go 1.25.0, cargo-build-sbf 4.1.0/platform-tools v1.54, the Rust WASM target,
-PostgreSQL tools, Python and GNU tar. Chromium is not required. The tool check
+PostgreSQL tools, Python 3.11 or newer and GNU tar. Chromium is not required. The tool check
 reports all missing/mismatched dependencies without installing tools, changing
 shell profiles or starting a system database:
 

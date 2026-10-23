@@ -1,5 +1,7 @@
 # Getting started
 
+Use [the `.15` direct recovery upgrade](direct-recovery-upgrade.md) for explicit recovery outcomes and matching operator diagnostics.
+
 ZKAPI supplies payment, authorization and settlement primitives for API usage.
 Start with the general integration guide, then choose the implementation that
 fits your service. This project is a **Devnet preview**; check

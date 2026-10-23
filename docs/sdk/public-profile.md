@@ -6,7 +6,7 @@ independently authenticated release; a checksum served only beside an untrusted
 file does not authenticate it.
 
 The API has been available since `.2`. New consumers should use the
-[`.14` clients](../releases/node-security-preview.md) with the
+[`.15` clients](../releases/direct-recovery-preview.md) with the
 authenticated selection for their deployment.
 Existing custody keeps its original profile binding. Profile verification does
 not establish service availability or provider capacity; see [status](../support.md).
@@ -20,7 +20,10 @@ does not enable gateway capabilities or replace existing custody bindings.
 SDK `.14` also accepts profiles listing `.13` in schemas 1, 2 and 3,
 and retains the earlier schema 1 compatibility. This is a compatibility rule in
 the client: profile bytes, their SHA-256 and custody bindings remain unchanged.
-See the [security upgrade](../getting-started/node-security-upgrade.md) for installation and verification.
+SDK `.15` accepts authenticated `.13` and `.14` profiles in schemas 1, 2 and 3,
+plus the existing legacy schema 1 compatibility. See the
+[direct recovery upgrade](../getting-started/direct-recovery-upgrade.md) for
+installation and verification.
 
 ## Load and inspect before opening custody
 

@@ -13,7 +13,7 @@ import { join } from 'node:path';
 import bs58 from 'bs58';
 import { ZkApiClient, type ClientComponents, type ModelConfiguration, type ClientStatus } from '../src/client.ts';
 import { readChatText, readChatDeltas } from '../src/chat.ts';
-import { ControlClient, validateNoteJournal, type NoteJournal, type Mode, type PreparedSession, type Quote, type SessionVerifier } from '../src/control.ts';
+import { ControlClient, validateNoteJournal, type NoteJournal, type Mode, type PreparedSession, type Quote, type SessionVerifier, type SessionRecovery } from '../src/control.ts';
 import { EncryptedJournal, importJournalKey } from '../src/journal.ts';
 import { NativeJournalStore } from '../src/journal-node.ts';
 import { jcsBytes, sha256Hex, type VerifiedManifest } from '../src/trust.ts';
@@ -42,12 +42,15 @@ async function setup(t: TestContext, mode: Mode = 'proxy', keyReuseSeconds?: num
     wallet: { status: 'active', history: [] }, pending: null, history: [] });
   const counts = { quote: 0, proof: 0, auth: 0, sends: 0, closes: 0, settles: 0, wallet: 0, clearance: 0, clearanceVerifications: 0 };
   const behavior = { lose: false, closeUnavailable: false, closeDraining: false, httpStatus: 200, providerError: '', failVerifier: false, authUnknown: false, authConflict: false, stream: false, rejectQuote: false,
+    issuanceUnknown: false, issuanceRecovery: undefined as SessionRecovery | undefined,
     streamFailure: false, streamWaiting: false, clearanceUnavailable: false, invalidClearance: false,
     beforeClearance: undefined as (() => Promise<void>) | undefined, beforeClose: undefined as (() => Promise<void>) | undefined };
   const clearanceSignature = { r_x: field(2), r_y: field(3), s: field(4) };
   const order: string[] = [], bodies: unknown[] = [];
   const status = async (settled = false) => {
     const p = (await journal.read('note'))!.value.pending!;
+    if (behavior.issuanceUnknown) return { request_id: p.prepared.request.authorization.request_id, mode,
+      state: 'ISSUANCE_UNKNOWN', cap_micro_usdc: '100', ...(behavior.issuanceRecovery ? { recovery: behavior.issuanceRecovery } : {}) };
     return { request_id: p.prepared.request.authorization.request_id, mode, state: settled ? 'SETTLED' : 'ACTIVE', cap_micro_usdc: '100',
       issued_at: p.prepared.request.quote.body.issued_at,
       expires_at: String(BigInt(p.prepared.request.quote.body.issued_at) + BigInt(p.prepared.request.quote.body.session_ttl_seconds)),
@@ -56,6 +59,8 @@ async function setup(t: TestContext, mode: Mode = 'proxy', keyReuseSeconds?: num
   const metadataReads: string[] = [];
   const http: typeof fetch = async (input, init) => {
     const url = new URL(String(input));
+    const diagnosticHeader = new Headers(init?.headers).get('X-Zkapi-Recovery-Diagnostics');
+    assert.equal(diagnosticHeader, /^\/zkapi\/v1\/sessions(?:\/[0-9a-f-]{36}(?:\/close)?|\/retire)?$/.test(url.pathname) ? '1' : null);
     if (url.pathname === '/v1/models') { metadataReads.push(url.href); assert.equal(new Headers(init?.headers).get('Authorization'),null); return Response.json({data:[{id:'first'}]}); }
     if (url.pathname.endsWith('/quotes')) {
       counts.quote++; order.push('quote'); if (behavior.rejectQuote) return new Response(null, { status: 503 });
@@ -71,7 +76,7 @@ async function setup(t: TestContext, mode: Mode = 'proxy', keyReuseSeconds?: num
       counts.auth++; order.push('AUTH');
       if (behavior.authUnknown) throw Error('AUTH reply lost');
       if (behavior.authConflict) return new Response(null,{status:409});
-      return Response.json({ ...await status(), ...(mode === 'proxy' ? {} : { provider_key: 'SECRET_PROVIDER_KEY', provider_api_origin: 'https://direct.invalid/v1' }) });
+      return Response.json({ ...await status(), ...(mode === 'proxy' || behavior.issuanceUnknown ? {} : { provider_key: 'SECRET_PROVIDER_KEY', provider_api_origin: 'https://direct.invalid/v1' }) });
     }
     if (url.pathname === '/zkapi/v1/sessions/retire') {
       order.push('retire');
@@ -337,6 +342,72 @@ test('an unverified successor never becomes available balance', async t => {
   const status = await f.client.status(); assert.equal(status.canRequest, false); assert.equal(status.settledBalanceMicroUsdc, '200');
   await assert.rejects(f.client.settle());
   f.behavior.failVerifier = false; await f.client.recover(); assert.equal((await f.client.status()).settledBalanceMicroUsdc, '199');
+});
+test('issuance uncertainty reaches application recovery and survives restart without reissuing or inferring', async t => {
+  const f = await setup(t, 'direct_openrouter');
+  f.behavior.issuanceUnknown = true;
+  f.behavior.issuanceRecovery = { reason_code: 'provider_key_absent', requires_operator_action: true,
+    issuance: { stage: 'response', reason_code: 'http_rejected', http_status: 403, issuance_certainty: 'unknown' } };
+  await assert.rejects(f.client.chat(chat()));
+  const original = (await f.journal.read('note'))!.value;
+  assert.equal(f.counts.auth, 1); assert.equal(f.counts.sends, 0); assert.equal(f.counts.settles, 0);
+  const client = f.restart(), before = { ...f.counts }, local = await client.status();
+  assert.deepEqual(f.counts, before); assert.equal(local.session?.serverState, 'ISSUANCE_UNKNOWN');
+  assert.equal(local.session?.phase, 'closing'); assert.equal(local.canRequest, false);
+  const pending = await client.recover();
+  assert.equal(pending.outcome, 'pending'); assert.equal(pending.reasonCode, 'provider_key_absent');
+  assert.equal(pending.recovery?.requires_operator_action, true);
+  assert.equal(pending.recovery?.issuance?.http_status, 403);
+  assert.equal(pending.sessionId, original.pending!.prepared.request.authorization.request_id);
+  pending.recovery!.issuance!.http_status = 500;
+  assert.equal((await client.status()).session?.recovery?.issuance?.http_status, 403);
+  assert.deepEqual((await f.journal.read('note'))!.value.state, original.state);
+  assert.equal(f.counts.auth, 1); assert.equal(f.counts.sends, 0); assert.equal(f.counts.settles, 0); assert.equal(f.counts.wallet, 0);
+  await assert.rejects(client.chat(chat()), /recover/);
+
+  f.behavior.issuanceRecovery = { ...f.behavior.issuanceRecovery, reason_code: 'provider_lookup_failed', requires_operator_action: false,
+    lookup: { stage: 'request', reason_code: 'timeout', issuance_certainty: 'unknown' } };
+  const waiting = await client.recover();
+  assert.equal(waiting.outcome, 'pending'); assert.equal(waiting.reasonCode, 'provider_lookup_failed');
+  assert.equal(waiting.recovery?.issuance?.http_status, 403);
+  assert.equal(waiting.recovery?.lookup?.reason_code, 'timeout');
+  assert.equal(f.counts.auth, 1); assert.equal(f.counts.sends, 0); assert.equal(f.counts.settles, 0);
+
+  // Synthetic server has found and accounted for the original key. Only the
+  // ordinary verified successor, never absence, can clear the saved session.
+  f.behavior.issuanceUnknown = false;
+  const completed = await client.recover();
+  assert.deepEqual(completed, { outcome: 'completed', reasonCode: null, sessionId: null, serverState: null, recovery: null });
+  assert.equal((await client.status()).session, null); assert.equal((await client.status()).canRequest, true);
+  assert.equal(f.counts.auth, 1); assert.equal(f.counts.sends, 0); assert.equal(f.counts.settles, 1); assert.equal(f.counts.wallet, 0);
+  assert.equal((await f.journal.read('note'))!.value.history[0].prepared.request.authorization.request_id, pending.sessionId);
+});
+test('legacy unknown issuance is pending, and failed recovery returns bounded reasons without error text', async t => {
+  const f = await setup(t, 'direct_openrouter'); f.behavior.issuanceUnknown = true;
+  await assert.rejects(f.client.chat(chat()));
+  const legacy = await f.client.recover();
+  assert.equal(legacy.outcome, 'pending'); assert.equal(legacy.reasonCode, 'issuance_unknown'); assert.equal(legacy.recovery, null);
+  f.behavior.closeUnavailable = true;
+  const failed = await f.client.recover();
+  assert.equal(failed.outcome, 'failed'); assert.equal(failed.reasonCode, 'control_unavailable'); assert.equal(failed.httpStatus, 503);
+  assert.equal((await f.client.status()).recovery.outcome, 'failed'); assert.equal((await f.client.status()).canRequest, false);
+  f.behavior.closeUnavailable = false; f.behavior.issuanceUnknown = false; f.behavior.failVerifier = true;
+  const invalid = await f.client.recover();
+  assert.equal(invalid.outcome, 'failed'); assert.equal(invalid.reasonCode, 'recovery_failed');
+  assert.equal(JSON.stringify(invalid).includes('invalid signed successor'), false);
+  assert.equal((await f.client.status()).settledBalanceMicroUsdc, '200');
+  assert.equal(f.counts.auth, 1); assert.equal(f.counts.sends, 0);
+});
+test('a dispatcher not-sent diagnostic is explanatory and cannot substitute for verified settlement', async t => {
+  const f = await setup(t, 'direct_openrouter'); f.behavior.issuanceUnknown = true;
+  f.behavior.issuanceRecovery = { reason_code: 'provider_key_absent', requires_operator_action: true,
+    issuance: { stage: 'dispatcher', reason_code: 'claim_storage_unavailable', issuance_certainty: 'not_sent' } };
+  await assert.rejects(f.client.chat(chat()));
+  const recovered = await f.client.recover();
+  assert.equal(recovered.outcome, 'pending'); assert.equal(recovered.recovery?.issuance?.issuance_certainty, 'not_sent');
+  assert.equal((await f.client.status()).canRequest, false);
+  assert.equal((await f.client.status()).settledBalanceMicroUsdc, '200');
+  assert.equal(f.counts.auth, 1); assert.equal(f.counts.sends, 0); assert.equal(f.counts.settles, 0);
 });
 test('stream holds action lock; cancellation closes shared lifecycle and releases the client', async t => {
   const f = await setup(t); f.behavior.stream = true;

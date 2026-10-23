@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """I09 challenger tests; local PostgreSQL + archive + new payload in real Vault SBF.
-Includes native daemon and SDK broadcaster against local RPC fault fixtures; no live RPC/provider or release-gate claims.
+Includes the explicit legacy archive process harness and SDK broadcaster against
+local RPC fault fixtures; no current-state CLI, live RPC/provider or release-gate claims.
 """
 import hashlib
 import json
@@ -55,8 +56,12 @@ with tempfile.TemporaryDirectory(prefix='zkapi-i09-', dir='/tmp') as directory:
         ENV['ZKAPI_I09_DATABASE_URL'] = f'host={socket} port=55439 user=i09_test dbname=postgres'
         postgres = run(['psql', '-X', '-h', str(socket), '-p', '55439', '-U', 'i09_test', '-d', 'postgres', '-Atc', 'SHOW server_version'], True)
         run(['cargo', 'fmt', '--manifest-path', 'services/challenger/Cargo.toml', '--', '--check'])
+        run(['cargo', 'build', '--locked', '--manifest-path', 'services/challenger/Cargo.toml', '--features', 'legacy-archive-fixture', '--example', 'legacy_archive_fixture'])
+        executable = str(ROOT / 'services/challenger/target/debug/examples/legacy_archive_fixture')
+        ENV['ZKAPI_LEGACY_CHALLENGER_TEST_HARNESS'] = executable
+        run(['cargo', 'test', '--locked', '--manifest-path', 'services/challenger/Cargo.toml', '--features', 'legacy-archive-fixture', '--example', 'legacy_archive_fixture'])
         run(['cargo', 'test', '--locked', '--manifest-path', 'services/challenger/Cargo.toml', '--', '--include-ignored', '--test-threads=1'])
-        run(['cargo', 'clippy', '--locked', '--manifest-path', 'services/challenger/Cargo.toml', '--all-targets', '--', '-D', 'warnings'])
+        run(['cargo', 'clippy', '--locked', '--manifest-path', 'services/challenger/Cargo.toml', '--features', 'legacy-archive-fixture', '--all-targets', '--', '-D', 'warnings'])
         results = re.findall(r'test result: ok\. (\d+) passed; (\d+) failed; (\d+) ignored;', LOG.read_text())
         if not results or any(int(f) or int(i) for _, f, i in results):
             raise RuntimeError('All challenger tests must run without failures or ignored cases')
@@ -72,8 +77,7 @@ with tempfile.TemporaryDirectory(prefix='zkapi-i09-', dir='/tmp') as directory:
         sdk_tests = re.search(r'# tests (\d+)', sdk_output)
         if not sdk_tests or '# fail 0' not in sdk_output:
             raise RuntimeError('Challenger SDK bridge tests failed or missing')
-        run(['cargo', 'build', '--locked', '--manifest-path', 'services/challenger/Cargo.toml', '--bin', 'challengerd'])
-        status = json.loads(run(['services/challenger/target/debug/challengerd', 'status', 'target/i09-challenger/cli-state/config.json']))
+        status = json.loads(run([executable, 'status', 'target/i09-challenger/cli-state/config.json']))
         if status['complete_jobs'] != 1 or status['unknown_signatures'] != 0:
             raise RuntimeError('Native CLI did not recover the durable completed queue')
         # Every 'once' is a fresh native OS process over the SAME durable queue.
@@ -101,7 +105,6 @@ with tempfile.TemporaryDirectory(prefix='zkapi-i09-', dir='/tmp') as directory:
             Path(cfg['fee_key_file']).chmod(0o600)
             config_path = work / 'native-cli.json'
             config_path.write_text(json.dumps(cfg))
-            executable = 'services/challenger/target/debug/challengerd'
             run([executable, 'init', str(config_path)], True)
             fixture_call('testSetMode', ['lose-once'])
             restarts = 0
@@ -146,9 +149,9 @@ with tempfile.TemporaryDirectory(prefix='zkapi-i09-', dir='/tmp') as directory:
         artifacts += [str(path.relative_to(ROOT)) for path in sorted((ROOT / 'services/challenger/tests').rglob('*.rs'))]
         artifacts += [str(path.relative_to(ROOT)) for path in sorted((ROOT / 'services/indexer/src').rglob('*.rs'))]
         artifacts += [str(path.relative_to(ROOT)) for directory in ['packages/sdk/src', 'packages/sdk/test'] for path in sorted((ROOT / directory).glob('challenger*.ts'))]
-        artifacts += ['target/i09-challenger/daemon-performance.json', 'target/i09-challenger/native-cli-results.json', 'services/challenger/target/debug/challengerd']
+        artifacts += ['target/i09-challenger/daemon-performance.json', 'target/i09-challenger/native-cli-results.json', 'services/challenger/target/debug/challengerd', 'services/challenger/target/debug/examples/legacy_archive_fixture', 'services/challenger/examples/legacy_archive_fixture.rs']
         artifacts += ['target/i09-challenger/i10-restart-results.json']
-        report = {'scope': 'I09 challenger A/B native RPC daemon/CLI, durable scan/restart, readonly PostgreSQL, real proof, I04 signed-v0 bridge/recovery fault fixtures, actual Vault signed-v0 SBF acceptance; no live RPC claim', 'passed': True, 'tests_passed': sum(int(p) for p, _, _ in results) + int(sdk_tests.group(1)), 'native_tests_passed': sum(int(p) for p, _, _ in results), 'sdk_tests_passed': int(sdk_tests.group(1)), 'daemon_performance': json.loads((OUT / 'daemon-performance.json').read_text()), 'native_cli': cli_result, 'tests_failed': 0, 'tests_ignored': 0, 'postgres_version': postgres, 'fsync': True, 'rust': run(['rustc', '--version'], True), 'elapsed_seconds': round(time.monotonic() - started, 3), 'commands': COMMANDS, 'artifact_sha256': {name: hashlib.sha256((ROOT / name).read_bytes()).hexdigest() for name in artifacts}, 'release_gates_passed': [], 'new_tree_proof_generated': True, 'new_payload_sbf_verified': True, 'svm': {key: svm[key] for key in ['transactions', 'expected_rejections', 'max_cu', 'max_transaction_bytes', 'payload_sha256', 'elf_sha256']}, 'live_rpc_verified': False}
+        report = {'scope': 'I09 challenger A/B legacy archive process harness, durable scan/restart, readonly PostgreSQL, real proof, I04 signed-v0 bridge/recovery fault fixtures, actual Vault signed-v0 SBF acceptance; no current-state CLI or live RPC claim', 'passed': True, 'tests_passed': sum(int(p) for p, _, _ in results) + int(sdk_tests.group(1)), 'native_tests_passed': sum(int(p) for p, _, _ in results), 'sdk_tests_passed': int(sdk_tests.group(1)), 'daemon_performance': json.loads((OUT / 'daemon-performance.json').read_text()), 'native_cli': cli_result, 'tests_failed': 0, 'tests_ignored': 0, 'postgres_version': postgres, 'fsync': True, 'rust': run(['rustc', '--version'], True), 'elapsed_seconds': round(time.monotonic() - started, 3), 'commands': COMMANDS, 'artifact_sha256': {name: hashlib.sha256((ROOT / name).read_bytes()).hexdigest() for name in artifacts}, 'release_gates_passed': [], 'new_tree_proof_generated': True, 'new_payload_sbf_verified': True, 'svm': {key: svm[key] for key in ['transactions', 'expected_rejections', 'max_cu', 'max_transaction_bytes', 'payload_sha256', 'elf_sha256']}, 'live_rpc_verified': False}
         report['i10_repeated_outage_restarts'] = restarts_result
         (OUT / 'runtime-report.json').write_text(json.dumps(report, indent=2) + '\n')
     finally:

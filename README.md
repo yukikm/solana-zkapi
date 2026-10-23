@@ -1,5 +1,7 @@
 # Solana ZKAPI
 
+SDK/native `.15` adds [explicit direct recovery diagnostics](docs/getting-started/direct-recovery-upgrade.md) while preserving existing custody and signed settlement.
+
 ZKAPI provides USDC payments and zero-knowledge usage authorization for APIs on
 Solana. Its payment lifecycle combines local proofs, capped authorization,
 signed billing receipts and withdrawals.

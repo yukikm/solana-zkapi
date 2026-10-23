@@ -267,6 +267,36 @@ impl App {
         }
         Ok(v)
     }
+    async fn status_for(&self, s: &SessionRecord, headers: &HeaderMap) -> Result<Value> {
+        let mut status = self.status(s).await?;
+        if s.mode != "proxy" && matches!(s.state.as_str(), "ISSUING" | "ISSUANCE_UNKNOWN") {
+            let checkpoint = self.ledger.direct_checkpoint(s.request_id).await?;
+            let checkpoint = checkpoint
+                .map(serde_json::from_value::<crate::direct::Checkpoint>)
+                .transpose()
+                .map_err(|_| unavailable())?;
+            if checkpoint
+                .as_ref()
+                .is_none_or(|checkpoint| checkpoint.reference.is_none())
+            {
+                let recovery = checkpoint
+                    .and_then(|checkpoint| checkpoint.recovery)
+                    .unwrap_or_else(crate::direct::RecoveryStatus::unknown);
+                // Existing clients strictly reject new response fields. The
+                // bounded reason is compatible; richer data requires opt-in.
+                status["last_error_code"] =
+                    serde_json::to_value(recovery.reason_code).map_err(|_| unavailable())?;
+                if headers
+                    .get("x-zkapi-recovery-diagnostics")
+                    .is_some_and(|value| value == "1")
+                {
+                    status["recovery"] =
+                        serde_json::to_value(recovery).map_err(|_| unavailable())?;
+                }
+            }
+        }
+        Ok(status)
+    }
     pub async fn advance(&self, id: Uuid) -> Result<()> {
         self.ledger.recover_abandoned_operations(id).await?;
         self.ledger.recover_abandoned_direct(id).await?;
@@ -652,7 +682,7 @@ async fn retire_authorization(
         max_concurrency: wire::uint(&r.quote.body.max_concurrency)? as i16,
     };
     if let Some(s) = a.ledger.retire_authorization(&n).await? {
-        return Ok(Json(a.status(&s).await?));
+        return Ok(Json(a.status_for(&s, &headers).await?));
     }
     let body = json!({
         "version":"1", "kind":"authorization_retired",
@@ -679,7 +709,7 @@ async fn create_session(
             if s.request_digest != v.digest || s.request_transcript != v.transcript {
                 return Err(ApiError(StatusCode::CONFLICT, "idempotency_conflict"));
             }
-            return Ok((StatusCode::OK, Json(a.status(&s).await?)).into_response());
+            return Ok((StatusCode::OK, Json(a.status_for(&s, &headers).await?)).into_response());
         }
         Err(LedgerError::NotFound) => {}
         Err(e) => return Err(e.into()),
@@ -772,7 +802,10 @@ async fn create_session(
                     a.ledger.close(v.request_id).await?;
                     return Ok((
                         StatusCode::ACCEPTED,
-                        Json(a.status(&a.ledger.session(v.request_id).await?).await?),
+                        Json(
+                            a.status_for(&a.ledger.session(v.request_id).await?, &headers)
+                                .await?,
+                        ),
                     )
                         .into_response());
                 }
@@ -780,7 +813,9 @@ async fn create_session(
             .map_err(|_| unavailable())?;
         let key =
             key.map_err(|_| ApiError(StatusCode::SERVICE_UNAVAILABLE, "provider_unavailable"))?;
-        let mut status = a.status(&a.ledger.session(v.request_id).await?).await?;
+        let mut status = a
+            .status_for(&a.ledger.session(v.request_id).await?, &headers)
+            .await?;
         if let Some(key) = key {
             status["provider_key"] = key.runtime_key.into();
             status["provider_api_origin"] = key.inference_base.into();
@@ -807,7 +842,10 @@ async fn create_session(
     }
     Ok((
         StatusCode::CREATED,
-        Json(a.status(&a.ledger.session(v.request_id).await?).await?),
+        Json(
+            a.status_for(&a.ledger.session(v.request_id).await?, &headers)
+                .await?,
+        ),
     )
         .into_response())
 }
@@ -856,7 +894,7 @@ async fn session_status(
     headers: HeaderMap,
 ) -> Result<Json<Value>> {
     let s = a.authenticate(wire::uuid(&id)?, &headers).await?;
-    Ok(Json(a.status(&s).await?))
+    Ok(Json(a.status_for(&s, &headers).await?))
 }
 async fn close_session(
     State(a): State<Arc<App>>,
@@ -869,7 +907,7 @@ async fn close_session(
     let _ = a.advance(id).await;
     Ok((
         StatusCode::ACCEPTED,
-        Json(a.status(&a.ledger.session(id).await?).await?),
+        Json(a.status_for(&a.ledger.session(id).await?, &headers).await?),
     ))
 }
 async fn clearance(

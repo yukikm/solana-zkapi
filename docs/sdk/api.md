@@ -52,7 +52,7 @@ Use the factory for new apps. No additional financial journal is created.
 | `requestApi({operationId, service, operation, body, signal?})` | Source addition: registered fixed-price POST JSON operation; returns one-use `Response` |
 | `requestApi({version:"2", operationId, service, operation, method, target, headers, body, signal?})` | Source addition: finite HTTP with raw bytes and Base64 header pairs; returns `GatewayResult` with `status`, `body`, `trailers` and `completed` |
 | `settle()` | Ask saved session to close; inspect status afterward |
-| `recover()` | Reconcile/close saved AUTH; never replay inference |
+| `recover()` | Reconcile/close saved AUTH; return `RecoveryResult` (`completed`, `pending`, `failed`); never replay inference |
 | `cancelUnsentAuthorization()` | Cancel an AUTH proven locally never sent |
 | `reconcileUnacceptedAuthorization()` | Verify permanent signed clearance for an uncertain AUTH with no observed acceptance or inference; archive it without replay or wallet signing |
 | `reconcileAbsentOperations()` | Explicit terminal-session reconciliation with receipt/successor verification |

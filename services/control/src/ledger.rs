@@ -876,6 +876,8 @@ impl Ledger {
         }
         if let Some(old) = &previous {
             if old["intent"] != next["intent"]
+                || (!old["recovery"]["issuance"].is_null()
+                    && old["recovery"]["issuance"] != next["recovery"]["issuance"])
                 || (old["deleted"] == true && next["deleted"] != true)
                 || ["reference", "disabled_at", "usage"]
                     .iter()
@@ -1787,6 +1789,15 @@ fn validate_direct_checkpoint(s: &SessionRecord, checkpoint: &Value) -> Result<(
     let checkpoint: crate::direct::Checkpoint =
         serde_json::from_value(checkpoint.clone()).map_err(|_| invalid())?;
     checkpoint.intent.validate().map_err(|_| invalid())?;
+    if checkpoint.recovery.as_ref().is_some_and(|recovery| {
+        recovery
+            .issuance
+            .iter()
+            .chain(recovery.lookup.iter())
+            .any(|diagnostic| !diagnostic.validate())
+    }) {
+        return Err(invalid());
+    }
     if checkpoint.intent.request_id != s.request_id || checkpoint.intent.cap_micro != s.cap_micro {
         return Err(invalid());
     }
