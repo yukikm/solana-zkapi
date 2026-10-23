@@ -17,7 +17,7 @@ Neither path requires your own provider API key or a ZKAPI server.
 ## 2. Use the published inputs
 
 The current Pool uses `public-devnet-20261021-state-v1` and the immutable
-[SDK/native `.14` release](node-security-upgrade.md). Create a new client profile
+[SDK/native `.15` release](direct-recovery-upgrade.md). Create a new client profile
 and journal for this Pool. Earlier profiles authenticate the retired Pool and
 must not be edited to point at this one; keep their recovery material separately.
 See [current-state setup](poc-state-sync.md) for the intentional PoC reset.
@@ -34,10 +34,10 @@ The public profile SHA-256 remains:
 5e15d66c6f45265951cf1f8dd6cc0dae6574c4b8dd6756f828f7543ecaa97b9a
 ```
 
-Obtain package digests from the authenticated `.14` `release-manifest.json`:
+Obtain package digests from the authenticated `.15` `release-manifest.json`:
 `assets[filename].sha256` identifies each archive, and
 `native.installation_manifest_sha256` identifies the extracted `release.json`.
-Use [release and asset verification](node-security-upgrade.md#authenticate-the-published-release)
+Use [release and asset verification](direct-recovery-upgrade.md#authenticate-and-install)
 before trusting those fields. The [SDK](sdk.md) and [clientd](clientd.md)
 quickstarts perform these checks. This avoids deriving an expected digest from
 the same unverified archive being installed. Native support is Apple Silicon,
