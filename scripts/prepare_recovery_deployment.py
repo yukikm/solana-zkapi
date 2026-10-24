@@ -114,6 +114,7 @@ try:
    time.sleep(0.25)
  subprocess.check_call(['systemctl','reload','nginx'])
 except BaseException:
+ if not was_enabled: subprocess.run(['systemctl','disable','zka-recovery.service'],check=False)
  for path,data in before.items():
   if data is None: path.unlink(missing_ok=True)
   else: replace(path,data)
@@ -122,7 +123,6 @@ except BaseException:
  subprocess.run(['systemctl','daemon-reload'],check=False)
  if was_active: subprocess.run(['systemctl','restart','zka-recovery.service'],check=False)
  else: subprocess.run(['systemctl','stop','zka-recovery.service'],check=False)
- if not was_enabled: subprocess.run(['systemctl','disable','zka-recovery.service'],check=False)
  if subprocess.run(['nginx','-t'],check=False).returncode==0: subprocess.run(['systemctl','reload','nginx'],check=False)
  raise
 print(json.dumps({'recovery_ready':True,'revision':bundle['revision'],'file_sha256':{name:bundle['files'][name]['sha256'] for name in ('server.mjs','store.mjs')},'backup_directory':str(backup),'financial_services_restarted':False}))

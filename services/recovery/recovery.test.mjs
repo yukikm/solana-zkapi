@@ -8,6 +8,8 @@ import { spawn } from 'node:child_process';
 import { once } from 'node:events';
 import fs from 'node:fs';
 import { syncBuiltinESMExports } from 'node:module';
+import { createServer } from 'node:http';
+import { fileURLToPath } from 'node:url';
 import { startRecoveryServer } from './server.mjs';
 import { RecoveryStore, MAX_BODY_BYTES } from './store.mjs';
 
@@ -189,4 +191,26 @@ test('rename without directory fsync never becomes a successful read or idempote
     assert.deepEqual(store.read(id, owner, key), { record: record(1) });
     assert.deepEqual(store.compareAndSwap(id, owner, key, { expectedRevision: null, record: record(1) }), { ok: true });
   } finally { fs.fsyncSync = originalFsync; syncBuiltinESMExports(); store.close(); }
+});
+
+test('the production CLI starts through an atomic release symlink', async t => {
+  const directory = await mkdtemp(join(tmpdir(), 'zkapi-recovery-cli-'));
+  t.after(() => rm(directory, { recursive: true, force: true }));
+  const socket = createServer();
+  await new Promise(resolve => socket.listen(0, '127.0.0.1', resolve));
+  const port = socket.address().port;
+  await new Promise(resolve => socket.close(resolve));
+  const launcher = join(directory, 'current-server.mjs'), config = join(directory, 'config.json');
+  await symlink(fileURLToPath(new URL('./server.mjs', import.meta.url)), launcher);
+  await writeFile(config, JSON.stringify({ directory: join(directory, 'custody'), port, allowedOrigins: ['https://dzt0611ozdx70.cloudfront.net'] }));
+  const child = spawn(process.execPath, [launcher, config], { stdio: ['ignore', 'pipe', 'pipe'] });
+  t.after(() => { if (child.exitCode === null && child.signalCode === null) child.kill('SIGKILL'); });
+  await new Promise((resolve, reject) => {
+    const timeout = setTimeout(() => reject(new Error('CLI did not report readiness')), 5000);
+    child.stdout.on('data', chunk => { if (chunk.toString().includes('recovery service ready')) { clearTimeout(timeout); resolve(); } });
+    child.once('exit', code => { clearTimeout(timeout); reject(new Error(`CLI exited before readiness: ${code}`)); });
+  });
+  const response = await fetch(`http://127.0.0.1:${port}/recovery/v1/health`);
+  assert.equal(response.status, 200); assert.deepEqual(await response.json(), { ready: true });
+  child.kill('SIGTERM'); const [code] = await once(child, 'exit'); assert.equal(code, 0);
 });

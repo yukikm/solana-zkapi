@@ -1,5 +1,5 @@
 import { createServer } from 'node:http';
-import { readFileSync } from 'node:fs';
+import { readFileSync, realpathSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
 import { RecoveryStore, RecoveryServiceError, MAX_BODY_BYTES } from './store.mjs';
 
@@ -80,7 +80,7 @@ export async function startRecoveryServer(options) {
   } };
 }
 
-if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+if (process.argv[1] && import.meta.url === pathToFileURL(realpathSync(process.argv[1])).href) {
   try {
     if (process.argv.length !== 3) throw new Error('config_required');
     const config = JSON.parse(readFileSync(process.argv[2], 'utf8'));
