@@ -36,7 +36,7 @@ export interface ModelConfiguration {
   capabilities?: { streaming: boolean; tools: boolean };
 }
 export type ModelInfo = Omit<ModelConfiguration, 'tariff'>;
-export interface ClientStorage { store: AtomicJournalStore; key: CryptoKey }
+export interface ClientStorage { store: AtomicJournalStore; key: CryptoKey; binding?: { deploymentId: string; pool: string; wallet: string } }
 export interface ClientDeployment {
   manifest: Uint8Array;
   /** Install independently of the fetched manifest. */
@@ -249,7 +249,7 @@ export class ZkApiClient {
   private async publish(): Promise<void> {
     try { const status = await this.status(); for (const listener of this.listeners) this.notify(listener, status); } catch { /* Explicit status() reports storage failures. */ }
   }
-  private async action<T>(fn: () => Promise<T>): Promise<T> {
+  private async action<T>(fn: () => Promise<T>, maintain = true): Promise<T> {
     if (this.disposed) throw new ClientActionError('closed', 'Client disposed; reopen the same storage and note ID.');
     if (this.busy) throw new ClientActionError('busy', 'Consume or cancel the current response before another action.');
     clearTimeout(this.maintenanceTimer); this.maintenanceTimer = undefined;
@@ -260,7 +260,7 @@ export class ZkApiClient {
       return await this.options.store.withLock(JSON.stringify(['zkapi-app-client-v1', m.deployment_id, m.pool, this.options.noteId]), async () => {
         await this.publish(); return fn();
       });
-    } finally { this.busy = false; await this.publish(); await this.scheduleMaintenance(); }
+    } finally { this.busy = false; await this.publish(); if (maintain) await this.scheduleMaintenance(); }
   }
   private async scheduleMaintenance(): Promise<void> {
     if (this.disposed || this.busy || this.maintenanceTimer) return;
@@ -303,6 +303,11 @@ export class ZkApiClient {
     return this.action(() => this.walletClient.reconcileChallengedEscape(this.options.noteId));
   }
   advanceWallet(): ReturnType<WalletClient['advance']> { return this.action(() => this.walletClient.advance(this.options.noteId)); }
+  /** Network-read-only observation of one expected saved signature. May commit
+   * verified finality locally; never signs/sends or schedules session maintenance. */
+  observeWallet(expectedSignature: string): ReturnType<WalletClient['observe']> {
+    return this.action(() => this.walletClient.observe(this.options.noteId, expectedSignature), false);
+  }
   resumeWalletProof(): Promise<void> { return this.action(() => this.walletClient.resumeProof(this.options.noteId)); }
   retryRejectedWalletOperation(): Promise<void> { return this.action(() => this.walletClient.retryRejected(this.options.noteId)); }
   recoverExpiredWalletSetup(): Promise<void> { return this.action(() => this.walletClient.reconcileExpiredCreation(this.options.noteId)); }
@@ -507,7 +512,7 @@ export async function createZkApiClient(options: CreateClientOptions): Promise<Z
   const d = options.deployment;
   const manifestBytes = new Uint8Array(d.manifest), trust = structuredClone(d.trust), artifacts = structuredClone(d.artifacts);
   const models = structuredClone([...options.models]), services=structuredClone([...(options.services ?? [])]), gateway=structuredClone(options.gateway), mode = options.mode, noteId = options.noteId, keyReuseSeconds = options.keyReuseSeconds;
-  const wallet = options.wallet, storage = { ...options.storage }, engine = options.prover;
+  const wallet = options.wallet, storage = { ...options.storage, binding: structuredClone(options.storage.binding) }, engine = options.prover;
   const connection = d.connection, fetcher = d.fetch, indexerOrigin = d.indexerOrigin, preparationCommitment = d.preparationCommitment;
   const directProviderBases = structuredClone(options.directProviderBases), oaVerifier = structuredClone(options.oaVerifier), priorityFeeMicroLamports = options.priorityFeeMicroLamports;
   if (models.length) validateModelConfigurations(mode,models);
@@ -516,6 +521,7 @@ export async function createZkApiClient(options: CreateClientOptions): Promise<Z
   if (mode !== 'proxy' && !directProviderBases?.[mode]) throw new Error('independently installed direct provider base required');
   if (mode === 'direct_oa' && !oaVerifier) throw new Error('independently installed OA verifier required');
   const manifest: VerifiedManifest = await verifyManifest(manifestBytes, trust);
+  if (storage.binding && (storage.binding.deploymentId !== manifest.deployment_id || storage.binding.pool !== manifest.pool || storage.binding.wallet !== wallet.publicKey)) throw new Error('Recovery custody does not match this deployment and wallet');
   await validateClientSelectionPins({models,services}, manifest,undefined,trust.build.gatewayAdapters);
   const genesis = await connection.getGenesisHash().send();
   const observed = await connection.getAccountInfo(address(manifest.pool), { commitment: 'finalized', encoding: 'base64' }).send();

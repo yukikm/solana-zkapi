@@ -125,6 +125,32 @@ export class EncryptedJournal<T extends object> {
     return { revision, value: snapshot as T, head: current };
   }
   async withNoteLock<R>(noteId: string, action: () => Promise<R>): Promise<R> { return this.store.withLock(await this.storageKey(noteId), action); }
+  /** Explicit custody backup enrollment. The caller must stop all other clients
+   * and hold its application lock for the entire catalog migration. Preserve the
+   * original data. Authenticate every source record, re-encrypt under the target
+   * key, and retain its exact revision and financial state. Never merge journals.
+   * Returning null means this local ID has never had a journal. */
+  async copyTo(noteId: string, target: { store: AtomicJournalStore; key: CryptoKey; binding?: { deploymentId: string; pool: string } }): Promise<JournalRecord<T> | null> {
+    if (target.binding && (target.binding.deploymentId !== this.context.deploymentId || target.binding.pool !== this.context.pool)) throw new JournalIntegrityError('backup custody context differs from the original journal');
+    return this.withNoteLock(noteId, async () => {
+      const source = await this.read(noteId);
+      if (!source) return null;
+      const destination = new EncryptedJournal<T>(target.store, target.key, this.context, this.validate);
+      return destination.withNoteLock(noteId, async () => {
+        const existing = await destination.read(noteId);
+        if (existing) {
+          if (existing.revision !== source.revision || JSON.stringify(existing.value) !== JSON.stringify(source.value)) throw new JournalIntegrityError('backup enrollment conflicts with existing saved state');
+          return existing;
+        }
+        const iv = crypto.getRandomValues(new Uint8Array(12));
+        const encrypted = await crypto.subtle.encrypt({ name: 'AES-GCM', iv, additionalData: this.aad(noteId, source.revision), tagLength: 128 }, target.key, encoder.encode(JSON.stringify(source.value)));
+        await target.store.compareAndSwap(await this.storageKey(noteId), null, { schema: 1, revision: source.revision, ivHex: hex(iv), ciphertextHex: hex(new Uint8Array(encrypted)) });
+        const copied = await destination.read(noteId);
+        if (!copied || copied.revision !== source.revision || JSON.stringify(copied.value) !== JSON.stringify(source.value)) throw new JournalIntegrityError('backup enrollment verification failed');
+        return copied;
+      });
+    });
+  }
   async exportBackup(noteId: string): Promise<{ backup: string; head: JournalHead }> {
     const key = await this.storageKey(noteId), record = await this.store.read(key);
     if (!record) throw new JournalIntegrityError('cannot back up missing journal');

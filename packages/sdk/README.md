@@ -1,8 +1,8 @@
 # Solana zkAPI SDK
 
-Source SDK `.16` is a local patch candidate for [explicit operator waivers](../../docs/releases/direct-waiver-preview.md); no `.16` GitHub release is claimed. It requires the matching independently pinned client verifier.
+SDK `.18` adds [recoverable custody](../../docs/sdk/recoverable-custody.md) for browser and Node.js. A separately saved recovery kit opens the latest encrypted external journal after device-data loss. Enrollment and restore are explicit; local custody is never silently replaced. The [release guide](../../docs/releases/recoverable-custody-preview.md) describes the trust and single-device limits. Native installers remain at `.15`.
 
-SDK/native `.15` adds [explicit direct recovery diagnostics](../../docs/getting-started/direct-recovery-upgrade.md) while preserving existing custody and signed settlement.
+It includes `.17` read-only `observeWallet(expectedSignature)` confirmation and `.16` explicit operator waiver support. Observation never signs or sends a transaction. Waivers require the independently pinned matching client verifier; keep original profiles, notes and recovery runtimes.
 
 An SDK for USDC-funded API usage on Solana. It handles wallet operations, local
 proofs, encrypted storage, authorization and signed settlement. Applications own

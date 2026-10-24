@@ -323,3 +323,20 @@ for (const scenario of ['mutual_close','initiate_escape','fallback'] as const) t
   assert.deepEqual(done.witness,deposited.witness);
   t.diagnostic('preserved inline history with '+done.wallet!.history.length+' completed/cancelled operations, '+h.counts.sign+' signatures');
 });
+
+test('observeWallet confirms an inline deposit without signing, replaying, proving or maintenance',async t=>{
+  const h=await setup(t);await h.client.advance('note');const signed=await h.signed();
+  const counts={...h.counts},before=await h.journal.read('note');
+  const client=new ZkApiClient({wallet:h.options,store:h.store,noteId:'note',mode:'proxy',control:{clearEphemeralKeys(){}} as unknown as ControlClient,
+    models:[{id:'fixture',provider:'openrouter',apis:['chat'],tariff:{tariff_hash:'00'.repeat(32),version:'1',provider:'openrouter',model:'fixture',pricing_basis:'fixed_usage_rates',valid_from:'0',valid_until:'9999999999',rates:[],operator_fee_micro_usdc:'0'}}]});
+  t.after(()=>client.dispose());
+  assert.equal((await client.observeWallet(signed.signature)).state,'pending');
+  assert.deepEqual(await h.journal.read('note'),before);assert.deepEqual(h.counts,counts);
+  h.behavior.height=101;
+  assert.equal((await client.observeWallet(signed.signature)).state,'expired_reconcile_required');
+  assert.deepEqual(await h.journal.read('note'),before);assert.deepEqual(h.counts,counts);
+  await h.fund();
+  assert.deepEqual(await client.observeWallet(signed.signature),{state:'complete'});
+  assert.equal((await client.status()).wallet,'active');assert.deepEqual(h.counts,counts);
+  assert.deepEqual(await client.observeWallet(signed.signature),{state:'changed'});
+});

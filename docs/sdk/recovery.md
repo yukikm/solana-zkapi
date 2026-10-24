@@ -1,5 +1,9 @@
 # Recovery and user-facing states
 
+SDK `.18` offers opt-in [recoverable custody](recoverable-custody.md) for browser
+and Node.js. Local-only storage limitations still apply until enrollment
+completes. A library upgrade does not automatically create a backup.
+
 Use the same browser origin/profile, storage name, account, deployment pins and
 note ID after reload. Creation and `status()` never resume network operations.
 Present saved work first; do not issue a fresh chat request in a startup effect.

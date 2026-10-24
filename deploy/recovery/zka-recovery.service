@@ -1,0 +1,34 @@
+[Unit]
+Description=Encrypted client recovery storage
+RequiresMountsFor=/srv/zka/recovery
+After=network-online.target
+
+[Service]
+Type=simple
+UMask=0077
+User=zka-recovery
+Group=zka-recovery
+WorkingDirectory=/opt/zkapi/recovery/current
+ExecStart=/opt/zkapi/node/bin/node /opt/zkapi/recovery/current/server.mjs /etc/zkapi-recovery/recovery.json
+Restart=no
+TimeoutStopSec=40
+KillMode=control-group
+NoNewPrivileges=true
+CapabilityBoundingSet=
+RestrictSUIDSGID=true
+LockPersonality=true
+ProtectProc=invisible
+ProcSubset=pid
+SystemCallFilter=~@debug
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+ReadWritePaths=/srv/zka/recovery
+ReadOnlyPaths=/etc/zkapi-recovery/recovery.json
+
+[Install]
+WantedBy=multi-user.target

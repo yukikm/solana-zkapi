@@ -51,6 +51,9 @@ export interface WalletOptions {
   priorityFeeMicroLamports?:bigint;
 }
 function requireTrue(value:unknown,message:string):asserts value {if(!value)throw Error(message);}
+export type WalletProgress = Recovery | { state: 'ready' | 'proof_required' | 'complete' };
+export type WalletObservation = WalletProgress | { state: 'changed' };
+
 export class WalletClient {
   private readonly o:WalletOptions;
   constructor(options:WalletOptions){if(options.priorityFeeMicroLamports!==undefined)u64(options.priorityFeeMicroLamports);this.o={...options,wallets:[...options.wallets]};}
@@ -478,9 +481,21 @@ export class WalletClient {
     });
   }
   /** One bounded sign/recover step. Call again when pending; never loops inference or switches mode. */
-  async advance(id:string):Promise<Recovery|{state:'ready'|'proof_required'|'complete'}>{
+  advance(id:string):Promise<WalletProgress>{ return this.progress(id); }
+  /** Observe only the expected saved signature. Never signs, sends, proves,
+   * refreshes an expired upload or requests a new blockhash. Finalized evidence
+   * uses the same receipt/account binding and durable commit as advance(). */
+  observe(id:string,expectedSignature:string):Promise<WalletObservation>{
+    requireTrue(typeof expectedSignature==='string'&&expectedSignature.length>0,'expected saved signature required');
+    return this.progress(id,{expectedSignature});
+  }
+  private progress(id:string):Promise<WalletProgress>;
+  private progress(id:string,observation:{expectedSignature:string}):Promise<WalletObservation>;
+  private async progress(id:string,observation?:{expectedSignature:string}):Promise<WalletObservation>{
     return this.o.journal.withNoteLock(id,async()=>{
-      let r=await this.record(id);let op=r.value.wallet!.operation;requireTrue(op,'no financial operation');
+      let r=await this.record(id);let op=r.value.wallet!.operation;
+      if(observation&&(!op||op.current!==observation.expectedSignature))return {state:'changed'};
+      requireTrue(op,'no financial operation');
       requireTrue(op.phase!=='failed'&&!(op.transport==='v0_inline_deposit_v1'&&op.phase==='stale'),'finalized rejection requires explicit review');
       if(op.phase==='proving')return {state:'proof_required'};
       const saveAttempt=async(attempt:FinancialAttempt)=>{
@@ -488,6 +503,7 @@ export class WalletClient {
         op!.attempts.push(structuredClone(attempt));op!.current=attempt.signature;r=await this.save(id,r);op=r.value.wallet!.operation!;
       };
       let attempt=op.attempts.find(a=>a.signature===op!.current);
+      if(observation)requireTrue(attempt,'missing saved signed attempt');
       let freshInline=false;
       if(!attempt){
         if(op.transport==='v0_inline_deposit_v1'){
@@ -517,8 +533,8 @@ export class WalletClient {
           attempt=await prepareAttempt(plan,step,await this.o.chain.blockhash(),this.signers(step.instruction,plan.feePayer),{save:saveAttempt});
         }
       }
-      let recovery=attempt.kind==='deposit_inline'?await recoverInlineDepositAttempt(attempt,this.o.rpc,freshInline):attempt.kind==='finalize'?await recoverFinalizationAttempt(attempt as FinalizationAttempt,this.o.rpc,true):await recoverAttempt(attempt as Attempt,this.o.rpc,true);
-      if(recovery.state==='expired_reconcile_required'&&!['execute','close','finalize','deposit_inline'].includes(attempt.kind)){
+      let recovery=attempt.kind==='deposit_inline'?await recoverInlineDepositAttempt(attempt,this.o.rpc,freshInline):attempt.kind==='finalize'?await recoverFinalizationAttempt(attempt as FinalizationAttempt,this.o.rpc,!observation):await recoverAttempt(attempt as Attempt,this.o.rpc,!observation);
+      if(!observation&&recovery.state==='expired_reconcile_required'&&!['execute','close','finalize','deposit_inline'].includes(attempt.kind)){
         const plan=await restorePlan((attempt as Attempt).plan);
         const tx=getTransactionDecoder().decode(fromHex(attempt.wireHex,attempt.wireHex.length/2)),required=new Set(Object.keys(tx.signatures));
         const refreshed=await refreshExpiredUpload(attempt as Attempt,this.o.rpc,await this.o.chain.buffer(plan),await this.o.chain.blockhash(),this.o.wallets.filter(w=>required.has(w.publicKey)),{save:saveAttempt});

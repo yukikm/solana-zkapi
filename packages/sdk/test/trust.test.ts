@@ -270,6 +270,27 @@ test('application factory authenticates independent pins, tariffs and finalized 
   const wrongConnection={...options.deployment.connection,getGenesisHash:()=>({send:async()=>key(11)})} as Rpc<SolanaRpcApi>;
   await assert.rejects(createZkApiClient({...options,deployment:{...options.deployment,connection:wrongConnection}}),/genesis/);
   await assert.rejects(createBrowserClient({...options,storageName:'test',createWorker:()=>{throw Error('must not create worker');},wasm:new Uint8Array([1]),wasmSha256:'00'.repeat(32)}),/WASM hash mismatch/);
+  // Caller-owned recovery storage must bypass origin custody without bypassing
+  // the factory's WASM/deployment checks or transferring its close ownership.
+  let storageCloses=0, workerTerminations=0;
+  const external={...options.storage,binding:{deploymentId:manifest.deployment_id,pool:manifest.pool,wallet:options.wallet.publicKey},close(){storageCloses++;}};
+  const wasm=new Uint8Array([1]),wasmSha256=await sha256Hex(wasm);
+  const createWorker=()=>{
+    const worker={onmessage:null as ((event:{data:{id:number;result:boolean}})=>void)|null,onerror:null,onmessageerror:null,
+      postMessage(message:{id:number;kind:string}){assert.equal(message.kind,'init');queueMicrotask(()=>worker.onmessage?.({data:{id:message.id,result:true}}));},
+      terminate(){workerTerminations++;}};
+    return worker as unknown as Worker;
+  };
+  const opening=createBrowserClient({...options,storage:external,storageName:'caller-owned-test',createWorker,wasm,wasmSha256});
+  external.binding.wallet=address(key(11)); // The factory snapshots the supplied binding before its first await.
+  const browserClient=await opening;assert.equal((await browserClient.client.status()).wallet,'empty');assert.equal(browserClient.persistence,'unknown');
+  browserClient.dispose();assert.equal(workerTerminations,1);assert.equal(storageCloses,0);
+  const beforeWrongBinding=reads;
+  await assert.rejects(createBrowserClient({...options,storage:external,storageName:'caller-owned-test',createWorker,wasm,wasmSha256}),/custody does not match/);
+  assert.equal(reads,beforeWrongBinding);assert.equal(workerTerminations,2);assert.equal(storageCloses,0);
+  external.binding.wallet=options.wallet.publicKey;
+  await assert.rejects(createBrowserClient({...options,storage:external,storageName:'caller-owned-test',createWorker,wasm,wasmSha256:'00'.repeat(32)}),/WASM hash mismatch/);
+  assert.equal(workerTerminations,2);assert.equal(storageCloses,0);
 });
 
 test('compact deposit requires authenticated capability and an independent build capability pin', async () => {

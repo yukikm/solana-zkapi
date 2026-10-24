@@ -1,8 +1,12 @@
 # Support
 
-ZKAPI is a **Devnet preview**. The current SDK/native release is
-[`0.2.0-devnet.15`](releases/direct-recovery-preview.md). Its recovery repair
-has local validation on **2026-10-24 JST**; provider and client lifecycle
+ZKAPI is a **Devnet preview**. The current SDK is
+[`.18`](releases/recoverable-custody-preview.md); native installers remain
+[`.15`](releases/direct-recovery-preview.md). SDK `.18` adds explicit encrypted
+backup enrollment and browser/Node.js restoration after device-data loss, with
+local fixture validation on **2026-10-25 JST**. It requires a separately saved
+recovery kit and an available, trusted-for-freshness recovery service. Existing
+custody is unchanged until explicit enrollment. Provider and client lifecycle
 compatibility below retains the earlier evidence through **2026-10-12 JST**.
 Run [fresh preflight](getting-started/devnet.md) to check a deployment now.
 

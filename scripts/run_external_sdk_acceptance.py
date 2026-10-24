@@ -60,6 +60,8 @@ def main() -> None:
     source_paths = [*sorted((ROOT / 'packages/sdk/src').glob('*.ts')),
                     *[ROOT / 'packages/sdk' / name for name in ['package.json', 'build.mjs', 'tsconfig.json', 'tsconfig.build.json', 'README.md', 'DISTRIBUTION.md', 'INTERNALS.md', 'LICENSE']],
                     *[ROOT / 'packages/sdk/test' / name for name in ['client-guidance.test.ts', 'control.test.ts', 'generic-api.test.ts', 'gateway.test.ts', 'gateway-lifecycle.test.ts', 'gateway-public-profile-fixture.ts', 'selection.test.ts', 'clientd.test.ts', 'client.test.ts', 'direct-chat-stream.test.ts', 'response-branches.test.ts', 'chat.test.ts', 'clientd-models.test.ts', 'trust.test.ts', 'deployment.test.ts', 'public-profile.test.ts', 'public-profile-fixture.ts', 'api-onboarding-fixture.ts', 'chain-fixture.ts', 'session-snapshot-runtime.ts', 'kit-helpers.ts']],
+                    ROOT / 'packages/sdk/test/recovery-installed.mjs',
+                    *[ROOT / 'services/recovery' / name for name in ['server.mjs', 'store.mjs']],
                     *sorted((ROOT / 'tools/public-devnet-consumer').glob('*.*')),
                     *sorted((ROOT / 'tests/fixtures/sdk-consumer').glob('*.json')),
                     ROOT / 'docs/contracts/universal-api-gateway-vectors.json', ROOT / 'scripts/sdk_consumer_lock.py', ROOT / 'package-lock.json', Path(__file__).resolve()]
@@ -169,6 +171,20 @@ def main() -> None:
             counts = {key: int(value) for key, value in re.findall(r'^# (tests|pass|fail|cancelled|skipped|todo) (\d+)$', test_output, re.MULTILINE)}
             assert set(counts) == {'tests', 'pass', 'fail', 'cancelled', 'skipped', 'todo'} and counts['pass'] > 0 and counts['tests'] == counts['pass'] and all(counts[key] == 0 for key in ['fail', 'cancelled', 'skipped', 'todo']), 'installed suite must execute every test without skips'
             report['installed_tests'] = counts
+            # Recovery acceptance runs from the installed public exports in a
+            # fresh child process after deleting all original device files.
+            # The backup service is an explicit local fixture, not SDK source.
+            recovery_service = consumer / 'recovery-service'
+            recovery_service.mkdir()
+            for name in ['server.mjs', 'store.mjs']:
+                shutil.copyfile(ROOT / 'services/recovery' / name, recovery_service / name)
+            recovery_test = (ROOT / 'packages/sdk/test/recovery-installed.mjs').read_text()
+            assert '../src/' not in recovery_test and str(ROOT) not in recovery_test
+            (consumer / 'recovery-installed.mjs').write_text(recovery_test)
+            recovery_output = run('installed-recovery', ['node', '--test', '--test-reporter=tap', 'recovery-installed.mjs'], consumer)
+            recovery_counts = {key: int(value) for key, value in re.findall(r'^# (tests|pass|fail|cancelled|skipped|todo) (\d+)$', recovery_output, re.MULTILINE)}
+            assert recovery_counts == {'tests': 1, 'pass': 1, 'fail': 0, 'cancelled': 0, 'skipped': 0, 'todo': 0}, 'installed recovery test must execute without skips'
+            report['installed_recovery_tests'] = recovery_counts
             example = consumer / 'public-consumer'
             example.mkdir()
             for source in sorted((ROOT / 'tools/public-devnet-consumer').glob('*.*')):
@@ -294,7 +310,7 @@ for (const item of cases) test('native '+item.name+' retains authenticated selec
                 counts = {key: int(value) for key, value in re.findall(r'^# (tests|pass|fail|cancelled|skipped|todo) (\d+)$', prover_output, re.MULTILINE)}
                 assert counts == {'tests': 1, 'pass': 1, 'fail': 0, 'cancelled': 0, 'skipped': 0, 'todo': 0}
                 report['real_prover_tests'] = counts
-            (consumer / 'browser.ts').write_text("export { createZkApiClient } from '@zkapi/solana-sdk';\nexport { createBrowserClient } from '@zkapi/solana-sdk/browser';\nexport { readChatText, readChatDeltas } from '@zkapi/solana-sdk/chat';\nexport { loadDeploymentAssets } from '@zkapi/solana-sdk/deployment';\nexport { loadPublicDeploymentProfile, preflightPublicDeployment } from '@zkapi/solana-sdk/public-profile';\nexport { openChat } from './public-consumer/browser.ts';\n")
+            (consumer / 'browser.ts').write_text("export { createZkApiClient } from '@zkapi/solana-sdk';\nexport { createBrowserClient } from '@zkapi/solana-sdk/browser';\nexport { createRecoveryKit, createRecoveryStorage, restoreRecoveryStorage, openRecoveryStorage } from '@zkapi/solana-sdk/recovery';\nexport { saveRecoverySession, loadRecoverySession } from '@zkapi/solana-sdk/recovery-browser';\nexport { readChatText, readChatDeltas } from '@zkapi/solana-sdk/chat';\nexport { loadDeploymentAssets } from '@zkapi/solana-sdk/deployment';\nexport { loadPublicDeploymentProfile, preflightPublicDeployment } from '@zkapi/solana-sdk/public-profile';\nexport { openChat } from './public-consumer/browser.ts';\n")
             (consumer / 'worker.ts').write_text("import '@zkapi/solana-sdk/prover-worker';\n")
             (consumer / 'build.mjs').write_text("""import { build } from 'esbuild';
 import assert from 'node:assert/strict';
@@ -306,6 +322,8 @@ for (const entry of ['browser', 'worker']) {
     assert.ok(!file.imports.some(item => item.path.startsWith('node:')));
   }
   assert.ok(Object.keys(result.metafile.inputs).some(path => path.startsWith('node_modules/@zkapi/solana-sdk/dist/')));
+  if (entry === 'browser') for (const name of ['recovery.js', 'recovery-browser.js'])
+    assert.ok(Object.keys(result.metafile.inputs).some(path => path === 'node_modules/@zkapi/solana-sdk/dist/' + name));
   await writeFile(entry + '-metafile.json', JSON.stringify(result.metafile, null, 2));
 }
 console.log('Independent browser and worker bundles contain only installed package/dependency files');

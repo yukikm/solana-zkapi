@@ -1,0 +1,9 @@
+# Include in nginx's http context, before the existing private-origin server.
+# The existing CloudFront VPC origin deliberately removes forwarding headers.
+# This key therefore limits each private origin peer, never a client-supplied IP.
+map "$request_method:$uri" $zkapi_recovery_create_key {
+    default "";
+    "~^POST:/recovery/v1/vaults/[0-9a-f]{64}$" $binary_remote_addr;
+}
+limit_req_zone $binary_remote_addr zone=zkapi_recovery_api:2m rate=20r/s;
+limit_req_zone $zkapi_recovery_create_key zone=zkapi_recovery_create:1m rate=2r/m;

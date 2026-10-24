@@ -13,6 +13,8 @@ on:
       - package-lock.json
       - LICENSE
       - packages/sdk/**
+      - services/recovery/**
+      - deploy/recovery/**
       - apps/clientd/**
       - docs/contracts/**
       - tests/fixtures/**
@@ -88,6 +90,8 @@ jobs:
           assert all(counts[key] == 0 for key in ('fail', 'cancelled', 'skipped', 'todo'))
           Path('target/client-preview/sdk-test-counts.json').write_text(json.dumps(counts, indent=2) + '\n')
           PY
+      - name: Verify durable recovery service
+        run: node --test services/recovery/recovery.test.mjs
       - name: Install and verify the actual tarball in an independent application
         timeout-minutes: 5
         run: python3 scripts/run_external_sdk_acceptance.py --output target/client-preview/external-package

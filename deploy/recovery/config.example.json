@@ -1,0 +1,9 @@
+{
+  "directory": "/srv/zka/recovery",
+  "host": "127.0.0.1",
+  "port": 4176,
+  "allowedOrigins": ["https://dzt0611ozdx70.cloudfront.net"],
+  "localTestOnly": false,
+  "maxVaults": 1024,
+  "maxTotalBytes": 1073741824
+}

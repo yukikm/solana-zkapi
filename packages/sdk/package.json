@@ -1,6 +1,6 @@
 {
   "name": "@zkapi/solana-sdk",
-  "version": "0.2.0-devnet.16",
+  "version": "0.2.0-devnet.18",
   "private": true,
   "type": "module",
   "exports": {
@@ -127,6 +127,18 @@
     "./gateway": {
       "types": "./dist/gateway.d.ts",
       "import": "./dist/gateway.js"
+    },
+    "./recovery": {
+      "types": "./dist/recovery.d.ts",
+      "import": "./dist/recovery.js"
+    },
+    "./recovery-browser": {
+      "types": "./dist/recovery-browser.d.ts",
+      "import": "./dist/recovery-browser.js"
+    },
+    "./recovery-node": {
+      "types": "./dist/recovery-node.d.ts",
+      "import": "./dist/recovery-node.js"
     }
   },
   "dependencies": {

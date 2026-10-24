@@ -670,3 +670,24 @@ test('explicit recovery of never-admitted AUTH restores canRequest with the same
   assert.equal(f.counts.sends,1);assert.equal((await next.status()).settledBalanceMicroUsdc,'199');
   assert.equal((await f.journal.read('note'))!.value.retiredAuthorizations!.length,1);
 });
+
+test('observation cannot schedule expired lease maintenance, AUTH or inference even for a stale callback',async t=>{
+  t.mock.timers.enable({apis:['Date'],now:Date.now()});
+  const f=await setup(t,'direct_openrouter');
+  await readChatText(await f.client.chat(chat()));
+  const before=await f.journal.read('note'),counts={...f.counts};
+  t.mock.timers.tick(301_000);
+  assert.deepEqual(await f.client.observeWallet('stale-withdrawal-signature'),{state:'changed'});
+  await new Promise(resolve=>setTimeout(resolve,1_100));
+  assert.deepEqual(f.counts,counts);assert.deepEqual(await f.journal.read('note'),before);
+  assert.equal((await f.client.status()).busy,false);
+});
+
+test('observation respects a held response and never interrupts its action lock',async t=>{
+  const f=await setup(t,'direct_openrouter');f.behavior.streamWaiting=true;
+  const response=await f.client.chat(chat());
+  const before={...f.counts};
+  await assert.rejects(f.client.observeWallet('stale-signature'),/current response/);
+  assert.deepEqual(f.counts,before);
+  await response.body!.cancel();
+});
