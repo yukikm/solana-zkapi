@@ -359,10 +359,24 @@ pub fn validate_tariff_math(body: &ReceiptBody, tariff: &crate::wire::Tariff) ->
         "receipt tariff version mismatch"
     );
     let proxy = fixed_request || tariff.pricing_basis == "fixed_usage_rates";
-    ensure!(
-        proxy || body.reason != "waived_unknown",
-        "direct usage cannot be automatically waived"
-    );
+    if !proxy && body.reason == "waived_unknown" {
+        // This is an explicit operator assumption of unknown provider cost,
+        // never a provider observation or an automatic absence inference.
+        // The receipt signature binds the immutable signed approval digest;
+        // the independent signer also validates that approval in the ledger.
+        ensure!(
+            tariff.provider == crate::wire::Provider::Openrouter
+                && tariff.pricing_basis == "provider_reported_usd"
+                && tariff.model == "*"
+                && body.version == "1"
+                && body.operation_id.is_none()
+                && body.billing_effect == "charge"
+                && body.related_receipt_hash.is_none()
+                && body.provider_request_id.is_none()
+                && body.provider_evidence_digest.is_some(),
+            "direct waiver requires explicit OpenRouter operator approval"
+        );
+    }
     ensure!(
         proxy == body.operation_id.is_some(),
         "receipt pricing scope mismatch"

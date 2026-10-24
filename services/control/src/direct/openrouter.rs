@@ -117,7 +117,12 @@ impl DirectAdapter {
         let mut offset = 0usize;
         let mut found = None;
         loop {
-            let url = format!("{}?offset={offset}&include_disabled=true", self.or_url());
+            // Expiry hides keys independently of disablement. Recovery must
+            // still locate the original lease after its short deadline.
+            let url = format!(
+                "{}?offset={offset}&include_disabled=true&include_expired=true",
+                self.or_url()
+            );
             let (status, bytes) = self.request(Method::GET, url, None, true).await?;
             if !status.is_success() {
                 return Err(Diagnostic::unknown(

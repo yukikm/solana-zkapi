@@ -170,6 +170,7 @@ async fn fixed_price_json_deposit_settle_withdraw_preserves_history() -> Result<
         devnet: None,
         local_test_only: true,
         background_recovery_seconds: 2,
+        direct_unknown_auto_waiver: None,
         listen: listener.local_addr()?,
         trusted_manifest_hash: hex::encode(hash),
         manifest: manifest.clone(),

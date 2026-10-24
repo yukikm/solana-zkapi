@@ -33,8 +33,8 @@ impl DirectRuntime {
         live_check: F,
     ) -> Result<Option<CreatedKey>>
     where
-        F: Fn() -> Fut,
-        Fut: Future<Output = crate::ledger::Result<()>>,
+        F: Fn() -> Fut + Sync,
+        Fut: Future<Output = crate::ledger::Result<()>> + Send,
     {
         let _guard = self.serial.lock().await;
         intent.validate()?;
@@ -59,18 +59,19 @@ impl DirectRuntime {
         };
         save(ledger, id, None, &checkpoint).await?;
         let attempt = ledger.begin_direct_issuance(id, owner, &live_check).await?;
-        if let Err(error) = ledger.claim_dispatch(&attempt).await {
-            ledger
-                .finish_attempt(
-                    &attempt,
-                    crate::wire::sha256(b"direct issuance owner stopped before HTTP dispatch"),
-                )
-                .await?;
-            return Err(error.into());
-        }
         let created = self
             .adapter
-            .create_for_attempt(&checkpoint.intent, &attempt)
+            .create_for_attempt(&checkpoint.intent, &attempt, async {
+                // Preparation may wait on storage or the worker database. The
+                // chain check before beginning the attempt is no longer fresh.
+                live_check().await?;
+                ensure!(
+                    now_seconds() < checkpoint.intent.expires_at(),
+                    "provider lease expired before send authorization"
+                );
+                ledger.claim_dispatch(&attempt).await?;
+                Ok(())
+            })
             .await;
         let mut created = match created {
             Ok(created) => created,
@@ -84,7 +85,12 @@ impl DirectRuntime {
                 ));
                 checkpoint.recovery = Some(recovery);
                 save(ledger, id, Some(&previous), &checkpoint).await?;
+                // This also closes the session. Unclaimed stopped attempts can
+                // follow normal zero-charge settlement without a client retry.
                 ledger.mark_issuance_unknown(id).await?;
+                if error.is::<crate::egress::StopUnconfirmed>() {
+                    return Err(error);
+                }
                 ledger
                     .finish_attempt(
                         &attempt,
@@ -93,6 +99,12 @@ impl DirectRuntime {
                         ),
                     )
                     .await?;
+                if matches!(
+                    error.downcast_ref::<crate::ledger::LedgerError>(),
+                    Some(crate::ledger::LedgerError::Conflict("exit_consumed"))
+                ) {
+                    return Err(error);
+                }
                 return Ok(None);
             }
         };

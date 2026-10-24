@@ -176,6 +176,9 @@ impl App {
         // Pool registration precedes signer startup in local provisioning. Never
         // accept until its independent journal and this primary reconcile.
         signer.reconcile(&config.signer).await?;
+        if let Some(policy) = &config.runtime.direct_unknown_auto_waiver {
+            ledger.register_direct_auto_waiver_policy(policy).await?;
+        }
         for tariff in &config.runtime.tariffs {
             ledger
                 .store_tariff(
@@ -279,9 +282,23 @@ impl App {
                 .as_ref()
                 .is_none_or(|checkpoint| checkpoint.reference.is_none())
             {
-                let recovery = checkpoint
+                let mut recovery = checkpoint
                     .and_then(|checkpoint| checkpoint.recovery)
                     .unwrap_or_else(crate::direct::RecoveryStatus::unknown);
+                if recovery.requires_operator_action {
+                    if let Some(policy) = &self.config.runtime.direct_unknown_auto_waiver {
+                        if self
+                            .ledger
+                            .direct_auto_waiver_covers(s.request_id, policy)
+                            .await
+                            .map_err(|_| unavailable())?
+                        {
+                            // Projection only: the stored diagnostic and all
+                            // financial state remain unchanged by this read.
+                            recovery.requires_operator_action = false;
+                        }
+                    }
+                }
                 // Existing clients strictly reject new response fields. The
                 // bounded reason is compatible; richer data requires opt-in.
                 status["last_error_code"] =

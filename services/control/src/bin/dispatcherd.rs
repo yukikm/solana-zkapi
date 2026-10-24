@@ -27,13 +27,9 @@ async fn run() -> anyhow::Result<()> {
         return Ok(());
     }
     let mut input = Vec::new();
-    zkapi_control::egress::read_line(
-        &mut tokio::io::BufReader::new(tokio::io::stdin()),
-        &mut input,
-        8 * 1024 * 1024,
-    )
-    .await?;
+    let mut reader = tokio::io::BufReader::new(tokio::io::stdin());
+    zkapi_control::egress::read_line(&mut reader, &mut input, 8 * 1024 * 1024).await?;
     let request = serde_json::from_slice(&input)?;
     input.fill(0);
-    zkapi_control::egress::serve(config, request).await
+    zkapi_control::egress::serve_with_input(config, request, &mut reader).await
 }

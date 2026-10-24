@@ -1,6 +1,7 @@
 //! I06/I07 full HTTP path with local provider wire fixtures, real PostgreSQL,
 //! request proofs, signed receipts, and the isolated sign-once settlement signer.
-//! The OA delivery tests explicitly use synthetic RPC accounts, not SBF exports.
+//! Selected direct recovery/delivery tests explicitly use synthetic RPC accounts,
+//! not SBF exports.
 //! No live provider credentials or public RPC are used.
 #[path = "support/operations.rs"]
 mod operations;
@@ -171,6 +172,7 @@ fn local_config(dir: &Path, primary: String, secondary: String, indexer: String)
         devnet: None,
         local_test_only: true,
         background_recovery_seconds: 2,
+        direct_unknown_auto_waiver: None,
         listen: "127.0.0.1:0".parse().unwrap(),
         manifest,
         trusted_manifest_hash: hash,
@@ -216,6 +218,29 @@ async fn fixture_app_for_mode(
     provider_origin: &str,
     mode: &str,
     chain: Option<Value>,
+) -> Result<Fixture> {
+    fixture_app_with_dispatcher(
+        provider_origin,
+        mode,
+        chain,
+        std::env::var_os("ZKAPI_TEST_SEPARATE_DISPATCHER").is_some(),
+    )
+    .await
+}
+async fn fixture_app_with_dispatcher(
+    provider_origin: &str,
+    mode: &str,
+    chain: Option<Value>,
+    separate_dispatcher: bool,
+) -> Result<Fixture> {
+    fixture_app_with_recovery_policy(provider_origin, mode, chain, separate_dispatcher, false).await
+}
+async fn fixture_app_with_recovery_policy(
+    provider_origin: &str,
+    mode: &str,
+    chain: Option<Value>,
+    separate_dispatcher: bool,
+    automatic_recovery: bool,
 ) -> Result<Fixture> {
     let base = std::env::var("ZKAPI_TEST_DATABASE_URL")?;
     let admin = db(&base).await;
@@ -452,7 +477,7 @@ async fn fixture_app_for_mode(
     config.manifest["tariff_hashes"] = json!([tariff.tariff_hash]);
     complete_local_manifest(&mut config.manifest);
     config.trusted_manifest_hash = config.manifest["manifest_hash"].as_str().unwrap().into();
-    if std::env::var_os("ZKAPI_TEST_SEPARATE_DISPATCHER").is_some() {
+    if separate_dispatcher {
         use zkapi_control::egress::{ClientConfig, ServiceConfig};
         let role = format!("dispatcher_{}", Uuid::new_v4().simple());
         sql.batch_execute(&format!(
@@ -523,11 +548,11 @@ async fn fixture_app_for_mode(
         &zkapi_types::Felt252::from_u64(37).0,
     );
     Signer::initialize_journal(dir.join("journal"), &validated.signer)?;
-    if std::env::var_os("ZKAPI_TEST_SEPARATE_DISPATCHER").is_some() {
+    if separate_dispatcher {
         operations::envelopes(dir, &validated.signer)?;
     }
     let signer = start_signer(dir, &url).await;
-    if std::env::var_os("ZKAPI_TEST_SEPARATE_DISPATCHER").is_some() {
+    if separate_dispatcher {
         let (socket, bridges) = operations::tls(dir, signer.socket.clone()).await?;
         config.signer_socket = socket;
         tasks.extend(bridges);
@@ -558,6 +583,21 @@ async fn fixture_app_for_mode(
         output_directory,
         interval_seconds: 1,
     };
+    if automatic_recovery {
+        let cutoff: i64 = sql
+            .query_one(
+                "SELECT ceil(extract(epoch FROM clock_timestamp()))::bigint+3",
+                &[],
+            )
+            .await?
+            .get(0);
+        config.direct_unknown_auto_waiver = Some(zkapi_control::direct_auto_waiver::AutoPolicy {
+            version: "1".into(),
+            applies_to_sessions_created_at_or_after: u64::try_from(cutoff)?,
+            grace_seconds: 300,
+            accepts_all_unknown_provider_costs: true,
+        });
+    }
     let app = App::connect(config.validate()?, &url).await?;
     let router = app.router();
     tasks.push(tokio::spawn(async move {
@@ -1262,10 +1302,117 @@ struct OaDirectFixture {
     creates: Arc<AtomicUsize>,
     verifies: Arc<AtomicUsize>,
 }
-/// Explicit synthetic RPC input for OA HTTP delivery tests only. Real request
+/// Faults are injected only into newly created disposable fixture directories.
+/// Real child processes, DB ownership, request proofs and signer verification run.
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+#[ignore = "requires disposable PostgreSQL; real dispatcher, synthetic RPC accounts"]
+async fn direct_pre_send_failures_automatically_settle_without_provider_requests() -> Result<()> {
+    for fault in ["claims_unavailable", "credential_unavailable"] {
+        let calls = Arc::new(AtomicUsize::new(0));
+        let provider_calls = calls.clone();
+        let (upstream, task) = serve(Router::new().fallback(move || {
+            let calls = provider_calls.clone();
+            async move {
+                calls.fetch_add(1, Ordering::SeqCst);
+                (
+                    axum::http::StatusCode::INTERNAL_SERVER_ERROR,
+                    "unexpected provider call",
+                )
+            }
+        }))
+        .await;
+        let mut fixture = fixture_app_with_dispatcher(
+            &upstream,
+            "direct_openrouter",
+            Some(synthetic_direct_chain()),
+            true,
+        )
+        .await?;
+        fixture.tasks.push(task);
+        let directory = fixture._directory.path();
+        match fault {
+            "claims_unavailable" => {
+                // A file cannot hold UUID claims, even when the test runs as root.
+                std::fs::remove_dir(directory.join("dispatch-claims"))?;
+                write_private(&directory.join("dispatch-claims"), b"unavailable storage");
+            }
+            "credential_unavailable" => std::fs::remove_file(directory.join("provider.key"))?,
+            _ => unreachable!(),
+        }
+        let (request, control) = direct_request(&fixture).await?;
+        let id = wire::uuid(&request.authorization.request_id)?;
+        let client = reqwest::Client::new();
+        let sessions = format!("{}/zkapi/v1/sessions", fixture.origin);
+        let initial = response(
+            client
+                .post(&sessions)
+                .header("authorization", &control)
+                .json(&request),
+            201,
+        )
+        .await;
+        assert!(initial.get("provider_key").is_none());
+        // No explicit close or manual waiver is made: ordinary background recovery
+        // must finish a known pre-send failure by itself.
+        for _ in 0..100 {
+            fixture
+                .app
+                .recover()
+                .await
+                .map_err(|_| anyhow::anyhow!("automatic recovery failed"))?;
+            if fixture.app.ledger.session(id).await?.state == "SETTLED" {
+                break;
+            }
+            tokio::time::sleep(Duration::from_millis(10)).await;
+        }
+        let session = fixture.app.ledger.session(id).await?;
+        assert_eq!(session.state, "SETTLED", "{fault}");
+        assert_eq!(session.charged_nano, 0);
+        assert!(session.provider_key_ref.is_none() && session.activated_at.is_none());
+        assert!(session.direct_waiver_evidence.is_none());
+        let attempts = fixture.app.ledger.dispatch_attempts_for_session(id).await?;
+        assert_eq!(attempts.len(), 1);
+        assert!(!attempts[0].send_claimed && attempts[0].finished);
+        let receipts = fixture.app.ledger.receipts(id, None, 10).await?;
+        assert_eq!(receipts.len(), 1);
+        let receipt: Value = serde_json::from_slice(&receipts[0].canonical_body)?;
+        assert_eq!(receipt["reason"], "not_dispatched");
+        assert_eq!(receipt["evidence_kind"], "NOT_DISPATCHED");
+        assert_eq!(receipt["charged_nano_usdc"], "0");
+        assert!(receipts[0].signature.is_some());
+        let signed: bool = fixture
+            .sql
+            .query_one(
+                "SELECT state_signature IS NOT NULL FROM settlements WHERE request_id=$1",
+                &[&id],
+            )
+            .await?
+            .get(0);
+        assert!(signed);
+        let replay = response(
+            client
+                .post(&sessions)
+                .header("authorization", &control)
+                .json(&request),
+            200,
+        )
+        .await;
+        assert_eq!(replay["state"], "SETTLED");
+        assert!(replay.get("provider_key").is_none());
+        fixture
+            .app
+            .recover()
+            .await
+            .map_err(|_| anyhow::anyhow!("repeated recovery failed"))?;
+        assert_eq!(fixture.app.ledger.receipts(id, None, 10).await?.len(), 1);
+        assert_eq!(calls.load(Ordering::SeqCst), 0, "{fault}");
+    }
+    Ok(())
+}
+/// Explicit synthetic RPC input for direct HTTP delivery/recovery tests. Real request
 /// proofs and the unchanged chain account validator still run; this is not a
 /// Vault/SBF execution result and must never replace target/i05/chain.json.
-fn synthetic_oa_chain() -> Value {
+fn synthetic_direct_chain() -> Value {
     use base64::engine::general_purpose::STANDARD;
     use solana_pubkey::Pubkey;
     let fixture = fixture();
@@ -1297,11 +1444,11 @@ fn synthetic_oa_chain() -> Value {
     raw[356..358].copy_from_slice(&[1, 1]);
     raw[358..390].copy_from_slice(&wire::hash(zkapi_control::chain::PROFILE_HASH).unwrap());
     raw[390..422].copy_from_slice(&[2; 32]);
-    json!({"scope":"synthetic RPC accounts for OA delivery tests; no SBF execution",
+    json!({"scope":"synthetic RPC accounts for direct delivery/recovery tests; no SBF execution",
         "pool":pool.to_string(),
         "pool_account":{"owner":program.to_string(),"executable":false,"lamports":100000000,
             "data":[STANDARD.encode(raw),"base64"]},
-        // No monitoring/tree snapshot is exercised by these OA delivery tests.
+        // No monitoring/tree snapshot is exercised by these direct tests.
         "tree_account":null,
         "root":{"pool":pool.to_string(),"root":request[3],"slot":"100",
             "blockhash":bs58::encode([1;32]).into_string(),"sequence":"1","next_note_id":"1"}})
@@ -1355,7 +1502,7 @@ async fn oa_direct_fixture(verified: bool) -> Result<OaDirectFixture> {
         }));
     let task = tokio::spawn(async move { axum::serve(listener, router).await.unwrap() });
     let mut fixture =
-        fixture_app_for_mode(&origin, "direct_oa", Some(synthetic_oa_chain())).await?;
+        fixture_app_for_mode(&origin, "direct_oa", Some(synthetic_direct_chain())).await?;
     fixture.tasks.push(task);
     Ok(OaDirectFixture {
         fixture,
@@ -2102,5 +2249,398 @@ async fn gateway_http_receipt_hmac_disconnect_unknown_and_no_replay() -> Result<
         .await
         .is_err());
 
+    Ok(())
+}
+
+/// Real request proof, child dispatcher and independent signer; only the
+/// historical issuance timestamp and chain/provider observations are synthetic.
+/// No provider key is created and no public service or wallet is contacted.
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+#[ignore = "requires disposable PostgreSQL; real dispatcher, synthetic RPC accounts"]
+async fn direct_unknown_policy_background_recovery_signs_zero_after_absent_or_failed_lookup(
+) -> Result<()> {
+    use zkapi_control::{
+        direct::{Checkpoint, IssueIntent, RecoveryStatus},
+        ledger::NewSession,
+    };
+    for lookup_failed in [false, true] {
+        let lookups = Arc::new(AtomicUsize::new(0));
+        let posts = Arc::new(AtomicUsize::new(0));
+        let lookup_count = lookups.clone();
+        let post_count = posts.clone();
+        let (upstream, task) = serve(
+            Router::new().route(
+                "/api/v1/keys",
+                get(move || {
+                    let count = lookup_count.clone();
+                    async move {
+                        count.fetch_add(1, Ordering::SeqCst);
+                        if lookup_failed {
+                            (
+                                axum::http::StatusCode::SERVICE_UNAVAILABLE,
+                                Json(json!({"error":"fixture unavailable"})),
+                            )
+                        } else {
+                            (axum::http::StatusCode::OK, Json(json!({"data":[]})))
+                        }
+                    }
+                })
+                .post(move || {
+                    let count = post_count.clone();
+                    async move {
+                        count.fetch_add(1, Ordering::SeqCst);
+                        (
+                            axum::http::StatusCode::INTERNAL_SERVER_ERROR,
+                            Json(json!({"error":"unexpected create"})),
+                        )
+                    }
+                }),
+            ),
+        )
+        .await;
+        let mut fixture = fixture_app_with_recovery_policy(
+            &upstream,
+            "direct_openrouter",
+            Some(synthetic_direct_chain()),
+            true,
+            true,
+        )
+        .await?;
+        fixture.tasks.push(task);
+        let cutoff = fixture
+            .app
+            .config
+            .runtime
+            .direct_unknown_auto_waiver
+            .as_ref()
+            .unwrap()
+            .applies_to_sessions_created_at_or_after;
+        let now: i64 = fixture
+            .sql
+            .query_one(
+                "SELECT floor(extract(epoch FROM clock_timestamp()))::bigint",
+                &[],
+            )
+            .await?
+            .get(0);
+        tokio::time::sleep(Duration::from_secs(cutoff.saturating_sub(now as u64) + 1)).await;
+        let (request, control) = direct_request(&fixture).await?;
+        let accepted = quote::validate_binding(
+            &request,
+            &wire::parse_control_token(&control)?,
+            &fixture.app.config.binding,
+        )?;
+        zkapi_control::crypto::verify_request(&request.public_inputs, &accepted.proof)?;
+        let id = accepted.request_id;
+        fixture
+            .app
+            .ledger
+            .reserve_session(
+                &NewSession {
+                    request_id: id,
+                    nullifier: *accepted.nullifier.as_bytes(),
+                    quote_id: wire::uuid(&request.quote.body.quote_id)?,
+                    request_digest: accepted.digest,
+                    request_transcript: accepted.transcript,
+                    control_secret_hash: accepted.control_hash,
+                    proxy_secret_hash: None,
+                    mode: "direct_openrouter".into(),
+                    provider: "openrouter".into(),
+                    cap_micro: fixture.app.config.binding.cap.get(),
+                    max_concurrency: 1,
+                },
+                || async { Ok(()) },
+            )
+            .await?;
+        // Aged synthetic input avoids waiting a production lease/grace period.
+        // The service still checks its own real DB clock and real stopped record.
+        let now: i64 = fixture
+            .sql
+            .query_one(
+                "SELECT floor(extract(epoch FROM clock_timestamp()))::bigint",
+                &[],
+            )
+            .await?
+            .get(0);
+        let checkpoint = serde_json::to_value(Checkpoint {
+            intent: IssueIntent {
+                request_id: id,
+                cap_micro: fixture.app.config.binding.cap.get(),
+                ttl_seconds: 60,
+                requested_at: (now - 600) as u64,
+            },
+            reference: None,
+            disabled_at: None,
+            observation: None,
+            usage: None,
+            deleted: false,
+            recovery: Some(RecoveryStatus::unknown()),
+        })?;
+        fixture
+            .app
+            .ledger
+            .save_direct_checkpoint(id, None, &checkpoint)
+            .await?;
+        let attempt = fixture
+            .app
+            .ledger
+            .begin_direct_issuance(id, Uuid::new_v4(), || async { Ok(()) })
+            .await?;
+        fixture.app.ledger.claim_dispatch(&attempt).await?;
+        fixture.app.ledger.mark_issuance_unknown(id).await?;
+        fixture
+            .app
+            .ledger
+            .finish_attempt(&attempt, [73; 32])
+            .await?;
+        fixture.app.ledger.close(id).await?;
+        // No direct waiver CLI/API/helper is called by the test: the ordinary
+        // application recovery loop observes the policy and creates settlement.
+        fixture
+            .app
+            .recover()
+            .await
+            .map_err(|_| anyhow::anyhow!("automatic background recovery failed"))?;
+        let session = fixture.app.ledger.session(id).await?;
+        assert_eq!(session.state, "SETTLED", "lookup_failed={lookup_failed}");
+        assert!(session.direct_waiver_evidence.is_some());
+        assert_eq!(session.charged_nano, 0);
+        assert!(session.activated_at.is_none() && session.provider_key_ref.is_none());
+        let receipts = fixture.app.ledger.receipts(id, None, 10).await?;
+        assert_eq!(receipts.len(), 1);
+        let receipt: Value = serde_json::from_slice(&receipts[0].canonical_body)?;
+        assert_eq!(receipt["reason"], "waived_unknown");
+        assert_eq!(receipt["evidence_kind"], "UNKNOWN_OPERATOR_LOSS");
+        assert_eq!(receipt["charged_nano_usdc"], "0");
+        for field in [
+            "observed_nano_usdc",
+            "provider_reported_usd",
+            "operator_loss_nano_usdc",
+        ] {
+            assert!(receipt[field].is_null());
+        }
+        let signed: bool = fixture
+            .sql
+            .query_one(
+                "SELECT state_signature IS NOT NULL FROM settlements WHERE request_id=$1",
+                &[&id],
+            )
+            .await?
+            .get(0);
+        assert!(signed);
+        let status = response(
+            reqwest::Client::new()
+                .get(format!("{}/zkapi/v1/sessions/{id}", fixture.origin))
+                .header("authorization", &control),
+            200,
+        )
+        .await;
+        assert_eq!(status["state"], "SETTLED");
+        assert!(status.get("provider_key").is_none());
+        let lookup_total = lookups.load(Ordering::SeqCst);
+        assert!(lookup_total > 0);
+        fixture
+            .app
+            .recover()
+            .await
+            .map_err(|_| anyhow::anyhow!("repeat background recovery failed"))?;
+        assert_eq!(lookups.load(Ordering::SeqCst), lookup_total);
+        assert_eq!(posts.load(Ordering::SeqCst), 0);
+        assert_eq!(fixture.app.ledger.receipts(id, None, 10).await?.len(), 1);
+        let audits: i64 = fixture
+            .sql
+            .query_one(
+                "SELECT count(*) FROM outbox WHERE event_type='DIRECT_AUTO_WAIVER_APPLIED'",
+                &[],
+            )
+            .await?
+            .get(0);
+        assert_eq!(audits, 1);
+    }
+    Ok(())
+}
+
+async fn seed_young_unknown_session(fixture: &Fixture, finished: bool) -> Result<(Uuid, String)> {
+    use zkapi_control::{
+        direct::{Checkpoint, IssueIntent, RecoveryStatus},
+        ledger::NewSession,
+    };
+    let (request, control) = direct_request(fixture).await?;
+    let accepted = quote::validate_binding(
+        &request,
+        &wire::parse_control_token(&control)?,
+        &fixture.app.config.binding,
+    )?;
+    zkapi_control::crypto::verify_request(&request.public_inputs, &accepted.proof)?;
+    let id = accepted.request_id;
+    fixture
+        .app
+        .ledger
+        .reserve_session(
+            &NewSession {
+                request_id: id,
+                nullifier: *accepted.nullifier.as_bytes(),
+                quote_id: wire::uuid(&request.quote.body.quote_id)?,
+                request_digest: accepted.digest,
+                request_transcript: accepted.transcript,
+                control_secret_hash: accepted.control_hash,
+                proxy_secret_hash: None,
+                mode: "direct_openrouter".into(),
+                provider: "openrouter".into(),
+                cap_micro: fixture.app.config.binding.cap.get(),
+                max_concurrency: 1,
+            },
+            || async { Ok(()) },
+        )
+        .await?;
+    let now: i64 = fixture
+        .sql
+        .query_one(
+            "SELECT floor(extract(epoch FROM clock_timestamp()))::bigint",
+            &[],
+        )
+        .await?
+        .get(0);
+    let checkpoint = serde_json::to_value(Checkpoint {
+        intent: IssueIntent {
+            request_id: id,
+            cap_micro: fixture.app.config.binding.cap.get(),
+            ttl_seconds: 60,
+            requested_at: now as u64,
+        },
+        reference: None,
+        disabled_at: None,
+        observation: None,
+        usage: None,
+        deleted: false,
+        recovery: Some(RecoveryStatus::unknown()),
+    })?;
+    fixture
+        .app
+        .ledger
+        .save_direct_checkpoint(id, None, &checkpoint)
+        .await?;
+    let attempt = fixture
+        .app
+        .ledger
+        .begin_direct_issuance(id, Uuid::new_v4(), || async { Ok(()) })
+        .await?;
+    fixture.app.ledger.claim_dispatch(&attempt).await?;
+    fixture.app.ledger.mark_issuance_unknown(id).await?;
+    if finished {
+        fixture
+            .app
+            .ledger
+            .finish_attempt(&attempt, [74; 32])
+            .await?;
+    }
+    fixture.app.ledger.close(id).await?;
+    Ok((id, control))
+}
+
+async fn direct_financial_snapshot(fixture: &Fixture) -> Result<Value> {
+    Ok(fixture.sql.query_one(
+        "SELECT jsonb_build_object('sessions',(SELECT jsonb_agg(to_jsonb(s) ORDER BY request_id) FROM sessions s),'attempts',(SELECT jsonb_agg(to_jsonb(a) ORDER BY attempt_id) FROM dispatch_attempts a),'outbox',(SELECT jsonb_agg(to_jsonb(o) ORDER BY id) FROM outbox o),'receipts',(SELECT jsonb_agg(to_jsonb(r) ORDER BY sequence) FROM receipts r),'settlements',(SELECT jsonb_agg(to_jsonb(t) ORDER BY request_id) FROM settlements t),'waivers',(SELECT jsonb_agg(to_jsonb(w) ORDER BY request_id) FROM direct_unknown_waivers w))",
+        &[],
+    ).await?.get(0))
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+#[ignore = "requires disposable PostgreSQL; real dispatcher, synthetic RPC accounts"]
+async fn direct_pending_status_projects_automatic_policy_without_mutating_financial_state(
+) -> Result<()> {
+    for case in ["covered", "disabled", "legacy", "unfinished"] {
+        let lookups = Arc::new(AtomicUsize::new(0));
+        let lookup_count = lookups.clone();
+        let (upstream, task) = serve(Router::new().route(
+            "/api/v1/keys",
+            get(move || {
+                let count = lookup_count.clone();
+                async move {
+                    count.fetch_add(1, Ordering::SeqCst);
+                    Json(json!({"data":[]}))
+                }
+            }),
+        ))
+        .await;
+        let mut fixture = fixture_app_with_recovery_policy(
+            &upstream,
+            "direct_openrouter",
+            Some(synthetic_direct_chain()),
+            true,
+            case != "disabled",
+        )
+        .await?;
+        fixture.tasks.push(task);
+        if case != "legacy" {
+            if let Some(policy) = &fixture.app.config.runtime.direct_unknown_auto_waiver {
+                let now: i64 = fixture
+                    .sql
+                    .query_one(
+                        "SELECT floor(extract(epoch FROM clock_timestamp()))::bigint",
+                        &[],
+                    )
+                    .await?
+                    .get(0);
+                tokio::time::sleep(Duration::from_secs(
+                    policy
+                        .applies_to_sessions_created_at_or_after
+                        .saturating_sub(now as u64)
+                        + 1,
+                ))
+                .await;
+            }
+        }
+        let (id, control) = seed_young_unknown_session(&fixture, case != "unfinished").await?;
+        fixture
+            .app
+            .advance(id)
+            .await
+            .map_err(|_| anyhow::anyhow!("pending key lookup failed"))?;
+        assert_eq!(
+            fixture.app.ledger.session(id).await?.state,
+            "ISSUANCE_UNKNOWN"
+        );
+        let checkpoint = fixture.app.ledger.direct_checkpoint(id).await?.unwrap();
+        assert_eq!(checkpoint["recovery"]["reason_code"], "provider_key_absent");
+        assert_eq!(checkpoint["recovery"]["requires_operator_action"], true);
+        let before = direct_financial_snapshot(&fixture).await?;
+        let reads = lookups.load(Ordering::SeqCst);
+        let client = reqwest::Client::new();
+        let status = response(
+            client
+                .get(format!("{}/zkapi/v1/sessions/{id}", fixture.origin))
+                .header("authorization", &control)
+                .header("X-Zkapi-Recovery-Diagnostics", "1"),
+            200,
+        )
+        .await;
+        assert_eq!(status["state"], "ISSUANCE_UNKNOWN");
+        assert_eq!(status["recovery"]["reason_code"], "provider_key_absent");
+        assert_eq!(
+            status["recovery"]["requires_operator_action"],
+            case != "covered",
+            "{case}"
+        );
+        let legacy = response(
+            client
+                .get(format!("{}/zkapi/v1/sessions/{id}", fixture.origin))
+                .header("authorization", &control),
+            200,
+        )
+        .await;
+        assert!(legacy.get("recovery").is_none());
+        assert_eq!(
+            direct_financial_snapshot(&fixture).await?,
+            before,
+            "GET mutated {case}"
+        );
+        assert_eq!(
+            lookups.load(Ordering::SeqCst),
+            reads,
+            "GET called provider for {case}"
+        );
+        assert!(fixture.app.ledger.receipts(id, None, 10).await?.is_empty());
+    }
     Ok(())
 }

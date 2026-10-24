@@ -604,6 +604,100 @@ fn both_direct_modes_require_exact_quote_cap_usd_receipt_and_no_proxy_credential
 }
 
 #[test]
+fn direct_operator_waiver_real_proof_preserves_unknown_usage_and_signed_successor() {
+    let mut f = fixture().clone();
+    let mut tariff = support::tariff();
+    tariff.provider = wire::Provider::Openrouter;
+    tariff.model = "*".into();
+    tariff.pricing_basis = "provider_reported_usd".into();
+    tariff.rates.clear();
+    tariff.tariff_hash = quote::tariff_hash(&tariff).unwrap();
+    let quote = quote::issue_quote(
+        &wire::QuoteRequest {
+            api: None,
+            mode: wire::Mode::DirectOpenrouter,
+            provider: wire::Provider::Openrouter,
+            models: vec!["*".into()],
+            session_ttl_seconds: None,
+        },
+        &tariff,
+        &support::local_binding(),
+        3_000_000_000,
+        &SigningKey::from_bytes(&[11; 32]),
+    )
+    .unwrap();
+    let (mut authorization, token) = support::authorization(&quote);
+    authorization.mode = wire::Mode::DirectOpenrouter;
+    authorization.proxy_secret_hash = None;
+    f.prepared = Prepared {
+        request: support::bound_request(authorization, quote, support::genesis_state()),
+        control_token: token.strip_prefix("Bearer ").unwrap().into(),
+        proxy_token: None,
+        tariff,
+        rerandomization: crate::f(23),
+    };
+    f.ctx.tariff_hashes = vec![f.prepared.tariff.tariff_hash.clone()];
+    f.operations.clear();
+    let mut receipt = f.receipts[0].body.clone();
+    receipt.request_id = f.prepared.request.authorization.request_id.clone();
+    receipt.operation_id = None;
+    receipt.reason = "waived_unknown".into();
+    receipt.evidence_kind = "UNKNOWN_OPERATOR_LOSS".into();
+    receipt.provider_request_id = None;
+    receipt.provider_evidence_digest = Some("ab".repeat(32));
+    receipt.provider_reported_usd = None;
+    receipt.tariff_hash = f.prepared.tariff.tariff_hash.clone();
+    receipt.usage.clear();
+    receipt.reservation_nano_usdc = f.ctx.cap_micro_usdc.as_nano().to_string();
+    receipt.charged_nano_usdc = "0".into();
+    receipt.observed_nano_usdc = None;
+    receipt.operator_loss_nano_usdc = None;
+    f.receipts = vec![Receipt::sign(receipt, &receipt_key()).unwrap()];
+    f.settlement = settle(&f, 0);
+    let expected = verify(&f).unwrap();
+    assert_eq!(expected.balance_micro_usdc, f.state.balance_micro_usdc);
+    assert_ne!(expected.anchor, f.state.anchor);
+    let command = |f: &Fixture| {
+        json!({"kind":"settle","context":f.ctx,"state":f.state,
+        "prepared":f.prepared,"settlement":f.settlement,"receipts":f.receipts,"operations":f.operations})
+    };
+    let mut rejected = Vec::new();
+    for mutation in 0..7 {
+        let mut changed = f.clone();
+        match mutation {
+            0 => changed.receipts[0].body.provider_evidence_digest = None,
+            1 => changed.receipts[0].body.request_id = Uuid::new_v4().to_string(),
+            2 => changed.receipts[0].body.reservation_nano_usdc = "1000".into(),
+            3 => changed.settlement = settle(&changed, 1),
+            4 => changed.settlement.next_state_signature.s = crate::f(1),
+            5 => changed.receipts.push(changed.receipts[0].clone()),
+            6 => changed.receipts[0].signature = STANDARD.encode([0u8; 64]),
+            _ => unreachable!(),
+        }
+        // Re-sign shape-valid tampering to exercise identity and cap checks,
+        // independently of the receipt signature check.
+        if mutation <= 2 {
+            changed.receipts[0] =
+                Receipt::sign(changed.receipts[0].body.clone(), &receipt_key()).unwrap();
+        }
+        assert!(verify(&changed).is_err(), "waiver mutation {mutation}");
+        rejected.push(command(&changed));
+    }
+    if let Ok(directory) = std::env::var("ZKAPI_DIRECT_WAIVER_FIXTURE_DIR") {
+        let directory = std::path::PathBuf::from(directory);
+        std::fs::create_dir_all(&directory).unwrap();
+        std::fs::write(
+            directory.join("direct-waiver-verifier.json"),
+            serde_json::to_vec_pretty(
+                &json!({"success":command(&f),"expected":expected,"rejected":rejected}),
+            )
+            .unwrap(),
+        )
+        .unwrap();
+    }
+}
+
+#[test]
 fn native_cli_stdin_roundtrip_and_rejections_redact_private_material() {
     use std::io::Write;
     use std::process::{Command as ProcessCommand, Stdio};

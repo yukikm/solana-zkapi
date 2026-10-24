@@ -464,6 +464,7 @@ fn fixture(dir: &Path, devnet: bool) -> RuntimeConfig {
     let mut config = RuntimeConfig {
         local_test_only: true,
         background_recovery_seconds: 2,
+        direct_unknown_auto_waiver: None,
         devnet: None,
         listen: "127.0.0.1:0".parse().unwrap(),
         manifest,
@@ -1104,4 +1105,33 @@ fn public_profile_rejects_fixture_material_even_under_a_new_hash() {
             "{mutation}"
         );
     }
+}
+
+#[test]
+fn automatic_direct_waiver_is_default_off_and_requires_supported_provider() {
+    let dir = tempfile::tempdir().unwrap();
+    let mut config = fixture(dir.path(), false);
+    let serialized = serde_json::to_value(&config).unwrap();
+    assert!(serialized.get("direct_unknown_auto_waiver").is_none());
+    let restored: RuntimeConfig = serde_json::from_value(serialized).unwrap();
+    assert!(restored.direct_unknown_auto_waiver.is_none());
+    config.direct_unknown_auto_waiver = Some(zkapi_control::direct_auto_waiver::AutoPolicy {
+        version: "1".into(),
+        applies_to_sessions_created_at_or_after: 1_800_000_000,
+        grace_seconds: 300,
+        accepts_all_unknown_provider_costs: true,
+    });
+    assert_eq!(
+        config.validate_public_inputs().err().unwrap().to_string(),
+        "automatic direct waiver requires a supported OpenRouter configuration"
+    );
+    config
+        .direct_unknown_auto_waiver
+        .as_mut()
+        .unwrap()
+        .accepts_all_unknown_provider_costs = false;
+    assert_eq!(
+        config.validate_public_inputs().err().unwrap().to_string(),
+        "automatic waiver requires explicit operator cost acceptance"
+    );
 }

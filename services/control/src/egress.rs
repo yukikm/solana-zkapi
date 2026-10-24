@@ -5,7 +5,9 @@ use crate::{direct, gateway, generic, ledger::DispatchAttempt, proxy, wire};
 use anyhow::{ensure, Context, Result};
 use serde::{Deserialize, Serialize};
 use std::{
+    future::Future,
     path::{Path, PathBuf},
+    pin::Pin,
     process::Stdio,
     time::Duration,
 };
@@ -143,6 +145,12 @@ pub enum Action {
         attempt: DispatchAttempt,
         intent: direct::IssueIntent,
     },
+    /// New attempts prepare their one-shot storage before the control writer
+    /// grants send permission. Legacy Create retains its claimed-only contract.
+    PrepareCreate {
+        attempt: DispatchAttempt,
+        intent: direct::IssueIntent,
+    },
     Verify {
         reference: direct::KeyReference,
         runtime_key: String,
@@ -175,6 +183,9 @@ pub struct Request {
 #[derive(Serialize, Deserialize)]
 #[serde(tag = "event", rename_all = "snake_case", deny_unknown_fields)]
 enum Event {
+    Prepared {
+        attempt: DispatchAttempt,
+    },
     Gateway {
         bytes: Vec<u8>,
     },
@@ -193,6 +204,43 @@ enum Event {
         diagnostic: direct::Diagnostic,
     },
 }
+
+#[derive(Serialize, Deserialize)]
+#[serde(tag = "command", rename_all = "snake_case", deny_unknown_fields)]
+enum SendPermission {
+    Go { attempt_id: uuid::Uuid },
+}
+
+async fn read_send_permission<R: tokio::io::AsyncBufRead + Unpin>(
+    input: &mut R,
+    expected_attempt: uuid::Uuid,
+) -> Result<()> {
+    let mut bytes = Vec::new();
+    read_line(input, &mut bytes, 256).await?;
+    let SendPermission::Go { attempt_id } = serde_json::from_slice(&bytes)?;
+    ensure!(attempt_id == expected_attempt, "send permission identity");
+    // EOF is part of the one-command protocol. Repeated or appended commands
+    // must be rejected before the worker can cross the provider boundary.
+    ensure!(
+        input.fill_buf().await?.is_empty(),
+        "trailing send permission"
+    );
+    Ok(())
+}
+
+fn same_attempt(left: &DispatchAttempt, right: &DispatchAttempt) -> bool {
+    left.attempt_id == right.attempt_id
+        && left.request_id == right.request_id
+        && left.operation_id == right.operation_id
+        && left.owner_instance == right.owner_instance
+        && left.writer_epoch == right.writer_epoch
+}
+
+/// An IPC error is not proof that its worker has stopped. Keep its attempt live
+/// if the OS cannot confirm termination; recovery then requires real fencing.
+#[derive(Debug, thiserror::Error)]
+#[error("dispatcher termination unconfirmed")]
+pub(crate) struct StopUnconfirmed;
 
 pub fn private_file(path: &Path) -> Result<()> {
     use std::os::unix::fs::PermissionsExt;
@@ -226,23 +274,45 @@ impl ClientConfig {
         request: Request,
         relay: Option<mpsc::Sender<proxy::RelayEvent>>,
     ) -> Result<serde_json::Value> {
-        self.call_inner(request, relay, None).await
+        self.call_inner(request, relay, None, None).await
+    }
+    pub async fn create_prepared<F>(
+        &self,
+        provider: wire::Provider,
+        intent: direct::IssueIntent,
+        attempt: DispatchAttempt,
+        before_send: F,
+    ) -> Result<serde_json::Value>
+    where
+        F: Future<Output = Result<()>> + Send,
+    {
+        self.call_inner(
+            Request {
+                provider,
+                action: Action::PrepareCreate { intent, attempt },
+            },
+            None,
+            None,
+            Some(Box::pin(before_send)),
+        )
+        .await
     }
     async fn call_inner(
         &self,
         mut request: Request,
         mut relay: Option<mpsc::Sender<proxy::RelayEvent>>,
         mut gateway_relay: Option<mpsc::Sender<Vec<u8>>>,
+        mut before_send: Option<Pin<Box<dyn Future<Output = Result<()>> + Send + '_>>>,
     ) -> Result<serde_json::Value> {
         self.validate()?;
-        let mut child = Command::new(&self.binary)
-            .arg(&self.config_file)
-            .env_clear()
-            .stdin(Stdio::piped())
-            .stdout(Stdio::piped())
-            .stderr(Stdio::null())
-            .kill_on_drop(true)
-            .spawn()?;
+        let prepared_attempt = match &request.action {
+            Action::PrepareCreate { attempt, .. } => Some(attempt.clone()),
+            _ => None,
+        };
+        ensure!(
+            prepared_attempt.is_some() == before_send.is_some(),
+            "dispatcher preparation contract"
+        );
         let mut input = zeroize::Zeroizing::new(serde_json::to_vec(&request)?);
         if let Action::Api { proxy_secret, .. } | Action::Gateway { proxy_secret, .. } =
             &mut request.action
@@ -253,22 +323,63 @@ impl ClientConfig {
         drop(request);
         input.push(b'\n');
         ensure!(input.len() <= 8 * 1024 * 1024, "dispatcher input limit");
-        let mut stdin = child.stdin.take().context("dispatcher input")?;
+        let mut child = Command::new(&self.binary)
+            .arg(&self.config_file)
+            .env_clear()
+            .stdin(Stdio::piped())
+            .stdout(Stdio::piped())
+            .stderr(Stdio::null())
+            .kill_on_drop(true)
+            .spawn()?;
+        let mut stdin = Some(child.stdin.take().context("dispatcher input")?);
         let mut output = BufReader::new(child.stdout.take().context("dispatcher output")?);
         let operation = async {
-            stdin.write_all(&input).await?;
-            drop(stdin);
+            stdin.as_mut().unwrap().write_all(&input).await?;
+            if prepared_attempt.is_none() {
+                drop(stdin.take());
+            }
             input.fill(0);
+            let mut permission_sent = false;
             let result = loop {
                 let mut line = Vec::new();
                 read_line(&mut output, &mut line, 8 * 1024 * 1024).await?;
                 let event: Event = serde_json::from_slice(&line)?;
                 match event {
+                    Event::Prepared { attempt } => {
+                        ensure!(
+                            !permission_sent
+                                && prepared_attempt
+                                    .as_ref()
+                                    .is_some_and(|expected| same_attempt(expected, &attempt)),
+                            "unexpected dispatcher preparation"
+                        );
+                        before_send
+                            .take()
+                            .context("send authorization already consumed")?
+                            .await?;
+                        let mut command = serde_json::to_vec(&SendPermission::Go {
+                            attempt_id: attempt.attempt_id,
+                        })?;
+                        command.push(b'\n');
+                        let mut pipe = stdin.take().context("dispatcher input closed")?;
+                        pipe.write_all(&command).await?;
+                        pipe.shutdown().await?;
+                        drop(pipe);
+                        permission_sent = true;
+                    }
                     Event::Gateway { bytes } => {
+                        ensure!(
+                            prepared_attempt.is_none(),
+                            "unexpected direct gateway frame"
+                        );
                         ensure!(bytes.len() <= 65541, "gateway IPC frame limit");
                         gateway::emit(&mut gateway_relay, bytes).await;
                     }
                     Event::Result { value } => {
+                        ensure!(
+                            prepared_attempt.is_none() || permission_sent,
+                            "direct result before send authorization"
+                        );
                         break value;
                     }
                     Event::Failure { diagnostic } => {
@@ -280,6 +391,10 @@ impl ClientConfig {
                         reference,
                         sse,
                     } => {
+                        ensure!(
+                            prepared_attempt.is_none(),
+                            "unexpected direct response head"
+                        );
                         send(
                             &mut relay,
                             proxy::RelayEvent::Head {
@@ -295,6 +410,10 @@ impl ClientConfig {
                         .await;
                     }
                     Event::Data { bytes } => {
+                        ensure!(
+                            prepared_attempt.is_none(),
+                            "unexpected direct response body"
+                        );
                         send(&mut relay, proxy::RelayEvent::Data(bytes.into())).await
                     }
                 }
@@ -303,12 +422,20 @@ impl ClientConfig {
             Ok(result)
         };
         let outcome = tokio::time::timeout(Duration::from_secs(610), operation).await;
+        drop(stdin.take());
         // Complete kernel-observed process termination even for truncated output.
         // Returning an error before this point could let settlement race egress.
-        if child.try_wait()?.is_none() {
-            child.kill().await?;
+        let stopped = async {
+            if child.try_wait()?.is_none() {
+                child.kill().await?;
+            }
+            let _status = child.wait().await?;
+            Ok::<_, std::io::Error>(())
         }
-        let _status = child.wait().await?;
+        .await;
+        if stopped.is_err() {
+            return Err(StopUnconfirmed.into());
+        }
         match outcome {
             Ok(result) => result,
             Err(_) => anyhow::bail!("dispatcher timed out"),
@@ -336,6 +463,7 @@ impl ClientConfig {
                 },
                 None,
                 relay,
+                None,
             )
             .await?;
         Ok(serde_json::from_value(value)?)
@@ -443,7 +571,19 @@ async fn authorize(
     provider: &wire::Provider,
     a: &DispatchAttempt,
 ) -> Result<()> {
-    let r=db.query_one("SELECT a.writer_epoch,a.owner_instance,a.request_id,a.operation_id,a.send_claimed_at IS NOT NULL AND a.finished_at IS NULL AND a.fenced_at IS NULL,p.writer_epoch,p.accepting,s.provider,s.state,s.close_requested,s.expires_at > floor(extract(epoch FROM clock_timestamp()))::bigint,COALESCE(o.state,'') FROM dispatch_attempts a JOIN pools p ON p.pool=a.pool JOIN sessions s ON s.pool=a.pool AND s.request_id=a.request_id LEFT JOIN operations o ON o.pool=a.pool AND o.request_id=a.request_id AND o.operation_id=a.operation_id WHERE a.pool=$1 AND a.attempt_id=$2",&[&&c.pool[..],&a.attempt_id]).await?;
+    authorize_state(db, c, provider, a, true).await?;
+    claim_file(c, a)?;
+    authorize_state(db, c, provider, a, true).await
+}
+
+async fn authorize_state(
+    db: &tokio_postgres::Client,
+    c: &ServiceConfig,
+    provider: &wire::Provider,
+    a: &DispatchAttempt,
+    claimed: bool,
+) -> Result<()> {
+    let r=db.query_one("SELECT a.writer_epoch,a.owner_instance,a.request_id,a.operation_id,(a.send_claimed_at IS NOT NULL)=$3 AND a.finished_at IS NULL AND a.fenced_at IS NULL,p.writer_epoch,p.accepting,s.provider,s.state,s.close_requested,s.expires_at > floor(extract(epoch FROM clock_timestamp()))::bigint,COALESCE(o.state,'') FROM dispatch_attempts a JOIN pools p ON p.pool=a.pool JOIN sessions s ON s.pool=a.pool AND s.request_id=a.request_id LEFT JOIN operations o ON o.pool=a.pool AND o.request_id=a.request_id AND o.operation_id=a.operation_id WHERE a.pool=$1 AND a.attempt_id=$2",&[&&c.pool[..],&a.attempt_id,&claimed]).await?;
     ensure!(
         r.get::<_, i64>(0) == a.writer_epoch
             && r.get::<_, uuid::Uuid>(1) == a.owner_instance
@@ -469,6 +609,10 @@ async fn authorize(
             "issuance no longer dispatchable"
         );
     }
+    Ok(())
+}
+
+fn claim_file(c: &ServiceConfig, a: &DispatchAttempt) -> Result<()> {
     use std::{
         io::Write,
         os::unix::fs::{OpenOptionsExt, PermissionsExt},
@@ -498,9 +642,6 @@ async fn authorize(
         .map_err(claim_storage_error)?
         .sync_all()
         .map_err(claim_storage_error)?;
-    // Recheck after the durable claim. A denied attempt still cannot be retried.
-    let live:bool=db.query_one("SELECT p.writer_epoch=$3 AND p.accepting AND a.finished_at IS NULL AND a.fenced_at IS NULL FROM dispatch_attempts a JOIN pools p ON p.pool=a.pool WHERE a.pool=$1 AND a.attempt_id=$2",&[&&c.pool[..],&a.attempt_id,&a.writer_epoch]).await?.get(0);
-    ensure!(live, "dispatcher fenced before egress");
     Ok(())
 }
 fn claim_storage_error(error: std::io::Error) -> direct::Diagnostic {
@@ -552,11 +693,18 @@ async fn checkpoint(
     Ok(cp)
 }
 pub async fn serve(c: ServiceConfig, request: Request) -> Result<()> {
+    serve_with_input(c, request, &mut BufReader::new(tokio::io::empty())).await
+}
+pub async fn serve_with_input<R: tokio::io::AsyncBufRead + Unpin>(
+    c: ServiceConfig,
+    request: Request,
+    input: &mut R,
+) -> Result<()> {
     let direct_action = !matches!(
         &request.action,
         Action::Proxy { .. } | Action::Api { .. } | Action::Gateway { .. }
     );
-    match serve_inner(c, request).await {
+    match serve_inner(c, request, input).await {
         Err(error) if direct_action => {
             let diagnostic = direct::Diagnostic::from_error(
                 &error,
@@ -569,7 +717,11 @@ pub async fn serve(c: ServiceConfig, request: Request) -> Result<()> {
         result => result,
     }
 }
-async fn serve_inner(c: ServiceConfig, request: Request) -> Result<()> {
+async fn serve_inner<R: tokio::io::AsyncBufRead + Unpin>(
+    c: ServiceConfig,
+    request: Request,
+    input: &mut R,
+) -> Result<()> {
     let provider_policy = c.provider_policy()?;
     let (db, connection) = tokio_postgres::connect(&c.database_url, tokio_postgres::NoTls).await?;
     tokio::spawn(async move {
@@ -880,6 +1032,39 @@ async fn serve_inner(c: ServiceConfig, request: Request) -> Result<()> {
                 .clone();
             let adapter = direct::DirectAdapter::new(cfg, c.local_test_only)?;
             match action {
+                Action::PrepareCreate { attempt, intent } => {
+                    ensure!(
+                        attempt.operation_id.is_none() && attempt.request_id == intent.request_id,
+                        "issuance identity"
+                    );
+                    intent.validate()?;
+                    ensure!(
+                        direct::now_seconds() < intent.expires_at(),
+                        "provider lease expired before preparation"
+                    );
+                    authorize_state(&db, &c, &p, &attempt, false).await?;
+                    checkpoint(&db, &c, &p, Some(&intent), None, false).await?;
+                    claim_file(&c, &attempt)?;
+                    // The durable exclusive claim precedes Prepared. Until GO
+                    // and a committed ledger claim, this worker cannot send.
+                    emit(Event::Prepared {
+                        attempt: attempt.clone(),
+                    })
+                    .await?;
+                    tokio::time::timeout(
+                        Duration::from_secs(60),
+                        read_send_permission(input, attempt.attempt_id),
+                    )
+                    .await??;
+                    authorize_state(&db, &c, &p, &attempt, true).await?;
+                    checkpoint(&db, &c, &p, Some(&intent), None, false).await?;
+                    ensure!(
+                        direct::now_seconds() < intent.expires_at(),
+                        "provider lease expired before egress"
+                    );
+                    let created = adapter.create_key(&intent).await?;
+                    serde_json::json!({"runtime_key":created.runtime_key,"reference":created.reference,"inference_base":created.inference_base,"verification":created.verification,"deliverable":created.deliverable})
+                }
                 Action::Create { attempt, intent } => {
                     ensure!(
                         attempt.operation_id.is_none() && attempt.request_id == intent.request_id,
@@ -957,6 +1142,33 @@ async fn serve_inner(c: ServiceConfig, request: Request) -> Result<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[tokio::test]
+    async fn direct_send_permission_is_single_bounded_and_attempt_bound() {
+        let id = uuid::Uuid::new_v4();
+        let valid = format!("{{\"command\":\"go\",\"attempt_id\":\"{id}\"}}\n");
+        read_send_permission(&mut BufReader::new(valid.as_bytes()), id)
+            .await
+            .unwrap();
+        for invalid in [
+            String::new(),
+            valid.trim_end().to_owned(),
+            format!("{valid}{valid}"),
+            format!("{valid} "),
+            format!(
+                "{{\"command\":\"go\",\"attempt_id\":\"{}\"}}\n",
+                uuid::Uuid::new_v4()
+            ),
+            format!("{{\"command\":\"go\",\"attempt_id\":\"{id}\",\"extra\":true}}\n"),
+            format!("{}\n", " ".repeat(257)),
+        ] {
+            assert!(
+                read_send_permission(&mut BufReader::new(invalid.as_bytes()), id)
+                    .await
+                    .is_err()
+            );
+        }
+    }
 
     #[test]
     fn claim_storage_diagnostics_are_bounded_and_duplicate_claims_stay_unknown() {

@@ -59,11 +59,30 @@ the original runtime for unresolved work; a new archive is not a custody migrati
 5. Install the matching dispatcher/control binaries and update the control
    configuration's dispatcher SHA-256 pin. Install the matching gateway relay
    files so browser preflight permits `X-Zkapi-Recovery-Diagnostics: 1` on session
-   routes and forwards it unchanged. Old clients receive the legacy response shape.
+   routes and forwards it unchanged. For CloudFront deployments, replace the
+   unused `Accept` entry with `X-Zkapi-Recovery-Diagnostics` in the origin request
+   policy used by `/zkapi/v1/*`, keeping the allowlist within ten headers.
+   The public gateway does not negotiate viewer `Accept` and sets upstream
+   `Accept: application/json` itself. Preserve every other forwarded header,
+   including authentication, CORS and Fetch Metadata, and disabled API caching.
+   Apply this to the deployed policy as well as the source template. Old clients
+   receive the legacy response shape.
 6. Start control with its original database, Pool and signer, then gateway.
    Compare immutable financial rows, claim hashes and custody/configuration
    identities. Verify local readiness, authenticated status, legacy response
    compatibility and public browser preflight before resuming admission.
+
+Verify the deployed CloudFront behavior's actual origin request policy after
+propagation. A successful `OPTIONS` preflight only proves that the gateway allows
+the header; CloudFront can still strip it from the authenticated request. With
+the existing session's original token, compare `GET /zkapi/v1/sessions/{id}`
+through the public API with and without `X-Zkapi-Recovery-Diagnostics: 1`. For a
+direct session in `ISSUING` or `ISSUANCE_UNKNOWN` without a persisted provider
+reference, the opted-in response includes `recovery`; the legacy response omits
+it. Keep tokens out of command arguments, logs and shared output. This GET only
+reads the stored status; it does not advance recovery, create a key or settle a
+payment. Do not substitute SDK recovery or `POST .../close` for this read-only
+forwarding check.
 
 The provided control unit runs `dispatcherd CONFIG --check-storage` as
 `ExecStartPre`. This creates, fsyncs and removes a uniquely named temporary probe
@@ -98,3 +117,17 @@ diagnostics cannot be reconstructed by installing this release. Neither an empty
 key list nor a repaired filesystem configuration alone authorizes retrospective
 zero-charge settlement. Emergency withdrawal remains a separate explicit wallet
 action governed by the [existing recovery contract](../sdk/recovery.md).
+
+OpenRouter recovery lookups must include both `include_disabled=true` and
+`include_expired=true` on every page. The [management API](https://openrouter.ai/docs/api/api-reference/api-keys/list-api-keys)
+excludes expired keys by default independently of disablement. Match the original
+issuance name exactly across the complete listing and stop on duplicate matches.
+Finding an expired key retains the original lease deadline and follows the same
+disable/usage/delete path; it never permits a replacement key or inference replay.
+
+For permanently lost issuance evidence, the separately reviewed
+[explicit operator-loss procedure](direct-unknown-operator-loss.md) preserves
+unknown usage and requires a signed local approval. By default, ordinary
+recovery does not automatically waive the charge. The separately configured
+[new-session automatic policy](direct-auto-recovery.md) can accept unknown
+operator costs after its future cutoff, expiry and stopping conditions hold.

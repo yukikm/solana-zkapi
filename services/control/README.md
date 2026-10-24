@@ -57,6 +57,7 @@ automatically replayable.
 | `providers` | Direct/proxy inference adapters, registered `api` operations and optional pinned dispatcher process |
 | `tariffs` | Exact signed-quote tariff inputs, with hashes listed in the manifest |
 | `background_recovery_seconds` | Background recovery interval, 1–10 seconds, default 2; request-time checks remain fresh |
+| `direct_unknown_auto_waiver` | Optional explicit operator-cost policy for new OpenRouter sessions. Default off; binds a future creation cutoff and at least 300 seconds of grace after the original key lease. See [automatic recovery](../../docs/getting-started/direct-auto-recovery.md). |
 
 See [RPC budgeting](../../docs/getting-started/rpc-budget.md) for a ten-second
 background profile and secret-free method counters. Missed recovery ticks are

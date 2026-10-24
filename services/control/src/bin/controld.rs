@@ -8,7 +8,17 @@ use zkapi_control::{
 };
 #[tokio::main]
 async fn main() {
-    if let Err(_error) = run().await {
+    if let Err(error) = run().await {
+        if std::env::args()
+            .nth(1)
+            .is_some_and(|v| v == "plan-direct-waiver" || v == "apply-direct-waiver")
+        {
+            eprintln!(
+                "direct waiver refused: {}",
+                zkapi_control::direct_waiver::operator_error_category(&error)
+            );
+            std::process::exit(1);
+        }
         eprintln!("control startup or runtime failed; inspect configuration and local acceptance evidence");
         std::process::exit(1);
     }
@@ -52,6 +62,136 @@ async fn run() -> Result<()> {
     )?)?;
     let config = config.validate()?;
     config.validate_database(&url)?;
+    if mode == "plan-direct-waiver" || mode == "apply-direct-waiver" {
+        use std::io::Write;
+        use std::os::unix::fs::{MetadataExt, OpenOptionsExt};
+        use zkapi_control::direct_waiver::{self, SignedApproval};
+        let identity = PoolIdentity {
+            pool: config.signer.pool,
+            deployment_id: config.binding.deployment_id.clone(),
+            manifest_hash: wire::hash(&config.runtime.trusted_manifest_hash)?,
+            authorization_config: serde_json::json!({"signer":config.signer}),
+        };
+        if mode == "plan-direct-waiver" {
+            let id = uuid::Uuid::parse_str(&args.next().context("request ID required")?)?;
+            ensure!(
+                args.next().as_deref() == Some("--review-evidence-sha256"),
+                "review evidence flag required"
+            );
+            let review = wire::hash(&args.next().context("review evidence digest required")?)?;
+            ensure!(
+                args.next().as_deref() == Some("--output"),
+                "output flag required"
+            );
+            let output = std::path::PathBuf::from(args.next().context("approval output required")?);
+            ensure!(
+                args.next().as_deref() == Some("--accept-operator-loss") && args.next().is_none(),
+                "explicit operator loss flag required"
+            );
+            let grace = config
+                .runtime
+                .providers
+                .direct
+                .iter()
+                .find_map(|p| match p {
+                    zkapi_control::direct::DirectConfig::Openrouter {
+                        settlement_grace_seconds,
+                        ..
+                    } => Some((*settlement_grace_seconds).max(direct_waiver::MIN_GRACE_SECONDS)),
+                    _ => None,
+                })
+                .context("OpenRouter configuration required")?;
+            let (mut client, connection) =
+                tokio_postgres::connect(&url, tokio_postgres::NoTls).await?;
+            tokio::spawn(async move {
+                let _ = connection.await;
+            });
+            let tx = client
+                .build_transaction()
+                .read_only(true)
+                .isolation_level(tokio_postgres::IsolationLevel::RepeatableRead)
+                .start()
+                .await?;
+            ledger::verify_schema(&tx).await?;
+            let body = direct_waiver::prepare(&tx, identity.pool, id, grace, review).await?;
+            ensure!(
+                body.deployment_id == identity.deployment_id
+                    && body.manifest_hash == hex::encode(identity.manifest_hash),
+                "approval configuration mismatch"
+            );
+            let approval = SignedApproval::sign(body, &config.receipt_key)?;
+            let pinned: serde_json::Value = tx
+                .query_one(
+                    "SELECT authorization_config FROM pools WHERE pool=$1::bytea",
+                    &[&&identity.pool[..]],
+                )
+                .await?
+                .get(0);
+            ensure!(
+                pinned == identity.authorization_config,
+                "approval configuration mismatch"
+            );
+            approval.verify(config.signer.receipt_key)?;
+            tx.commit().await?;
+            // create_new prevents overwriting an existing reviewed approval; no symlink following.
+            let mut file = std::fs::OpenOptions::new()
+                .write(true)
+                .create_new(true)
+                .mode(0o600)
+                .open(&output)?;
+            ensure!(
+                config.runtime.local_test_only && config.runtime.enable_local_adapter
+                    || file.metadata()?.uid() == 0,
+                "root-owned approval file required"
+            );
+            file.write_all(&serde_jcs::to_vec(&approval)?)?;
+            file.sync_all()?;
+            println!(
+                "{}",
+                serde_json::json!({"approval_hash":approval.approval_hash,"request_id":id,"receipt_id":approval.body.receipt_id,"approved_at":approval.body.approved_at,"expires_after_seconds":900,"operator_accepts_all_unknown_costs":true,"user_charge_nano":"0","provider_usage":"unknown"})
+            );
+        } else {
+            let path = std::path::PathBuf::from(args.next().context("approval path required")?);
+            ensure!(
+                args.next().as_deref() == Some("--accept-operator-loss") && args.next().is_none(),
+                "explicit operator loss flag required"
+            );
+            zkapi_control::egress::private_file(&path)?;
+            ensure!(
+                config.runtime.local_test_only && config.runtime.enable_local_adapter
+                    || std::fs::symlink_metadata(&path)?.uid() == 0,
+                "root-owned approval file required"
+            );
+            let bytes = std::fs::read(&path)?;
+            let approval = SignedApproval::from_canonical_bytes(&bytes)?;
+            let grace = config
+                .runtime
+                .providers
+                .direct
+                .iter()
+                .find_map(|p| match p {
+                    zkapi_control::direct::DirectConfig::Openrouter {
+                        settlement_grace_seconds,
+                        ..
+                    } => Some((*settlement_grace_seconds).max(direct_waiver::MIN_GRACE_SECONDS)),
+                    _ => None,
+                })
+                .context("OpenRouter configuration required")?;
+            ensure!(
+                approval.body.grace_seconds >= grace,
+                "approval grace shorter than configured drain"
+            );
+            let writer = Ledger::connect(&url, &identity).await?;
+            let session = writer
+                .apply_direct_unknown_waiver(&approval, &config.receipt_key)
+                .await?;
+            println!(
+                "{}",
+                serde_json::json!({"approval_hash":approval.approval_hash,"request_id":session.request_id,"state":session.state,"operator_accepts_all_unknown_costs":true,"user_charge_nano":"0","provider_usage":"unknown","admission":"disabled"})
+            );
+        }
+        return Ok(());
+    }
     if mode == "signer-config" {
         println!("{}", serde_json::to_string_pretty(&config.signer)?);
         return Ok(());
