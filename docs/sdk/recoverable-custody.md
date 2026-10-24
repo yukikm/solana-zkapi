@@ -80,6 +80,13 @@ The kit's directory must be separate from the disposable device-state directory.
 No browser, passkey or interactive wallet-message API is required by recovery.
 Node session files contain key material; protect the host and its filesystem.
 
+Initial creation durably saves an encrypted key-check record before returning
+usable storage. Opening or restoring must decrypt this record, including for an
+empty vault, so a corrupt local encryption key cannot fund a new, unrecoverable
+note. A missing or corrupt check is never silently repaired. If initial setup
+fails before its first check is committed, that incomplete vault has never been
+usable for funding; create and independently save a new recovery kit instead.
+
 ## Restore after device-data loss
 
 1. Stop the original application and its other tabs/processes. This release

@@ -2,7 +2,7 @@
  * authoritative for availability and freshness; it never receives decryption
  * keys. Every journal write is durable there before a financial effect proceeds.
  * One active device only. Recovery requires stopping the previous device first. */
-import { importJournalKey, validateEncryptedRecord, JournalConflictError, type AtomicJournalStore, type EncryptedRecord } from './journal.ts';
+import { EncryptedJournal, importJournalKey, validateEncryptedRecord, JournalConflictError, type AtomicJournalStore, type EncryptedRecord } from './journal.ts';
 
 export interface RecoveryContext { deploymentId: string; pool: string; wallet: string }
 export interface RecoveryKit { schema: 1; endpoint: string; vaultId: string; secret: string; context: RecoveryContext }
@@ -136,7 +136,31 @@ class RecoveryJournalStore implements AtomicJournalStore {
   }
 }
 export interface RecoveryStorage { store: AtomicJournalStore; key: CryptoKey; session: RecoverySession; binding: RecoveryContext; close(): void }
-export async function openRecoveryStorage(input: RecoverySession, options: RecoveryOptions = {}): Promise<RecoveryStorage> {
+/** Authenticate the encryption key even when there are no financial records.
+ * The service owner credential alone cannot detect a corrupt local AES key.
+ * This reserved namespace cannot collide with ordinary hashed journal keys. */
+async function checkRecoveryKey(store: AtomicJournalStore, key: CryptoKey, session: RecoverySession, initialize: boolean): Promise<void> {
+  const context = await contextHash(session.context);
+  const prefix = JSON.stringify(['zkapi-recovery-key-check-v1', session.vaultId, context]) + ':';
+  const scoped: AtomicJournalStore = {
+    read: id => store.read(prefix + id),
+    compareAndSwap: (id, revision, record) => store.compareAndSwap(prefix + id, revision, record),
+    withLock: (id, action) => store.withLock(prefix + id, action),
+  };
+  const expected = { schema: 1 as const, kind: 'zkapi-recovery-key-check-v1', vaultId: session.vaultId, context };
+  const journal = new EncryptedJournal(scoped, key, session.context, value => {
+    if (JSON.stringify(value) !== JSON.stringify(expected)) throw new RecoveryStorageError('invalid');
+  });
+  if (initialize) {
+    await journal.withNoteLock('key-check', async () => {
+      if (!await journal.read('key-check')) await journal.create('key-check', expected);
+    });
+  }
+  // Never repair a missing or invalid marker while opening/restoring: a
+  // successful initial setup must already have committed it before returning.
+  if (!await journal.read('key-check')) throw new RecoveryStorageError('invalid');
+}
+async function openStorage(input: RecoverySession, options: RecoveryOptions, initialize: boolean): Promise<RecoveryStorage> {
   validateRecoverySession(input, { externalKey: !!options.key });
   if (options.expectedEndpoint !== undefined && input.endpoint !== options.expectedEndpoint) throw new RecoveryStorageError('invalid');
   const session = structuredClone(input), fetcher = options.fetch ?? globalThis.fetch;
@@ -145,7 +169,12 @@ export async function openRecoveryStorage(input: RecoverySession, options: Recov
   const info = await request(session, session.ownerToken, '', 'GET', undefined, fetcher); object(info);
   if (info.context !== await contextHash(session.context) || !Number.isSafeInteger(info.epoch) || (info.epoch as number) < 1) throw new RecoveryStorageError('invalid');
   const store = new RecoveryJournalStore(session, fetcher);
+  try { await checkRecoveryKey(store, key, session, initialize); }
+  catch (error) { store.close(); throw error; }
   return { store, key, session: structuredClone(session), binding: structuredClone(session.context), close: () => store.close() };
+}
+export function openRecoveryStorage(input: RecoverySession, options: RecoveryOptions = {}): Promise<RecoveryStorage> {
+  return openStorage(input, options, false);
 }
 async function establish(kit: RecoveryKit, restore: boolean, options: Omit<RecoveryOptions, 'key'>): Promise<RecoveryStorage> {
   const input = structuredClone(kit), keys = await derive(input), ownerToken = random(), fetcher = options.fetch ?? globalThis.fetch;
@@ -157,7 +186,7 @@ async function establish(kit: RecoveryKit, restore: boolean, options: Omit<Recov
     if (!(error instanceof RecoveryStorageError) || error.code !== 'unavailable') throw error;
     await request(input, keys.authentication, path, 'POST', body, fetcher);
   }
-  return openRecoveryStorage({ schema: 1, endpoint: input.endpoint, vaultId: input.vaultId, context: input.context, ownerToken, keyHex: keys.keyHex }, options);
+  return openStorage({ schema: 1, endpoint: input.endpoint, vaultId: input.vaultId, context: input.context, ownerToken, keyHex: keys.keyHex }, options, !restore);
 }
 export function createRecoveryStorage(kit: RecoveryKit, options: Omit<RecoveryOptions, 'key'> = {}): Promise<RecoveryStorage> { return establish(kit, false, options); }
 /** This rotates device ownership, never signs or replays a transaction/request.
