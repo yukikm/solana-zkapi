@@ -558,6 +558,10 @@ impl App {
         result
     }
     pub(crate) async fn advance_direct(&self, s: &SessionRecord) -> Result<()> {
+        // An explicit audited waiver freezes provider recovery. Normal settlement follows.
+        if s.direct_waiver_evidence.is_some() {
+            return Ok(());
+        }
         let request: wire::SessionCreate = wire::strict_parse(&s.request_transcript)?;
         let Some((_, runtime)) = self
             .providers
@@ -573,16 +577,48 @@ impl App {
             .ledger
             .dispatch_attempts_for_session(s.request_id)
             .await?;
-        let finalization = if attempts.iter().all(|a| !a.send_claimed && a.quiesced())
-            && s.close_requested
-        {
-            None
-        } else {
-            let Some(finalization) = runtime.reconcile(&self.ledger, s.request_id).await? else {
-                return Ok(());
+        let finalization =
+            if attempts.iter().all(|a| !a.send_claimed && a.quiesced()) && s.close_requested {
+                None
+            } else {
+                match runtime.reconcile(&self.ledger, s.request_id).await {
+                    Ok(Some(finalization)) => Some(finalization),
+                    pending => {
+                        // Always try ordinary key recovery first. An unavailable
+                        // provider can still leave an expired, stopped issuance
+                        // eligible for the explicitly configured operator waiver.
+                        if let Some(policy) = &self.config.runtime.direct_unknown_auto_waiver {
+                            let grace = self.config.runtime.providers.direct.iter().find_map(|p| {
+                                if let DirectConfig::Openrouter {
+                                    settlement_grace_seconds,
+                                    ..
+                                } = p
+                                {
+                                    Some(*settlement_grace_seconds)
+                                } else {
+                                    None
+                                }
+                            });
+                            if let Some(grace) = grace {
+                                if self
+                                    .ledger
+                                    .try_auto_waive_direct(
+                                        s.request_id,
+                                        policy,
+                                        grace,
+                                        &self.config.receipt_key,
+                                    )
+                                    .await?
+                                {
+                                    return Ok(());
+                                }
+                            }
+                        }
+                        pending?;
+                        return Ok(());
+                    }
+                }
             };
-            Some(finalization)
-        };
         if !attempts.iter().all(|a| a.quiesced()) {
             return Ok(());
         }

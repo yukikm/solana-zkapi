@@ -53,6 +53,10 @@ pub struct RuntimeConfig {
     /// Background recovery cadence; never caches per-authorization chain reads.
     #[serde(default = "default_recovery_seconds")]
     pub background_recovery_seconds: u64,
+    /// Explicit operator acceptance of unknown costs for sessions admitted after
+    /// an immutable future cutoff. Omission keeps manual recovery only.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub direct_unknown_auto_waiver: Option<crate::direct_auto_waiver::AutoPolicy>,
 }
 fn default_recovery_seconds() -> u64 {
     2
@@ -364,6 +368,18 @@ impl RuntimeConfig {
     /// Authenticates only public configuration. Never reads seeds, credentials,
     /// database state, runtime directories or destination binaries.
     pub fn validate_public_inputs(&self) -> Result<PublicValidatedConfig> {
+        if let Some(policy) = &self.direct_unknown_auto_waiver {
+            policy.validate()?;
+            ensure!(
+                self.providers
+                    .direct
+                    .iter()
+                    .any(|provider| matches!(provider,
+                    crate::direct::DirectConfig::Openrouter { settlement_grace_seconds, .. }
+                    if *settlement_grace_seconds <= 86_400)),
+                "automatic direct waiver requires a supported OpenRouter configuration"
+            );
+        }
         ensure!(
             (1..=10).contains(&self.background_recovery_seconds),
             "background_recovery_seconds must be between 1 and 10"

@@ -252,6 +252,7 @@ fn local_config(dir: &Path, primary: String, secondary: String, indexer: String)
         devnet: None,
         local_test_only: true,
         background_recovery_seconds: 2,
+        direct_unknown_auto_waiver: None,
         listen: "127.0.0.1:0".parse().unwrap(),
         manifest,
         trusted_manifest_hash: hash,

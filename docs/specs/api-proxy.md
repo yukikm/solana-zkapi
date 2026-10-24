@@ -270,9 +270,47 @@ separately. Finding a key follows the existing disable/usage/delete/settlement
 path without returning a key to the client or issuing another one.
 
 Diagnostics are advisory and never sufficient settlement evidence, including
-`issuance_certainty: "not_sent"`. No new financial transition, automatic waiver,
-inference retry or nullifier release is introduced. Old checkpoints without
-diagnostics remain readable and report an unknown original cause.
+`issuance_certainty: "not_sent"`. Diagnostics themselves introduce no financial
+transition, automatic waiver, inference retry or nullifier release. Old
+checkpoints without diagnostics remain readable and report an unknown original cause.
+
+### New direct issuance preparation and automatic recovery
+
+New direct workers use a two-stage private IPC exchange. Before reporting
+`Prepared`, the worker validates its configuration, credential, original
+checkpoint and live attempt, then creates and fsyncs the existing exclusive
+one-use claim. It cannot contact the provider at this stage. The control writer
+commits the ledger send claim before sending one attempt-bound `Go` frame. The
+worker requires that frame and EOF, then rechecks the ledger fence, checkpoint
+and original lease deadline before provider egress. The older claimed-only
+dispatch action is not reinterpreted as an unclaimed action.
+
+A failure before the send claim may settle through the existing
+`not_dispatched` / `NOT_DISPATCHED` path only after actual process termination.
+Both the ledger and the independent signer require every attempt to be an
+unclaimed, finished or fenced direct issuance, with no activated session or
+provider key reference. A lost response after a send claim remains unknown;
+neither a diagnostic nor a missing filesystem claim proves nonissuance.
+
+An operator may separately opt into automatic unknown-cost waivers for future
+OpenRouter sessions. The trusted configuration pins an explicit future creation
+cutoff, a grace of at least 300 seconds, and acceptance of all unknown provider
+costs. First registration persists the exact policy before admission and rejects
+retrospective cutoffs. Restart retains that registration; changing its bytes is
+rejected. Sessions created before the cutoff remain outside this policy.
+
+Ordinary key lookup, disablement and metered retirement run first. If issuance
+still remains unknown, automatic waiver requires an already closed, never
+activated session, no provider reference or usage, and every original issuance
+attempt demonstrably stopped. The original key lease and the greater of the
+policy/provider grace must have elapsed. These clocks cannot establish sender
+termination. Under the sole-writer transaction, the existing signed operator
+approval, exact policy audit binding and `waived_unknown` receipt are recorded
+atomically. The independent signer verifies the original authorization,
+evidence and approval before signing the successor. User charge is zero;
+provider usage and operator loss remain unknown (`null`). No key or message is
+replayed and the original AUTH reservation remains. See
+[configuration and rollout](../getting-started/direct-auto-recovery.md).
 
 ### Single writer and signer journal
 

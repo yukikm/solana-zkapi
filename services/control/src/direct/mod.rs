@@ -170,26 +170,43 @@ impl DirectAdapter {
                 .into()
             })
     }
-    pub async fn create_for_attempt(
+    pub async fn create_for_attempt<F>(
         &self,
         intent: &IssueIntent,
         attempt: &crate::ledger::DispatchAttempt,
-    ) -> Result<CreatedKey> {
+        before_send: F,
+    ) -> Result<CreatedKey>
+    where
+        F: std::future::Future<Output = Result<()>> + Send,
+    {
         if self.remote.is_none() {
+            intent.validate()?;
+            before_send.await?;
             return self.create_key(intent).await;
         }
         let v = self
-            .remote_call(crate::egress::Action::Create {
-                intent: intent.clone(),
-                attempt: attempt.clone(),
-            })
+            .remote
+            .as_ref()
+            .unwrap()
+            .create_prepared(
+                self.provider(),
+                intent.clone(),
+                attempt.clone(),
+                before_send,
+            )
             .await
             .map_err(|error| {
+                if error.is::<crate::egress::StopUnconfirmed>()
+                    || error.is::<crate::ledger::LedgerError>()
+                {
+                    return error;
+                }
                 Diagnostic::from_error(
                     &error,
                     DiagnosticStage::Dispatcher,
                     DiagnosticReason::DispatcherUnavailable,
                 )
+                .into()
             })?;
         Ok(CreatedKey {
             runtime_key: v["runtime_key"].as_str().context("key unavailable")?.into(),
@@ -491,7 +508,7 @@ fn micro_usd(micro: u128) -> String {
             .into()
     }
 }
-fn now_seconds() -> u64 {
+pub(crate) fn now_seconds() -> u64 {
     std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
         .unwrap_or_default()

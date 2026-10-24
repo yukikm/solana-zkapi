@@ -91,6 +91,7 @@ pub struct SessionRecord {
     pub expires_at: Option<i64>,
     /// Provider management identifier only; never a usable runtime key.
     pub provider_key_ref: Option<String>,
+    pub direct_waiver_evidence: Option<Hash>,
     pub writer_epoch: i64,
 }
 #[derive(Clone, Debug)]
@@ -240,6 +241,10 @@ const MIGRATIONS: &[(i32, &str)] = &[
         include_str!("../migrations/0003_authorization_retirement.sql"),
     ),
     (4, include_str!("../migrations/0004_finite_http.sql")),
+    (
+        5,
+        include_str!("../migrations/0005_direct_unknown_waiver.sql"),
+    ),
 ];
 
 /// Run only with the migration credential. Runtime users have no DDL privileges.
@@ -856,7 +861,10 @@ impl Ledger {
         let tx = c.transaction().await?;
         self.lock_pool(&tx).await?;
         let s = locked_session(&tx, self.inner.pool, id).await?;
-        if s.mode == "proxy" || matches!(s.state.as_str(), "SIGN_PENDING" | "SETTLED") {
+        if s.mode == "proxy"
+            || s.direct_waiver_evidence.is_some()
+            || matches!(s.state.as_str(), "SIGN_PENDING" | "SETTLED")
+        {
             return Err(LedgerError::Conflict("direct_checkpoint_unavailable"));
         }
         validate_direct_checkpoint(&s, next)?;
@@ -1250,8 +1258,9 @@ impl Ledger {
         }
         Ok(s)
     }
-    /// I06 adapter must verify key nonexistence or disable/delete/final-usage, then supply
-    /// its evidence digest. A finished issuance attempt alone does not prove key revocation.
+    /// Nonissuance requires every original attempt to remain unclaimed and stopped.
+    /// Otherwise the adapter must verify disable/delete/final-usage. A finished
+    /// issuance attempt or an absent provider key alone proves neither condition.
     pub async fn complete_direct(
         &self,
         id: Uuid,
@@ -1264,6 +1273,7 @@ impl Ledger {
         self.lock_pool(&tx).await?;
         let s = locked_session(&tx, self.inner.pool, id).await?;
         if s.mode == "proxy"
+            || s.direct_waiver_evidence.is_some()
             || !matches!(
                 s.state.as_str(),
                 "ISSUING" | "ISSUANCE_UNKNOWN" | "DRAINING" | "RECONCILING"
@@ -1298,6 +1308,19 @@ impl Ledger {
                 if key.is_some() || s.activated_at.is_some() {
                     return Err(LedgerError::Conflict("issued_key_requires_final_usage"));
                 }
+                // The send claim is the durable boundary after which provider egress
+                // is possible. Diagnostics and missing provider references cannot
+                // replace this evidence, including after a dispatcher restart.
+                let unsent: bool = tx
+                    .query_one(
+                        "SELECT NOT EXISTS(SELECT 1 FROM dispatch_attempts WHERE pool=$1 AND request_id=$2 AND (kind<>'DIRECT_ISSUANCE' OR operation_id IS NOT NULL OR send_claimed_at IS NOT NULL OR (finished_at IS NULL AND fenced_at IS NULL)))",
+                        &[&&self.inner.pool[..], &id],
+                    )
+                    .await?
+                    .get(0);
+                if !unsent {
+                    return Err(LedgerError::Conflict("direct_nonissuance_not_proven"));
+                }
                 (0, Some(0), Some(0), "not_dispatched")
             }
         };
@@ -1320,6 +1343,163 @@ impl Ledger {
                 .await?,
         )?;
         tx.commit().await?;
+        Ok(s)
+    }
+    /// Explicit local operator-loss approval; never called from the HTTP API or recovery worker.
+    /// The approval and zero-charge unknown-usage receipt commit with the session transition.
+    pub async fn apply_direct_unknown_waiver(
+        &self,
+        approval: &crate::direct_waiver::SignedApproval,
+        receipt_key: &ed25519_dalek::SigningKey,
+    ) -> anyhow::Result<SessionRecord> {
+        let id = approval.body.request_id;
+        let mut c = self.inner.client.lock().await;
+        let tx = c.transaction().await?;
+        self.lock_pool(&tx).await?;
+        let s = locked_session(&tx, self.inner.pool, id).await?;
+        let s = self
+            .apply_direct_unknown_waiver_tx(&tx, s, approval, receipt_key)
+            .await?;
+        tx.commit().await?;
+        Ok(s)
+    }
+
+    /// Register an explicitly configured operator-loss policy with its future
+    /// admission cutoff. The module rejects replacement or retrospective policy.
+    pub async fn register_direct_auto_waiver_policy(
+        &self,
+        policy: &crate::direct_auto_waiver::AutoPolicy,
+    ) -> anyhow::Result<()> {
+        let mut c = self.inner.client.lock().await;
+        let tx = c.transaction().await?;
+        self.lock_pool(&tx).await?;
+        crate::direct_auto_waiver::register(&tx, self.inner.pool, policy).await?;
+        tx.commit().await?;
+        Ok(())
+    }
+
+    /// Read-only status projection: report policy coverage from one consistent
+    /// snapshot without advancing recovery, extending a lease or authorizing a
+    /// waiver. The mutating path independently rechecks all eligibility later.
+    pub async fn direct_auto_waiver_covers(
+        &self,
+        id: Uuid,
+        policy: &crate::direct_auto_waiver::AutoPolicy,
+    ) -> anyhow::Result<bool> {
+        self.check_health()?;
+        let mut c = self.inner.client.lock().await;
+        let tx = c
+            .build_transaction()
+            .isolation_level(tokio_postgres::IsolationLevel::RepeatableRead)
+            .read_only(true)
+            .start()
+            .await?;
+        let covered = crate::direct_auto_waiver::covers(&tx, self.inner.pool, id, policy).await?;
+        tx.commit().await?;
+        Ok(covered)
+    }
+
+    /// A future-session policy may accept unknown provider cost only after its
+    /// independently reviewed eligibility and stop predicates hold. Approval,
+    /// receipt, policy audit and financial transition commit together under the
+    /// existing sole-writer lock; no provider call or replay occurs here.
+    pub async fn try_auto_waive_direct(
+        &self,
+        id: Uuid,
+        policy: &crate::direct_auto_waiver::AutoPolicy,
+        provider_grace: u64,
+        receipt_key: &ed25519_dalek::SigningKey,
+    ) -> anyhow::Result<bool> {
+        anyhow::ensure!(
+            receipt_key.verifying_key() == self.inner.receipt_key,
+            "waiver receipt key mismatch"
+        );
+        let mut c = self.inner.client.lock().await;
+        let tx = c.transaction().await?;
+        self.lock_pool(&tx).await?;
+        let s = locked_session(&tx, self.inner.pool, id).await?;
+        if s.direct_waiver_evidence.is_some() {
+            tx.commit().await?;
+            return Ok(false);
+        }
+        let Some(approval) = crate::direct_auto_waiver::prepare(
+            &tx,
+            self.inner.pool,
+            id,
+            policy,
+            provider_grace,
+            receipt_key,
+        )
+        .await?
+        else {
+            tx.commit().await?;
+            return Ok(false);
+        };
+        self.apply_direct_unknown_waiver_tx(&tx, s, &approval, receipt_key)
+            .await?;
+        crate::direct_auto_waiver::record_application(&tx, self.inner.pool, id, policy, &approval)
+            .await?;
+        tx.commit().await?;
+        Ok(true)
+    }
+
+    async fn apply_direct_unknown_waiver_tx(
+        &self,
+        tx: &Transaction<'_>,
+        s: SessionRecord,
+        approval: &crate::direct_waiver::SignedApproval,
+        receipt_key: &ed25519_dalek::SigningKey,
+    ) -> anyhow::Result<SessionRecord> {
+        use base64::{engine::general_purpose::STANDARD, Engine};
+        anyhow::ensure!(
+            receipt_key.verifying_key() == self.inner.receipt_key,
+            "waiver receipt key mismatch"
+        );
+        let evidence = approval.verify(self.inner.receipt_key.to_bytes())?;
+        let id = approval.body.request_id;
+        anyhow::ensure!(s.request_id == id, "waiver locked session mismatch");
+        if let Some(existing) = s.direct_waiver_evidence {
+            anyhow::ensure!(existing == evidence, "conflicting direct waiver");
+            let body = crate::direct_waiver::load_and_verify(
+                tx,
+                self.inner.receipt_key.to_bytes(),
+                self.inner.pool,
+                id,
+                evidence,
+            )
+            .await?;
+            anyhow::ensure!(body == approval.body, "conflicting direct waiver approval");
+            return Ok(s);
+        }
+        crate::direct_waiver::validate_new(
+            tx,
+            self.inner.pool,
+            approval,
+            self.inner.receipt_key.to_bytes(),
+        )
+        .await?;
+        let receipt =
+            crate::direct_waiver::receipt(tx, self.inner.pool, approval, receipt_key).await?;
+        validate_receipt(
+            &receipt,
+            self.inner.pool,
+            id,
+            None,
+            0,
+            u128::from(s.cap_micro) * 1000,
+            None,
+            None,
+            "waived_unknown",
+        )?;
+        insert_receipt(tx, self.inner.pool, &self.inner.receipt_key, &receipt).await?;
+        let bytes = serde_jcs::to_vec(&approval.body)?;
+        let signature = STANDARD.decode(&approval.signature)?;
+        tx.execute("INSERT INTO direct_unknown_waivers(pool,request_id,approval_body,approval_hash,approval_signature,receipt_id) VALUES($1::bytea,$2,$3,$4::bytea,$5,$6)", &[&&self.inner.pool[..],&id,&bytes,&&evidence[..],&signature,&approval.body.receipt_id]).await?;
+        tx.execute("UPDATE sessions SET state='RECONCILING',direct_waiver_evidence=$3::bytea,updated_at=clock_timestamp() WHERE pool=$1::bytea AND request_id=$2", &[&&self.inner.pool[..],&id,&&evidence[..]]).await?;
+        let s = session_row(
+            &tx.query_one(SESSION_SELECT, &[&&self.inner.pool[..], &id])
+                .await?,
+        )?;
         Ok(s)
     }
     /// Returns a new immutable attempt; never returns an old attempt as a retry permission.
@@ -1886,6 +2066,13 @@ fn session_row(r: &Row) -> Result<SessionRecord> {
         activated_at: r.get("activated_at"),
         expires_at: r.get("expires_at"),
         provider_key_ref: r.get("provider_key_ref"),
+        direct_waiver_evidence: r
+            .get::<_, Option<Vec<u8>>>("direct_waiver_evidence")
+            .map(|v| {
+                v.try_into()
+                    .map_err(|_| LedgerError::Invalid("invalid_waiver_evidence"))
+            })
+            .transpose()?,
         writer_epoch: r.get("writer_epoch"),
     })
 }

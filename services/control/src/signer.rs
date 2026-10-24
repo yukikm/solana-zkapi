@@ -750,7 +750,7 @@ async fn load_settlement(
     config: &SignerConfig,
     request_id: Uuid,
 ) -> Result<FrozenTarget> {
-    let row=tx.query_opt("SELECT s.nullifier,s.request_digest,s.request_transcript,s.state,s.cap_micro,s.charged_nano::text,s.reserved_nano::text,s.active_operations,s.mode,s.provider,s.quote_id,s.control_secret_hash,s.proxy_secret_hash,t.charge_micro,t.next_anchor,t.next_commitment_x,t.next_commitment_y,t.blind_delta,t.anchor_randomness,t.signature_message,t.message_digest,t.state_signature,r.kind,q.canonical_body,q.quote_hash,q.tariff_hash,q.signature,s.direct_stop_evidence FROM sessions s JOIN settlements t USING(pool,request_id) JOIN nullifier_reservations r USING(pool,nullifier) JOIN quotes q ON q.pool=s.pool AND q.quote_id=s.quote_id WHERE s.pool=$1 AND s.request_id=$2",&[&&config.pool[..],&request_id]).await?.context("settlement target missing")?;
+    let row=tx.query_opt("SELECT s.nullifier,s.request_digest,s.request_transcript,s.state,s.cap_micro,s.charged_nano::text,s.reserved_nano::text,s.active_operations,s.mode,s.provider,s.quote_id,s.control_secret_hash,s.proxy_secret_hash,t.charge_micro,t.next_anchor,t.next_commitment_x,t.next_commitment_y,t.blind_delta,t.anchor_randomness,t.signature_message,t.message_digest,t.state_signature,r.kind,q.canonical_body,q.quote_hash,q.tariff_hash,q.signature,s.direct_stop_evidence,s.direct_waiver_evidence FROM sessions s JOIN settlements t USING(pool,request_id) JOIN nullifier_reservations r USING(pool,nullifier) JOIN quotes q ON q.pool=s.pool AND q.quote_id=s.quote_id WHERE s.pool=$1 AND s.request_id=$2",&[&&config.pool[..],&request_id]).await?.context("settlement target missing")?;
     let n = bytes32(&row.get::<_, Vec<u8>>(0))?;
     let transcript: Vec<u8> = row.get(2);
     ensure!(
@@ -855,10 +855,46 @@ async fn load_settlement(
         "unfinished operations or unfenced dispatch attempts"
     );
     let mode: String = row.get(8);
-    ensure!(
-        mode == "proxy" || row.get::<_, Option<Vec<u8>>>(27).is_some(),
-        "direct issuance/keys are not quiesced"
-    );
+    let stop_evidence: Option<Vec<u8>> = row.get(27);
+    let waiver_evidence: Option<Vec<u8>> = row.get(28);
+    let direct_waiver = match waiver_evidence {
+        Some(evidence) => {
+            ensure!(
+                mode == "direct_openrouter"
+                    && row.get::<_, String>(9) == "openrouter"
+                    && stop_evidence.is_none(),
+                "direct waiver scope/evidence mismatch"
+            );
+            let digest = bytes32(&evidence)?;
+            let approval = crate::direct_waiver::load_and_verify(
+                tx,
+                config.receipt_key,
+                config.pool,
+                request_id,
+                digest,
+            )
+            .await?;
+            ensure!(
+                approval.deployment_id == config.authorization.deployment_id
+                    && approval.pool == hex::encode(config.pool)
+                    && approval.request_id == request_id
+                    && approval.request_digest == hex::encode(hash(&transcript)),
+                "direct waiver authorization mismatch"
+            );
+            Some(DirectWaiverReceiptBinding {
+                receipt_id: approval.receipt_id,
+                approved_at: approval.approved_at,
+                evidence_digest: digest,
+            })
+        }
+        None => {
+            ensure!(
+                mode == "proxy" || stop_evidence.is_some(),
+                "direct issuance/keys are not quiesced"
+            );
+            None
+        }
+    };
     ensure!(
         crate::wire::base64_exact::<64>(&checked.quote.signature)?.as_slice()
             == row.get::<_, Vec<u8>>(26),
@@ -906,7 +942,15 @@ async fn load_settlement(
         "frozen tariff validity mismatch"
     );
     let charged: u128 = row.get::<_, String>(5).parse()?;
-    let receipt_total = verify_receipts(tx, config, request_id, &mode, &tariff).await?;
+    let receipt_total = verify_receipts(
+        tx,
+        config,
+        request_id,
+        &mode,
+        &tariff,
+        direct_waiver.as_ref(),
+    )
+    .await?;
     ensure!(
         receipt_total == charged,
         "receipt total does not match session"
@@ -965,6 +1009,17 @@ async fn load_settlement(
         randomness,
         message,
     ))?);
+    // Preserve the exact journal commitments of existing settlements. New direct
+    // waivers also pin the operator approval, so even a newly valid replacement
+    // approval cannot be substituted after the intent has been journaled.
+    let frozen_digest = match &direct_waiver {
+        Some(approval) => hash(&serde_jcs::to_vec(&(
+            "direct_unknown_waiver_v1",
+            frozen_digest,
+            approval.evidence_digest,
+        ))?),
+        None => frozen_digest,
+    };
     Ok(FrozenTarget {
         intent: Intent {
             pool: config.pool,
@@ -978,12 +1033,46 @@ async fn load_settlement(
         signature,
     })
 }
+struct DirectWaiverReceiptBinding {
+    receipt_id: Uuid,
+    approved_at: u64,
+    evidence_digest: [u8; 32],
+}
+
+fn verify_direct_waiver_receipt(
+    receipt: &crate::receipts::ReceiptBody,
+    approval: &DirectWaiverReceiptBinding,
+) -> Result<()> {
+    ensure!(
+        receipt.version == "1"
+            && receipt.receipt_id == approval.receipt_id.to_string()
+            && receipt.observed_at == approval.approved_at.to_string()
+            && receipt.operation_id.is_none()
+            && receipt.gateway.is_none()
+            && receipt.billing_effect == "charge"
+            && receipt.related_receipt_hash.is_none()
+            && receipt.evidence_kind == "UNKNOWN_OPERATOR_LOSS"
+            && receipt.reason == "waived_unknown"
+            && receipt.charged_nano_usdc == "0"
+            && receipt.observed_nano_usdc.is_none()
+            && receipt.operator_loss_nano_usdc.is_none()
+            && receipt.provider_reported_usd.is_none()
+            && receipt.provider_request_id.is_none()
+            && receipt.usage.is_empty()
+            && receipt.provider_evidence_digest.as_deref()
+                == Some(hex::encode(approval.evidence_digest).as_str()),
+        "direct waiver receipt mismatch"
+    );
+    Ok(())
+}
+
 async fn verify_receipts(
     tx: &Transaction<'_>,
     config: &SignerConfig,
     request_id: Uuid,
     mode: &str,
     tariff: &crate::wire::Tariff,
+    direct_waiver: Option<&DirectWaiverReceiptBinding>,
 ) -> Result<u128> {
     let rows=tx.query("SELECT canonical_body,receipt_hash,signature,operation_id,receipt_id FROM receipts WHERE pool=$1 AND request_id=$2 AND billing_effect='charge' ORDER BY sequence",&[&&config.pool[..],&request_id]).await?;
     let key = VerifyingKey::from_bytes(&config.receipt_key)?;
@@ -1023,6 +1112,7 @@ async fn verify_receipts(
             Some(id) => {
                 ensure!(
                     mode == "proxy"
+                        && direct_waiver.is_none()
                         && v.get("operation_id").and_then(Value::as_str) == Some(&id.to_string())
                         && operations.insert(id),
                     "receipt operation mismatch"
@@ -1079,10 +1169,16 @@ async fn verify_receipts(
                         && rows.len() == 1
                         && v.get("operation_id") == Some(&Value::Null)
                         && integer(&v, "reservation_nano_usdc")?
-                            == config.authorization.cap.as_nano()
-                        && typed.reason != "waived_unknown",
+                            == config.authorization.cap.as_nano(),
                     "direct receipt mismatch"
                 );
+                match direct_waiver {
+                    Some(approval) => verify_direct_waiver_receipt(&typed, approval)?,
+                    None => ensure!(
+                        typed.reason != "waived_unknown",
+                        "direct waiver requires immutable operator approval"
+                    ),
+                }
                 if typed.reason == "not_dispatched" {
                     let issuance = tx.query_one("SELECT provider_key_ref,activated_at FROM sessions WHERE pool=$1 AND request_id=$2", &[&&config.pool[..],&request_id]).await?;
                     ensure!(
@@ -1090,6 +1186,18 @@ async fn verify_receipts(
                             && issuance.get::<_, Option<i64>>(1).is_none(),
                         "issued direct key requires final measured usage"
                     );
+                    // Independently establish nonissuance from all original
+                    // attempts, rather than trusting a receipt or stop digest.
+                    // A send claim means egress may have happened even when its
+                    // worker exited without returning a provider key reference.
+                    let unsent: bool = tx
+                        .query_one(
+                            "SELECT NOT EXISTS(SELECT 1 FROM dispatch_attempts WHERE pool=$1 AND request_id=$2 AND (kind<>'DIRECT_ISSUANCE' OR operation_id IS NOT NULL OR send_claimed_at IS NOT NULL OR (finished_at IS NULL AND fenced_at IS NULL)))",
+                            &[&&config.pool[..], &request_id],
+                        )
+                        .await?
+                        .get(0);
+                    ensure!(unsent, "direct nonissuance is not proven");
                 }
             }
         }
@@ -1286,5 +1394,72 @@ mod tests {
         tampered[pos] = b'2';
         std::fs::write(&path, &tampered).unwrap();
         assert!(Journal::open(&path, &config).is_err());
+    }
+    #[test]
+    fn direct_waiver_receipt_requires_exact_approval_and_explicit_unknown_costs() {
+        let approval = DirectWaiverReceiptBinding {
+            receipt_id: Uuid::new_v4(),
+            approved_at: 1,
+            evidence_digest: [81; 32],
+        };
+        let body = serde_json::json!({
+            "version":"1", "receipt_id":approval.receipt_id.to_string(),
+            "deployment_id":"signer-unit", "pool":pool_text(&[42; 32]),
+            "request_id":Uuid::new_v4().to_string(), "operation_id":null,
+            "billing_effect":"charge", "related_receipt_hash":null,
+            "observed_at":"1", "evidence_kind":"UNKNOWN_OPERATOR_LOSS",
+            "provider_request_id":null,
+            "provider_evidence_digest":hex::encode(approval.evidence_digest),
+            "tariff_hash":hex::encode([82; 32]), "usage":[],
+            "provider_reported_usd":null, "reservation_nano_usdc":"1000000000",
+            "observed_nano_usdc":null, "charged_nano_usdc":"0",
+            "operator_loss_nano_usdc":null, "reason":"waived_unknown"
+        });
+        let original: crate::receipts::ReceiptBody = serde_json::from_value(body.clone()).unwrap();
+        original.validate().unwrap();
+        verify_direct_waiver_receipt(&original, &approval).unwrap();
+        // Zero is an assertion about observed usage, not a representation of
+        // unknown usage. A waiver must not manufacture that assertion.
+        for (field, replacement) in [
+            ("receipt_id", serde_json::json!(Uuid::new_v4().to_string())),
+            (
+                "provider_evidence_digest",
+                serde_json::json!(hex::encode([83; 32])),
+            ),
+            ("provider_evidence_digest", Value::Null),
+            ("version", serde_json::json!("2")),
+            ("observed_at", serde_json::json!("2")),
+            (
+                "operation_id",
+                serde_json::json!(Uuid::new_v4().to_string()),
+            ),
+            ("billing_effect", serde_json::json!("informational")),
+            (
+                "related_receipt_hash",
+                serde_json::json!(hex::encode([84; 32])),
+            ),
+            ("evidence_kind", serde_json::json!("OPENROUTER_USAGE")),
+            ("reason", serde_json::json!("not_dispatched")),
+            ("charged_nano_usdc", serde_json::json!("1")),
+            ("observed_nano_usdc", serde_json::json!("0")),
+            ("operator_loss_nano_usdc", serde_json::json!("0")),
+            ("provider_reported_usd", serde_json::json!("0")),
+            (
+                "provider_request_id",
+                serde_json::json!("unproven-key-reference"),
+            ),
+            (
+                "usage",
+                serde_json::json!([{"unit":"input_tokens", "count":"0"}]),
+            ),
+        ] {
+            let mut modified = body.clone();
+            modified[field] = replacement;
+            let receipt: crate::receipts::ReceiptBody = serde_json::from_value(modified).unwrap();
+            assert!(
+                verify_direct_waiver_receipt(&receipt, &approval).is_err(),
+                "accepted changed {field}"
+            );
+        }
     }
 }

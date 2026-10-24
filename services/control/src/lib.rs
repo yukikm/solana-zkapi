@@ -5,6 +5,8 @@ pub mod claims_storage;
 pub mod config;
 pub mod crypto;
 pub mod direct;
+pub mod direct_auto_waiver;
+pub mod direct_waiver;
 pub mod dispatcher;
 pub mod faults;
 pub mod gateway;

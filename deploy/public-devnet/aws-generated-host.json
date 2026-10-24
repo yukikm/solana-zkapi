@@ -496,7 +496,7 @@
               "Authorization",
               "Origin",
               "Content-Type",
-              "Accept",
+              "X-Zkapi-Recovery-Diagnostics",
               "Access-Control-Request-Method",
               "Access-Control-Request-Headers",
               "Sec-Fetch-Site",

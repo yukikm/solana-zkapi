@@ -29,6 +29,68 @@ test('direct relay forwards only the explicit bounded recovery diagnostic opt-in
   await assert.rejects(relay({...input,path:'/zkapi/v1/config',recoveryDiagnostics:'1'}));
   assert.equal(forwarded.length,2);
 });
+
+test('CloudFront API policies preserve recovery negotiation through the public gateway and direct relay',async t=>{
+  for(const templateName of ['aws-generated-host.json','aws-budget-host.json'])await t.test(templateName,async t=>{
+    const template=JSON.parse(await readFile(new URL('../deploy/public-devnet/'+templateName,import.meta.url),'utf8'));
+    const behavior=template.Resources.Distribution.Properties.DistributionConfig.CacheBehaviors.find((v:any)=>v.PathPattern==='/zkapi/v1/*');
+    assert.ok(behavior);assert.equal(behavior.TargetOriginId,'api');
+    const policy=template.Resources[behavior.OriginRequestPolicyId.Ref].Properties.OriginRequestPolicyConfig;
+    assert.equal(policy.HeadersConfig.HeaderBehavior,'whitelist');
+    const allowed=new Set<string>(policy.HeadersConfig.Headers.map((name:string)=>name.toLowerCase()));
+    assert.equal(policy.HeadersConfig.Headers.length,10,'stay within the origin request policy header quota');
+    assert.deepEqual([...allowed].sort(),['authorization','origin','content-type','x-zkapi-recovery-diagnostics',
+      'access-control-request-method','access-control-request-headers','sec-fetch-site','sec-fetch-mode','sec-fetch-dest','x-zkapi-admission'].sort());
+    const cache=template.Resources[behavior.CachePolicyId.Ref].Properties.CachePolicyConfig;
+    assert.deepEqual([cache.MinTTL,cache.DefaultTTL,cache.MaxTTL],[0,0,0]);
+    assert.equal(cache.ParametersInCacheKeyAndForwardedToOrigin.HeadersConfig.HeaderBehavior,'none');
+
+    const f=await fixture(), forwarded:Record<string,string>[]=[],upstreamHeaders:import('node:http').IncomingHttpHeaders[]=[];
+    const recovery={reason_code:'provider_key_absent',requires_operator_action:true};
+    const upstream=createServer((req,res)=>{
+      assert.equal(req.url,'/zkapi/v1/sessions/'+id);assert.equal(req.method,'GET');upstreamHeaders.push(req.headers);
+      res.setHeader('content-type','application/json');
+      res.end(JSON.stringify({state:'ISSUANCE_UNKNOWN',last_error_code:'provider_key_absent',
+        ...(req.headers['x-zkapi-recovery-diagnostics']==='1'?{recovery}:{})}));
+    });
+    await new Promise<void>(ok=>upstream.listen(0,'127.0.0.1',ok));t.after(()=>new Promise<void>(ok=>upstream.close(()=>ok())));
+    const upstreamAddress=upstream.address();assert.ok(upstreamAddress&&typeof upstreamAddress==='object');
+    const forward=localForwarder();
+    const relay=directControlRelay({...f,budget:{async reserve(){assert.fail('status must not reserve new work');}},
+      async forward(path,method,headers){
+        assert.equal(path,'/zkapi/v1/sessions/'+id);assert.equal(method,'GET');
+        forwarded.push(headers);
+        return forward('http://127.0.0.1:'+upstreamAddress.port+path,method,undefined,headers);
+      }});
+    const publicOrigin='https://operator.example.com',browserOrigin='https://chat.example.com';
+    const host=await startUiHost({port:0,application:'public-api',publicOrigin,allowedBrowserOrigins:[browserOrigin],
+      allowNativeRequests:false,allowTransactions:false,allowNewAdmissions:false,controlRelay:relay});t.after(()=>host.close());
+    const address=host.server.address();assert.ok(address&&typeof address==='object');
+    const base='http://127.0.0.1:'+address.port;
+    // Apply the actual API behavior's origin header policy before exercising
+    // the gateway. A successful CORS preflight alone misses a stripped opt-in.
+    const throughCloudFront=(method:string,viewerHeaders:Record<string,string>)=>new Promise<{
+      status:number;headers:import('node:http').IncomingHttpHeaders;body:string;
+    }>((ok,fail)=>{
+      const headers=Object.fromEntries(Object.entries(viewerHeaders).filter(([name])=>allowed.has(name.toLowerCase())));
+      const r=request(base+'/zkapi/v1/sessions/'+id,{method,headers:{host:new URL(publicOrigin).host,...headers}},res=>{
+        const parts:Buffer[]=[];res.on('data',part=>parts.push(part));
+        res.on('end',()=>ok({status:res.statusCode!,headers:res.headers,body:Buffer.concat(parts).toString()}));
+      });r.on('error',fail);r.end();
+    });
+    const preflight=await throughCloudFront('OPTIONS',{origin:browserOrigin,'access-control-request-method':'GET',
+      'access-control-request-headers':'authorization,x-zkapi-recovery-diagnostics'});
+    assert.equal(preflight.status,204);assert.match(String(preflight.headers['access-control-allow-headers']),/x-zkapi-recovery-diagnostics/);
+    assert.equal(forwarded.length,0);
+    const headers={origin:browserOrigin,authorization:f.authorization,accept:'text/plain'};
+    const legacy=await throughCloudFront('GET',headers);
+    assert.equal(legacy.status,200);assert.equal(JSON.parse(legacy.body).recovery,undefined);
+    const updated=await throughCloudFront('GET',{...headers,'X-Zkapi-Recovery-Diagnostics':'1'});
+    assert.equal(updated.status,200);assert.deepEqual(JSON.parse(updated.body).recovery,recovery);
+    assert.deepEqual(forwarded,[{authorization:f.authorization},{'x-zkapi-recovery-diagnostics':'1',authorization:f.authorization}]);
+    assert.deepEqual(upstreamHeaders.map(headers=>headers.accept),['application/json','application/json']);
+  });
+});
 async function fixture() {
   const keys = generateKeyPairSync('ed25519'), secret = Buffer.alloc(32, 17);
   const tariff = {tariff_hash:'aa'.repeat(32),provider:'openrouter',model:'*'} as Tariff;

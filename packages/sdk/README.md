@@ -1,5 +1,7 @@
 # Solana zkAPI SDK
 
+Source SDK `.16` is a local patch candidate for [explicit operator waivers](../../docs/releases/direct-waiver-preview.md); no `.16` GitHub release is claimed. It requires the matching independently pinned client verifier.
+
 SDK/native `.15` adds [explicit direct recovery diagnostics](../../docs/getting-started/direct-recovery-upgrade.md) while preserving existing custody and signed settlement.
 
 An SDK for USDC-funded API usage on Solana. It handles wallet operations, local

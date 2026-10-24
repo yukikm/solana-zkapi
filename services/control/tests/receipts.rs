@@ -75,3 +75,55 @@ fn unknown_and_late_observation_never_recharge() {
     late.charged_nano_usdc = "1".into();
     assert!(Receipt::sign(late, &key).is_err());
 }
+
+#[test]
+fn direct_unknown_waiver_requires_openrouter_approval_digest_without_fabricated_usage() {
+    use zkapi_control::{quote, wire};
+    let mut tariff = wire::Tariff {
+        version: "1".into(),
+        provider: wire::Provider::Openrouter,
+        model: "*".into(),
+        pricing_basis: "provider_reported_usd".into(),
+        valid_from: "0".into(),
+        valid_until: "9999999999".into(),
+        rates: vec![],
+        operator_fee_micro_usdc: "0".into(),
+        tariff_hash: String::new(),
+        api: None,
+    };
+    tariff.tariff_hash = quote::tariff_hash(&tariff).unwrap();
+    let mut b = body();
+    b.operation_id = None;
+    b.reason = "waived_unknown".into();
+    b.evidence_kind = "UNKNOWN_OPERATOR_LOSS".into();
+    b.provider_request_id = None;
+    b.provider_evidence_digest = Some("ab".repeat(32));
+    b.tariff_hash = tariff.tariff_hash.clone();
+    b.usage.clear();
+    b.charged_nano_usdc = "0".into();
+    b.observed_nano_usdc = None;
+    b.operator_loss_nano_usdc = None;
+    validate_tariff_math(&b, &tariff).unwrap();
+    for mutation in 0..8 {
+        let mut changed = b.clone();
+        match mutation {
+            0 => changed.provider_evidence_digest = None,
+            1 => changed.provider_request_id = Some("invented".into()),
+            2 => changed.observed_nano_usdc = Some("0".into()),
+            3 => changed.operator_loss_nano_usdc = Some("0".into()),
+            4 => changed.provider_reported_usd = Some("0".into()),
+            5 => changed.charged_nano_usdc = "1".into(),
+            6 => changed.operation_id = Some(uuid::Uuid::new_v4().to_string()),
+            7 => changed.provider_evidence_digest = Some("not-a-digest".into()),
+            _ => unreachable!(),
+        }
+        assert!(
+            validate_tariff_math(&changed, &tariff).is_err(),
+            "mutation {mutation}"
+        );
+    }
+    tariff.provider = wire::Provider::Oa;
+    tariff.tariff_hash = quote::tariff_hash(&tariff).unwrap();
+    b.tariff_hash = tariff.tariff_hash.clone();
+    assert!(validate_tariff_math(&b, &tariff).is_err());
+}

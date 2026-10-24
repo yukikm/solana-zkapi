@@ -22,6 +22,7 @@ struct Fixture {
     fail_create: bool,
     drop_create_response: bool,
     hide_key: bool,
+    list_entries: Option<Vec<(Value, bool)>>,
     fail_list: bool,
     fail_delete: bool,
     missing_usage: bool,
@@ -90,12 +91,31 @@ async fn list(State(state): State<Shared>, uri: axum::http::Uri) -> impl IntoRes
             Json(json!({"error":"provider-secret-canary"})),
         );
     }
-    (
-        StatusCode::OK,
-        Json(
-            json!({"data":if uri.query().unwrap().starts_with("offset=0&") && s.body.is_some() && !s.hide_key {vec![key_data(&s)]}else{vec![]}}),
-        ),
-    )
+    let query = uri.query().unwrap();
+    let include_expired = query.split('&').any(|part| part == "include_expired=true");
+    let offset: usize = query
+        .split('&')
+        .find_map(|part| part.strip_prefix("offset="))
+        .unwrap()
+        .parse()
+        .unwrap();
+    let entries = s.list_entries.clone().unwrap_or_else(|| {
+        if s.body.is_some() && !s.hide_key {
+            vec![(key_data(&s), false)]
+        } else {
+            vec![]
+        }
+    });
+    // OpenRouter excludes expired keys unless explicitly requested, separately
+    // from disabled keys. Filter before pagination as the provider does.
+    let data: Vec<_> = entries
+        .into_iter()
+        .filter(|(_, expired)| !expired || include_expired)
+        .skip(offset)
+        .take(1)
+        .map(|(key, _)| key)
+        .collect();
+    (StatusCode::OK, Json(json!({"data":data})))
 }
 async fn disable(
     State(state): State<Shared>,
@@ -261,6 +281,57 @@ async fn openrouter_lost_issuance_is_read_only_recovery_and_usage_is_strict() {
             .filter(|s| *s == "create")
             .count(),
         1
+    );
+    task.abort();
+}
+#[tokio::test]
+async fn openrouter_recovery_includes_expired_pages_and_requires_one_exact_intent() {
+    let mut intent = intent();
+    intent.requested_at = now() - 120;
+    let matching = json!({"hash":"expired-provider-hash","name":intent.name(),
+        "expires_at":"2000-01-01T00:00:00Z","disabled":true});
+    let unrelated = json!({"hash":"unrelated-provider-hash","name":format!("{}-other",intent.name()),
+        "expires_at":"2099-01-01T00:00:00Z","disabled":false});
+    let state = Arc::new(Mutex::new(Fixture {
+        list_entries: Some(vec![(unrelated.clone(), false), (matching.clone(), true)]),
+        ..Default::default()
+    }));
+    let (_dir, adapter, task) = openrouter_fixture(state.clone(), 0).await;
+    let reference = adapter.recover_key(&intent).await.unwrap().unwrap();
+    assert_eq!(reference.key_ref, "expired-provider-hash");
+    assert_eq!(reference.expires_at, intent.expires_at());
+    assert!(
+        reference.expires_at < now(),
+        "recovery never extends the saved lease"
+    );
+    assert_eq!(state.lock().unwrap().events, ["list", "list", "list"]);
+
+    // A second matching expired key must remain ambiguous, even on a later page.
+    let mut duplicate = matching;
+    duplicate["hash"] = "another-expired-provider-hash".into();
+    state
+        .lock()
+        .unwrap()
+        .list_entries
+        .as_mut()
+        .unwrap()
+        .push((duplicate, true));
+    let error = adapter.recover_key(&intent).await.err().unwrap();
+    assert_eq!(
+        error.downcast_ref::<Diagnostic>().unwrap().reason_code,
+        DiagnosticReason::RecoveryAmbiguous
+    );
+
+    state.lock().unwrap().list_entries = Some(vec![(unrelated, false)]);
+    assert!(adapter.recover_key(&intent).await.unwrap().is_none());
+    assert!(
+        state
+            .lock()
+            .unwrap()
+            .events
+            .iter()
+            .all(|event| event == "list"),
+        "recovery never creates or mutates keys"
     );
     task.abort();
 }
@@ -801,14 +872,15 @@ async fn direct_ledger_late_issuance_after_close_is_drained() {
     let intent = reserve_direct(&ledger).await;
     let id = intent.request_id;
     let check_count = Arc::new(std::sync::atomic::AtomicUsize::new(0));
-    // The final chain check observes an exit after the provider has issued a key.
+    // Admission and the new pre-send check pass. The final chain check observes
+    // an exit after the provider has issued a key.
     let result = runtime
         .issue(&ledger, intent, Uuid::new_v4(), {
             let count = check_count.clone();
             move || {
                 let count = count.clone();
                 async move {
-                    if count.fetch_add(1, std::sync::atomic::Ordering::SeqCst) == 0 {
+                    if count.fetch_add(1, std::sync::atomic::Ordering::SeqCst) < 2 {
                         Ok(())
                     } else {
                         Err(zkapi_control::ledger::LedgerError::Unavailable(
@@ -820,6 +892,7 @@ async fn direct_ledger_late_issuance_after_close_is_drained() {
         })
         .await;
     assert!(result.is_err());
+    assert_eq!(check_count.load(std::sync::atomic::Ordering::SeqCst), 3);
     assert_eq!(ledger.session(id).await.unwrap().state, "DRAINING");
     assert!(ledger.provider_key_ref(id).await.unwrap().is_some());
     assert!(runtime.reconcile(&ledger, id).await.unwrap().is_some());
