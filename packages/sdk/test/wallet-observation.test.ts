@@ -14,6 +14,9 @@ import { join } from 'node:path';
 
 import bs58 from 'bs58';
 import { WalletClient, type WalletOptions } from '../src/wallet.ts';
+import { ZkApiClient } from '../src/client.ts';
+import type { ControlClient } from '../src/control.ts';
+import { walletOperationProgress, unknownEscapeWithdrawal } from '../src/wallet-progress.ts';
 import { NoteProver } from '../src/prover.ts';
 import { EncryptedJournal, importJournalKey } from '../src/journal.ts';
 import { NativeJournalStore } from '../src/journal-node.ts';
@@ -27,7 +30,7 @@ const fixture = JSON.parse(readFileSync(new URL('../../../tests/fixtures/vault/g
 const key = (value:string) => kitAddress(Buffer.from(value,'hex'));
 const field = (value:number) => '0x'+value.toString(16).padStart(64,'0');
 
-async function setup(t:TestContext,kind:'deposit'|'mutual_close'|'initiate_escape'|'finalize_escape'='deposit',failedKind:'create'|'execute'='execute') {
+async function setup(t:TestContext,kind:'deposit'|'mutual_close'|'initiate_escape'|'finalize_escape'='deposit',failedKind:'create'|'append'|'execute'='execute') {
   const directory=await mkdtemp(join(tmpdir(),'zkapi-wallet-recovery-'));t.after(()=>rm(directory,{recursive:true,force:true}));
   const store=await NativeJournalStore.open(directory),aes=await importJournalKey(new Uint8Array(32).fill(14));
   const open=()=>new EncryptedJournal<NoteJournal>(store,aes,{deploymentId:'fixture',pool:key(fixture.pool)},validateNoteJournal);
@@ -57,7 +60,7 @@ async function setup(t:TestContext,kind:'deposit'|'mutual_close'|'initiate_escap
     tree:async(note:{note_id:number})=>{const proof=structuredClone(fixture.trees[operation==='deposit'?0:1]);proof.public_inputs[3]=field(note.note_id);return proof;},withdrawal:async()=>fixture.auth.withdrawal} as unknown as NoteProver;
   const options:WalletOptions={manifest,journal,prover,rpc,wallets:[wallet],chain:{snapshot:async(_id,_path,min)=>{minimumSnapshotSlot=min;return structuredClone(snapshot);},buffer:async(_plan,min)=>{minimumBufferSlot=min;return absent?null:{address:plan.buffer,owner:plan.programId,data:new Uint8Array(),slot:100,commitment:'finalized'};},blockhash:async()=>({blockhash:kitAddress(new Uint8Array(32).fill(8)),lastValidBlockHeight:200})}};
   await journal.create('note',{schema:1,state,witness,pending:null,history:[],wallet:{status:kind==='deposit'?'unfunded':kind==='finalize_escape'?'pending_escape':'active',history:[],...(kind==='mutual_close'?{clearance}:{}),operation:{id:crypto.randomUUID(),kind,phase:'ready',current:attempt.signature,roles,destinationOwner:kind==='deposit'?undefined:destination,step:plan.steps.findIndex(s=>s.kind===failedKind),attempts:[attempt],finalized:[],...(kind==='finalize_escape'?{finalization:(attempt as FinalizationAttempt).finalization}:{plan:snapshotPlan(plan)})}}});
-  return {options,journal,plan,snapshot,attempt,client:new WalletClient(options),restart:()=>new WalletClient({...options,journal:open()}),setAbsent:()=>{absent=true;},setReceipt:(value:FinalizedReceipt|null)=>{receipt=value;},makeReceipt,getMinimumBufferSlot:()=>minimumBufferSlot,getMinimumSnapshotSlot:()=>minimumSnapshotSlot,getRebaseCalls:()=>rebaseCalls};
+  return {options,journal,store,plan,snapshot,attempt,client:new WalletClient(options),restart:()=>new WalletClient({...options,journal:open()}),setAbsent:()=>{absent=true;},setReceipt:(value:FinalizedReceipt|null)=>{receipt=value;},makeReceipt,getMinimumBufferSlot:()=>minimumBufferSlot,getMinimumSnapshotSlot:()=>minimumSnapshotSlot,getRebaseCalls:()=>rebaseCalls};
 }
 
 function observeOnly(h:Awaited<ReturnType<typeof setup>>) {
@@ -178,3 +181,142 @@ test('a failed durable commit leaves the saved final transaction available for l
   assert.deepEqual(await client.observe('note',h.attempt.signature),{state:'complete'});
   assert.deepEqual(forbidden,[]);
 });
+
+for(const kind of ['deposit','mutual_close','initiate_escape'] as const){
+  test(`local ${kind} progress derives each proof stage and exact chunk count from its saved plan`,async t=>{
+    const h=await setup(t,kind),op=(await h.journal.read('note'))!.value.wallet!.operation!;
+    delete op.current;op.attempts=[];
+    const chunks=h.plan.steps.filter(s=>s.kind==='append').length;
+    assert.ok(chunks>0);
+    for(const [index,step] of h.plan.steps.entries()){
+      op.step=index;
+      const progress=await walletOperationProgress(op);
+      assert.deepEqual(progress.proofUpload,{confirmedChunks:h.plan.steps.slice(0,index).filter(s=>s.kind==='append').length,totalChunks:chunks});
+      assert.equal(progress.nextAction,'approve_transaction');
+      assert.equal(progress.stage,step.kind==='create'?'creating_proof_account':step.kind==='append'?'uploading_proof':step.kind==='seal'?'sealing_proof'
+        :kind==='deposit'?'submitting_deposit':kind==='initiate_escape'?'starting_waiting_period':'submitting_withdrawal');
+    }
+    op.phase='proving';delete op.plan;
+    assert.deepEqual(await walletOperationProgress(op),{stage:'preparing_proof',nextAction:'prepare_proof',proofUpload:null});
+    op.phase='ready';
+    assert.deepEqual(await walletOperationProgress(op),{stage:'unknown',nextAction:'review_failure',proofUpload:null});
+  });
+}
+
+test('signed proof status waits for confirmation and advances only from verified observation',async t=>{
+  const h=await setup(t,'mutual_close','create'),{client,forbidden}=observeOnly(h);
+  const read=async()=>walletOperationProgress((await h.journal.read('note'))!.value.wallet!.operation!);
+  assert.equal((await read()).stage,'creating_proof_account');
+  assert.equal((await read()).nextAction,'wait_for_confirmation');
+  h.setReceipt(null);await client.observe('note',h.attempt.signature);
+  assert.equal((await read()).proofUpload!.confirmedChunks,0);
+  h.setReceipt(h.makeReceipt(h.attempt,null));await client.observe('note',h.attempt.signature);
+  assert.equal((await read()).stage,'uploading_proof');
+  assert.equal((await read()).nextAction,'approve_transaction');
+  assert.equal((await read()).proofUpload!.confirmedChunks,0);
+  assert.deepEqual(forbidden,[]);
+});
+
+test('a proof chunk is counted only after its exact signed upload is confirmed',async t=>{
+  const h=await setup(t,'mutual_close','append'),{client,forbidden}=observeOnly(h);
+  const read=async()=>walletOperationProgress((await h.journal.read('note'))!.value.wallet!.operation!);
+  h.setReceipt(null);await client.observe('note',h.attempt.signature);
+  assert.equal((await read()).proofUpload!.confirmedChunks,0);
+  assert.equal((await read()).nextAction,'wait_for_confirmation');
+  h.setReceipt(h.makeReceipt(h.attempt,null));await client.observe('note',h.attempt.signature);
+  assert.equal((await read()).proofUpload!.confirmedChunks,1);
+  assert.equal((await read()).nextAction,'approve_transaction');
+  assert.deepEqual(forbidden,[]);
+});
+
+test('failed and stale proof phases expose review or cleanup without declaring withdrawal complete',async t=>{
+  const h=await setup(t,'mutual_close'),op=(await h.journal.read('note'))!.value.wallet!.operation!;
+  delete op.current;
+  op.phase='failed';assert.equal((await walletOperationProgress(op)).nextAction,'review_failure');
+  op.phase='stale';assert.equal((await walletOperationProgress(op)).nextAction,'refresh_proof');
+  assert.equal((await walletOperationProgress(op)).stage,'cleaning_up_proof');
+  op.phase='closing_stale';assert.equal((await walletOperationProgress(op)).nextAction,'approve_transaction');
+  assert.equal((await walletOperationProgress(op)).stage,'cleaning_up_proof');
+});
+
+test('escape deadline reads finalized Note/Pending/Clock without changing or sending saved work',async t=>{
+  const h=await setup(t,'finalize_escape'),{client,forbidden}=observeOnly(h),before=(await h.journal.read('note'))!;
+  assert.deepEqual(client.cachedEscapeWithdrawal('note',before.revision),unknownEscapeWithdrawal());
+  h.snapshot.clock=String(fixture.now-1);
+  const waiting=await client.checkEscapeWithdrawal('note');
+  assert.deepEqual(waiting,{availability:'waiting',executableAt:String(fixture.now),observedChainTime:String(fixture.now-1),observedSlot:100});
+  assert.deepEqual(client.cachedEscapeWithdrawal('note',before.revision),waiting);
+  waiting.availability='ready';assert.equal(client.cachedEscapeWithdrawal('note',before.revision).availability,'waiting');
+  h.snapshot.clock=String(fixture.now);
+  assert.equal((await client.checkEscapeWithdrawal('note')).availability,'ready');
+  assert.equal(h.getMinimumSnapshotSlot(),20);
+  assert.deepEqual(await h.journal.read('note'),before);assert.deepEqual(forbidden,[]);
+  assert.deepEqual(h.restart().cachedEscapeWithdrawal('note',before.revision),unknownEscapeWithdrawal());
+  assert.deepEqual(client.cachedEscapeWithdrawal('note',before.revision+1),unknownEscapeWithdrawal());
+  h.snapshot.note!.status='closed';
+  assert.deepEqual(await client.checkEscapeWithdrawal('note'),{availability:'unavailable',executableAt:null,observedChainTime:String(fixture.now),observedSlot:100});
+});
+
+for(const invalid of ['nullifier','balance','destination','expiry','clock','deadline','slot','network'] as const){
+  test(`escape deadline fails closed for invalid ${invalid} and clears prior readiness`,async t=>{
+    const h=await setup(t,'finalize_escape'),{client,forbidden}=observeOnly(h),before=(await h.journal.read('note'))!;
+    assert.equal((await client.checkEscapeWithdrawal('note')).availability,'ready');
+    if(invalid==='nullifier')h.snapshot.pending!.nullifier=field(1);
+    if(invalid==='balance')h.snapshot.pending!.balance_micro_usdc='1';
+    if(invalid==='destination')h.snapshot.pending!.destinationOwner=h.options.wallets[0].publicKey;
+    if(invalid==='expiry')h.snapshot.note!.expiry='1';
+    if(invalid==='clock')h.snapshot.clock='-1';
+    if(invalid==='deadline')h.snapshot.pending!.deadline='bad';
+    if(invalid==='slot')h.snapshot.slot=19;
+    if(invalid==='network')h.options.chain.snapshot=async()=>{throw Error('unavailable');};
+    await assert.rejects(client.checkEscapeWithdrawal('note'));
+    assert.deepEqual(client.cachedEscapeWithdrawal('note',before.revision),unknownEscapeWithdrawal());
+    assert.deepEqual(await h.journal.read('note'),before);assert.deepEqual(forbidden,[]);
+  });
+}
+
+for(const boundary of ['read','withNoteLock'] as const){
+  test(`escape readiness clears before a failing journal ${boundary}`,async t=>{
+    const h=await setup(t,'finalize_escape'),before=(await h.journal.read('note'))!;
+    assert.equal((await h.client.checkEscapeWithdrawal('note')).availability,'ready');
+    const failure=t.mock.method(h.journal,boundary,async()=>{throw Error('backup unavailable');});
+    await assert.rejects(h.client.checkEscapeWithdrawal('note'),/backup unavailable/);
+    failure.mock.restore();
+    assert.deepEqual(h.client.cachedEscapeWithdrawal('note',before.revision),unknownEscapeWithdrawal());
+    assert.deepEqual(await h.journal.read('note'),before);
+  });
+}
+
+test('facade readiness clears before a failing outer application lock',async t=>{
+  const h=await setup(t,'finalize_escape');
+  const client=new ZkApiClient({wallet:h.options,store:h.store,noteId:'note',mode:'proxy',control:{clearEphemeralKeys(){}} as ControlClient,
+    models:[{id:'fixture',provider:'openrouter',apis:['chat'],tariff:{tariff_hash:'00'.repeat(32),version:'1',provider:'openrouter',model:'fixture',pricing_basis:'fixed_usage_rates',valid_from:'0',valid_until:'9999999999',rates:[],operator_fee_micro_usdc:'0'}}]});
+  t.after(()=>client.dispose());
+  assert.equal((await client.checkEscapeWithdrawal()).availability,'ready');
+  assert.equal((await client.status()).escapeWithdrawal!.availability,'ready');
+  const before=await h.journal.read('note');
+  const failure=t.mock.method(h.store,'withLock',async()=>{throw Error('backup lock unavailable');});
+  await assert.rejects(client.checkEscapeWithdrawal(),/backup lock unavailable/);
+  failure.mock.restore();
+  assert.deepEqual((await client.status()).escapeWithdrawal,unknownEscapeWithdrawal());
+  assert.deepEqual(await h.journal.read('note'),before);
+});
+
+for(const invalid of ['deadline','balance','destination','challenged','snapshot'] as const){
+  test(`unsigned finalization rechecks ${invalid} before any wallet prompt`,async t=>{
+    const h=await setup(t,'finalize_escape'),r=(await h.journal.read('note'))!;
+    delete r.value.wallet!.operation!.current;r.value.wallet!.operation!.attempts=[];
+    await h.journal.compareAndSwap('note',r.revision,r.value);
+    const before=await h.journal.read('note'),forbidden:string[]=[];
+    h.options.wallets=[{...h.options.wallets[0],signTransaction:async()=>{forbidden.push('sign');throw Error('unexpected sign');}}];
+    h.options.chain.blockhash=async()=>{forbidden.push('blockhash');throw Error('unexpected blockhash');};
+    h.options.rpc.sendRawTransaction=async()=>{forbidden.push('send');throw Error('unexpected send');};
+    if(invalid==='deadline')h.snapshot.clock=String(fixture.now-1);
+    if(invalid==='balance')h.snapshot.pending!.balance_micro_usdc='1';
+    if(invalid==='destination')h.snapshot.pending!.destinationOwner=h.options.wallets[0].publicKey;
+    if(invalid==='challenged')h.snapshot.note!.status='active';
+    if(invalid==='snapshot')h.options.chain.snapshot=async()=>{throw Error('unavailable');};
+    await assert.rejects(new WalletClient(h.options).advance('note'));
+    assert.deepEqual(forbidden,[]);assert.deepEqual(await h.journal.read('note'),before);
+  });
+}

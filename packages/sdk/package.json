@@ -1,6 +1,6 @@
 {
   "name": "@zkapi/solana-sdk",
-  "version": "0.2.0-devnet.18",
+  "version": "0.2.0-devnet.19",
   "private": true,
   "type": "module",
   "exports": {

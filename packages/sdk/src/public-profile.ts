@@ -104,7 +104,7 @@ function validateProfile(value: unknown): PublicDeploymentProfile {
     && new Set(value.sdkVersions).size === value.sdkVersions.length);
   const compatible = value.sdkVersions.includes(PUBLIC_PROFILE_SDK_VERSION)
     // Observation/verifier updates preserve authenticated .13 through .16 selections.
-    || value.sdkVersions.some((version: string) => ['0.2.0-devnet.13','0.2.0-devnet.14','0.2.0-devnet.15','0.2.0-devnet.16','0.2.0-devnet.17'].includes(version))
+    || value.sdkVersions.some((version: string) => ['0.2.0-devnet.13','0.2.0-devnet.14','0.2.0-devnet.15','0.2.0-devnet.16','0.2.0-devnet.17','0.2.0-devnet.18'].includes(version))
     || value.schema === 1 && value.sdkVersions.some((version: string) => LEGACY_PROFILE_SDK_VERSIONS.has(version));
   if (!compatible || value.protocolLayoutVersion !== 2) throw new PublicProfileError('compatibility');
   fields(value.bundle,['url','sha256']); publicUrl(value.bundle.url); digest(value.bundle.sha256);

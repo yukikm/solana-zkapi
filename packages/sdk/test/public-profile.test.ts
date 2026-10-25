@@ -20,8 +20,8 @@ test('legacy inference SDK profile compatibility preserves exact authenticated b
     assert(f.calls.every(call=>call.method==='GET'));assert(!f.calls.some(call=>/quotes|sessions|notes/.test(call.url)));
   }
 });
-test('recovery update preserves .13/.14/.15 profiles and exact pins across all supported schemas',async()=>{
-  for(const version of ['0.2.0-devnet.13','0.2.0-devnet.14','0.2.0-devnet.15'])for(const schema of [1,2,3]){
+test('SDK updates preserve .13 through .18 profiles and exact pins across all supported schemas',async()=>{
+  for(const version of ['0.2.0-devnet.13','0.2.0-devnet.14','0.2.0-devnet.15','0.2.0-devnet.16','0.2.0-devnet.17','0.2.0-devnet.18'])for(const schema of [1,2,3]){
     const f=schema===3?await gatewayPublicProfileFixture():schema===2?await publicProfileFixture({schema:2,selection:'api'}):await publicProfileFixture();
     f.profile.sdkVersions=[version];
     const original=jcsBytes(f.profile),pin=await f.profileSha256();

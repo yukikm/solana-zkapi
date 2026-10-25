@@ -1,5 +1,7 @@
 # Solana zkAPI SDK
 
+SDK `.19` adds [withdrawal progress and verified waiting-period status](../../docs/releases/withdrawal-status-preview.md). Applications can label each approval and enable finalization only after an explicit read-only finalized-chain check. Existing recovery kits, profiles and journals remain compatible.
+
 SDK `.18` adds [recoverable custody](../../docs/sdk/recoverable-custody.md) for browser and Node.js. A separately saved recovery kit opens the latest encrypted external journal after device-data loss. Enrollment and restore are explicit; local custody is never silently replaced. The [release guide](../../docs/releases/recoverable-custody-preview.md) describes the trust and single-device limits. Native installers remain at `.15`.
 
 It includes `.17` read-only `observeWallet(expectedSignature)` confirmation and `.16` explicit operator waiver support. Observation never signs or sends a transaction. Waivers require the independently pinned matching client verifier; keep original profiles, notes and recovery runtimes.

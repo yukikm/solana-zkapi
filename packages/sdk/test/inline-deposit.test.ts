@@ -15,6 +15,7 @@ import {join} from 'node:path';
 
 import bs58 from 'bs58';
 import {WalletClient,type WalletOptions} from '../src/wallet.ts';
+import {walletOperationProgress} from '../src/wallet-progress.ts';
 import {ZkApiClient} from '../src/client.ts';
 import type {ControlClient} from '../src/control.ts';
 import {EncryptedJournal,importJournalKey,type AtomicJournalStore} from '../src/journal.ts';
@@ -99,7 +100,9 @@ test('compact self-pay and independent payer plans use one financial instruction
 
 test('normal inline deposit signs once, sends once, binds finalized receipt and note, and remains schema 2',async t=>{
   const h=await setup(t),initial=(await h.open().read('note'))!;assert.equal(initial.value.schema,2);assert.equal(initial.value.wallet!.operation!.transport,'v0_inline_deposit_v1');
+  assert.deepEqual(await walletOperationProgress(initial.value.wallet!.operation!),{stage:'submitting_deposit',nextAction:'approve_transaction',proofUpload:null});
   assert.deepEqual(await h.client.advance('note'),{state:'pending'});assert.deepEqual(h.counts,{sign:1,send:1,rebase:0,proof:1,blockhash:1});
+  assert.equal((await walletOperationProgress((await h.open().read('note'))!.value.wallet!.operation!)).nextAction,'wait_for_confirmation');
   await h.fund();assert.deepEqual(await h.restart().advance('note'),{state:'complete'});
   const done=(await h.open().read('note'))!;assert.equal(done.value.schema,2);assert.equal(done.value.wallet!.status,'active');assert.equal(done.value.wallet!.history[0].finalized.length,1);assert.equal(h.counts.sign,1);assert.equal(h.counts.send,1);
 });
@@ -141,6 +144,7 @@ test('expired, confirmed, mismatched receipt and RPC disagreement cannot rebase,
 test('exact finalized stale rejection requires explicit retry; reproof preserves operation, secret and amount',async t=>{
   const h=await setup(t);await h.client.advance('note');const before=(await h.open().read('note'))!;
   h.behavior.receipt=await h.receipt({InstructionError:[2,{Custom:6007}]});assert.equal((await h.client.advance('note')).state,'rejected');
+  assert.equal((await walletOperationProgress((await h.open().read('note'))!.value.wallet!.operation!)).nextAction,'review_failure');
   await assert.rejects(h.restart().advance('note'),/explicit review/);await assert.rejects(h.restart().resumeProof('note'));
   await h.restart().retryRejected('note');h.snapshot.slot=30;h.snapshot.nextNoteId=1;h.snapshot.clock=String(fixture.now+86400);
   await h.restart().resumeProof('note');const after=(await h.open().read('note'))!;

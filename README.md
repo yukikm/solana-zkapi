@@ -1,6 +1,6 @@
 # Solana ZKAPI
 
-SDK `.18` adds [recoverable custody for browser and Node.js](docs/sdk/recoverable-custody.md), including explicit recovery after device-data loss. Native installers remain at `.15`. See the [release and validation scope](docs/releases/recoverable-custody-preview.md).
+SDK `.19` adds [withdrawal progress and verified waiting-period status](docs/releases/withdrawal-status-preview.md). It retains `.18` [recoverable custody for browser and Node.js](docs/sdk/recoverable-custody.md), including explicit recovery after device-data loss. Native installers remain at `.15`.
 
 ZKAPI provides USDC payments and zero-knowledge usage authorization for APIs on
 Solana. Its payment lifecycle combines local proofs, capped authorization,

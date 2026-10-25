@@ -128,6 +128,7 @@ retirement is required.
 | `recoverExpiredWalletSetup()` | Create-only anchored-absence recovery, not unknown financial replacement |
 | `fallbackToEscape()` | Explicit switch from unsigned blocked mutual close to escape |
 | `prepareFinalizeEscape()` | Prepare after the chain-verified challenge deadline |
+| `checkEscapeWithdrawal()` | Read finalized Note/Pending/Clock and publish the observed challenge deadline; no signatures, sends or journal changes |
 
 The facade uses the selected wallet for funding and all payer roles. Sponsored
 or multiple-signer roles remain available through `WalletClient`. Methods do
@@ -145,6 +146,25 @@ its cap. `lastSettlement.chargeMicroUsdc` is verified; do not bill from response
 token counts or an answer on screen.
 An active `status.session` alone is not a recovery condition; use `canRequest`
 for the Send control and show settlement separately from response completion.
+
+`walletOperation.progress` describes the current saved transaction: proof
+preparation, proof account creation, upload, sealing, financial execution or
+cleanup. `nextAction` distinguishes proof preparation, wallet approval,
+confirmation waiting and explicit failure review. `proofUpload` contains exact
+`confirmedChunks` and `totalChunks` for the current saved plan, or `null` when
+unknown. Chunk completion is not withdrawal completion. Use
+`observeWallet(signature)` for a saved signature; never automatically approve
+the next unsigned transaction. `status()` remains local and does not contact RPC.
+
+For `wallet === 'pending_escape'`, `escapeWithdrawal` starts with
+`availability: 'unknown'`. Call `checkEscapeWithdrawal()` to obtain `waiting`,
+`ready` or `unavailable`, together with `executableAt` (Unix seconds),
+`observedChainTime` and `observedSlot` from verified finalized accounts. Show the
+deadline as a local date and time. A device-clock countdown is only a display
+hint: refresh chain eligibility before offering finalization. The cache is
+invalidated by restart, a journal revision change or a failed check. `unavailable`
+means the chain no longer has the expected pending escape; it does not settle or
+recover the journal. Finalization rechecks eligibility before any new signature.
 
 `canReconcileUnacceptedAuthorization` enables the explicit clearance action only
 for an active note with an uncertain AUTH, no observed acceptance or inference,

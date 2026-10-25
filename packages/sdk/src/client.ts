@@ -15,6 +15,8 @@ import { NoteProver, type ClientProver } from './prover.ts';
 import { connectionTransport, type V0Wallet, type TransactionPreparationCommitment } from './transport.ts';
 import { verifyManifest, jcsBytes, sha256Hex, type ArtifactBundle, type ManifestTrustPolicy, type VerifiedManifest } from './trust.ts';
 import { WalletClient, type WalletOptions } from './wallet.ts';
+import { walletOperationProgress, type WalletOperationProgress, type EscapeWithdrawalStatus } from './wallet-progress.ts';
+export type { WalletOperationProgress, EscapeWithdrawalStatus } from './wallet-progress.ts';
 import { SolanaWalletChain } from './wallet-chain.ts';
 import { authorizationSnapshot } from './session-snapshot.ts';
 import { validateDaemonModelPolicy, validateModelRequestCapabilities, type DaemonApi } from './clientd-models.ts';
@@ -80,10 +82,12 @@ export interface ClientStatus {
   canPrepareEmergencyEscape: boolean;
   canReconcileChallengedEscape: boolean;
   emergencyEscape: { phase: 'escaping' | 'challenged' | 'settled' } | null;
+  /** Latest explicit finalized-chain check; unknown after restart or journal change. */
+  escapeWithdrawal: EscapeWithdrawalStatus | null;
   busy: boolean;
   session: { id: string; phase: string; serverState: string | null; recovery: RecoveryResult['recovery']; operations: { id: string; phase: string }[] } | null;
   recovery: RecoveryResult;
-  walletOperation: { kind: string; phase: string; signature: string | null; destinationOwner: string | null } | null;
+  walletOperation: { kind: string; phase: string; signature: string | null; destinationOwner: string | null; progress: WalletOperationProgress } | null;
   expiry: ReturnType<typeof expiryNotice> | null;
   lastSettlement: { chargeMicroUsdc: string; operationIds: string[] } | null;
   privacyNotice: string;
@@ -217,13 +221,14 @@ export class ZkApiClient {
           || w?.status === 'active' && w.operation === escapeOperation)
         && escapeAttempt?.kind === 'execute',
       emergencyEscape: emergency ? { phase: emergency.phase } : null,
+      escapeWithdrawal: w?.status==='pending_escape'&&r?this.walletClient.cachedEscapeWithdrawal(this.options.noteId,r.revision):null,
       busy: this.busy,
       session: p ? { id: p.prepared.request.authorization.request_id, phase: p.phase,
         serverState: p.serverState ?? null, recovery: p.recovery ? structuredClone(p.recovery) : null,
         operations: p.operations.map(o => ({ id: o.id, phase: o.phase })) } : null,
       recovery: this.daemon.recoveryStatus(v),
       walletOperation: w?.operation ? { kind: w.operation.kind, phase: w.operation.phase, signature: w.operation.current ?? null,
-        destinationOwner: w.operation.destinationOwner ?? null } : null,
+        destinationOwner: w.operation.destinationOwner ?? null, progress: await walletOperationProgress(w.operation) } : null,
       expiry, lastSettlement: last ? { chargeMicroUsdc: last.settlement.charge_micro_usdc, operationIds: last.operations.map(o => o.id) } : null,
       privacyNotice: this.options.mode === 'proxy' ? PROXY_PRIVACY_NOTICE : this.options.mode === 'direct_openrouter' ? DIRECT_OPENROUTER_PRIVACY_NOTICE : DIRECT_PRIVACY_NOTICE,
       privacy: privacyProfile(this.options.mode, this.options.keyReuseSeconds ?? (this.options.mode === 'proxy' ? 0 : 300)),
@@ -318,6 +323,11 @@ export class ZkApiClient {
   }
   fallbackToEscape(): Promise<void> { return this.action(() => this.walletClient.fallbackToEscape(this.options.noteId)); }
   prepareFinalizeEscape(): Promise<void> { return this.action(() => this.walletClient.beginFinalize(this.options.noteId, this.roles())); }
+  /** Check the verified challenge deadline without prompting or sending. */
+  checkEscapeWithdrawal(): Promise<EscapeWithdrawalStatus> {
+    this.walletClient.clearEscapeWithdrawalObservation(this.options.noteId);
+    return this.action(() => this.walletClient.checkEscapeWithdrawal(this.options.noteId), false);
+  }
   private roles() {
     const owner = this.options.wallet.wallets[0].publicKey;
     return { uploader: owner, rentPayer: owner, feePayer: owner, payer: owner, tokenOwner: owner };

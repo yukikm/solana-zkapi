@@ -13,6 +13,7 @@ import { buildUploadPlan, snapshotPlan, restorePlan, prepareAttempt, recoverAtte
   type InlineDepositPlanRecord, type InlineDepositAttempt, type FinancialAttempt,
   type Attempt, type FinalizationAttempt, type PlanRecord, type V0Wallet, type TransportRpc, type Recovery, type FinalizationPlan } from './transport.ts';
 import type { WalletChain, WalletSnapshot } from './wallet-chain.ts';
+import { unknownEscapeWithdrawal, type EscapeWithdrawalStatus } from './wallet-progress.ts';
 
 export interface WalletRoles { uploader?:string;rentPayer?:string;feePayer:string;payer:string;tokenOwner?:string }
 export interface InlineDepositRoles { feePayer:string;payer:string;tokenOwner:string }
@@ -56,6 +57,7 @@ export type WalletObservation = WalletProgress | { state: 'changed' };
 
 export class WalletClient {
   private readonly o:WalletOptions;
+  private readonly escapeObservations = new Map<string, { revision: number; status: EscapeWithdrawalStatus }>();
   constructor(options:WalletOptions){if(options.priorityFeeMicroLamports!==undefined)u64(options.priorityFeeMicroLamports);this.o={...options,wallets:[...options.wallets]};}
   private async record(id:string):Promise<JournalRecord<NoteJournal>>{const r=await this.o.journal.read(id);requireTrue(r?.value.witness&&r.value.wallet,'full note witness and wallet journal required');const op=r.value.wallet.operation;if(op?.transport==='v0_inline_deposit_v1')this.inlinePins(op.inlineContext);return r;}
   private inlineContext():InlineContext{const m=this.o.manifest;return {deploymentId:m.deployment_id,manifestHash:m.manifest_hash,programId:m.program_id,pool:m.pool,mint:m.mint,vaultBinding:m.vault_binding};}
@@ -67,6 +69,45 @@ export class WalletClient {
     const w=r.value.witness!,identity=await this.o.prover.inspect(w,r.value.state);
     requireTrue(s.note&&s.note.note_id===w.note_id&&s.note.registration_commitment===identity.registration_commitment&&s.note.deposit_micro_usdc===w.deposit_micro_usdc&&s.note.expiry===w.expiry,'finalized note does not match secret witness');
     return {note_id:w.note_id,registration_commitment:identity.registration_commitment,deposit_micro_usdc:w.deposit_micro_usdc,expiry:w.expiry};
+  }
+  /** Cached observation only; a journal change or restart requires a fresh check. */
+  cachedEscapeWithdrawal(id:string,revision:number):EscapeWithdrawalStatus {
+    const cached=this.escapeObservations.get(id);
+    return cached?.revision===revision?structuredClone(cached.status):unknownEscapeWithdrawal();
+  }
+  /** Invalidate before acquiring external storage locks for a new explicit check. */
+  clearEscapeWithdrawalObservation(id:string):void {this.escapeObservations.delete(id);}
+  private async escapeSnapshot(r:JournalRecord<NoteJournal>,minimumSlot=0):Promise<WalletSnapshot>{
+    const escaped=r.value.wallet!.history.filter(o=>o.kind==='initiate_escape').at(-1);
+    minimumSlot=Math.max(minimumSlot,...(escaped?.finalized??[]).map(f=>f.slot));
+    const s=await this.o.chain.snapshot(r.value.witness!.note_id,'none',minimumSlot);
+    requireTrue(Number.isSafeInteger(s.slot)&&s.slot>=minimumSlot,'stale finalized escape snapshot');
+    await this.note(r,s);
+    if(s.note!.status==='pending_escape'){
+      const identity=await this.o.prover.inspect(r.value.witness!,r.value.state);
+      const destination=r.value.wallet!.operation?.kind==='finalize_escape'
+        ?r.value.wallet!.operation.destinationOwner:escaped?.destinationOwner;
+      requireTrue(s.pending?.nullifier===identity.nullifier&&s.pending.balance_micro_usdc===r.value.state.balance_micro_usdc
+        &&(!destination||s.pending.destinationOwner===destination),'saved escape Pending mismatch');
+      requireTrue(/^(0|[1-9][0-9]*)$/.test(s.pending.deadline)&&/^(0|[1-9][0-9]*)$/.test(s.clock),'invalid escape chain time');
+    }
+    return s;
+  }
+  /** Explicit network-read-only finalized Note/Pending/Clock check. No journal
+   * write, signature, transaction dispatch or financial reconciliation. */
+  async checkEscapeWithdrawal(id:string):Promise<EscapeWithdrawalStatus>{
+    this.clearEscapeWithdrawalObservation(id);
+    return this.o.journal.withNoteLock(id,async()=>{
+      const r=await this.record(id);
+      requireTrue(r.value.wallet!.status==='pending_escape','pending escape required');
+      const s=await this.escapeSnapshot(r,r.value.wallet!.operation?.finalization?.snapshotSlot??0);
+      const status:EscapeWithdrawalStatus={
+        availability:s.note!.status!=='pending_escape'?'unavailable':BigInt(s.clock)>=BigInt(s.pending!.deadline)?'ready':'waiting',
+        executableAt:s.note!.status==='pending_escape'?s.pending!.deadline:null,
+        observedChainTime:s.clock,observedSlot:s.slot,
+      };
+      this.escapeObservations.set(id,{revision:r.revision,status});return structuredClone(status);
+    });
   }
   /** Import verifies the actual finalized Note and private commitment/signature. */
   async importFinalized(id:string,witness:NoteWitness,state:PrivateState):Promise<void>{
@@ -461,10 +502,10 @@ export class WalletClient {
   async beginFinalize(id:string,roles:WalletRoles):Promise<void>{
     roles=this.roles(roles);
     await this.o.journal.withNoteLock(id,async()=>{
+      this.escapeObservations.delete(id);
       let r=await this.record(id);requireTrue(!r.value.pending&&!r.value.wallet!.operation&&r.value.wallet!.status==='pending_escape','pending escape required');
-      const s=await this.o.chain.snapshot(r.value.witness!.note_id,'zero');await this.note(r,s);
-      const identity=await this.o.prover.inspect(r.value.witness!,r.value.state);
-      requireTrue(s.note?.status==='pending_escape'&&s.pending?.nullifier===identity.nullifier&&BigInt(s.clock)>=BigInt(s.pending.deadline),'escape challenge period has not ended');
+      const s=await this.escapeSnapshot(r);
+      requireTrue(s.note?.status==='pending_escape'&&s.pending&&BigInt(s.clock)>=BigInt(s.pending.deadline),'escape challenge period has not ended');
       const m=this.o.manifest,financial=await vaultAccounts({programId:address(m.program_id),pool:address(m.pool),mint:address(m.mint),payer:address(roles.payer),operation:'finalize_escape',noteId:r.value.witness!.note_id,destinationOwner:address(s.pending.destinationOwner),treasuryOwner:address(s.treasuryOwner)});
       r.value.wallet!.operation={id:crypto.randomUUID(),kind:'finalize_escape',phase:'ready',roles,destinationOwner:s.pending.destinationOwner,step:0,attempts:[],finalized:[],finalization:{programId:m.program_id,pool:m.pool,noteId:r.value.witness!.note_id,feePayer:roles.feePayer,financial:{...financial},snapshotSlot:s.slot,snapshotSequence:s.sequence}};
       r=await this.save(id,r);
@@ -523,6 +564,13 @@ export class WalletClient {
           attempt=await prepareInlineDepositAttempt(plan,await this.o.chain.blockhash(),this.signers(plan.steps[0].instruction,plan.feePayer),{save:saveAttempt});freshInline=true;
         }else if(op.kind==='finalize_escape'){
           const p=op.finalization!;
+          // A prepared unsigned action is not proof of current eligibility.
+          // Recheck before blockhash acquisition or any wallet prompt. Existing
+          // signed attempts stay on their exact-byte observation/recovery path.
+          this.escapeObservations.delete(id);
+          const latest=await this.escapeSnapshot(r,p.snapshotSlot);
+          requireTrue(latest.note?.status==='pending_escape'&&latest.pending
+            &&BigInt(latest.clock)>=BigInt(latest.pending.deadline),'escape challenge period has not ended');
           const plan:FinalizationPlan={programId:address(p.programId),pool:address(p.pool),noteId:p.noteId,feePayer:address(p.feePayer),financial:Object.fromEntries(Object.entries(p.financial).map(([k,v])=>[k,address(v)])) as FinalizationPlan['financial'],snapshot:{slot:p.snapshotSlot,sequence:BigInt(p.snapshotSequence)}};
           const step=await finalizeEscape(plan.programId,plan.financial,plan.noteId);
           attempt=await prepareFinalizationAttempt(plan,await this.o.chain.blockhash(),this.signers(step.instruction,plan.feePayer),{save:saveAttempt});

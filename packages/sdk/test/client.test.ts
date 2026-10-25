@@ -316,9 +316,13 @@ test('challenge recovery remains visible after finalization preparation without 
   const before = (await f.journal.read('note'))!, counts = { ...f.counts }, next = f.restart(), status = await next.status();
   assert.equal(status.canReconcileChallengedEscape, true);
   assert.equal(status.walletOperation!.kind, 'finalize_escape');
+  assert.deepEqual(status.walletOperation!.progress,{stage:'finalizing_withdrawal',nextAction:'approve_transaction',proofUpload:null});
+  assert.deepEqual(status.escapeWithdrawal,{availability:'unknown',executableAt:null,observedChainTime:null,observedSlot:null});
   assert.equal(status.canRequest, false); assert.equal(status.canPrepareEmergencyEscape, false);
   assert.equal(status.wallet, 'pending_escape'); assert.deepEqual(status.emergencyEscape, { phase: 'escaping' });
   assert.deepEqual(f.counts, counts); assert.deepEqual(await f.journal.read('note'), before);
+  await assert.rejects(next.checkEscapeWithdrawal(),/authorization must not select note accounts/);
+  assert.equal((await next.status()).escapeWithdrawal!.availability,'unknown');
   // The synthetic byte/receipt data cannot authorize recovery despite the hint.
   await assert.rejects(next.reconcileChallengedEscape());
   assert.deepEqual(await f.journal.read('note'), before); assert.deepEqual(f.counts, counts);

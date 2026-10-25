@@ -1,7 +1,7 @@
 # Support
 
 ZKAPI is a **Devnet preview**. The current SDK is
-[`.18`](releases/recoverable-custody-preview.md); native installers remain
+[`.19`](releases/withdrawal-status-preview.md); native installers remain
 [`.15`](releases/direct-recovery-preview.md). SDK `.18` adds explicit encrypted
 backup enrollment and browser/Node.js restoration after device-data loss, with
 local fixture validation on **2026-10-25 JST**. It requires a separately saved
