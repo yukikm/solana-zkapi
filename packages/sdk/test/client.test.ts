@@ -19,10 +19,15 @@ import { NativeJournalStore } from '../src/journal-node.ts';
 import { jcsBytes, sha256Hex, type VerifiedManifest } from '../src/trust.ts';
 import type { NoteProver } from '../src/prover.ts';
 import type { Attempt, PlanRecord } from '../src/transport.ts';
+import { chainFixture } from './chain-fixture.ts';
+import { verifyPoolConfig } from '../src/trust.ts';
+// Public client behavior is tested against the protocol value without importing
+// an internal SDK subpath (these tests also run from the installed tarball).
+const NON_EXPIRING_NOTE_EXPIRY = '18446744073709551615';
 
 const field = (n: number) => '0x' + n.toString(16).padStart(64, '0');
 const chat = (model = 'first') => ({ operationId: crypto.randomUUID(), model, messages: [{ role: 'user' as const, content: 'Hello' }], maxOutputTokens: 32 });
-async function setup(t: TestContext, mode: Mode = 'proxy', keyReuseSeconds?: number) {
+async function setup(t: TestContext, mode: Mode = 'proxy', keyReuseSeconds?: number, manifest?: VerifiedManifest) {
   const dir = await mkdtemp(join(tmpdir(), 'zkapi-app-')); t.after(() => rm(dir, { recursive: true, force: true }));
   const store = await NativeJournalStore.open(dir), key = await importJournalKey(new Uint8Array(32).fill(17));
   const makeJournal = () => new EncryptedJournal<NoteJournal>(store, key, { deploymentId: 'app-fixture', pool: 'pool' }, validateNoteJournal);
@@ -38,7 +43,7 @@ async function setup(t: TestContext, mode: Mode = 'proxy', keyReuseSeconds?: num
     control_api_origin: 'https://control.invalid', inference_api_origin: 'https://proxy.invalid', quote_public_key: bs58.encode(signer.publicKey.export({ format: 'der', type: 'spki' }).subarray(-32)),
     receipt_public_key: bs58.encode(retirementSigner.publicKey.export({format:'der',type:'spki'}).subarray(-32)), request_vk_sha256: '22'.repeat(32), tariff_hashes: models.map(m => m.tariff.tariff_hash) };
   const state = { balance_micro_usdc: '200', balance_blinding: field(3), note_leaf: field(4), commitment: { x: field(5), y: field(6) }, anchor: field(7), state_signature: null };
-  await journal.create('note', { schema: 1, state, witness: { secret: field(2), note_id: 1, deposit_micro_usdc: '200', expiry: '9999999999' },
+  await journal.create('note', { schema: 1, state, witness: { secret: field(2), note_id: 1, deposit_micro_usdc: '200', expiry: manifest?.note_ttl_seconds === '0' ? NON_EXPIRING_NOTE_EXPIRY : '9999999999' },
     wallet: { status: 'active', history: [] }, pending: null, history: [] });
   const counts = { quote: 0, proof: 0, auth: 0, sends: 0, closes: 0, settles: 0, wallet: 0, clearance: 0, clearanceVerifications: 0 };
   const behavior = { lose: false, closeUnavailable: false, closeDraining: false, httpStatus: 200, providerError: '', failVerifier: false, authUnknown: false, authConflict: false, stream: false, rejectQuote: false,
@@ -128,7 +133,7 @@ async function setup(t: TestContext, mode: Mode = 'proxy', keyReuseSeconds?: num
     const journal = makeJournal();
     const components: ClientComponents = { store, noteId: 'note', mode, models, keyReuseSeconds,
       control: new ControlClient({ context, journal, verifier, fetch: http, directProviderBases: { direct_openrouter: 'https://direct.invalid/v1' } }),
-      wallet: { manifest: { deployment_id: context.deployment_id, pool: context.pool, cap_micro_usdc: '100',
+      wallet: { manifest: manifest ?? { deployment_id: context.deployment_id, pool: context.pool, cap_micro_usdc: '100',
         control_api_origin: context.control_api_origin, inference_api_origin: context.inference_api_origin } as unknown as VerifiedManifest, journal, prover, fetch: http,
         chain: { async snapshot() { throw Error('authorization must not select note accounts'); },
           async sessionSnapshot() { return { root: field(1), siblings: Array(32).fill(field(0)), slot: 1, sequence: '1', nextNoteId: 2, clock: '100', paused: false }; },
@@ -480,6 +485,26 @@ test('invalid model, API, ID and body cannot start an authorization; abort-befor
   await assert.rejects(f.client.chat({ ...chat(), signal: AbortSignal.abort() }));
   assert.equal(f.counts.quote, 0); assert.equal(f.counts.sends, 0);
 });
+test('non-expiring client can dispatch with a canonical witness and rejects a mismatched witness before AUTH', async t => {
+  const f = await chainFixture({ noteTtlSeconds: '0', capMicroUsdc: '100' });
+  await verifyPoolConfig(f.manifest, f.manifest.genesis_hash, { address: f.manifest.pool, owner: f.manifest.program_id,
+    executable: false, lamports: 1n, data: f.poolData, slot: 100n, commitment: 'finalized' }, 100n);
+  const h = await setup(t, 'proxy', undefined, f.manifest);
+  const status = await h.client.status();
+  assert.equal(status.depositExpiryPolicy, 'none');
+  assert.equal(status.expiry, null);
+  assert.equal(status.canRequest, true);
+  await readChatText(await h.client.chat(chat()));
+  assert.equal(h.counts.sends, 1);
+  const r = (await h.journal.read('note'))!;
+  r.value.witness!.expiry = '9999999999';
+  await h.journal.compareAndSwap('note', r.revision, r.value);
+  const counts = { ...h.counts };
+  await assert.rejects(h.client.status(), /canonical expiry/);
+  await assert.rejects(h.client.chat(chat()), /canonical expiry/);
+  assert.deepEqual(h.counts, counts, 'mismatch must not prepare AUTH, sign or dispatch');
+});
+
 test('expired, cleared, closed and insufficient notes cannot start chat', async t => {
   for (const variant of ['expired', 'cleared', 'closed', 'insufficient']) {
     const f = await setup(t), r = (await f.journal.read('note'))!;

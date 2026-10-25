@@ -43,6 +43,7 @@ export interface Manifest {
 declare const verifiedManifestBrand: unique symbol;
 export type VerifiedManifest = Manifest & { readonly [verifiedManifestBrand]: true };
 const verifiedManifests = new WeakSet<object>();
+const verifiedNonExpiringPools = new WeakSet<object>();
 
 export interface ManifestTrustPolicy {
   /** An out-of-band digest or distribution key. A manifest cannot supply its own trust root. */
@@ -223,7 +224,7 @@ function validateManifest(value: unknown): asserts value is Manifest {
   strings(value.transaction_formats, true);
   requireTrue(value.transaction_formats.includes('v0_buffer') && value.transaction_formats.every(v => ['v0_buffer', 'v0_inline', 'v1_inline', 'v0_inline_deposit_v1'].includes(v)), 'mandatory v0_buffer');
   requireTrue(typeof value.cap_micro_usdc === 'string' && parseMicroUsdc(value.cap_micro_usdc) > 0n, 'positive cap');
-  uint(value.note_ttl_seconds, true); uint(value.challenge_seconds, true); uint(value.db_schema_version, true);
+  uint(value.note_ttl_seconds); uint(value.challenge_seconds, true); uint(value.db_schema_version, true);
   url(value.control_api_origin, value.deployment_environment === 'local', true);
   url(value.inference_api_origin, value.deployment_environment === 'local', true);
   url(value.proving_keys_base_url, value.deployment_environment === 'local', false);
@@ -256,6 +257,15 @@ function trusted(manifest: VerifiedManifest): void { requireTrue(verifiedManifes
 export function supportsInlineDeposit(manifest: VerifiedManifest): boolean {
   trusted(manifest);
   return manifest.transaction_formats.includes('v0_inline_deposit_v1');
+}
+
+/** Zero TTL is a protocol policy, never inferred from a note timestamp. A
+ * matching finalized Pool must have been authenticated in this SDK instance. */
+export function hasNonExpiringDeposits(manifest: VerifiedManifest): boolean {
+  if (manifest.note_ttl_seconds !== '0') return false;
+  trusted(manifest);
+  requireTrue(verifiedNonExpiringPools.has(manifest), 'non-expiring deposits require a verified finalized PoolConfig');
+  return true;
 }
 
 async function verifyCompactDepositIdl(idl: Record<string, Json>): Promise<void> {
@@ -359,6 +369,7 @@ export async function verifyPoolConfig(manifest: VerifiedManifest, observedGenes
   const view = new DataView(raw.buffer, raw.byteOffset, raw.byteLength);
   requireTrue(view.getBigUint64(331, true) === BigInt(manifest.note_ttl_seconds) && view.getBigUint64(339, true) === BigInt(manifest.challenge_seconds) && view.getBigUint64(347, true) === BigInt(manifest.cap_micro_usdc), 'PoolConfig timing/cap');
   requireTrue(raw[355] <= 1 && raw[356] === 1 && raw[357] === 1, 'PoolConfig flags/backend'); same(358, hashBytes(manifest.circuit_profile_hash));
+  if (manifest.note_ttl_seconds === '0') verifiedNonExpiringPools.add(manifest);
   return Object.freeze({ paused: raw[355] === 1, slot: observation.slot, treasuryOwner: bs58.encode(raw.subarray(171, 203)) });
 }
 

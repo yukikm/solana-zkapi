@@ -222,12 +222,14 @@ impl TrustedPool {
                 && self.clearance_key == fixture_clearance
                 && self.circuit_profile_hash == PROFILE_HASH
         };
+        // Zero is the explicit non-expiring deposit policy. Still parse its
+        // canonical u64 representation; withdrawal challenges must stay positive.
+        uint(&self.note_ttl_seconds)?;
         if self.vault_binding
             != zkapi_solana_types::binding::vault_binding(&genesis, &program, &pool, &token, &mint)
             || !role_profile_matches
             || !deployment_matches
             || self.cap_micro_usdc == MicroUsdc::ZERO
-            || uint(&self.note_ttl_seconds)? == 0
             || uint(&self.challenge_seconds)? == 0
         {
             return Err(invalid("trusted manifest/build pins"));

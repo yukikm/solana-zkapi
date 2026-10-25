@@ -69,7 +69,7 @@ async function main(): Promise<void> {
   }
   const rpc=connectionTransport(connection,{preparationCommitment:c.preparation_commitment});
   const wallet=new WalletClient({manifest:m,prover,journal,chain,rpc,wallets,fetch:fetcher});
-  const service=new ClientDaemon({client,journal,noteId:c.note_id,mode:c.mode,models,services,gateway:c.gateway,keyReuseSeconds:c.key_reuse_seconds,settlementWaitMs:c.settlement_wait_ms,
+  const service=new ClientDaemon({client,journal,manifest:m,noteId:c.note_id,mode:c.mode,models,services,gateway:c.gateway,keyReuseSeconds:c.key_reuse_seconds,settlementWaitMs:c.settlement_wait_ms,
     prepare:async(model,credentials)=>{
       const selected=models.find(configured=>configured.id===model);if(!selected)throw Error('model not configured');
       const current=await journal.read(c.note_id);if(!current?.value.witness)throw Error('full finalized note required');

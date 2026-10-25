@@ -57,7 +57,7 @@ owner and layout.
 | mutual_close | 1 / L→0 | WP8=Note.id=TP3; WP3=TP1=current root; WP2=TP0=pool binding; WP0=2, WP1=namespace, WP4..7=config keys, WP12=1; Active; WP9<=D; WP11 unused; WP10=H2F(actual destination owner); valid WP proof |
 | initiate_escape | 1 / L→0 | Same Note/root/binding/keys/destination/amount/N checks as close, but WP12=0; Active→Pending; consume N; save B, actual owner, N, old root and deadline; no transfer |
 | challenge_escape | 2 / 0→L | instruction note_id=Note.id=TP3; TP1=current root; TP0=RP2=pool binding; RP0=2, RP1=namespace, RP4..5=config state key, RP8=Pending.nullifier; Pending and Clock<deadline; valid historical RP proof |
-| claim_expired | 1 / L→0 | instruction note_id=Note.id=TP3; TP1=current root; TP0=pool binding; Active and Clock>=Note.expiry; no request/withdrawal proof; transfer D to treasury |
+| claim_expired | 1 / L→0 | instruction note_id=Note.id=TP3; TP1=current root; TP0=pool binding; Pool.TTL>0, Active and Clock>=Note.expiry; no request/withdrawal proof; transfer D to treasury |
 | finalize_escape | None | Pending and Clock>=deadline; pay saved B/owner; root unchanged; no new proof |
 
 For every operation except deposit, TP6/7/8 must match the stored Note. Neither

@@ -173,8 +173,7 @@ pub(crate) fn pool(a: &AccountInfo) -> Result<PoolConfig> {
     );
     require!(binding == p.vault_binding, VaultError::InvalidBinding);
     require!(
-        p.ttl > 0
-            && p.challenge > 0
+        p.challenge > 0
             && p.cap > 0
             && p.cap <= MAX_AMOUNT
             && p.admin != Pubkey::default()
@@ -247,7 +246,6 @@ pub fn initialize(
     require!(
         admin != Pubkey::default()
             && treasury_owner != Pubkey::default()
-            && ttl > 0
             && challenge > 0
             && cap > 0
             && cap <= MAX_AMOUNT,
@@ -473,7 +471,8 @@ pub fn run(a: &Financial, op: Operation, bytes: &[u8]) -> Result<()> {
         require!(t.next_note_id < 1u64 << 32, VaultError::TreeFull);
         require!(t.next_note_id == u64::from(id), VaultError::StaleNoteId);
         require!(d.expected_root == t.root, VaultError::StaleRoot);
-        let expected = add(add(now, p.ttl)?, 86399)? / 86400 * 86400;
+        let expected = binding::deposit_expiry(now, p.ttl)
+            .map_err(|_| error!(VaultError::ArithmeticOverflow))?;
         require!(d.expiry == expected, VaultError::InvalidExpiry);
         require!(
             d.amount > 0 && d.amount <= MAX_AMOUNT,
@@ -544,6 +543,9 @@ pub fn run(a: &Financial, op: Operation, bytes: &[u8]) -> Result<()> {
             stored_pending = Some(pending);
         }
         Operation::Expiry => {
+            // TTL zero is the immutable no-expiry policy. The canonical note
+            // sentinel never authorizes a treasury claim, even at equality.
+            require!(p.ttl != 0, VaultError::NotExpired);
             require!(n.status == 1, VaultError::NoteNotActive);
             require!(now >= n.expiry, VaultError::NotExpired);
         }

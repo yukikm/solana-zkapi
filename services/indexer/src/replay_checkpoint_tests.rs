@@ -330,7 +330,7 @@ fn checkpoint_rejects_wrong_anchor_checksum_encoding_and_structural_corruption()
         |s| s.buffers[0].len += 1,
         |s| s.blocks.push(s.blocks[0].clone()),
         |s| s.blocks[0].1 = "0".into(),
-        |s| s.config.as_mut().unwrap().ttl = 0,
+        |s| s.config.as_mut().unwrap().challenge = 0,
     ];
     for change in changes {
         let mut saved: Saved = serde_json::from_slice(&bytes).unwrap();

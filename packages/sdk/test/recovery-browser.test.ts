@@ -4,9 +4,12 @@ import assert from 'node:assert/strict';
 import { restoreRecoveryStorage } from '../src/recovery.ts';
 import { recoveryBrowser, recoveryChrome } from './recovery-browser-fixture.ts';
 import { recoveryContext, recoveryEndpoint, recoveryNoteId, recoveryState, recoveryJournal, recoveryServer } from './recovery-fixture.ts';
+import { NON_EXPIRING_NOTE_EXPIRY } from '../src/deposit-expiry.ts';
 
-test('Chromium restores exact latest state after complete origin-data deletion, then Node reads the same backup', { skip: !recoveryChrome && 'Set ZKAPI_TEST_CHROME to a Chromium executable', timeout: 60_000 }, async t => {
+for (const [policy, expiry] of [['finite', '1900000000'], ['non-expiring', NON_EXPIRING_NOTE_EXPIRY]]) {
+test(`Chromium restores exact latest ${policy} custody after complete origin-data deletion, then Node reads the same backup`, { skip: !recoveryChrome && 'Set ZKAPI_TEST_CHROME to a Chromium executable', timeout: 60_000 }, async t => {
   const server = await recoveryServer(t), browser = await recoveryBrowser(t, server.origin);
+  const state = recoveryState(); state.witness.expiry = expiry;
   const original = await browser.createTab();
   const backedUp = await original.cdp.evaluate(`(async () => {
     const recovery = await import('/modules/recovery.js');
@@ -17,7 +20,7 @@ test('Chromium restores exact latest state after complete origin-data deletion, 
     await binding.saveRecoverySession('recovery-browser-fixture',storage.session);
     const validate=value=>{if(!value||value.schema!==1||!value.pending?.exactRequest)throw Error('invalid fixture');};
     const journal=new EncryptedJournal(storage.store,storage.key,kit.context,validate);
-    const state=${JSON.stringify(recoveryState())};const initial=structuredClone(state);initial.state.balance_micro_usdc='2000000';
+    const state=${JSON.stringify(state)};const initial=structuredClone(state);initial.state.balance_micro_usdc='2000000';
     await journal.create(${JSON.stringify(recoveryNoteId)},initial);
     await journal.compareAndSwap(${JSON.stringify(recoveryNoteId)},1,state);
     const saved=await journal.read(${JSON.stringify(recoveryNoteId)});
@@ -31,7 +34,7 @@ test('Chromium restores exact latest state after complete origin-data deletion, 
     const reread=await new EncryptedJournal(reopened.store,reopened.key,kit.context,validate).read(${JSON.stringify(recoveryNoteId)});await reopened.close();
     return {kit,head:saved.head,reread:reread.value,extractable:local.key.extractable,hasRawKey,sessionHasRawKey:'keyHex' in local.session};
   })()`);
-  assert.deepEqual(backedUp.reread, recoveryState());
+  assert.deepEqual(backedUp.reread, state);
   assert.equal(backedUp.extractable, false); assert.equal(backedUp.hasRawKey, false); assert.equal(backedUp.sessionHasRawKey, false);
   // The portable kit returned above represents the user's independent recovery file.
   // All site state and the original JavaScript realm are now removed.
@@ -50,11 +53,12 @@ test('Chromium restores exact latest state after complete origin-data deletion, 
     return {missing,saved,extractable:local.key.extractable};
   })()`);
   assert.equal(result.missing, null); assert.equal(result.extractable, false);
-  assert.deepEqual(result.saved.value, recoveryState()); assert.deepEqual(result.saved.head, backedUp.head);
+  assert.deepEqual(result.saved.value, state); assert.deepEqual(result.saved.head, backedUp.head);
   await replacement.close();
   const node = await restoreRecoveryStorage(backedUp.kit, { previousOwnerStopped: true, expectedEndpoint: recoveryEndpoint, fetch: server.fetch });
-  assert.deepEqual((await recoveryJournal(node).read(recoveryNoteId))?.value, recoveryState()); await node.close();
+  assert.deepEqual((await recoveryJournal(node).read(recoveryNoteId))?.value, state); await node.close();
 });
+}
 
 test('browser enrollment copies existing nonextractable custody without deleting the source or losing revision', { skip: !recoveryChrome && 'Set ZKAPI_TEST_CHROME to a Chromium executable', timeout: 60_000 }, async t => {
   const server = await recoveryServer(t), browser = await recoveryBrowser(t, server.origin), tab = await browser.createTab();

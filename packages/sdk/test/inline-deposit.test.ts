@@ -23,9 +23,11 @@ import {NativeJournalStore} from '../src/journal-node.ts';
 import {validateNoteJournal,type NoteJournal,type PrivateState} from '../src/control.ts';
 import {compactDepositPayload,expandCompactDepositPayload,encodeLayout2Args} from '../src/layout2.ts';
 import {buildInlineDepositPlan,compileV0,prepareInlineDepositAttempt,restoreInlineDepositPlan,snapshotInlineDepositPlan,vaultAccounts,type InlineDepositAttempt,type FinalizedReceipt,type SignatureStatus,type V0Wallet} from '../src/transport.ts';
-import {manifestDigest,sha256Hex,verifyManifest,type Manifest,type VerifiedManifest} from '../src/trust.ts';
+import {manifestDigest,sha256Hex,verifyManifest,verifyPoolConfig,type Manifest,type VerifiedManifest} from '../src/trust.ts';
 import type {NoteProver} from '../src/prover.ts';
 import type {WalletSnapshot} from '../src/wallet-chain.ts';
+import { chainFixture } from './chain-fixture.ts';
+import { NON_EXPIRING_NOTE_EXPIRY } from '../src/deposit-expiry.ts';
 const read=(path:string)=>readFileSync(new URL('../../../'+path,import.meta.url));
 const fixture=JSON.parse(read('tests/fixtures/vault/genesis-a.json').toString());
 const profile=JSON.parse(read('tests/fixtures/layout2/profile.json').toString());
@@ -43,18 +45,18 @@ async function manifest(inline=true,variant=false):Promise<VerifiedManifest>{
   const raw={...m,manifest_hash:await manifestDigest(m)};
   return verifyManifest(new TextEncoder().encode(JSON.stringify(raw)),{anchor:{kind:'hash',sha256:raw.manifest_hash},expected:{deployment_id:m.deployment_id,deployment_environment:m.deployment_environment,genesis_hash:m.genesis_hash,program_id:m.program_id,pool:m.pool,mint:m.mint,token_program:m.token_program,control_api_origin:m.control_api_origin,inference_api_origin:m.inference_api_origin},build:{stateKey:m.state_key,clearanceKey:m.clearance_key,circuitProfileHash:m.circuit_profile_hash,idlHash:m.idl_hash,setupProfile:m.setup_profile,transactionFormats:['v0_buffer','v0_inline_deposit_v1']}});
 }
-async function setup(t:TestContext,inline=true,begin=true){
+async function setup(t:TestContext,inline=true,begin=true,manifestOverride?:VerifiedManifest){
   const dir=await mkdtemp(join(tmpdir(),'zkapi-inline-'));t.after(()=>rm(dir,{recursive:true,force:true}));
   const native=await NativeJournalStore.open(dir),aes=await importJournalKey(new Uint8Array(32).fill(14));
   const behavior={failCommit:false,loseCommitAck:false,failProof:false,loseSendAck:false,receipt:null as FinalizedReceipt|null,status:null as SignatureStatus|null,height:50,blockhash:{...blockhash}};
   const counts={sign:0,send:0,rebase:0,proof:0,blockhash:0};
   const store:AtomicJournalStore={read:k=>native.read(k),withLock:(k,a)=>native.withLock(k,a),compareAndSwap:async(k,r,n)=>{if(behavior.failCommit)throw Error('disk full');await native.compareAndSwap(k,r,n);if(behavior.loseCommitAck){behavior.loseCommitAck=false;throw Error('commit ACK lost');}}};
-  const m=await manifest(inline),open=()=>new EncryptedJournal<NoteJournal>(store,aes,{deploymentId:m.deployment_id,pool:m.pool},validateNoteJournal),journal=open();
+  const m=manifestOverride??await manifest(inline),open=()=>new EncryptedJournal<NoteJournal>(store,aes,{deploymentId:m.deployment_id,pool:m.pool},validateNoteJournal),journal=open();
   const state:PrivateState={balance_micro_usdc:String(fixture.deposit),balance_blinding:field(3),note_leaf:field(4),commitment:{x:field(5),y:field(6)},anchor:field(1),state_signature:null};
   const snapshot:WalletSnapshot={root:fixture.trees[0].public_inputs[1],siblings:Array(32).fill(field(0)),slot:20,sequence:'1',nextNoteId:0,clock:String(fixture.now),paused:false,treasuryOwner:owner};
   const prover={deposit:async(note_id:number,amount:string,expiry:string)=>({state:structuredClone(state),witness:{secret:field(2),note_id,deposit_micro_usdc:amount,expiry}}),inspect:async()=>({registration_commitment:'0x'+fixture.commitment}),
     rebaseDeposit:async(w:NoteJournal['witness'],note_id:number,expiry:string)=>{counts.rebase++;return {state:structuredClone(state),witness:{...w!,note_id,expiry}};},
-    tree:async(note:{note_id:number;expiry:string},root:string)=>{counts.proof++;const persisted=await open().read('note');assert.ok(persisted?.value.witness,'secret is durable before tree proof');if(behavior.failProof)throw Error('proof interrupted');const p=structuredClone(fixture.trees[0]);p.public_inputs[1]=root;p.public_inputs[3]=field(note.note_id);p.public_inputs[8]=field(BigInt(note.expiry));return p;}} as unknown as NoteProver;
+    tree:async(note:{note_id:number;expiry:string},root:string)=>{counts.proof++;const persisted=await open().read('note');assert.ok(persisted?.value.witness,'secret is durable before tree proof');if(behavior.failProof)throw Error('proof interrupted');const p=structuredClone(fixture.trees[0]);p.public_inputs[0]=m.vault_binding;p.public_inputs[1]=root;p.public_inputs[3]=field(note.note_id);p.public_inputs[8]=field(BigInt(note.expiry));return p;}} as unknown as NoteProver;
   const wallet:V0Wallet={publicKey:pair.address,supportedTransactionVersions:new Set([0]),async signTransaction(tx){counts.sign++;tx = await signWith(tx, [pair]);return tx;}};
   const options:WalletOptions={manifest:m,prover,journal,wallets:[wallet],priorityFeeMicroLamports:1n,chain:{snapshot:async()=>structuredClone(snapshot),buffer:async()=>{throw Error('inline must not consult a buffer');},bufferObservation:async()=>{throw Error('inline must not consult buffer absence');},blockhash:async()=>{counts.blockhash++;return {...behavior.blockhash};}},rpc:{signatureStatus:async()=>behavior.status,finalizedReceipt:async()=>behavior.receipt,finalizedBlockHeight:async()=>behavior.height,sendRawTransaction:async bytes=>{counts.send++;const saved=(await open().read('note'))!.value.wallet!.operation!;assert.equal(saved.current,transactionSignature(decodeTransaction(bytes)));assert.equal(saved.attempts.at(-1)!.wireHex,Buffer.from(bytes).toString('hex'));if(behavior.loseSendAck)throw Error('send ACK lost');return saved.current!;}}};
   const client=new WalletClient(options),restart=()=>new WalletClient({...options,journal:open()});
@@ -65,6 +67,34 @@ async function setup(t:TestContext,inline=true,begin=true){
   const fund=async()=>{const r=(await open().read('note'))!;snapshot.slot=30;snapshot.note={note_id:r.value.witness!.note_id,registration_commitment:'0x'+fixture.commitment,deposit_micro_usdc:String(fixture.deposit),expiry:r.value.witness!.expiry,status:'active'};behavior.receipt=await receipt();};
   return {client,restart,options,journal,store,open,behavior,counts,snapshot,roles,signed,receipt,fund};
 }
+
+test('zero-TTL deposits retain canonical expiry through buffer recovery and inline pre-sign races',async t=>{
+  for (const inline of [false,true]) {
+    const f=await chainFixture({noteTtlSeconds:'0',transactionFormats:inline?['v0_buffer','v0_inline_deposit_v1']:['v0_buffer']});
+    await verifyPoolConfig(f.manifest,f.manifest.genesis_hash,{address:f.manifest.pool,owner:f.manifest.program_id,
+      executable:false,lamports:1n,data:f.poolData,slot:20n,commitment:'finalized'},20n);
+    const h=await setup(t,inline,false,f.manifest);
+    if(!inline)h.behavior.failProof=true;
+    const prepare=h.client.beginDeposit('note',String(fixture.deposit),h.roles);
+    if(inline)await prepare;else await assert.rejects(prepare,/proof interrupted/);
+    const first=(await h.open().read('note'))!;
+    assert.equal(first.value.witness!.expiry,NON_EXPIRING_NOTE_EXPIRY);
+    h.snapshot.clock=String(fixture.now+86400*100);h.snapshot.nextNoteId=1;h.snapshot.slot=25;
+    if(inline)assert.deepEqual(await h.client.advance('note'),{state:'ready'});
+    else {h.behavior.failProof=false;await h.restart().resumeProof('note');}
+    const rebased=(await h.open().read('note'))!;
+    assert.equal(rebased.value.witness!.expiry,NON_EXPIRING_NOTE_EXPIRY);
+    assert.equal(rebased.value.witness!.secret,first.value.witness!.secret);
+    assert.equal(rebased.value.witness!.note_id,1);
+    assert.equal(h.counts.rebase,1);assert.equal(h.counts.sign,0);assert.equal(h.counts.send,0);
+    if(inline){
+      h.snapshot.clock=String(fixture.now+86400*200);
+      assert.deepEqual(await h.client.advance('note'),{state:'pending'});
+      assert.equal(h.counts.rebase,1,'clock changes alone cannot renew or rebase an unlimited deposit');
+      assert.equal((await h.open().read('note'))!.value.wallet!.operation!.inlinePlan!.expiry,NON_EXPIRING_NOTE_EXPIRY);
+    }
+  }
+});
 
 test('application facade preserves compact durable sign-once and read-only unknown-send recovery',async t=>{
   const h=await setup(t,true,false);

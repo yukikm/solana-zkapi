@@ -25,12 +25,16 @@
     {
       "file": "genesis-a.json",
       "sha256": "495a322bf4e05eb1e15d9750dbbb11f0782982752ec45efbcd096d5b77c17c96"
+    },
+    {
+      "file": "nonexpiring-a.json",
+      "sha256": "e61aaa7f6237c009d8a98e8d053fa79e9c23e8ca520ccf3f37e5506e4498d489"
     }
   ],
-  "generator_sha256": "9cce2f2fdfd8d6b1b8fc7e1edf8607aea4bcfa391bc9b6796c63af18b9520ade",
+  "generator_sha256": "a4aaa76470c81e7b9eabae604aaac3bec9eb384163b52fad28c5739a84f4181b",
   "program_id": "2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b",
-  "real_tree_proofs": 18,
-  "real_upstream_proofs": 18,
+  "real_tree_proofs": 21,
+  "real_upstream_proofs": 21,
   "scope": "TEST ONLY; public secrets and deterministic public entropy; not production eligible",
   "trace_contract": {
     "active_expiry": [

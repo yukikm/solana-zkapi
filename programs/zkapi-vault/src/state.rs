@@ -14,6 +14,7 @@ pub struct PoolConfig {
     pub treasury_owner: Pubkey,
     pub state_key: [u8; 64],
     pub clearance_key: [u8; 64],
+    /// Zero disables deposit expiry; positive values are the legacy note TTL.
     pub ttl: u64,
     pub challenge: u64,
     pub cap: u64,

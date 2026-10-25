@@ -44,7 +44,7 @@ flowchart LR
 - Unknown inference is never replayed. Unknown transactions keep their exact signed bytes.
 - A new SDK or deployment profile cannot replace existing funded custody.
 - Deposits activate only after finalized receipts and account reconciliation.
-- Expired Active notes can transfer their full principal to the treasury; clients must expose expiry.
+- Positive-TTL Pools retain expiry claims on the full Active principal; clients must expose that risk. Zero-TTL Pools disable deposit expiry and expiry claims (ADR-0004).
 
 Layout 2 uses the original request/withdrawal circuits plus a proof-bound tree
 transition. The program verifies all public inputs against actual accounts and
@@ -84,3 +84,4 @@ The pinned development setup is not a production ceremony.
 - [Proof-bound tree transitions](adr/0001-proof-bound-tree-transition.md)
 - [Build-validated signing keys](adr/0002-build-validated-signing-keys.md)
 - [Single-transaction deposits](adr/0003-single-transaction-deposit.md)
+- [Non-expiring deposits](adr/0004-non-expiring-deposits.md)

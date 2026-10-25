@@ -9,7 +9,7 @@ import { discriminator } from '../src/transport.ts';
 import { circuitProfileDigest, jcsBytes, manifestDigest, sha256Hex, verifyManifest, type Manifest } from '../src/trust.ts';
 
 export const key=(n:number)=>getAddressDecoder().decode(new Uint8Array(32).fill(n));
-export async function chainFixture() {
+export async function chainFixture(options: {noteTtlSeconds?: string; capMicroUsdc?: string; transactionFormats?: Manifest['transaction_formats']} = {}) {
   const read=async(p:string)=>new Uint8Array(await readFile(new URL('../../../'+p,import.meta.url)));
   const profile=JSON.parse(new TextDecoder().decode(await read('tests/fixtures/layout2/profile.json')));
   const original=JSON.parse(new TextDecoder().decode(await read('tests/fixtures/layout2/a.json')));
@@ -21,7 +21,7 @@ export async function chainFixture() {
     mint:key(4),token_program:'TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA',decimals:6,vault_binding:'',
     state_key:{x:original.auth.escape.public_inputs[4],y:original.auth.escape.public_inputs[5]},
     clearance_key:{x:original.auth.escape.public_inputs[6],y:original.auth.escape.public_inputs[7]},
-    quote_public_key:key(30),receipt_public_key:key(31),transaction_formats:['v0_buffer'],cap_micro_usdc:'1000000',note_ttl_seconds:'2592000',challenge_seconds:'86400',
+    quote_public_key:key(30),receipt_public_key:key(31),transaction_formats:options.transactionFormats??['v0_buffer'],cap_micro_usdc:options.capMicroUsdc??'1000000',note_ttl_seconds:options.noteTtlSeconds??'2592000',challenge_seconds:'86400',
     control_api_origin:'http://127.0.0.1:8788',inference_api_origin:'http://127.0.0.1:8789',proving_keys_base_url:'http://127.0.0.1:8788/keys',
     idl_hash:await sha256Hex(idl),api_endpoints:['/zkapi/v1/config'],tariff_hashes:[],artifact_digests:{vault_idl:await sha256Hex(idl)},db_schema_version:'2',
     authorities:{admin:authority,upgrade:{...authority,authority:key(25)}}};
@@ -29,7 +29,7 @@ export async function chainFixture() {
   m.circuit_profile_hash=await circuitProfileDigest(m);m.manifest_hash=await manifestDigest(m);
   const manifest=await verifyManifest(jcsBytes(m),{anchor:{kind:'hash',sha256:m.manifest_hash},expected:{deployment_id:m.deployment_id,deployment_environment:m.deployment_environment,
     genesis_hash:m.genesis_hash,program_id:m.program_id,pool:m.pool,mint:m.mint,token_program:m.token_program,control_api_origin:m.control_api_origin,inference_api_origin:m.inference_api_origin},
-    build:{stateKey:m.state_key,clearanceKey:m.clearance_key,circuitProfileHash:m.circuit_profile_hash,idlHash:m.idl_hash,setupProfile:m.setup_profile}});
+    build:{stateKey:m.state_key,clearanceKey:m.clearance_key,circuitProfileHash:m.circuit_profile_hash,idlHash:m.idl_hash,setupProfile:m.setup_profile,transactionFormats:options.transactionFormats}});
   const data=Buffer.alloc(422);data.set(await discriminator('PoolConfig','account'));data[8]=2;data[9]=bump;
   for(const [offset,value] of [[10,m.genesis_hash],[42,m.mint],[74,m.token_program],[139,m.authorities.admin.authority],[171,key(29)]] as const)data.set(bs58.decode(value),offset);
   data[106]=6;

@@ -218,6 +218,24 @@ fn chain_fixture() -> (Value, TrustedPool) {
     (fixture, trusted)
 }
 #[test]
+fn non_expiring_policy_requires_matching_finalized_pool_bytes() {
+    let (f, mut trusted) = chain_fixture();
+    trusted.note_ttl_seconds = "0".into();
+    trusted.validate().unwrap();
+    let mut account = f["pool_account"].clone();
+    // Changing only the manifest must not reclassify a funded finite Pool.
+    assert!(validate_pool_account(&trusted, &account, 100).is_err());
+    let mut raw = STANDARD
+        .decode(account["data"][0].as_str().unwrap())
+        .unwrap();
+    raw[331..339].copy_from_slice(&0u64.to_le_bytes());
+    account["data"][0] = STANDARD.encode(raw).into();
+    validate_pool_account(&trusted, &account, 100).unwrap();
+    trusted.challenge_seconds = "0".into();
+    assert!(trusted.validate().is_err());
+}
+
+#[test]
 fn actual_vault_pool_and_exit_bytes_reject_owner_pda_layout_and_each_auth_setting() {
     let (f, t) = chain_fixture();
     let value = f["pool_account"].clone();

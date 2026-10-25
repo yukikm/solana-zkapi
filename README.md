@@ -1,5 +1,10 @@
 # Solana ZKAPI
 
+SDK `.20` supports [non-expiring deposits](docs/releases/non-expiring-deposits-preview.md)
+for new zero-TTL Pools with matching Vault and operator updates. Installing the
+SDK does not alter existing Pool deadlines. Withdrawal challenge periods remain
+unchanged; see [ADR-0004](docs/adr/0004-non-expiring-deposits.md).
+
 SDK `.19` adds [withdrawal progress and verified waiting-period status](docs/releases/withdrawal-status-preview.md). It retains `.18` [recoverable custody for browser and Node.js](docs/sdk/recoverable-custody.md), including explicit recovery after device-data loss. Native installers remain at `.15`.
 
 ZKAPI provides USDC payments and zero-knowledge usage authorization for APIs on

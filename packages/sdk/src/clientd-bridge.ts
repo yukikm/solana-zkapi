@@ -5,7 +5,8 @@ import { ControlClient, createCredentials, expiryNotice, apiOperationPath, isApi
 import { JournalConflictError, JournalIntegrityError, type EncryptedJournal } from './journal.ts';
 import { directRequestBytes } from './direct-request.ts';
 import { privacyProfile, planClientUpgrade } from './client-guidance.ts';
-import { parseStrictJson } from './trust.ts';
+import { parseStrictJson, type VerifiedManifest } from './trust.ts';
+import { depositExpiryStatus } from './deposit-expiry.ts';
 import { daemonApiPaths, validateDaemonModelPolicy, validateModelRequestCapabilities, type DaemonModelPolicy } from './clientd-models.ts';
 import { ControlHttpError } from './control.ts';
 import { ChatCompletionStreamParser } from './chat-stream.ts';
@@ -14,6 +15,8 @@ import { jcsBytes, sha256Hex } from './trust.ts';
 
 export interface DaemonOptions {
   client: ControlClient; journal: EncryptedJournal<NoteJournal>; noteId: string; mode: Mode;
+  /** Independently authenticated manifest and finalized Pool; omitted for legacy hosts. */
+  manifest?: VerifiedManifest;
   models: readonly (string | DaemonModelPolicy)[]; keyReuseSeconds?: number; now?: () => bigint;
   services?: readonly ApiService[];
   gateway?: GatewayConfiguration;
@@ -244,9 +247,11 @@ export class ClientDaemon {
   async status(): Promise<unknown> {
     const record = await this.o.journal.read(this.o.noteId);
     const privacy = privacyProfile(this.o.mode,this.reuse);
+    const deposit = this.o.manifest ? depositExpiryStatus(this.o.manifest, record?.value.witness, this.now()) : undefined;
     if (!record) return { mode:this.o.mode, balance_micro_usdc:'0', phase:'unfunded', in_flight:this.inflight, recovery_required:false,
       server_state:null, recovery:this.recoveryStatus(undefined),
       unresolved_operations:[], key_reuse_seconds:this.reuse, journal_head:null, privacy_notice:this.o.mode === 'proxy' ? PROXY_PRIVACY_NOTICE : this.o.mode === 'direct_openrouter' ? DIRECT_OPENROUTER_PRIVACY_NOTICE : DIRECT_PRIVACY_NOTICE,
+      ...(deposit ? { deposit_expiry_policy: deposit.depositExpiryPolicy, expiry: deposit.expiry } : {}),
       privacy, wallet_status:'unfunded', wallet_operation:null, wallet_emergency_escape:null };
     const {value,head} = record;
     const witness = (value as NoteJournal & { witness?: {expiry:string} }).witness;
@@ -257,7 +262,7 @@ export class ClientDaemon {
       key_reuse_seconds:this.reuse, journal_head:head, privacy_notice:this.o.mode === 'proxy' ? PROXY_PRIVACY_NOTICE : this.o.mode === 'direct_openrouter' ? DIRECT_OPENROUTER_PRIVACY_NOTICE : DIRECT_PRIVACY_NOTICE,
       privacy, wallet_status:value.wallet?.status ?? 'legacy_import', wallet_operation:value.wallet?.operation ? {kind:value.wallet.operation.kind,phase:value.wallet.operation.phase} : null,
       wallet_emergency_escape:emergency?{phase:emergency.phase,funds_withdrawn:closed}:null,
-      ...(witness ? {expiry:expiryNotice(BigInt(witness.expiry),this.now())} : {}) };
+      ...(deposit ? { deposit_expiry_policy: deposit.depositExpiryPolicy, expiry: deposit.expiry } : witness ? {expiry:expiryNotice(BigInt(witness.expiry),this.now())} : {}) };
   }
   async management(action: 'close' | 'recover' | 'reconcile' | 'cancel-unsent' | 'purge-settled-bodies' | 'wallet', body?: unknown): Promise<unknown> {
     return this.exclusive(async()=>{
@@ -374,6 +379,10 @@ export class ClientDaemon {
       admissionSignal?.throwIfAborted();
       if (!this.started || this.stopping || this.inflight >= (this.reuse === 0 || selection.singleRequest ? 1 : 4)) throw new DaemonConflict();
       let r = await this.record();
+      if (this.o.manifest) {
+        const deposit = depositExpiryStatus(this.o.manifest, r.value.witness, this.now());
+        if (deposit.depositExpiryPolicy === 'none' && !deposit.canRequest) throw new Error('non-expiring deposit witness required');
+      }
       if(r.value.gatewayRecoveryHold)throw new DaemonConflict();
       if(r.value.wallet?.emergencyEscapes?.some(e=>e.phase!=='settled'))throw new DaemonConflict();
       if (r.value.history.some(h=>h.operations.some(o=>o.id===operationId)) || r.value.pending?.operations.some(o=>o.id===operationId)) throw new DaemonConflict();

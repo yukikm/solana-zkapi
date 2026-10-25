@@ -125,9 +125,15 @@ PDA seeds/bumps, arbitrary CPI programs and substituted token authorities/delega
 
 Reject layout 1 and any backend/tag/profile differing from the embedded constants.
 Note status is Active=1, PendingWithdrawal=2, Closed=3; zero is invalid.
-Initialization requires ttl>0, challenge>0, `0<cap<=MAX` and nondefault
+Initialization requires challenge>0, `0<cap<=MAX` and nondefault
 admin/treasury. Initial profile values are TTL=2,592,000 seconds,
 challenge=86,400 seconds and cap=1,000,000 micro-USDC.
+
+As an intentional extension of the pinned upstream protocol, TTL=0 selects
+non-expiring deposits (see [ADR-0004](../adr/0004-non-expiring-deposits.md)).
+These Pools require Note.expiry=u64::MAX and reject claim_expired unconditionally.
+Positive TTLs retain rounded finite expiry. Existing Pool TTLs are immutable;
+the extension does not rewrite existing Notes or their proof-bound identity.
 
 USDC mints are mainnet `EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v` and
 Devnet `4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU`. Pin the original SPL Token
@@ -162,12 +168,12 @@ Discriminator is `sha256("global:"+snake_case_name)[0..8]`. Borsh arguments use
 | Instruction / arguments | Signers | Writable accounts | Checks and effect |
 |---|---|---|---|
 | initialize_pool(pool_id32, genesis32, state_key64, clearance_key64, ttl:u64, challenge:u64, cap:u64, admin, treasury) | deployment authority, admin, payer | pool, tree, vault ATA | Pinned deployment authority; fixed mint, empty root/profile and validated keys; valid ranges; reject existing pool |
-| deposit(expected_id:u32, expected_root:F, expiry:u64, commitment:F, amount:u64, tree:TreeUpdate) | token owner, payer | tree, note, source ATA, vault ATA | !paused; next ID/root match; 0<amount<=MAX; C!=0; expiry=ceil((Clock+TTL)/86400)*86400; 0→L; TransferChecked |
+| deposit(expected_id:u32, expected_root:F, expiry:u64, commitment:F, amount:u64, tree:TreeUpdate) | token owner, payer | tree, note, source ATA, vault ATA | !paused; next ID/root match; 0<amount<=MAX; C!=0; expiry=u64::MAX for TTL=0, otherwise ceil((Clock+TTL)/86400)*86400; 0→L; TransferChecked |
 | mutual_close(public:WP,proof:Proof,tree:TreeUpdate) | payer | tree, note, exit, vault ATA, destination ATA, treasury ATA | !paused; clearance=1; current root/binding/keys and valid proof; Active; B<=D; unused N; L→0; Closed; consume N; transfer B and D−B |
 | initiate_escape(public:WP,proof:Proof,tree:TreeUpdate) | payer | tree, note, exit, pending | !paused; clearance=0; current root and valid proof; Active; B<=D; unused N; L→0; Pending; consume N; deadline=Clock+challenge |
 | challenge_escape(note_id:u32,public:RP,proof:Proof,tree:TreeUpdate) | payer | tree, note, pending | Pending; Clock<deadline; saved N; fixed binding/keys; valid historical RP; current 0→L; Active; retain exit tombstone |
 | finalize_escape(note_id:u32) | payer | note, pending, tree, vault ATA, destination ATA, treasury ATA | Pending; Clock>=deadline; unchanged root; Closed; transfer saved B and D−B |
-| claim_expired(note_id:u32,tree:TreeUpdate) | payer | tree, note, vault ATA, treasury ATA | Active; Clock>=expiry; L→0; Closed; transfer all D to treasury |
+| claim_expired(note_id:u32,tree:TreeUpdate) | payer | tree, note, vault ATA, treasury ATA | TTL>0; Active; Clock>=expiry; L→0; Closed; transfer all D to treasury |
 | set_treasury(new_owner:Pubkey) | admin | pool | Nondefault new owner; also applies to future payments of existing Pending records |
 | pause() / unpause() | admin | pool | Change paused; challenge/finalize/expiry remain available |
 

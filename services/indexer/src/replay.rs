@@ -387,7 +387,9 @@ impl Indexer {
             let genesis = args[32..64].try_into().unwrap();
             let ttl = u64::from_le_bytes(args[192..200].try_into().unwrap());
             let challenge = u64::from_le_bytes(args[200..208].try_into().unwrap());
-            if ttl == 0 || challenge == 0 {
+            // TTL zero is a non-expiring Pool; it does not remove the separate
+            // withdrawal challenge period.
+            if challenge == 0 {
                 return Err(Error::State);
             }
             let binding = zkapi_layout2::framing::reduce(sha(&zkapi_layout2::framing::vault(
@@ -584,11 +586,8 @@ impl Indexer {
         }
         let note = if op == Operation::Deposit {
             let a = c.deposit.ok_or(Error::State)?;
-            let expiry = now
-                .checked_add(cfg.ttl)
-                .and_then(|x| x.checked_add(86399))
-                .and_then(|x| (x / 86400).checked_mul(86400))
-                .ok_or(Error::State)?;
+            let expiry =
+                zkapi_layout2::binding::deposit_expiry(now, cfg.ttl).map_err(|_| Error::State)?;
             if self.next_note_id >= 1u64 << 32
                 || u64::from(id) != self.next_note_id
                 || a.expected_id != id
@@ -703,7 +702,7 @@ impl Indexer {
                 1
             }
             Operation::Expiry => {
-                if now < note.expiry {
+                if cfg.ttl == 0 || now < note.expiry {
                     return Err(Error::State);
                 }
                 self.active.remove(&id);

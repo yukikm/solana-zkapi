@@ -1,4 +1,22 @@
 use crate::{integer, to_u64, Command, Error, Field, Operation, MAX_AMOUNT, NAMESPACE, ZERO};
+
+/// Canonical leaf value for a Pool whose immutable TTL is zero. This is an
+/// identity/proof sentinel, not a future forfeiture date: expiry claims are
+/// disabled by the Pool policy, including at this value.
+pub const NON_EXPIRING_NOTE_EXPIRY: u64 = u64::MAX;
+
+/// TTL zero explicitly selects non-expiring deposits. Positive TTLs preserve
+/// the original UTC-day rounding and checked arithmetic.
+pub fn deposit_expiry(now: u64, ttl: u64) -> Result<u64, Error> {
+    if ttl == 0 {
+        return Ok(NON_EXPIRING_NOTE_EXPIRY);
+    }
+    now.checked_add(ttl)
+        .and_then(|x| x.checked_add(86399))
+        .and_then(|x| (x / 86400).checked_mul(86400))
+        .ok_or(Error::Range)
+}
+
 #[derive(Clone, Copy, Debug)]
 pub struct Note {
     pub id: u32,
@@ -24,6 +42,7 @@ pub struct Context {
     pub note: Option<Note>,
     pub pending: Option<Pending>,
     pub now: u64,
+    /// Zero means the Pool has no deposit expiry; positive values are seconds.
     pub ttl: u64,
     pub paused: bool,
     pub exit_consumed: bool,
@@ -79,13 +98,7 @@ pub fn validate(c: &Command<'_>, ctx: &Context) -> Result<Transition, Error> {
             d.amount > 0 && d.amount <= MAX_AMOUNT && d.commitment != ZERO,
             Error::Range,
         )?;
-        require(ctx.ttl > 0, Error::Range)?;
-        let expected = ctx
-            .now
-            .checked_add(ctx.ttl)
-            .and_then(|x| x.checked_add(86399))
-            .and_then(|x| (x / 86400).checked_mul(86400))
-            .ok_or(Error::Range)?;
+        let expected = deposit_expiry(ctx.now, ctx.ttl)?;
         require(d.expiry == expected, Error::Time)?;
         Note {
             id: d.expected_id,
@@ -172,6 +185,9 @@ pub fn validate(c: &Command<'_>, ctx: &Context) -> Result<Transition, Error> {
             // r[3] remains the historical root, NOT current or Pending.old_root.
         }
         Operation::Expiry => {
+            // Even at the sentinel timestamp, a non-expiring Pool cannot
+            // transfer an Active note to its treasury through expiry.
+            require(ctx.ttl != 0, Error::Time)?;
             require(c.note_id == Some(n.id), Error::Binding)?;
             require(n.status == 1, Error::State)?;
             require(ctx.now >= n.expiry, Error::Time)?;

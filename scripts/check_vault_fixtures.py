@@ -13,7 +13,7 @@ GENERATOR = ROOT / 'crates/zkapi-tree-prover/examples/vault_fixtures.rs'
 FR = 21888242871839275222246405745257275088548364400416034343698204186575808495617
 FQ = 21888242871839275222246405745257275088696311157297823662689037894645226208583
 TOKEN = bytes.fromhex('06ddf6e1d765a193d9cbe146ceeb79ac1cb485ed5f5b37913a8cf5857eff00a9')
-SCENARIOS = {'a', 'a-with-b', 'b-with-a', 'other-vault', 'max-id', 'genesis-a'}
+SCENARIOS = {'a', 'a-with-b', 'b-with-a', 'other-vault', 'max-id', 'genesis-a', 'nonexpiring-a'}
 
 
 def read(path):
@@ -91,7 +91,7 @@ def main():
     assert profile['tree_backend'] == 'transition_proof'
     assert profile['tree_tag_policy'] == 'proof_bound'
     assert manifest['generator_sha256'] == digest(GENERATOR), 'stale generator provenance'
-    assert manifest['real_upstream_proofs'] == manifest['real_tree_proofs'] == 18
+    assert manifest['real_upstream_proofs'] == manifest['real_tree_proofs'] == 21
     assert manifest['all_proofs_verified_against_pinned_vks'] is True
     for name in ('request', 'withdrawal'):
         for extension in ('pk', 'vk'):
@@ -129,8 +129,12 @@ def main():
         ])
         destination = h2f('solana-zkapi-destination-v1', [raw(value['destination_owner'])])
         assert value['now'] == 3_000_000_000
-        assert value['ttl'] == 2_592_000 and value['challenge'] == 86_400
-        assert value['expiry'] == ((value['now'] + value['ttl'] + 86399) // 86400) * 86400
+        assert value['challenge'] == 86_400
+        if name == 'nonexpiring-a':
+            assert value['ttl'] == 0 and value['expiry'] == 2**64 - 1
+        else:
+            assert value['ttl'] == 2_592_000
+            assert value['expiry'] == ((value['now'] + value['ttl'] + 86399) // 86400) * 86400
         assert value['deposit'] == 5_000_000
         assert value['balance'] == (5_000_000 if name == 'genesis-a' else 4_900_000)
         assert value['is_genesis'] is (name == 'genesis-a')
@@ -177,7 +181,7 @@ def main():
     assert genesis['escape'][11] != a['escape'][11], 'genesis and signed state anchors must differ'
     assert cases['other-vault']['request'][2] != a['request'][2]
     assert cases['other-vault']['request'][3] == a['request'][3]
-    print('PASS: 6 fixture SHA/source/profile pins, canonical inputs, independent PDA/H2F, historical/genesis/max-ID trace preconditions')
+    print('PASS: 7 fixture SHA/source/profile pins, canonical inputs, independent PDA/H2F, historical/genesis/max-ID/non-expiring trace preconditions')
     print('Static fixture checks only; real-proof verification, SVM execution and release gates are separate.')
 
 

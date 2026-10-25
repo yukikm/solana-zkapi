@@ -113,6 +113,48 @@ fn real_native_request_withdrawals_tree_and_invalid_binding() {
     .unwrap();
 }
 #[test]
+fn real_native_non_expiring_note_proves_request_and_withdrawal() {
+    let f = fixture();
+    // The JSON wire must preserve all 64 bits. No circuit change, clock
+    // substitution, or mutation of an existing funded witness is involved.
+    let created =
+        run(json!({"kind":"deposit","note_id":0,"amount":"5000000","expiry":u64::MAX.to_string()}))
+            .unwrap();
+    assert_eq!(created["witness"]["expiry"], u64::MAX.to_string());
+    let siblings: [FieldElement; 32] = serde_json::from_value(f["siblings"].clone()).unwrap();
+    let root = FieldElement::from(merkle_root(
+        0,
+        field(&created["state"]["note_leaf"]).to_field(),
+        &siblings.map(FieldElement::to_field),
+    ));
+    let request = json!({
+        "kind":"request","context":f["context"],"witness":created["witness"],"state":created["state"],
+        "root":root,"siblings":f["siblings"],"authorization":{"version":"1","purpose":"non-expiring note regression"},
+        "request_time":u64::MAX.to_string(),"cap":"1000000","key":key("request")
+    });
+    let proof = run(request.clone()).unwrap();
+    assert_eq!(
+        field(&proof["auth"]["public_inputs"][6]).to_field(),
+        Fr::from(u64::MAX)
+    );
+    let mut changed = request;
+    changed["witness"]["expiry"] = "18446744073709551614".into();
+    assert!(
+        run(changed).is_err(),
+        "an old note cannot be extended by editing its witness"
+    );
+    let withdrawal = run(json!({
+        "kind":"withdrawal","context":f["context"],"witness":created["witness"],"state":created["state"],
+        "root":root,"siblings":f["siblings"],"destination_owner_hex":"07".repeat(32),
+        "mutual":false,"clearance":null,"key":key("withdrawal")
+    })).unwrap();
+    assert_eq!(
+        field(&withdrawal["public_inputs"][9]).to_field(),
+        Fr::from(5_000_000u64)
+    );
+}
+
+#[test]
 fn witness_mismatch_and_genesis_rebase_fail_closed() {
     let f = fixture();
     let mut s = f["state"].clone();

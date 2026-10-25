@@ -249,8 +249,9 @@ async function artifactFixture() {
   return { manifest, bundle, verified };
 }
 
-test('application factory authenticates independent pins, tariffs and finalized pool without sending or running proofs', async () => {
+for (const ttl of ['2592000', '0']) test(`application factory authenticates pins and finalized Pool before exposing deposit policy (TTL ${ttl})`, async () => {
   const { manifest, bundle } = await artifactFixture();
+  manifest.note_ttl_seconds = ttl;
   const body = {version:'1',provider:'openrouter',model:'fixture',pricing_basis:'fixed_usage_rates',valid_from:'0',valid_until:'9999999999',rates:[],operator_fee_micro_usdc:'0'};
   const tariff = {...body,tariff_hash:await sha256Hex(jcsBytes(body))};manifest.tariff_hashes=[tariff.tariff_hash];await resign(manifest);
   const pool=await poolAccount(manifest);let reads=0;
@@ -259,7 +260,7 @@ test('application factory authenticates independent pins, tariffs and finalized 
     storage:{key:await importJournalKey(new Uint8Array(32).fill(2)),store:{read:async()=>null,compareAndSwap:async()=>{throw Error('unexpected write');},withLock:async(_key,action)=>action()}},
     prover:{run:async()=>{throw Error('unexpected proof');}},wallet:{publicKey:address(key(10)),supportedTransactionVersions:new Set([0]),signTransaction:async()=>{throw Error('unexpected signature');}},
     mode:'proxy',noteId:'first',models:[{id:'fixture',provider:'openrouter',apis:['chat'],tariff}]};
-  const client=await createZkApiClient(options);assert.equal((await client.status()).wallet,'empty');assert.equal(reads,2);
+  const client=await createZkApiClient(options);const status=await client.status();assert.equal(status.wallet,'empty');assert.equal(status.depositExpiryPolicy,ttl==='0'?'none':'fixed');assert.equal(status.expiry,null);assert.equal(status.canRequest,false);assert.equal(reads,2);
   const tampered=structuredClone(options.deployment.artifacts);tampered.requestPk[0]^=1;
   await assert.rejects(createZkApiClient({...options,deployment:{...options.deployment,artifacts:tampered}}),/artifact mismatch/);
   await assert.rejects(createZkApiClient({...options,models:[{...options.models[0],tariff:{...tariff,operator_fee_micro_usdc:'1'}}]}),/tariff/);
@@ -289,8 +290,12 @@ test('application factory authenticates independent pins, tariffs and finalized 
   await assert.rejects(createBrowserClient({...options,storage:external,storageName:'caller-owned-test',createWorker,wasm,wasmSha256}),/custody does not match/);
   assert.equal(reads,beforeWrongBinding);assert.equal(workerTerminations,2);assert.equal(storageCloses,0);
   external.binding.wallet=options.wallet.publicKey;
+  external.binding.pool=key(12);
+  await assert.rejects(createBrowserClient({...options,storage:external,storageName:'caller-owned-test',createWorker,wasm,wasmSha256}),/custody does not match/);
+  assert.equal(reads,beforeWrongBinding);assert.equal(workerTerminations,3);assert.equal(storageCloses,0);
+  external.binding.pool=manifest.pool;
   await assert.rejects(createBrowserClient({...options,storage:external,storageName:'caller-owned-test',createWorker,wasm,wasmSha256:'00'.repeat(32)}),/WASM hash mismatch/);
-  assert.equal(workerTerminations,2);assert.equal(storageCloses,0);
+  assert.equal(workerTerminations,3);assert.equal(storageCloses,0);
 });
 
 test('compact deposit requires authenticated capability and an independent build capability pin', async () => {

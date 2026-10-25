@@ -275,7 +275,7 @@ impl World {
         for key in [4, 5, 6, 7] {
             args.extend(bytes(&w[key]));
         }
-        args.extend(2_592_000u64.to_le_bytes());
+        args.extend(fixture["ttl"].as_u64().unwrap().to_le_bytes());
         args.extend(CHALLENGE.to_le_bytes());
         args.extend(1_000_000u64.to_le_bytes());
         args.extend(self.payer.pubkey().to_bytes());

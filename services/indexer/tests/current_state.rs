@@ -55,6 +55,43 @@ fn real_sbf_account_cuts_equal_full_replay_without_history_input() {
     }
 }
 #[test]
+fn synthetic_non_expiring_cut_preserves_exact_note_expiry_and_pool_policy() {
+    let mut f = Fixture::load("close", "deposit");
+    f.trusted.note_ttl_seconds = "0".into();
+    let mut c = f.capture(4096);
+    // Construct a new-policy account cut from the fixture's account layouts.
+    // This is synthetic capture validation, not an on-chain migration.
+    let mut pool = bytes(&c.batches[0].values[0]);
+    pool[331..339].copy_from_slice(&0u64.to_le_bytes());
+    replace(&mut c.batches[0].values[0], pool);
+    let mut n = f.expected.active[&0].clone();
+    n.expiry = u64::MAX;
+    let mut note = bytes(&c.batches[0].values[4]);
+    note[54..62].copy_from_slice(&n.expiry.to_le_bytes());
+    replace(&mut c.batches[0].values[4], note);
+    let mut tree = zkapi_indexer::tree::Tree::new();
+    tree.update(0, n.leaf().unwrap()).unwrap();
+    let mut tree_account = bytes(&c.batches[0].values[1]);
+    tree_account[10..42].copy_from_slice(&tree.root());
+    replace(&mut c.batches[0].values[1], tree_account);
+    c.digest = c.digest().unwrap();
+    let state = verified(&f, c.clone()).unwrap();
+    assert_eq!(state.chain().active[&0].expiry, u64::MAX);
+
+    // An internally consistent finite leaf is still invalid for a zero-TTL Pool.
+    n.expiry -= 1;
+    let mut note = bytes(&c.batches[0].values[4]);
+    note[54..62].copy_from_slice(&n.expiry.to_le_bytes());
+    replace(&mut c.batches[0].values[4], note);
+    tree.update(0, n.leaf().unwrap()).unwrap();
+    let mut tree_account = bytes(&c.batches[0].values[1]);
+    tree_account[10..42].copy_from_slice(&tree.root());
+    replace(&mut c.batches[0].values[1], tree_account);
+    c.digest = c.digest().unwrap();
+    assert!(verified(&f, c).is_err());
+}
+
+#[test]
 fn completeness_metadata_clock_and_root_are_checked_independently() {
     let f = Fixture::load("challenge", "initiate_escape");
     for case in 0..10 {

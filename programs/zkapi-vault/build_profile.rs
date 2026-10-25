@@ -103,7 +103,11 @@ pub fn generate(root: &Path, expected_digest: &str, output: &Path) {
         "canonical circuit profile mismatch"
     );
     let profile_hash = hex::<32>(hash.as_str().expect("profile hash string"));
-    assert_ne!(profile_hash, crate::legacy_profile::PROFILE, "legacy fixture profile forbidden");
+    assert_ne!(
+        profile_hash,
+        crate::legacy_profile::PROFILE,
+        "legacy fixture profile forbidden"
+    );
     let legacy: Value =
         serde_json::from_str(include_str!("../../tests/fixtures/layout2/profile.json")).unwrap();
     assert_ne!(
@@ -239,7 +243,10 @@ pub fn generate(root: &Path, expected_digest: &str, output: &Path) {
     // would add minutes to every program build without strengthening the pin.
     let pk_vk = VerifyingKey::<Bn254>::deserialize_compressed(&mut cursor)
         .expect("canonical tree PK verification-key prefix");
-    assert!(!cursor.is_empty() && pk_vk == vk, "tree PK/VK correspondence");
+    assert!(
+        !cursor.is_empty() && pk_vk == vk,
+        "tree PK/VK correspondence"
+    );
     let alpha = g1(vk.alpha_g1);
     let beta = g2(vk.beta_g2);
     let gamma = g2(vk.gamma_g2);

@@ -74,7 +74,7 @@ with an owner stopped immediately after dispatch commit.
 | IP/body/timing correlation | No body storage, supported Tor routing and clear privacy limits |
 | USDC freeze or price deviation | Fixed mint, operator-loss rules and atomic rollback; issuer powers remain |
 | Withheld server signatures | Original escape/challenge rules; no unconditional-exit claim |
-| Expiry | Visible expiry and withdrawal warnings; all expired Active principal goes to treasury |
+| Expiry | Positive-TTL Pools expose expiry/forfeiture warnings; zero-TTL Pools reject expiry claims. Withdrawal challenge deadlines remain enforced. See ADR-0004. |
 
 Use the isolated Rust signer for Baby-JubJub; do not substitute an Ed25519 KMS
 signing API. Store seeds using KMS envelope encryption, decrypt only into limited

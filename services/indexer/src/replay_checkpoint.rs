@@ -176,7 +176,7 @@ impl Saved {
         field(self.root)?;
         if let Some(c) = &self.config {
             field(c.binding)?;
-            require(c.ttl > 0 && c.challenge > 0)?;
+            require(c.challenge > 0)?;
         } else {
             require(
                 self.active.is_empty()
@@ -199,10 +199,20 @@ impl Saved {
         let mut outstanding = 0u64;
         for n in &self.active {
             require(u64::from(n.id) < self.next_note_id)?;
+            require(
+                self.config
+                    .as_ref()
+                    .is_none_or(|c| c.ttl != 0 || n.expiry == u64::MAX),
+            )?;
             tree.update(n.id, n.leaf().map_err(|_| Error::Snapshot)?)?;
             outstanding = outstanding.checked_add(n.deposit).ok_or(Error::Snapshot)?;
         }
         for p in &self.pending {
+            require(
+                self.config
+                    .as_ref()
+                    .is_none_or(|c| c.ttl != 0 || p.note.expiry == u64::MAX),
+            )?;
             p.note.leaf().map_err(|_| Error::Snapshot)?;
             field(p.old_root)?;
             field(p.nullifier)?;

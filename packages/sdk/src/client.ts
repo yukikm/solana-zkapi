@@ -19,6 +19,8 @@ import { walletOperationProgress, type WalletOperationProgress, type EscapeWithd
 export type { WalletOperationProgress, EscapeWithdrawalStatus } from './wallet-progress.ts';
 import { SolanaWalletChain } from './wallet-chain.ts';
 import { authorizationSnapshot } from './session-snapshot.ts';
+import { depositExpiryStatus, type DepositExpiryPolicy } from './deposit-expiry.ts';
+export type { DepositExpiryPolicy } from './deposit-expiry.ts';
 import { validateDaemonModelPolicy, validateModelRequestCapabilities, type DaemonApi } from './clientd-models.ts';
 import { privacyProfile, planClientUpgrade, type PrivacyProfile } from './client-guidance.ts';
 export { privacyProfile, planClientUpgrade, type PrivacyProfile, type UpgradePlan } from './client-guidance.ts';
@@ -88,6 +90,8 @@ export interface ClientStatus {
   session: { id: string; phase: string; serverState: string | null; recovery: RecoveryResult['recovery']; operations: { id: string; phase: string }[] } | null;
   recovery: RecoveryResult;
   walletOperation: { kind: string; phase: string; signature: string | null; destinationOwner: string | null; progress: WalletOperationProgress } | null;
+  /** Authenticated Pool policy. 'none' requires canonical witness and verified zero-TTL Pool. */
+  depositExpiryPolicy: DepositExpiryPolicy;
   expiry: ReturnType<typeof expiryNotice> | null;
   lastSettlement: { chargeMicroUsdc: string; operationIds: string[] } | null;
   privacyNotice: string;
@@ -164,7 +168,7 @@ export class ZkApiClient {
     this.options = { ...options, wallet: { ...options.wallet, wallets: [...options.wallet.wallets] } };
     this.walletClient = new WalletClient(this.options.wallet);
     const reuse = options.keyReuseSeconds ?? (options.mode === 'proxy' ? 0 : 300);
-    this.daemon = new ClientDaemon({ client: options.control, journal: options.wallet.journal,
+    this.daemon = new ClientDaemon({ client: options.control, journal: options.wallet.journal, manifest: options.wallet.manifest,
       noteId: options.noteId, mode: options.mode, models: this.models, keyReuseSeconds: reuse,
       services:this.services,gateway:structuredClone(options.gateway),
       minimumLeaseRemainingSeconds: options.keyReuseSeconds === undefined && options.mode !== 'proxy' ? 90 : 1,
@@ -197,7 +201,8 @@ export class ZkApiClient {
   /** Local read only. No AUTH, inference, wallet prompt or transaction is sent. */
   async status(): Promise<ClientStatus> {
     const r = await this.options.wallet.journal.read(this.options.noteId), v = r?.value, w = v?.wallet, p = v?.pending;
-    const expiry = v?.witness ? expiryNotice(BigInt(v.witness.expiry), BigInt(Math.floor(Date.now() / 1000))) : null;
+    const deposit = depositExpiryStatus(this.options.wallet.manifest, v?.witness, BigInt(Math.floor(Date.now() / 1000)));
+    const { expiry, depositExpiryPolicy } = deposit;
     const last = v?.history.at(-1);
     const emergency = w?.emergencyEscapes?.find(e => e.phase !== 'settled') ?? w?.emergencyEscapes?.at(-1), unresolvedEscape = w?.emergencyEscapes?.some(e => e.phase !== 'settled');
     const escapeOperation = emergency
@@ -207,7 +212,7 @@ export class ZkApiClient {
     return { noteId: this.options.noteId, mode: this.options.mode, wallet: w?.status ?? 'empty',
       settledBalanceMicroUsdc: v?.state.balance_micro_usdc ?? '0', authorizationCapMicroUsdc: this.options.wallet.manifest.cap_micro_usdc,
       canRequest: !this.disposed && !this.busy && w?.status === 'active' && !w.operation && !w.clearance && (!p || this.daemon.canContinue(p)) && !v?.gatewayRecoveryHold && !unresolvedEscape
-        && expiry !== null && expiry.severity !== 'expired' && BigInt(v!.state.balance_micro_usdc) >= BigInt(this.options.wallet.manifest.cap_micro_usdc),
+        && deposit.canRequest && BigInt(v!.state.balance_micro_usdc) >= BigInt(this.options.wallet.manifest.cap_micro_usdc),
       canReconcileUnacceptedAuthorization: !this.disposed && !this.busy && w?.status === 'active' && !w.operation
         && p?.phase === 'send_unknown' && p.operations.length === 0 && p.providerKey === undefined && p.serverState === undefined,
       canPrepareEmergencyEscape: !this.disposed && !this.busy && w?.status === 'active' && !w.operation
@@ -229,7 +234,7 @@ export class ZkApiClient {
       recovery: this.daemon.recoveryStatus(v),
       walletOperation: w?.operation ? { kind: w.operation.kind, phase: w.operation.phase, signature: w.operation.current ?? null,
         destinationOwner: w.operation.destinationOwner ?? null, progress: await walletOperationProgress(w.operation) } : null,
-      expiry, lastSettlement: last ? { chargeMicroUsdc: last.settlement.charge_micro_usdc, operationIds: last.operations.map(o => o.id) } : null,
+      depositExpiryPolicy, expiry, lastSettlement: last ? { chargeMicroUsdc: last.settlement.charge_micro_usdc, operationIds: last.operations.map(o => o.id) } : null,
       privacyNotice: this.options.mode === 'proxy' ? PROXY_PRIVACY_NOTICE : this.options.mode === 'direct_openrouter' ? DIRECT_OPENROUTER_PRIVACY_NOTICE : DIRECT_PRIVACY_NOTICE,
       privacy: privacyProfile(this.options.mode, this.options.keyReuseSeconds ?? (this.options.mode === 'proxy' ? 0 : 300)),
     };
@@ -396,7 +401,7 @@ export class ZkApiClient {
         const r = await this.options.wallet.journal.read(this.options.noteId);
         const pending = r?.value.pending;
         if (s.wallet !== 'active' || pending && !this.daemon.canContinue(pending) || s.walletOperation || r?.value.wallet?.clearance
-          || r?.value.gatewayRecoveryHold || r?.value.wallet?.emergencyEscapes?.some(e => e.phase !== 'settled') || !s.expiry || s.expiry.severity === 'expired'
+          || !r?.value.witness || r.value.gatewayRecoveryHold || r.value.wallet?.emergencyEscapes?.some(e => e.phase !== 'settled') || s.depositExpiryPolicy !== 'none' && (!s.expiry || s.expiry.severity === 'expired')
           || BigInt(s.settledBalanceMicroUsdc) < BigInt(s.authorizationCapMicroUsdc)) {
           throw new ClientActionError('not_ready', 'Fund the note or recover its saved operation before a new request.');
         }

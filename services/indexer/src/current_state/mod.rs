@@ -393,7 +393,7 @@ pub fn verify(
                 status,
                 pda(&program, &[b"note", &pool, &id.to_le_bytes()]).1,
             )?;
-            if note.expiry == 0 {
+            if note.expiry == 0 || trusted.note_ttl_seconds == "0" && note.expiry != u64::MAX {
                 return Err("invalid Note expiry".into());
             }
             if status != 3 {

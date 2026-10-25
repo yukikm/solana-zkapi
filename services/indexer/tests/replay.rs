@@ -274,6 +274,115 @@ fn original_poseidon_path_replay_all_lifecycle_and_finalize_sequence() {
     assert!(index.zero_path(0).is_err());
 }
 #[test]
+fn non_expiring_deposit_replay_restores_and_preserves_withdrawal_deadline() {
+    let mut initialization = init();
+    initialization.data[8 + 192..8 + 200].copy_from_slice(&0u64.to_le_bytes());
+    let mut index = Indexer::new(PROGRAM, POOL);
+    index
+        .apply_block(&block(1, 10, vec![initialization.clone()]))
+        .unwrap();
+    let mut tree = Tree::new();
+    let mut n = note(0);
+    n.expiry = u64::MAX;
+    index
+        .apply_block(&block(
+            2,
+            10,
+            vec![ix(
+                "deposit",
+                payload(&mut tree, &n, Operation::Deposit, 0),
+                accounts(),
+            )],
+        ))
+        .unwrap();
+    reconcile(&mut index);
+    let saved = index.checkpoint_bytes().unwrap();
+    let restored =
+        Indexer::restore_checkpoint(&saved, hash(&saved), PROGRAM, POOL, 2, [2; 32]).unwrap();
+    assert_eq!(restored.replay_state().unwrap().active[&0].expiry, u64::MAX);
+
+    // Even the largest representable timestamp cannot authorize forfeiture.
+    let mut claim_index = index.clone();
+    let mut claim_tree = tree.clone();
+    assert!(claim_index
+        .apply_block(&block(
+            3,
+            u64::MAX,
+            vec![ix(
+                "claim_expired",
+                payload(&mut claim_tree, &n, Operation::Expiry, 0),
+                accounts(),
+            )]
+        ))
+        .is_err());
+    assert_eq!(
+        claim_index.replay_state().unwrap().outstanding_deposits,
+        n.deposit
+    );
+
+    index
+        .apply_block(&block(
+            3,
+            1_000_000,
+            vec![ix(
+                "initiate_escape",
+                payload(&mut tree, &n, Operation::Escape, 101),
+                accounts(),
+            )],
+        ))
+        .unwrap();
+    assert_eq!(
+        index.replay_state().unwrap().pending[&0].deadline,
+        1_000_060
+    );
+    let mut early = index.clone();
+    assert!(early
+        .apply_block(&block(
+            4,
+            1_000_059,
+            vec![ix(
+                "finalize_escape",
+                0u32.to_le_bytes().to_vec(),
+                accounts(),
+            )]
+        ))
+        .is_err());
+    index
+        .apply_block(&block(
+            4,
+            1_000_060,
+            vec![ix(
+                "finalize_escape",
+                0u32.to_le_bytes().to_vec(),
+                accounts(),
+            )],
+        ))
+        .unwrap();
+    assert_eq!(index.replay_state().unwrap().outstanding_deposits, 0);
+
+    // Zero TTL is not zero challenge, and cannot accept an ordinary expiry.
+    let mut wrong_note = Indexer::new(PROGRAM, POOL);
+    wrong_note
+        .apply_block(&block(1, 10, vec![initialization.clone()]))
+        .unwrap();
+    assert!(wrong_note
+        .apply_block(&block(
+            2,
+            10,
+            vec![ix(
+                "deposit",
+                payload(&mut Tree::new(), &note(0), Operation::Deposit, 0),
+                accounts(),
+            )]
+        ))
+        .is_err());
+    initialization.data[8 + 200..8 + 208].copy_from_slice(&0u64.to_le_bytes());
+    assert!(Indexer::new(PROGRAM, POOL)
+        .apply_block(&block(1, 10, vec![initialization]))
+        .is_err());
+}
+
+#[test]
 fn close_and_expiry_are_distinct_from_finalize_and_do_not_reuse_ids() {
     for (operation, name, time) in [
         (Operation::Close, "mutual_close", 11),

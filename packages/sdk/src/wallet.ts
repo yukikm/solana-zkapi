@@ -14,6 +14,7 @@ import { buildUploadPlan, snapshotPlan, restorePlan, prepareAttempt, recoverAtte
   type Attempt, type FinalizationAttempt, type PlanRecord, type V0Wallet, type TransportRpc, type Recovery, type FinalizationPlan } from './transport.ts';
 import type { WalletChain, WalletSnapshot } from './wallet-chain.ts';
 import { unknownEscapeWithdrawal, type EscapeWithdrawalStatus } from './wallet-progress.ts';
+import { canonicalDepositExpiry, validateDepositExpiry } from './deposit-expiry.ts';
 
 export interface WalletRoles { uploader?:string;rentPayer?:string;feePayer:string;payer:string;tokenOwner?:string }
 export interface InlineDepositRoles { feePayer:string;payer:string;tokenOwner:string }
@@ -59,14 +60,14 @@ export class WalletClient {
   private readonly o:WalletOptions;
   private readonly escapeObservations = new Map<string, { revision: number; status: EscapeWithdrawalStatus }>();
   constructor(options:WalletOptions){if(options.priorityFeeMicroLamports!==undefined)u64(options.priorityFeeMicroLamports);this.o={...options,wallets:[...options.wallets]};}
-  private async record(id:string):Promise<JournalRecord<NoteJournal>>{const r=await this.o.journal.read(id);requireTrue(r?.value.witness&&r.value.wallet,'full note witness and wallet journal required');const op=r.value.wallet.operation;if(op?.transport==='v0_inline_deposit_v1')this.inlinePins(op.inlineContext);return r;}
+  private async record(id:string):Promise<JournalRecord<NoteJournal>>{const r=await this.o.journal.read(id);requireTrue(r?.value.witness&&r.value.wallet,'full note witness and wallet journal required');validateDepositExpiry(this.o.manifest,r.value.witness.expiry);const op=r.value.wallet.operation;if(op?.transport==='v0_inline_deposit_v1')this.inlinePins(op.inlineContext);return r;}
   private inlineContext():InlineContext{const m=this.o.manifest;return {deploymentId:m.deployment_id,manifestHash:m.manifest_hash,programId:m.program_id,pool:m.pool,mint:m.mint,vaultBinding:m.vault_binding};}
   private inlinePins(p:InlineContext):void{requireTrue(supportsInlineDeposit(this.o.manifest)&&Object.entries(this.inlineContext()).every(([k,v])=>p[k as keyof InlineContext]===v),'inline deployment pins changed');}
   private save(id:string,r:JournalRecord<NoteJournal>):Promise<JournalRecord<NoteJournal>>{return this.o.journal.compareAndSwap(id,r.revision,r.value);}
   private roles(roles:WalletRoles):WalletRoles{const copy=structuredClone(roles);for(const v of Object.values(copy))if(v!==undefined)address(v);return copy;}
   private signers(instruction:Instruction,feePayer:Address):V0Wallet[]{const required=new Set([feePayer,...(instruction.accounts??[]).filter(k=>isSignerRole(k.role)).map(k=>k.address)]);return this.o.wallets.filter(w=>required.has(w.publicKey));}
   private async note(r:JournalRecord<NoteJournal>,s:WalletSnapshot):Promise<PublicNote>{
-    const w=r.value.witness!,identity=await this.o.prover.inspect(w,r.value.state);
+    const w=r.value.witness!;validateDepositExpiry(this.o.manifest,w.expiry);const identity=await this.o.prover.inspect(w,r.value.state);
     requireTrue(s.note&&s.note.note_id===w.note_id&&s.note.registration_commitment===identity.registration_commitment&&s.note.deposit_micro_usdc===w.deposit_micro_usdc&&s.note.expiry===w.expiry,'finalized note does not match secret witness');
     return {note_id:w.note_id,registration_commitment:identity.registration_commitment,deposit_micro_usdc:w.deposit_micro_usdc,expiry:w.expiry};
   }
@@ -129,8 +130,9 @@ export class WalletClient {
     }else requireTrue(roles.uploader&&roles.rentPayer,'explicit buffer roles required');
     await this.o.journal.withNoteLock(id,async()=>{
       const s=await this.o.chain.snapshot();requireTrue(!s.paused,'pool paused');
-      const expiry=((BigInt(s.clock)+BigInt(this.o.manifest.note_ttl_seconds)+86399n)/86400n*86400n).toString();
+      const expiry=canonicalDepositExpiry(this.o.manifest,s.clock);
       const candidate=await this.o.prover.deposit(s.nextNoteId,amount,expiry);
+      validateDepositExpiry(this.o.manifest,candidate.witness.expiry);
       const base:WalletOperationBase={id:crypto.randomUUID(),kind:'deposit',phase:'proving',roles,step:0,attempts:[],finalized:[]};
       const operation:WalletOperation=inline?{...base,kind:'deposit',transport:'v0_inline_deposit_v1',inlineContext:this.inlineContext(),priorityFeeMicroLamports:(this.o.priorityFeeMicroLamports??0n).toString()}:base;
       const r=await this.o.journal.create(id,{schema:inline?2:1,witness:candidate.witness,state:candidate.state,pending:null,history:[],wallet:{status:'unfunded',history:[],operation}});
@@ -352,9 +354,9 @@ export class WalletClient {
     requireTrue(!s.paused,'pool paused');
     let note:PublicNote;
     if(op.kind==='deposit'){
-      const expiry=((BigInt(s.clock)+BigInt(this.o.manifest.note_ttl_seconds)+86399n)/86400n*86400n).toString();
+      const expiry=canonicalDepositExpiry(this.o.manifest,s.clock);
       if(r.value.witness!.note_id!==s.nextNoteId||r.value.witness!.expiry!==expiry){
-        const c=await this.o.prover.rebaseDeposit(r.value.witness!,s.nextNoteId,expiry);r.value.witness=c.witness;r.value.state=c.state;r=await this.save(id,r);op=r.value.wallet!.operation!;
+        const c=await this.o.prover.rebaseDeposit(r.value.witness!,s.nextNoteId,expiry);validateDepositExpiry(this.o.manifest,c.witness.expiry);r.value.witness=c.witness;r.value.state=c.state;r=await this.save(id,r);op=r.value.wallet!.operation!;
       }
       const identity=await this.o.prover.inspect(r.value.witness!,r.value.state);note={note_id:s.nextNoteId,registration_commitment:identity.registration_commitment,deposit_micro_usdc:r.value.witness!.deposit_micro_usdc,expiry};
     }else{note=await this.note(r,s);requireTrue(s.note!.status==='active','note not active');
@@ -554,7 +556,7 @@ export class WalletClient {
           // Refresh only an unsigned preparation. A signed prior attempt is
           // permitted here solely after retryRejected has persisted its receipt.
           const latest=await this.o.chain.snapshot(undefined,'zero',p.snapshotSlot);
-          const expiry=((BigInt(latest.clock)+BigInt(m.note_ttl_seconds)+86399n)/86400n*86400n).toString();
+          const expiry=canonicalDepositExpiry(m,latest.clock);
           requireTrue(!latest.paused&&latest.slot>=p.snapshotSlot,'invalid pre-sign snapshot');
           if(latest.root.slice(2)!==p.expectedRoot||latest.nextNoteId!==p.expectedNoteId||expiry!==p.expiry){
             op.priorityFeeMicroLamports??=p.priorityFeeMicroLamports??'0';

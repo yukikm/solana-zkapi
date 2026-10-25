@@ -119,9 +119,112 @@ fn main() {
     let other = read(fixtures.join("other-vault.json"));
     let max = read(fixtures.join("max-id.json"));
     let genesis = read(fixtures.join("genesis-a.json"));
+    let nonexpiring = read(fixtures.join("nonexpiring-a.json"));
     let mut rows = vec![];
     let mut traces = BTreeMap::new();
     let wrong_elf = fs::read(wrong_path).expect("build wrong-VK SBF ELF fixture");
+
+    // Explicit zero-TTL Pools retain the original proof/withdrawal machinery.
+    // These are fresh Pool/Note accounts with real proofs and real Token CPI;
+    // no legacy account or stored witness is rewritten to change its policy.
+    {
+        let mut w = fresh(&elf, &nonexpiring);
+        assert_eq!(w.state::<PoolConfig>(w.pool).ttl, 0);
+        w.execute(
+            "nonexpiring/reject-finite-expiry-at-deposit",
+            &a,
+            Operation::Deposit,
+            Expect::Error(6008),
+        )
+        .unwrap_err();
+        w.execute(
+            "nonexpiring/deposit-real-proof",
+            &nonexpiring,
+            Operation::Deposit,
+            Expect::Ok,
+        )
+        .unwrap();
+        assert_eq!(w.state::<zkapi_vault::Note>(w.note(0)).expiry, u64::MAX);
+        w.clock(i64::MAX);
+        w.execute(
+            "nonexpiring/claim-rejected-at-max-solana-clock",
+            &nonexpiring,
+            Operation::Expiry,
+            Expect::Error(6016),
+        )
+        .unwrap_err();
+        assert_eq!(w.amount(w.vault), DEPOSIT);
+        assert_eq!(w.amount(w.treasury), 0);
+        w.execute(
+            "nonexpiring/close-at-max-solana-clock",
+            &nonexpiring,
+            Operation::Close,
+            Expect::Ok,
+        )
+        .unwrap();
+        assert_eq!(w.amount(w.destination), BALANCE);
+        assert_eq!(w.amount(w.treasury), DEPOSIT - BALANCE);
+        collect(w, &mut rows);
+    }
+    for paused in [false, true] {
+        let mut w = active(&elf, &nonexpiring);
+        let escape_time = NOW + 365 * 86_400;
+        w.clock(escape_time as i64);
+        w.execute(
+            "nonexpiring/escape-after-one-year",
+            &nonexpiring,
+            Operation::Escape,
+            Expect::Ok,
+        )
+        .unwrap();
+        let deadline = w.state::<PendingWithdrawal>(w.pending(0)).deadline;
+        assert_eq!(deadline, escape_time + CHALLENGE);
+        if paused {
+            w.admin("pause", &[], Expect::Ok).unwrap();
+        }
+        w.clock((deadline - 1) as i64);
+        w.finalize(
+            "nonexpiring/finalize-before-deadline",
+            0,
+            Expect::Error(6015),
+        )
+        .unwrap_err();
+        w.clock(deadline as i64);
+        w.execute(
+            "nonexpiring/challenge-at-deadline-rejected",
+            &nonexpiring,
+            Operation::Challenge,
+            Expect::Error(6014),
+        )
+        .unwrap_err();
+        w.finalize("nonexpiring/finalize-at-deadline", 0, Expect::Ok)
+            .unwrap();
+        assert_eq!(w.amount(w.destination), BALANCE);
+        assert_eq!(w.amount(w.treasury), DEPOSIT - BALANCE);
+        collect(w, &mut rows);
+    }
+    {
+        let mut w = pending(&elf, &nonexpiring);
+        w.clock((NOW + CHALLENGE - 1) as i64);
+        w.execute(
+            "nonexpiring/historical-request-challenges-stale-escape",
+            &nonexpiring,
+            Operation::Challenge,
+            Expect::Ok,
+        )
+        .unwrap();
+        assert_eq!(w.state::<zkapi_vault::Note>(w.note(0)).status, 1);
+        assert!(!w.state::<PendingWithdrawal>(w.pending(0)).exists);
+        assert_eq!(w.amount(w.vault), DEPOSIT);
+        w.execute(
+            "nonexpiring/restored-note-still-cannot-expire",
+            &nonexpiring,
+            Operation::Expiry,
+            Expect::Error(6016),
+        )
+        .unwrap_err();
+        collect(w, &mut rows);
+    }
     {
         let mut w = fresh(&wrong_elf, &a);
         w.execute(
@@ -525,7 +628,7 @@ fn main() {
     }
 
     // Initialization policy including actual signature/PDA/key checks.
-    for case in 0..19 {
+    for case in (0..19).filter(|case| *case != 2) {
         let mut w = World::new(&elf);
         let mut accounts = w.init_accounts();
         let mut args = w.init_data(&a);
@@ -537,10 +640,6 @@ fn main() {
             1 => {
                 accounts[6] = AccountMeta::new_readonly(w.attacker.pubkey(), true);
                 "admin-signature-binding"
-            }
-            2 => {
-                args[8 + 192..8 + 200].fill(0);
-                "zero-ttl"
             }
             3 => {
                 args[8 + 200..8 + 208].fill(0);

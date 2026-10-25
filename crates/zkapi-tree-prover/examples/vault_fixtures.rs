@@ -78,6 +78,9 @@ impl CloneCircuit for WithdrawalCircuit {
     }
 }
 fn main() {
+    let args: Vec<_> = std::env::args().skip(1).collect();
+    assert!(args.is_empty() || args == ["--non-expiring-only"]);
+    let non_expiring_only = !args.is_empty();
     let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
     let dir = root.join("tests/fixtures/vault");
     let target = root.join("target/i03");
@@ -125,8 +128,6 @@ fn main() {
         .try_into()
         .unwrap();
     let now = 3_000_000_000u64;
-    let ttl = 2_592_000u64;
-    let expiry = (now + ttl).div_ceil(86400) * 86400;
     let mut rng = StdRng::seed_from_u64(0x493033464958);
     let mut times = vec![];
     let state_signer = StateSigningKey::from_secret(Scalar::from(31u64));
@@ -138,7 +139,19 @@ fn main() {
         ("other-vault", 0, 42, 9, false, false),
         ("max-id", u32::MAX, 42, 2, false, false),
         ("genesis-a", 0, 42, 2, false, true),
+        ("nonexpiring-a", 0, 42, 2, false, false),
     ] {
+        let non_expiring = name == "nonexpiring-a";
+        if non_expiring_only && !non_expiring {
+            continue;
+        }
+        if non_expiring {
+            // Independent seed keeps this added fixture reproducible without
+            // regenerating or changing the six immutable legacy fixtures.
+            rng = StdRng::seed_from_u64(0x4e4f455850495259);
+        }
+        let ttl = if non_expiring { 0 } else { 2_592_000u64 };
+        let expiry = zkapi_layout2::binding::deposit_expiry(now, ttl).unwrap();
         // Solana find_program_address([b"pool", [pool_id; 32]], [43; 32]).
         // Independently recalculated and asserted by the SVM harness.
         let (pool_hex, pool_bump) = if pool_id == 2 {
@@ -324,6 +337,7 @@ fn main() {
         "other-vault",
         "max-id",
         "genesis-a",
+        "nonexpiring-a",
     ];
     let files = fixture_names
         .iter()
@@ -339,8 +353,8 @@ fn main() {
         "program_id": hex::encode([43; 32]),
         "generator_sha256": digest(fs::read(root.join("crates/zkapi-tree-prover/examples/vault_fixtures.rs")).unwrap()),
         "circuit_profile_hash": profile["circuit_profile_hash"],
-            "real_upstream_proofs": 18,
-            "real_tree_proofs": 18,
+            "real_upstream_proofs": 21,
+            "real_tree_proofs": 21,
             "all_proofs_verified_against_pinned_vks": true,
             "files": files,
             "trace_contract": {
@@ -352,5 +366,5 @@ fn main() {
             }
         }),
     );
-    println!("PASS: 18 real upstream proofs + 18 real tree proofs, actual Vault PDA bindings, immutable I02 profile {}", profile["circuit_profile_hash"]);
+    println!("PASS: fixture manifest includes 21 real upstream proofs + 21 real tree proofs, actual Vault PDA bindings, immutable I02 profile {}", profile["circuit_profile_hash"]);
 }

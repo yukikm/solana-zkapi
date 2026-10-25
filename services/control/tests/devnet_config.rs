@@ -524,6 +524,27 @@ fn fixture(dir: &Path, devnet: bool) -> RuntimeConfig {
 }
 
 #[test]
+fn non_expiring_deposit_policy_keeps_challenge_and_manifest_validation() {
+    let dir = tempfile::tempdir().unwrap();
+    let mut config = fixture(dir.path(), false);
+    config.manifest["note_ttl_seconds"] = "0".into();
+    repin(&mut config);
+    let validated = config.clone().validate().unwrap();
+    assert_eq!(validated.trusted.note_ttl_seconds, "0");
+    assert_eq!(validated.trusted.challenge_seconds, "60");
+
+    for value in ["00", "-1", "18446744073709551616", "never"] {
+        let mut invalid = config.clone();
+        invalid.manifest["note_ttl_seconds"] = value.into();
+        repin(&mut invalid);
+        assert!(invalid.validate().is_err(), "TTL {value}");
+    }
+    config.manifest["challenge_seconds"] = "0".into();
+    repin(&mut config);
+    assert!(config.validate().is_err());
+}
+
+#[test]
 fn local_default_and_explicit_devnet_test_profiles_validate_without_network() {
     let dir = tempfile::tempdir().unwrap();
     let local = fixture(dir.path(), false);
