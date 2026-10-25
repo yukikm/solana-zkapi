@@ -349,6 +349,91 @@ fn replace_devnet_idl(config: &mut RuntimeConfig, idl: &Value) {
 }
 
 #[test]
+fn authenticated_idl_documentation_changes_preserve_only_the_wire_contract() {
+    let dir = tempfile::tempdir().unwrap();
+    let config = fixture(dir.path(), true);
+    let original: Value =
+        serde_json::from_slice(&std::fs::read(&config.devnet.as_ref().unwrap().idl_file).unwrap())
+            .unwrap();
+    let mut documented = original.clone();
+    documented["docs"] = json!(["New deployment documentation"]);
+    let pool = documented["types"]
+        .as_array_mut()
+        .unwrap()
+        .iter_mut()
+        .find(|ty| ty["name"] == "PoolConfig")
+        .unwrap();
+    let fields = pool["type"]["fields"].as_array_mut().unwrap();
+    let ttl = fields
+        .iter_mut()
+        .find(|field| field["name"] == "ttl")
+        .unwrap();
+    ttl["docs"] = json!(["Zero selects non-expiring deposits."]);
+    let mut accepted = config.clone();
+    replace_devnet_idl(&mut accepted, &documented);
+    accepted.clone().validate().unwrap();
+
+    // Comments cannot bypass the independent exact-byte digest checks.
+    std::fs::write(
+        &accepted.devnet.as_ref().unwrap().idl_file,
+        serde_json::to_vec(&original).unwrap(),
+    )
+    .unwrap();
+    assert!(accepted.validate().is_err());
+
+    for mutation in [
+        "historical-docs",
+        "field-type",
+        "field-order",
+        "discriminator",
+        "malformed-docs",
+    ] {
+        let mut changed = original.clone();
+        let pool = changed["types"]
+            .as_array_mut()
+            .unwrap()
+            .iter_mut()
+            .find(|ty| ty["name"] == "PoolConfig")
+            .unwrap();
+        let fields = pool["type"]["fields"].as_array_mut().unwrap();
+        match mutation {
+            "historical-docs" => {
+                fields
+                    .iter_mut()
+                    .find(|field| field["name"] == "ttl")
+                    .unwrap()
+                    .as_object_mut()
+                    .unwrap()
+                    .remove("docs");
+            }
+            "field-type" => {
+                fields
+                    .iter_mut()
+                    .find(|field| field["name"] == "ttl")
+                    .unwrap()["type"] = "u128".into()
+            }
+            "field-order" => fields.swap(0, 1),
+            "discriminator" => {
+                let first = changed["instructions"][0]["discriminator"][0]
+                    .as_u64()
+                    .unwrap();
+                changed["instructions"][0]["discriminator"][0] = (first ^ 1).into();
+            }
+            "malformed-docs" => changed["docs"] = json!([1]),
+            _ => unreachable!(),
+        }
+        let mut candidate = config.clone();
+        replace_devnet_idl(&mut candidate, &changed);
+        let result = candidate.validate();
+        if mutation == "historical-docs" {
+            result.unwrap();
+        } else {
+            assert!(result.is_err(), "{mutation}");
+        }
+    }
+}
+
+#[test]
 fn exact_legacy_idl_keeps_old_manifest_pins_without_enabling_compact() {
     // Exact artifact from 94b4116728d3e9ee111dd161d16f50eeba592e46, not an
     // old-looking IDL synthesized from the new implementation under test.

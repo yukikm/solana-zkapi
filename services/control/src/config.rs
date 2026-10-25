@@ -28,6 +28,32 @@ fn advertises_compact_deposit(manifest: &Value) -> bool {
                 .any(|format| format == "v0_inline_deposit_v1")
         })
 }
+/// Anchor emits source comments as documentation arrays. They are authenticated
+/// by the exact artifact digest but do not change the IDL wire contract.
+fn strip_idl_documentation(value: &mut Value) -> Result<()> {
+    match value {
+        Value::Object(fields) => {
+            if let Some(docs) = fields.get("docs") {
+                ensure!(
+                    docs.as_array()
+                        .is_some_and(|lines| lines.iter().all(Value::is_string)),
+                    "IDL documentation must be an array of strings"
+                );
+                fields.remove("docs");
+            }
+            for child in fields.values_mut() {
+                strip_idl_documentation(child)?;
+            }
+        }
+        Value::Array(values) => {
+            for child in values {
+                strip_idl_documentation(child)?;
+            }
+        }
+        _ => {}
+    }
+    Ok(())
+}
 #[derive(Clone, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct RuntimeConfig {
@@ -217,6 +243,8 @@ impl DevnetConfig {
             serde_json::from_str(include_str!("../../../docs/contracts/zkapi_vault.json"))?;
         ensure!(idl["address"] == build.program_id, "devnet IDL program ID");
         idl["address"] = local_idl["address"].clone();
+        strip_idl_documentation(&mut idl)?;
+        strip_idl_documentation(&mut local_idl)?;
         if idl != local_idl && !advertises_compact_deposit(manifest) {
             // The compact upgrade adds only this instruction. Preserve exact
             // legacy wire checking for already funded deployments, while the

@@ -1651,6 +1651,9 @@
           },
           {
             "name": "ttl",
+            "docs": [
+              "Zero disables deposit expiry; positive values are the legacy note TTL."
+            ],
             "type": "u64"
           },
           {

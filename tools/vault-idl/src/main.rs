@@ -84,3 +84,23 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("Generated {}", output.display());
     Ok(())
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn checked_in_pool_schema_matches_the_compiler_including_documentation() {
+        let checked: serde_json::Value =
+            serde_json::from_str(include_str!("../../../docs/contracts/zkapi_vault.json")).unwrap();
+        let mut compiled = zkapi_vault::PoolConfig::create_type().unwrap();
+        compiled.name = compiled.name.rsplit("::").next().unwrap().to_owned();
+        let stored = checked["types"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|ty| ty["name"] == compiled.name)
+            .unwrap();
+        assert_eq!(serde_json::to_value(compiled).unwrap(), *stored);
+    }
+}
