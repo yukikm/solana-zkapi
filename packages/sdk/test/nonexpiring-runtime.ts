@@ -8,7 +8,7 @@ import { createHash } from 'node:crypto';
 import { NativeProver } from '../src/prover-node.ts';
 import { WasmProver } from '../src/prover-runtime.ts';
 import type { PrivateState } from '../src/control.ts';
-import type { PrivateWitness } from '../src/prover.ts';
+import type { NoteWitness } from '../src/prover.ts';
 
 const hash = (bytes: Uint8Array) => createHash('sha256').update(bytes).digest('hex');
 const expiry = '18446744073709551615';
@@ -33,7 +33,7 @@ test('rebuilt native and WASM preserve canonical MAX expiry and generate valid r
   };
   const keys = { request: await key('request'), withdrawal: await key('withdrawal'), tree: await key('tree') };
   for (const [name, engine] of Object.entries(engines)) {
-    const created = await engine.run({ kind: 'rebase_deposit', witness, note_id: 0, expiry }) as { witness: PrivateWitness; state: PrivateState; registration_commitment: string };
+    const created = await engine.run({ kind: 'rebase_deposit', witness, note_id: 0, expiry }) as { witness: NoteWitness; state: PrivateState; registration_commitment: string };
     assert.deepEqual(created.witness, witness); assert.equal(created.registration_commitment, '0x' + f.commitment);
     const path = await engine.run(pathCommand) as { root: string; siblings: string[] };
     assert.equal(path.root, pathCommand.root); assert.equal(path.siblings.length, 32);
