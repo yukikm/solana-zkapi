@@ -42,6 +42,16 @@ cutoff across restarts. A different policy cannot replace the existing
 registration. Omitting the field disables automatic waivers without deleting
 the registration or prior financial records.
 
+A fresh Pool with a new database has no policy registration. Do not copy the
+previous Pool's timestamp into that configuration: its cutoff may already be
+past, so the new control service will refuse startup. Select an explicitly
+approved future cutoff for the new Pool and register it before admission. The
+`signer-config` and `provision` commands do not register this policy; their
+success alone does not establish that `serve` can start. Keep an already
+registered same-Pool cutoff unchanged across runtime upgrades and restarts.
+Never reset the ledger, weaken the future-cutoff check, or change a registered
+policy to make startup succeed.
+
 Automatic waiver applies only to sessions created at or after that cutoff and
 only to `direct_openrouter`. Normal recovery first attempts to locate and retire
 the original key. If issuance remains unknown, the session must be closed,

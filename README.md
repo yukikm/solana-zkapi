@@ -73,21 +73,27 @@ application maintained separately.
 
 ## Public Devnet addresses
 
-Deployment: `public-devnet-20261021-state-v1`. All explorer links below use **Solana Devnet**.
+New deployment: `public-devnet-20261025-nonexpiry-v1`. All explorer links below use **Solana Devnet**.
+The finalized Pool has no Deposit expiry and a 1,800-second withdrawal challenge
+period. Matching operator services were activated and passed backend readiness
+checks on October 25; a funded lifecycle has not been verified for this Pool.
+Run fresh preflight before funding. See the [new-Pool pins and recovery requirements](docs/getting-started/non-expiring-deposits.md).
 
 | Account | Address |
 |---|---|
-| Vault program | [2sXbYtY2NbyGm1GeCETkkjAa5LxWCA8v8aj2ePW3yVDH](https://explorer.solana.com/address/2sXbYtY2NbyGm1GeCETkkjAa5LxWCA8v8aj2ePW3yVDH?cluster=devnet) |
-| Pool | [2zAKvvfiV1RZtWw71EYthWVrR3ZiWgmy92DS75JpmG8R](https://explorer.solana.com/address/2zAKvvfiV1RZtWw71EYthWVrR3ZiWgmy92DS75JpmG8R?cluster=devnet) |
-| Vault (USDC token account) | [H2rvp4whEZV7AnTSLbvsBsY8RbFCVjcesEdaouS3ve2y](https://explorer.solana.com/address/H2rvp4whEZV7AnTSLbvsBsY8RbFCVjcesEdaouS3ve2y?cluster=devnet) |
+| Vault program | [GnVHYANsc3zsYQfU6EBuFbT8v8tHZtd91baGNKJWFkMZ](https://explorer.solana.com/address/GnVHYANsc3zsYQfU6EBuFbT8v8tHZtd91baGNKJWFkMZ?cluster=devnet) |
+| Pool | [DfzSmjTetKSNwAcGPM8Th3k2orQtxT1vZVheWr1YttTX](https://explorer.solana.com/address/DfzSmjTetKSNwAcGPM8Th3k2orQtxT1vZVheWr1YttTX?cluster=devnet) |
+| Vault (USDC token account) | [MCUhddQGQEGJUzvUrptQVZ79NqTAtPAmpemRemieo8D](https://explorer.solana.com/address/MCUhddQGQEGJUzvUrptQVZ79NqTAtPAmpemRemieo8D?cluster=devnet) |
 | USDC mint | [4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU](https://explorer.solana.com/address/4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU?cluster=devnet) |
 
-Program, Pool and mint are pinned in the [public manifest](https://d366buuvadnp3.cloudfront.net/releases/public-devnet-20261021-state-v1/assets/manifest.json);
-the Vault is the Pool's derived USDC token account. This fresh PoC uses
-[current-account synchronization](docs/getting-started/poc-state-sync.md) and new
-client journals. Deposit through
-[clientd](docs/getting-started/clientd.md) or the [SDK](docs/getting-started/sdk.md):
-a direct token transfer to the Vault does not create a ZKAPI note.
+Program, Pool and mint are pinned in the [public manifest](https://d366buuvadnp3.cloudfront.net/releases/public-devnet-20261025-nonexpiry-v1/assets/manifest.json);
+the Vault is the associated USDC token account of this Pool's derived Vault
+authority. This fresh Pool uses [current-account synchronization](docs/getting-started/poc-state-sync.md)
+and a separate client namespace. SDK `.20` supports this policy; published native
+installers remain `.15`. Earlier test balances are not transferred to this Pool,
+and existing recovery files and journals are retained separately. Use the
+[SDK deposit flow](docs/getting-started/sdk.md): a direct token transfer to the
+Vault does not create a ZKAPI note.
 
 ## Documentation
 

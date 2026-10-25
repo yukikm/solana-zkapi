@@ -4,11 +4,14 @@ ZKAPI is a **Devnet preview**. The current SDK is
 [`.20`](releases/non-expiring-deposits-preview.md); native installers remain
 [`.15`](releases/direct-recovery-preview.md). SDK `.18` adds explicit encrypted
 backup enrollment and browser/Node.js restoration after device-data loss, with
-local fixture validation on **2026-10-25 JST**. It requires a separately saved
+local fixture validation and hosted synthetic-record recovery acceptance on **2026-10-25 JST**. It requires a separately saved
 recovery kit and an available, trusted-for-freshness recovery service. Existing
 custody is unchanged until explicit enrollment. Provider and client lifecycle
 compatibility below retains the earlier evidence through **2026-10-12 JST**.
-Run [fresh preflight](getting-started/devnet.md) to check a deployment now.
+The new non-expiring Pool is `public-devnet-20261025-nonexpiry-v1`; matching
+operator services were activated and passed backend readiness checks on October 25.
+Use its [independent profile pins](getting-started/non-expiring-deposits.md#public-devnet-identity)
+and fresh preflight before funding.
 
 SDK/native `.15` retains Node 24.22.1 LTS from `.14`. Source SDK and isolated installed-package
 checks pass locally; these results do not establish hosted CI or fresh paid
@@ -21,13 +24,13 @@ Historical `ISSUANCE_UNKNOWN` sessions remain unresolved until existing recovery
 obtains sufficient evidence; a missing key or repaired host setting does not
 prove settlement. No fresh paid chat acceptance is claimed by this release.
 
-The public backend switched to [current-state PoC synchronization](getting-started/poc-state-sync.md)
-on 2026-10-21 JST, using config v2, a fresh Pool and new signer/challenger journals.
-Use the [new profile pins](getting-started/devnet.md) with a new client journal.
-The verified Vault program and proving assets are reused. Existing SDK/native
-`.13` release assets remain unchanged; this rollout installs server binaries and
-the matching server-side challenger bridge. Earlier profiles and journals bind
-the retired Pool and are retained separately.
+The October 21 deployment introduced [current-state PoC synchronization](getting-started/poc-state-sync.md).
+Its funded deposit/restart/withdrawal observations remain historical evidence for
+that Pool. The October 25 deployment uses a fresh program and zero-TTL Pool with
+matching operator artifacts and a separate client namespace. Finalized Pool
+verification confirms zero TTL and a 1,800-second withdrawal challenge period.
+Earlier profiles, journals and immutable releases remain separate; no test
+balance or unresolved operation is migrated automatically.
 
 The payment and proof primitives are shared across API use cases. The source
 tree adds registered, fixed-price JSON operations through the same SDK, clientd
@@ -46,15 +49,15 @@ See the [local JSON API tutorial](getting-started/json-api.md),
 | General JSON API | Offline registration and local fixed-price POST JSON onboarding in `.13`. This legacy adapter remains bounded POST JSON; no public provider acceptance is established. |
 | Finite HTTP gateway | `.13` includes version 2 bindings, version 3 tariffs/receipts/profiles and `finite_http_v1` through the same payment lifecycle. Fixed HTTP, Responses and Messages meters; bounded raw requests and finite responses. See the [gateway guide](getting-started/finite-http-api.md). Local installed-runtime checks use real proofs/SBF with synthetic provider/finality inputs. Selected real Anthropic text, Read-tool and conversation-continuation cases completed through a local proxy and dedicated public Devnet Pools with signed metered SDK settlement; the one-shot lifecycle also completed withdrawal. Broader provider, production and full browser coverage remain unverified. |
 | Native package | Apple Silicon, macOS 13.5+. No Apple notarization or verified packages for other platforms. |
-| SDK | Tarball distribution; no npm registry release. Browser custody/proof tests are local; funded browser/Phantom acceptance is unverified. |
-| Public profile | Fresh `public-devnet-20261021-state-v1` Pool, using direct OpenRouter Chat Completions. Model names do not enable other API dialects. |
-| Current-state synchronization | Fresh Devnet deposit, restart without the cache or old history access, and signed-clearance withdrawal verified. Batched current-account/header reads; no historical enumeration. Live challenge sends and new paid inference were not exercised by this rollout. |
+| SDK | Immutable GitHub tarball distribution; no npm registry release. `.20` release and seven asset attestations verified. Local proof/custody checks and hosted synthetic recovery passed; funded new-Pool browser/Phantom acceptance remains unverified. |
+| Public profile | Fresh `public-devnet-20261025-nonexpiry-v1` zero-TTL Pool, configured for direct OpenRouter Chat Completions. Finalized identity verified; matching operator services activated and backend readiness passed on October 25. Funded new-Pool lifecycle remains unverified. Model names do not enable other API dialects. |
+| Current-state synchronization | October 21 Pool: deposit, restart without the cache or old history access, and signed-clearance withdrawal verified. The new Pool retains batched current-account/header reads with no historical enumeration; those historical funded results are not new-Pool acceptance. |
 | Public output limit | Up to 4,096 output tokens per response under the current [application usage policy](getting-started/devnet.md#5-use-and-recover), subject to a lower model limit. This is not a token bound in the authenticated profile or direct backend. |
 | OpenClaw | Selected text and read-tool continuation cases succeeded using a bounded settlement adapter. No new OpenClaw lifecycle was run for the current Pool. |
 | Claude Desktop | A simple local fixture connection test passed. Real Chat is rejected by query/body validation. |
 | Claude Code | 2.1.220 passed selected streamed-text, Read-tool and subsequent-turn tests through the finite HTTP gateway using synthetic providers and local proof/SBF settlement; a capability-error retry is fenced before another provider dispatch. Selected live Haiku 4.5 streamed-text, Read-tool round-trip and same-conversation continuation cases also completed with signed metered SDK settlement through a local proxy and dedicated public Devnet Pools, using a bounded settlement adapter between requests. Full tool and coding-agent coverage remain unverified. Each new session requires a balance at least equal to the manifest cap. The legacy Messages adapter still rejects query, metadata and beta headers. See [the Claude Code guide](getting-started/claude-code.md). |
 | Codex | Responses requests hit unsupported fields and custom tool formats. |
-| Recovery | Selected native interrupted-stream recovery, withdrawal and emergency escape cases succeeded. |
+| Recovery | Selected historical native recovery cases succeeded. On October 25, isolated Chromium contexts, Chromium-to-Firefox and Chromium-to-WebKit runs each restored three synthetic new-Pool MAX-u64 notes through the hosted encrypted service, including changes after file export, selected deposit and unresolved operations; wrong files were rejected and the old owner was fenced. No funded lifecycle, Safari app or Phantom compatibility is claimed. |
 
 Within inference, text and client-executed tools are in scope. Media, Realtime,
 hosted tools, persisted provider conversations, Ollama and native SOL billing are not.

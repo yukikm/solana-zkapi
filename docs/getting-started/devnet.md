@@ -1,5 +1,14 @@
 # Use the public Devnet deployment
 
+> **Current deployment — October 25, 2026:** New SDK `.20` installations use
+> `public-devnet-20261025-nonexpiry-v1`. Follow the
+> [new-Pool guide and authenticated profile pins](non-expiring-deposits.md).
+> The October 21 setup below is retained as historical documentation; its
+> operator services have been replaced. Do not use those old profiles for new
+> deposits. Keep existing custody and recovery files unchanged.
+
+## Historical October 21 setup
+
 Use this deployment to try Solana ZKAPI with test USDC. You need a wallet,
 Devnet SOL for fees, and Devnet USDC for the note. The operator pays the real
 provider bill. Check [support](../support.md) and fresh preflight before funding.

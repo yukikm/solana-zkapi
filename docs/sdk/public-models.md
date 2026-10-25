@@ -1,5 +1,14 @@
 # Inference model selection
 
+> **Current profiles — October 25, 2026:** SDK `.20` uses
+> `public-devnet-20261025-nonexpiry-v1`. Obtain its main and expanded model
+> profiles and independent digests from the
+> [new-Pool guide](../getting-started/non-expiring-deposits.md#public-devnet-identity).
+> The October 21 profile links below are historical and must not be selected
+> for new deposits. Keep an existing custody binding unchanged.
+
+## Historical October 21 profile
+
 The public Devnet profile uses **direct OpenRouter Chat Completions**. Its
 `provider` is `openrouter`, including for Claude model IDs. It does not provide
 Anthropic Messages or OpenAI Responses merely because those model families appear.
